@@ -6,5 +6,6 @@
 **/*.ipynb*
 **/*.pyc
 **/__pycache__
+**/_build
 local.py
 .coverage
