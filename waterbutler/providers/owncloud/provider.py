@@ -95,9 +95,32 @@ class OwnCloudProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(resp)
 
     @asyncio.coroutine
-    def upload(self, stream, **kwargs):
-        pass
+    def upload(self, stream, path, **kwargs):
+
+        url = self.webdav_url + path
+
+        resp = yield from self.make_request(
+            'PUT',
+            url,
+            headers={'Content-Length': str(stream.size)},
+            data=stream,
+            expects=(201, ),
+            throws=exceptions.UploadError,
+        )
+
+        return True
+        
 
     @asyncio.coroutine
-    def delete(self, **kwargs):
-        pass
+    def delete(self, path, **kwargs):
+
+        url = self.webdav_url + path
+
+        yield from self.make_request(
+            'DELETE',
+            url,
+            expects=(204, ),
+            throws=exceptions.DeleteError,
+        )
+        
+        return True
