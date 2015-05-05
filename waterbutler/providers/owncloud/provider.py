@@ -5,8 +5,6 @@ from urllib import parse
 from base64 import b64encode
 from xml.etree import ElementTree
 
-import xmltodict
-
 from waterbutler.core import utils
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -35,7 +33,7 @@ class OwnCloudProvider(provider.BaseProvider):
  
     @property
     def default_headers(self):
-        return { 'Authorization' : 'Basic %s' %  self.auth }
+        return { 'Authorization' : 'Basic {0}'.format(self.auth) }
 
     @asyncio.coroutine
     def metadata(self, path, **kwargs):
@@ -78,8 +76,23 @@ class OwnCloudProvider(provider.BaseProvider):
         pass
  
     @asyncio.coroutine
-    def download(self, **kwargs):
-        pass
+    def download(self, path, **kwargs):
+
+        path = OwnCloudPath(path)
+        
+        if not path.is_file:
+            raise exceptions.DownloadError('No file specified for download', code=400)
+
+        url = self.webdav_url + path.path
+
+        print(url)
+        resp = yield from self.make_request(
+            'GET',
+            url,
+            expects=(200, ),
+            throws=exceptions.DownloadError,
+        )
+        return streams.ResponseStreamReader(resp)
 
     @asyncio.coroutine
     def upload(self, stream, **kwargs):
