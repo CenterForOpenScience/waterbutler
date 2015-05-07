@@ -12,6 +12,8 @@ from waterbutler.core import exceptions
 
 from waterbutler.providers.owncloud import settings
 from waterbutler.providers.owncloud.metadata import OwnCloudFileMetadata
+from waterbutler.providers.owncloud.metadata import OwnCloudFolderMetadata
+
 
 class OwnCloudPath(utils.WaterButlerPath):
 
@@ -44,13 +46,6 @@ class OwnCloudProvider(provider.BaseProvider):
         """
         path = OwnCloudPath(path)
 
-        if path.is_dir:
-            return (yield from self._metadata_folder(path))
-
-        return (yield from self._metadata_file(path))
-
-    @asyncio.coroutine
-    def _metadata_file(self, path):
         url = self.webdav_url + path.path
 
         resp = yield from self.make_request(
@@ -61,19 +56,35 @@ class OwnCloudProvider(provider.BaseProvider):
         )
 
         data = yield from resp.read()
-        tree = ElementTree.fromstring(data)
-        
-        file_attrs = {}
-        attrs = (tree[0]).find('{DAV:}propstat')
+        items = self._parse_dav_tree(ElementTree.fromstring(data))
+
+        if path.is_dir:
+            return items[1:]
+
+        return items[0]
+
+    def _parse_dav_tree(self, dav_tree):
+        items = []
+        for child in dav_tree:
+            items.append(self._parse_dav_element(child))
+        return items
+
+    def _parse_dav_element(self, dav_node):
+
+        href = parse.unquote(dav_node.find('{DAV:}href').text)
+
+        path = OwnCloudPath(href)
+
+        node_attrs = {}
+        attrs = dav_node.find('{DAV:}propstat')
         attrs = attrs.find('{DAV:}prop')
         for attr in attrs:
-            file_attrs[attr.tag] = attr.text
+            node_attrs[attr.tag] = attr.text
 
-        return OwnCloudFileMetadata(path.path, file_attrs).serialized()
+        if path.is_file:
+            return OwnCloudFileMetadata(path.path, node_attrs).serialized()
 
-    @asyncio.coroutine
-    def _metadata_folder(self, path):
-        pass
+        return OwnCloudFolderMetadata(path.path, node_attrs).serialized()
  
     @asyncio.coroutine
     def download(self, path, **kwargs):
@@ -85,7 +96,6 @@ class OwnCloudProvider(provider.BaseProvider):
 
         url = self.webdav_url + path.path
 
-        print(url)
         resp = yield from self.make_request(
             'GET',
             url,
