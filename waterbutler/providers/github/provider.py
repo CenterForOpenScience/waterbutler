@@ -510,11 +510,21 @@ class GitHubProvider(provider.BaseProvider):
 
         tree = yield from self._fetch_tree(latest, recursive=True)
 
+        ###
+        contents = yield from self._fetch_contents(path=path)
+        html_url = contents['html_url']
+        ###
+
         try:
             data = next(
                 x for x in tree['tree']
                 if x['path'] == path.path
             )
+
+            ###
+            data['html_url'] = html_url
+            ###
+
         except StopIteration:
             raise exceptions.MetadataError(';', code=404)
 

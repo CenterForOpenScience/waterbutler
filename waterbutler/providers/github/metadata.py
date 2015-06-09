@@ -64,6 +64,10 @@ class GitHubFileContentMetadata(BaseGitHubFileMetadata):
     def size(self):
         return self.raw['size']
 
+    @property
+    def source_url(self):
+        return self.raw['html_url']
+
 
 class GitHubFolderContentMetadata(BaseGitHubFolderMetadata):
 
@@ -81,6 +85,10 @@ class GitHubFileTreeMetadata(BaseGitHubFileMetadata):
     @property
     def size(self):
         return self.raw['size']
+
+    @property
+    def source_url(self):
+        return self.raw['html_url']
 
 
 class GitHubFolderTreeMetadata(BaseGitHubFolderMetadata):

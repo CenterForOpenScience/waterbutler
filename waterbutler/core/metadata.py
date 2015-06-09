@@ -93,6 +93,7 @@ class BaseFileMetadata(BaseMetadata):
             'contentType': self.content_type,
             'modified': self.modified,
             'size': self.size,
+            'source_url': self.source_url,
         })
 
     @property
@@ -110,6 +111,10 @@ class BaseFileMetadata(BaseMetadata):
 
     @abc.abstractproperty
     def size(self):
+        raise NotImplementedError
+
+    @abc.abstractproperty
+    def source_url(self):
         raise NotImplementedError
 
     @property
