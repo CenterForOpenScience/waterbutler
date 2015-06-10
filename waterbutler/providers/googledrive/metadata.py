@@ -82,6 +82,9 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
             ret['downloadExt'] = utils.get_download_extension(self.raw['exportLinks'])
         return ret
 
+    @property
+    def source_url(self):
+        return self.raw['alternateLink']
 
 class GoogleDriveRevision(metadata.BaseFileRevisionMetadata):
 
