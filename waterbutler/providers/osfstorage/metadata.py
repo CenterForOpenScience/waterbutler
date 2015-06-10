@@ -50,6 +50,10 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
             'downloads': self.raw['downloads']
         }
 
+    @property
+    def source_url(self):
+        return None
+
 
 class OsfStorageFolderMetadata(BaseOsfStorageItemMetadata, metadata.BaseFolderMetadata):
     pass
