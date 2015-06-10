@@ -301,6 +301,18 @@ class BoxProvider(provider.BaseProvider):
             path
         ).serialized()
 
+    @asyncio.coroutine
+    def get_shared_link(self, path):
+        resp = yield from self.make_request(
+            'PUT',
+            self.build_url('files', path.identifier),
+            data='{"shared_link": {}}',
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
+        data = yield from resp.json()
+        return data['shared_link']['url']
+
     def _assert_child(self, paths, target=None):
         if self.folder == 0:
             return True
@@ -336,6 +348,7 @@ class BoxProvider(provider.BaseProvider):
         if not data:
             raise exceptions.NotFoundError(str(path))
 
+        data['shared_link'] = yield from self.get_shared_link(path)
         return data if raw else BoxFileMetadata(data, path).serialized()
 
     @asyncio.coroutine
