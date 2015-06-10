@@ -54,6 +54,10 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
             'hasPublishedVersion': self.has_published_version,
         }
 
+    @property
+    def source_url(self):
+        return None
+
 
 class DataverseDatasetMetadata(BaseDataverseMetadata, metadata.BaseFolderMetadata):
 
