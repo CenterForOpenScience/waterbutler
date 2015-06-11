@@ -57,15 +57,23 @@ class MultiStream(asyncio.StreamReader):
     Originally written by @jmcarp
     """
     def __init__(self, *streams):
+        super().__init__()
+        self._size = 0
         self.stream = []
         self._streams = []
+
         self.add_streams(*streams)
+
+    @property
+    def size(self):
+        return self._size
 
     @property
     def streams(self):
         return self._streams
 
     def add_streams(self, *streams):
+        self._size += sum(x.size for x in streams)
         self._streams.extend(streams)
 
         if not self.stream:
@@ -73,15 +81,20 @@ class MultiStream(asyncio.StreamReader):
 
     @asyncio.coroutine
     def read(self, n=-1):
-        if not self.stream:
-            return b''
+        if n < 0:
+            return (yield from super().read(n))
 
-        chunk = yield from self.stream.read(n)
-        if len(chunk) == n and n != -1:
-            return chunk
-        self._cycle()
-        nextn = -1 if n == -1 else n - len(chunk)
-        chunk += (yield from self.read(nextn))
+        chunk = b''
+
+        while self.stream and (len(chunk) < n or n == -1):
+            if n == -1:
+                chunk += yield from self.stream.read(-1)
+            else:
+                chunk += yield from self.stream.read(n - len(chunk))
+
+            if self.stream.at_eof():
+                self._cycle()
+
         return chunk
 
     def _cycle(self):
@@ -89,6 +102,7 @@ class MultiStream(asyncio.StreamReader):
             self.stream = self.streams.pop(0)
         except IndexError:
             self.stream = None
+            self.feed_eof()
 
 
 class StringStream(BaseStream):

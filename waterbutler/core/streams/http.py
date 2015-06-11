@@ -102,7 +102,6 @@ class FormDataStream(MultiStream):
         if self.can_add_more:
             self.can_add_more = False
             self.add_streams(self.end_boundary)
-            self.size = sum([int(x.size) for x in self.streams]) + self.stream.size
 
     def add_fields(self, **fields):
         for key, value in fields.items():
@@ -142,18 +141,30 @@ class FormDataStream(MultiStream):
 
 class ResponseStreamReader(BaseStream):
 
-    def __init__(self, response):
+    def __init__(self, response, size=None, unsizable=False):
         super().__init__()
+        if 'Content-Length' in response.headers:
+            self._size = int(response.headers['Content-Length'])
+        elif not unsizable:
+            self._size = int(size)
+        else:
+            self._size = None
+
         self.response = response
         self.content_type = self.response.headers.get('Content-Type', 'application/octet-stream')
 
     @property
     def size(self):
-        return self.response.headers.get('Content-Length')
+        return self._size
 
     @asyncio.coroutine
     def _read(self, size):
-        return (yield from self.response.content.read(size))
+        chunk = (yield from self.response.content.read(size))
+
+        if not chunk:
+            self.feed_eof()
+
+        return chunk
 
 
 class RequestStreamReader(BaseStream):
@@ -164,7 +175,7 @@ class RequestStreamReader(BaseStream):
 
     @property
     def size(self):
-        return self.request.headers.get('Content-Length')
+        return int(self.request.headers.get('Content-Length'))
 
     @asyncio.coroutine
     def _read(self, size):

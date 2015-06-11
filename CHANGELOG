@@ -2,6 +2,20 @@
 ChangeLog
 *********
 
+0.6.0 (2015-06-07)
+=================
+
+- Various fixes to Google drive
+- Allow response streams to be "unsizable"
+- Return an additional "etag" field with file metadata
+
+0.5.0 (2015-05-25)
+=================
+
+- Implement moving and expose it via http
+- Implement copying and expose it via http
+- Implement downloading as zip and expose it via http
+
 0.4.0 (2015-04-28)
 ==================
 
