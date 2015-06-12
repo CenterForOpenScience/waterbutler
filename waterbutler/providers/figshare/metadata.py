@@ -60,6 +60,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
             'status': self.parent['status'].lower(),
             'downloadUrl': self.raw.get('download_url'),
             'canDelete': self.can_delete,
+            'source_url': self.raw['figshare_url']
         }
 
 

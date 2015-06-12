@@ -27,6 +27,7 @@ class FigshareProvider:
 class BaseFigshareProvider(provider.BaseProvider):
     NAME = 'figshare'
     BASE_URL = 'http://api.figshare.com/v1/my_data'
+    WEB_URL = 'http://api.figshare.com/v1/'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -236,6 +237,18 @@ class FigshareArticleProvider(BaseFigshareProvider):
         return data['items'][0]
 
     @asyncio.coroutine
+    def get_published_article_url(self):
+        response = yield from self.make_request(
+            'GET',
+            self.build_view_url('articles', self.article_id),
+            expects=(200, ),
+            throws=exceptions.MetadataError
+        )
+        data = yield from response.json()
+        article = data['items'][0]
+        return article['figshare_url']
+
+    @asyncio.coroutine
     def _add_to_project(self, project_id):
         resp = yield from self.make_request(
             'PUT',
@@ -260,6 +273,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
     def _serialize_item(self, item, parent):
         defined_type = item.get('defined_type')
         files = item.get('files')
+
         if defined_type == 'fileset':
             metadata_class = metadata.FigshareArticleMetadata
             metadata_kwargs = {}
@@ -271,11 +285,15 @@ class FigshareArticleProvider(BaseFigshareProvider):
             metadata_kwargs = {'parent': parent, 'child': self.child}
             if defined_type:
                 item = item['files'][0]
+                item['figshare_url'] = None
         return metadata_class(item, **metadata_kwargs).serialized()
 
     @asyncio.coroutine
     def about(self):
         article_json = yield from self._get_article_json()
+        article_json['figshare_url'] = None
+        if article_json['status'] == 'Public':
+            article_json['figshare_url'] = yield from self.get_published_article_url()
         return self._serialize_item(article_json, article_json)
 
     @asyncio.coroutine
@@ -342,6 +360,12 @@ class FigshareArticleProvider(BaseFigshareProvider):
             ] if x]
 
         file_json = figshare_utils.file_or_error(article_json, path.identifier)
+
+        figshare_url = None
+        if article_json['status'] == 'Public':
+            figshare_url = yield from self.get_published_article_url()
+        file_json['figshare_url'] = figshare_url
+
         return self._serialize_item(file_json, parent=article_json)
 
     @asyncio.coroutine
