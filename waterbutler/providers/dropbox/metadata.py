@@ -68,7 +68,7 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
         if 'url' not in self.raw:
             return None
         return self.raw['url']
-    
+
 
 # TODO dates!
 class DropboxRevision(metadata.BaseFileRevisionMetadata):
