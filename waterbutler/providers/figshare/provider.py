@@ -273,7 +273,6 @@ class FigshareArticleProvider(BaseFigshareProvider):
     def _serialize_item(self, item, parent):
         defined_type = item.get('defined_type')
         files = item.get('files')
-
         if defined_type == 'fileset':
             metadata_class = metadata.FigshareArticleMetadata
             metadata_kwargs = {}
@@ -285,15 +284,11 @@ class FigshareArticleProvider(BaseFigshareProvider):
             metadata_kwargs = {'parent': parent, 'child': self.child}
             if defined_type:
                 item = item['files'][0]
-                item['figshare_url'] = None
         return metadata_class(item, **metadata_kwargs).serialized()
 
     @asyncio.coroutine
     def about(self):
         article_json = yield from self._get_article_json()
-        article_json['figshare_url'] = None
-        if article_json['status'] == 'Public':
-            article_json['figshare_url'] = yield from self.get_published_article_url()
         return self._serialize_item(article_json, article_json)
 
     @asyncio.coroutine
@@ -361,11 +356,8 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
         file_json = figshare_utils.file_or_error(article_json, path.identifier)
 
-        figshare_url = None
         if article_json['status'] == 'Public':
-            figshare_url = yield from self.get_published_article_url()
-        file_json['figshare_url'] = figshare_url
-
+            file_json['figshare_url'] = yield from self.get_published_article_url()
         return self._serialize_item(file_json, parent=article_json)
 
     @asyncio.coroutine
