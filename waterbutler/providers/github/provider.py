@@ -33,7 +33,7 @@ class GitHubPath(path.WaterButlerPath):
 class GitHubProvider(provider.BaseProvider):
     NAME = 'github'
     BASE_URL = settings.BASE_URL
-    WEB_URL = settings.WEB_URL
+    VIEW_URL = settings.VIEW_URL
 
     @staticmethod
     def is_sha(ref):

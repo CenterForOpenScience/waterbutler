@@ -7,7 +7,7 @@ config = settings.get('GITHUB_PROVIDER_CONFIG', {})
 
 
 BASE_URL = config.get('BASE_URL', 'https://api.github.com/')
-WEB_URL = config.get('WEB_URL', 'https://github.com/')
+VIEW_URL = config.get('VIEW_URL', 'https://github.com/')
 
 UPLOAD_FILE_MESSAGE = config.get('UPLOAD_FILE_MESSAGE', 'File uploaded on behalf of WaterButler')
 DELETE_FILE_MESSAGE = config.get('DELETE_FILE_MESSAGE', 'File deleted on behalf of WaterButler')
