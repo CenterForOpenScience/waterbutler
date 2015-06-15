@@ -54,16 +54,13 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
 
     @property
     def extra(self):
-        source_url = None
-        if 'figshare_url' in self.raw:
-            source_url = self.raw['figshare_url']
         return {
             'fileId': self.raw['id'],
             'articleId': self.article_id,
             'status': self.parent['status'].lower(),
             'downloadUrl': self.raw.get('download_url'),
             'canDelete': self.can_delete,
-            'source_url': source_url
+            'source_url': self.raw.get('figshare_url')
         }
 
 

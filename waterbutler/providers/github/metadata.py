@@ -66,9 +66,7 @@ class GitHubFileContentMetadata(BaseGitHubFileMetadata):
 
     @property
     def source_url(self):
-        if 'html_url' not in self.raw:
-            return None
-        return self.raw['html_url']
+        return self.raw.get('html_url')
 
 class GitHubFolderContentMetadata(BaseGitHubFolderMetadata):
 
@@ -89,9 +87,7 @@ class GitHubFileTreeMetadata(BaseGitHubFileMetadata):
 
     @property
     def source_url(self):
-        if 'html_url' not in self.raw:
-            return None
-        return self.raw['html_url']
+        return self.raw.get('html_url')
 
 
 class GitHubFolderTreeMetadata(BaseGitHubFolderMetadata):

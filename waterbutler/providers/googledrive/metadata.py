@@ -84,9 +84,7 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
 
     @property
     def source_url(self):
-        if 'alternateLink' not in self.raw:
-            return None
-        return self.raw['alternateLink']
+        return self.raw.get('alternateLink')
 
 class GoogleDriveRevision(metadata.BaseFileRevisionMetadata):
 

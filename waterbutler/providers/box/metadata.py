@@ -60,9 +60,7 @@ class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
 
     @property
     def source_url(self):
-        if 'shared_link' not in self.raw:
-            return None
-        return self.raw['shared_link']
+        return self.raw.get('shared_link')
 
 
 class BoxRevision(metadata.BaseFileRevisionMetadata):
