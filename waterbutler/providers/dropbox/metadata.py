@@ -65,6 +65,8 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
 
     @property
     def source_url(self):
+        if 'url' not in self.raw:
+            return None
         return self.raw['url']
     
 
