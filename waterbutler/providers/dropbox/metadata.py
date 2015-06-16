@@ -64,8 +64,10 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
         return self.raw['rev']
 
     @property
-    def source_url(self):
-        return self.raw.get('url')
+    def extra(self):
+        ret = super().extra
+        ret['source_url'] = self.raw.get('url')
+        return ret
 
 
 # TODO dates!

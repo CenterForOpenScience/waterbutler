@@ -52,15 +52,12 @@ class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
     def extra(self):
         return {
             'etag': self.raw.get('etag'),
+            'source_url': self.raw.get('shared_link')
         }
 
     @property
     def etag(self):
         return '{}::{}'.format(self.raw.get('etag', ''), self.raw['id'])
-
-    @property
-    def source_url(self):
-        return self.raw.get('shared_link')
 
 
 class BoxRevision(metadata.BaseFileRevisionMetadata):

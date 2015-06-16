@@ -93,7 +93,7 @@ class BaseFileMetadata(BaseMetadata):
             'contentType': self.content_type,
             'modified': self.modified,
             'size': self.size,
-            'source_url': self.source_url,
+            'extra': self.extra,
         })
 
     @property
@@ -114,8 +114,8 @@ class BaseFileMetadata(BaseMetadata):
         raise NotImplementedError
 
     @abc.abstractproperty
-    def source_url(self):
-        raise NotImplementedError
+    def extra(self):
+        return {}
 
     @property
     def etag(self):
