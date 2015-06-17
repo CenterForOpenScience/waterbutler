@@ -93,7 +93,6 @@ class BaseFileMetadata(BaseMetadata):
             'contentType': self.content_type,
             'modified': self.modified,
             'size': self.size,
-            'extra': self.extra,
         })
 
     @property

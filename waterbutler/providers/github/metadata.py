@@ -66,9 +66,9 @@ class GitHubFileContentMetadata(BaseGitHubFileMetadata):
 
     @property
     def extra(self):
-        ret = super().extra
-        ret['source_url'] = self.raw.get('html_url')
-        return ret
+        return dict(super().extra, **{
+            'source_url': self.raw.get('html_url')
+        })
 
 
 class GitHubFolderContentMetadata(BaseGitHubFolderMetadata):
@@ -90,9 +90,9 @@ class GitHubFileTreeMetadata(BaseGitHubFileMetadata):
 
     @property
     def extra(self):
-        ret = super().extra
-        ret['source_url'] = self.raw.get('html_url')
-        return ret
+        return dict(super().extra, **{
+            'source_url': self.raw.get('html_url')
+        })
 
 
 class GitHubFolderTreeMetadata(BaseGitHubFolderMetadata):

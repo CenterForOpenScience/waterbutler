@@ -181,7 +181,7 @@ class DropboxProvider(provider.BaseProvider):
         )
 
     @asyncio.coroutine
-    def get_share_url(self, path, **kwargs):
+    def get_share_url(self, path):
         resp = yield from self.make_request(
             'POST',
             self.build_url('shares', 'auto', path),
