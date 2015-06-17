@@ -44,7 +44,6 @@ class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
 
     @property
     def extra(self):
-        print(str(dict(self.extras, fileSha=self.raw['sha'])))
         return dict(self.extras, fileSha=self.raw['sha'])
 
 
