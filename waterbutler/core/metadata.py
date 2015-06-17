@@ -113,10 +113,6 @@ class BaseFileMetadata(BaseMetadata):
     def size(self):
         raise NotImplementedError
 
-    # @abc.abstractproperty
-    # def extra(self):
-    #     return {}
-
     @property
     def etag(self):
         raise NotImplementedError
