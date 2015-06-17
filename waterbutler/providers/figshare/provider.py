@@ -11,6 +11,7 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.figshare import metadata
+from waterbutler.providers.figshare import settings
 from waterbutler.providers.figshare import utils as figshare_utils
 
 
@@ -26,8 +27,8 @@ class FigshareProvider:
 
 class BaseFigshareProvider(provider.BaseProvider):
     NAME = 'figshare'
-    BASE_URL = 'http://api.figshare.com/v1/my_data'
-    VIEW_URL = 'http://api.figshare.com/v1/'
+    BASE_URL = settings.BASE_URL
+    VIEW_URL = settings.VIEW_URL
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -237,18 +238,6 @@ class FigshareArticleProvider(BaseFigshareProvider):
         return data['items'][0]
 
     @asyncio.coroutine
-    def get_published_article_url(self):
-        response = yield from self.make_request(
-            'GET',
-            self.build_view_url('articles', self.article_id),
-            expects=(200, ),
-            throws=exceptions.MetadataError
-        )
-        data = yield from response.json()
-        article = data['items'][0]
-        return article['figshare_url']
-
-    @asyncio.coroutine
     def _add_to_project(self, project_id):
         resp = yield from self.make_request(
             'PUT',
@@ -357,7 +346,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
         file_json = figshare_utils.file_or_error(article_json, path.identifier)
 
         if article_json['status'] == 'Public':
-            file_json['figshare_url'] = yield from self.get_published_article_url()
+            file_json['figshare_url'] = self.build_view_url(article_json['title'], self.article_id)
         return self._serialize_item(file_json, parent=article_json)
 
     @asyncio.coroutine
