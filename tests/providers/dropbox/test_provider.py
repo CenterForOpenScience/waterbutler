@@ -65,6 +65,7 @@ def folder_metadata():
         "is_dir": True,
         "icon": "folder",
         "root": "dropbox",
+        "url": "",
         "contents": [
             {
                 "size": "2.3 MB",
@@ -105,6 +106,7 @@ def file_metadata():
         "is_dir": False,
         "icon": "page_white_acrobat",
         "root": "dropbox",
+        "url": "",
         "mime_type": "application/pdf",
         "revision": 220823
     }
@@ -195,9 +197,9 @@ class TestMetadata:
     def test_metadata(self, provider, folder_metadata):
         path = yield from provider.validate_path('/')
         url = provider.build_url('metadata', 'auto', path.full_path)
-        share_link = provider.build_url('shares', 'auto', path)
+        share_link = provider.build_url('shares', 'auto', 'Photos/flower.jpg')
         aiohttpretty.register_json_uri('GET', url, body=folder_metadata)
-        aiohttpretty.register_json_uri('POST', share_link)
+        aiohttpretty.register_json_uri('POST', share_link, body=folder_metadata)
         result = yield from provider.metadata(path)
 
         assert isinstance(result, list)
@@ -211,9 +213,9 @@ class TestMetadata:
     def test_metadata_root_file(self, provider, file_metadata):
         path = WaterButlerPath('/pfile', prepend=provider.folder)
         url = provider.build_url('metadata', 'auto', path.full_path)
-        share_link = provider.build_url('shares', 'auto', path)
+        share_link = provider.build_url('shares', 'auto', 'Photos/Getting_Started.pdf')
         aiohttpretty.register_json_uri('GET', url, body=file_metadata)
-        aiohttpretty.register_json_uri('POST', share_link)
+        aiohttpretty.register_json_uri('POST', share_link, body=file_metadata)
         result = yield from provider.metadata(path)
 
         assert isinstance(result, dict)
