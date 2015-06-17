@@ -42,7 +42,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
     """
 
     BASE_URL = None
-    VIEW_URL = None
 
     def __init__(self, auth, credentials, settings):
         """
@@ -85,9 +84,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :rtype: str
         """
         return build_url(self.BASE_URL, *segments, **query)
-
-    def build_view_url(self, *segments, **query):
-        return build_url(self.VIEW_URL, *segments, **query)
 
     @property
     def default_headers(self):

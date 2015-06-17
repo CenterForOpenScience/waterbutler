@@ -44,6 +44,7 @@ class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
 
     @property
     def extra(self):
+        print(str(dict(self.extras, fileSha=self.raw['sha'])))
         return dict(self.extras, fileSha=self.raw['sha'])
 
 
@@ -64,12 +65,6 @@ class GitHubFileContentMetadata(BaseGitHubFileMetadata):
     def size(self):
         return self.raw['size']
 
-    @property
-    def extra(self):
-        return dict(super().extra, **{
-            'source_url': self.raw.get('html_url')
-        })
-
 
 class GitHubFolderContentMetadata(BaseGitHubFolderMetadata):
 
@@ -87,12 +82,6 @@ class GitHubFileTreeMetadata(BaseGitHubFileMetadata):
     @property
     def size(self):
         return self.raw['size']
-
-    @property
-    def extra(self):
-        return dict(super().extra, **{
-            'source_url': self.raw.get('html_url')
-        })
 
 
 class GitHubFolderTreeMetadata(BaseGitHubFolderMetadata):

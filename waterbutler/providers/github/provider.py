@@ -90,9 +90,11 @@ class GitHubProvider(provider.BaseProvider):
         segments = ('repos', self.owner, self.repo) + segments
         return self.build_url(*segments, **query)
 
-    def build_source_url(self, *segments, **query):
+    def build_source_url(self, *segments):
         segments = (self.owner, self.repo, 'blob') + segments
-        return self.build_view_url(*segments, **query)
+        source_url = furl.furl(settings.VIEW_URL)
+        source_url.path.segments = segments
+        return source_url.url
 
     def can_intra_move(self, other, path=None):
         return self.can_intra_copy(other, path=path)
@@ -514,14 +516,13 @@ class GitHubProvider(provider.BaseProvider):
             latest = path.identifier[0]
 
         tree = yield from self._fetch_tree(latest, recursive=True)
+        source_url = self.build_source_url(path.identifier[0], path.path)
 
         try:
             data = next(
                 x for x in tree['tree']
                 if x['path'] == path.path
             )
-
-            data['html_url'] = self.build_source_url(path.identifier[0], path.path)
 
         except StopIteration:
             raise exceptions.MetadataError(';', code=404)
@@ -532,7 +533,7 @@ class GitHubProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return GitHubFileTreeMetadata(data).serialized()
+        return GitHubFileTreeMetadata(data, source_url=source_url).serialized()
 
     @asyncio.coroutine
     def _get_latest_sha(self, ref='master'):

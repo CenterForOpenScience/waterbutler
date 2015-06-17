@@ -669,9 +669,9 @@ class TestMetadata:
 
         result = yield from provider.metadata(path)
         item = repo_tree_metadata_root['tree'][0]
-        item['html_url'] = provider.build_source_url(path.identifier[0], path.path)
+        source_url = provider.build_source_url(path.identifier[0], path.path)
 
-        assert result == GitHubFileTreeMetadata(item).serialized()
+        assert result == GitHubFileTreeMetadata(item, source_url=source_url).serialized()
 
     # TODO: Additional Tests
     # def test_metadata_root_file_txt_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
