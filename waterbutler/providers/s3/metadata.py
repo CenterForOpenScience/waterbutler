@@ -75,10 +75,6 @@ class S3FileMetadata(S3Metadata, metadata.BaseFileMetadata):
             'md5': self.raw['ETag'].replace('"', '')
         }
 
-    @property
-    def source_url(self):
-        return None
-
 
 class S3FolderKeyMetadata(S3Metadata, metadata.BaseFolderMetadata):
 

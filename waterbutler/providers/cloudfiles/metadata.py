@@ -36,10 +36,6 @@ class CloudFilesFileMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata):
     def etag(self):
         return self.raw['hash']
 
-    @property
-    def extra(self):
-        return {}
-
 
 class CloudFilesHeaderMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata):
 
@@ -70,10 +66,6 @@ class CloudFilesHeaderMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata
     @property
     def etag(self):
         return self.raw['etag']
-
-    @property
-    def extra(self):
-        return {}
 
 
 class CloudFilesFolderMetadata(BaseCloudFilesMetadata, metadata.BaseFolderMetadata):

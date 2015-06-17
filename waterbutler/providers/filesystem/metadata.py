@@ -56,7 +56,3 @@ class FileSystemFileMetadata(BaseFileSystemMetadata, metadata.BaseFileMetadata):
     @property
     def etag(self):
         return '{}::{}'.format(self.raw['modified'], self.raw['path'])
-
-    @property
-    def extra(self):
-        return {}
