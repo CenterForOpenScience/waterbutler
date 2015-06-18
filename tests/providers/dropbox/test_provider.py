@@ -197,7 +197,7 @@ class TestMetadata:
     def test_metadata(self, provider, folder_metadata):
         path = yield from provider.validate_path('/')
         url = provider.build_url('metadata', 'auto', path.full_path)
-        share_link = provider.build_url('shares', 'auto', 'Photos/flower.jpg')
+        share_link = provider.build_url('shares', 'auto', path.full_path)
         aiohttpretty.register_json_uri('GET', url, body=folder_metadata)
         aiohttpretty.register_json_uri('POST', share_link, body=folder_metadata)
         result = yield from provider.metadata(path)
@@ -213,7 +213,7 @@ class TestMetadata:
     def test_metadata_root_file(self, provider, file_metadata):
         path = WaterButlerPath('/pfile', prepend=provider.folder)
         url = provider.build_url('metadata', 'auto', path.full_path)
-        share_link = provider.build_url('shares', 'auto', 'Photos/Getting_Started.pdf')
+        share_link = provider.build_url('shares', 'auto', path.full_path)
         aiohttpretty.register_json_uri('GET', url, body=file_metadata)
         aiohttpretty.register_json_uri('POST', share_link, body=file_metadata)
         result = yield from provider.metadata(path)

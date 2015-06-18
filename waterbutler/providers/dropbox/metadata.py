@@ -5,9 +5,10 @@ from waterbutler.core import metadata
 
 class BaseDropboxMetadata(metadata.BaseMetadata):
 
-    def __init__(self, raw, folder):
+    def __init__(self, raw, folder, **kwargs):
         super().__init__(raw)
         self._folder = folder
+        self.extras = kwargs
 
     @property
     def provider(self):
@@ -21,9 +22,7 @@ class BaseDropboxMetadata(metadata.BaseMetadata):
 
     @property
     def extra(self):
-        return {
-            'revisionId': self.raw['rev']
-        }
+        return dict(self.extras, revisionId=self.raw['rev'])
 
 
 class DropboxFolderMetadata(BaseDropboxMetadata, metadata.BaseFolderMetadata):
@@ -62,12 +61,6 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
     @property
     def etag(self):
         return self.raw['rev']
-
-    @property
-    def extra(self):
-        return dict(super().extra, **{
-            'source_url': self.raw.get('url')
-        })
 
 
 # TODO dates!

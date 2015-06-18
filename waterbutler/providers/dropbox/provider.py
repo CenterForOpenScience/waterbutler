@@ -184,7 +184,7 @@ class DropboxProvider(provider.BaseProvider):
     def get_share_url(self, path):
         resp = yield from self.make_request(
             'POST',
-            self.build_url('shares', 'auto', path),
+            self.build_url('shares', 'auto', path.full_path),
             data={'short_url': False},
             expects=(200, ),
             throws=exceptions.MetadataError,
@@ -218,21 +218,17 @@ class DropboxProvider(provider.BaseProvider):
                 ),
                 code=http.client.NOT_FOUND,
             )
-
+        source_url = yield from self.get_share_url(path)
         if data['is_dir']:
             ret = []
             for item in data['contents']:
                 if item['is_dir']:
                     ret.append(DropboxFolderMetadata(item, self.folder).serialized())
                 else:
-                    path = item['path']
-                    item['url'] = yield from self.get_share_url(path)
-                    ret.append(DropboxFileMetadata(item, self.folder).serialized())
+                    ret.append(DropboxFileMetadata(item, self.folder, source_url=source_url).serialized())
             return ret
 
-        path = data['path']
-        data['url'] = yield from self.get_share_url(path)
-        return DropboxFileMetadata(data, self.folder).serialized()
+        return DropboxFileMetadata(data, self.folder, source_url=source_url).serialized()
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):
