@@ -202,6 +202,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         folder = yield from dest_provider.create_folder(dest_path)
 
+        yield from asyncio.sleep(.5)
+
         dest_path = yield from dest_provider.revalidate_path(dest_path.parent, dest_path.name, folder=dest_path.is_dir)
 
         futures = []
