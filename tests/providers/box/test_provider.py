@@ -449,10 +449,10 @@ class TestMetadata:
         file_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', file_url, body=item)
         aiohttpretty.register_json_uri('PUT', file_url, body=item)
-        item['shared_link'] = yield from provider.get_shared_link(path)
+        source_url = yield from provider.get_shared_link(path)
 
         result = yield from provider.metadata(path)
-        expected = BoxFileMetadata(item, path).serialized()
+        expected = BoxFileMetadata(item, path, source_url=source_url).serialized()
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=file_url)
 
