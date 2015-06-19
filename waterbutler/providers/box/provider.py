@@ -348,7 +348,9 @@ class BoxProvider(provider.BaseProvider):
         if not data:
             raise exceptions.NotFoundError(str(path))
 
-        source_url = yield from self.get_shared_link(path)
+        source_url = data['shared_link']['url']
+        if not source_url:
+            source_url = yield from self.get_shared_link(path)
         return data if raw else BoxFileMetadata(data, path, source_url).serialized()
 
     @asyncio.coroutine
