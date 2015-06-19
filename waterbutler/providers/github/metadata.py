@@ -20,7 +20,7 @@ class BaseGitHubMetadata(metadata.BaseMetadata):
         ret = {}
         if self.commit is not None:
             ret['commit'] = self.commit
-        ret['source_url'] = self.source_url
+        ret['sourceUrl'] = self.source_url
         return ret
 
     def build_path(self, path):
