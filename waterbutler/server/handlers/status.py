@@ -2,6 +2,7 @@ import tornado.web
 
 import waterbutler
 
+
 class StatusHandler(tornado.web.RequestHandler):
 
     def get(self):

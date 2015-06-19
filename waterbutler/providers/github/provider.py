@@ -22,9 +22,11 @@ GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 
 class GitHubPathPart(path.WaterButlerPathPart):
     def increment_name(self, _id=None):
+        """Overridden to preserve branch from _id upon incrementing"""
         self._id = _id or (self._id[0], None)
         self._count += 1
         return self
+
 
 class GitHubPath(path.WaterButlerPath):
     PART_CLASS = GitHubPathPart
@@ -63,7 +65,7 @@ class GitHubProvider(provider.BaseProvider):
 
         path = GitHubPath(path)
 
-        #TODO Validate that filesha is a valid sha
+        # TODO Validate that filesha is a valid sha
         path.parts[-1]._id = (
             kwargs.get('branch') or kwargs.get('ref') or self.default_branch,
             kwargs.get('fileSha')
@@ -480,7 +482,7 @@ class GitHubProvider(provider.BaseProvider):
                     ret.append(GitHubFileContentMetadata(item).serialized())
             return ret
 
-        #TODO?
+        # TODO?
         # if self._is_sha(ref):
         #     tree_sha = ref
         # elif path.parent.is_root:
@@ -523,7 +525,7 @@ class GitHubProvider(provider.BaseProvider):
             )
 
         except StopIteration:
-            raise exceptions.MetadataError(';', code=404)
+            raise exceptions.NotFoundError(str(path))
 
         if isinstance(data, list):
             raise exceptions.MetadataError(

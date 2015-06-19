@@ -1,5 +1,6 @@
 from waterbutler.core import metadata
 
+
 class BaseOsfStorageMetadata:
     @property
     def provider(self):

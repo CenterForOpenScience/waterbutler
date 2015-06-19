@@ -16,6 +16,7 @@ TRUTH_MAP = {
     'false': False,
 }
 
+
 @web.stream_request_body
 class CRUDHandler(core.BaseProviderHandler):
 

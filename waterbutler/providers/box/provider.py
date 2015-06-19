@@ -82,7 +82,7 @@ class BoxProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def revalidate_path(self, base, path, folder=None):
-        #TODO Research the search api endpoint
+        # TODO Research the search api endpoint
         resp = yield from self.make_request(
             'GET',
             self.build_url('folders', base.identifier, 'items', fields='id,name,type'),
@@ -253,9 +253,9 @@ class BoxProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):
-        #from https://developers.box.com/docs/#files-view-versions-of-a-file :
-        #Alert: Versions are only tracked for Box users with premium accounts.
-        #Few users will have a premium account, return only current if not
+        # from https://developers.box.com/docs/#files-view-versions-of-a-file :
+        # Alert: Versions are only tracked for Box users with premium accounts.
+        # Few users will have a premium account, return only current if not
         curr = yield from self.metadata(path, raw=True)
         response = yield from self.make_request(
             'GET',
