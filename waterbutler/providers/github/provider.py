@@ -22,6 +22,7 @@ GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 
 class GitHubPathPart(path.WaterButlerPathPart):
     def increment_name(self, _id=None):
+        """Overridden to preserve branch from _id upon incrementing"""
         self._id = _id or (self._id[0], None)
         self._count += 1
         return self
@@ -517,7 +518,7 @@ class GitHubProvider(provider.BaseProvider):
                 if x['path'] == path.path
             )
         except StopIteration:
-            raise exceptions.MetadataError(';', code=404)
+            raise exceptions.NotFoundError(str(path))
 
         if isinstance(data, list):
             raise exceptions.MetadataError(
