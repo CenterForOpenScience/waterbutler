@@ -185,7 +185,6 @@ class DropboxProvider(provider.BaseProvider):
         resp = yield from self.make_request(
             'POST',
             self.build_url('shares', 'auto', path.full_path),
-            data={'short_url': False},
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
