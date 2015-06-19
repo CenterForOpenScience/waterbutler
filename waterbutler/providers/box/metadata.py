@@ -26,6 +26,7 @@ class BoxFolderMetadata(BaseBoxMetadata, metadata.BaseFolderMetadata):
     def path(self):
         return '/{}/'.format(self.raw['id'])
 
+
 class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
 
     @property

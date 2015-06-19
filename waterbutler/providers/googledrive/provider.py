@@ -23,6 +23,7 @@ class GoogleDrivePathPart(path.WaterButlerPathPart):
     DECODE = parse.unquote
     ENCODE = functools.partial(parse.quote, safe='')
 
+
 class GoogleDrivePath(path.WaterButlerPath):
     PART_CLASS = GoogleDrivePathPart
 
@@ -55,7 +56,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def revalidate_path(self, base, name, folder=None):
-        #TODO Redo the logic here folders names ending in /s
+        # TODO Redo the logic here folders names ending in /s
         # Will probably break
         if '/' in name.lstrip('/') and '%' not in name:
             # DAZ and MnC may pass unquoted names which break

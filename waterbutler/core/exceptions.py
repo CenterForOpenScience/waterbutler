@@ -40,11 +40,14 @@ class ProviderError(PluginError):
     inherit from ProviderError
     """
 
+
 class CopyError(ProviderError):
     pass
 
+
 class CreateFolderError(ProviderError):
     pass
+
 
 class DeleteError(ProviderError):
     pass
@@ -77,6 +80,7 @@ class MetadataError(ProviderError):
 class RevisionsError(ProviderError):
     pass
 
+
 class FolderNamingConflict(ProviderError):
     def __init__(self, path, name=None):
         super().__init__(
@@ -93,6 +97,7 @@ class NotFoundError(ProviderError):
             'Could not retrieve file or directory {}'.format(path),
             code=http.client.NOT_FOUND,
         )
+
 
 class InvalidPathError(ProviderError):
     def __init__(self, message):

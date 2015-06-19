@@ -26,6 +26,7 @@ class GitHubPathPart(path.WaterButlerPathPart):
         self._count += 1
         return self
 
+
 class GitHubPath(path.WaterButlerPath):
     PART_CLASS = GitHubPathPart
 
@@ -62,7 +63,7 @@ class GitHubProvider(provider.BaseProvider):
 
         path = GitHubPath(path)
 
-        #TODO Validate that filesha is a valid sha
+        # TODO Validate that filesha is a valid sha
         path.parts[-1]._id = (
             kwargs.get('branch') or kwargs.get('ref') or self.default_branch,
             kwargs.get('fileSha')
@@ -475,7 +476,7 @@ class GitHubProvider(provider.BaseProvider):
                     ret.append(GitHubFileContentMetadata(item).serialized())
             return ret
 
-        #TODO?
+        # TODO?
         # if self._is_sha(ref):
         #     tree_sha = ref
         # elif path.parent.is_root:
