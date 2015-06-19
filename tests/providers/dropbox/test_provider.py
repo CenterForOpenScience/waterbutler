@@ -110,6 +110,15 @@ def file_metadata():
     }
 
 
+@pytest.fixture
+def shares_metadata():
+    return {
+        "url": "https://db.tt/c0mFuu1Y",
+        "expires": "Tue, 01 Jan 2030 00:00:00 +0000",
+        "visibility": "PUBLIC"
+    }
+
+
 class TestValidatePath:
 
     @async
@@ -192,10 +201,12 @@ class TestMetadata:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_metadata(self, provider, folder_metadata):
+    def test_metadata(self, provider, folder_metadata, shares_metadata):
         path = yield from provider.validate_path('/')
         url = provider.build_url('metadata', 'auto', path.full_path)
+        share_link = provider.build_url('shares', 'auto', path.full_path)
         aiohttpretty.register_json_uri('GET', url, body=folder_metadata)
+        aiohttpretty.register_json_uri('POST', share_link, body=shares_metadata)
         result = yield from provider.metadata(path)
 
         assert isinstance(result, list)
@@ -206,10 +217,12 @@ class TestMetadata:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_metadata_root_file(self, provider, file_metadata):
+    def test_metadata_root_file(self, provider, file_metadata, shares_metadata):
         path = WaterButlerPath('/pfile', prepend=provider.folder)
         url = provider.build_url('metadata', 'auto', path.full_path)
+        share_link = provider.build_url('shares', 'auto', path.full_path)
         aiohttpretty.register_json_uri('GET', url, body=file_metadata)
+        aiohttpretty.register_json_uri('POST', share_link, body=shares_metadata)
         result = yield from provider.metadata(path)
 
         assert isinstance(result, dict)

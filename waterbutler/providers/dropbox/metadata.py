@@ -5,9 +5,10 @@ from waterbutler.core import metadata
 
 class BaseDropboxMetadata(metadata.BaseMetadata):
 
-    def __init__(self, raw, folder):
+    def __init__(self, raw, folder, source_url=None):
         super().__init__(raw)
         self._folder = folder
+        self.source_url = source_url
 
     @property
     def provider(self):
@@ -22,6 +23,7 @@ class BaseDropboxMetadata(metadata.BaseMetadata):
     @property
     def extra(self):
         return {
+            'sourceUrl': self.source_url,
             'revisionId': self.raw['rev']
         }
 

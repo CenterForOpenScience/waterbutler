@@ -35,6 +35,7 @@ class GitHubPath(path.WaterButlerPath):
 class GitHubProvider(provider.BaseProvider):
     NAME = 'github'
     BASE_URL = settings.BASE_URL
+    VIEW_URL = settings.VIEW_URL
 
     @staticmethod
     def is_sha(ref):
@@ -90,6 +91,10 @@ class GitHubProvider(provider.BaseProvider):
     def build_repo_url(self, *segments, **query):
         segments = ('repos', self.owner, self.repo) + segments
         return self.build_url(*segments, **query)
+
+    def build_source_url(self, *segments):
+        segments = (self.owner, self.repo, 'blob') + segments
+        return provider.build_url(settings.VIEW_URL, *segments)
 
     def can_intra_move(self, other, path=None):
         return self.can_intra_copy(other, path=path)
@@ -511,12 +516,14 @@ class GitHubProvider(provider.BaseProvider):
             latest = path.identifier[0]
 
         tree = yield from self._fetch_tree(latest, recursive=True)
+        source_url = self.build_source_url(path.identifier[0], path.path)
 
         try:
             data = next(
                 x for x in tree['tree']
                 if x['path'] == path.path
             )
+
         except StopIteration:
             raise exceptions.NotFoundError(str(path))
 
@@ -526,7 +533,7 @@ class GitHubProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return GitHubFileTreeMetadata(data).serialized()
+        return GitHubFileTreeMetadata(data, source_url=source_url).serialized()
 
     @asyncio.coroutine
     def _get_latest_sha(self, ref='master'):
