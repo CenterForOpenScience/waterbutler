@@ -105,7 +105,6 @@ def file_metadata():
         "is_dir": False,
         "icon": "page_white_acrobat",
         "root": "dropbox",
-        "url": "",
         "mime_type": "application/pdf",
         "revision": 220823
     }
