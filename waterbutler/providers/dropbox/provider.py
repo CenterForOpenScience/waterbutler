@@ -224,10 +224,10 @@ class DropboxProvider(provider.BaseProvider):
                 if item['is_dir']:
                     ret.append(DropboxFolderMetadata(item, self.folder).serialized())
                 else:
-                    ret.append(DropboxFileMetadata(item, self.folder, source_url=source_url).serialized())
+                    ret.append(DropboxFileMetadata(item, self.folder, source_url).serialized())
             return ret
 
-        return DropboxFileMetadata(data, self.folder, source_url=source_url).serialized()
+        return DropboxFileMetadata(data, self.folder, source_url).serialized()
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):
