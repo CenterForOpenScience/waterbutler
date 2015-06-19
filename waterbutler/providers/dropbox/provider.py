@@ -224,7 +224,7 @@ class DropboxProvider(provider.BaseProvider):
                 if item['is_dir']:
                     ret.append(DropboxFolderMetadata(item, self.folder).serialized())
                 else:
-                    ret.append(DropboxFileMetadata(item, self.folder, source_url).serialized())
+                    ret.append(DropboxFileMetadata(item, self.folder).serialized())
             return ret
 
         return DropboxFileMetadata(data, self.folder, source_url).serialized()
