@@ -1,6 +1,6 @@
-import furl
 from waterbutler.providers.figshare import settings
 from waterbutler.core import metadata
+from waterbutler.core.provider import build_url
 
 
 class BaseFigshareMetadata:
@@ -18,10 +18,10 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
         self.article_id = parent['article_id']
         self.child = child
 
-    def build_source_url(self, *segments):
-        source_url = furl.furl(settings.VIEW_URL)
-        source_url.path.segments = segments
-        return source_url.url
+    @property
+    def build_source_url(self):
+        segments = ('articles', self.parent['title'], str(self.article_id))
+        return build_url(settings.VIEW_URL, *segments)
 
     @property
     def kind(self):
@@ -67,7 +67,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
             'status': self.parent['status'].lower(),
             'downloadUrl': self.raw.get('download_url'),
             'canDelete': self.can_delete,
-            'source_url': self.build_source_url('articles', self.parent['title'], str(self.article_id))
+            'source_url': self.build_source_url,
         }
 
 

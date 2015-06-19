@@ -92,9 +92,7 @@ class GitHubProvider(provider.BaseProvider):
 
     def build_source_url(self, *segments):
         segments = (self.owner, self.repo, 'blob') + segments
-        source_url = furl.furl(settings.VIEW_URL)
-        source_url.path.segments = segments
-        return source_url.url
+        return provider.build_url(settings.VIEW_URL, *segments)
 
     def can_intra_move(self, other, path=None):
         return self.can_intra_copy(other, path=path)
