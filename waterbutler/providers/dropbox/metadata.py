@@ -5,7 +5,7 @@ from waterbutler.core import metadata
 
 class BaseDropboxMetadata(metadata.BaseMetadata):
 
-    def __init__(self, raw, folder, source_url):
+    def __init__(self, raw, folder, source_url=None):
         super().__init__(raw)
         self._folder = folder
         self.source_url = source_url

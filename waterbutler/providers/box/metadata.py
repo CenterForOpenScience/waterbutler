@@ -3,10 +3,10 @@ from waterbutler.core import metadata
 
 class BaseBoxMetadata(metadata.BaseMetadata):
 
-    def __init__(self, raw, path_obj, **kwargs):
+    def __init__(self, raw, path_obj, source_url=None):
         super().__init__(raw)
         self._path_obj = path_obj
-        self.extras = kwargs
+        self.source_url = source_url
 
     @property
     def provider(self):
@@ -18,7 +18,9 @@ class BaseBoxMetadata(metadata.BaseMetadata):
 
     @property
     def extra(self):
-        return self.extras
+        return {
+            'source_url': self.source_url,
+        }
 
 
 class BoxFolderMetadata(BaseBoxMetadata, metadata.BaseFolderMetadata):
@@ -55,7 +57,9 @@ class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
 
     @property
     def extra(self):
-        return dict(self.extras, etag=self.raw.get('etag'))
+        return dict(super().extra, **{
+            'etag': self.raw.get('etag')
+        })
 
     @property
     def etag(self):

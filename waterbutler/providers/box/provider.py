@@ -349,7 +349,7 @@ class BoxProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         source_url = yield from self.get_shared_link(path)
-        return data if raw else BoxFileMetadata(data, path, source_url=source_url).serialized()
+        return data if raw else BoxFileMetadata(data, path, source_url).serialized()
 
     @asyncio.coroutine
     def _get_folder_meta(self, path, raw=False, folder=False):
