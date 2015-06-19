@@ -5,10 +5,11 @@ from waterbutler.core import metadata
 
 class BaseGitHubMetadata(metadata.BaseMetadata):
 
-    def __init__(self, raw, folder=None, commit=None):
+    def __init__(self, raw, folder=None, commit=None, source_url=None):
         super().__init__(raw)
         self.folder = folder
         self.commit = commit
+        self.source_url = source_url
 
     @property
     def provider(self):
@@ -19,6 +20,7 @@ class BaseGitHubMetadata(metadata.BaseMetadata):
         ret = {}
         if self.commit is not None:
             ret['commit'] = self.commit
+        ret['source_url'] = self.source_url
         return ret
 
     def build_path(self, path):
