@@ -23,7 +23,7 @@ class BaseDropboxMetadata(metadata.BaseMetadata):
     @property
     def extra(self):
         return {
-            'source_url': self.source_url,
+            'sourceUrl': self.source_url,
             'revisionId': self.raw['rev']
         }
 
