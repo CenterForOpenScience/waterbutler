@@ -16,12 +16,6 @@ class BaseBoxMetadata(metadata.BaseMetadata):
     def materialized_path(self):
         return str(self._path_obj)
 
-    @property
-    def extra(self):
-        return {
-            'sourceUrl': self.source_url,
-        }
-
 
 class BoxFolderMetadata(BaseBoxMetadata, metadata.BaseFolderMetadata):
 
@@ -58,9 +52,10 @@ class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
 
     @property
     def extra(self):
-        return dict(super().extra, **{
-            'etag': self.raw.get('etag')
-        })
+        return {
+            'etag': self.raw.get('etag'),
+            'sourceUrl': self.source_url
+        }
 
     @property
     def etag(self):
