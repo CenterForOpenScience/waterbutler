@@ -50,25 +50,34 @@ class DataverseProvider(provider.BaseProvider):
         :param list metadata: List of file metadata from _get_data
         """
         if path == '/':
-            return WaterButlerPath('/')
+            wbpath = WaterButlerPath('/')
+            wbpath.revision = revision
+            return wbpath
 
         path = path.strip('/')
 
+        wbpath = None
         for item in (yield from self._maybe_fetch_metadata(version=revision)):
             if path == item['extra']['fileId']:
-                return WaterButlerPath('/' + item['name'], _ids=(None, item['extra']['fileId']))
-        return WaterButlerPath('/' + path)
+                wbpath = WaterButlerPath('/' + item['name'], _ids=(None, item['extra']['fileId']))
+        wbpath = wbpath or WaterButlerPath('/' + path)
+
+        wbpath.revision = revision
+        return wbpath
 
     @asyncio.coroutine
     def revalidate_path(self, base, path, folder=False, revision=None):
         path = path.strip('/')
 
+        wbpath = None
         for item in (yield from self._maybe_fetch_metadata(version=revision)):
             if path == item['name']:
                 # Dataverse cant have folders
-                return base.child(item['name'], _id=item['extra']['fileId'], folder=False)
+                wbpath = base.child(item['name'], _id=item['extra']['fileId'], folder=False)
+        wbpath = wbpath or base.child(path, _id=None, folder=False)
 
-        return base.child(path, _id=None, folder=False)
+        wbpath.revision = revision or base.revision
+        return wbpath
 
     @asyncio.coroutine
     def _maybe_fetch_metadata(self, version=None, refresh=False):
@@ -180,6 +189,7 @@ class DataverseProvider(provider.BaseProvider):
             - 'latest-published' for published files
             - None for all data
         """
+        version = version or path.revision
 
         if path.is_root:
             return (yield from self._maybe_fetch_metadata(version=version))
