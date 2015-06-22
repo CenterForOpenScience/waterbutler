@@ -181,14 +181,14 @@ class CloudFilesProvider(provider.BaseProvider):
         else:
             return (yield from self._metadata_file(path, **kwargs))
 
-    def build_url(self, *segments, _endpoint=None, **query):
+    def build_url(self, path, _endpoint=None, **query):
         """Build the url for the specified object
         :param args segments: URI segments
         :param kwargs query: Query parameters
         :rtype str:
         """
         endpoint = _endpoint or self.endpoint
-        return provider.build_url(endpoint, self.container, *segments, **query)
+        return provider.build_url(endpoint, self.container, *path.split('/'), **query)
 
     def can_intra_copy(self, dest_provider, path=None):
         return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
