@@ -308,13 +308,13 @@ class OSFStorageProvider(provider.BaseProvider):
         return (yield from self._children_metadata(path))
 
     @asyncio.coroutine
-    def revisions(self, path, **kwargs):
+    def revisions(self, path, view_only=None, **kwargs):
         if path.identifier is None:
             raise exceptions.MetadataError('File not found', code=404)
 
         resp = yield from self.make_signed_request(
             'GET',
-            self.build_url(path.identifier, 'revisions'),
+            self.build_url(path.identifier, 'revisions', view_only=view_only),
             expects=(200, )
         )
 
