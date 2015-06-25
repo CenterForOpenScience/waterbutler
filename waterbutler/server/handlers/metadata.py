@@ -1,4 +1,5 @@
-from waterbutler.server import utils
+import tornado.gen
+
 from waterbutler.server.handlers import core
 
 
@@ -8,11 +9,7 @@ class MetadataHandler(core.BaseProviderHandler):
         'GET': 'metadata',
     }
 
-    @utils.coroutine
-    def prepare(self):
-        yield from super().prepare()
-
-    @utils.coroutine
+    @tornado.gen.coroutine
     def get(self):
         """List information about a file or folder"""
         result = yield from self.provider.metadata(**self.arguments)
