@@ -1,15 +1,15 @@
 import http
 import asyncio
+import socket
 
 import tornado.web
 import tornado.gen
 import tornado.platform.asyncio
 
-from waterbutler.core.streams import RequestStreamReader
-
 from waterbutler.core import mime_types
 from waterbutler.server import utils
 from waterbutler.server.handlers import core
+from waterbutler.core.streams import RequestStreamReader
 
 
 TRUTH_MAP = {
@@ -32,11 +32,18 @@ class CRUDHandler(core.BaseProviderHandler):
     @tornado.gen.coroutine
     def prepare(self):
         yield super().prepare()
-        self.prepare_stream()
+        yield from self.prepare_stream()
 
+    @asyncio.coroutine
     def prepare_stream(self):
         if self.request.method in self.STREAM_METHODS:
-            self.stream = RequestStreamReader(self.request)
+            self.rsock, self.wsock = socket.socketpair()
+
+            self.reader, _ = yield from asyncio.open_unix_connection(sock=self.rsock)
+            _, self.writer = yield from asyncio.open_unix_connection(sock=self.wsock)
+
+            self.stream = RequestStreamReader(self.request, self.reader)
+
             self.uploader = asyncio.async(
                 self.provider.upload(self.stream, **self.arguments)
             )
@@ -47,7 +54,8 @@ class CRUDHandler(core.BaseProviderHandler):
     def data_received(self, chunk):
         """Note: Only called during uploads."""
         if self.stream:
-            self.stream.feed_data(chunk)
+            self.writer.write(chunk)
+            yield from self.writer.drain()
 
     @tornado.gen.coroutine
     def get(self):
@@ -97,11 +105,15 @@ class CRUDHandler(core.BaseProviderHandler):
     @tornado.gen.coroutine
     def put(self):
         """Upload a file."""
-        self.stream.feed_eof()
+        self.writer.write_eof()
+
         metadata, created = yield from self.uploader
         if created:
             self.set_status(201)
         self.write(metadata)
+
+        self.writer.close()
+        self.wsock.close()
 
         self._send_hook(
             'create' if created else 'update',
