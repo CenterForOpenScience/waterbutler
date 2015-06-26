@@ -1,5 +1,6 @@
+import tornado.gen
+
 from waterbutler.server import utils
-from waterbutler.server import settings
 from waterbutler.server.handlers import core
 
 
@@ -9,11 +10,7 @@ class ZipHandler(core.BaseProviderHandler):
         'GET': 'download',
     }
 
-    @utils.coroutine
-    def prepare(self):
-        yield from super().prepare()
-
-    @utils.coroutine
+    @tornado.gen.coroutine
     def get(self):
         """Download as a Zip archive."""
 
@@ -25,9 +22,4 @@ class ZipHandler(core.BaseProviderHandler):
 
         result = yield from self.provider.zip(**self.arguments)
 
-        while True:
-            chunk = yield from result.read(settings.CHUNK_SIZE)
-            if not chunk:
-                break
-            self.write(chunk)
-            yield from utils.future_wrapper(self.flush())
+        yield from self.write_stream(result)

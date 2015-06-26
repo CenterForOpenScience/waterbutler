@@ -1,7 +1,8 @@
 import time
 
+import tornado.gen
+
 from waterbutler import tasks
-from waterbutler.server import utils
 from waterbutler.server.handlers import core
 
 
@@ -11,11 +12,7 @@ class MoveHandler(core.BaseCrossProviderHandler):
         'POST': 'move'
     }
 
-    @utils.coroutine
-    def prepare(self):
-        yield from super().prepare()
-
-    @utils.coroutine
+    @tornado.gen.coroutine
     def post(self):
         if not self.source_provider.can_intra_move(self.destination_provider, self.json['source']['path']):
             resp = yield from tasks.move.adelay({

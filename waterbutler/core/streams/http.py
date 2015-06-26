@@ -169,14 +169,25 @@ class ResponseStreamReader(BaseStream):
 
 class RequestStreamReader(BaseStream):
 
-    def __init__(self, request):
+    def __init__(self, request, inner):
         super().__init__()
+        self.inner = inner
         self.request = request
 
     @property
     def size(self):
         return int(self.request.headers.get('Content-Length'))
 
+    def at_eof(self):
+        return self.inner.at_eof()
+
     @asyncio.coroutine
     def _read(self, size):
-        return (yield from asyncio.StreamReader.read(self, size))
+        if self.inner.at_eof():
+            return b''
+        if size < 0:
+            return (yield from self.inner.read(size))
+        try:
+            return (yield from self.inner.readexactly(size))
+        except asyncio.IncompleteReadError as e:
+            return e.partial

@@ -3,6 +3,7 @@ import time
 import asyncio
 
 import tornado.web
+import tornado.gen
 from raven.contrib.tornado import SentryMixin
 
 from waterbutler import tasks
@@ -105,10 +106,20 @@ class BaseHandler(tornado.web.RequestHandler, SentryMixin):
         self.set_status(204)
         self.set_header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE'),
 
+    @tornado.gen.coroutine
+    def write_stream(self, stream):
+        while True:
+            chunk = yield from stream.read(settings.CHUNK_SIZE)
+            if not chunk:
+                break
+            self.write(chunk)
+            del chunk
+            yield self.flush()
+
 
 class BaseProviderHandler(BaseHandler):
 
-    @asyncio.coroutine
+    @tornado.gen.coroutine
     def prepare(self):
         self.arguments = {
             key: list_or_value(value)
@@ -145,7 +156,7 @@ class BaseProviderHandler(BaseHandler):
 class BaseCrossProviderHandler(BaseHandler):
     JSON_REQUIRED = False
 
-    @asyncio.coroutine
+    @tornado.gen.coroutine
     def prepare(self):
         try:
             self.action = self.ACTION_MAP[self.request.method]

@@ -1,14 +1,15 @@
 import http
 import asyncio
+import socket
 
-from tornado import web
-
-from waterbutler.core.streams import RequestStreamReader
+import tornado.web
+import tornado.gen
+import tornado.platform.asyncio
 
 from waterbutler.core import mime_types
 from waterbutler.server import utils
-from waterbutler.server import settings
 from waterbutler.server.handlers import core
+from waterbutler.core.streams import RequestStreamReader
 
 
 TRUTH_MAP = {
@@ -17,7 +18,7 @@ TRUTH_MAP = {
 }
 
 
-@web.stream_request_body
+@tornado.web.stream_request_body
 class CRUDHandler(core.BaseProviderHandler):
 
     ACTION_MAP = {
@@ -28,33 +29,41 @@ class CRUDHandler(core.BaseProviderHandler):
     }
     STREAM_METHODS = ('PUT', )
 
-    @utils.coroutine
+    @tornado.gen.coroutine
     def prepare(self):
-        yield from super().prepare()
-        self.prepare_stream()
+        yield super().prepare()
+        yield from self.prepare_stream()
 
+    @asyncio.coroutine
     def prepare_stream(self):
         if self.request.method in self.STREAM_METHODS:
-            self.stream = RequestStreamReader(self.request)
+            self.rsock, self.wsock = socket.socketpair()
+
+            self.reader, _ = yield from asyncio.open_unix_connection(sock=self.rsock)
+            _, self.writer = yield from asyncio.open_unix_connection(sock=self.wsock)
+
+            self.stream = RequestStreamReader(self.request, self.reader)
+
             self.uploader = asyncio.async(
                 self.provider.upload(self.stream, **self.arguments)
             )
         else:
             self.stream = None
 
-    @utils.coroutine
+    @tornado.gen.coroutine
     def data_received(self, chunk):
         """Note: Only called during uploads."""
         if self.stream:
-            self.stream.feed_data(chunk)
+            self.writer.write(chunk)
+            yield from self.writer.drain()
 
-    @utils.coroutine
+    @tornado.gen.coroutine
     def get(self):
         """Download a file."""
         try:
             self.arguments['accept_url'] = TRUTH_MAP[self.arguments.get('accept_url', 'true').lower()]
         except KeyError:
-            raise web.HTTPError(status_code=400)
+            raise tornado.web.HTTPError(status_code=400)
 
         result = yield from self.provider.download(**self.arguments)
 
@@ -81,14 +90,9 @@ class CRUDHandler(core.BaseProviderHandler):
 
         self.set_header('Content-Disposition', disposition)
 
-        while True:
-            chunk = yield from result.read(settings.CHUNK_SIZE)
-            if not chunk:
-                break
-            self.write(chunk)
-            yield from utils.future_wrapper(self.flush())
+        yield from self.write_stream(result)
 
-    @utils.coroutine
+    @tornado.gen.coroutine
     def post(self):
         """Create a folder"""
         metadata = yield from self.provider.create_folder(**self.arguments)
@@ -98,26 +102,27 @@ class CRUDHandler(core.BaseProviderHandler):
 
         self._send_hook('create_folder', metadata)
 
-    @utils.coroutine
+    @tornado.gen.coroutine
     def put(self):
         """Upload a file."""
-        self.stream.feed_eof()
+        self.writer.write_eof()
+
         metadata, created = yield from self.uploader
         if created:
             self.set_status(201)
         self.write(metadata)
+
+        self.writer.close()
+        self.wsock.close()
 
         self._send_hook(
             'create' if created else 'update',
             metadata,
         )
 
-    @utils.coroutine
+    @tornado.gen.coroutine
     def delete(self):
         """Delete a file."""
-        # TODO: Current release does not allow deletion of directories (needs authorization code)
-        # if self.arguments.get('path', '').endswith('/'):
-        #     raise web.HTTPError('Deletion of directories is currently not supported', status_code=400)
 
         yield from self.provider.delete(**self.arguments)
         self.set_status(http.client.NO_CONTENT)

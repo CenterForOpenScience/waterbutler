@@ -20,7 +20,7 @@ XHEADERS = config.get('XHEADERS', False)
 CORS_ALLOW_ORIGIN = config.get('CORS_ALLOW_ORIGIN', '*')
 
 CHUNK_SIZE = config.get('CHUNK_SIZE', 65536)  # 64KB
-MAX_BUFFER_SIZE = config.get('MAX_BUFFER_SIZE', 1024 * 1024 * 100)  # 100MB
+MAX_BODY_SIZE = config.get('MAX_BODY_SIZE', int(4.9 * (1024 ** 3)))  # 4.9 GB
 
 AUTH_HANDLERS = config.get('AUTH_HANDLERS', [
     'osf',
