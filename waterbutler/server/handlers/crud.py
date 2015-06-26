@@ -90,7 +90,7 @@ class CRUDHandler(core.BaseProviderHandler):
 
         self.set_header('Content-Disposition', disposition)
 
-        yield from self.write_stream(result)
+        yield self.write_stream(result)
 
     @tornado.gen.coroutine
     def post(self):
