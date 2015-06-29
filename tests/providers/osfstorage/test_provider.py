@@ -114,13 +114,16 @@ def upload_response():
         }
     }
 
+
 @pytest.fixture
 def mock_path():
     return WaterButlerPath('/unrelatedpath', _ids=('rootId', 'another'))
 
+
 @pytest.fixture
 def mock_folder_path():
     return WaterButlerPath('/unrelatedfolder/', _ids=('rootId', 'another'))
+
 
 @async
 @pytest.mark.aiohttpretty
@@ -136,7 +139,7 @@ def test_download(monkeypatch, provider_and_mock, osf_response, mock_path):
     assert provider.make_provider.called
     assert inner_provider.download.called
 
-    aiohttpretty.has_call(method='GET', uri=url)
+    assert aiohttpretty.has_call(method='GET', uri=url, check_params=False)
     provider.make_provider.assert_called_once_with(osf_response['settings'])
     inner_provider.download.assert_called_once_with(path=WaterButlerPath('/test/path'), displayName='unrelatedpath')
 
@@ -149,7 +152,7 @@ def test_delete(monkeypatch, provider, mock_path):
 
     yield from provider.delete(path)
 
-    aiohttpretty.has_call(method='DELETE', uri='https://waterbutler.io/another/', params={'user': 'cat'})
+    assert aiohttpretty.has_call(method='DELETE', uri='https://waterbutler.io/another/', check_params=False)
 
 
 @async
@@ -162,7 +165,7 @@ def test_provider_metadata_empty(monkeypatch, provider, mock_folder_path):
 
     assert res == []
 
-    aiohttpretty.has_call(method='GET', uri=url)
+    assert aiohttpretty.has_call(method='GET', uri=url)
 
 
 @async
@@ -202,7 +205,7 @@ def test_provider_metadata(monkeypatch, provider, mock_folder_path):
         assert item['path'] is not None
         assert item['provider'] == 'osfstorage'
 
-    aiohttpretty.has_call(method='GET', uri=url)
+    assert aiohttpretty.has_call(method='GET', uri=url)
 
 
 class TestUploads:
