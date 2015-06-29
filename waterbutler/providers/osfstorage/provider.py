@@ -23,11 +23,6 @@ from waterbutler.providers.osfstorage.metadata import OsfStorageRevisionMetadata
 QUERY_METHODS = ('GET', 'DELETE')
 
 
-class OSFPath(utils.WaterButlerPath):
-    def __init__(self, path):
-        super().__init__(path, prefix=True, suffix=True)
-
-
 class OSFStorageProvider(provider.BaseProvider):
     __version__ = '0.0.1'
 
