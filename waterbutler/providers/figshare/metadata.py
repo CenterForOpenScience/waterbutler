@@ -1,3 +1,5 @@
+import humanfriendly
+
 from waterbutler.providers.figshare import settings
 from waterbutler.core import metadata
 from waterbutler.core.provider import build_url
@@ -10,7 +12,7 @@ class BaseFigshareMetadata:
         return 'figshare'
 
 
-class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
+class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
 
     def __init__(self, raw, parent, child):
         super().__init__(raw)
@@ -44,8 +46,15 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
         return '/{0}'.format(self.name)
 
     @property
+    def content_type(self):
+        return self.raw.get('mime_type')
+
+    @property
     def size(self):
-        return self.raw.get('size')
+        size = self.raw.get('size')
+        if type(size) == str:
+            return humanfriendly.parse_size(size)
+        return size
 
     @property
     def modified(self):
