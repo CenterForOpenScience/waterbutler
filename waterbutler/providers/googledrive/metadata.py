@@ -77,7 +77,6 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
         ret = super().extra
         if utils.is_docs_file(self.raw):
             ret['downloadExt'] = utils.get_download_extension(self.raw)
-        ret['viewUrl'] = self.raw.get('alternateLink')
         return ret
 
 
