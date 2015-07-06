@@ -208,6 +208,10 @@ class DataverseProvider(provider.BaseProvider):
             )
 
     @asyncio.coroutine
+    def web_view_link(self, path, **kwargs):
+        raise exceptions.WebViewError(str(path))
+
+    @asyncio.coroutine
     def revisions(self, path, **kwargs):
         """Get past versions of the request file. Orders versions based on
         `_get_all_data()`

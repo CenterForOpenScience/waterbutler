@@ -198,6 +198,10 @@ class S3Provider(provider.BaseProvider):
         ]
 
     @asyncio.coroutine
+    def web_view_link(self, path, **kwargs):
+        raise exceptions.WebViewError(str(path))
+
+    @asyncio.coroutine
     def metadata(self, path, **kwargs):
         """Get Metadata about the requested file or folder
 

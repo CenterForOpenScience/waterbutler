@@ -8,6 +8,7 @@ from waterbutler import settings
 from waterbutler.core.utils import AioSentryClient
 from waterbutler.server.handlers import crud
 from waterbutler.server.handlers import copy
+from waterbutler.server.handlers import web_view
 from waterbutler.server.handlers import move
 from waterbutler.server.handlers import status
 from waterbutler.server.handlers import metadata
@@ -24,6 +25,7 @@ def make_app(debug):
             (r'/status', status.StatusHandler),
             (r'/ops/copy', copy.CopyHandler),
             (r'/ops/move', move.MoveHandler),
+            (r'/webview', web_view.WebViewHandler),
             (r'/revisions', revisions.RevisionHandler),
             (r'/zip', zip.ZipHandler),
         ],

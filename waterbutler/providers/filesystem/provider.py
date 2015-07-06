@@ -101,6 +101,10 @@ class FileSystemProvider(provider.BaseProvider):
             metadata = self._metadata_file(path)
             return FileSystemFileMetadata(metadata, self.folder).serialized()
 
+    @asyncio.coroutine
+    def web_view_link(self, path, **kwargs):
+        raise exceptions.WebViewError(str(path))
+
     def _metadata_file(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
         modified = datetime.datetime.fromtimestamp(os.path.getmtime(full_path))

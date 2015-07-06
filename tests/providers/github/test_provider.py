@@ -13,8 +13,10 @@ import aiohttpretty
 from waterbutler.core import streams
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.provider import build_url
 
 from waterbutler.providers.github import GitHubProvider
+from waterbutler.providers.github import settings as github_settings
 from waterbutler.providers.github.metadata import GitHubRevision
 from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
 from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
@@ -669,9 +671,8 @@ class TestMetadata:
 
         result = yield from provider.metadata(path)
         item = repo_tree_metadata_root['tree'][0]
-        view_url = provider.build_view_url(path.identifier[0], path.path)
 
-        assert result == GitHubFileTreeMetadata(item, view_url=view_url).serialized()
+        assert result == GitHubFileTreeMetadata(item).serialized()
 
     # TODO: Additional Tests
     # def test_metadata_root_file_txt_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
@@ -770,3 +771,15 @@ class TestCreateFolder:
         assert metadata['kind'] == 'folder'
         assert metadata['name'] == 'trains'
         assert metadata['path'] == '/i/like/trains/'
+
+
+class TestWebView:
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_get_web_view_link(self, provider, settings):
+        path = yield from provider.validate_path('/file.txt')
+        result = yield from provider.web_view_link(path)
+        segments = (settings['owner'], settings['repo'], 'blob', path.identifier[0], path.path)
+        expected = build_url(github_settings.VIEW_URL, *segments)
+        assert result == expected

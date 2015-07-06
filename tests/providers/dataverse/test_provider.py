@@ -461,3 +461,12 @@ class TestMetadata:
             result = yield from provider.metadata(path)
 
         assert e.value.code == 400
+
+
+class TestWebView:
+
+    @async
+    def test_get_web_view_link(self, provider):
+        path = yield from provider.validate_path('/')
+        with pytest.raises(exceptions.WebViewError):
+            yield from provider.web_view_link(path)

@@ -181,6 +181,10 @@ class CloudFilesProvider(provider.BaseProvider):
         else:
             return (yield from self._metadata_file(path, **kwargs))
 
+    @asyncio.coroutine
+    def web_view_link(self, path, **kwargs):
+        raise exceptions.WebViewError(str(path))
+
     def build_url(self, path, _endpoint=None, **query):
         """Build the url for the specified object
         :param args segments: URI segments

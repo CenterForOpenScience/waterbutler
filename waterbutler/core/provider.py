@@ -399,6 +399,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def revisions(self, **kwargs):
         return []  # TODO Raise 405 by default h/t @rliebz
 
+    @abc.abstractmethod
+    def web_view_link(self, **kwargs):
+        """Returns a link to the provider's view of a file."""
+        return None
+
     def create_folder(self, *args, **kwargs):
         """Create a folder in the current provider
         returns True if the folder was created; False if it already existed

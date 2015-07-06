@@ -9,9 +9,11 @@ import aiohttpretty
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
+from waterbutler.core.provider import build_url
 
 from waterbutler.providers.figshare import metadata
 from waterbutler.providers.figshare import provider
+from waterbutler.providers.figshare import settings
 
 
 @pytest.fixture
@@ -390,3 +392,25 @@ class TestCRUD:
 
         assert result is None
         assert aiohttpretty.has_call(method='DELETE', uri=article_delete_url)
+
+
+class TestWebView:
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_get_web_view_link(self, project_provider, list_project_articles, file_metadata, article_metadata):
+        file_id = file_metadata['id']
+        article_id = str(list_project_articles[0]['id'])
+
+        article_metadata_url = project_provider.build_url('articles', article_id)
+        list_articles_url = project_provider.build_url('projects', project_provider.project_id, 'articles')
+
+        aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
+        aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
+
+        path = yield from project_provider.validate_path('/{}/{}'.format(article_id, file_id))
+        result = yield from project_provider.web_view_link(path)
+
+        segments = ('articles', file_metadata['name'], article_id)
+        expected = build_url(settings.VIEW_URL, *segments)
+        assert result == expected

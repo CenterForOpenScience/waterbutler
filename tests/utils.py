@@ -52,6 +52,11 @@ class MockProvider1(provider.BaseProvider):
     def download(self, path, **kwargs):
         return b''
 
+    @asyncio.coroutine
+    def web_view_link(self, **kwargs):
+        return None
+
+
 class MockProvider2(MockProvider1):
 
     NAME = 'MockProvider2'

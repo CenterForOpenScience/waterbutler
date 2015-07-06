@@ -182,3 +182,12 @@ class TestOperations:
 
     def test_can_intra_move(self, provider):
         assert provider.can_intra_move(provider)
+
+
+class TestWebView:
+
+    @async
+    def test_get_web_view_link(self, provider):
+        path = yield from provider.validate_path('/')
+        with pytest.raises(exceptions.WebViewError):
+            yield from provider.web_view_link(path)

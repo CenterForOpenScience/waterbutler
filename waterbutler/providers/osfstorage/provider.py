@@ -303,6 +303,10 @@ class OSFStorageProvider(provider.BaseProvider):
         return (yield from self._children_metadata(path))
 
     @asyncio.coroutine
+    def web_view_link(self, path, **kwargs):
+        raise exceptions.WebViewError(str(path))
+
+    @asyncio.coroutine
     def revisions(self, path, view_only=None, **kwargs):
         if path.identifier is None:
             raise exceptions.MetadataError('File not found', code=404)

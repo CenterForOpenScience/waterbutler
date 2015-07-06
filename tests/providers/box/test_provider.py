@@ -449,10 +449,9 @@ class TestMetadata:
         file_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', file_url, body=item)
         aiohttpretty.register_json_uri('PUT', file_url, body=item)
-        view_url = yield from provider.get_shared_link(path)
 
         result = yield from provider.metadata(path)
-        expected = BoxFileMetadata(item, path, view_url=view_url).serialized()
+        expected = BoxFileMetadata(item, path).serialized()
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=file_url)
 
@@ -463,6 +462,23 @@ class TestMetadata:
 
         with pytest.raises(exceptions.NotFoundError):
             yield from provider.metadata(path)
+
+
+class TestWebView:
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_get_web_view_link(self, provider, file_metadata):
+        item = file_metadata['entries'][0]
+        path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
+
+        file_url = provider.build_url('files', path.identifier)
+        aiohttpretty.register_json_uri('GET', file_url, body=item)
+        aiohttpretty.register_json_uri('PUT', file_url, body=item)
+
+        result = yield from provider.web_view_link(path)
+        expected = item['shared_link']['url']
+        assert result == expected
 
 
 class TestRevisions:

@@ -76,6 +76,8 @@ class UploadError(ProviderError):
 class MetadataError(ProviderError):
     pass
 
+class WebViewError(ProviderError):
+    pass
 
 class RevisionsError(ProviderError):
     pass

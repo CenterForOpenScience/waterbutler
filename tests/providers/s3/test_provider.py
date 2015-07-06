@@ -579,3 +579,12 @@ class TestOperations:
     def test_equality(self, provider):
         assert provider.can_intra_copy(provider)
         assert provider.can_intra_move(provider)
+
+
+class TestWebView:
+
+    @async
+    def test_get_web_view_link(self, provider):
+        path = WaterButlerPath('/my-image.jpg')
+        with pytest.raises(exceptions.WebViewError):
+            yield from provider.web_view_link(path)
