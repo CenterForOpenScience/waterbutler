@@ -146,7 +146,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         download_resp = yield from self.make_request(
             'GET',
-            data.get('downloadUrl') or drive_utils.get_export_link(data['exportLinks']),
+            data.get('downloadUrl') or drive_utils.get_export_link(data),
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
@@ -159,6 +159,8 @@ class GoogleDriveProvider(provider.BaseProvider):
         stream = streams.StringStream((yield from download_resp.read()))
         if download_resp.headers.get('Content-Type'):
             stream.content_type = download_resp.headers['Content-Type']
+        if drive_utils.is_docs_file(data):
+            stream.name = path.name + drive_utils.get_download_extension(data)
         return stream
 
     @asyncio.coroutine
@@ -354,7 +356,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                 if parts:
                     raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
                 name, ext = os.path.splitext(current_part)
-                if ext not in ('.gdoc', '.gsheet'):
+                if ext not in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
                     return ret + [{
                         'id': None,
                         'title': current_part,
