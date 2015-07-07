@@ -378,18 +378,44 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def download(self, **kwargs):
+        """Download a file from this provider.
+
+        :param dict \*\*kwargs: Arguments to be parsed by child classes
+        :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
+        :raises: :class:`waterbutler.core.exceptions.DownloadError`
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def upload(self, stream, **kwargs):
+        """
+
+        :param dict \*\*kwargs: Arguments to be parsed by child classes
+        :rtype: (:class:`waterbutler.core.metadata.BaseFileMetadata`, :class:`bool`)
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def delete(self, **kwargs):
+        """
+
+        :param dict \*\*kwargs: Arguments to be parsed by child classes
+        :rtype: :class:`None`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def metadata(self, **kwargs):
+        """Get metdata about the specified resource from this provider.
+        Will be a :class:`list` if the resource is a directory otherwise an instance of :class:`waterbutler.core.metadata.BaseFileMetadata`
+
+        :param dict \*\*kwargs: Arguments to be parsed by child classes
+        :rtype: :class:`waterbutler.core.metadata.BaseMetadata`
+        :rtype: :class:`list` of :class:`waterbutler.core.metadata.BaseMetadata`
+        :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -403,7 +429,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """Create a folder in the current provider
         returns True if the folder was created; False if it already existed
 
-        :rtype FolderMetadata:
-        :raises: waterbutler.ProviderError
+        :rtype: :class:`waterbutler.core.metadata.BaseFolderMetadata`
+        :raises: :class:`waterbutler.core.exceptions.FolderCreationError`
         """
         raise exceptions.ProviderError({'message': 'Folder creation not supported.'}, code=405)
