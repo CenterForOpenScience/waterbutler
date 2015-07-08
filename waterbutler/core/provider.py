@@ -202,8 +202,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         folder = yield from dest_provider.create_folder(dest_path)
 
-        yield from asyncio.sleep(.5)
-
         dest_path = yield from dest_provider.revalidate_path(dest_path.parent, dest_path.name, folder=dest_path.is_dir)
 
         futures = []
@@ -213,10 +211,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
                     func(
                         dest_provider,
                         # TODO figure out a way to cut down on all the requests made here
-                        (yield from self.revalidate_path(src_path, item['name'], folder=item['kind'] == 'folder')),
-                        (yield from dest_provider.revalidate_path(dest_path, item['name'], folder=item['kind'] == 'folder')),
-                        # src_path.child(item['name'], _id=item.get('id'), folder=item['kind'] == 'folder'),
-                        # dest_path.child(item['name'], _id=item.get('id'), folder=item['kind'] == 'folder'),
+                        (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
+                        (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
                         handle_naming=False,
                     )
                 )
@@ -231,7 +227,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if len(pending) != 0:
             finished.pop().result()
 
-        folder['children'] = [
+        folder.children = [
             future.result()[0]  # result is a tuple of (metadata, created)
             for future in finished
         ]
@@ -359,8 +355,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
             for item in metadata:
                 current_path = yield from self.revalidate_path(
                     path,
-                    item['name'],
-                    folder=item['kind'] == 'folder'
+                    item.name,
+                    folder=item.is_folder
                 )
                 if current_path.is_file:
                     names.append(current_path.path.replace(base_path, '', 1))

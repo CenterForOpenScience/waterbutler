@@ -192,7 +192,7 @@ class S3Provider(provider.BaseProvider):
             versions = [versions]
 
         return [
-            S3Revision(item).serialized()
+            S3Revision(item)
             for item in versions
             if item['Key'] == path.path
         ]
@@ -226,9 +226,7 @@ class S3Provider(provider.BaseProvider):
             throws=exceptions.CreateFolderError
         )
 
-        return S3FolderMetadata({
-            'Prefix': path.path
-        }).serialized()
+        return S3FolderMetadata({'Prefix': path.path})
 
     @asyncio.coroutine
     def _metadata_file(self, path):
@@ -238,7 +236,7 @@ class S3Provider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
-        return S3FileMetadataHeaders(path.path, resp.headers).serialized()
+        return S3FileMetadataHeaders(path.path, resp.headers)
 
     @asyncio.coroutine
     def _metadata_folder(self, path):
@@ -275,7 +273,7 @@ class S3Provider(provider.BaseProvider):
             prefixes = [prefixes]
 
         items = [
-            S3FolderMetadata(item).serialized()
+            S3FolderMetadata(item)
             for item in prefixes
         ]
 
@@ -284,8 +282,8 @@ class S3Provider(provider.BaseProvider):
                 continue
 
             if content['Key'].endswith('/'):
-                items.append(S3FolderKeyMetadata(content).serialized())
+                items.append(S3FolderKeyMetadata(content))
             else:
-                items.append(S3FileMetadata(content).serialized())
+                items.append(S3FileMetadata(content))
 
         return items

@@ -86,10 +86,10 @@ class FileSystemProvider(provider.BaseProvider):
             for item in os.listdir(path.full_path):
                 if os.path.isdir(os.path.join(path.full_path, item)):
                     metadata = self._metadata_folder(path, item)
-                    ret.append(FileSystemFolderMetadata(metadata, self.folder).serialized())
+                    ret.append(FileSystemFolderMetadata(metadata, self.folder))
                 else:
                     metadata = self._metadata_file(path, item)
-                    ret.append(FileSystemFileMetadata(metadata, self.folder).serialized())
+                    ret.append(FileSystemFileMetadata(metadata, self.folder))
             return ret
         else:
             if not os.path.exists(path.full_path) or os.path.isdir(path.full_path):
@@ -99,7 +99,7 @@ class FileSystemProvider(provider.BaseProvider):
                 )
 
             metadata = self._metadata_file(path)
-            return FileSystemFileMetadata(metadata, self.folder).serialized()
+            return FileSystemFileMetadata(metadata, self.folder)
 
     def _metadata_file(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)

@@ -77,16 +77,16 @@ class DropboxProvider(provider.BaseProvider):
         data = yield from resp.json()
 
         if not data['is_dir']:
-            return DropboxFileMetadata(data, self.folder).serialized(), True
+            return DropboxFileMetadata(data, self.folder), True
 
-        folder = DropboxFolderMetadata(data, self.folder).serialized()
+        folder = DropboxFolderMetadata(data, self.folder)
 
         folder['children'] = []
         for item in data['contents']:
             if item['is_dir']:
-                folder['children'].append(DropboxFolderMetadata(item, self.folder).serialized())
+                folder['children'].append(DropboxFolderMetadata(item, self.folder))
             else:
-                folder['children'].append(DropboxFileMetadata(item, self.folder).serialized())
+                folder['children'].append(DropboxFileMetadata(item, self.folder))
 
         return folder, True
 
@@ -119,16 +119,16 @@ class DropboxProvider(provider.BaseProvider):
         data = yield from resp.json()
 
         if not data['is_dir']:
-            return DropboxFileMetadata(data, self.folder).serialized(), True
+            return DropboxFileMetadata(data, self.folder), True
 
-        folder = DropboxFolderMetadata(data, self.folder).serialized()
+        folder = DropboxFolderMetadata(data, self.folder)
 
         folder['children'] = []
         for item in data['contents']:
             if item['is_dir']:
-                folder['children'].append(DropboxFolderMetadata(item, self.folder).serialized())
+                folder['children'].append(DropboxFolderMetadata(item, self.folder))
             else:
-                folder['children'].append(DropboxFileMetadata(item, self.folder).serialized())
+                folder['children'].append(DropboxFileMetadata(item, self.folder))
 
         return folder, True
 
@@ -168,7 +168,7 @@ class DropboxProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        return DropboxFileMetadata(data, self.folder).serialized(), not exists
+        return DropboxFileMetadata(data, self.folder), not exists
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
@@ -222,13 +222,13 @@ class DropboxProvider(provider.BaseProvider):
             ret = []
             for item in data['contents']:
                 if item['is_dir']:
-                    ret.append(DropboxFolderMetadata(item, self.folder).serialized())
+                    ret.append(DropboxFolderMetadata(item, self.folder))
                 else:
-                    ret.append(DropboxFileMetadata(item, self.folder).serialized())
+                    ret.append(DropboxFileMetadata(item, self.folder))
             return ret
 
         view_url = yield from self.get_share_url(path)
-        return DropboxFileMetadata(data, self.folder, view_url).serialized()
+        return DropboxFileMetadata(data, self.folder, view_url)
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):
@@ -241,7 +241,7 @@ class DropboxProvider(provider.BaseProvider):
         data = yield from response.json()
 
         return [
-            DropboxRevision(item).serialized()
+            DropboxRevision(item)
             for item in data
             if not item.get('is_deleted')
         ]
@@ -271,7 +271,7 @@ class DropboxProvider(provider.BaseProvider):
                 raise exceptions.FolderNamingConflict(str(path))
             raise exceptions.CreateFolderError(data, code=403)
 
-        return DropboxFolderMetadata(data, self.folder).serialized()
+        return DropboxFolderMetadata(data, self.folder)
 
     def can_intra_copy(self, dest_provider, path=None):
         return type(self) == type(dest_provider)

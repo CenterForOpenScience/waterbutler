@@ -13,4 +13,10 @@ class MetadataHandler(core.BaseProviderHandler):
     def get(self):
         """List information about a file or folder"""
         result = yield from self.provider.metadata(**self.arguments)
+
+        if isinstance(result, list):
+            result = [m.serialized() for m in result]
+        else:
+            result = result.serialized()
+
         self.write({'data': result})

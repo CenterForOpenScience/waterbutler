@@ -10,6 +10,7 @@ from tests import utils
 from tests.utils import async
 
 from waterbutler.core import streams
+from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.core.path import WaterButlerPath
@@ -200,10 +201,10 @@ def test_provider_metadata(monkeypatch, provider, mock_folder_path):
     assert isinstance(res, list)
 
     for item in res:
-        assert isinstance(item, dict)
-        assert item['name'] is not None
-        assert item['path'] is not None
-        assert item['provider'] == 'osfstorage'
+        assert isinstance(item, metadata.BaseMetadata)
+        assert item.name is not None
+        assert item.path is not None
+        assert item.provider == 'osfstorage'
 
     assert aiohttpretty.has_call(method='GET', uri=url)
 
@@ -226,15 +227,15 @@ class TestUploads:
         aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
 
         provider, inner_provider = provider_and_mock
-        inner_provider.metadata = utils.MockCoroutine(return_value={})
+        inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())
 
         res, created = yield from provider.upload(file_stream, path)
 
         assert created is True
-        assert res['name'] == 'newfile'
-        assert res['extra']['version'] == 8
-        assert res['provider'] == 'osfstorage'
-        assert res['extra']['downloads'] == 10
+        assert res.name == 'newfile'
+        assert res.extra['version'] == 8
+        assert res.provider == 'osfstorage'
+        assert res.extra['downloads'] == 10
 
         inner_provider.delete.assert_called_once_with(WaterButlerPath('/uniquepath'))
         inner_provider.metadata.assert_called_once_with(WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
@@ -249,7 +250,7 @@ class TestUploads:
         path = WaterButlerPath('/foopath', _ids=('Test', 'OtherTest'))
         url = 'https://waterbutler.io/{}/children/'.format(path.parent.identifier)
 
-        inner_provider.move.return_value = ({}, True)
+        inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
         aiohttpretty.register_json_uri('POST', url, status=200, body={'data': {'downloads': 10, 'version': 8, 'path': '/24601'}})
@@ -257,11 +258,11 @@ class TestUploads:
         res, created = yield from provider.upload(file_stream, path)
 
         assert created is False
-        assert res['name'] == 'foopath'
-        assert res['path'] == '/24601'
-        assert res['extra']['version'] == 8
-        assert res['provider'] == 'osfstorage'
-        assert res['extra']['downloads'] == 10
+        assert res.name == 'foopath'
+        assert res.path == '/24601'
+        assert res.extra['version'] == 8
+        assert res.provider == 'osfstorage'
+        assert res.extra['downloads'] == 10
 
         inner_provider.metadata.assert_called_once_with(WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
         inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'), check_created=False, fetch_metadata=False)
@@ -277,7 +278,7 @@ class TestUploads:
 
         mock_parity = mock.Mock()
         mock_backup = mock.Mock()
-        inner_provider.move.return_value = ({}, True)
+        inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
         aiohttpretty.register_json_uri('POST', url, status=201, body={'version': 'versionpk', 'data': {'version': 42, 'downloads': 30, 'path': '/alkjdaslke09'}})
@@ -291,10 +292,10 @@ class TestUploads:
         res, created = yield from provider.upload(file_stream, path)
 
         assert created is True
-        assert res['name'] == 'foopath'
-        assert res['extra']['version'] == 42
-        assert res['provider'] == 'osfstorage'
-        assert res['extra']['downloads'] == 30
+        assert res.name == 'foopath'
+        assert res.extra['version'] == 42
+        assert res.provider == 'osfstorage'
+        assert res.extra['downloads'] == 30
 
         inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'), check_created=False, fetch_metadata=False)
         complete_path = os.path.join(FILE_PATH_COMPLETE, file_stream.writers['sha256'].hexdigest)

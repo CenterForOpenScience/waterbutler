@@ -8,6 +8,7 @@ import hashlib
 import aiohttpretty
 
 from waterbutler.core import streams
+from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
@@ -338,7 +339,7 @@ class TestCRUD:
 
         metadata, created = yield from provider.upload(file_stream, path)
 
-        assert metadata['kind'] == 'file'
+        assert metadata.kind == 'file'
         assert not created
         assert aiohttpretty.has_call(method='PUT', uri=url)
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
@@ -378,9 +379,9 @@ class TestMetadata:
 
         assert isinstance(result, list)
         assert len(result) == 3
-        assert result[0]['name'] == '   photos'
-        assert result[1]['name'] == 'my-image.jpg'
-        assert result[2]['extra']['md5'] == '1b2cf535f27731c974343645a3985328'
+        assert result[0].name == '   photos'
+        assert result[1].name == 'my-image.jpg'
+        assert result[2].extra['md5'] == '1b2cf535f27731c974343645a3985328'
 
     @async
     @pytest.mark.aiohttpretty
@@ -394,7 +395,7 @@ class TestMetadata:
         assert isinstance(result, list)
         assert len(result) == 2
         for fobj in result:
-            assert fobj['name'] != path.path
+            assert fobj.name != path.path
 
     @async
     @pytest.mark.aiohttpretty
@@ -407,7 +408,7 @@ class TestMetadata:
 
         assert isinstance(result, list)
         assert len(result) == 1
-        assert result[0]['kind'] == 'folder'
+        assert result[0].kind == 'folder'
 
     # @async
     # @pytest.mark.aiohttpretty
@@ -424,10 +425,10 @@ class TestMetadata:
 
         result = yield from provider.metadata(path)
 
-        assert isinstance(result, dict)
-        assert result['path'] == str(path)
-        assert result['name'] == 'my-image.jpg'
-        assert result['extra']['md5'] == 'fba9dede5f27731c9771645a39863328'
+        assert isinstance(result, metadata.BaseFileMetadata)
+        assert result.path == str(path)
+        assert result.name == 'my-image.jpg'
+        assert result.extra['md5'] == 'fba9dede5f27731c9771645a39863328'
 
     @async
     @pytest.mark.aiohttpretty
@@ -458,7 +459,7 @@ class TestMetadata:
 
         metadata, created = yield from provider.upload(file_stream, path)
 
-        assert metadata['kind'] == 'file'
+        assert metadata.kind == 'file'
         assert created
         assert aiohttpretty.has_call(method='PUT', uri=url)
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
@@ -530,9 +531,9 @@ class TestCreateFolder:
 
         resp = yield from provider.create_folder(path)
 
-        assert resp['kind'] == 'folder'
-        assert resp['name'] == 'doesntalreadyexists'
-        assert resp['path'] == '/doesntalreadyexists/'
+        assert resp.kind == 'folder'
+        assert resp.name == 'doesntalreadyexists'
+        assert resp.path == '/doesntalreadyexists/'
 
 
 class TestOperations:
@@ -570,9 +571,9 @@ class TestOperations:
         assert len(data) == 3
 
         for item in data:
-            assert 'extra' in item
-            assert 'version' in item
-            assert 'versionIdentifier' in item
+            assert hasattr(item, 'extra')
+            assert hasattr(item, 'version')
+            assert hasattr(item, 'version_identifier')
 
         assert aiohttpretty.has_call(method='GET', uri=url)
 

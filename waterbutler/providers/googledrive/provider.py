@@ -106,7 +106,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        return GoogleDriveFileMetadata(data, dest_path).serialized(), dest_path.identifier is None
+        return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
 
     @asyncio.coroutine
     def intra_copy(self, dest_provider, src_path, dest_path):
@@ -128,7 +128,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        return GoogleDriveFileMetadata(data, dest_path).serialized(), dest_path.identifier is None
+        return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
 
     @asyncio.coroutine
     def download(self, path, revision=None, **kwargs):
@@ -174,7 +174,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         upload_id = yield from self._start_resumable_upload(not path.identifier, segments, stream.size, upload_metadata)
         data = yield from self._finish_resumable_upload(segments, stream, upload_id)
 
-        return GoogleDriveFileMetadata(data, path).serialized(), path.identifier is None
+        return GoogleDriveFileMetadata(data, path), path.identifier is None
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
@@ -222,7 +222,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         data = yield from response.json()
         if data['items']:
             return [
-                GoogleDriveRevision(item).serialized()
+                GoogleDriveRevision(item)
                 for item in reversed(data['items'])
             ]
 
@@ -232,7 +232,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return [GoogleDriveRevision({
             'modifiedDate': metadata['modifiedDate'],
             'id': data['etag'] + settings.DRIVE_IGNORE_VERSION,
-        }).serialized()]
+        })]
 
     @asyncio.coroutine
     def create_folder(self, path, **kwargs):
@@ -258,7 +258,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             throws=exceptions.CreateFolderError,
         )
 
-        return GoogleDriveFolderMetadata((yield from resp.json()), path).serialized()
+        return GoogleDriveFolderMetadata((yield from resp.json()), path)
 
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
@@ -267,8 +267,8 @@ class GoogleDriveProvider(provider.BaseProvider):
         if raw:
             return item
         if item['mimeType'] == 'application/vnd.google-apps.folder':
-            return GoogleDriveFolderMetadata(item, path).serialized()
-        return GoogleDriveFileMetadata(item, path).serialized()
+            return GoogleDriveFolderMetadata(item, path)
+        return GoogleDriveFileMetadata(item, path)
 
     def _build_upload_metadata(self, folder_id, name):
         return {

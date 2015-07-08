@@ -121,7 +121,7 @@ class GitHubProvider(provider.BaseProvider):
         :param dict kwargs: Ignored
         '''
         data = yield from self.metadata(path)
-        file_sha = path.identifier[1] or data['extra']['fileSha']
+        file_sha = path.identifier[1] or data.extra['fileSha']
 
         resp = yield from self.make_request(
             'GET',
@@ -131,7 +131,7 @@ class GitHubProvider(provider.BaseProvider):
             throws=exceptions.DownloadError,
         )
 
-        return streams.ResponseStreamReader(resp, size=data['size'])
+        return streams.ResponseStreamReader(resp, size=data.size)
 
     @asyncio.coroutine
     def upload(self, stream, path, message=None, branch=None, **kwargs):
@@ -168,7 +168,7 @@ class GitHubProvider(provider.BaseProvider):
             'path': path.path,
             'sha': blob['sha'],
             'size': stream.size,
-        }, commit=commit).serialized(), not exists
+        }, commit=commit), not exists
 
     @asyncio.coroutine
     def delete(self, path, sha=None, message=None, branch=None, **kwargs):
@@ -203,7 +203,7 @@ class GitHubProvider(provider.BaseProvider):
         )
 
         return [
-            GitHubRevision(item).serialized()
+            GitHubRevision(item)
             for item in (yield from resp.json())
         ]
 
@@ -243,14 +243,14 @@ class GitHubProvider(provider.BaseProvider):
         data['content']['name'] = path.name
         data['content']['path'] = data['content']['path'].replace('.gitkeep', '')
 
-        return GitHubFolderContentMetadata(data['content'], commit=data['commit']).serialized()
+        return GitHubFolderContentMetadata(data['content'], commit=data['commit'])
 
     @asyncio.coroutine
     def _delete_file(self, path, message=None, **kwargs):
         if path.identifier[1]:
             sha = path.identifier
         else:
-            sha = (yield from self.metadata(path))['extra']['fileSha']
+            sha = (yield from self.metadata(path)).extra['fileSha']
 
         if not sha:
             raise exceptions.MetadataError('A sha is required for deleting')
@@ -477,36 +477,10 @@ class GitHubProvider(provider.BaseProvider):
             ret = []
             for item in data:
                 if item['type'] == 'dir':
-                    ret.append(GitHubFolderContentMetadata(item).serialized())
+                    ret.append(GitHubFolderContentMetadata(item))
                 else:
-                    ret.append(GitHubFileContentMetadata(item).serialized())
+                    ret.append(GitHubFileContentMetadata(item))
             return ret
-
-        # TODO?
-        # if self._is_sha(ref):
-        #     tree_sha = ref
-        # elif path.parent.is_root:
-        #     branch_data = yield from self._fetch_branch(self.identifier)
-        #     tree_sha = branch_data['commit']['commit']['tree']['sha']
-        # else:
-        #     data = yield from self._fetch_contents(parent_path, ref=ref)
-        #     try:
-        #         tree_sha = next(x for x in data if x['path'] == path.path)['sha']
-        #     except StopIteration:
-        #         raise exceptions.MetadataError(
-        #             'Could not find folder \'{0}\''.format(path),
-        #             code=404,
-        #         )
-
-        # data = yield from self._fetch_tree(tree_sha, recursive=recursive)
-
-        # ret = []
-        # for item in data['tree']:
-        #     if item['type'] == 'tree':
-        #         ret.append(GitHubFolderTreeMetadata(item, folder=path.path).serialized())
-        #     else:
-        #         ret.append(GitHubFileTreeMetadata(item, folder=path.path).serialized())
-        # return ret
 
     @asyncio.coroutine
     def _metadata_file(self, path, ref=None, **kwargs):
@@ -532,7 +506,7 @@ class GitHubProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return GitHubFileTreeMetadata(data, view_url=view_url).serialized()
+        return GitHubFileTreeMetadata(data, view_url=view_url)
 
     @asyncio.coroutine
     def _get_latest_sha(self, ref='master'):
@@ -621,19 +595,19 @@ class GitHubProvider(provider.BaseProvider):
         )
 
         if dest_path.is_file:
-            return GitHubFileTreeMetadata(target, commit=commit).serialized(), not exists
+            return GitHubFileTreeMetadata(target, commit=commit), not exists
 
         folder = GitHubFolderTreeMetadata({
             'path': dest_path.path.strip('/')
-        }, commit=commit).serialized()
+        }, commit=commit)
 
         folder['children'] = []
 
         for item in keep:
             item['path'] = item['path'].replace(src_path.path, dest_path.path, 1)
             if item['type'] == 'tree':
-                folder['children'].append(GitHubFolderTreeMetadata(item).serialized())
+                folder['children'].append(GitHubFolderTreeMetadata(item))
             else:
-                folder['children'].append(GitHubFileTreeMetadata(item).serialized())
+                folder['children'].append(GitHubFileTreeMetadata(item))
 
         return folder, exists
