@@ -110,7 +110,8 @@ def upload_response():
         'data': {
             'downloads': 10,
             'version': 8,
-            'path': '/dfl893b1pdn11kd28b'
+            'path': '/dfl893b1pdn11kd28b',
+            'md5': 'abcdabcdabcdabcdabcdabcdabcd'
         }
     }
 
