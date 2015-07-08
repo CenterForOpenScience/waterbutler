@@ -1,5 +1,3 @@
-import os
-
 from waterbutler.core import metadata
 
 from waterbutler.providers.googledrive import utils

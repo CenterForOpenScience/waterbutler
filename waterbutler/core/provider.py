@@ -182,10 +182,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if src_path.is_dir:
             return (yield from self._folder_file_op(self.copy, *args, **kwargs))
 
-        return (yield from dest_provider.upload(
-            (yield from self.download(src_path)),
-            dest_path
-        ))
+        download_stream = yield from self.download(src_path)
+
+        if getattr(download_stream, 'name', None):
+            dest_path.rename(download_stream.name)
+
+        return (yield from dest_provider.upload(download_stream, dest_path))
 
     @asyncio.coroutine
     def _folder_file_op(self, func, dest_provider, src_path, dest_path, **kwargs):
