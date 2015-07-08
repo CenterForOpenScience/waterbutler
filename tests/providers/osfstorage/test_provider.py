@@ -179,6 +179,7 @@ def test_provider_metadata(monkeypatch, provider, mock_folder_path):
             'kind': 'file',
             'version': 10,
             'downloads': 1,
+            'md5': '1234'
         },
         {
             'name': 'bar',
@@ -186,6 +187,7 @@ def test_provider_metadata(monkeypatch, provider, mock_folder_path):
             'kind': 'file',
             'version': 10,
             'downloads': 1,
+            'md5': '1234'
         },
         {
             'name': 'baz',
