@@ -146,7 +146,7 @@ class TestCRUD:
 
         result, created = yield from provider.upload(file_stream, path)
 
-        expected = GoogleDriveFileMetadata(item, path).serialized()
+        expected = GoogleDriveFileMetadata(item, path)
 
         assert created is True
         assert result == expected
@@ -168,7 +168,7 @@ class TestCRUD:
 
         result, created = yield from provider.upload(file_stream, path)
 
-        expected = GoogleDriveFileMetadata(item, path).serialized()
+        expected = GoogleDriveFileMetadata(item, path)
 
         assert created is True
         assert result == expected
@@ -192,7 +192,7 @@ class TestCRUD:
         assert aiohttpretty.has_call(method='PUT', uri=start_upload_url)
         assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
         assert created is False
-        expected = GoogleDriveFileMetadata(item, path).serialized()
+        expected = GoogleDriveFileMetadata(item, path)
         assert result == expected
 
     @async
@@ -214,7 +214,7 @@ class TestCRUD:
         assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
         assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
         assert created is True
-        expected = GoogleDriveFileMetadata(item, path).serialized()
+        expected = GoogleDriveFileMetadata(item, path)
         assert result == expected
 
     @async
@@ -262,7 +262,7 @@ class TestMetadata:
 
         result = yield from provider.metadata(path)
 
-        expected = GoogleDriveFileMetadata(fixtures.list_file['items'][0], path).serialized()
+        expected = GoogleDriveFileMetadata(fixtures.list_file['items'][0], path)
         assert result == expected
 
     @async
@@ -291,7 +291,7 @@ class TestMetadata:
 
         result = yield from provider.metadata(path)
 
-        expected = GoogleDriveFileMetadata(item, path).serialized()
+        expected = GoogleDriveFileMetadata(item, path)
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=url)
 
@@ -321,7 +321,7 @@ class TestMetadata:
         expected = GoogleDriveFileMetadata(
             fixtures.list_file['items'][0],
             path.child(fixtures.list_file['items'][0]['title'])
-        ).serialized()
+        )
         assert result == [expected]
 
     @async
@@ -342,7 +342,7 @@ class TestMetadata:
 
         result = yield from provider.metadata(path)
 
-        expected = GoogleDriveFileMetadata(item, path.child(item['title'])).serialized()
+        expected = GoogleDriveFileMetadata(item, path.child(item['title']))
 
         assert result == [expected]
         assert aiohttpretty.has_call(method='GET', uri=url)
@@ -365,7 +365,7 @@ class TestMetadata:
 
         result = yield from provider.metadata(path)
 
-        expected = GoogleDriveFolderMetadata(item, path.child(item['title'], folder=True)).serialized()
+        expected = GoogleDriveFolderMetadata(item, path.child(item['title'], folder=True))
 
         assert result == [expected]
         assert aiohttpretty.has_call(method='GET', uri=url)
@@ -385,7 +385,7 @@ class TestRevisions:
         result = yield from provider.revisions(path)
 
         expected = [
-            GoogleDriveRevision(each).serialized()
+            GoogleDriveRevision(each)
             for each in fixtures.revisions_list['items']
         ]
         assert result == expected
@@ -407,7 +407,7 @@ class TestRevisions:
             GoogleDriveRevision({
                 'modifiedDate': item['modifiedDate'],
                 'id': fixtures.revisions_list_empty['etag'] + ds.DRIVE_IGNORE_VERSION,
-            }).serialized()
+            })
         ]
         assert result == expected
 
@@ -440,9 +440,9 @@ class TestCreateFolder:
 
         resp = yield from provider.create_folder(path)
 
-        assert resp['kind'] == 'folder'
-        assert resp['name'] == 'osf test'
-        assert resp['path'] == '/osf%20test/'
+        assert resp.kind == 'folder'
+        assert resp.name == 'osf test'
+        assert resp.path == '/osf%20test/'
 
     @async
     @pytest.mark.aiohttpretty

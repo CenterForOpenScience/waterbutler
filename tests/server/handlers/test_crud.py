@@ -37,6 +37,7 @@ class TestCrudHandler(utils.HandlerTestCase):
     def test_download_stream(self):
         data = b'freddie brian john roger'
         stream = streams.StringStream(data)
+        stream.name = 'foo'
         stream.content_type = 'application/octet-stream'
         self.mock_provider.download = utils.MockCoroutine(return_value=stream)
 
@@ -56,6 +57,7 @@ class TestCrudHandler(utils.HandlerTestCase):
         """
         data = b'freddie brian john roger'
         stream = streams.StringStream(data)
+        stream.name = None
         stream.content_type = 'application/octet-stream'
         self.mock_provider.download = utils.MockCoroutine(return_value=stream)
 
@@ -75,6 +77,7 @@ class TestCrudHandler(utils.HandlerTestCase):
         """
         data = b'freddie brian john roger'
         stream = streams.StringStream(data)
+        stream.name = None
         stream.content_type = 'application/octet-stream'
         self.mock_provider.download = utils.MockCoroutine(return_value=stream)
 
@@ -92,6 +95,7 @@ class TestCrudHandler(utils.HandlerTestCase):
     def test_download_accept_url_false(self):
         data = b'freddie brian john roger'
         stream = streams.StringStream(data)
+        stream.name = 'foo'
         stream.content_type = 'application/octet-stream'
         self.mock_provider.download = utils.MockCoroutine(return_value=stream)
 
@@ -109,6 +113,7 @@ class TestCrudHandler(utils.HandlerTestCase):
     def test_download_accept_url_default(self):
         data = b'freddie brian john roger'
         stream = streams.StringStream(data)
+        stream.name = 'foo'
         stream.content_type = 'application/octet-stream'
         self.mock_provider.download = utils.MockCoroutine(return_value=stream)
 
@@ -126,6 +131,7 @@ class TestCrudHandler(utils.HandlerTestCase):
     def test_download_accept_url_true(self):
         data = b'freddie brian john roger'
         stream = streams.StringStream(data)
+        stream.name = 'foo'
         stream.content_type = 'application/octet-stream'
         self.mock_provider.download = utils.MockCoroutine(return_value=stream)
 
@@ -164,7 +170,7 @@ class TestCrudHandler(utils.HandlerTestCase):
     @testing.gen_test
     def test_upload(self):
         data = b'stone cold crazy'
-        expected = {'path': 'roger.png'}
+        expected = utils.MockFileMetadata()
         self.mock_provider.upload = utils.MockCoroutine(return_value=(expected, True))
 
         resp = yield self.http_client.fetch(
@@ -181,7 +187,7 @@ class TestCrudHandler(utils.HandlerTestCase):
         assert streamed == data
         assert kwargs['action'] == 'upload'
         assert str(kwargs['path']) == '/roger.png'
-        assert expected == json.loads(resp.body.decode())
+        assert expected.serialized() == json.loads(resp.body.decode())
 
     @testing.gen_test
     def test_delete(self):
@@ -200,7 +206,7 @@ class TestCrudHandler(utils.HandlerTestCase):
 
     @testing.gen_test
     def test_create_folder(self):
-        self.mock_provider.create_folder = utils.MockCoroutine(return_value={})
+        self.mock_provider.create_folder = utils.MockCoroutine(return_value=utils.MockFolderMetadata())
 
         resp = yield self.http_client.fetch(
             self.get_url('/file?provider=queenhub&path=/folder/'),

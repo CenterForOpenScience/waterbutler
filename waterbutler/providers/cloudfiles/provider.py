@@ -297,7 +297,7 @@ class CloudFilesProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return CloudFilesHeaderMetadata(resp.headers, path.path).serialized()
+        return CloudFilesHeaderMetadata(resp.headers, path.path)
 
     def _metadata_folder(self, path, recursive=False, **kwargs):
         """Get Metadata about the requested folder
@@ -345,7 +345,7 @@ class CloudFilesProvider(provider.BaseProvider):
 
     def _serialize_folder_metadata(self, data):
         if data.get('subdir'):
-            return CloudFilesFolderMetadata(data).serialized()
+            return CloudFilesFolderMetadata(data)
         elif data['content_type'] == 'application/directory':
-            return CloudFilesFolderMetadata({'subdir': data['name'] + '/'}).serialized()
-        return CloudFilesFileMetadata(data).serialized()
+            return CloudFilesFolderMetadata({'subdir': data['name'] + '/'})
+        return CloudFilesFileMetadata(data)

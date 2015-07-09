@@ -3,6 +3,7 @@ import pytest
 from tests import utils
 from unittest import mock
 from tests.utils import async
+from waterbutler.core import metadata
 from waterbutler.core import exceptions
 
 
@@ -37,9 +38,9 @@ class TestBaseProvider:
         assert provider2.can_intra_move(provider2) is True
 
     @async
-    def test_exits(self, provider1):
+    def test_exists(self, provider1):
         ret = yield from provider1.exists('somepath')
-        assert ret == {}
+        assert isinstance(ret, metadata.BaseMetadata)
 
     @async
     def test_exits_doesnt_exist(self, provider1):

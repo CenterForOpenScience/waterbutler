@@ -7,6 +7,7 @@ import io
 import aiohttpretty
 
 from waterbutler.core import streams
+from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
@@ -177,7 +178,7 @@ class TestCRUD:
         aiohttpretty.register_json_uri('PUT', url, status=200, body=file_metadata)
 
         metadata, created = yield from provider.upload(file_stream, path)
-        expected = DropboxFileMetadata(file_metadata, provider.folder).serialized()
+        expected = DropboxFileMetadata(file_metadata, provider.folder)
 
         assert created is True
         assert metadata == expected
@@ -211,9 +212,9 @@ class TestMetadata:
 
         assert isinstance(result, list)
         assert len(result) == 1
-        assert result[0]['kind'] == 'file'
-        assert result[0]['name'] == 'flower.jpg'
-        assert result[0]['path'] == '/flower.jpg'
+        assert result[0].kind == 'file'
+        assert result[0].name == 'flower.jpg'
+        assert result[0].path == '/flower.jpg'
 
     @async
     @pytest.mark.aiohttpretty
@@ -225,10 +226,10 @@ class TestMetadata:
         aiohttpretty.register_json_uri('POST', share_link, body=shares_metadata)
         result = yield from provider.metadata(path)
 
-        assert isinstance(result, dict)
-        assert result['kind'] == 'file'
-        assert result['name'] == 'Getting_Started.pdf'
-        assert result['path'] == '/Getting_Started.pdf'
+        assert isinstance(result, metadata.BaseMetadata)
+        assert result.kind == 'file'
+        assert result.name == 'Getting_Started.pdf'
+        assert result.path == '/Getting_Started.pdf'
 
     @async
     @pytest.mark.aiohttpretty
@@ -299,8 +300,8 @@ class TestCreateFolder:
 
         resp = yield from provider.create_folder(path)
 
-        assert resp['kind'] == 'folder'
-        assert resp['name'] == 'newfolder'
+        assert resp.kind == 'folder'
+        assert resp.name == 'newfolder'
 
 
 class TestOperations:

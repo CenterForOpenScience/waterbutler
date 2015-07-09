@@ -19,22 +19,6 @@ waterbutler.server.app module
     :undoc-members:
     :show-inheritance:
 
-waterbutler.server.exceptions module
-------------------------------------
-
-.. automodule:: waterbutler.server.exceptions
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-waterbutler.server.identity module
-----------------------------------
-
-.. automodule:: waterbutler.server.identity
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 waterbutler.server.settings module
 ----------------------------------
 
