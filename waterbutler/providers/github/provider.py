@@ -138,11 +138,30 @@ class GitHubProvider(provider.BaseProvider):
         assert self.name is not None
         assert self.email is not None
 
-        exists = yield from self.exists(path)
-        latest_sha = yield from self._get_latest_sha(ref=path.identifier[0])
+        try:
+            exists = yield from self.exists(path)
+        except exceptions.ProviderError as e:
+            if e.data.get('message') == 'Git Repository is empty.':
+                exists = False
+                resp = yield from self.make_request(
+                    'PUT',
+                    self.build_repo_url('contents', '.gitkeep'),
+                    data=json.dumps({
+                        'content': '',
+                        'path': '.gitkeep',
+                        'committer': self.committer,
+                        'branch': path.identifier[0],
+                        'message': 'Initial commit'
+                    }),
+                    expects=(201,),
+                    throws=exceptions.CreateFolderError
+                )
+                data = yield from resp.json()
+                latest_sha = data['commit']['sha']
+        else:
+            latest_sha = yield from self._get_latest_sha(ref=path.identifier[0])
 
         blob = yield from self._create_blob(stream)
-
         tree = yield from self._create_tree({
             'base_tree': latest_sha,
             'tree': [{
@@ -472,7 +491,13 @@ class GitHubProvider(provider.BaseProvider):
         # the operation using the git/trees api which requires a sha.
 
         if not (self._is_sha(path.identifier[0]) or recursive):
-            data = yield from self._fetch_contents(path, ref=path.identifier[0])
+            try:
+                data = yield from self._fetch_contents(path, ref=path.identifier[0])
+            except exceptions.MetadataError as e:
+                if e.data.get('message') == 'This repository is empty.':
+                    data = []
+                else:
+                    raise
 
             ret = []
             for item in data:
