@@ -4,6 +4,7 @@ import asyncio
 
 import tornado.web
 import tornado.gen
+import tornado.iostream
 from raven.contrib.tornado import SentryMixin
 
 from waterbutler import tasks
@@ -108,13 +109,18 @@ class BaseHandler(tornado.web.RequestHandler, SentryMixin):
 
     @tornado.gen.coroutine
     def write_stream(self, stream):
-        while True:
-            chunk = yield from stream.read(settings.CHUNK_SIZE)
-            if not chunk:
-                break
-            self.write(chunk)
-            del chunk
-            yield self.flush()
+        try:
+            while True:
+                chunk = yield from stream.read(settings.CHUNK_SIZE)
+                if not chunk:
+                    break
+                self.write(chunk)
+                del chunk
+                yield self.flush()
+        except tornado.iostream.StreamClosedError:
+            # Client has disconnected early.
+            # No need for any exception to be raised
+            return
 
 
 class BaseProviderHandler(BaseHandler):
