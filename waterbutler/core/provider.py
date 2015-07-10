@@ -118,10 +118,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :raises ProviderError: Raised if expects is defined
         """
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
-        if kwargs.get('range'):
-            kwargs['headers']['Range'] = self._build_range_header(kwargs.pop('range'))
+        range = kwargs.pop('range', None)
         expects = kwargs.pop('expects', None)
         throws = kwargs.pop('throws', exceptions.ProviderError)
+        if range:
+            kwargs['headers']['Range'] = self._build_range_header(range)
         response = yield from aiohttp.request(*args, **kwargs)
         if expects and response.status not in expects:
             raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
