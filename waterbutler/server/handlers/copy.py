@@ -44,7 +44,10 @@ class CopyHandler(core.BaseCrossProviderHandler):
                 )
             )
 
-            self._send_hook('copy', metadata)
+        if isinstance(metadata, list):
+            metadata = [m.serialized() for m in metadata]
+        else:
+            metadata = metadata.serialized()
 
         if created:
             self.set_status(201)
@@ -52,3 +55,6 @@ class CopyHandler(core.BaseCrossProviderHandler):
             self.set_status(200)
 
         self.write(metadata)
+
+        if not self.source_provider.can_intra_move(self.destination_provider, self.json['source']['path']):
+            self._send_hook('move', metadata)

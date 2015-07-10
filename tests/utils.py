@@ -10,6 +10,7 @@ import pytest
 from tornado import testing
 from tornado.platform.asyncio import AsyncIOMainLoop
 
+from waterbutler.core import metadata
 from waterbutler.core import provider
 from waterbutler.server.app import make_app
 from waterbutler.core.path import WaterButlerPath
@@ -20,10 +21,37 @@ class MockCoroutine(mock.Mock):
     def __call__(self, *args, **kwargs):
         return super().__call__(*args, **kwargs)
 
+
 @decorator
 def async(func, *args, **kwargs):
     future = func(*args, **kwargs)
     asyncio.get_event_loop().run_until_complete(future)
+
+
+class MockFileMetadata(metadata.BaseFileMetadata):
+    provider = 'mock'
+    name = 'Foo.name'
+    size = 1337
+    etag = 'etag'
+    path = '/Foo.name'
+    modified = 'never'
+    content_type = 'application/octet-stream'
+
+    def __init__(self):
+        super().__init__({})
+
+
+class MockFolderMetadata(metadata.BaseFolderMetadata):
+    provider = 'mock'
+    name = 'Bar'
+    size = 1337
+    etag = 'etag'
+    path = '/Bar/'
+    modified = 'never'
+    content_type = 'application/octet-stream'
+
+    def __init__(self):
+        super().__init__({})
 
 
 class MockProvider1(provider.BaseProvider):
@@ -36,7 +64,7 @@ class MockProvider1(provider.BaseProvider):
 
     @asyncio.coroutine
     def upload(self, stream, path, **kwargs):
-        return {}, True
+        return MockFileMetadata(), True
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
@@ -46,7 +74,7 @@ class MockProvider1(provider.BaseProvider):
     def metadata(self, path, throw=None, **kwargs):
         if throw:
             raise throw
-        return {}
+        return MockFolderMetadata()
 
     @asyncio.coroutine
     def download(self, path, **kwargs):

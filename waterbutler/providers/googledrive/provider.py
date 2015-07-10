@@ -106,7 +106,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        return GoogleDriveFileMetadata(data, dest_path).serialized(), dest_path.identifier is None
+        return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
 
     @asyncio.coroutine
     def intra_copy(self, dest_provider, src_path, dest_path):
@@ -128,10 +128,10 @@ class GoogleDriveProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        return GoogleDriveFileMetadata(data, dest_path).serialized(), dest_path.identifier is None
+        return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
 
     @asyncio.coroutine
-    def download(self, path, revision=None, **kwargs):
+    def download(self, path, revision=None, range=None, **kwargs):
         if revision and not revision.endswith(settings.DRIVE_IGNORE_VERSION):
             # Must make additional request to look up download URL for revision
             response = yield from self.make_request(
@@ -146,8 +146,9 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         download_resp = yield from self.make_request(
             'GET',
-            data.get('downloadUrl') or drive_utils.get_export_link(data['exportLinks']),
-            expects=(200, ),
+            data.get('downloadUrl') or drive_utils.get_export_link(data),
+            range=range,
+            expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 
@@ -159,6 +160,8 @@ class GoogleDriveProvider(provider.BaseProvider):
         stream = streams.StringStream((yield from download_resp.read()))
         if download_resp.headers.get('Content-Type'):
             stream.content_type = download_resp.headers['Content-Type']
+        if drive_utils.is_docs_file(data):
+            stream.name = path.name + drive_utils.get_download_extension(data)
         return stream
 
     @asyncio.coroutine
@@ -174,7 +177,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         upload_id = yield from self._start_resumable_upload(not path.identifier, segments, stream.size, upload_metadata)
         data = yield from self._finish_resumable_upload(segments, stream, upload_id)
 
-        return GoogleDriveFileMetadata(data, path).serialized(), path.identifier is None
+        return GoogleDriveFileMetadata(data, path), path.identifier is None
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
@@ -234,7 +237,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         data = yield from response.json()
         if data['items']:
             return [
-                GoogleDriveRevision(item).serialized()
+                GoogleDriveRevision(item)
                 for item in reversed(data['items'])
             ]
 
@@ -244,7 +247,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return [GoogleDriveRevision({
             'modifiedDate': metadata['modifiedDate'],
             'id': data['etag'] + settings.DRIVE_IGNORE_VERSION,
-        }).serialized()]
+        })]
 
     @asyncio.coroutine
     def create_folder(self, path, **kwargs):
@@ -270,7 +273,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             throws=exceptions.CreateFolderError,
         )
 
-        return GoogleDriveFolderMetadata((yield from resp.json()), path).serialized()
+        return GoogleDriveFolderMetadata((yield from resp.json()), path)
 
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
@@ -279,8 +282,8 @@ class GoogleDriveProvider(provider.BaseProvider):
         if raw:
             return item
         if item['mimeType'] == 'application/vnd.google-apps.folder':
-            return GoogleDriveFolderMetadata(item, path).serialized()
-        return GoogleDriveFileMetadata(item, path).serialized()
+            return GoogleDriveFolderMetadata(item, path)
+        return GoogleDriveFileMetadata(item, path)
 
     def _build_upload_metadata(self, folder_id, name):
         return {
@@ -366,7 +369,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                 if parts:
                     raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
                 name, ext = os.path.splitext(current_part)
-                if ext not in ('.gdoc', '.gsheet'):
+                if ext not in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
                     return ret + [{
                         'id': None,
                         'title': current_part,

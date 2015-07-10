@@ -222,7 +222,7 @@ class TestMetadata:
         path = yield from project_provider.validate_path('/{}/{}'.format(article_id, file_id))
         result = yield from project_provider.metadata(path)
 
-        expected = metadata.FigshareFileMetadata(file_metadata, parent=article_metadata['items'][0], child=True).serialized()
+        expected = metadata.FigshareFileMetadata(file_metadata, parent=article_metadata['items'][0], child=True)
         assert result == expected
 
 
@@ -249,7 +249,7 @@ class TestCRUD:
             upload_metadata,
             parent=base_article_metadata,
             child=True,
-        ).serialized()
+        )
         assert aiohttpretty.has_call(
             method='POST',
             uri=create_article_url,
@@ -279,7 +279,7 @@ class TestCRUD:
         file_name = 'barricade.gif'
         path = yield from project_provider.validate_path('/{}/{}'.format(article_id, file_name))
         result, created = yield from project_provider.upload(file_stream, path)
-        expected = metadata.FigshareFileMetadata(upload_metadata, parent=article_metadata['items'][0], child=True).serialized()
+        expected = metadata.FigshareFileMetadata(upload_metadata, parent=article_metadata['items'][0], child=True)
         assert aiohttpretty.has_call(method='PUT', uri=article_upload_url)
         assert result == expected
 

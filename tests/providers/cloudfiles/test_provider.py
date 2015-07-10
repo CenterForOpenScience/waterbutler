@@ -392,7 +392,7 @@ class TestCRUD:
         metadata, created = yield from connected_provider.upload(file_stream, path)
 
         assert created is True
-        assert metadata['kind'] == 'file'
+        assert metadata.kind == 'file'
         assert aiohttpretty.has_call(method='PUT', uri=url)
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
 
@@ -431,18 +431,18 @@ class TestMetadata:
         result = yield from connected_provider.metadata(path)
 
         assert len(result) == 4
-        assert result[0]['name'] == 'level1'
-        assert result[0]['path'] == '/level1/'
-        assert result[0]['kind'] == 'folder'
-        assert result[1]['name'] == 'similar'
-        assert result[1]['path'] == '/similar'
-        assert result[1]['kind'] == 'file'
-        assert result[2]['name'] == 'similar.file'
-        assert result[2]['path'] == '/similar.file'
-        assert result[2]['kind'] == 'file'
-        assert result[3]['name'] == 'level1_empty'
-        assert result[3]['path'] == '/level1_empty/'
-        assert result[3]['kind'] == 'folder'
+        assert result[0].name == 'level1'
+        assert result[0].path == '/level1/'
+        assert result[0].kind == 'folder'
+        assert result[1].name == 'similar'
+        assert result[1].path == '/similar'
+        assert result[1].kind == 'file'
+        assert result[2].name == 'similar.file'
+        assert result[2].path == '/similar.file'
+        assert result[2].kind == 'file'
+        assert result[3].name == 'level1_empty'
+        assert result[3].path == '/level1_empty/'
+        assert result[3].kind == 'folder'
 
     @async
     @pytest.mark.aiohttpretty
@@ -454,9 +454,9 @@ class TestMetadata:
         result = yield from connected_provider.metadata(path)
 
         assert len(result) == 1
-        assert result[0]['name'] == 'level2'
-        assert result[0]['path'] == '/level1/level2/'
-        assert result[0]['kind'] == 'folder'
+        assert result[0].name == 'level2'
+        assert result[0].path == '/level1/level2/'
+        assert result[0].kind == 'folder'
 
     @async
     @pytest.mark.aiohttpretty
@@ -468,9 +468,9 @@ class TestMetadata:
         result = yield from connected_provider.metadata(path)
 
         assert len(result) == 1
-        assert result[0]['name'] == 'file2.txt'
-        assert result[0]['path'] == '/level1/level2/file2.txt'
-        assert result[0]['kind'] == 'file'
+        assert result[0].name == 'file2.txt'
+        assert result[0].path == '/level1/level2/file2.txt'
+        assert result[0].kind == 'file'
 
     @async
     @pytest.mark.aiohttpretty
@@ -480,10 +480,10 @@ class TestMetadata:
         aiohttpretty.register_uri('HEAD', url, status=200, headers=file_root_level1_level2_file2_txt)
         result = yield from connected_provider.metadata(path)
 
-        assert result['name'] == 'file2.txt'
-        assert result['path'] == '/level1/level2/file2.txt'
-        assert result['kind'] == 'file'
-        assert result['contentType'] == 'text/plain'
+        assert result.name == 'file2.txt'
+        assert result.path == '/level1/level2/file2.txt'
+        assert result.kind == 'file'
+        assert result.content_type == 'text/plain'
 
     @async
     @pytest.mark.aiohttpretty
@@ -506,9 +506,9 @@ class TestMetadata:
         aiohttpretty.register_uri('HEAD', url, status=200, headers=file_root_similar)
         result = yield from connected_provider.metadata(path)
 
-        assert result['name'] == 'similar'
-        assert result['path'] == '/similar'
-        assert result['kind'] == 'file'
+        assert result.name == 'similar'
+        assert result.path == '/similar'
+        assert result.kind == 'file'
 
     @async
     @pytest.mark.aiohttpretty
@@ -518,9 +518,9 @@ class TestMetadata:
         aiohttpretty.register_uri('HEAD', url, status=200, headers=file_root_similar_name)
         result = yield from connected_provider.metadata(path)
 
-        assert result['name'] == 'similar.file'
-        assert result['path'] == '/similar.file'
-        assert result['kind'] == 'file'
+        assert result.name == 'similar.file'
+        assert result.path == '/similar.file'
+        assert result.kind == 'file'
 
     @async
     @pytest.mark.aiohttpretty

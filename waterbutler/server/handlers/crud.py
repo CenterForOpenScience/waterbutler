@@ -1,9 +1,11 @@
+import os
 import http
 import asyncio
 import socket
 
 import tornado.web
 import tornado.gen
+import tornado.httputil
 import tornado.platform.asyncio
 
 from waterbutler.core import mime_types
@@ -65,37 +67,45 @@ class CRUDHandler(core.BaseProviderHandler):
         except KeyError:
             raise tornado.web.HTTPError(status_code=400)
 
-        result = yield from self.provider.download(**self.arguments)
+        if 'Range' in self.request.headers:
+            request_range = tornado.httputil._parse_request_range(self.request.headers['Range'])
+        else:
+            request_range = None
+
+        result = yield from self.provider.download(range=request_range, **self.arguments)
 
         if isinstance(result, str):
             return self.redirect(result)
 
-        if hasattr(result, 'content_type'):
+        if getattr(result, 'partial', None):
+            # Use getattr here as not all stream may have a partial attribute
+            # Plus it fixes tests
+            self.set_status(206)
+            self.set_header('Content-Range', result.content_range)
+
+        if result.content_type is not None:
             self.set_header('Content-Type', result.content_type)
 
-        if hasattr(result, 'size') and result.size is not None:
+        if result.size is not None:
             self.set_header('Content-Length', str(result.size))
 
         # Build `Content-Disposition` header from `displayName` override,
         # headers of provider response, or file path, whichever is truthy first
-        if self.arguments.get('displayName'):
-            disposition = utils.make_disposition(self.arguments['displayName'])
-        else:
-            # If the file extention is in mime_types
-            # override the content type to fix issues with safari shoving in new file extensions
-            if self.arguments['path'].ext in mime_types:
-                self.set_header('Content-Type', mime_types[self.arguments['path'].ext])
+        name = self.arguments.get('displayName') or result.name or self.path.name
+        self.set_header('Content-Disposition', utils.make_disposition(name))
 
-            disposition = utils.make_disposition(self.arguments['path'].name)
-
-        self.set_header('Content-Disposition', disposition)
+        _, ext = os.path.splitext(name)
+        # If the file extention is in mime_types
+        # override the content type to fix issues with safari shoving in new file extensions
+        if ext in mime_types:
+            self.set_header('Content-Type', mime_types[ext])
 
         yield self.write_stream(result)
 
     @tornado.gen.coroutine
     def post(self):
         """Create a folder"""
-        metadata = yield from self.provider.create_folder(**self.arguments)
+        metadata = (yield from self.provider.create_folder(**self.arguments)).serialized()
 
         self.set_status(201)
         self.write(metadata)
@@ -108,6 +118,8 @@ class CRUDHandler(core.BaseProviderHandler):
         self.writer.write_eof()
 
         metadata, created = yield from self.uploader
+        metadata = metadata.serialized()
+
         if created:
             self.set_status(201)
         self.write(metadata)

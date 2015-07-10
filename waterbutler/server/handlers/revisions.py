@@ -19,4 +19,4 @@ class RevisionHandler(core.BaseProviderHandler):
         if asyncio.iscoroutine(result):
             result = yield from result
 
-        self.write({'data': result})
+        self.write({'data': [r.serialized() for r in result]})

@@ -672,7 +672,7 @@ class TestMetadata:
         result = yield from provider.metadata(path)
         item = repo_tree_metadata_root['tree'][0]
 
-        assert result == GitHubFileTreeMetadata(item).serialized()
+        assert result == GitHubFileTreeMetadata(item)
 
     # TODO: Additional Tests
     # def test_metadata_root_file_txt_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
@@ -691,9 +691,9 @@ class TestMetadata:
         ret = []
         for item in content_repo_metadata_root:
             if item['type'] == 'dir':
-                ret.append(GitHubFolderContentMetadata(item).serialized())
+                ret.append(GitHubFolderContentMetadata(item))
             else:
-                ret.append(GitHubFileContentMetadata(item).serialized())
+                ret.append(GitHubFileContentMetadata(item))
 
         assert result == ret
 
@@ -768,11 +768,11 @@ class TestCreateFolder:
 
         metadata = yield from provider.create_folder(path)
 
-        assert metadata['kind'] == 'folder'
-        assert metadata['name'] == 'trains'
-        assert metadata['path'] == '/i/like/trains/'
-
-
+        assert metadata.kind == 'folder'
+        assert metadata.name == 'trains'
+        assert metadata.path == '/i/like/trains/'
+        
+        
 class TestWebView:
 
     @async

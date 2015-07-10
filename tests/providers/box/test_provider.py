@@ -320,7 +320,7 @@ class TestUpload:
         path.parts[-1]._id = file_metadata['entries'][0]['id']
         expected = BoxFileMetadata(file_metadata['entries'][0], path).serialized()
 
-        assert metadata == expected
+        assert metadata.serialized() == expected
         assert created is True
         assert aiohttpretty.has_call(method='POST', uri=upload_url)
 
@@ -336,7 +336,7 @@ class TestUpload:
 
         expected = BoxFileMetadata(file_metadata['entries'][0], path).serialized()
 
-        assert metadata == expected
+        assert metadata.serialized() == expected
         assert created is False
         assert aiohttpretty.has_call(method='POST', uri=upload_url)
 
@@ -397,10 +397,8 @@ class TestMetadata:
     def test_metadata(self, provider, folder_object_metadata, folder_list_metadata):
         path = WaterButlerPath('/', _ids=(provider.folder, ))
 
-        # object_url = provider.build_url('folders', provider.folder)
         list_url = provider.build_url('folders', provider.folder, 'items', fields='id,name,size,modified_at,etag')
 
-        # aiohttpretty.register_json_uri('GET', object_url, body=folder_object_metadata)
         aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
 
         result = yield from provider.metadata(path)
@@ -409,9 +407,9 @@ class TestMetadata:
 
         for x in folder_list_metadata['entries']:
             if x['type'] == 'file':
-                expected.append(BoxFileMetadata(x, path.child(x['name'])).serialized())
+                expected.append(BoxFileMetadata(x, path.child(x['name'])))
             else:
-                expected.append(BoxFolderMetadata(x, path.child(x['name'])).serialized())
+                expected.append(BoxFolderMetadata(x, path.child(x['name'])))
 
         assert result == expected
 
@@ -451,7 +449,7 @@ class TestMetadata:
         aiohttpretty.register_json_uri('PUT', file_url, body=item)
 
         result = yield from provider.metadata(path)
-        expected = BoxFileMetadata(item, path).serialized()
+        expected = BoxFileMetadata(item, path)
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=file_url)
 
@@ -500,7 +498,7 @@ class TestRevisions:
         result = yield from provider.revisions(path)
 
         expected = [
-            BoxRevision(each).serialized()
+            BoxRevision(each)
             for each in [item] + revisions_list_metadata['entries']
         ]
 
@@ -522,7 +520,7 @@ class TestRevisions:
         aiohttpretty.register_json_uri('GET', revisions_url, body={}, status=403)
 
         result = yield from provider.revisions(path)
-        expected = [BoxRevision(item).serialized()]
+        expected = [BoxRevision(item)]
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=file_url)
         assert aiohttpretty.has_call(method='GET', uri=revisions_url)
@@ -588,6 +586,7 @@ class TestCreateFolder:
 
         resp = yield from provider.create_folder(path)
 
-        assert resp['kind'] == 'folder'
-        assert resp['name'] == '50 shades of nope'
-        assert resp['path'] == '/{}/'.format(folder_object_metadata['id'])
+        assert resp.kind == 'folder'
+        assert resp.name == '50 shades of nope'
+        assert resp.path == '/{}/'.format(folder_object_metadata['id'])
+        assert isinstance(resp, BoxFolderMetadata)
