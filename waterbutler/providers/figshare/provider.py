@@ -48,7 +48,7 @@ class BaseFigshareProvider(provider.BaseProvider):
     @asyncio.coroutine
     def web_view_link(self, path, **kwargs):
         data = yield from self.metadata(path)
-        segments = ('articles', data['name'], str(data['extra']['articleId']))
+        segments = ('articles', data.name, str(data.extra['articleId']))
         return build_url(settings.VIEW_URL, *segments)
 
     @asyncio.coroutine
