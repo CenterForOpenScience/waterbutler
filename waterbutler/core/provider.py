@@ -107,6 +107,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         :param str method: The HTTP method
         :param str url: The url to send the request to
+        :keyword range: An optional tuple (start, end) that is transformed into a Range header
         :keyword expects: An optional tuple of HTTP status codes as integers raises an exception
             if the returned status code is not in it.
         :type expects: tuple of ints
@@ -117,6 +118,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :raises ProviderError: Raised if expects is defined
         """
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
+        if kwargs.get('range'):
+            kwargs['headers']['Range'] = self._build_range_header(kwargs.pop('range'))
         expects = kwargs.pop('expects', None)
         throws = kwargs.pop('throws', exceptions.ProviderError)
         response = yield from aiohttp.request(*args, **kwargs)
@@ -431,3 +434,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :raises: :class:`waterbutler.core.exceptions.FolderCreationError`
         """
         raise exceptions.ProviderError({'message': 'Folder creation not supported.'}, code=405)
+
+    def _build_range_header(self, slice_tup):
+        start, end = slice_tup
+        return 'bytes={}-{}'.format(
+            '' if start is None else start,
+            '' if end is None else end
+        )

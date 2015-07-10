@@ -154,8 +154,16 @@ class ResponseStreamReader(BaseStream):
         self.response = response
 
     @property
+    def partial(self):
+        return self.response.status == 206
+
+    @property
     def content_type(self):
         return self.response.headers.get('Content-Type', 'application/octet-stream')
+
+    @property
+    def content_range(self):
+        return self.response.headers['Content-Range']
 
     @property
     def name(self):

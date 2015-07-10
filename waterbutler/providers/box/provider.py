@@ -181,7 +181,7 @@ class BoxProvider(provider.BaseProvider):
         return super().make_request(*args, **kwargs)
 
     @asyncio.coroutine
-    def download(self, path, revision=None, **kwargs):
+    def download(self, path, revision=None, range=None, **kwargs):
         if path.identifier is None:
             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
 
@@ -192,7 +192,8 @@ class BoxProvider(provider.BaseProvider):
         resp = yield from self.make_request(
             'GET',
             self.build_url('files', path.identifier, 'content', **query),
-            expects=(200, ),
+            range=range,
+            expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 

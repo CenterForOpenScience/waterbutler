@@ -475,3 +475,9 @@ class TestMove:
             dest_path,
             handle_naming=False
         )
+
+    def test_build_range_header(self, provider1):
+        assert 'bytes=0-' == provider1._build_range_header((0, None))
+        assert 'bytes=10-' == provider1._build_range_header((10, None))
+        assert 'bytes=10-100' == provider1._build_range_header((10, 100))
+        assert 'bytes=-255' == provider1._build_range_header((None, 255))

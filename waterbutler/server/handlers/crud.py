@@ -5,6 +5,7 @@ import socket
 
 import tornado.web
 import tornado.gen
+import tornado.httputil
 import tornado.platform.asyncio
 
 from waterbutler.core import mime_types
@@ -66,10 +67,21 @@ class CRUDHandler(core.BaseProviderHandler):
         except KeyError:
             raise tornado.web.HTTPError(status_code=400)
 
-        result = yield from self.provider.download(**self.arguments)
+        if 'Range' in self.request.headers:
+            request_range = tornado.httputil._parse_request_range(self.request.headers['Range'])
+        else:
+            request_range = None
+
+        result = yield from self.provider.download(range=request_range, **self.arguments)
 
         if isinstance(result, str):
             return self.redirect(result)
+
+        if getattr(result, 'partial', None):
+            # Use getattr here as not all stream may have a partial attribute
+            # Plus it fixes tests
+            self.set_status(206)
+            self.set_header('Content-Range', result.content_range)
 
         if result.content_type is not None:
             self.set_header('Content-Type', result.content_type)

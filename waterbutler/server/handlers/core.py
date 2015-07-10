@@ -24,6 +24,7 @@ CORS_ACCEPT_HEADERS = [
 ]
 
 CORS_EXPOSE_HEADERS = [
+    'Range',
     'Accept-Ranges',
     'Content-Range',
     'Content-Length',
