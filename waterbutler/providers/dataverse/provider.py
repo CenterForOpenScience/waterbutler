@@ -38,6 +38,10 @@ class DataverseProvider(provider.BaseProvider):
 
         self._metadata_cache = {}
 
+    def build_url(self, path, *segments, **query):
+        # Need to split up the dataverse subpaths and push them into segments
+        return super().build_url(*(tuple(path.split('/')) + segments), **query)
+
     @asyncio.coroutine
     def validate_path(self, path, revision=None, **kwargs):
         """Ensure path is in configured dataset
@@ -46,14 +50,34 @@ class DataverseProvider(provider.BaseProvider):
         :param list metadata: List of file metadata from _get_data
         """
         if path == '/':
-            return WaterButlerPath('/')
+            wbpath = WaterButlerPath('/')
+            wbpath.revision = revision
+            return wbpath
 
         path = path.strip('/')
 
+        wbpath = None
         for item in (yield from self._maybe_fetch_metadata(version=revision)):
-            if path == item['extra']['fileId']:
-                return WaterButlerPath('/' + item['name'], _ids=(None, item['extra']['fileId']))
-        return WaterButlerPath('/' + path)
+            if path == item.extra['fileId']:
+                wbpath = WaterButlerPath('/' + item.name, _ids=(None, item.extra['fileId']))
+        wbpath = wbpath or WaterButlerPath('/' + path)
+
+        wbpath.revision = revision
+        return wbpath
+
+    @asyncio.coroutine
+    def revalidate_path(self, base, path, folder=False, revision=None):
+        path = path.strip('/')
+
+        wbpath = None
+        for item in (yield from self._maybe_fetch_metadata(version=revision)):
+            if path == item.name:
+                # Dataverse cant have folders
+                wbpath = base.child(item.name, _id=item.extra['fileId'], folder=False)
+        wbpath = wbpath or base.child(path, _id=None, folder=False)
+
+        wbpath.revision = revision or base.revision
+        return wbpath
 
     @asyncio.coroutine
     def _maybe_fetch_metadata(self, version=None, refresh=False):
@@ -65,7 +89,7 @@ class DataverseProvider(provider.BaseProvider):
         return sum(self._metadata_cache.values(), [])
 
     @asyncio.coroutine
-    def download(self, path, revision=None, **kwargs):
+    def download(self, path, revision=None, range=None, **kwargs):
         """Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from Dataverse is not 200
 
@@ -85,7 +109,8 @@ class DataverseProvider(provider.BaseProvider):
         resp = yield from self.make_request(
             'GET',
             self.build_url(settings.DOWN_BASE_URL, path.identifier, key=self.token),
-            expects=(200, ),
+            range=range,
+            expects=(200, 206),
             throws=exceptions.DownloadError,
         )
         return streams.ResponseStreamReader(resp)
@@ -135,7 +160,7 @@ class DataverseProvider(provider.BaseProvider):
         # Find appropriate version of file
         metadata = yield from self._get_data('latest')
         files = metadata if isinstance(metadata, list) else []
-        file_metadata = next(file for file in files if file['name'] == path.name)
+        file_metadata = next(file for file in files if file.name == path.name)
 
         return file_metadata, path.identifier is None
 
@@ -165,6 +190,7 @@ class DataverseProvider(provider.BaseProvider):
             - 'latest-published' for published files
             - None for all data
         """
+        version = version or path.revision
 
         if path.is_root:
             return (yield from self._maybe_fetch_metadata(version=version))
@@ -174,7 +200,7 @@ class DataverseProvider(provider.BaseProvider):
                 item
                 for item in
                 (yield from self._maybe_fetch_metadata(version=version))
-                if item['extra']['fileId'] == path.identifier
+                if item.extra['fileId'] == path.identifier
             )
         except StopIteration:
             raise exceptions.MetadataError(
@@ -193,8 +219,8 @@ class DataverseProvider(provider.BaseProvider):
 
         metadata = yield from self._get_data()
         return [
-            DataverseRevision(item['extra']['datasetVersion']).serialized()
-            for item in metadata if item['extra']['fileId'] == path.identifier
+            DataverseRevision(item.extra['datasetVersion'])
+            for item in metadata if item.extra['fileId'] == path.identifier
         ]
 
     @asyncio.coroutine
@@ -229,7 +255,7 @@ class DataverseProvider(provider.BaseProvider):
             data, self.name, self.doi, version,
         )
 
-        return [item.serialized() for item in dataset_metadata.contents]
+        return [item for item in dataset_metadata.contents]
 
     @asyncio.coroutine
     def _get_all_data(self):

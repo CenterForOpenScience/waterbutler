@@ -39,6 +39,10 @@ class DropboxFolderMetadata(BaseDropboxMetadata, metadata.BaseFolderMetadata):
 
 class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
 
+    def __init__(self, raw, folder, view_url=None):
+        super().__init__(raw, folder)
+        self.view_url = view_url
+
     @property
     def name(self):
         return os.path.split(self.raw['path'])[1]
@@ -62,6 +66,12 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
     @property
     def etag(self):
         return self.raw['rev']
+
+    @property
+    def extra(self):
+        return dict(super().extra, **{
+            'viewUrl': self.view_url
+        })
 
 
 # TODO dates!

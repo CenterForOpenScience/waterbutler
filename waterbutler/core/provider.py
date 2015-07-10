@@ -1,7 +1,7 @@
-import os
 import abc
 import asyncio
 import itertools
+from urllib import parse
 
 import furl
 import aiohttp
@@ -12,14 +12,18 @@ from waterbutler.core import exceptions
 
 def build_url(base, *segments, **query):
     url = furl.furl(base)
-    segments = filter(
+    # Filters return generators
+    # Cast to list to force "spin" it
+    url.path.segments = list(filter(
         lambda segment: segment,
         map(
-            lambda segment: segment.strip('/'),
+            # Furl requires everything to be quoted or not, no mixtures allowed
+            # prequote everything so %signs don't break everything
+            lambda segment: parse.quote(segment.strip('/')),
+            # Include any segments of the original url, effectively list+list but returns a generator
             itertools.chain(url.path.segments, segments)
         )
-    )
-    url.path = os.path.join(*segments)
+    ))
     url.args = query
     return url.url
 
@@ -103,6 +107,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         :param str method: The HTTP method
         :param str url: The url to send the request to
+        :keyword range: An optional tuple (start, end) that is transformed into a Range header
         :keyword expects: An optional tuple of HTTP status codes as integers raises an exception
             if the returned status code is not in it.
         :type expects: tuple of ints
@@ -113,8 +118,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :raises ProviderError: Raised if expects is defined
         """
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
+        range = kwargs.pop('range', None)
         expects = kwargs.pop('expects', None)
         throws = kwargs.pop('throws', exceptions.ProviderError)
+        if range:
+            kwargs['headers']['Range'] = self._build_range_header(range)
         response = yield from aiohttp.request(*args, **kwargs)
         if expects and response.status not in expects:
             raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
@@ -178,10 +186,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if src_path.is_dir:
             return (yield from self._folder_file_op(self.copy, *args, **kwargs))
 
-        return (yield from dest_provider.upload(
-            (yield from self.download(src_path)),
-            dest_path
-        ))
+        download_stream = yield from self.download(src_path)
+
+        if getattr(download_stream, 'name', None):
+            dest_path.rename(download_stream.name)
+
+        return (yield from dest_provider.upload(download_stream, dest_path))
 
     @asyncio.coroutine
     def _folder_file_op(self, func, dest_provider, src_path, dest_path, **kwargs):
@@ -207,10 +217,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
                     func(
                         dest_provider,
                         # TODO figure out a way to cut down on all the requests made here
-                        (yield from self.revalidate_path(src_path, item['name'], folder=item['kind'] == 'folder')),
-                        (yield from dest_provider.revalidate_path(dest_path, item['name'], folder=item['kind'] == 'folder')),
-                        # src_path.child(item['name'], _id=item.get('id'), folder=item['kind'] == 'folder'),
-                        # dest_path.child(item['name'], _id=item.get('id'), folder=item['kind'] == 'folder'),
+                        (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
+                        (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
                         handle_naming=False,
                     )
                 )
@@ -225,7 +233,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if len(pending) != 0:
             finished.pop().result()
 
-        folder['children'] = [
+        folder.children = [
             future.result()[0]  # result is a tuple of (metadata, created)
             for future in finished
         ]
@@ -353,8 +361,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
             for item in metadata:
                 current_path = yield from self.revalidate_path(
                     path,
-                    item['name'],
-                    folder=item['kind'] == 'folder'
+                    item.name,
+                    folder=item.is_folder
                 )
                 if current_path.is_file:
                     names.append(current_path.path.replace(base_path, '', 1))
@@ -372,18 +380,44 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def download(self, **kwargs):
+        """Download a file from this provider.
+
+        :param dict \*\*kwargs: Arguments to be parsed by child classes
+        :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
+        :raises: :class:`waterbutler.core.exceptions.DownloadError`
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def upload(self, stream, **kwargs):
+        """
+
+        :param dict \*\*kwargs: Arguments to be parsed by child classes
+        :rtype: (:class:`waterbutler.core.metadata.BaseFileMetadata`, :class:`bool`)
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def delete(self, **kwargs):
+        """
+
+        :param dict \*\*kwargs: Arguments to be parsed by child classes
+        :rtype: :class:`None`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def metadata(self, **kwargs):
+        """Get metdata about the specified resource from this provider.
+        Will be a :class:`list` if the resource is a directory otherwise an instance of :class:`waterbutler.core.metadata.BaseFileMetadata`
+
+        :param dict \*\*kwargs: Arguments to be parsed by child classes
+        :rtype: :class:`waterbutler.core.metadata.BaseMetadata`
+        :rtype: :class:`list` of :class:`waterbutler.core.metadata.BaseMetadata`
+        :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -397,7 +431,14 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """Create a folder in the current provider
         returns True if the folder was created; False if it already existed
 
-        :rtype FolderMetadata:
-        :raises: waterbutler.ProviderError
+        :rtype: :class:`waterbutler.core.metadata.BaseFolderMetadata`
+        :raises: :class:`waterbutler.core.exceptions.FolderCreationError`
         """
         raise exceptions.ProviderError({'message': 'Folder creation not supported.'}, code=405)
+
+    def _build_range_header(self, slice_tup):
+        start, end = slice_tup
+        return 'bytes={}-{}'.format(
+            '' if start is None else start,
+            '' if end is None else end
+        )

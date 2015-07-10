@@ -11,6 +11,7 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.figshare import metadata
+from waterbutler.providers.figshare import settings
 from waterbutler.providers.figshare import utils as figshare_utils
 
 
@@ -26,7 +27,7 @@ class FigshareProvider:
 
 class BaseFigshareProvider(provider.BaseProvider):
     NAME = 'figshare'
-    BASE_URL = 'http://api.figshare.com/v1/my_data'
+    BASE_URL = settings.BASE_URL
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -43,6 +44,24 @@ class BaseFigshareProvider(provider.BaseProvider):
         signed_headers.update(kwargs.pop('headers', {}))
         kwargs['headers'] = signed_headers
         return (yield from super().make_request(method, signed_uri, *args, **kwargs))
+
+    @asyncio.coroutine
+    def revalidate_path(self, base, path, folder=False):
+        wbpath = base
+        assert base.is_dir
+        path = path.strip('/')
+
+        for entry in (yield from self.metadata(base)):
+            if entry.name == path:
+                # base may when refering to a file will have a article id as well
+                # This handles that case so the resulting path is actually correct
+                names, ids = map(lambda x: getattr(entry, x).strip('/').split('/'), ('materialized', 'path'))
+                while names and ids:
+                    wbpath = wbpath.child(names.pop(0), _id=ids.pop(0))
+                wbpath._is_folder = entry.kind == 'folder'
+                return wbpath
+
+        return base.child(path, folder=False)
 
 
 class FigshareProjectProvider(BaseFigshareProvider):
@@ -111,7 +130,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         )
         data = yield from response.json()
         return data
-        return metadata.FigshareProjectMetadata(data).serialized()
+        return metadata.FigshareProjectMetadata(data)
 
     @asyncio.coroutine
     def _list_articles(self):
@@ -152,6 +171,9 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
     @asyncio.coroutine
     def download(self, path, **kwargs):
+        if path.identifier is None:
+            raise exceptions.NotFoundError(str(path))
+
         provider = yield from self._make_article_provider(path.parts[1].identifier)
         return (yield from provider.download(path, **kwargs))
 
@@ -271,7 +293,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
             metadata_kwargs = {'parent': parent, 'child': self.child}
             if defined_type:
                 item = item['files'][0]
-        return metadata_class(item, **metadata_kwargs).serialized()
+        return metadata_class(item, **metadata_kwargs)
 
     @asyncio.coroutine
     def about(self):
@@ -291,7 +313,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
             raise exceptions.NotFoundError(str(path))
 
         file_metadata = yield from self.metadata(path)
-        download_url = file_metadata['extra']['downloadUrl']
+        download_url = file_metadata.extra['downloadUrl']
         if download_url is None:
             raise exceptions.DownloadError(
                 'Cannot download private files',
@@ -326,7 +348,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
         )
 
         data = yield from response.json()
-        return metadata.FigshareFileMetadata(data, parent=article_json, child=self.child).serialized(), True
+        return metadata.FigshareFileMetadata(data, parent=article_json, child=self.child), True
 
     @asyncio.coroutine
     def metadata(self, path, **kwargs):

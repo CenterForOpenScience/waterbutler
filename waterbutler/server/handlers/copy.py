@@ -1,7 +1,8 @@
 import time
 
+import tornado.gen
+
 from waterbutler import tasks
-from waterbutler.server import utils
 from waterbutler.server.handlers import core
 
 
@@ -11,11 +12,7 @@ class CopyHandler(core.BaseCrossProviderHandler):
         'POST': 'copy'
     }
 
-    @utils.coroutine
-    def prepare(self):
-        yield from super().prepare()
-
-    @utils.coroutine
+    @tornado.gen.coroutine
     def post(self):
         if not self.source_provider.can_intra_copy(self.destination_provider, self.json['source']['path']):
             result = yield from tasks.copy.adelay({
@@ -47,7 +44,10 @@ class CopyHandler(core.BaseCrossProviderHandler):
                 )
             )
 
-            self._send_hook('copy', metadata)
+        if isinstance(metadata, list):
+            metadata = [m.serialized() for m in metadata]
+        else:
+            metadata = metadata.serialized()
 
         if created:
             self.set_status(201)
@@ -55,3 +55,6 @@ class CopyHandler(core.BaseCrossProviderHandler):
             self.set_status(200)
 
         self.write(metadata)
+
+        if not self.source_provider.can_intra_move(self.destination_provider, self.json['source']['path']):
+            self._send_hook('move', metadata)

@@ -1,4 +1,8 @@
+import humanfriendly
+
+from waterbutler.providers.figshare import settings
 from waterbutler.core import metadata
+from waterbutler.core.provider import build_url
 
 
 class BaseFigshareMetadata:
@@ -8,13 +12,18 @@ class BaseFigshareMetadata:
         return 'figshare'
 
 
-class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
+class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
 
     def __init__(self, raw, parent, child):
         super().__init__(raw)
         self.parent = parent
         self.article_id = parent['article_id']
         self.child = child
+
+    @property
+    def view_url(self):
+        segments = ('articles', self.parent['title'], str(self.article_id))
+        return build_url(settings.VIEW_URL, *segments)
 
     @property
     def kind(self):
@@ -31,8 +40,21 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
         return '/{0}'.format(self.raw['id'])
 
     @property
+    def materialized_path(self):
+        if self.child:
+            return '/{0}/{1}'.format(self.parent['title'], self.name)
+        return '/{0}'.format(self.name)
+
+    @property
+    def content_type(self):
+        return self.raw.get('mime_type')
+
+    @property
     def size(self):
-        return self.raw.get('size')
+        size = self.raw.get('size')
+        if type(size) == str:
+            return humanfriendly.parse_size(size)
+        return size
 
     @property
     def modified(self):
@@ -60,6 +82,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
             'status': self.parent['status'].lower(),
             'downloadUrl': self.raw.get('download_url'),
             'canDelete': self.can_delete,
+            'viewUrl': self.view_url,
         }
 
 
@@ -76,6 +99,10 @@ class FigshareArticleMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
     @property
     def path(self):
         return '/{0}/'.format(self.raw.get('article_id'))
+
+    @property
+    def materialized_path(self):
+        return '/{0}/'.format(self.name)
 
     @property
     def size(self):

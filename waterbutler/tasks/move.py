@@ -42,7 +42,7 @@ def move(src_bundle, dest_bundle, callback_url, auth, start_time=None, **kwargs)
         raise  # Ensure sentry sees this
     else:
         logger.info('Move succeeded')
-        data.update({'destination': dict(src_bundle, **metadata)})
+        data.update({'destination': dict(src_bundle, **metadata.serialized())})
     finally:
         resp = yield from utils.send_signed_request('PUT', callback_url, dict(data, **{
             'time': time.time() + 60,

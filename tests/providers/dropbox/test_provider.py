@@ -7,6 +7,7 @@ import io
 import aiohttpretty
 
 from waterbutler.core import streams
+from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
@@ -110,6 +111,15 @@ def file_metadata():
     }
 
 
+@pytest.fixture
+def shares_metadata():
+    return {
+        "url": "https://db.tt/c0mFuu1Y",
+        "expires": "Tue, 01 Jan 2030 00:00:00 +0000",
+        "visibility": "PUBLIC"
+    }
+
+
 class TestValidatePath:
 
     @async
@@ -168,7 +178,7 @@ class TestCRUD:
         aiohttpretty.register_json_uri('PUT', url, status=200, body=file_metadata)
 
         metadata, created = yield from provider.upload(file_stream, path)
-        expected = DropboxFileMetadata(file_metadata, provider.folder).serialized()
+        expected = DropboxFileMetadata(file_metadata, provider.folder)
 
         assert created is True
         assert metadata == expected
@@ -192,30 +202,34 @@ class TestMetadata:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_metadata(self, provider, folder_metadata):
+    def test_metadata(self, provider, folder_metadata, shares_metadata):
         path = yield from provider.validate_path('/')
         url = provider.build_url('metadata', 'auto', path.full_path)
+        share_link = provider.build_url('shares', 'auto', path.full_path)
         aiohttpretty.register_json_uri('GET', url, body=folder_metadata)
+        aiohttpretty.register_json_uri('POST', share_link, body=shares_metadata)
         result = yield from provider.metadata(path)
 
         assert isinstance(result, list)
         assert len(result) == 1
-        assert result[0]['kind'] == 'file'
-        assert result[0]['name'] == 'flower.jpg'
-        assert result[0]['path'] == '/flower.jpg'
+        assert result[0].kind == 'file'
+        assert result[0].name == 'flower.jpg'
+        assert result[0].path == '/flower.jpg'
 
     @async
     @pytest.mark.aiohttpretty
-    def test_metadata_root_file(self, provider, file_metadata):
+    def test_metadata_root_file(self, provider, file_metadata, shares_metadata):
         path = WaterButlerPath('/pfile', prepend=provider.folder)
         url = provider.build_url('metadata', 'auto', path.full_path)
+        share_link = provider.build_url('shares', 'auto', path.full_path)
         aiohttpretty.register_json_uri('GET', url, body=file_metadata)
+        aiohttpretty.register_json_uri('POST', share_link, body=shares_metadata)
         result = yield from provider.metadata(path)
 
-        assert isinstance(result, dict)
-        assert result['kind'] == 'file'
-        assert result['name'] == 'Getting_Started.pdf'
-        assert result['path'] == '/Getting_Started.pdf'
+        assert isinstance(result, metadata.BaseMetadata)
+        assert result.kind == 'file'
+        assert result.name == 'Getting_Started.pdf'
+        assert result.path == '/Getting_Started.pdf'
 
     @async
     @pytest.mark.aiohttpretty
@@ -286,8 +300,8 @@ class TestCreateFolder:
 
         resp = yield from provider.create_folder(path)
 
-        assert resp['kind'] == 'folder'
-        assert resp['name'] == 'newfolder'
+        assert resp.kind == 'folder'
+        assert resp.name == 'newfolder'
 
 
 class TestOperations:

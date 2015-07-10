@@ -82,7 +82,7 @@ class BoxProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def revalidate_path(self, base, path, folder=None):
-        #TODO Research the search api endpoint
+        # TODO Research the search api endpoint
         resp = yield from self.make_request(
             'GET',
             self.build_url('folders', base.identifier, 'items', fields='id,name,type'),
@@ -181,7 +181,7 @@ class BoxProvider(provider.BaseProvider):
         return super().make_request(*args, **kwargs)
 
     @asyncio.coroutine
-    def download(self, path, revision=None, **kwargs):
+    def download(self, path, revision=None, range=None, **kwargs):
         if path.identifier is None:
             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
 
@@ -192,7 +192,8 @@ class BoxProvider(provider.BaseProvider):
         resp = yield from self.make_request(
             'GET',
             self.build_url('files', path.identifier, 'content', **query),
-            expects=(200, ),
+            range=range,
+            expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 
@@ -224,7 +225,7 @@ class BoxProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        return BoxFileMetadata(data['entries'][0], path).serialized(), path.identifier is None
+        return BoxFileMetadata(data['entries'][0], path), path.identifier is None
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
@@ -253,9 +254,9 @@ class BoxProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):
-        #from https://developers.box.com/docs/#files-view-versions-of-a-file :
-        #Alert: Versions are only tracked for Box users with premium accounts.
-        #Few users will have a premium account, return only current if not
+        # from https://developers.box.com/docs/#files-view-versions-of-a-file :
+        # Alert: Versions are only tracked for Box users with premium accounts.
+        # Few users will have a premium account, return only current if not
         curr = yield from self.metadata(path, raw=True)
         response = yield from self.make_request(
             'GET',
@@ -267,10 +268,7 @@ class BoxProvider(provider.BaseProvider):
 
         revisions = data['entries'] if response.status == http.client.OK else []
 
-        return [
-            BoxRevision(each).serialized()
-            for each in [curr] + revisions
-        ]
+        return [BoxRevision(each) for each in [curr] + revisions]
 
     @asyncio.coroutine
     def create_folder(self, path, **kwargs):
@@ -296,10 +294,19 @@ class BoxProvider(provider.BaseProvider):
         if resp.status == 409:
             raise exceptions.FolderNamingConflict(str(path))
 
-        return BoxFolderMetadata(
-            (yield from resp.json()),
-            path
-        ).serialized()
+        return BoxFolderMetadata((yield from resp.json()), path)
+
+    @asyncio.coroutine
+    def get_shared_link(self, path):
+        resp = yield from self.make_request(
+            'PUT',
+            self.build_url('files', path.identifier),
+            data='{"shared_link": {}}',
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
+        data = yield from resp.json()
+        return data['shared_link']['url']
 
     def _assert_child(self, paths, target=None):
         if self.folder == 0:
@@ -336,7 +343,12 @@ class BoxProvider(provider.BaseProvider):
         if not data:
             raise exceptions.NotFoundError(str(path))
 
-        return data if raw else BoxFileMetadata(data, path).serialized()
+        if data['shared_link']:
+            # 'shared_link' key can be None if a shared link for the file does not already exist
+            view_url = data['shared_link']['url']
+        else:
+            view_url = yield from self.get_shared_link(path)
+        return data if raw else BoxFileMetadata(data, path, view_url)
 
     @asyncio.coroutine
     def _get_folder_meta(self, path, raw=False, folder=False):
@@ -370,7 +382,7 @@ class BoxProvider(provider.BaseProvider):
             serializer = BoxFolderMetadata
         else:
             serializer = BoxFileMetadata
-        return serializer(item, path).serialized()
+        return serializer(item, path)
 
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)

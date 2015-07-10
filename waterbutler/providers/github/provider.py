@@ -22,9 +22,11 @@ GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 
 class GitHubPathPart(path.WaterButlerPathPart):
     def increment_name(self, _id=None):
+        """Overridden to preserve branch from _id upon incrementing"""
         self._id = _id or (self._id[0], None)
         self._count += 1
         return self
+
 
 class GitHubPath(path.WaterButlerPath):
     PART_CLASS = GitHubPathPart
@@ -33,6 +35,7 @@ class GitHubPath(path.WaterButlerPath):
 class GitHubProvider(provider.BaseProvider):
     NAME = 'github'
     BASE_URL = settings.BASE_URL
+    VIEW_URL = settings.VIEW_URL
 
     @staticmethod
     def is_sha(ref):
@@ -62,7 +65,7 @@ class GitHubProvider(provider.BaseProvider):
 
         path = GitHubPath(path)
 
-        #TODO Validate that filesha is a valid sha
+        # TODO Validate that filesha is a valid sha
         path.parts[-1]._id = (
             kwargs.get('branch') or kwargs.get('ref') or self.default_branch,
             kwargs.get('fileSha')
@@ -89,6 +92,10 @@ class GitHubProvider(provider.BaseProvider):
         segments = ('repos', self.owner, self.repo) + segments
         return self.build_url(*segments, **query)
 
+    def build_view_url(self, *segments):
+        segments = (self.owner, self.repo, 'blob') + segments
+        return provider.build_url(settings.VIEW_URL, *segments)
+
     def can_intra_move(self, other, path=None):
         return self.can_intra_copy(other, path=path)
 
@@ -114,7 +121,7 @@ class GitHubProvider(provider.BaseProvider):
         :param dict kwargs: Ignored
         '''
         data = yield from self.metadata(path)
-        file_sha = path.identifier[1] or data['extra']['fileSha']
+        file_sha = path.identifier[1] or data.extra['fileSha']
 
         resp = yield from self.make_request(
             'GET',
@@ -124,18 +131,37 @@ class GitHubProvider(provider.BaseProvider):
             throws=exceptions.DownloadError,
         )
 
-        return streams.ResponseStreamReader(resp, size=data['size'])
+        return streams.ResponseStreamReader(resp, size=data.size)
 
     @asyncio.coroutine
     def upload(self, stream, path, message=None, branch=None, **kwargs):
         assert self.name is not None
         assert self.email is not None
 
-        exists = yield from self.exists(path)
-        latest_sha = yield from self._get_latest_sha(ref=path.identifier[0])
+        try:
+            exists = yield from self.exists(path)
+        except exceptions.ProviderError as e:
+            if e.data.get('message') == 'Git Repository is empty.':
+                exists = False
+                resp = yield from self.make_request(
+                    'PUT',
+                    self.build_repo_url('contents', '.gitkeep'),
+                    data=json.dumps({
+                        'content': '',
+                        'path': '.gitkeep',
+                        'committer': self.committer,
+                        'branch': path.identifier[0],
+                        'message': 'Initial commit'
+                    }),
+                    expects=(201,),
+                    throws=exceptions.CreateFolderError
+                )
+                data = yield from resp.json()
+                latest_sha = data['commit']['sha']
+        else:
+            latest_sha = yield from self._get_latest_sha(ref=path.identifier[0])
 
         blob = yield from self._create_blob(stream)
-
         tree = yield from self._create_tree({
             'base_tree': latest_sha,
             'tree': [{
@@ -161,7 +187,7 @@ class GitHubProvider(provider.BaseProvider):
             'path': path.path,
             'sha': blob['sha'],
             'size': stream.size,
-        }, commit=commit).serialized(), not exists
+        }, commit=commit), not exists
 
     @asyncio.coroutine
     def delete(self, path, sha=None, message=None, branch=None, **kwargs):
@@ -196,7 +222,7 @@ class GitHubProvider(provider.BaseProvider):
         )
 
         return [
-            GitHubRevision(item).serialized()
+            GitHubRevision(item)
             for item in (yield from resp.json())
         ]
 
@@ -236,14 +262,14 @@ class GitHubProvider(provider.BaseProvider):
         data['content']['name'] = path.name
         data['content']['path'] = data['content']['path'].replace('.gitkeep', '')
 
-        return GitHubFolderContentMetadata(data['content'], commit=data['commit']).serialized()
+        return GitHubFolderContentMetadata(data['content'], commit=data['commit'])
 
     @asyncio.coroutine
     def _delete_file(self, path, message=None, **kwargs):
         if path.identifier[1]:
             sha = path.identifier
         else:
-            sha = (yield from self.metadata(path))['extra']['fileSha']
+            sha = (yield from self.metadata(path)).extra['fileSha']
 
         if not sha:
             raise exceptions.MetadataError('A sha is required for deleting')
@@ -465,41 +491,21 @@ class GitHubProvider(provider.BaseProvider):
         # the operation using the git/trees api which requires a sha.
 
         if not (self._is_sha(path.identifier[0]) or recursive):
-            data = yield from self._fetch_contents(path, ref=path.identifier[0])
+            try:
+                data = yield from self._fetch_contents(path, ref=path.identifier[0])
+            except exceptions.MetadataError as e:
+                if e.data.get('message') == 'This repository is empty.':
+                    data = []
+                else:
+                    raise
 
             ret = []
             for item in data:
                 if item['type'] == 'dir':
-                    ret.append(GitHubFolderContentMetadata(item).serialized())
+                    ret.append(GitHubFolderContentMetadata(item))
                 else:
-                    ret.append(GitHubFileContentMetadata(item).serialized())
+                    ret.append(GitHubFileContentMetadata(item))
             return ret
-
-        #TODO?
-        # if self._is_sha(ref):
-        #     tree_sha = ref
-        # elif path.parent.is_root:
-        #     branch_data = yield from self._fetch_branch(self.identifier)
-        #     tree_sha = branch_data['commit']['commit']['tree']['sha']
-        # else:
-        #     data = yield from self._fetch_contents(parent_path, ref=ref)
-        #     try:
-        #         tree_sha = next(x for x in data if x['path'] == path.path)['sha']
-        #     except StopIteration:
-        #         raise exceptions.MetadataError(
-        #             'Could not find folder \'{0}\''.format(path),
-        #             code=404,
-        #         )
-
-        # data = yield from self._fetch_tree(tree_sha, recursive=recursive)
-
-        # ret = []
-        # for item in data['tree']:
-        #     if item['type'] == 'tree':
-        #         ret.append(GitHubFolderTreeMetadata(item, folder=path.path).serialized())
-        #     else:
-        #         ret.append(GitHubFileTreeMetadata(item, folder=path.path).serialized())
-        # return ret
 
     @asyncio.coroutine
     def _metadata_file(self, path, ref=None, **kwargs):
@@ -509,6 +515,7 @@ class GitHubProvider(provider.BaseProvider):
             latest = path.identifier[0]
 
         tree = yield from self._fetch_tree(latest, recursive=True)
+        view_url = self.build_view_url(path.identifier[0], path.path)
 
         try:
             data = next(
@@ -516,7 +523,7 @@ class GitHubProvider(provider.BaseProvider):
                 if x['path'] == path.path
             )
         except StopIteration:
-            raise exceptions.MetadataError(';', code=404)
+            raise exceptions.NotFoundError(str(path))
 
         if isinstance(data, list):
             raise exceptions.MetadataError(
@@ -524,7 +531,7 @@ class GitHubProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return GitHubFileTreeMetadata(data).serialized()
+        return GitHubFileTreeMetadata(data, view_url=view_url)
 
     @asyncio.coroutine
     def _get_latest_sha(self, ref='master'):
@@ -613,19 +620,19 @@ class GitHubProvider(provider.BaseProvider):
         )
 
         if dest_path.is_file:
-            return GitHubFileTreeMetadata(target, commit=commit).serialized(), not exists
+            return GitHubFileTreeMetadata(target, commit=commit), not exists
 
         folder = GitHubFolderTreeMetadata({
             'path': dest_path.path.strip('/')
-        }, commit=commit).serialized()
+        }, commit=commit)
 
         folder['children'] = []
 
         for item in keep:
             item['path'] = item['path'].replace(src_path.path, dest_path.path, 1)
             if item['type'] == 'tree':
-                folder['children'].append(GitHubFolderTreeMetadata(item).serialized())
+                folder['children'].append(GitHubFolderTreeMetadata(item))
             else:
-                folder['children'].append(GitHubFileTreeMetadata(item).serialized())
+                folder['children'].append(GitHubFileTreeMetadata(item))
 
         return folder, exists

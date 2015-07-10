@@ -295,7 +295,7 @@ class TestCRUD:
         metadata, created = yield from provider.upload(file_stream, path)
 
         entry = native_file_metadata['datafile']
-        expected = DataverseFileMetadata(entry, 'latest').serialized()
+        expected = DataverseFileMetadata(entry, 'latest')
 
         assert created is True
         assert metadata == expected
@@ -321,7 +321,7 @@ class TestCRUD:
         metadata, created = yield from provider.upload(file_stream, path)
 
         entry = native_file_metadata['datafile']
-        expected = DataverseFileMetadata(entry, 'latest').serialized()
+        expected = DataverseFileMetadata(entry, 'latest')
 
         assert metadata == expected
         assert created is False
@@ -369,11 +369,11 @@ class TestMetadata:
         result = yield from provider.metadata(path, version='latest')
 
         assert len(result) == 3
-        assert result[0]['provider'] == 'dataverse'
-        assert result[0]['kind'] == 'file'
-        assert result[0]['name'] == 'UnZip.java'
-        assert result[0]['path'] == '/19'
-        assert result[0]['extra']['fileId'] == '19'
+        assert result[0].provider == 'dataverse'
+        assert result[0].kind == 'file'
+        assert result[0].name == 'UnZip.java'
+        assert result[0].path == '/19'
+        assert result[0].extra['fileId'] == '19'
 
     @async
     @pytest.mark.aiohttpretty
@@ -395,11 +395,11 @@ class TestMetadata:
         result = yield from provider.metadata(path, version='latest-published')
 
         assert len(result) == 3
-        assert result[0]['provider'] == 'dataverse'
-        assert result[0]['kind'] == 'file'
-        assert result[0]['name'] == 'UnZip.java'
-        assert result[0]['path'] == '/19'
-        assert result[0]['extra']['fileId'] == '19'
+        assert result[0].provider == 'dataverse'
+        assert result[0].kind == 'file'
+        assert result[0].name == 'UnZip.java'
+        assert result[0].path == '/19'
+        assert result[0].extra['fileId'] == '19'
 
     @async
     @pytest.mark.aiohttpretty

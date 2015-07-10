@@ -7,6 +7,7 @@ import xmltodict
 
 from boto.s3.connection import S3Connection
 from boto.s3.connection import OrdinaryCallingFormat
+from boto.s3.connection import SubdomainCallingFormat
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -38,8 +39,17 @@ class S3Provider(provider.BaseProvider):
         :param dict settings: Dict containing `bucket`
         """
         super().__init__(auth, credentials, settings)
+
+        # If a bucket has capital letters in the name
+        # ordinary calling format MUST be used
+        if settings['bucket'] != settings['bucket'].lower():
+            calling_format = OrdinaryCallingFormat()
+        else:
+            # if a bucket is out of the us Subdomain calling format MUST be used
+            calling_format = SubdomainCallingFormat()
+
         self.connection = S3Connection(credentials['access_key'],
-                credentials['secret_key'], calling_format=OrdinaryCallingFormat())
+                credentials['secret_key'], calling_format=calling_format)
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
 
     @asyncio.coroutine
@@ -77,7 +87,7 @@ class S3Provider(provider.BaseProvider):
         return (yield from dest_provider.metadata(dest_path)), not exists
 
     @asyncio.coroutine
-    def download(self, path, accept_url=False, version=None, **kwargs):
+    def download(self, path, accept_url=False, version=None, range=None, **kwargs):
         """Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from S3 is not 200
 
@@ -113,7 +123,8 @@ class S3Provider(provider.BaseProvider):
         resp = yield from self.make_request(
             'GET',
             url,
-            expects=(200, ),
+            range=range,
+            expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 
@@ -182,7 +193,7 @@ class S3Provider(provider.BaseProvider):
             versions = [versions]
 
         return [
-            S3Revision(item).serialized()
+            S3Revision(item)
             for item in versions
             if item['Key'] == path.path
         ]
@@ -216,9 +227,7 @@ class S3Provider(provider.BaseProvider):
             throws=exceptions.CreateFolderError
         )
 
-        return S3FolderMetadata({
-            'Prefix': path.path
-        }).serialized()
+        return S3FolderMetadata({'Prefix': path.path})
 
     @asyncio.coroutine
     def _metadata_file(self, path):
@@ -228,7 +237,7 @@ class S3Provider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
-        return S3FileMetadataHeaders(path.path, resp.headers).serialized()
+        return S3FileMetadataHeaders(path.path, resp.headers)
 
     @asyncio.coroutine
     def _metadata_folder(self, path):
@@ -242,12 +251,15 @@ class S3Provider(provider.BaseProvider):
 
         contents = yield from resp.read_and_close()
 
-        parsed = xmltodict.parse(contents)['ListBucketResult']
+        parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
 
         contents = parsed.get('Contents', [])
         prefixes = parsed.get('CommonPrefixes', [])
 
-        if not contents and not prefixes:
+        if not contents and not prefixes and not path.is_root:
+            # If contents and prefixes are empty then this "folder"
+            # must exist as a key with a / at the end of the name
+            # if the path is root there is no need to test if it exists
             yield from self.make_request(
                 'HEAD',
                 self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
@@ -262,7 +274,7 @@ class S3Provider(provider.BaseProvider):
             prefixes = [prefixes]
 
         items = [
-            S3FolderMetadata(item).serialized()
+            S3FolderMetadata(item)
             for item in prefixes
         ]
 
@@ -271,8 +283,8 @@ class S3Provider(provider.BaseProvider):
                 continue
 
             if content['Key'].endswith('/'):
-                items.append(S3FolderKeyMetadata(content).serialized())
+                items.append(S3FolderKeyMetadata(content))
             else:
-                items.append(S3FileMetadata(content).serialized())
+                items.append(S3FileMetadata(content))
 
         return items

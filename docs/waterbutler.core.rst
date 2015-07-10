@@ -1,6 +1,14 @@
 waterbutler.core package
 ========================
 
+waterbutler.core.auth module
+----------------------------------
+
+.. automodule:: waterbutler.core.auth
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 waterbutler.core.exceptions module
 ----------------------------------
 
