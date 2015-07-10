@@ -76,5 +76,6 @@ class OsfStorageRevisionMetadata(BaseOsfStorageMetadata, metadata.BaseFileRevisi
         return {
             'user': self.raw['user'],
             'downloads': self.raw['downloads'],
-            'md5': self.raw['md5']
+            'md5': self.raw['md5'],
+            'sha256': self.raw['sha256'],
         }

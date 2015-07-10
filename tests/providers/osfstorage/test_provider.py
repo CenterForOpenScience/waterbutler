@@ -111,7 +111,8 @@ def upload_response():
             'downloads': 10,
             'version': 8,
             'path': '/dfl893b1pdn11kd28b',
-            'md5': 'abcdabcdabcdabcdabcdabcdabcd'
+            'md5': 'abcdabcdabcdabcdabcdabcdabcd',
+            'sha256': '123123123123123123'
         }
     }
 
@@ -179,7 +180,8 @@ def test_provider_metadata(monkeypatch, provider, mock_folder_path):
             'kind': 'file',
             'version': 10,
             'downloads': 1,
-            'md5': '1234'
+            'md5': '1234',
+            'sha256': '2345',
         },
         {
             'name': 'bar',
@@ -187,7 +189,8 @@ def test_provider_metadata(monkeypatch, provider, mock_folder_path):
             'kind': 'file',
             'version': 10,
             'downloads': 1,
-            'md5': '1234'
+            'md5': '1234',
+            'sha256': '2345',
         },
         {
             'name': 'baz',
@@ -255,7 +258,7 @@ class TestUploads:
         inner_provider.move.return_value = ({}, True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
-        aiohttpretty.register_json_uri('POST', url, status=200, body={'data': {'downloads': 10, 'version': 8, 'path': '/24601', 'md5': '1234'}})
+        aiohttpretty.register_json_uri('POST', url, status=200, body={'data': {'downloads': 10, 'version': 8, 'path': '/24601', 'md5': '1234', 'sha256': '2345'}})
 
         res, created = yield from provider.upload(file_stream, path)
 
@@ -283,7 +286,7 @@ class TestUploads:
         inner_provider.move.return_value = ({}, True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
-        aiohttpretty.register_json_uri('POST', url, status=201, body={'version': 'versionpk', 'data': {'version': 42, 'downloads': 30, 'path': '/alkjdaslke09', 'md5': 'abcd'}})
+        aiohttpretty.register_json_uri('POST', url, status=201, body={'version': 'versionpk', 'data': {'version': 42, 'downloads': 30, 'path': '/alkjdaslke09', 'md5': 'abcd', 'sha256': 'bcde'}})
 
         monkeypatch.setattr(basepath.format('backup.main'), mock_backup)
         monkeypatch.setattr(basepath.format('parity.main'), mock_parity)
