@@ -87,7 +87,7 @@ class S3Provider(provider.BaseProvider):
         return (yield from dest_provider.metadata(dest_path)), not exists
 
     @asyncio.coroutine
-    def download(self, path, accept_url=False, version=None, **kwargs):
+    def download(self, path, accept_url=False, version=None, range=None, **kwargs):
         """Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from S3 is not 200
 
@@ -123,7 +123,8 @@ class S3Provider(provider.BaseProvider):
         resp = yield from self.make_request(
             'GET',
             url,
-            expects=(200, ),
+            range=range,
+            expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 

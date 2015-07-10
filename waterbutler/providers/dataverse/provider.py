@@ -89,7 +89,7 @@ class DataverseProvider(provider.BaseProvider):
         return sum(self._metadata_cache.values(), [])
 
     @asyncio.coroutine
-    def download(self, path, revision=None, **kwargs):
+    def download(self, path, revision=None, range=None, **kwargs):
         """Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from Dataverse is not 200
 
@@ -109,7 +109,8 @@ class DataverseProvider(provider.BaseProvider):
         resp = yield from self.make_request(
             'GET',
             self.build_url(settings.DOWN_BASE_URL, path.identifier, key=self.token),
-            expects=(200, ),
+            range=range,
+            expects=(200, 206),
             throws=exceptions.DownloadError,
         )
         return streams.ResponseStreamReader(resp)

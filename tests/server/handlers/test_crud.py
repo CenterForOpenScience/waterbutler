@@ -51,6 +51,30 @@ class TestCrudHandler(utils.HandlerTestCase):
         assert kwargs.get('action') == 'download'
 
     @testing.gen_test
+    def test_download_stream_range(self):
+        data = b'freddie brian john roger'
+        stream = streams.StringStream(data)
+        stream.name = 'foo'
+        stream.partial = True
+        stream.content_range = '0-{}/{}'.format(len(data) - 1, len(data))
+        stream.content_type = 'application/octet-stream'
+
+        self.mock_provider.download = utils.MockCoroutine(return_value=stream)
+
+        resp = yield self.http_client.fetch(
+            self.get_url('/file?provider=queenhub&path=/freddie.png'),
+            headers={'Range': 'bytes=0-'}
+        )
+
+        assert resp.code == 206
+        assert resp.body == data
+        calls = self.mock_provider.download.call_args_list
+        assert len(calls) == 1
+        args, kwargs = calls[0]
+        assert kwargs.get('action') == 'download'
+        assert kwargs.get('range') == (0, None)
+
+    @testing.gen_test
     def test_download_content_type_switches(self):
         """waterbutler.core.mime_types contains content type
         overrides.

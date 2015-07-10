@@ -77,7 +77,7 @@ class CloudFilesProvider(provider.BaseProvider):
 
     @ensure_connection
     @asyncio.coroutine
-    def download(self, path, accept_url=False, **kwargs):
+    def download(self, path, accept_url=False, range=None, **kwargs):
         """Returns a ResponseStreamReader (Stream) for the specified path
         :param str path: Path to the object you want to download
         :param dict **kwargs: Additional arguments that are ignored
@@ -93,7 +93,8 @@ class CloudFilesProvider(provider.BaseProvider):
         resp = yield from self.make_request(
             'GET',
             self.sign_url(path),
-            expects=(200, ),
+            range=range,
+            expects=(200, 206),
             throws=exceptions.DownloadError,
         )
         return streams.ResponseStreamReader(resp)

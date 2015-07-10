@@ -131,7 +131,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
 
     @asyncio.coroutine
-    def download(self, path, revision=None, **kwargs):
+    def download(self, path, revision=None, range=None, **kwargs):
         if revision and not revision.endswith(settings.DRIVE_IGNORE_VERSION):
             # Must make additional request to look up download URL for revision
             response = yield from self.make_request(
@@ -147,7 +147,8 @@ class GoogleDriveProvider(provider.BaseProvider):
         download_resp = yield from self.make_request(
             'GET',
             data.get('downloadUrl') or drive_utils.get_export_link(data),
-            expects=(200, ),
+            range=range,
+            expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 

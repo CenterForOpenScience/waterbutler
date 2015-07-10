@@ -133,7 +133,7 @@ class DropboxProvider(provider.BaseProvider):
         return folder, True
 
     @asyncio.coroutine
-    def download(self, path, revision=None, **kwargs):
+    def download(self, path, revision=None, range=None, **kwargs):
         if revision:
             url = self._build_content_url('files', 'auto', path.full_path, rev=revision)
         else:
@@ -143,7 +143,8 @@ class DropboxProvider(provider.BaseProvider):
         resp = yield from self.make_request(
             'GET',
             url,
-            expects=(200, ),
+            range=range,
+            expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 

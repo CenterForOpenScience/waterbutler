@@ -40,6 +40,7 @@ class FileSystemProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def download(self, path, revision=None, **kwargs):
+        # TODO implement range requests
         if not os.path.exists(path.full_path):
             raise exceptions.DownloadError(
                 'Could not retrieve file \'{0}\''.format(path),
