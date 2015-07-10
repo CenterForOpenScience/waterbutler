@@ -145,7 +145,11 @@ class S3Provider(provider.BaseProvider):
 
         resp = yield from self.make_request(
             'PUT',
-            self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'PUT'),
+            self.bucket.new_key(path.name).generate_url(
+                settings.TEMP_URL_SECS,
+                'PUT',
+                encrypt_key=self.settings.get('encrypt_uploads', False)
+            ),
             data=stream,
             headers={'Content-Length': str(stream.size)},
             expects=(200, 201, ),
