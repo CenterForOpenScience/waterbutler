@@ -103,8 +103,8 @@ class FileSystemProvider(provider.BaseProvider):
             return FileSystemFileMetadata(metadata, self.folder)
 
     @asyncio.coroutine
-    def web_view_link(self, path, **kwargs):
-        raise exceptions.WebViewError(str(path))
+    def web_view(self, path, **kwargs):
+        raise exceptions.UnsupportedError('Web view links are not supported for filesystem.', code=405)
 
     def _metadata_file(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)

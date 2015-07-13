@@ -81,7 +81,7 @@ class MockProvider1(provider.BaseProvider):
         return b''
 
     @asyncio.coroutine
-    def web_view_link(self, **kwargs):
+    def web_view(self, **kwargs):
         return None
 
 

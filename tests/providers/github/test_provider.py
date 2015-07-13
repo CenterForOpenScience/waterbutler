@@ -777,9 +777,9 @@ class TestWebView:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_get_web_view_link(self, provider, settings):
+    def test_web_view(self, provider, settings):
         path = yield from provider.validate_path('/file.txt')
-        result = yield from provider.web_view_link(path)
+        result = yield from provider.web_view(path)
         segments = (settings['owner'], settings['repo'], 'blob', path.identifier[0], path.path)
         expected = build_url(github_settings.VIEW_URL, *segments)
         assert result == expected

@@ -547,10 +547,10 @@ class TestMetadata:
 class TestWebView:
 
     @async
-    def test_get_web_view_link(self, connected_provider):
+    def test_web_view(self, connected_provider):
         path = WaterButlerPath('/similar.file')
-        with pytest.raises(exceptions.WebViewError):
-            yield from connected_provider.web_view_link(path)
+        with pytest.raises(exceptions.UnsupportedError):
+            yield from connected_provider.web_view(path)
 
 
 class TestOperations:

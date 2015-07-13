@@ -466,7 +466,7 @@ class TestWebView:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_get_web_view_link(self, provider, file_metadata):
+    def test_web_view(self, provider, file_metadata):
         item = file_metadata['entries'][0]
         path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
 
@@ -474,7 +474,7 @@ class TestWebView:
         aiohttpretty.register_json_uri('GET', file_url, body=item)
         aiohttpretty.register_json_uri('PUT', file_url, body=item)
 
-        result = yield from provider.web_view_link(path)
+        result = yield from provider.web_view(path)
         expected = item['shared_link']['url']
         assert result == expected
 

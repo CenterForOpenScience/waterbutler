@@ -183,8 +183,8 @@ class CloudFilesProvider(provider.BaseProvider):
             return (yield from self._metadata_file(path, **kwargs))
 
     @asyncio.coroutine
-    def web_view_link(self, path, **kwargs):
-        raise exceptions.WebViewError(str(path))
+    def web_view(self, path, **kwargs):
+        raise exceptions.UnsupportedError('Web view links are not supported for cloudfiles.', code=405)
 
     def build_url(self, path, _endpoint=None, **query):
         """Build the url for the specified object

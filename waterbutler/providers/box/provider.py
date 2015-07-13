@@ -253,13 +253,13 @@ class BoxProvider(provider.BaseProvider):
         return (yield from self._get_folder_meta(path, raw=raw, folder=folder))
 
     @asyncio.coroutine
-    def web_view_link(self, path, **kwargs):
+    def web_view(self, path, **kwargs):
         resp = yield from self.make_request(
             'PUT',
             self.build_url('files', path.identifier),
             data='{"shared_link": {}}',
             expects=(200, ),
-            throws=exceptions.MetadataError,
+            throws=exceptions.WebViewError,
         )
         data = yield from resp.json()
         return data['shared_link']['url']

@@ -9,7 +9,7 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.core.provider import build_url
+
 from waterbutler.providers.figshare import metadata
 from waterbutler.providers.figshare import settings
 from waterbutler.providers.figshare import utils as figshare_utils
@@ -46,10 +46,10 @@ class BaseFigshareProvider(provider.BaseProvider):
         return (yield from super().make_request(method, signed_uri, *args, **kwargs))
 
     @asyncio.coroutine
-    def web_view_link(self, path, **kwargs):
+    def web_view(self, path, **kwargs):
         data = yield from self.metadata(path)
         segments = ('articles', data.name, str(data.extra['articleId']))
-        return build_url(settings.VIEW_URL, *segments)
+        return provider.build_url(settings.VIEW_URL, *segments)
 
     @asyncio.coroutine
     def revalidate_path(self, base, path, folder=False):

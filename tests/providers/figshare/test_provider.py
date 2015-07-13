@@ -398,7 +398,7 @@ class TestWebView:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_get_web_view_link(self, project_provider, list_project_articles, file_metadata, article_metadata):
+    def test_web_view(self, project_provider, list_project_articles, file_metadata, article_metadata):
         file_id = file_metadata['id']
         article_id = str(list_project_articles[0]['id'])
 
@@ -409,7 +409,7 @@ class TestWebView:
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
 
         path = yield from project_provider.validate_path('/{}/{}'.format(article_id, file_id))
-        result = yield from project_provider.web_view_link(path)
+        result = yield from project_provider.web_view(path)
 
         segments = ('articles', file_metadata['name'], article_id)
         expected = build_url(settings.VIEW_URL, *segments)

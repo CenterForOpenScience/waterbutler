@@ -220,7 +220,7 @@ class DropboxProvider(provider.BaseProvider):
         return DropboxFileMetadata(data, self.folder)
 
     @asyncio.coroutine
-    def web_view_link(self, path, **kwargs):
+    def web_view(self, path, **kwargs):
         resp = yield from self.make_request(
             'POST',
             self.build_url('shares', 'auto', path.full_path),

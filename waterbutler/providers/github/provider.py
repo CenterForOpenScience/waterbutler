@@ -209,7 +209,7 @@ class GitHubProvider(provider.BaseProvider):
             return (yield from self._metadata_file(path, ref=ref, **kwargs))
 
     @asyncio.coroutine
-    def web_view_link(self, path, **kwargs):
+    def web_view(self, path, **kwargs):
         segments = (self.owner, self.repo, 'blob', path.identifier[0], path.path)
         return provider.build_url(settings.VIEW_URL, *segments)
 

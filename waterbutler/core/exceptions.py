@@ -77,11 +77,15 @@ class MetadataError(ProviderError):
     pass
 
 
+class RevisionsError(ProviderError):
+    pass
+
+
 class WebViewError(ProviderError):
     pass
 
 
-class RevisionsError(ProviderError):
+class UnsupportedError(ProviderError):
     pass
 
 

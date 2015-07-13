@@ -428,9 +428,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return []  # TODO Raise 405 by default h/t @rliebz
 
     @abc.abstractmethod
-    def web_view_link(self, **kwargs):
+    def web_view(self, **kwargs):
         """Returns a link to the provider's view of a file."""
-        return None
+        raise NotImplementedError
 
     def create_folder(self, *args, **kwargs):
         """Create a folder in the current provider

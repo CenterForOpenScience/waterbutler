@@ -305,8 +305,8 @@ class OSFStorageProvider(provider.BaseProvider):
         return (yield from self._children_metadata(path))
 
     @asyncio.coroutine
-    def web_view_link(self, path, **kwargs):
-        raise exceptions.WebViewError(str(path))
+    def web_view(self, path, **kwargs):
+        raise exceptions.UnsupportedError('Web view links are not supported for osfstorage.', code=405)
 
     @asyncio.coroutine
     def revisions(self, path, view_only=None, **kwargs):

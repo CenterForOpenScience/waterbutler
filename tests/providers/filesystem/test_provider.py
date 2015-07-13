@@ -188,7 +188,7 @@ class TestOperations:
 class TestWebView:
 
     @async
-    def test_get_web_view_link(self, provider):
+    def test_web_view(self, provider):
         path = yield from provider.validate_path('/')
-        with pytest.raises(exceptions.WebViewError):
-            yield from provider.web_view_link(path)
+        with pytest.raises(exceptions.UnsupportedError):
+            yield from provider.web_view(path)

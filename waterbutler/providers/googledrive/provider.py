@@ -212,7 +212,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return (yield from self._file_metadata(path, raw=raw))
 
     @asyncio.coroutine
-    def web_view_link(self, path, **kwargs):
+    def web_view(self, path, **kwargs):
         resp = yield from self.make_request(
             'GET',
             self.build_url('files', path.identifier),

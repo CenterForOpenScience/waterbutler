@@ -199,8 +199,8 @@ class S3Provider(provider.BaseProvider):
         ]
 
     @asyncio.coroutine
-    def web_view_link(self, path, **kwargs):
-        raise exceptions.WebViewError(str(path))
+    def web_view(self, path, **kwargs):
+        raise exceptions.UnsupportedError('Web view links are not supported for s3.', code=405)
 
     @asyncio.coroutine
     def metadata(self, path, **kwargs):

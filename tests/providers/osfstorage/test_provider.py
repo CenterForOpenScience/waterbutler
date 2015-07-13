@@ -79,7 +79,7 @@ def provider_and_mock(monkeypatch, auth, credentials, settings):
     mock_provider.upload = utils.MockCoroutine()
     mock_provider.download = utils.MockCoroutine()
     mock_provider.metadata = utils.MockCoroutine()
-    mock_provider.web_view_link = utils.MockCoroutine()
+    mock_provider.web_view = utils.MockCoroutine()
 
     mock_make_provider = mock.Mock(return_value=mock_provider)
     monkeypatch.setattr(OSFStorageProvider, 'make_provider', mock_make_provider)
@@ -309,7 +309,7 @@ class TestUploads:
 class TestWebView:
 
     @async
-    def test_get_web_view_link(self, provider, mock_path):
+    def test_web_view(self, provider, mock_path):
         path = mock_path
-        with pytest.raises(exceptions.WebViewError):
-            yield from provider.web_view_link(path)
+        with pytest.raises(exceptions.UnsupportedError):
+            yield from provider.web_view(path)
