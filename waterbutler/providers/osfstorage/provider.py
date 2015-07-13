@@ -258,7 +258,7 @@ class OSFStorageProvider(provider.BaseProvider):
         created = response.status == 201
         data = yield from response.json()
 
-        if settings.RUN_TASKS:
+        if settings.RUN_TASKS and data.pop('archive', True):
             parity.main(
                 local_complete_path,
                 self.parity_credentials,
