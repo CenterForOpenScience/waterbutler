@@ -256,7 +256,7 @@ class BoxProvider(provider.BaseProvider):
     def web_view(self, path, **kwargs):
         resp = yield from self.make_request(
             'PUT',
-            self.build_url('files', path.identifier),
+            self.build_url('files' if path.is_file else 'folders', path.identifier),
             data='{"shared_link": {}}',
             expects=(200, ),
             throws=exceptions.WebViewError,

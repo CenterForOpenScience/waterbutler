@@ -47,6 +47,8 @@ class BaseFigshareProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def web_view(self, path, **kwargs):
+        if path._is_folder:
+            raise exceptions.WebViewError('Web view links are not supported for figshare filesets.', code=400)
         data = yield from self.metadata(path)
         segments = ('articles', data.name, str(data.extra['articleId']))
         return provider.build_url(settings.VIEW_URL, *segments)
