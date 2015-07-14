@@ -427,10 +427,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def revisions(self, **kwargs):
         return []  # TODO Raise 405 by default h/t @rliebz
 
-    @abc.abstractmethod
-    def web_view(self, **kwargs):
+    @asyncio.coroutine
+    def web_view(self, path):
         """Returns a link to the provider's view of a file."""
-        raise NotImplementedError
+        raise exceptions.UnsupportedError('{} does not support file viewing'.format(self.NAME))
 
     def create_folder(self, *args, **kwargs):
         """Create a folder in the current provider

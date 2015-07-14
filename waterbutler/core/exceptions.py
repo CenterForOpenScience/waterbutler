@@ -86,7 +86,8 @@ class WebViewError(ProviderError):
 
 
 class UnsupportedError(ProviderError):
-    pass
+    def __init__(self, message):
+        super().__init__(message, code=405)
 
 
 class FolderNamingConflict(ProviderError):

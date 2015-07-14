@@ -209,10 +209,6 @@ class DataverseProvider(provider.BaseProvider):
             )
 
     @asyncio.coroutine
-    def web_view(self, path, **kwargs):
-        raise exceptions.UnsupportedError('Web view links are not supported for dataverse.', code=405)
-
-    @asyncio.coroutine
     def revisions(self, path, **kwargs):
         """Get past versions of the request file. Orders versions based on
         `_get_all_data()`
