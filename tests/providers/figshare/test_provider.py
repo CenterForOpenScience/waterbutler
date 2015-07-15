@@ -390,3 +390,26 @@ class TestCRUD:
 
         assert result is None
         assert aiohttpretty.has_call(method='DELETE', uri=article_delete_url)
+
+
+class TestRevalidatePath:
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_revalidate_path(self, project_provider, list_project_articles, article_metadata, file_metadata):
+        article_id = str(list_project_articles[0]['id'])
+        list_project_articles[0]['title'] = 'fantine.mp3'
+
+        article_metadata_url = project_provider.build_url('articles', article_id)
+        list_articles_url = project_provider.build_url('projects', project_provider.project_id, 'articles')
+
+        aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
+        aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
+
+        path = yield from project_provider.validate_path('/')
+
+        result = yield from project_provider.revalidate_path(path, '/{}'.format(list_project_articles[0]['title']), folder=False)
+
+        assert result.is_dir is False
+        assert result.name == 'fantine.mp3'
+        assert result.identifier == article_id
