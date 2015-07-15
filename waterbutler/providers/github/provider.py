@@ -626,13 +626,13 @@ class GitHubProvider(provider.BaseProvider):
             'path': dest_path.path.strip('/')
         }, commit=commit)
 
-        folder['children'] = []
+        folder.children = []
 
         for item in keep:
             item['path'] = item['path'].replace(src_path.path, dest_path.path, 1)
             if item['type'] == 'tree':
-                folder['children'].append(GitHubFolderTreeMetadata(item))
+                folder.children.append(GitHubFolderTreeMetadata(item))
             else:
-                folder['children'].append(GitHubFileTreeMetadata(item))
+                folder.children.append(GitHubFileTreeMetadata(item))
 
         return folder, exists
