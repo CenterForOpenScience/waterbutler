@@ -26,6 +26,9 @@ class PluginError(Exception):
     def __repr__(self):
         return '<{}({}, {})>'.format(self.__class__.__name__, self.code, self.message)
 
+    def __str__(self):
+        return '{}, {}'.format(self.code, self.message)
+
 
 class AuthError(PluginError):
     """The WaterButler related errors raised
