@@ -225,7 +225,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             )
 
         if not futures:
-            folder['children'] = []
+            folder.children = []
             return folder, created
 
         finished, pending = yield from asyncio.wait(futures, return_when=asyncio.FIRST_EXCEPTION)

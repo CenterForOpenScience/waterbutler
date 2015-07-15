@@ -81,12 +81,12 @@ class DropboxProvider(provider.BaseProvider):
 
         folder = DropboxFolderMetadata(data, self.folder)
 
-        folder['children'] = []
+        folder.children = []
         for item in data['contents']:
             if item['is_dir']:
-                folder['children'].append(DropboxFolderMetadata(item, self.folder))
+                folder.children.append(DropboxFolderMetadata(item, self.folder))
             else:
-                folder['children'].append(DropboxFileMetadata(item, self.folder))
+                folder.children.append(DropboxFileMetadata(item, self.folder))
 
         return folder, True
 
@@ -123,12 +123,12 @@ class DropboxProvider(provider.BaseProvider):
 
         folder = DropboxFolderMetadata(data, self.folder)
 
-        folder['children'] = []
+        folder.children = []
         for item in data['contents']:
             if item['is_dir']:
-                folder['children'].append(DropboxFolderMetadata(item, self.folder))
+                folder.children.append(DropboxFolderMetadata(item, self.folder))
             else:
-                folder['children'].append(DropboxFileMetadata(item, self.folder))
+                folder.children.append(DropboxFileMetadata(item, self.folder))
 
         return folder, True
 
