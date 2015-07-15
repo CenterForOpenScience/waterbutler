@@ -1,6 +1,7 @@
 import asyncio
 
-from waterbutler.server import utils
+import tornado.gen
+
 from waterbutler.server.handlers import core
 
 
@@ -10,11 +11,7 @@ class RevisionHandler(core.BaseProviderHandler):
         'GET': 'revisions',
     }
 
-    @utils.coroutine
-    def prepare(self):
-        yield from super().prepare()
-
-    @utils.coroutine
+    @tornado.gen.coroutine
     def get(self):
         """List revisions of a file"""
         result = self.provider.revisions(**self.arguments)
@@ -22,4 +19,4 @@ class RevisionHandler(core.BaseProviderHandler):
         if asyncio.iscoroutine(result):
             result = yield from result
 
-        self.write({'data': result})
+        self.write({'data': [r.serialized() for r in result]})

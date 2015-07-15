@@ -33,6 +33,14 @@ class BaseMetadata(metaclass=abc.ABCMeta):
             path += '/'
         return path
 
+    @property
+    def is_folder(self):
+        return self.kind == 'folder'
+
+    @property
+    def is_file(self):
+        return self.kind == 'file'
+
     @abc.abstractproperty
     def provider(self):
         """The provider from which this resource
@@ -84,6 +92,9 @@ class BaseMetadata(metaclass=abc.ABCMeta):
     @property
     def extra(self):
         return {}
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.serialized() == other.serialized()
 
 
 class BaseFileMetadata(BaseMetadata):
@@ -146,11 +157,32 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
     def extra(self):
         return {}
 
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.serialized() == other.serialized()
+
 
 class BaseFolderMetadata(BaseMetadata):
     """Defines that metadata structure for
     folders, auto defines :func:`kind`
     """
+
+    def __init__(self, raw):
+        super().__init__(raw)
+        self._children = None
+
+    def serialized(self):
+        ret = super().serialized()
+        if self.children is not None:
+            ret['children'] = [c.serialized() for c in self.children]
+        return ret
+
+    @property
+    def children(self):
+        return self._children
+
+    @children.setter
+    def children(self, kids):
+        self._children = kids
 
     @property
     def kind(self):

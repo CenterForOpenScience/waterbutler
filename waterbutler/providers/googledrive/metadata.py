@@ -1,5 +1,3 @@
-import os
-
 from waterbutler.core import metadata
 
 from waterbutler.providers.googledrive import utils
@@ -52,9 +50,8 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     @property
     def name(self):
         title = self.raw['title']
-        name, ext = os.path.splitext(title)
-        if utils.is_docs_file(self.raw) and not ext:
-            ext = utils.get_extension(self.raw['exportLinks'])
+        if utils.is_docs_file(self.raw):
+            ext = utils.get_extension(self.raw)
             title += ext
         return title
 
@@ -79,7 +76,8 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     def extra(self):
         ret = super().extra
         if utils.is_docs_file(self.raw):
-            ret['downloadExt'] = utils.get_download_extension(self.raw['exportLinks'])
+            ret['downloadExt'] = utils.get_download_extension(self.raw)
+        ret['viewUrl'] = self.raw.get('alternateLink')
         return ret
 
 

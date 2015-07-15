@@ -7,6 +7,7 @@ import os
 import shutil
 
 from waterbutler.core import streams
+from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
@@ -77,9 +78,9 @@ class TestCRUD:
         path = yield from provider.validate_path(file_path)
         metadata, created = yield from provider.upload(file_stream, path)
 
-        assert metadata['name'] == file_name
-        assert metadata['path'] == file_path
-        assert metadata['size'] == len(file_content)
+        assert metadata.name == file_name
+        assert metadata.path == file_path
+        assert metadata.size == len(file_content)
         assert created is True
 
     @async
@@ -93,9 +94,9 @@ class TestCRUD:
         path = yield from provider.validate_path(file_path)
         metadata, created = yield from provider.upload(file_stream, path)
 
-        assert metadata['name'] == file_name
-        assert metadata['path'] == file_path
-        assert metadata['size'] == len(file_content)
+        assert metadata.name == file_name
+        assert metadata.path == file_path
+        assert metadata.size == len(file_content)
         assert created is False
 
     @async
@@ -109,9 +110,9 @@ class TestCRUD:
         path = yield from provider.validate_path(file_path)
         metadata, created = yield from provider.upload(file_stream, path)
 
-        assert metadata['name'] == file_name
-        assert metadata['path'] == file_path
-        assert metadata['size'] == len(file_content)
+        assert metadata.name == file_name
+        assert metadata.path == file_path
+        assert metadata.size == len(file_content)
         assert created is True
 
     @async
@@ -125,9 +126,9 @@ class TestCRUD:
         path = yield from provider.validate_path(file_path)
         metadata, created = yield from provider.upload(file_stream, path)
 
-        assert metadata['name'] == file_name
-        assert metadata['path'] == file_path
-        assert metadata['size'] == len(file_content)
+        assert metadata.name == file_name
+        assert metadata.path == file_path
+        assert metadata.size == len(file_content)
         assert created is False
 
     @async
@@ -150,22 +151,22 @@ class TestMetadata:
         assert isinstance(result, list)
         assert len(result) == 2
 
-        file = next(x for x in result if x['kind'] == 'file')
-        assert file['name'] == 'flower.jpg'
-        assert file['path'] == '/flower.jpg'
-        folder = next(x for x in result if x['kind'] == 'folder')
-        assert folder['name'] == 'subfolder'
-        assert folder['path'] == '/subfolder/'
+        file = next(x for x in result if x.kind == 'file')
+        assert file.name == 'flower.jpg'
+        assert file.path == '/flower.jpg'
+        folder = next(x for x in result if x.kind == 'folder')
+        assert folder.name == 'subfolder'
+        assert folder.path == '/subfolder/'
 
     @async
     def test_metadata_root_file(self, provider):
         path = yield from provider.validate_path('/flower.jpg')
         result = yield from provider.metadata(path)
 
-        assert isinstance(result, dict)
-        assert result['kind'] == 'file'
-        assert result['name'] == 'flower.jpg'
-        assert result['path'] == '/flower.jpg'
+        assert isinstance(result, metadata.BaseFileMetadata)
+        assert result.kind == 'file'
+        assert result.name == 'flower.jpg'
+        assert result.path == '/flower.jpg'
 
     @async
     def test_metadata_missing(self, provider):

@@ -141,7 +141,7 @@ class FormDataStream(MultiStream):
 
 class ResponseStreamReader(BaseStream):
 
-    def __init__(self, response, size=None, unsizable=False):
+    def __init__(self, response, size=None, name=None, unsizable=False):
         super().__init__()
         if 'Content-Length' in response.headers:
             self._size = int(response.headers['Content-Length'])
@@ -150,8 +150,24 @@ class ResponseStreamReader(BaseStream):
         else:
             self._size = None
 
+        self._name = name
         self.response = response
-        self.content_type = self.response.headers.get('Content-Type', 'application/octet-stream')
+
+    @property
+    def partial(self):
+        return self.response.status == 206
+
+    @property
+    def content_type(self):
+        return self.response.headers.get('Content-Type', 'application/octet-stream')
+
+    @property
+    def content_range(self):
+        return self.response.headers['Content-Range']
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def size(self):
@@ -169,14 +185,25 @@ class ResponseStreamReader(BaseStream):
 
 class RequestStreamReader(BaseStream):
 
-    def __init__(self, request):
+    def __init__(self, request, inner):
         super().__init__()
+        self.inner = inner
         self.request = request
 
     @property
     def size(self):
         return int(self.request.headers.get('Content-Length'))
 
+    def at_eof(self):
+        return self.inner.at_eof()
+
     @asyncio.coroutine
     def _read(self, size):
-        return (yield from asyncio.StreamReader.read(self, size))
+        if self.inner.at_eof():
+            return b''
+        if size < 0:
+            return (yield from self.inner.read(size))
+        try:
+            return (yield from self.inner.readexactly(size))
+        except asyncio.IncompleteReadError as e:
+            return e.partial

@@ -2,6 +2,23 @@
 ChangeLog
 *********
 
+0.8.0 (2015-07-14)
+==================
+
+- Add support for passing the Range head through
+- Exceptions are no longer raised when a client connection cuts off early
+- ResponseStreamReader may override file names via .name
+- Calls to metadata now returns BaseMetadata objects or a list thereof
+- Upgrade to tornado 4.2, which increases compatability with asyncio
+- General code clean up
+- Add a style/contributing guide
+- Uploading files is now implemented with unix sockets and will not buffer the
+entire file into memory
+- Accept files up to 4.9GBs
+- view_url is included with file metadata requests
+- Flake8 is now much more aggressive
+- General code clean up
+
 0.7.0 (2015-06-18)
 ==================
 

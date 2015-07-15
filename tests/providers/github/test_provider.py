@@ -668,8 +668,10 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', latest_sha_url, body={'object': {'sha': ref}})
 
         result = yield from provider.metadata(path)
+        item = repo_tree_metadata_root['tree'][0]
+        view_url = provider.build_view_url(path.identifier[0], path.path)
 
-        assert result == GitHubFileTreeMetadata(repo_tree_metadata_root['tree'][0]).serialized()
+        assert result == GitHubFileTreeMetadata(item, view_url=view_url)
 
     # TODO: Additional Tests
     # def test_metadata_root_file_txt_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
@@ -688,9 +690,9 @@ class TestMetadata:
         ret = []
         for item in content_repo_metadata_root:
             if item['type'] == 'dir':
-                ret.append(GitHubFolderContentMetadata(item).serialized())
+                ret.append(GitHubFolderContentMetadata(item))
             else:
-                ret.append(GitHubFileContentMetadata(item).serialized())
+                ret.append(GitHubFileContentMetadata(item))
 
         assert result == ret
 
@@ -765,6 +767,6 @@ class TestCreateFolder:
 
         metadata = yield from provider.create_folder(path)
 
-        assert metadata['kind'] == 'folder'
-        assert metadata['name'] == 'trains'
-        assert metadata['path'] == '/i/like/trains/'
+        assert metadata.kind == 'folder'
+        assert metadata.name == 'trains'
+        assert metadata.path == '/i/like/trains/'

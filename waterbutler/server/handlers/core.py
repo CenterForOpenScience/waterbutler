@@ -3,6 +3,8 @@ import time
 import asyncio
 
 import tornado.web
+import tornado.gen
+import tornado.iostream
 from raven.contrib.tornado import SentryMixin
 
 from waterbutler import tasks
@@ -22,6 +24,7 @@ CORS_ACCEPT_HEADERS = [
 ]
 
 CORS_EXPOSE_HEADERS = [
+    'Range',
     'Accept-Ranges',
     'Content-Range',
     'Content-Length',
@@ -105,10 +108,25 @@ class BaseHandler(tornado.web.RequestHandler, SentryMixin):
         self.set_status(204)
         self.set_header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE'),
 
+    @tornado.gen.coroutine
+    def write_stream(self, stream):
+        try:
+            while True:
+                chunk = yield from stream.read(settings.CHUNK_SIZE)
+                if not chunk:
+                    break
+                self.write(chunk)
+                del chunk
+                yield self.flush()
+        except tornado.iostream.StreamClosedError:
+            # Client has disconnected early.
+            # No need for any exception to be raised
+            return
+
 
 class BaseProviderHandler(BaseHandler):
 
-    @asyncio.coroutine
+    @tornado.gen.coroutine
     def prepare(self):
         self.arguments = {
             key: list_or_value(value)
@@ -145,7 +163,7 @@ class BaseProviderHandler(BaseHandler):
 class BaseCrossProviderHandler(BaseHandler):
     JSON_REQUIRED = False
 
-    @asyncio.coroutine
+    @tornado.gen.coroutine
     def prepare(self):
         try:
             self.action = self.ACTION_MAP[self.request.method]

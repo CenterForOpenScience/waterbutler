@@ -26,7 +26,12 @@ class BoxFolderMetadata(BaseBoxMetadata, metadata.BaseFolderMetadata):
     def path(self):
         return '/{}/'.format(self.raw['id'])
 
+
 class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
+
+    def __init__(self, raw, path_obj, view_url=None):
+        super().__init__(raw, path_obj)
+        self.view_url = view_url
 
     @property
     def name(self):
@@ -52,6 +57,7 @@ class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
     def extra(self):
         return {
             'etag': self.raw.get('etag'),
+            'viewUrl': self.view_url
         }
 
     @property
