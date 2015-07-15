@@ -1,0 +1,40 @@
+*********
+ChangeLog
+*********
+
+0.7.0 (2015-06-18)
+==================
+
+- Read me updates
+- Various fixes for S3
+- Fixes to Dataverse's copy and move
+- Various fixes for figshare
+
+0.6.0 (2015-06-07)
+==================
+
+- Various fixes to Google drive
+- Allow response streams to be "unsizable"
+- Return an additional "etag" field with file metadata
+
+0.5.0 (2015-05-25)
+==================
+
+- Implement moving and expose it via http
+- Implement copying and expose it via http
+- Implement downloading as zip and expose it via http
+
+0.4.0 (2015-04-28)
+==================
+
+- Add folder creation
+
+0.3.0 (2015-04-20)
+==================
+
+- Add harvard dataverse as a provider
+
+0.2.4 (2015-03-18)
+==================
+
+- Allow ssl certs to be specified in the config
