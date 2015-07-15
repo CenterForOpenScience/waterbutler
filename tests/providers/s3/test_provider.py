@@ -588,4 +588,4 @@ class TestWebView:
     def test_web_view(self, provider):
         path = WaterButlerPath('/my-image.jpg')
         with pytest.raises(exceptions.UnsupportedError):
-            yield from provider.web_view(path)
+            yield from provider.web_view(path=path)

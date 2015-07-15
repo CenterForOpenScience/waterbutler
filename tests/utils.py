@@ -80,10 +80,6 @@ class MockProvider1(provider.BaseProvider):
     def download(self, path, **kwargs):
         return b''
 
-    @asyncio.coroutine
-    def web_view(self, **kwargs):
-        return None
-
 
 class MockProvider2(MockProvider1):
 
@@ -94,6 +90,10 @@ class MockProvider2(MockProvider1):
 
     def can_intra_copy(self, other, path=None):
         return self.__class__ == other.__class__
+
+    @asyncio.coroutine
+    def web_view(self, **kwargs):
+        return 'www.url.com'
 
 
 class HandlerTestCase(testing.AsyncHTTPTestCase):

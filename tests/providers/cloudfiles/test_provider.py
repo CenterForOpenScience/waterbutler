@@ -550,7 +550,7 @@ class TestWebView:
     def test_web_view(self, connected_provider):
         path = WaterButlerPath('/similar.file')
         with pytest.raises(exceptions.UnsupportedError):
-            yield from connected_provider.web_view(path)
+            yield from connected_provider.web_view(path=path)
 
 
 class TestOperations:

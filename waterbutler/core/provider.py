@@ -428,8 +428,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return []  # TODO Raise 405 by default h/t @rliebz
 
     @asyncio.coroutine
-    def web_view(self, path):
-        """Returns a link to the provider's view of a file."""
+    def web_view(self, **kwargs):
+        """
+
+        :rtype: str
+        :raises: :class: `waterbutler.core.exceptions.WebViewError`
+        :returns: A link to the provider's view of a file or folder.
+        """
         raise exceptions.UnsupportedError('{} does not support file viewing'.format(self.NAME))
 
     def create_folder(self, *args, **kwargs):
