@@ -202,12 +202,10 @@ class TestMetadata:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_metadata(self, provider, folder_metadata, shares_metadata):
+    def test_metadata(self, provider, folder_metadata):
         path = yield from provider.validate_path('/')
         url = provider.build_url('metadata', 'auto', path.full_path)
-        share_link = provider.build_url('shares', 'auto', path.full_path)
         aiohttpretty.register_json_uri('GET', url, body=folder_metadata)
-        aiohttpretty.register_json_uri('POST', share_link, body=shares_metadata)
         result = yield from provider.metadata(path)
 
         assert isinstance(result, list)
@@ -302,6 +300,21 @@ class TestCreateFolder:
 
         assert resp.kind == 'folder'
         assert resp.name == 'newfolder'
+
+
+class TestWebView:
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_web_view(self, provider, shares_metadata):
+        path = WaterButlerPath('/pfile', prepend=provider.folder)
+
+        share_link = provider.build_url('shares', 'auto', path.full_path)
+        aiohttpretty.register_json_uri('POST', share_link, body=shares_metadata)
+
+        result = yield from provider.web_view(path)
+        expected = shares_metadata['url']
+        assert result == expected
 
 
 class TestOperations:

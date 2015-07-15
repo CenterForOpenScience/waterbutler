@@ -253,6 +253,24 @@ class BoxProvider(provider.BaseProvider):
         return (yield from self._get_folder_meta(path, raw=raw, folder=folder))
 
     @asyncio.coroutine
+    def web_view(self, path, **kwargs):
+        metadata = yield from self.metadata(path, raw=True)
+        if metadata['shared_link']:
+            # 'shared_link' key can be None if a shared link for the file does not already exist
+            shared_link = metadata['shared_link']['url']
+        else:
+            resp = yield from self.make_request(
+                'PUT',
+                self.build_url('files' if path.is_file else 'folders', path.identifier),
+                data='{"shared_link": {}}',
+                expects=(200, ),
+                throws=exceptions.WebViewError,
+            )
+            data = yield from resp.json()
+            shared_link = data['shared_link']['url']
+        return shared_link
+
+    @asyncio.coroutine
     def revisions(self, path, **kwargs):
         # from https://developers.box.com/docs/#files-view-versions-of-a-file :
         # Alert: Versions are only tracked for Box users with premium accounts.
@@ -296,18 +314,6 @@ class BoxProvider(provider.BaseProvider):
 
         return BoxFolderMetadata((yield from resp.json()), path)
 
-    @asyncio.coroutine
-    def get_shared_link(self, path):
-        resp = yield from self.make_request(
-            'PUT',
-            self.build_url('files', path.identifier),
-            data='{"shared_link": {}}',
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
-        data = yield from resp.json()
-        return data['shared_link']['url']
-
     def _assert_child(self, paths, target=None):
         if self.folder == 0:
             return True
@@ -343,12 +349,7 @@ class BoxProvider(provider.BaseProvider):
         if not data:
             raise exceptions.NotFoundError(str(path))
 
-        if data['shared_link']:
-            # 'shared_link' key can be None if a shared link for the file does not already exist
-            view_url = data['shared_link']['url']
-        else:
-            view_url = yield from self.get_shared_link(path)
-        return data if raw else BoxFileMetadata(data, path, view_url)
+        return data if raw else BoxFileMetadata(data, path)
 
     @asyncio.coroutine
     def _get_folder_meta(self, path, raw=False, folder=False):
