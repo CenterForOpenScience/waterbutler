@@ -63,7 +63,7 @@ class BaseFigshareProvider(provider.BaseProvider):
             if entry.name == path:
                 # base may when refering to a file will have a article id as well
                 # This handles that case so the resulting path is actually correct
-                names, ids = map(lambda x: getattr(entry, x).strip('/').split('/'), ('materialized', 'path'))
+                names, ids = map(lambda x: getattr(entry, x).strip('/').split('/'), ('materialized_path', 'path'))
                 while names and ids:
                     wbpath = wbpath.child(names.pop(0), _id=ids.pop(0))
                 wbpath._is_folder = entry.kind == 'folder'
