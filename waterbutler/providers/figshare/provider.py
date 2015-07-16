@@ -46,6 +46,14 @@ class BaseFigshareProvider(provider.BaseProvider):
         return (yield from super().make_request(method, signed_uri, *args, **kwargs))
 
     @asyncio.coroutine
+    def web_view(self, path, **kwargs):
+        if path._is_folder:
+            raise exceptions.WebViewError('Web view links are not supported for figshare filesets.', code=400)
+        data = yield from self.metadata(path)
+        segments = ('articles', data.name, str(data.extra['articleId']))
+        return provider.build_url(settings.VIEW_URL, *segments)
+
+    @asyncio.coroutine
     def revalidate_path(self, base, path, folder=False):
         wbpath = base
         assert base.is_dir

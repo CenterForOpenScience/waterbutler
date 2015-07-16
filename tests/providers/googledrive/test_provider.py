@@ -462,3 +462,16 @@ class TestCreateFolder:
     def test_must_be_folder(self, provider, monkeypatch):
         with pytest.raises(exceptions.CreateFolderError) as e:
             yield from provider.create_folder(WaterButlerPath('/carp.fish', _ids=('doesnt', 'matter')))
+
+
+class TestWebView:
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_web_view(self, provider):
+        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], fixtures.list_file['items'][0]['id']))
+        list_file_url = provider.build_url('files', path.identifier)
+        aiohttpretty.register_json_uri('GET', list_file_url, body=fixtures.list_file['items'][0])
+        result = yield from provider.web_view(path)
+        expected = fixtures.list_file['items'][0]['alternateLink']
+        assert result == expected

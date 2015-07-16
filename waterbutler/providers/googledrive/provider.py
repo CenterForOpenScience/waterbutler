@@ -212,6 +212,18 @@ class GoogleDriveProvider(provider.BaseProvider):
         return (yield from self._file_metadata(path, raw=raw))
 
     @asyncio.coroutine
+    def web_view(self, path, **kwargs):
+        resp = yield from self.make_request(
+            'GET',
+            self.build_url('files', path.identifier),
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
+
+        data = yield from resp.json()
+        return data['alternateLink']
+
+    @asyncio.coroutine
     def revisions(self, path, **kwargs):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
