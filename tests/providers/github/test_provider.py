@@ -668,10 +668,8 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', latest_sha_url, body={'object': {'sha': ref}})
 
         result = yield from provider.metadata(path)
-        item = repo_tree_metadata_root['tree'][0]
-        view_url = provider.build_view_url(path.identifier[0], path.path)
 
-        assert result == GitHubFileTreeMetadata(item, view_url=view_url)
+        assert result == GitHubFileTreeMetadata(repo_tree_metadata_root['tree'][0])
 
     # TODO: Additional Tests
     # def test_metadata_root_file_txt_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
