@@ -462,23 +462,6 @@ class TestMetadata:
             yield from provider.metadata(path)
 
 
-class TestWebView:
-
-    @async
-    @pytest.mark.aiohttpretty
-    def test_web_view(self, provider, file_metadata):
-        item = file_metadata['entries'][0]
-        path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
-
-        file_url = provider.build_url('files', path.identifier)
-        aiohttpretty.register_json_uri('GET', file_url, body=item)
-        aiohttpretty.register_json_uri('PUT', file_url, body=item)
-
-        result = yield from provider.web_view(path)
-        expected = item['shared_link']['url']
-        assert result == expected
-
-
 class TestRevisions:
 
     @async

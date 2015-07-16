@@ -29,6 +29,10 @@ class BaseGitHubMetadata(metadata.BaseMetadata):
 
 class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
 
+    def __init__(self, raw, folder=None, commit=None, web_view=None):
+        super().__init__(raw, folder, commit)
+        self.web_view = web_view
+
     @property
     def path(self):
         return self.build_path(self.raw['path'])
@@ -47,7 +51,10 @@ class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
 
     @property
     def extra(self):
-        return dict(super().extra, fileSha=self.raw['sha'])
+        return dict(super().extra, **{
+            'fileSha': self.raw['sha'],
+            'webView': self.web_view
+        })
 
 
 class BaseGitHubFolderMetadata(BaseGitHubMetadata, metadata.BaseFolderMetadata):

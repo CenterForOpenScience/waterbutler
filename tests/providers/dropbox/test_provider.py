@@ -111,15 +111,6 @@ def file_metadata():
     }
 
 
-@pytest.fixture
-def shares_metadata():
-    return {
-        "url": "https://db.tt/c0mFuu1Y",
-        "expires": "Tue, 01 Jan 2030 00:00:00 +0000",
-        "visibility": "PUBLIC"
-    }
-
-
 class TestValidatePath:
 
     @async
@@ -298,21 +289,6 @@ class TestCreateFolder:
 
         assert resp.kind == 'folder'
         assert resp.name == 'newfolder'
-
-
-class TestWebView:
-
-    @async
-    @pytest.mark.aiohttpretty
-    def test_web_view(self, provider, shares_metadata):
-        path = WaterButlerPath('/pfile', prepend=provider.folder)
-
-        share_link = provider.build_url('shares', 'auto', path.full_path)
-        aiohttpretty.register_json_uri('POST', share_link, body=shares_metadata)
-
-        result = yield from provider.web_view(path)
-        expected = shares_metadata['url']
-        assert result == expected
 
 
 class TestOperations:
