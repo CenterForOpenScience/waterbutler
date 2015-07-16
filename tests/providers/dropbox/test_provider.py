@@ -216,12 +216,10 @@ class TestMetadata:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_metadata_root_file(self, provider, file_metadata, shares_metadata):
+    def test_metadata_root_file(self, provider, file_metadata):
         path = WaterButlerPath('/pfile', prepend=provider.folder)
         url = provider.build_url('metadata', 'auto', path.full_path)
-        share_link = provider.build_url('shares', 'auto', path.full_path)
         aiohttpretty.register_json_uri('GET', url, body=file_metadata)
-        aiohttpretty.register_json_uri('POST', share_link, body=shares_metadata)
         result = yield from provider.metadata(path)
 
         assert isinstance(result, metadata.BaseMetadata)

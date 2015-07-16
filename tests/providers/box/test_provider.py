@@ -446,9 +446,9 @@ class TestMetadata:
 
         file_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', file_url, body=item)
-        aiohttpretty.register_json_uri('PUT', file_url, body=item)
 
         result = yield from provider.metadata(path)
+
         expected = BoxFileMetadata(item, path)
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=file_url)
@@ -492,7 +492,6 @@ class TestRevisions:
         revisions_url = provider.build_url('files', path.identifier, 'versions')
 
         aiohttpretty.register_json_uri('GET', file_url, body=item)
-        aiohttpretty.register_json_uri('PUT', file_url, body=item)
         aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_list_metadata)
 
         result = yield from provider.revisions(path)
@@ -516,7 +515,6 @@ class TestRevisions:
         revisions_url = provider.build_url('files', path.identifier, 'versions')
 
         aiohttpretty.register_json_uri('GET', file_url, body=item)
-        aiohttpretty.register_json_uri('PUT', file_url, body=item)
         aiohttpretty.register_json_uri('GET', revisions_url, body={}, status=403)
 
         result = yield from provider.revisions(path)
