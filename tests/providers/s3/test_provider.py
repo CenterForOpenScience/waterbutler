@@ -35,7 +35,10 @@ def credentials():
 
 @pytest.fixture
 def settings():
-    return {'bucket': 'that kerning'}
+    return {
+        'bucket': 'that kerning',
+        'encrypt_uploads': False
+    }
 
 
 @pytest.fixture
@@ -181,7 +184,8 @@ def file_metadata():
         'Content-Length': 9001,
         'Last-Modified': 'SomeTime',
         'Content-Type': 'binary/octet-stream',
-        'ETag': '"fba9dede5f27731c9771645a39863328"'
+        'ETag': '"fba9dede5f27731c9771645a39863328"',
+        'X-AMZ-SERVER-SIDE-ENCRYPTION': 'AES256'
     }
 
 
@@ -341,6 +345,34 @@ class TestCRUD:
 
         assert metadata.kind == 'file'
         assert not created
+        assert aiohttpretty.has_call(method='PUT', uri=url)
+        assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_upload_encrypted(self, provider, file_content, file_stream, file_metadata):
+
+        # Set trigger for encrypt_key=True in s3.provider.upload
+        provider.encrypt_uploads = True
+        path = WaterButlerPath('/foobah')
+        content_md5 = hashlib.md5(file_content).hexdigest()
+        url = provider.bucket.new_key(path.path).generate_url(100, 'PUT', encrypt_key=True)
+        metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
+        aiohttpretty.register_uri(
+            'HEAD',
+            metadata_url,
+            responses=[
+                {'status': 404},
+                {'headers': file_metadata},
+            ],
+        )
+        aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"{}"'.format(content_md5)})
+
+        metadata, created = yield from provider.upload(file_stream, path)
+
+        assert metadata.kind == 'file'
+        assert metadata.extra['encryption'] == 'AES256'
+        assert created
         assert aiohttpretty.has_call(method='PUT', uri=url)
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
 

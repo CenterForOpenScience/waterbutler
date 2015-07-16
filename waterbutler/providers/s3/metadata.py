@@ -45,7 +45,8 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
     @property
     def extra(self):
         return {
-            'md5': self.raw['ETAG'].replace('"', '')
+            'md5': self.raw['ETAG'].replace('"', ''),
+            'encryption': self.raw['X-AMZ-SERVER-SIDE-ENCRYPTION']
         }
 
 

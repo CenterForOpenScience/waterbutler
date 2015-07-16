@@ -51,6 +51,7 @@ class S3Provider(provider.BaseProvider):
         self.connection = S3Connection(credentials['access_key'],
                 credentials['secret_key'], calling_format=calling_format)
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
+        self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
@@ -140,7 +141,6 @@ class S3Provider(provider.BaseProvider):
         :rtype: dict, bool
         """
         path, exists = yield from self.handle_name_conflict(path, conflict=conflict)
-
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
 
         resp = yield from self.make_request(
@@ -148,14 +148,13 @@ class S3Provider(provider.BaseProvider):
             self.bucket.new_key(path.name).generate_url(
                 settings.TEMP_URL_SECS,
                 'PUT',
-                encrypt_key=self.settings.get('encrypt_uploads', False)
+                encrypt_key=self.encrypt_uploads
             ),
             data=stream,
             headers={'Content-Length': str(stream.size)},
             expects=(200, 201, ),
             throws=exceptions.UploadError,
         )
-
         # md5 is returned as ETag header as long as server side encryption is not used.
         # TODO: nice assertion error goes here
         assert resp.headers['ETag'].replace('"', '') == stream.writers['md5'].hexdigest
