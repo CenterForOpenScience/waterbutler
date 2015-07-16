@@ -1,6 +1,9 @@
 import humanfriendly
 
 from waterbutler.core import metadata
+from waterbutler.core.provider import build_url
+
+from waterbutler.providers.figshare import settings
 
 
 class BaseFigshareMetadata:
@@ -17,6 +20,11 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
         self.parent = parent
         self.article_id = parent['article_id']
         self.child = child
+
+    @property
+    def web_view(self):
+        segments = ('articles', self.parent['title'], str(self.article_id))
+        return build_url(settings.VIEW_URL, *segments)
 
     @property
     def kind(self):
@@ -75,6 +83,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
             'status': self.parent['status'].lower(),
             'downloadUrl': self.raw.get('download_url'),
             'canDelete': self.can_delete,
+            'webView': self.web_view
         }
 
 
