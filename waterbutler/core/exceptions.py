@@ -26,6 +26,9 @@ class PluginError(Exception):
     def __repr__(self):
         return '<{}({}, {})>'.format(self.__class__.__name__, self.code, self.message)
 
+    def __str__(self):
+        return '{}, {}'.format(self.code, self.message)
+
 
 class AuthError(PluginError):
     """The WaterButler related errors raised
@@ -79,6 +82,15 @@ class MetadataError(ProviderError):
 
 class RevisionsError(ProviderError):
     pass
+
+
+class WebViewError(ProviderError):
+    pass
+
+
+class UnsupportedError(ProviderError):
+    def __init__(self, message):
+        super().__init__(message, code=405)
 
 
 class FolderNamingConflict(ProviderError):

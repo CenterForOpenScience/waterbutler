@@ -79,6 +79,7 @@ def provider_and_mock(monkeypatch, auth, credentials, settings):
     mock_provider.upload = utils.MockCoroutine()
     mock_provider.download = utils.MockCoroutine()
     mock_provider.metadata = utils.MockCoroutine()
+    mock_provider.web_view = utils.MockCoroutine()
 
     mock_make_provider = mock.Mock(return_value=mock_provider)
     monkeypatch.setattr(OSFStorageProvider, 'make_provider', mock_make_provider)
@@ -303,3 +304,12 @@ class TestUploads:
         mock_backup.assert_called_once_with(complete_path, 'versionpk', 'https://waterbutler.io/hooks/metadata/', credentials['archive'], settings['parity'])
         inner_provider.metadata.assert_called_once_with(WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
         inner_provider.move.assert_called_once_with(inner_provider, WaterButlerPath('/uniquepath'), WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
+
+
+class TestWebView:
+
+    @async
+    def test_web_view(self, provider, mock_path):
+        path = mock_path
+        with pytest.raises(exceptions.UnsupportedError):
+            yield from provider.web_view(path=path)

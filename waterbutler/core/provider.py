@@ -225,7 +225,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             )
 
         if not futures:
-            folder['children'] = []
+            folder.children = []
             return folder, created
 
         finished, pending = yield from asyncio.wait(futures, return_when=asyncio.FIRST_EXCEPTION)
@@ -426,6 +426,16 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     def revisions(self, **kwargs):
         return []  # TODO Raise 405 by default h/t @rliebz
+
+    @asyncio.coroutine
+    def web_view(self, **kwargs):
+        """
+
+        :rtype: str
+        :raises: :class: `waterbutler.core.exceptions.WebViewError`
+        :returns: A link to the provider's view of a file or folder.
+        """
+        raise exceptions.UnsupportedError('{} does not support file viewing'.format(self.NAME))
 
     def create_folder(self, *args, **kwargs):
         """Create a folder in the current provider

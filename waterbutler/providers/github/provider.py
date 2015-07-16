@@ -92,10 +92,6 @@ class GitHubProvider(provider.BaseProvider):
         segments = ('repos', self.owner, self.repo) + segments
         return self.build_url(*segments, **query)
 
-    def build_view_url(self, *segments):
-        segments = (self.owner, self.repo, 'blob') + segments
-        return provider.build_url(settings.VIEW_URL, *segments)
-
     def can_intra_move(self, other, path=None):
         return self.can_intra_copy(other, path=path)
 
@@ -211,6 +207,11 @@ class GitHubProvider(provider.BaseProvider):
             return (yield from self._metadata_folder(path, ref=ref, recursive=recursive, **kwargs))
         else:
             return (yield from self._metadata_file(path, ref=ref, **kwargs))
+
+    @asyncio.coroutine
+    def web_view(self, path, **kwargs):
+        segments = (self.owner, self.repo, 'blob', path.identifier[0], path.path)
+        return provider.build_url(settings.VIEW_URL, *segments)
 
     @asyncio.coroutine
     def revisions(self, path, sha=None, **kwargs):
@@ -515,7 +516,6 @@ class GitHubProvider(provider.BaseProvider):
             latest = path.identifier[0]
 
         tree = yield from self._fetch_tree(latest, recursive=True)
-        view_url = self.build_view_url(path.identifier[0], path.path)
 
         try:
             data = next(
@@ -531,7 +531,7 @@ class GitHubProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return GitHubFileTreeMetadata(data, view_url=view_url)
+        return GitHubFileTreeMetadata(data)
 
     @asyncio.coroutine
     def _get_latest_sha(self, ref='master'):
@@ -626,13 +626,13 @@ class GitHubProvider(provider.BaseProvider):
             'path': dest_path.path.strip('/')
         }, commit=commit)
 
-        folder['children'] = []
+        folder.children = []
 
         for item in keep:
             item['path'] = item['path'].replace(src_path.path, dest_path.path, 1)
             if item['type'] == 'tree':
-                folder['children'].append(GitHubFolderTreeMetadata(item))
+                folder.children.append(GitHubFolderTreeMetadata(item))
             else:
-                folder['children'].append(GitHubFileTreeMetadata(item))
+                folder.children.append(GitHubFileTreeMetadata(item))
 
         return folder, exists
