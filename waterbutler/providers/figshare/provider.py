@@ -11,7 +11,6 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.figshare import metadata
-from waterbutler.providers.figshare import settings
 from waterbutler.providers.figshare import utils as figshare_utils
 
 
@@ -27,7 +26,7 @@ class FigshareProvider:
 
 class BaseFigshareProvider(provider.BaseProvider):
     NAME = 'figshare'
-    BASE_URL = settings.BASE_URL
+    BASE_URL = 'http://api.figshare.com/v1/my_data'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
