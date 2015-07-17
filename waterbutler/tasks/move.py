@@ -51,19 +51,3 @@ def move(src_bundle, dest_bundle, callback_url, auth, start_time=None, **kwargs)
         logger.info('Callback returned {!r}'.format(resp))
 
     return metadata, created
-
-    # dest_provider.move()
-    # stream = src_provider.download(**src_args)
-    # progress = stream.ProgressStreamWriter(stream.size)
-    # stream.add_writer(progress)
-    # upload_task = asyncio.async(dest_provider.upload(stream, **dest_options))
-
-
-# @async.coroutine
-# def do_upload()
-
-#     while not upload_task.done():
-#         yield from asyncio.sleep(3)
-#         progress.progress
-#         # update redis
-#         # sleep x seconds
