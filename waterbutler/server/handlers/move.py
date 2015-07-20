@@ -45,10 +45,7 @@ class MoveHandler(core.BaseCrossProviderHandler):
                 )
             )
 
-        if isinstance(metadata, list):
-            metadata = [m.serialized() for m in metadata]
-        else:
-            metadata = metadata.serialized()
+        metadata = metadata.serialized()
 
         if created:
             self.set_status(201)
