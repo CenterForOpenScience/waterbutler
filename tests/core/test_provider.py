@@ -11,6 +11,7 @@ from waterbutler.core import exceptions
 def provider1():
     return utils.MockProvider1({'user': 'name'}, {'pass': 'word'}, {})
 
+
 @pytest.fixture
 def provider2():
     return utils.MockProvider2({'user': 'name'}, {'pass': 'phrase'}, {})

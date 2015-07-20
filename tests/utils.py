@@ -54,6 +54,29 @@ class MockFolderMetadata(metadata.BaseFolderMetadata):
         super().__init__({})
 
 
+class MockProvider(provider.BaseProvider):
+    NAME = 'MockProvider'
+    copy = None
+    move = None
+    delete = None
+    upload = None
+    download = None
+    metadata = None
+    validate_path = None
+    revalidate_path = None
+
+    def __init__(self, auth=None, settings=None, creds=None):
+        super().__init__(auth or {}, settings or {}, creds or {})
+        self.copy = MockCoroutine()
+        self.move = MockCoroutine()
+        self.delete = MockCoroutine()
+        self.upload = MockCoroutine()
+        self.download = MockCoroutine()
+        self.metadata = MockCoroutine()
+        self.validate_path = MockCoroutine()
+        self.revalidate_path = MockCoroutine()
+
+
 class MockProvider1(provider.BaseProvider):
 
     NAME = 'MockProvider1'
