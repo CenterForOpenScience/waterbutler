@@ -374,6 +374,7 @@ class TestMetadata:
         assert result[0].name == 'UnZip.java'
         assert result[0].path == '/19'
         assert result[0].extra['fileId'] == '19'
+        assert result[0].materialized_path == '/UnZip.java'
 
     @async
     @pytest.mark.aiohttpretty
