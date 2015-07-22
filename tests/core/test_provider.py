@@ -482,16 +482,3 @@ class TestMove:
         assert 'bytes=10-' == provider1._build_range_header((10, None))
         assert 'bytes=10-100' == provider1._build_range_header((10, 100))
         assert 'bytes=-255' == provider1._build_range_header((None, 255))
-
-
-class TestWebView:
-
-    @async
-    def test_web_view(self, provider2):
-        web_view = yield from provider2.web_view(path='somepath')
-        assert web_view == 'www.url.com'
-
-    @async
-    def test_web_view_not_supported(self, provider1):
-        with pytest.raises(exceptions.UnsupportedError):
-            yield from provider1.web_view(path='somepath')

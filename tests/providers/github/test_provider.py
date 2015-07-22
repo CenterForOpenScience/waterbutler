@@ -671,8 +671,9 @@ class TestMetadata:
 
         result = yield from provider.metadata(path)
         item = repo_tree_metadata_root['tree'][0]
+        web_view = provider._web_view(path=path)
 
-        assert result == GitHubFileTreeMetadata(item)
+        assert result == GitHubFileTreeMetadata(item, web_view=web_view)
 
     # TODO: Additional Tests
     # def test_metadata_root_file_txt_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
@@ -693,7 +694,8 @@ class TestMetadata:
             if item['type'] == 'dir':
                 ret.append(GitHubFolderContentMetadata(item))
             else:
-                ret.append(GitHubFileContentMetadata(item))
+                web_view = provider._web_view(path=path)
+                ret.append(GitHubFileContentMetadata(item, web_view=web_view))
 
         assert result == ret
 
@@ -771,15 +773,3 @@ class TestCreateFolder:
         assert metadata.kind == 'folder'
         assert metadata.name == 'trains'
         assert metadata.path == '/i/like/trains/'
-
-
-class TestWebView:
-
-    @async
-    @pytest.mark.aiohttpretty
-    def test_web_view(self, provider, settings):
-        path = yield from provider.validate_path('/file.txt')
-        result = yield from provider.web_view(path)
-        segments = (settings['owner'], settings['repo'], 'blob', path.identifier[0], path.path)
-        expected = build_url(github_settings.VIEW_URL, *segments)
-        assert result == expected

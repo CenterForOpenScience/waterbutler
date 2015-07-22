@@ -544,15 +544,6 @@ class TestMetadata:
             yield from connected_provider.metadata(path)
 
 
-class TestWebView:
-
-    @async
-    def test_web_view(self, connected_provider):
-        path = WaterButlerPath('/similar.file')
-        with pytest.raises(exceptions.UnsupportedError):
-            yield from connected_provider.web_view(path=path)
-
-
 class TestOperations:
 
     def test_can_intra_copy(self, connected_provider):

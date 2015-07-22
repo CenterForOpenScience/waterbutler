@@ -84,15 +84,6 @@ class RevisionsError(ProviderError):
     pass
 
 
-class WebViewError(ProviderError):
-    pass
-
-
-class UnsupportedError(ProviderError):
-    def __init__(self, message):
-        super().__init__(message, code=405)
-
-
 class FolderNamingConflict(ProviderError):
     def __init__(self, path, name=None):
         super().__init__(
