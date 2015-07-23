@@ -504,8 +504,7 @@ class GitHubProvider(provider.BaseProvider):
                 if item['type'] == 'dir':
                     ret.append(GitHubFolderContentMetadata(item))
                 else:
-                    web_view = self._web_view(path)
-                    ret.append(GitHubFileContentMetadata(item, web_view=web_view))
+                    ret.append(GitHubFileContentMetadata(item, web_view=item['html_url']))
             return ret
 
     @asyncio.coroutine

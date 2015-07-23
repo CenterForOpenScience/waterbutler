@@ -694,8 +694,7 @@ class TestMetadata:
             if item['type'] == 'dir':
                 ret.append(GitHubFolderContentMetadata(item))
             else:
-                web_view = provider._web_view(path=path)
-                ret.append(GitHubFileContentMetadata(item, web_view=web_view))
+                ret.append(GitHubFileContentMetadata(item, web_view=item['html_url']))
 
         assert result == ret
 
