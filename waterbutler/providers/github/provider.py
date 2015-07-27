@@ -212,7 +212,7 @@ class GitHubProvider(provider.BaseProvider):
     def revisions(self, path, sha=None, **kwargs):
         resp = yield from self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=path.identifier),
+            self.build_repo_url('commits', path=path.path, sha=sha or path.identifier),
             expects=(200, ),
             throws=exceptions.RevisionsError
         )
