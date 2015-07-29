@@ -48,7 +48,8 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
     def extra(self):
         return {
             'version': self.raw['version'],
-            'downloads': self.raw['downloads']
+            'downloads': self.raw['downloads'],
+            'renter': self.raw['renter'],
         }
 
 
