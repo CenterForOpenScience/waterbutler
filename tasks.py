@@ -40,9 +40,14 @@ def test(verbose=False):
 
 
 @task
-def celery():
+def celery(loglevel='INFO', hostname='%h'):
     from waterbutler.tasks.app import app
-    app.worker_main(['worker', '-l', 'INFO'])
+    command = ['worker']
+    if loglevel:
+        command.extend(['--loglevel', loglevel])
+    if hostname:
+        command.extend(['--hostname', hostname])
+    app.worker_main(command)
 
 
 @task
