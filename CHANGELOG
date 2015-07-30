@@ -2,6 +2,13 @@
 ChangeLog
 *********
 
+0.9.0 (2015-07-29)
+==================
+
+- Web view links are included in the extra field when available
+- Add many a test for moving and copying, tasks and endpoints
+- Allow OsfStorage tasks to be disabled by adding including archive: false
+
 0.8.0 (2015-07-14)
 ==================
 
