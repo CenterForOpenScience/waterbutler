@@ -216,6 +216,7 @@ class DropboxProvider(provider.BaseProvider):
                 else:
                     ret.append(DropboxFileMetadata(item, self.folder))
             return ret
+
         return DropboxFileMetadata(data, self.folder)
 
     @asyncio.coroutine

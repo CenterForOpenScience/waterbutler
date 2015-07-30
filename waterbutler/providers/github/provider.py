@@ -35,6 +35,7 @@ class GitHubPath(path.WaterButlerPath):
 class GitHubProvider(provider.BaseProvider):
     NAME = 'github'
     BASE_URL = settings.BASE_URL
+    VIEW_URL = settings.VIEW_URL
 
     @staticmethod
     def is_sha(ref):
@@ -480,6 +481,10 @@ class GitHubProvider(provider.BaseProvider):
             return False
         return True
 
+    def _web_view(self, path):
+        segments = (self.owner, self.repo, 'blob', path.identifier[0], path.path)
+        return provider.build_url(settings.VIEW_URL, *segments)
+
     @asyncio.coroutine
     def _metadata_folder(self, path, recursive=False, **kwargs):
         # if we have a sha or recursive lookup specified we'll need to perform
@@ -499,7 +504,7 @@ class GitHubProvider(provider.BaseProvider):
                 if item['type'] == 'dir':
                     ret.append(GitHubFolderContentMetadata(item))
                 else:
-                    ret.append(GitHubFileContentMetadata(item))
+                    ret.append(GitHubFileContentMetadata(item, web_view=item['html_url']))
             return ret
 
     @asyncio.coroutine
@@ -510,6 +515,7 @@ class GitHubProvider(provider.BaseProvider):
             latest = path.identifier[0]
 
         tree = yield from self._fetch_tree(latest, recursive=True)
+        web_view = self._web_view(path)
 
         try:
             data = next(
@@ -525,7 +531,7 @@ class GitHubProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return GitHubFileTreeMetadata(data)
+        return GitHubFileTreeMetadata(data, web_view=web_view)
 
     @asyncio.coroutine
     def _get_latest_sha(self, ref='master'):

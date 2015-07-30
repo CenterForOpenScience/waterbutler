@@ -1,5 +1,6 @@
 import asyncio
 import os
+import copy
 import shutil
 import tempfile
 from unittest import mock
@@ -54,6 +55,29 @@ class MockFolderMetadata(metadata.BaseFolderMetadata):
         super().__init__({})
 
 
+class MockProvider(provider.BaseProvider):
+    NAME = 'MockProvider'
+    copy = None
+    move = None
+    delete = None
+    upload = None
+    download = None
+    metadata = None
+    validate_path = None
+    revalidate_path = None
+
+    def __init__(self, auth=None, settings=None, creds=None):
+        super().__init__(auth or {}, settings or {}, creds or {})
+        self.copy = MockCoroutine()
+        self.move = MockCoroutine()
+        self.delete = MockCoroutine()
+        self.upload = MockCoroutine()
+        self.download = MockCoroutine()
+        self.metadata = MockCoroutine()
+        self.validate_path = MockCoroutine()
+        self.revalidate_path = MockCoroutine()
+
+
 class MockProvider1(provider.BaseProvider):
 
     NAME = 'MockProvider1'
@@ -96,14 +120,18 @@ class HandlerTestCase(testing.AsyncHTTPTestCase):
 
     def setUp(self):
         super().setUp()
-        identity_future = asyncio.Future()
-        identity_future.set_result({
-            'auth': {},
-            'credentials': {},
-            'settings': {},
-        })
-        self.mock_identity = mock.Mock()
-        self.mock_identity.return_value = identity_future
+
+        def get_identity(*args, **kwargs):
+            return copy.deepcopy({
+                'auth': {},
+                'credentials': {},
+                'settings': {},
+                'callback_url': 'example.com'
+            })
+
+        self.mock_identity = MockCoroutine(side_effect=get_identity)
+
+        # self.mock_identity.return_value = identity_future
         self.identity_patcher = mock.patch('waterbutler.server.handlers.core.auth_handler.fetch', self.mock_identity)
 
         self.mock_provider = MockProvider1({}, {}, {})
@@ -123,6 +151,44 @@ class HandlerTestCase(testing.AsyncHTTPTestCase):
 
     def get_new_ioloop(self):
         return AsyncIOMainLoop()
+
+
+class MultiProviderHandlerTestCase(HandlerTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.source_provider = MockProvider2({}, {}, {})
+        self.destination_provider = MockProvider2({}, {}, {})
+
+        self.mock_send_hook = mock.Mock()
+        self.send_hook_patcher = mock.patch(self.HOOK_PATH, self.mock_send_hook)
+        self.send_hook_patcher.start()
+
+        self.mock_make_provider.return_value = None
+        self.mock_make_provider.side_effect = [
+            self.source_provider,
+            self.destination_provider
+        ]
+
+    def tearDown(self):
+        super().tearDown()
+        self.send_hook_patcher.stop()
+
+    def payload(self):
+        return copy.deepcopy({
+            'source': {
+                'nid': 'foo',
+                'provider': 'source',
+                'path': '/source/path',
+                'callback_url': 'example.com'
+            },
+            'destination': {
+                'nid': 'bar',
+                'provider': 'destination',
+                'path': '/destination/path',
+                'callback_url': 'example.com'
+            }
+        })
 
 
 class TempFilesContext:

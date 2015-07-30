@@ -1,3 +1,11 @@
+from waterbutler import settings
+# Clear all celery settings
+settings.config['TASKS_CONFIG'] = {
+    'WAIT_TIME_OUT': 30,
+    'CELERY_ALWAYS_EAGER': True,
+    'CELERY_RESULT_BACKEND': 'redis://'
+}
+
 import aiohttpretty
 
 

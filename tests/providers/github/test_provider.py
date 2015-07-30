@@ -13,8 +13,10 @@ import aiohttpretty
 from waterbutler.core import streams
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.provider import build_url
 
 from waterbutler.providers.github import GitHubProvider
+from waterbutler.providers.github import settings as github_settings
 from waterbutler.providers.github.metadata import GitHubRevision
 from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
 from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
@@ -668,8 +670,10 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', latest_sha_url, body={'object': {'sha': ref}})
 
         result = yield from provider.metadata(path)
+        item = repo_tree_metadata_root['tree'][0]
+        web_view = provider._web_view(path=path)
 
-        assert result == GitHubFileTreeMetadata(repo_tree_metadata_root['tree'][0])
+        assert result == GitHubFileTreeMetadata(item, web_view=web_view)
 
     # TODO: Additional Tests
     # def test_metadata_root_file_txt_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
@@ -690,7 +694,7 @@ class TestMetadata:
             if item['type'] == 'dir':
                 ret.append(GitHubFolderContentMetadata(item))
             else:
-                ret.append(GitHubFileContentMetadata(item))
+                ret.append(GitHubFileContentMetadata(item, web_view=item['html_url']))
 
         assert result == ret
 

@@ -1,5 +1,5 @@
 import sys
-import copy as cp
+import copy
 import asyncio
 import datetime
 
@@ -13,18 +13,18 @@ from waterbutler.core.path import WaterButlerPath
 import tests.utils as test_utils
 
 # Hack to get the module, not the function
-copy = sys.modules['waterbutler.tasks.copy']
+move = sys.modules['waterbutler.tasks.move']
 
 
 @pytest.fixture(autouse=True)
 def patch_backend(monkeypatch):
-    monkeypatch.setattr(copy.core.app, 'backend', None)
+    monkeypatch.setattr(move.core.app, 'backend', None)
 
 
 @pytest.fixture(autouse=True)
 def callback(monkeypatch):
     mock_request = test_utils.MockCoroutine()
-    monkeypatch.setattr(copy.utils, 'send_signed_request', mock_request)
+    monkeypatch.setattr(move.utils, 'send_signed_request', mock_request)
     return mock_request
 
 
@@ -41,14 +41,14 @@ def dest_path():
 @pytest.fixture(scope='function')
 def src_provider():
     p = test_utils.MockProvider()
-    p.copy.return_value = (test_utils.MockFileMetadata(), True)
+    p.move.return_value = (test_utils.MockFileMetadata(), True)
     return p
 
 
 @pytest.fixture(scope='function')
 def dest_provider():
     p = test_utils.MockProvider()
-    p.copy.return_value = (test_utils.MockFileMetadata(), True)
+    p.move.return_value = (test_utils.MockFileMetadata(), True)
     return p
 
 
@@ -60,7 +60,7 @@ def providers(monkeypatch, src_provider, dest_provider):
         if name == 'dest':
             return dest_provider
         raise ValueError('Unexpected provider')
-    monkeypatch.setattr(copy.utils, 'make_provider', make_provider)
+    monkeypatch.setattr(move.utils, 'make_provider', make_provider)
     return src_provider, dest_provider
 
 
@@ -95,36 +95,36 @@ def bundles(src_bundle, dest_bundle):
     return src_bundle, dest_bundle
 
 
-class TestCopyTask:
+class TestMoveTask:
 
-    def test_copy_calls_copy(self, providers, bundles):
+    def test_move_calls_move(self, providers, bundles):
         src, dest = providers
         src_bundle, dest_bundle = bundles
 
-        copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle), '', {'auth': {}})
+        move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), '', {'auth': {}})
 
-        assert src.copy.called
-        src.copy.assert_called_once_with(dest, src_bundle['path'], dest_bundle['path'])
+        assert src.move.called
+        src.move.assert_called_once_with(dest, src_bundle['path'], dest_bundle['path'])
 
     def test_is_task(self):
-        assert callable(copy.copy)
-        assert isinstance(copy.copy, celery.Task)
-        assert not asyncio.iscoroutine(copy.copy)
-        assert asyncio.iscoroutinefunction(copy.copy.adelay)
+        assert callable(move.move)
+        assert isinstance(move.move, celery.Task)
+        assert not asyncio.iscoroutine(move.move)
+        assert asyncio.iscoroutinefunction(move.move.adelay)
 
     def test_imputes_exceptions(self, providers, bundles, callback):
         src, dest = providers
         src_bundle, dest_bundle = bundles
 
-        src.copy.side_effect = Exception('This is a string')
+        src.move.side_effect = Exception('This is a string')
 
         with pytest.raises(Exception):
-            copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle), '', {'auth': {}})
+            move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), '', {'auth': {}})
 
         (method, url, data), _ = callback.call_args_list[0]
 
-        assert src.copy.called
-        src.copy.assert_called_once_with(dest, src_bundle['path'], dest_bundle['path'])
+        assert src.move.called
+        src.move.assert_called_once_with(dest, src_bundle['path'], dest_bundle['path'])
 
         assert url == ''
         assert method == 'PUT'
@@ -135,11 +135,11 @@ class TestCopyTask:
         src_bundle, dest_bundle = bundles
 
         metadata = test_utils.MockFileMetadata()
-        src.copy.return_value = (metadata, False)
+        src.move.return_value = (metadata, False)
 
         dt = datetime.datetime.utcfromtimestamp(60)
         with freezegun.freeze_time(dt):
-            ret1, ret2 = copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle), 'Test.com', {'auth': {'user': 'name'}})
+            ret1, ret2 = move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), 'Test.com', {'auth': {'user': 'name'}})
 
         assert (ret1, ret2) == (metadata, False)
 
@@ -148,7 +148,7 @@ class TestCopyTask:
             'Test.com',
             {
                 'errors': [],
-                'action': 'copy',
+                'action': 'move',
                 'source': {
                     'path': src_path.path,
                     'name': src_path.name,
@@ -169,8 +169,8 @@ class TestCopyTask:
         dt = datetime.datetime.utcnow()
         stamp = dt.replace(tzinfo=datetime.timezone.utc).timestamp()
         with freezegun.freeze_time(dt, tz_offset=0):
-            copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle), '', {'auth': {}}, start_time=stamp-100)
-            copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle), '', {'auth': {}}, start_time=stamp+100)
+            move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), '', {'auth': {}}, start_time=stamp-100)
+            move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), '', {'auth': {}}, start_time=stamp+100)
 
         (_, _, data), _ = callback.call_args_list[0]
 
