@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.10.0 (2015-08-10)
+===================
+- Allow S3 uploads to be encrypted at rest via S3's API
+
 0.9.0 (2015-07-29)
 ==================
 
