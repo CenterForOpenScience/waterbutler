@@ -48,7 +48,11 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
     def extra(self):
         return {
             'version': self.raw['version'],
-            'downloads': self.raw['downloads']
+            'downloads': self.raw['downloads'],
+            'hashes': {
+                'md5': self.raw['md5'],
+                'sha256': self.raw['sha256']
+            },
         }
 
 
@@ -75,4 +79,8 @@ class OsfStorageRevisionMetadata(BaseOsfStorageMetadata, metadata.BaseFileRevisi
         return {
             'user': self.raw['user'],
             'downloads': self.raw['downloads'],
+            'hashes': {
+                'md5': self.raw['md5'],
+                'sha256': self.raw['sha256']
+            },
         }
