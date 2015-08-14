@@ -38,7 +38,7 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
 
     @property
     def content_type(self):
-        return None
+        return self.raw.get('contentType')
 
     @property
     def etag(self):
