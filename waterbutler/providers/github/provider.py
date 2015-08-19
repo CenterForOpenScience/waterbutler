@@ -172,7 +172,7 @@ class GitHubProvider(provider.BaseProvider):
             'tree': tree['sha'],
             'parents': [latest_sha],
             'committer': self.committer,
-            'message': message or (settings.UPLOAD_FILE_MESSAGE if exists else settings.UPDATE_FILE_MESSAGE),
+            'message': message or (settings.UPDATE_FILE_MESSAGE if exists else settings.UPLOAD_FILE_MESSAGE),
         })
 
         # Doesn't return anything useful
