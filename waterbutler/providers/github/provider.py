@@ -172,7 +172,7 @@ class GitHubProvider(provider.BaseProvider):
             'tree': tree['sha'],
             'parents': [latest_sha],
             'committer': self.committer,
-            'message': message or settings.UPLOAD_FILE_MESSAGE,
+            'message': message or (settings.UPLOAD_FILE_MESSAGE if exists else settings.UPDATE_FILE_MESSAGE),
         })
 
         # Doesn't return anything useful
@@ -600,7 +600,7 @@ class GitHubProvider(provider.BaseProvider):
                 'tree': new_tree_sha,
                 'parents': [old_commit_sha],
                 'committer': self.committer,
-                'message': '{} on behalf of WaterButler'.format('Copied' if is_copy else 'Moved')
+                'message': settings.COPY_MESSAGE if is_copy else settings.MOVE_MESSAGE
             }),
             expects=(201, ),
             throws=exceptions.DeleteError,
