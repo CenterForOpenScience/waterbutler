@@ -8,7 +8,7 @@ from tests import utils
 
 
 class TestCopyHandler(utils.MultiProviderHandlerTestCase):
-    HOOK_PATH = 'waterbutler.server.handlers.copy.CopyHandler._send_hook'
+    HOOK_PATH = 'waterbutler.server.api.v0.copy.CopyHandler._send_hook'
 
     @testing.gen_test
     def test_calls_copy(self):
