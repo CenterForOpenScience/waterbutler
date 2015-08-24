@@ -1,13 +1,18 @@
+import os
+import http
 import json
+import socket
 import asyncio
 
 import tornado.gen
 
+from waterbutler.core import mime_types
+from waterbutler.core.utils import make_provider
+from waterbutler.core.streams import RequestStreamReader
 from waterbutler.server import utils
 from waterbutler.server import settings
 from waterbutler.server.auth import AuthHandler
 from waterbutler.server.api.v1 import core
-from waterbutler.core.utils import make_provider
 
 
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
@@ -48,7 +53,7 @@ class ProviderHandler(core.BaseHandler):
         """Get metadata for a folder or file
         """
         if self.path.is_dir:
-            self.set_status(405)  # Metadata on the folder itself TODO
+            self.set_status(http.client.NOT_IMPLEMENTED)  # Metadata on the folder itself TODO
             return
 
         data = yield from self.provider.metadata(self.path)
@@ -134,21 +139,21 @@ class ProviderHandler(core.BaseHandler):
         if isinstance(stream, str):
             return self.redirect(stream)
 
-        if getattr(result, 'partial', None):
+        if getattr(stream, 'partial', None):
             # Use getattr here as not all stream may have a partial attribute
             # Plus it fixes tests
             self.set_status(206)
-            self.set_header('Content-Range', result.content_range)
+            self.set_header('Content-Range', stream.content_range)
 
-        if result.content_type is not None:
-            self.set_header('Content-Type', result.content_type)
+        if stream.content_type is not None:
+            self.set_header('Content-Type', stream.content_type)
 
-        if result.size is not None:
-            self.set_header('Content-Length', str(result.size))
+        if stream.size is not None:
+            self.set_header('Content-Length', str(stream.size))
 
         # Build `Content-Disposition` header from `displayName` override,
         # headers of provider response, or file path, whichever is truthy first
-        name = self.arguments.get('displayName') or getattr(result, 'name', None) or self.path.name
+        name = self.arguments.get('displayName') or getattr(stream, 'name', None) or self.path.name
         self.set_header('Content-Disposition', utils.make_disposition(name))
 
         _, ext = os.path.splitext(name)

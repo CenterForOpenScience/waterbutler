@@ -1,4 +1,3 @@
-import asyncio
 import tornado.gen
 from waterbutler.server import settings
 
