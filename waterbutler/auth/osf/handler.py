@@ -36,3 +36,33 @@ class OsfAuthHandler(auth.BaseAuthHandler):
             raise exceptions.AuthError(data, code=response.status)
 
         return (yield from response.json())
+
+    @asyncio.coroutine
+    def get(self, resource, provider, request):
+        headers = {'Content-Type': 'application/json'}
+
+        if 'token' in request.query_arguments:
+            headers['Authorization'] = 'Bearer ' + request.query_arguments['token']
+        elif 'Authorization' in request.headers:
+            headers['Authorization'] = request.headers['Authorization']
+
+        response = yield from aiohttp.request(
+            'get',
+            settings.API_URL,
+            headers=headers,
+            cookies=dict(request.cookies),
+            params={
+                'nid': resource,
+                'provider': provider,
+                'action': 'metadata'
+            },
+        )
+
+        if response.status != 200:
+            try:
+                data = yield from response.json()
+            except ValueError:
+                data = yield from response.read()
+            raise exceptions.AuthError(data, code=response.status)
+
+        return (yield from response.json())

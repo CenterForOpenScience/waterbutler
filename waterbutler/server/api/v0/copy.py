@@ -3,7 +3,7 @@ import time
 import tornado.gen
 
 from waterbutler import tasks
-from waterbutler.server.handlers import core
+from waterbutler.server.api.v0 import core
 
 
 class CopyHandler(core.BaseCrossProviderHandler):

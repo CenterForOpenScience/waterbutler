@@ -10,7 +10,7 @@ import tornado.platform.asyncio
 
 from waterbutler.core import mime_types
 from waterbutler.server import utils
-from waterbutler.server.handlers import core
+from waterbutler.server.api.v0 import core
 from waterbutler.core.streams import RequestStreamReader
 
 
