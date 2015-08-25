@@ -276,9 +276,11 @@ class OSFStorageProvider(provider.BaseProvider):
 
         metadata.update({
             'name': name,
+            'md5': data['data']['md5'],
             'path': data['data']['path'],
+            'sha256': data['data']['sha256'],
             'version': data['data']['version'],
-            'downloads': data['data']['downloads']
+            'downloads': data['data']['downloads'],
         })
 
         return OsfStorageFileMetadata(metadata, str(path)), created
