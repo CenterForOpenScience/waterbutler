@@ -21,6 +21,9 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         elif 'token' in bundle:
             headers['Authorization'] = 'Bearer ' + bundle['token']
 
+        if 'Content-Length' in request.headers:
+            bundle['size'] = request.headers['Content-Length']
+
         response = yield from aiohttp.request(
             'get',
             settings.API_URL,

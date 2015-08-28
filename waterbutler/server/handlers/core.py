@@ -32,6 +32,7 @@ CORS_EXPOSE_HEADERS = [
 ]
 
 HTTP_REASONS = {
+    507: 'Insufficient Storage',
     422: 'Unprocessable Entity',
     461: 'Unavailable For Legal Reasons',
 }
