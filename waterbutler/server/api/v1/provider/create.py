@@ -1,21 +1,21 @@
 import asyncio
 
-from waterbutler.core.streams import RequestStreamReader
+from tornado.web import HTTPError
 
 
 class CreateMixin:
 
     def validate_put(self):
-        self.name = get_query_argument('name')  # TODO What does this do?
-        self.kind = get_query_argument('kind', default='file')
+        self.name = self.get_query_argument('name')  # TODO What does this do?
+        self.kind = self.get_query_argument('kind', default='file')
 
-        if kind not in ('file', 'folder'):
+        if self.kind not in ('file', 'folder'):
             raise Exception()
 
         if 'Content-Length' not in self.request.headers:
-            raise Exception()
+            raise HTTPError(404, 'foo', body='bar')
 
-        if kind == 'folder' and self.request.headers.get('Content-Length') != 0:
+        if self.kind == 'folder' and self.request.headers.get('Content-Length') != 0:
             raise Exception()
 
     @asyncio.coroutine

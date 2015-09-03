@@ -1,4 +1,8 @@
+import os
+import json
 import asyncio
+
+import tornado.httputil
 
 from waterbutler.core import mime_types
 from waterbutler.server import utils
@@ -8,6 +12,7 @@ class MetadataMixin:
 
     @asyncio.coroutine
     def header_file_metadata(self):
+        # TODO Revisions
         data = yield from self.provider.metadata(self.path)
 
         self.set_header('Etag', data.etag)  # This may not be appropriate

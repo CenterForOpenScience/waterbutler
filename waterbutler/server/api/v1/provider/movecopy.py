@@ -1,11 +1,14 @@
-import time
-import asyncio
+import json
 
-import tornado.gen
+from tornado.web import HTTPError
 
 from waterbutler import tasks
 from waterbutler.sizes import MBs
-from waterbutler.server.api.v0 import core
+from waterbutler.server import settings
+from waterbutler.server.auth import AuthHandler
+from waterbutler.core.utils import make_provider
+
+auth_handler = AuthHandler(settings.AUTH_HANDLERS)
 
 
 class MoveCopyMixin:
@@ -18,9 +21,12 @@ class MoveCopyMixin:
         return self._json
 
     def validate_post(self):
-        if 'Content-Length' not in self.request.headers or self.request.headers['Content-Length'] > 10 * MBs:
-            # There should be no JSON body > 10 megs
-            raise Exception()
+        try:
+            if int(self.request.headers['Content-Length']) > 10 * MBs:
+                # There should be no JSON body > 10 megs
+                raise HTTPError(413)
+        except (KeyError, ValueError):
+            raise HTTPError(411)
 
     def build_args(self, dest_provider):
         return ({
@@ -29,7 +35,7 @@ class MoveCopyMixin:
             'provider': self.provider.serialized()
         }, {
             'nid': self.json['resource'],
-            'path': (yield from dest_provider.validate_path(self.json.get('path')))
+            'path': (yield from dest_provider.validate_path(self.json.get('path'))),
             'provider': dest_provider.serialized()
         })
 
@@ -44,7 +50,7 @@ class MoveCopyMixin:
         )
 
         dest_provider = make_provider(
-            self.json['provider']
+            self.json['provider'],
             dest_auth['auth'],
             dest_auth['credentials'],
             dest_auth['settings']
@@ -59,7 +65,7 @@ class MoveCopyMixin:
                     getattr(self.provider, self.json['action']),
                     dest_provider,
                     self.path,
-                    (yield from dest_provider.validate_path(self.json.get('path')))
+                    (yield from dest_provider.validate_path(self.json.get('path'))),
                     rename=self.json.get('rename'),
                     conflict=self.json.get('conflict', 'replace'),
                 )

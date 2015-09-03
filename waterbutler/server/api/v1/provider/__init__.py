@@ -8,8 +8,10 @@ from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.utils import make_provider
+from waterbutler.core.streams import RequestStreamReader
 from waterbutler.server.api.v1.provider.create import CreateMixin
 from waterbutler.server.api.v1.provider.metadata import MetadataMixin
+from waterbutler.server.api.v1.provider.movecopy import MoveCopyMixin
 
 
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
@@ -18,7 +20,7 @@ auth_handler = AuthHandler(settings.AUTH_HANDLERS)
 @tornado.web.stream_request_body
 class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixin):
     VALIDATORS = {'put': 'validate_put', 'post': 'validate_post'}
-    PATTERN = r'/resources/(?P<resource>(?:\w|\d)+)/providers/(?P<provider>(?:\w|\d)+)/(?P<path>.*/?)?'
+    PATTERN = r'/resources/(?P<resource>(?:\w|\d)+)/providers/(?P<provider>(?:\w|\d)+)(?P<path>/.*/?)'
 
     @tornado.gen.coroutine
     def prepare(self, *args, **kwargs):
@@ -43,7 +45,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         """Get metadata for a folder or file
         """
         if self.path.is_dir:
-            return self.set_status(http.client.METHOD_NOT_ALLOWED)  # Metadata on the folder itself TODO
+            return self.set_status(http.client.NOT_IMPLEMENTED)  # Metadata on the folder itself TODO
         return (yield from self.header_file_metadata())
 
     @tornado.gen.coroutine
