@@ -46,17 +46,20 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         elif 'Authorization' in request.headers:
             headers['Authorization'] = request.headers['Authorization']
 
-        response = yield from aiohttp.request(
-            'get',
-            settings.API_URL,
-            headers=headers,
-            cookies=dict(request.cookies),
-            params={
-                'nid': resource,
-                'provider': provider,
-                'action': 'metadata'
-            },
-        )
+        try:
+            response = yield from aiohttp.request(
+                'get',
+                settings.API_URL,
+                headers=headers,
+                cookies=dict(request.cookies),
+                params={
+                    'nid': resource,
+                    'provider': provider,
+                    'action': 'metadata'
+                },
+            )
+        except aiohttp.errors.ClientError:
+            raise exceptions.AuthError('Unable to connect to auth sever', code=503)
 
         if response.status != 200:
             try:
