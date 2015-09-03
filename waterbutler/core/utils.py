@@ -10,6 +10,7 @@ from raven.contrib.tornado import AsyncSentryClient
 from stevedore import driver
 
 from waterbutler import settings
+from waterbutler.core import exceptions
 from waterbutler.server import settings as server_settings
 from waterbutler.core.signing import Signer
 
@@ -49,12 +50,16 @@ def make_provider(name, auth, credentials, settings):
 
     :rtype: :class:`waterbutler.core.provider.BaseProvider`
     """
-    manager = driver.DriverManager(
-        namespace='waterbutler.providers',
-        name=name,
-        invoke_on_load=True,
-        invoke_args=(auth, credentials, settings),
-    )
+    try:
+        manager = driver.DriverManager(
+            namespace='waterbutler.providers',
+            name=name,
+            invoke_on_load=True,
+            invoke_args=(auth, credentials, settings),
+        )
+    except RuntimeError:
+        raise exceptions.ProviderNotFound(name)
+
     return manager.driver
 
 

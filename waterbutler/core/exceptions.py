@@ -44,6 +44,11 @@ class ProviderError(PluginError):
     """
 
 
+class ProviderNotFound(ProviderError):
+    def __init__(self, provider):
+        super().__init__('Provider "{}" not found'.format(provider), code=404)
+
+
 class CopyError(ProviderError):
     pass
 
