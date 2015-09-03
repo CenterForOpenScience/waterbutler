@@ -2,7 +2,6 @@ import pytest
 
 import json
 import asyncio
-from unittest import mock
 
 from tornado import testing
 from tornado import httpclient
