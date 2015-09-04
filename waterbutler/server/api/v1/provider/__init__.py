@@ -24,7 +24,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     @tornado.gen.coroutine
     def prepare(self, *args, **kwargs):
-        path = self.path_kwargs['path']
+        self.path = self.path_kwargs['path'] or '/'
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
 
@@ -34,11 +34,14 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
         self.auth = yield from auth_handler.get(self.resource, provider, self.request)
         self.provider = make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
-        self.path = yield from self.provider.validate_path(path or '/')
+        self.path = yield from self.provider.validate_path(self.path)
 
         # The one special case
         if self.request.method == 'PUT' and self.path.is_file:
             yield from self.prepare_stream()
+        else:
+            self.stream = None
+        self.body = b''
 
     @tornado.gen.coroutine
     def head(self, **_):
@@ -80,6 +83,8 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if self.stream:
             self.writer.write(chunk)
             yield from self.writer.drain()
+        else:
+            self.body += chunk
 
     @asyncio.coroutine
     def prepare_stream(self):
