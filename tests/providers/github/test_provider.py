@@ -536,10 +536,11 @@ class TestCRUD:
         url = provider.build_repo_url('git', 'blobs', file_sha)
         tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
         latest_sha_url = provider.build_repo_url('git', 'refs', 'heads', path.identifier[0])
+        commit_url = provider.build_repo_url('commits', path=path.path.lstrip('/'), sha=path.identifier[0])
 
         aiohttpretty.register_uri('GET', url, body=b'delicious')
         aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
-        aiohttpretty.register_json_uri('GET', latest_sha_url, body={'object': {'sha': ref}})
+        aiohttpretty.register_json_uri('GET', commit_url, body=[{'commit': {'tree': {'sha': ref}}}])
 
         result = yield from provider.download(path)
         content = yield from result.read()
@@ -554,11 +555,11 @@ class TestCRUD:
 
         url = provider.build_repo_url('git', 'blobs', file_sha)
         tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
-        latest_sha_url = provider.build_repo_url('git', 'refs', 'heads', path.identifier[0])
+        commit_url = provider.build_repo_url('commits', path=path.path.lstrip('/'), sha=path.identifier[0])
 
         aiohttpretty.register_uri('GET', url, body=b'delicious')
         aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
-        aiohttpretty.register_json_uri('GET', latest_sha_url, body={'object': {'sha': ref}})
+        aiohttpretty.register_json_uri('GET', commit_url, body=[{'commit': {'tree': {'sha': ref}}}])
 
         result = yield from provider.download(path)
         content = yield from result.read()
@@ -664,16 +665,23 @@ class TestMetadata:
         path = yield from provider.validate_path('/file.txt')
 
         tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
-        latest_sha_url = provider.build_repo_url('git', 'refs', 'heads', path.identifier[0])
+        commit_url = provider.build_repo_url('commits', path=path.path.lstrip('/'), sha=path.identifier[0])
 
         aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
-        aiohttpretty.register_json_uri('GET', latest_sha_url, body={'object': {'sha': ref}})
+        aiohttpretty.register_json_uri('GET', commit_url, body=[{
+            'commit': {
+                'tree': {'sha': ref},
+                'author': {'date': 'this is totally  date'}
+            },
+        }])
 
         result = yield from provider.metadata(path)
         item = repo_tree_metadata_root['tree'][0]
         web_view = provider._web_view(path=path)
 
-        assert result == GitHubFileTreeMetadata(item, web_view=web_view)
+        assert result == GitHubFileTreeMetadata(item, web_view=web_view, commit={'commit': {
+            'tree': {'sha': ref}, 'author': {'date': 'this is totally  date'}
+        }})
 
     # TODO: Additional Tests
     # def test_metadata_root_file_txt_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):

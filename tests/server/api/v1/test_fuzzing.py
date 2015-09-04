@@ -75,7 +75,7 @@ class TestServerFuzzing(ServerTestCase):
                 headers={'Content-Length': '1048580'},
                 method='POST', body_producer=body_producer,
             )
-        # Maybe a but in tornado?
+        # Maybe a bug in tornado?
         # Responses not properly sent back
         # assert exc.value.code == 413
 
