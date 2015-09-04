@@ -7,10 +7,17 @@ from tornado.web import HTTPError
 class CreateMixin:
 
     def validate_put(self):
-        self.name = self.get_query_argument('name')  # TODO What does this do?
         self.kind = self.get_query_argument('kind', default='file')
 
         if self.kind not in ('file', 'folder'):
+            raise HTTPError(400)
+
+        if self.path.endswith('/'):
+            name = self.get_query_argument('name')  # TODO What does this do?
+            self.path = os.path.join(self.path, name)
+            if self.kind == 'folder':
+                self.path += '/'
+        elif self.kind == 'folder':
             raise HTTPError(400)
 
         length = self.request.headers.get('Content-Length')
@@ -23,9 +30,6 @@ class CreateMixin:
                 raise HTTPError(400)
         except ValueError:
                 raise HTTPError(400)
-        self.path = os.path.join(self.path, self.name)
-        if self.kind == 'folder':
-            self.path += '/'
 
     @asyncio.coroutine
     def create_folder(self):
