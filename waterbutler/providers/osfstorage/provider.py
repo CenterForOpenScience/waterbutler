@@ -173,9 +173,14 @@ class OSFStorageProvider(provider.BaseProvider):
         return (yield from self.make_request(method, url, data=data, params=params, **kwargs))
 
     @asyncio.coroutine
-    def download(self, path, version=None, mode=None, **kwargs):
+    def download(self, path, version=None, revision=None, mode=None, **kwargs):
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
+
+        if version is None:
+            # TODO Clean this up
+            # version could be 0 here
+            version = revision
 
         # osf storage metadata will return a virtual path within the provider
         resp = yield from self.make_signed_request(
@@ -342,10 +347,10 @@ class OSFStorageProvider(provider.BaseProvider):
         )
 
     @asyncio.coroutine
-    def _item_metadata(self, path):
+    def _item_metadata(self, path, revision=None):
         resp = yield from self.make_signed_request(
             'GET',
-            self.build_url(path.identifier),
+            self.build_url(path.identifier, revision=revision),
             expects=(200, )
         )
 
