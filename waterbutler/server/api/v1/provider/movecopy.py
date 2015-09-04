@@ -1,4 +1,5 @@
 import json
+import asyncio
 
 from tornado.web import HTTPError
 
@@ -17,13 +18,17 @@ class MoveCopyMixin:
     def json(self):
         if not hasattr(self, '_json'):
             # TODO catch exceptions
-            self._json = json.loads(self.request.body)
+            try:
+                # Defined by self.data_received
+                self._json = json.loads(self.body.decode())
+            except ValueError:
+                raise HTTPError(400)
         return self._json
 
     def validate_post(self):
         try:
-            if int(self.request.headers['Content-Length']) > 10 * MBs:
-                # There should be no JSON body > 10 megs
+            if int(self.request.headers['Content-Length']) > 1 * MBs:
+                # There should be no JSON body > 1 megs
                 raise HTTPError(413)
         except (KeyError, ValueError):
             raise HTTPError(411)
@@ -39,7 +44,9 @@ class MoveCopyMixin:
             'provider': dest_provider.serialized()
         })
 
+    @asyncio.coroutine
     def move_or_copy(self):
+        yield self.request.body
         if self.json.get('action') not in ('copy', 'move'):
             raise Exception()
 
