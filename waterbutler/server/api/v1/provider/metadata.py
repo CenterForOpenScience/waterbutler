@@ -13,7 +13,7 @@ class MetadataMixin:
     @asyncio.coroutine
     def header_file_metadata(self):
         # TODO Revisions
-        data = yield from self.provider.metadata(self.path)
+        data = yield from self.provider.metadata(self.path, revision=self.get_query_argument('revision', default=None))
 
         self.set_header('Etag', data.etag)  # This may not be appropriate
         self.set_header('Content-Length', data.size)
@@ -34,7 +34,7 @@ class MetadataMixin:
         if 'meta' in self.request.query_arguments:
             return (yield from self.file_metadata())
 
-        if 'versions' in self.request.query_arguments:
+        if 'revisions' in self.request.query_arguments:
             return (yield from self.get_file_revisions())
 
         return (yield from self.download_file())
@@ -49,7 +49,8 @@ class MetadataMixin:
         stream = yield from self.provider.download(
             self.path,
             range=request_range,
-            accept_url='direct' not in self.request.query_arguments
+            accept_url='direct' not in self.request.query_arguments,
+            revision=self.get_query_argument('revision', default=None)
         )
 
         if isinstance(stream, str):
@@ -83,12 +84,15 @@ class MetadataMixin:
     @asyncio.coroutine
     def file_metadata(self):
         return self.write({
-            'data': (yield from self.provider.metadata(self.path)).serialized()
+            'data': (yield from self.provider.metadata(
+                self.path,
+                revision=self.get_query_argument('revision', default=None)
+            )).serialized()
         })
 
     @asyncio.coroutine
     def get_file_revisions(self):
-        result = self.provider.revisions()
+        result = self.provider.revisions(self.path)
 
         if asyncio.iscoroutine(result):
             result = yield from result
