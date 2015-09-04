@@ -508,14 +508,16 @@ class GitHubProvider(provider.BaseProvider):
             return ret
 
     @asyncio.coroutine
-    def _metadata_file(self, path, ref=None, **kwargs):
-        if not GitHubProvider.is_sha(path.identifier[0]):
-            latest = yield from self._get_latest_sha(ref=path.identifier[0])
-        else:
-            latest = path.identifier[0]
+    def _metadata_file(self, path, revision=None, ref=None, **kwargs):
+        resp = yield from self.make_request(
+            'GET',
+            self.build_repo_url('commits', path=path.path, sha=revision or ref or path.identifier[0]),
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
 
-        tree = yield from self._fetch_tree(latest, recursive=True)
-        web_view = self._web_view(path)
+        latest = (yield from resp.json())[0]
+        tree = yield from self._fetch_tree(latest['commit']['tree']['sha'], recursive=True)
 
         try:
             data = next(
@@ -531,7 +533,7 @@ class GitHubProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return GitHubFileTreeMetadata(data, web_view=web_view)
+        return GitHubFileTreeMetadata(data, commit=latest, web_view=self._web_view(path))
 
     @asyncio.coroutine
     def _get_latest_sha(self, ref='master'):
