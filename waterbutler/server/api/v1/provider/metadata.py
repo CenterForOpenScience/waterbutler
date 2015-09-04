@@ -18,7 +18,7 @@ class MetadataMixin:
         self.set_header('Etag', data.etag)  # This may not be appropriate
         self.set_header('Content-Length', data.size)
         self.set_header('Last-Modified', data.modified)
-        self.set_header('Content-Type', data.content_type)
+        self.set_header('Content-Type', data.content_type or 'application/octet-stream')
         self.set_header('X-Waterbutler-Metadata', json.dumps(data.serialized()))
 
     @asyncio.coroutine
