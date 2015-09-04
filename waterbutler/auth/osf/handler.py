@@ -55,7 +55,13 @@ class OsfAuthHandler(auth.BaseAuthHandler):
                 params={
                     'nid': resource,
                     'provider': provider,
-                    'action': 'metadata'
+                    'action': {
+                        'put': 'upload',
+                        'post': 'upload',  # TODO copyfrom
+                        'get': 'download',
+                        'head': 'metadata',
+                        'delete': 'delete',
+                    }[request.method.lower()]
                 },
             )
         except aiohttp.errors.ClientError:
