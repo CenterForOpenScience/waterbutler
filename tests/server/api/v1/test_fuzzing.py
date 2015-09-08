@@ -79,6 +79,21 @@ class TestServerFuzzing(ServerTestCase):
         # Responses not properly sent back
         # assert exc.value.code == 413
 
+    @testing.gen_test
+    def test_options(self):
+        resp = yield self.http_client.fetch(
+            self.get_url('/resources/jernk/providers/jaaaaank/'),
+            method='OPTIONS',
+        )
+        assert resp.code == 204
+
+        with pytest.raises(httpclient.HTTPError) as exc:
+            yield self.http_client.fetch(
+                self.get_url('/reders/jaaaaank/'),
+                method='OPTIONS',
+            )
+        assert exc.value.code == 404
+
 
 class TestServerFuzzingMocks(ServerTestCase):
 

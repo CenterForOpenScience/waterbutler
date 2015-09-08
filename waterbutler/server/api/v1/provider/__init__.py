@@ -24,6 +24,10 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     @tornado.gen.coroutine
     def prepare(self, *args, **kwargs):
+        # TODO Find a nicer way to handle this
+        if self.request.method.lower() == 'options':
+            return
+
         self.path = self.path_kwargs['path'] or '/'
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']

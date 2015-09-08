@@ -40,7 +40,7 @@ class CORsMixin:
         self.set_header('Access-Control-Expose-Headers', ', '.join(CORS_EXPOSE_HEADERS))
         self.set_header('Cache-control', 'no-store, no-cache, must-revalidate, max-age=0')
 
-    def options(self):
+    def options(self, *args, **kwargs):
         self.set_status(204)
         self.set_header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE'),
 
