@@ -1,10 +1,9 @@
 import json
 import asyncio
 
-from tornado.web import HTTPError
-
 from waterbutler import tasks
 from waterbutler.sizes import MBs
+from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.utils import make_provider
@@ -17,21 +16,20 @@ class MoveCopyMixin:
     @property
     def json(self):
         if not hasattr(self, '_json'):
-            # TODO catch exceptions
             try:
-                # Defined by self.data_received
+                # self.body is defined by self.data_received
                 self._json = json.loads(self.body.decode())
             except ValueError:
-                raise HTTPError(400)
+                raise exceptions.InvalidParameters('Invalid json body')
         return self._json
 
     def validate_post(self):
         try:
             if int(self.request.headers['Content-Length']) > 1 * MBs:
                 # There should be no JSON body > 1 megs
-                raise HTTPError(413)
+                raise exceptions.InvalidParameters('Request body must be under 1Mb', code=413)
         except (KeyError, ValueError):
-            raise HTTPError(411)
+            raise exceptions.InvalidParameters('Content-Length is required', code=411)
 
     def build_args(self, dest_provider, dest_path):
         return ({
@@ -50,7 +48,8 @@ class MoveCopyMixin:
         yield self.request.body
 
         if self.json.get('action') not in ('copy', 'move', 'rename'):
-            raise Exception()
+            # Note: null is used as the default to avoid python specific error messages
+            raise exceptions.InvalidParameters('Action must be copy, move or rename, not {}'.format(self.json.get('action', 'null')))
 
         if self.json['action'] == 'rename':
             action = 'move'
@@ -59,7 +58,7 @@ class MoveCopyMixin:
             dest_path = self.path.parent
         else:
             if 'path' not in self.json:
-                raise Exception()
+                raise exceptions.InvalidParameters('Path is required for moves or copies')
 
             action = self.json['action']
 

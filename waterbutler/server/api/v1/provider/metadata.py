@@ -12,10 +12,13 @@ class MetadataMixin:
 
     @asyncio.coroutine
     def header_file_metadata(self):
-        # Going with versions as its the most correct term
+        # Going with version as its the most correct term
         # TODO Change all references of revision to version @chrisseto
-        data = yield from self.provider.metadata(self.path, revision=self.get_query_argument('version', default=None))
+        # revisions will still be accepted until necessary changes are made to OSF
+        version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
+        data = yield from self.provider.metadata(self.path, revision=version)
 
+        # Not setting etag for the moment
         # self.set_header('Etag', data.etag)  # This may not be appropriate
         if data.size is not None:
             self.set_header('Content-Length', data.size)
@@ -37,7 +40,7 @@ class MetadataMixin:
         if 'meta' in self.request.query_arguments:
             return (yield from self.file_metadata())
 
-        if 'versions' in self.request.query_arguments:
+        if 'versions' in self.request.query_arguments or 'revisions' in self.request.query_arguments:
             # Going with versions as its the most correct term
             # TODO Change all references of revision to version @chrisseto
             return (yield from self.get_file_revisions())
@@ -51,11 +54,12 @@ class MetadataMixin:
         else:
             request_range = tornado.httputil._parse_request_range(self.request.headers['Range'])
 
+        version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
         stream = yield from self.provider.download(
             self.path,
             range=request_range,
             accept_url='direct' not in self.request.query_arguments,
-            revision=self.get_query_argument('version', default=None)
+            revision=version,
         )
 
         if isinstance(stream, str):
@@ -88,11 +92,10 @@ class MetadataMixin:
 
     @asyncio.coroutine
     def file_metadata(self):
+        version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
+
         return self.write({
-            'data': (yield from self.provider.metadata(
-                self.path,
-                revision=self.get_query_argument('version', default=None)
-            )).serialized()
+            'data': (yield from self.provider.metadata(self.path, revision=version)).serialized()
         })
 
     @asyncio.coroutine

@@ -36,8 +36,8 @@ class InvalidParameters(WaterButlerError):
     data being sent to a method should raise either this
     Exception or a subclass thereof
     """
-    def __init__(self, message):
-        super().__init__(message, code=400)
+    def __init__(self, message, code=400):
+        super().__init__(message, code=code)
 
 
 class PluginError(WaterButlerError):
