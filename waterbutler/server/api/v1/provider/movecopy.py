@@ -69,7 +69,7 @@ class MoveCopyMixin:
             )
 
             dest_provider = make_provider(
-                self.json['provider'],
+                self.json.get('provider', self.provider.NAME),
                 dest_auth['auth'],
                 dest_auth['credentials'],
                 dest_auth['settings']
