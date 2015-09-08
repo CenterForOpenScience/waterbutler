@@ -75,7 +75,7 @@ class MoveCopyMixin:
                 dest_auth['settings']
             )
 
-            dest_path = yield from dest_provider(self.json['path'])
+            dest_path = yield from dest_provider.validate_path(self.json['path'])
 
         if not getattr(self.provider, 'can_intra_' + action)(dest_provider, self.path):
             result = yield from getattr(tasks, action).adelay(*self.build_args(dest_provider, dest_path))
