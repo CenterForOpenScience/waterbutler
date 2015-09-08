@@ -33,46 +33,61 @@ class MoveCopyMixin:
         except (KeyError, ValueError):
             raise HTTPError(411)
 
-    def build_args(self, dest_provider):
+    def build_args(self, dest_provider, dest_path):
         return ({
             'nid': self.resource,  # TODO rename to anything but nid
             'path': self.path,
             'provider': self.provider.serialized()
         }, {
             'nid': self.json['resource'],
-            'path': (yield from dest_provider.validate_path(self.json.get('path'))),
+            'path': dest_path,
             'provider': dest_provider.serialized()
         })
 
     @asyncio.coroutine
     def move_or_copy(self):
+        # Force the json body to load into memory
         yield self.request.body
-        if self.json.get('action') not in ('copy', 'move'):
+
+        if self.json.get('action') not in ('copy', 'move', 'rename'):
             raise Exception()
 
-        dest_auth = yield from auth_handler.get(
-            self.json.get('resource'),
-            self.json.get('provider'),
-            self.request
-        )
+        if self.json['action'] == 'rename':
+            action = 'move'
+            dest_auth = self.auth
+            dest_provider = self.provider
+            dest_path = self.path.parent
+        else:
+            if 'path' not in self.json:
+                raise Exception()
 
-        dest_provider = make_provider(
-            self.json['provider'],
-            dest_auth['auth'],
-            dest_auth['credentials'],
-            dest_auth['settings']
-        )
+            action = self.json['action']
 
-        if not getattr(self.provider, 'can_intra_' + self.json['action'])(dest_provider, self.path):
-            result = yield from getattr(tasks, self.json['action']).adelay(*(yield from self.build_args(dest_provider)))
+            dest_auth = yield from auth_handler.get(
+                self.json.get('resource', self.resource),
+                self.json.get('provider', self.provider.NAME),
+                self.request
+            )
+
+            dest_provider = make_provider(
+                self.json['provider'],
+                dest_auth['auth'],
+                dest_auth['credentials'],
+                dest_auth['settings']
+            )
+
+            dest_path = yield from self.dest_provider(self.json['path'])
+
+        if not getattr(self.provider, 'can_intra_' + action)(dest_provider, self.path):
+            result = yield from getattr(tasks, action).adelay(*self.build_args(dest_provider, dest_path))
             metadata, created = yield from tasks.wait_on_celery(result)
         else:
             metadata, created = (
                 yield from tasks.backgrounded(
-                    getattr(self.provider, self.json['action']),
+                    getattr(self.provider, action),
                     dest_provider,
                     self.path,
-                    (yield from dest_provider.validate_path(self.json.get('path'))),
+                    dest_path,
                     rename=self.json.get('rename'),
                     conflict=self.json.get('conflict', 'replace'),
                 )
