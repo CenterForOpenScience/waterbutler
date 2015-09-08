@@ -62,12 +62,14 @@ class OSFStorageProvider(provider.BaseProvider):
 
         data = yield from resp.json()
 
+        is_folder = data['data'][0]['kind'] == 'folder'
         names, ids = zip(*[(x['name'], x['id']) for x in reversed(data['data'])])
         if name is not None:
             ids += (None, )
             names += (name, )
+            is_folder = path.endswith('/')
 
-        return WaterButlerPath('/'.join(names), _ids=ids, folder='folder' == data['data'][0]['kind'])
+        return WaterButlerPath('/'.join(names), _ids=ids, folder=is_folder)
 
     def revalidate_path(self, base, path, folder=False):
         assert base.is_dir
