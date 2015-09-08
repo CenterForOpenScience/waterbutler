@@ -46,6 +46,8 @@ class OSFStorageProvider(provider.BaseProvider):
         if path == '/':
             return WaterButlerPath('/', _ids=[self.root_id], folder=True)
 
+        ends_with_slash = path.endswith('/')
+
         try:
             path, name = path.strip('/').split('/')
         except ValueError:
@@ -67,7 +69,7 @@ class OSFStorageProvider(provider.BaseProvider):
         if name is not None:
             ids += (None, )
             names += (name, )
-            is_folder = path.endswith('/')
+            is_folder = ends_with_slash
 
         return WaterButlerPath('/'.join(names), _ids=ids, folder=is_folder)
 
