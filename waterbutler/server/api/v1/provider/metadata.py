@@ -16,9 +16,11 @@ class MetadataMixin:
         # TODO Change all references of revision to version @chrisseto
         data = yield from self.provider.metadata(self.path, revision=self.get_query_argument('version', default=None))
 
-        self.set_header('Etag', data.etag)  # This may not be appropriate
-        self.set_header('Content-Length', data.size)
-        self.set_header('Last-Modified', data.modified)
+        # self.set_header('Etag', data.etag)  # This may not be appropriate
+        if data.size is not None:
+            self.set_header('Content-Length', data.size)
+        if data.modified is not None:
+            self.set_header('Last-Modified', data.modified)
         self.set_header('Content-Type', data.content_type or 'application/octet-stream')
         self.set_header('X-Waterbutler-Metadata', json.dumps(data.serialized()))
 
