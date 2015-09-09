@@ -86,7 +86,7 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
             except exceptions as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
-                    logger.warning('Task {0} failed, {1} / {2} retries. Waiting {3} seconds before retrying'.format(func, __retries, retries, wait_time))
+                    logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting {4} seconds before retrying'.format(func, e, __retries, retries, wait_time))
 
                     yield from asyncio.sleep(wait_time)
                     return wrapped(*args, __retries=__retries + 1, **kwargs)
