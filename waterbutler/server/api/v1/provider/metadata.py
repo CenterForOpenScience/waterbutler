@@ -57,9 +57,10 @@ class MetadataMixin:
         version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
         stream = yield from self.provider.download(
             self.path,
+            revision=version,
             range=request_range,
             accept_url='direct' not in self.request.query_arguments,
-            revision=version,
+            mode=self.get_query_argument('mode', default=None),
         )
 
         if isinstance(stream, str):
