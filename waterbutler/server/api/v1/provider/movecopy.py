@@ -53,40 +53,44 @@ class MoveCopyMixin:
 
         if self.json['action'] == 'rename':
             action = 'move'
-            dest_auth = self.auth
-            dest_provider = self.provider
-            dest_path = self.path.parent
+            self.dest_auth = self.auth
+            self.dest_provider = self.provider
+            self.dest_path = self.path.parent
         else:
             if 'path' not in self.json:
                 raise exceptions.InvalidParameters('Path is required for moves or copies')
 
             action = self.json['action']
 
-            dest_auth = yield from auth_handler.get(
-                self.json.get('resource', self.resource),
+            # Note: attached to self so that _send_hook has access to these
+            self.dest_resource = self.json.get('resource', self.resource)
+
+            # TODO optimize for same provider and resource
+            self.dest_auth = yield from auth_handler.get(
+                self.dest_resource,
                 self.json.get('provider', self.provider.NAME),
                 self.request
             )
 
-            dest_provider = make_provider(
+            self.dest_provider = make_provider(
                 self.json.get('provider', self.provider.NAME),
-                dest_auth['auth'],
-                dest_auth['credentials'],
-                dest_auth['settings']
+                self.dest_auth['auth'],
+                self.dest_auth['credentials'],
+                self.dest_auth['settings']
             )
 
-            dest_path = yield from dest_provider.validate_path(self.json['path'])
+            self.dest_path = yield from self.dest_provider.validate_path(self.json['path'])
 
-        if not getattr(self.provider, 'can_intra_' + action)(dest_provider, self.path):
-            result = yield from getattr(tasks, action).adelay(*self.build_args(dest_provider, dest_path))
+        if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
+            result = yield from getattr(tasks, action).adelay(*self.build_args(self.dest_provider, self.dest_path))
             metadata, created = yield from tasks.wait_on_celery(result)
         else:
             metadata, created = (
                 yield from tasks.backgrounded(
                     getattr(self.provider, action),
-                    dest_provider,
+                    self.dest_provider,
                     self.path,
-                    dest_path,
+                    self.dest_path,
                     rename=self.json.get('rename'),
                     conflict=self.json.get('conflict', 'replace'),
                 )
