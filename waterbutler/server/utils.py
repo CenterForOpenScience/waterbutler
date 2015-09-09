@@ -32,10 +32,17 @@ class CORsMixin:
 
     def set_default_headers(self):
         if isinstance(settings.CORS_ALLOW_ORIGIN, str):
-            self.set_header('Access-Control-Allow-Origin', settings.CORS_ALLOW_ORIGIN)
+            if settings.CORS_ALLOW_ORIGIN == '*':
+                # Wild cards cannot be used with allowCredentials.
+                # Match Origin if its specified, makes pdfs and pdbs render properly
+                self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin', '*'))
+            else:
+                self.set_header('Access-Control-Allow-Origin', settings.CORS_ALLOW_ORIGIN)
         else:
             if self.request.headers.get('Origin') in settings.CORS_ALLOW_ORIGIN:
                 self.set_header('Access-Control-Allow-Origin', self.request.headers['Origin'])
+
+        self.set_header('Access-Control-Allow-Credentials', 'true')
         self.set_header('Access-Control-Allow-Headers', ', '.join(CORS_ACCEPT_HEADERS))
         self.set_header('Access-Control-Expose-Headers', ', '.join(CORS_EXPOSE_HEADERS))
         self.set_header('Cache-control', 'no-store, no-cache, must-revalidate, max-age=0')
