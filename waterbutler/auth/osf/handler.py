@@ -61,7 +61,8 @@ class OsfAuthHandler(auth.BaseAuthHandler):
                         'get': 'download',
                         'head': 'metadata',
                         'delete': 'delete',
-                    }[request.method.lower()]
+                    }[request.method.lower()],
+                    'view_only': request.query_arguments.get('view_only')
                 },
             )
         except aiohttp.errors.ClientError:
