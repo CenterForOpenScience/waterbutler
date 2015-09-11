@@ -19,6 +19,12 @@ from waterbutler.providers.googledrive.metadata import GoogleDriveFileMetadata
 from waterbutler.providers.googledrive.metadata import GoogleDriveFolderMetadata
 
 
+def clean_query(query):
+    # Replace \ with \\ and ' with \'
+    # Note only single quotes need to be escaped
+    return query.replace('\\', r'\\').replace("'", r"\'")
+
+
 class GoogleDrivePathPart(path.WaterButlerPathPart):
     DECODE = parse.unquote
     ENCODE = functools.partial(parse.quote, safe='')
@@ -198,7 +204,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             "mimeType != 'application/vnd.google-apps.form'",
         ]
         if title:
-            queries.append("title = '{}'".format(title.replace("'", "\\'")))
+            queries.append("title = '{}'".format(clean_query(title)))
         return ' and '.join(queries)
 
     @asyncio.coroutine
@@ -346,7 +352,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
             resp = yield from self.make_request(
                 'GET',
-                self.build_url('files', item_id, 'children', q='title = "{}"'.format(current_part.replace('"', '\\"')), fields='items(id)'),
+                self.build_url('files', item_id, 'children', q='title = "{}"'.format(clean_query(current_part)), fields='items(id)'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
