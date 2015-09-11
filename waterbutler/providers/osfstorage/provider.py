@@ -375,7 +375,7 @@ class OSFStorageProvider(provider.BaseProvider):
         ret = []
         for item in resp_json:
             if item['kind'] == 'folder':
-                ret.append(OsfStorageFolderMetadata(item, str(path.child(item['name']))))
+                ret.append(OsfStorageFolderMetadata(item, str(path.child(item['name'], folder=True))))
             else:
                 ret.append(OsfStorageFileMetadata(item, str(path.child(item['name']))))
         return ret
