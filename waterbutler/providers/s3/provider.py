@@ -202,7 +202,7 @@ class S3Provider(provider.BaseProvider):
         ]
 
     @asyncio.coroutine
-    def metadata(self, path, **kwargs):
+    def metadata(self, path, revision=None, **kwargs):
         """Get Metadata about the requested file or folder
 
         :param WaterButlerPath path: The path to a key or folder
@@ -211,7 +211,7 @@ class S3Provider(provider.BaseProvider):
         if path.is_dir:
             return (yield from self._metadata_folder(path))
 
-        return (yield from self._metadata_file(path))
+        return (yield from self._metadata_file(path, revision=revision))
 
     @asyncio.coroutine
     def create_folder(self, path, **kwargs):
@@ -233,10 +233,18 @@ class S3Provider(provider.BaseProvider):
         return S3FolderMetadata({'Prefix': path.path})
 
     @asyncio.coroutine
-    def _metadata_file(self, path):
+    def _metadata_file(self, path, revision=None):
+        if revision == 'Latest':
+            revision = None
         resp = yield from self.make_request(
             'HEAD',
-            self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
+            self.bucket.new_key(
+                path.path
+            ).generate_url(
+                settings.TEMP_URL_SECS,
+                'HEAD',
+                query_parameters={'versionId': revision} if revision else None
+            ),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )

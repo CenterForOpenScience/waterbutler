@@ -46,6 +46,8 @@ class OSFStorageProvider(provider.BaseProvider):
         if path == '/':
             return WaterButlerPath('/', _ids=[self.root_id], folder=True)
 
+        ends_with_slash = path.endswith('/')
+
         try:
             path, name = path.strip('/').split('/')
         except ValueError:
@@ -62,12 +64,14 @@ class OSFStorageProvider(provider.BaseProvider):
 
         data = yield from resp.json()
 
+        is_folder = data['data'][0]['kind'] == 'folder'
         names, ids = zip(*[(x['name'], x['id']) for x in reversed(data['data'])])
         if name is not None:
             ids += (None, )
             names += (name, )
+            is_folder = ends_with_slash
 
-        return WaterButlerPath('/'.join(names), _ids=ids, folder='folder' == data['data'][0]['kind'])
+        return WaterButlerPath('/'.join(names), _ids=ids, folder=is_folder)
 
     def revalidate_path(self, base, path, folder=False):
         assert base.is_dir
@@ -130,6 +134,9 @@ class OSFStorageProvider(provider.BaseProvider):
         return OsfStorageFolderMetadata(data, str(dest_path)), resp.status == 201
 
     def intra_copy(self, dest_provider, src_path, dest_path):
+        if dest_path.identifier:
+            yield from dest_provider.delete(dest_path)
+
         resp = yield from self.make_signed_request(
             'POST',
             self.build_url('hooks', 'copy'),
@@ -149,9 +156,9 @@ class OSFStorageProvider(provider.BaseProvider):
         data = yield from resp.json()
 
         if data['kind'] == 'file':
-            return OsfStorageFileMetadata(data, str(dest_path)), resp.status == 201
+            return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
 
-        return OsfStorageFolderMetadata(data, str(dest_path)), resp.status == 201
+        return OsfStorageFolderMetadata(data, str(dest_path)), dest_path.identifier is None
 
     @asyncio.coroutine
     def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
@@ -173,9 +180,14 @@ class OSFStorageProvider(provider.BaseProvider):
         return (yield from self.make_request(method, url, data=data, params=params, **kwargs))
 
     @asyncio.coroutine
-    def download(self, path, version=None, mode=None, **kwargs):
+    def download(self, path, version=None, revision=None, mode=None, **kwargs):
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
+
+        if version is None:
+            # TODO Clean this up
+            # version could be 0 here
+            version = revision
 
         # osf storage metadata will return a virtual path within the provider
         resp = yield from self.make_signed_request(
@@ -342,10 +354,10 @@ class OSFStorageProvider(provider.BaseProvider):
         )
 
     @asyncio.coroutine
-    def _item_metadata(self, path):
+    def _item_metadata(self, path, revision=None):
         resp = yield from self.make_signed_request(
             'GET',
-            self.build_url(path.identifier),
+            self.build_url(path.identifier, revision=revision),
             expects=(200, )
         )
 
@@ -363,7 +375,7 @@ class OSFStorageProvider(provider.BaseProvider):
         ret = []
         for item in resp_json:
             if item['kind'] == 'folder':
-                ret.append(OsfStorageFolderMetadata(item, str(path.child(item['name']))))
+                ret.append(OsfStorageFolderMetadata(item, str(path.child(item['name'], folder=True))))
             else:
                 ret.append(OsfStorageFileMetadata(item, str(path.child(item['name']))))
         return ret
