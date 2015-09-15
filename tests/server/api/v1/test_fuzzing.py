@@ -1,4 +1,5 @@
 import pytest
+from http import client
 from unittest import mock
 
 import aiohttp
@@ -23,21 +24,21 @@ class TestServerFuzzing(ServerTestCase):
                     self.get_url('/resources//providers//'),
                     method='HEAD'
                 )
-            assert exc.value.code == 404
+            assert exc.value.code == client.NOT_FOUND
 
             with pytest.raises(httpclient.HTTPError) as exc:
                 yield self.http_client.fetch(
                     self.get_url('/resources/jaaaaaaank/providers//'),
                     method='HEAD'
                 )
-            assert exc.value.code == 404
+            assert exc.value.code == client.NOT_FOUND
 
             with pytest.raises(httpclient.HTTPError) as exc:
                 yield self.http_client.fetch(
                     self.get_url('/resources//providers/jaaaaank/'),
                     method='HEAD'
                 )
-            assert exc.value.code == 404
+            assert exc.value.code == client.NOT_FOUND
 
             with pytest.raises(httpclient.HTTPError) as exc:
                 yield self.http_client.fetch(
@@ -45,7 +46,7 @@ class TestServerFuzzing(ServerTestCase):
                     method='HEAD'
                 )
 
-            assert exc.value.code == 503
+            assert exc.value.code == client.SERVICE_UNAVAILABLE
 
     @testing.gen_test
     def test_movecopy_requires_contentlength(self):
@@ -54,7 +55,7 @@ class TestServerFuzzing(ServerTestCase):
                 self.get_url('/resources/jernk/providers/jaaaaank/'),
                 method='POST', allow_nonstandard_methods=True
             )
-        assert exc.value.code == 411
+        assert exc.value.code == client.LENGTH_REQUIRED
         # Make sure the message returned is correct
 
     @testing.gen_test
@@ -85,14 +86,14 @@ class TestServerFuzzing(ServerTestCase):
             self.get_url('/resources/jernk/providers/jaaaaank/'),
             method='OPTIONS',
         )
-        assert resp.code == 204
+        assert resp.code == client.NO_CONTENT
 
         with pytest.raises(httpclient.HTTPError) as exc:
             yield self.http_client.fetch(
                 self.get_url('/reders/jaaaaank/'),
                 method='OPTIONS',
             )
-        assert exc.value.code == 404
+        assert exc.value.code == client.NOT_FOUND
 
 
 class TestServerFuzzingMocks(ServerTestCase):
@@ -120,7 +121,7 @@ class TestServerFuzzingMocks(ServerTestCase):
                 self.get_url('/resources/jernk/providers/jaaaaank/'),
                 method='HEAD'
             )
-        assert exc.value.code == 404
+        assert exc.value.code == client.NOT_FOUND
         # Dont have access to the body here?
         # assert exc.value.message == 'Provider "jaaaaank" not found'
         self.mock_provider_patcher.start()  # Has to be started to stop...
@@ -130,7 +131,7 @@ class TestServerFuzzingMocks(ServerTestCase):
         with pytest.raises(httpclient.HTTPError) as exc:
             yield self.http_client.fetch(self.get_url('/resources/jernk/providers/jaaaaank/'), method='HEAD')
 
-        assert exc.value.code == 501
+        assert exc.value.code == client.NOT_IMPLEMENTED
 
     @testing.gen_test
     def test_handles_invalid_json(self):
@@ -139,5 +140,5 @@ class TestServerFuzzingMocks(ServerTestCase):
                 self.get_url('/resources/jernk/providers/jaaaaank/'),
                 method='POST', body='<XML4LYFE/>'
             )
-        assert exc.value.code == 400
+        assert exc.value.code == client.BAD_REQUEST
         # Make sure the message returned is correct

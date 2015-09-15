@@ -8,6 +8,8 @@ from waterbutler.core import mime_types
 from waterbutler.server import utils
 
 
+# TODO split this into metadata.py and data.py
+# for getting metadata and the actual files, respectively
 class MetadataMixin:
 
     @asyncio.coroutine
