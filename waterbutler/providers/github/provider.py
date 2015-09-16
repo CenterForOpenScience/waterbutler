@@ -538,7 +538,7 @@ class GitHubProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return GitHubFileTreeMetadata(data, commit=latest, web_view=self._web_view(path))
+        return GitHubFileTreeMetadata(data, commit=latest['commit'], web_view=self._web_view(path))
 
     @asyncio.coroutine
     def _get_latest_sha(self, ref='master'):

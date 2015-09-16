@@ -679,9 +679,9 @@ class TestMetadata:
         item = repo_tree_metadata_root['tree'][0]
         web_view = provider._web_view(path=path)
 
-        assert result == GitHubFileTreeMetadata(item, web_view=web_view, commit={'commit': {
+        assert result == GitHubFileTreeMetadata(item, web_view=web_view, commit={
             'tree': {'sha': ref}, 'author': {'date': 'this is totally  date'}
-        }})
+        })
 
     @async
     @pytest.mark.aiohttpretty

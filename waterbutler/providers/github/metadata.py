@@ -41,7 +41,7 @@ class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
     def modified(self):
         if not self.commit:
             return None
-        return self.commit['commit']['author']['date']
+        return self.commit['author']['date']
 
     @property
     def content_type(self):
@@ -111,7 +111,7 @@ class GitHubRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def modified(self):
-        return self.raw['commit']['author']['date']
+        return self.raw['author']['date']
 
     @property
     def version(self):
@@ -121,6 +121,6 @@ class GitHubRevision(metadata.BaseFileRevisionMetadata):
     def extra(self):
         return {
             'user': {
-                'name': self.raw['commit']['committer']['name']
+                'name': self.raw['committer']['name']
             }
         }
