@@ -516,7 +516,12 @@ class GitHubProvider(provider.BaseProvider):
             throws=exceptions.MetadataError,
         )
 
-        latest = (yield from resp.json())[0]
+        commits = yield from resp.json()
+
+        if not commits:
+            raise exceptions.NotFoundError(str(path))
+
+        latest = commits[0]
         tree = yield from self._fetch_tree(latest['commit']['tree']['sha'], recursive=True)
 
         try:

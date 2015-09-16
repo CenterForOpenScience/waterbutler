@@ -683,6 +683,21 @@ class TestMetadata:
             'tree': {'sha': ref}, 'author': {'date': 'this is totally  date'}
         }})
 
+    @async
+    @pytest.mark.aiohttpretty
+    def test_metadata_doesnt_exist(self, provider, repo_metadata, repo_tree_metadata_root):
+        ref = hashlib.sha1().hexdigest()
+        path = yield from provider.validate_path('/file.txt')
+
+        tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
+        commit_url = provider.build_repo_url('commits', path=path.path.lstrip('/'), sha=path.identifier[0])
+
+        aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
+        aiohttpretty.register_json_uri('GET', commit_url, body=[])
+
+        with pytest.raises(exceptions.NotFoundError):
+            yield from provider.metadata(path)
+
     # TODO: Additional Tests
     # def test_metadata_root_file_txt_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
     # def test_metadata_root_file_txt_commit_sha(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
