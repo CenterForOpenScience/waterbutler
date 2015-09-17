@@ -2,6 +2,25 @@
 ChangeLog
 *********
 
+0.12.0 (2015-09-17)
+===================
+- waterbutler.server
+  - Restructured into API version modules
+  - API v1 has been implemented
+    - Only one endpoint exists /v1/resources/<>/providers/<>/<path>
+  - API v0 is now deprecated
+  - Callbacks will be retried if they do not get a 200 response
+
+- waterbutler.core
+  - Invalid providers are now handled properly
+  - WaterbutlerPath now has an identifier_path property for id based backends
+  - Revision is now an accepted parameter of Provider#metadata and Provider#download
+
+- Github now returns modifed dates when available
+- Google drive's title queries now only use single quotes (')
+- OsfStorage's validate_path function now works properly
+- Osfstorage now properly responds created to internal copies
+
 0.11.0 (2015-08-31)
 ===================
 - OsfStorage now returns hashes
