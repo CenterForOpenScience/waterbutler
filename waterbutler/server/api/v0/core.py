@@ -1,6 +1,7 @@
 import json
 import time
 import asyncio
+import logging
 
 import tornado.web
 import tornado.gen
@@ -26,8 +27,9 @@ def list_or_value(value):
     return [item.decode('utf-8') for item in value]
 
 
-signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
+logger = logging.getLogger(__name__)
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
+signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
 
 
 class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.RequestHandler, SentryMixin):
@@ -93,13 +95,16 @@ class BaseProviderHandler(BaseHandler):
 
     @utils.async_retry(retries=5, backoff=5)
     def _send_hook(self, action, metadata):
-        return (yield from utils.send_signed_request('PUT', self.payload['callback_url'], {
+        resp = yield from utils.send_signed_request('PUT', self.payload['callback_url'], {
             'action': action,
             'metadata': metadata,
             'auth': self.payload['auth'],
             'provider': self.arguments['provider'],
             'time': time.time() + 60
-        }))
+        })
+        if resp.status != 200:
+            raise Exception('Callback was unsuccessful, got {}'.format(resp))
+        logger.info('Successfully sent callback for a {} request'.format(action))
 
 
 class BaseCrossProviderHandler(BaseHandler):
@@ -145,7 +150,7 @@ class BaseCrossProviderHandler(BaseHandler):
 
     @utils.async_retry(retries=0, backoff=5)
     def _send_hook(self, action, data):
-        return (yield from utils.send_signed_request('PUT', self.callback_url, {
+        resp = yield from utils.send_signed_request('PUT', self.callback_url, {
             'action': action,
             'source': {
                 'nid': self.json['source']['nid'],
@@ -157,4 +162,8 @@ class BaseCrossProviderHandler(BaseHandler):
             'destination': dict(data, nid=self.json['destination']['nid']),
             'auth': self.auth['auth'],
             'time': time.time() + 60
-        }))
+        })
+
+        if resp.status != 200:
+            raise Exception('Callback was unsuccessful, got {}'.format(resp))
+        logger.info('Successfully sent callback for a {} request'.format(action))
