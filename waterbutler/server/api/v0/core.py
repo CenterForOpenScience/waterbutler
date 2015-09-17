@@ -1,6 +1,7 @@
 import json
 import time
 import asyncio
+import logging
 
 import tornado.web
 import tornado.gen
@@ -13,28 +14,7 @@ from waterbutler.core import signing
 from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.auth import AuthHandler
-
-
-CORS_ACCEPT_HEADERS = [
-    'Range',
-    'Content-Type',
-    'Authorization',
-    'Cache-Control',
-    'X-Requested-With',
-]
-
-CORS_EXPOSE_HEADERS = [
-    'Range',
-    'Accept-Ranges',
-    'Content-Range',
-    'Content-Length',
-    'Content-Encoding',
-]
-
-HTTP_REASONS = {
-    422: 'Unprocessable Entity',
-    461: 'Unavailable For Legal Reasons',
-}
+from waterbutler.server import utils as server_utils
 
 
 def list_or_value(value):
@@ -47,11 +27,12 @@ def list_or_value(value):
     return [item.decode('utf-8') for item in value]
 
 
-signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
+logger = logging.getLogger(__name__)
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
+signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
 
 
-class BaseHandler(tornado.web.RequestHandler, SentryMixin):
+class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.RequestHandler, SentryMixin):
     """Base Handler to inherit from when defining a new view.
     Handles CORs headers, additional status codes, and translating
     :class:`waterbutler.core.exceptions.ProviderError`s into http responses
@@ -62,24 +43,6 @@ class BaseHandler(tornado.web.RequestHandler, SentryMixin):
     """
 
     ACTION_MAP = {}
-
-    def set_default_headers(self):
-        if isinstance(settings.CORS_ALLOW_ORIGIN, str):
-            self.set_header('Access-Control-Allow-Origin', settings.CORS_ALLOW_ORIGIN)
-        else:
-            if self.request.headers.get('Origin') in settings.CORS_ALLOW_ORIGIN:
-                self.set_header('Access-Control-Allow-Origin', self.request.headers['Origin'])
-        self.set_header('Access-Control-Allow-Headers', ', '.join(CORS_ACCEPT_HEADERS))
-        self.set_header('Access-Control-Expose-Headers', ', '.join(CORS_EXPOSE_HEADERS))
-        self.set_header('Cache-control', 'no-store, no-cache, must-revalidate, max-age=0')
-
-    def initialize(self):
-        method = self.get_query_argument('method', None)
-        if method:
-            self.request.method = method.upper()
-
-    def set_status(self, code, reason=None):
-        return super().set_status(code, reason or HTTP_REASONS.get(code))
 
     def write_error(self, status_code, exc_info):
         self.captureException(exc_info)
@@ -103,25 +66,6 @@ class BaseHandler(tornado.web.RequestHandler, SentryMixin):
                 'code': status_code,
                 'message': self._reason,
             })
-
-    def options(self):
-        self.set_status(204)
-        self.set_header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE'),
-
-    @tornado.gen.coroutine
-    def write_stream(self, stream):
-        try:
-            while True:
-                chunk = yield from stream.read(settings.CHUNK_SIZE)
-                if not chunk:
-                    break
-                self.write(chunk)
-                del chunk
-                yield self.flush()
-        except tornado.iostream.StreamClosedError:
-            # Client has disconnected early.
-            # No need for any exception to be raised
-            return
 
 
 class BaseProviderHandler(BaseHandler):
@@ -151,13 +95,16 @@ class BaseProviderHandler(BaseHandler):
 
     @utils.async_retry(retries=5, backoff=5)
     def _send_hook(self, action, metadata):
-        return (yield from utils.send_signed_request('PUT', self.payload['callback_url'], {
+        resp = yield from utils.send_signed_request('PUT', self.payload['callback_url'], {
             'action': action,
             'metadata': metadata,
             'auth': self.payload['auth'],
             'provider': self.arguments['provider'],
             'time': time.time() + 60
-        }))
+        })
+        if resp.status != 200:
+            raise Exception('Callback was unsuccessful, got {}'.format(resp))
+        logger.info('Successfully sent callback for a {} request'.format(action))
 
 
 class BaseCrossProviderHandler(BaseHandler):
@@ -203,7 +150,7 @@ class BaseCrossProviderHandler(BaseHandler):
 
     @utils.async_retry(retries=0, backoff=5)
     def _send_hook(self, action, data):
-        return (yield from utils.send_signed_request('PUT', self.callback_url, {
+        resp = yield from utils.send_signed_request('PUT', self.callback_url, {
             'action': action,
             'source': {
                 'nid': self.json['source']['nid'],
@@ -215,4 +162,8 @@ class BaseCrossProviderHandler(BaseHandler):
             'destination': dict(data, nid=self.json['destination']['nid']),
             'auth': self.auth['auth'],
             'time': time.time() + 60
-        }))
+        })
+
+        if resp.status != 200:
+            raise Exception('Callback was unsuccessful, got {}'.format(resp))
+        logger.info('Successfully sent callback for a {} request'.format(action))

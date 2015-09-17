@@ -149,6 +149,10 @@ class WaterButlerPath:
         return self._parts[-1].identifier
 
     @property
+    def identifier_path(self):
+        return '/' + self._parts[-1].identifier + ('/' if self.is_dir else '')
+
+    @property
     def ext(self):
         return self._parts[-1].ext
 

@@ -30,11 +30,11 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
 
     @property
     def modified(self):
-        return self.raw.get('modified')
+        return self.raw['modified']
 
     @property
     def size(self):
-        return self.raw.get('size')
+        return self.raw['size']
 
     @property
     def content_type(self):

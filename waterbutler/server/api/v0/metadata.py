@@ -1,6 +1,6 @@
 import tornado.gen
 
-from waterbutler.server.handlers import core
+from waterbutler.server.api.v0 import core
 
 
 class MetadataHandler(core.BaseProviderHandler):

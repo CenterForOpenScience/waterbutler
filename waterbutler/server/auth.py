@@ -18,3 +18,10 @@ class AuthHandler:
             if credential:
                 return credential
         raise AuthHandler('no valid credential found')
+
+    def get(self, resource, provider, request):
+        for extension in self.manager.extensions:
+            credential = yield from extension.obj.get(resource, provider, request)
+            if credential:
+                return credential
+        raise AuthHandler('no valid credential found')

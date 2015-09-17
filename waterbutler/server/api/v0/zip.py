@@ -1,7 +1,7 @@
 import tornado.gen
 
 from waterbutler.server import utils
-from waterbutler.server.handlers import core
+from waterbutler.server.api.v0 import core
 
 
 class ZipHandler(core.BaseProviderHandler):

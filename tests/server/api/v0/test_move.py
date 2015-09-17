@@ -8,7 +8,7 @@ from tests import utils
 
 
 class TestMoveHandler(utils.MultiProviderHandlerTestCase):
-    HOOK_PATH = 'waterbutler.server.handlers.move.MoveHandler._send_hook'
+    HOOK_PATH = 'waterbutler.server.api.v0.move.MoveHandler._send_hook'
 
     @testing.gen_test
     def test_calls_move(self):
