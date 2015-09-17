@@ -353,7 +353,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
             resp = yield from self.make_request(
                 'GET',
-                self.build_url('files', item_id, 'children', q='title = "{}"'.format(clean_query(current_part)), fields='items(id)'),
+                self.build_url('files', item_id, 'children', q="title = '{}'".format(clean_query(current_part)), fields='items(id)'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
