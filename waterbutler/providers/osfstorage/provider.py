@@ -110,6 +110,9 @@ class OSFStorageProvider(provider.BaseProvider):
         return isinstance(other, self.__class__)
 
     def intra_move(self, dest_provider, src_path, dest_path):
+        if dest_path.identifier:
+            yield from dest_provider.delete(dest_path)
+
         resp = yield from self.make_signed_request(
             'POST',
             self.build_url('hooks', 'move'),
