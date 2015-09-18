@@ -121,6 +121,6 @@ class GitHubRevision(metadata.BaseFileRevisionMetadata):
     def extra(self):
         return {
             'user': {
-                'name': self.raw['committer']['name']
+                'name': self.raw['commit']['committer']['name']
             }
         }
