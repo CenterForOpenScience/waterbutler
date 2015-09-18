@@ -244,12 +244,12 @@ class BoxProvider(provider.BaseProvider):
         )
 
     @asyncio.coroutine
-    def metadata(self, path, raw=False, folder=False, **kwargs):
+    def metadata(self, path, raw=False, folder=False, revision=None, **kwargs):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
         if path.is_file:
-            return (yield from self._get_file_meta(path, raw=raw))
+            return (yield from self._get_file_meta(path, revision=revision, raw=raw))
         return (yield from self._get_folder_meta(path, raw=raw, folder=folder))
 
     @asyncio.coroutine
@@ -319,14 +319,24 @@ class BoxProvider(provider.BaseProvider):
         self._assert_child(data['path_collection']['entries'], target=data['id'])
 
     @asyncio.coroutine
-    def _get_file_meta(self, path, raw=False):
+    def _get_file_meta(self, path, raw=False, revision=None):
+        if revision:
+            url = self.build_url('files', path.identifier, 'versions')
+        else:
+            url = self.build_url('files', path.identifier)
+
         resp = yield from self.make_request(
-            'GET',
-            self.build_url('files', path.identifier),
+            'GET', url,
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
         data = yield from resp.json()
+
+        if revision:
+            try:
+                data = next(x for x in data['entries'] if x['id'] == revision)
+            except StopIteration:
+                raise exceptions.NotFoundError(str(path))
 
         if not data:
             raise exceptions.NotFoundError(str(path))

@@ -81,6 +81,43 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
         return ret
 
 
+class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
+    @property
+    def id(self):
+        return self.raw['id']
+
+    @property
+    def name(self):
+        title = self.raw.get('originalFilename', self._path.name)
+        if utils.is_docs_file(self.raw):
+            ext = utils.get_extension(self.raw)
+            title += ext
+        return title
+
+    @property
+    def size(self):
+        # Google docs(Docs,sheets, slides, etc)  don't have file size before they are exported
+        return self.raw.get('fileSize')
+
+    @property
+    def modified(self):
+        return self.raw['modifiedDate']
+
+    @property
+    def content_type(self):
+        return self.raw['mimeType']
+
+    @property
+    def etag(self):
+        return self.raw['etag']
+
+    @property
+    def extra(self):
+        if utils.is_docs_file(self.raw):
+            return {'downloadExt': utils.get_download_extension(self.raw)}
+        return {'md5': self.raw['md5Checksum']}
+
+
 class GoogleDriveRevision(metadata.BaseFileRevisionMetadata):
 
     @property

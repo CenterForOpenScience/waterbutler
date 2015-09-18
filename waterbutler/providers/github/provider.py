@@ -172,7 +172,7 @@ class GitHubProvider(provider.BaseProvider):
             'tree': tree['sha'],
             'parents': [latest_sha],
             'committer': self.committer,
-            'message': message or settings.UPLOAD_FILE_MESSAGE,
+            'message': message or (settings.UPDATE_FILE_MESSAGE if exists else settings.UPLOAD_FILE_MESSAGE),
         })
 
         # Doesn't return anything useful
@@ -508,14 +508,21 @@ class GitHubProvider(provider.BaseProvider):
             return ret
 
     @asyncio.coroutine
-    def _metadata_file(self, path, ref=None, **kwargs):
-        if not GitHubProvider.is_sha(path.identifier[0]):
-            latest = yield from self._get_latest_sha(ref=path.identifier[0])
-        else:
-            latest = path.identifier[0]
+    def _metadata_file(self, path, revision=None, ref=None, **kwargs):
+        resp = yield from self.make_request(
+            'GET',
+            self.build_repo_url('commits', path=path.path, sha=revision or ref or path.identifier[0]),
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
 
-        tree = yield from self._fetch_tree(latest, recursive=True)
-        web_view = self._web_view(path)
+        commits = yield from resp.json()
+
+        if not commits:
+            raise exceptions.NotFoundError(str(path))
+
+        latest = commits[0]
+        tree = yield from self._fetch_tree(latest['commit']['tree']['sha'], recursive=True)
 
         try:
             data = next(
@@ -531,7 +538,7 @@ class GitHubProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return GitHubFileTreeMetadata(data, web_view=web_view)
+        return GitHubFileTreeMetadata(data, commit=latest['commit'], web_view=self._web_view(path))
 
     @asyncio.coroutine
     def _get_latest_sha(self, ref='master'):
@@ -600,7 +607,7 @@ class GitHubProvider(provider.BaseProvider):
                 'tree': new_tree_sha,
                 'parents': [old_commit_sha],
                 'committer': self.committer,
-                'message': '{} on behalf of WaterButler'.format('Copied' if is_copy else 'Moved')
+                'message': settings.COPY_MESSAGE if is_copy else settings.MOVE_MESSAGE
             }),
             expects=(201, ),
             throws=exceptions.DeleteError,

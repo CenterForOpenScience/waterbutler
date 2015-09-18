@@ -30,15 +30,15 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
 
     @property
     def modified(self):
-        return self.raw.get('modified')
+        return self.raw['modified']
 
     @property
     def size(self):
-        return self.raw.get('size')
+        return self.raw['size']
 
     @property
     def content_type(self):
-        return None
+        return self.raw.get('contentType')
 
     @property
     def etag(self):
@@ -49,7 +49,11 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
         return {
             'version': self.raw['version'],
             'downloads': self.raw['downloads'],
-            'renter': self.raw['renter'],
+            'checkout_user': self.raw['checkout_user'],
+            'hashes': {
+                'md5': self.raw['md5'],
+                'sha256': self.raw['sha256']
+            },
         }
 
 
@@ -76,4 +80,8 @@ class OsfStorageRevisionMetadata(BaseOsfStorageMetadata, metadata.BaseFileRevisi
         return {
             'user': self.raw['user'],
             'downloads': self.raw['downloads'],
+            'hashes': {
+                'md5': self.raw['md5'],
+                'sha256': self.raw['sha256']
+            },
         }

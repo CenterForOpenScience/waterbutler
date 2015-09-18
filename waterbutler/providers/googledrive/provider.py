@@ -17,6 +17,13 @@ from waterbutler.providers.googledrive import utils as drive_utils
 from waterbutler.providers.googledrive.metadata import GoogleDriveRevision
 from waterbutler.providers.googledrive.metadata import GoogleDriveFileMetadata
 from waterbutler.providers.googledrive.metadata import GoogleDriveFolderMetadata
+from waterbutler.providers.googledrive.metadata import GoogleDriveFileRevisionMetadata
+
+
+def clean_query(query):
+    # Replace \ with \\ and ' with \'
+    # Note only single quotes need to be escaped
+    return query.replace('\\', r'\\').replace("'", r"\'")
 
 
 class GoogleDrivePathPart(path.WaterButlerPathPart):
@@ -198,18 +205,18 @@ class GoogleDriveProvider(provider.BaseProvider):
             "mimeType != 'application/vnd.google-apps.form'",
         ]
         if title:
-            queries.append("title = '{}'".format(title.replace("'", "\\'")))
+            queries.append("title = '{}'".format(clean_query(title)))
         return ' and '.join(queries)
 
     @asyncio.coroutine
-    def metadata(self, path, raw=False, **kwargs):
+    def metadata(self, path, raw=False, revision=None, **kwargs):
         if path.identifier is None:
             raise exceptions.MetadataError('{} not found'.format(str(path)), code=404)
 
         if path.is_dir:
             return (yield from self._folder_metadata(path, raw=raw))
 
-        return (yield from self._file_metadata(path, raw=raw))
+        return (yield from self._file_metadata(path, revision=revision, raw=raw))
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):
@@ -320,7 +327,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         while parts:
             resp = yield from self.make_request(
                 'GET',
-                self.build_url('files', item_id, 'children', q='title = "{}"'.format(parts.pop(0))),
+                self.build_url('files', item_id, 'children', q="title = '{}'".format(parts.pop(0))),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
@@ -346,7 +353,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
             resp = yield from self.make_request(
                 'GET',
-                self.build_url('files', item_id, 'children', q='title = "{}"'.format(current_part.replace('"', '\\"')), fields='items(id)'),
+                self.build_url('files', item_id, 'children', q="title = '{}'".format(clean_query(current_part)), fields='items(id)'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
@@ -468,15 +475,22 @@ class GoogleDriveProvider(provider.BaseProvider):
         ]
 
     @asyncio.coroutine
-    def _file_metadata(self, path, raw=False):
+    def _file_metadata(self, path, revision=None, raw=False):
+        if revision:
+            url = self.build_url('files', path.identifier, 'revisions', revision)
+        else:
+            url = self.build_url('files', path.identifier)
+
         resp = yield from self.make_request(
-            'GET',
-            self.build_url('files', path.identifier),
+            'GET', url,
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
 
         data = yield from resp.json()
+
+        if revision:
+            return GoogleDriveFileRevisionMetadata(data, path)
 
         if drive_utils.is_docs_file(data):
             return (yield from self._handle_docs_versioning(path, data, raw=raw))

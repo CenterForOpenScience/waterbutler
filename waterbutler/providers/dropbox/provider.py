@@ -182,15 +182,25 @@ class DropboxProvider(provider.BaseProvider):
         )
 
     @asyncio.coroutine
-    def metadata(self, path, **kwargs):
+    def metadata(self, path, revision=None, **kwargs):
+        if revision:
+            url = self.build_url('revisions', 'auto', path.full_path, rev_limit=250)
+
+        else:
+            url = self.build_url('metadata', 'auto', path.full_path)
         resp = yield from self.make_request(
-            'GET',
-            self.build_url('metadata', 'auto', path.full_path),
+            'GET', url,
             expects=(200, ),
             throws=exceptions.MetadataError
         )
 
         data = yield from resp.json()
+
+        if revision:
+            try:
+                data = next(v for v in (yield from resp.json()) if v['rev'] == revision)
+            except StopIteration:
+                raise exceptions.NotFoundError(str(path))
 
         # Dropbox will match a file or folder by name within the requested path
         if path.is_file and data['is_dir']:

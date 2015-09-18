@@ -7,9 +7,10 @@ import asyncio
 DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request to {response.url}'
 
 
-class PluginError(Exception):
-    """The WaterButler related errors raised
-    from a plugins should inherit from PluginError
+class WaterButlerError(Exception):
+    """The base exception that all other are a subclass of.
+    Provides str repr and additional helper to convert exceptions
+    to HTTPResponses.
     """
 
     def __init__(self, message, code=500, log_message=None):
@@ -30,8 +31,23 @@ class PluginError(Exception):
         return '{}, {}'.format(self.code, self.message)
 
 
+class InvalidParameters(WaterButlerError):
+    """Errors regarding incorrect
+    data being sent to a method should raise either this
+    Exception or a subclass thereof
+    """
+    def __init__(self, message, code=400):
+        super().__init__(message, code=code)
+
+
+class PluginError(WaterButlerError):
+    """WaterButler related errors raised
+    from a plugins should inherit from PluginError
+    """
+
+
 class AuthError(PluginError):
-    """The WaterButler related errors raised
+    """WaterButler related errors raised
     from a :class:`waterbutler.core.auth` should
     inherit from AuthError
     """
@@ -42,6 +58,11 @@ class ProviderError(PluginError):
     from a :class:`waterbutler.core.provider` should
     inherit from ProviderError
     """
+
+
+class ProviderNotFound(ProviderError):
+    def __init__(self, provider):
+        super().__init__('Provider "{}" not found'.format(provider), code=404)
 
 
 class CopyError(ProviderError):

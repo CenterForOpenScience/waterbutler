@@ -10,6 +10,7 @@ from raven.contrib.tornado import AsyncSentryClient
 from stevedore import driver
 
 from waterbutler import settings
+from waterbutler.core import exceptions
 from waterbutler.server import settings as server_settings
 from waterbutler.core.signing import Signer
 
@@ -49,12 +50,16 @@ def make_provider(name, auth, credentials, settings):
 
     :rtype: :class:`waterbutler.core.provider.BaseProvider`
     """
-    manager = driver.DriverManager(
-        namespace='waterbutler.providers',
-        name=name,
-        invoke_on_load=True,
-        invoke_args=(auth, credentials, settings),
-    )
+    try:
+        manager = driver.DriverManager(
+            namespace='waterbutler.providers',
+            name=name,
+            invoke_on_load=True,
+            invoke_args=(auth, credentials, settings),
+        )
+    except RuntimeError:
+        raise exceptions.ProviderNotFound(name)
+
     return manager.driver
 
 
@@ -81,7 +86,7 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
             except exceptions as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
-                    logger.warning('Task {0} failed, {1} / {2} retries. Waiting {3} seconds before retrying'.format(func, __retries, retries, wait_time))
+                    logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting {4} seconds before retrying'.format(func, e, __retries, retries, wait_time))
 
                     yield from asyncio.sleep(wait_time)
                     return wrapped(*args, __retries=__retries + 1, **kwargs)
