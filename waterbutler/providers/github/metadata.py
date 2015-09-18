@@ -111,7 +111,7 @@ class GitHubRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def modified(self):
-        return self.raw['author']['date']
+        return self.raw['commit']['author']['date']
 
     @property
     def version(self):
