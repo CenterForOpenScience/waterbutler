@@ -293,7 +293,7 @@ class OSFStorageProvider(provider.BaseProvider):
             'sha256': data['data']['sha256'],
             'version': data['data']['version'],
             'downloads': data['data']['downloads'],
-            'checkout_user': data['data']['checkout_user'],
+            'checkout': data['data']['checkout'],
         })
 
         return OsfStorageFileMetadata(metadata, str(path)), created
