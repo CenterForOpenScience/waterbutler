@@ -6,3 +6,4 @@ Getting Started
 
     settingup
     contributing
+    runningtests
