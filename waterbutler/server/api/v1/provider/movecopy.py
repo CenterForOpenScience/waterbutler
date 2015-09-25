@@ -52,6 +52,8 @@ class MoveCopyMixin:
             raise exceptions.InvalidParameters('Action must be copy, move or rename, not {}'.format(self.json.get('action', 'null')))
 
         if self.json['action'] == 'rename':
+            if not self.json.get('rename'):
+                raise exceptions.InvalidParameters('Rename is required for renaming')
             action = 'move'
             self.dest_auth = self.auth
             self.dest_provider = self.provider
