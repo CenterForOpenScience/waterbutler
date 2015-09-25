@@ -1,4 +1,7 @@
 import asyncio
+import datetime
+
+import jwt
 import aiohttp
 
 from waterbutler.core import auth
@@ -33,10 +36,12 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         if view_only:
             bundle['view_only'] = view_only[0].decode()
 
+        bundle['exp'] = datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+
         response = yield from aiohttp.request(
             'get',
             settings.API_URL,
-            params=bundle,
+            params={'payload': jwt.encode(bundle, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)},
             headers=headers,
             cookies=dict(request.cookies),
         )
@@ -48,7 +53,7 @@ class OsfAuthHandler(auth.BaseAuthHandler):
                 data = yield from response.read()
             raise exceptions.AuthError(data, code=response.status)
 
-        return (yield from response.json())
+        return jwt.decode((yield from response.json()), settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
     @asyncio.coroutine
     def get(self, resource, provider, request):
@@ -72,11 +77,13 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         if view_only:
             params['view_only'] = view_only[0].decode()
 
+        params['exp'] = datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+
         try:
             response = yield from aiohttp.request(
                 'get',
                 settings.API_URL,
-                params=params,
+                params={'payload': jwt.encode(params, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)},
                 headers=headers,
                 cookies=dict(request.cookies),
             )
@@ -90,4 +97,4 @@ class OsfAuthHandler(auth.BaseAuthHandler):
                 data = yield from response.read()
             raise exceptions.AuthError(data, code=response.status)
 
-        return (yield from response.json())
+        return jwt.decode((yield from response.json()), settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
