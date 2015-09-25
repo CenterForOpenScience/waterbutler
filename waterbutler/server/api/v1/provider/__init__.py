@@ -138,6 +138,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             payload.update({
                 'source': {
                     'nid': self.resource,
+                    'kind': self.path.kind,
                     'name': self.path.name,
                     'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else self.path.path,
                     'provider': self.provider.NAME,  # TODO rename to name
@@ -145,6 +146,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                 },
                 'destination': {
                     'nid': self.dest_resource,
+                    'kind': self.dest_path.kind,
                     'name': self.dest_path.name,
                     'path': self.dest_path.identifier_path if self.dest_provider.NAME in IDENTIFIER_PATHS else self.dest_path.path,
                     'provider': self.dest_provider.NAME,
