@@ -56,6 +56,7 @@ class MoveCopyMixin:
             self.dest_auth = self.auth
             self.dest_provider = self.provider
             self.dest_path = self.path.parent
+            self.dest_resource = self.resource
         else:
             if 'path' not in self.json:
                 raise exceptions.InvalidParameters('Path is required for moves or copies')
