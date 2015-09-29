@@ -115,6 +115,15 @@ class FolderNamingConflict(ProviderError):
         )
 
 
+class NamingConflict(ProviderError):
+    def __init__(self, path, name=None):
+        super().__init__(
+            'Cannot complete action: file or folder "{name}" already exists in this location'.format(
+                name=name or path.name
+            ), code=409
+        )
+
+
 class NotFoundError(ProviderError):
     def __init__(self, path):
         super().__init__(
