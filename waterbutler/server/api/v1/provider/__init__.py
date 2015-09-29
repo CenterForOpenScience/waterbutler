@@ -168,5 +168,6 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         resp = (yield from utils.send_signed_request('PUT', self.auth['callback_url'], payload))
 
         if resp.status != 200:
-            raise Exception('Callback was unsuccessful, got {}'.format(resp))
+            data = yield from resp.read()
+            raise Exception('Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8')))
         logger.info('Successfully sent callback for a {} request'.format(action))
