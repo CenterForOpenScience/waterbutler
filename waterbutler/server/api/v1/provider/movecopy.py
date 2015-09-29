@@ -7,6 +7,7 @@ from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.utils import make_provider
+from waterbutler.constants import DEFAULT_CONFLICT
 
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
 
@@ -95,7 +96,7 @@ class MoveCopyMixin:
                     self.path,
                     self.dest_path,
                     rename=self.json.get('rename'),
-                    conflict=self.json.get('conflict', 'replace'),
+                    conflict=self.json.get('conflict', DEFAULT_CONFLICT),
                 )
             )
 
