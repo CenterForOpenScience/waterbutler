@@ -31,15 +31,15 @@ class MoveCopyMixin:
         except (KeyError, ValueError):
             raise exceptions.InvalidParameters('Content-Length is required', code=411)
 
-    def build_args(self, dest_provider, dest_path):
+    def build_args(self):
         return ({
             'nid': self.resource,  # TODO rename to anything but nid
             'path': self.path,
             'provider': self.provider.serialized()
         }, {
-            'nid': self.json['resource'],
-            'path': dest_path,
-            'provider': dest_provider.serialized()
+            'nid': self.dest_resource,
+            'path': self.dest_path,
+            'provider': self.dest_provider.serialized()
         })
 
     @asyncio.coroutine
@@ -85,7 +85,7 @@ class MoveCopyMixin:
             self.dest_path = yield from self.dest_provider.validate_path(self.json['path'])
 
         if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
-            result = yield from getattr(tasks, action).adelay(*self.build_args(self.dest_provider, self.dest_path))
+            result = yield from getattr(tasks, action).adelay(*self.build_args())
             metadata, created = yield from tasks.wait_on_celery(result)
         else:
             metadata, created = (
