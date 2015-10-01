@@ -5,10 +5,10 @@ from waterbutler.core import metadata
 
 class BaseGitHubMetadata(metadata.BaseMetadata):
 
-    def __init__(self, raw, folder=None, **kwargs):
+    def __init__(self, raw, folder=None, commit=None):
         super().__init__(raw)
         self.folder = folder
-        self.extras = kwargs
+        self.commit = commit
 
     @property
     def provider(self):
@@ -16,10 +16,9 @@ class BaseGitHubMetadata(metadata.BaseMetadata):
 
     @property
     def extra(self):
-        ret = {
-            'fileSha': self.raw['sha']
-        }
-        ret.update(self.extras)
+        ret = {}
+        if self.commit is not None:
+            ret['commit'] = self.commit
         return ret
 
     def build_path(self, path):
@@ -30,17 +29,34 @@ class BaseGitHubMetadata(metadata.BaseMetadata):
 
 class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
 
+    def __init__(self, raw, folder=None, commit=None, web_view=None):
+        super().__init__(raw, folder, commit)
+        self.web_view = web_view
+
     @property
     def path(self):
         return self.build_path(self.raw['path'])
 
     @property
     def modified(self):
-        return None
+        if not self.commit:
+            return None
+        return self.commit['author']['date']
 
     @property
     def content_type(self):
         return None
+
+    @property
+    def etag(self):
+        return '{}::{}'.format(self.path, self.raw['sha'])
+
+    @property
+    def extra(self):
+        return dict(super().extra, **{
+            'fileSha': self.raw['sha'],
+            'webView': self.web_view
+        })
 
 
 class BaseGitHubFolderMetadata(BaseGitHubMetadata, metadata.BaseFolderMetadata):
@@ -76,7 +92,7 @@ class GitHubFileTreeMetadata(BaseGitHubFileMetadata):
 
     @property
     def size(self):
-        return None
+        return self.raw['size']
 
 
 class GitHubFolderTreeMetadata(BaseGitHubFolderMetadata):
@@ -95,7 +111,7 @@ class GitHubRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def modified(self):
-        return self.raw['commit']['committer']['date']
+        return self.raw['commit']['author']['date']
 
     @property
     def version(self):

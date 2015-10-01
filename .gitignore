@@ -13,4 +13,5 @@ docs/_build
 
 src/
 env/
-env/
+dist/
+build/

@@ -18,7 +18,9 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     def __init__(self, path, headers):
         self._path = path
-        super().__init__(headers)
+        # Cast to dict to clone as the headers will
+        # be destroyed when the request leaves scope
+        super().__init__(dict(headers))
 
     @property
     def path(self):
@@ -26,20 +28,25 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def size(self):
-        return self.raw['Content-Length']
+        return self.raw['CONTENT-LENGTH']
 
     @property
     def content_type(self):
-        return self.raw['Content-Type']
+        return self.raw['CONTENT-TYPE']
 
     @property
     def modified(self):
-        return self.raw['Last-Modified']
+        return self.raw['LAST-MODIFIED']
+
+    @property
+    def etag(self):
+        return self.raw['ETAG'].replace('"', '')
 
     @property
     def extra(self):
         return {
-            'md5': self.raw['ETag'].replace('"', '')
+            'md5': self.raw['ETAG'].replace('"', ''),
+            'encryption': self.raw.get('X-AMZ-SERVER-SIDE-ENCRYPTION', '')
         }
 
 
@@ -60,6 +67,10 @@ class S3FileMetadata(S3Metadata, metadata.BaseFileMetadata):
     @property
     def content_type(self):
         return None  # TODO
+
+    @property
+    def etag(self):
+        return self.raw['ETag'].replace('"', '')
 
     @property
     def extra(self):

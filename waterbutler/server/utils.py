@@ -1,41 +1,78 @@
-import asyncio
+import tornado.gen
+from waterbutler.server import settings
 
-import tornado.ioloop
-import tornado.concurrent
+
+CORS_ACCEPT_HEADERS = [
+    'Range',
+    'Content-Type',
+    'Authorization',
+    'Cache-Control',
+    'X-Requested-With',
+]
+
+CORS_EXPOSE_HEADERS = [
+    'Range',
+    'Accept-Ranges',
+    'Content-Range',
+    'Content-Length',
+    'Content-Encoding',
+]
+
+HTTP_REASONS = {
+    422: 'Unprocessable Entity',
+    461: 'Unavailable For Legal Reasons',
+}
 
 
 def make_disposition(filename):
     return 'attachment;filename="{}"'.format(filename.replace('"', '\\"'))
 
 
-# Running Tornado on asyncio's event loop, including 'yield from' support in request handlers
-# https://gist.github.com/BeholdMyGlory/11067131
-def coroutine(func):
-    func = asyncio.coroutine(func)
+class CORsMixin:
 
-    def decorator(*args, **kwargs):
-        future = tornado.concurrent.Future()
+    def set_default_headers(self):
+        if isinstance(settings.CORS_ALLOW_ORIGIN, str):
+            if settings.CORS_ALLOW_ORIGIN == '*':
+                # Wild cards cannot be used with allowCredentials.
+                # Match Origin if its specified, makes pdfs and pdbs render properly
+                self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin', '*'))
+            else:
+                self.set_header('Access-Control-Allow-Origin', settings.CORS_ALLOW_ORIGIN)
+        else:
+            if self.request.headers.get('Origin') in settings.CORS_ALLOW_ORIGIN:
+                self.set_header('Access-Control-Allow-Origin', self.request.headers['Origin'])
 
-        def future_done(f):
-            try:
-                future.set_result(f.result())
-            except Exception as e:
-                future.set_exception(e)
+        self.set_header('Access-Control-Allow-Credentials', 'true')
+        self.set_header('Access-Control-Allow-Headers', ', '.join(CORS_ACCEPT_HEADERS))
+        self.set_header('Access-Control-Expose-Headers', ', '.join(CORS_EXPOSE_HEADERS))
+        self.set_header('Cache-control', 'no-store, no-cache, must-revalidate, max-age=0')
 
-        asyncio.async(func(*args, **kwargs)).add_done_callback(future_done)
-        return future
-
-    return decorator
+    def options(self, *args, **kwargs):
+        self.set_status(204)
+        self.set_header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE'),
 
 
-def future_wrapper(f):
-    future = asyncio.Future()
+class UtilMixin:
 
-    def handle_future(f):
+    def initialize(self):
+        method = self.get_query_argument('method', None)
+        if method:
+            self.request.method = method.upper()
+
+    def set_status(self, code, reason=None):
+        return super().set_status(code, reason or HTTP_REASONS.get(code))
+
+    @tornado.gen.coroutine
+    def write_stream(self, stream):
         try:
-            future.set_result(f.result())
-        except Exception as e:
-            future.set_exception(e)
-
-    tornado.ioloop.IOLoop.current().add_future(f, handle_future)
-    return future
+            while True:
+                chunk = yield from stream.read(settings.CHUNK_SIZE)
+                if not chunk:
+                    break
+                self.write(chunk)
+                del chunk
+                yield self.flush()
+        except tornado.iostream.StreamClosedError:
+            # Client has disconnected early.
+            # No need for any exception to be raised
+            return

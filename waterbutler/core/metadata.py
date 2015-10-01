@@ -1,4 +1,5 @@
 import abc
+import hashlib
 
 
 class BaseMetadata(metaclass=abc.ABCMeta):
@@ -16,11 +17,13 @@ class BaseMetadata(metaclass=abc.ABCMeta):
             This method determines the output of the REST API
         """
         return {
-            'provider': self.provider,
+            'extra': self.extra,
             'kind': self.kind,
             'name': self.name,
             'path': self.path,
-            'extra': self.extra,
+            'provider': self.provider,
+            'materialized': self.materialized_path,
+            'etag': hashlib.sha256('{}::{}'.format(self.provider, self.etag).encode('utf-8')).hexdigest(),
         }
 
     def build_path(self, path):
@@ -30,17 +33,25 @@ class BaseMetadata(metaclass=abc.ABCMeta):
             path += '/'
         return path
 
+    @property
+    def is_folder(self):
+        return self.kind == 'folder'
+
+    @property
+    def is_file(self):
+        return self.kind == 'file'
+
     @abc.abstractproperty
     def provider(self):
         """The provider from which this resource
         originated.
         """
-        pass
+        raise NotImplementedError
 
     @abc.abstractproperty
     def kind(self):
         """`file` or `folder`"""
-        pass
+        raise NotImplementedError
 
     @abc.abstractproperty
     def name(self):
@@ -49,21 +60,41 @@ class BaseMetadata(metaclass=abc.ABCMeta):
             /bar/foo.txt -> foo.txt
             /<someid> -> whatever.png
         """
-        pass
+        raise NotImplementedError
 
     @abc.abstractproperty
     def path(self):
         """The canonical string representation
         of a waterbutler file or folder.
 
-        All paths MUST start with a `/`
-        All Folders MUST end with a `/`
+        ..note::
+            All paths MUST start with a `/`
+            All Folders MUST end with a `/`
         """
-        pass
+        raise NotImplementedError
+
+    @property
+    def materialized_path(self):
+        """The "pretty" variant of path
+        this path can be displayed to the enduser
+
+        path -> /Folder%20Name/123abc
+        full_path -> /Folder Name/File Name
+
+        ..note::
+            All paths MUST start with a `/`
+            All Folders MUST end with a `/`
+        ..note::
+            Defaults to self.path
+        """
+        return self.path
 
     @property
     def extra(self):
         return {}
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.serialized() == other.serialized()
 
 
 class BaseFileMetadata(BaseMetadata):
@@ -82,21 +113,26 @@ class BaseFileMetadata(BaseMetadata):
 
     @abc.abstractproperty
     def content_type(self):
-        pass
+        raise NotImplementedError
 
     @abc.abstractproperty
     def modified(self):
-        pass
+        raise NotImplementedError
 
     @abc.abstractproperty
     def size(self):
-        pass
+        raise NotImplementedError
+
+    @property
+    def etag(self):
+        raise NotImplementedError
 
 
 class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
 
     def __init__(self, raw):
         self.raw = raw
+
     def serialized(self):
         return {
             'extra': self.extra,
@@ -107,19 +143,22 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
 
     @abc.abstractproperty
     def modified(self):
-        pass
+        raise NotImplementedError
 
     @abc.abstractproperty
     def version(self):
-        pass
+        raise NotImplementedError
 
     @abc.abstractproperty
     def version_identifier(self):
-        pass
+        raise NotImplementedError
 
     @property
     def extra(self):
         return {}
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.serialized() == other.serialized()
 
 
 class BaseFolderMetadata(BaseMetadata):
@@ -127,6 +166,28 @@ class BaseFolderMetadata(BaseMetadata):
     folders, auto defines :func:`kind`
     """
 
+    def __init__(self, raw):
+        super().__init__(raw)
+        self._children = None
+
+    def serialized(self):
+        ret = super().serialized()
+        if self.children is not None:
+            ret['children'] = [c.serialized() for c in self.children]
+        return ret
+
+    @property
+    def children(self):
+        return self._children
+
+    @children.setter
+    def children(self, kids):
+        self._children = kids
+
     @property
     def kind(self):
         return 'folder'
+
+    @property
+    def etag(self):
+        return None

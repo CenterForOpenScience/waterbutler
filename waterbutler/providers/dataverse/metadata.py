@@ -31,6 +31,10 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
         return self.build_path(self.file_id)
 
     @property
+    def materialized_path(self):
+        return '/' + self.name
+
+    @property
     def size(self):
         return None
 
@@ -41,6 +45,10 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
     @property
     def modified(self):
         return None
+
+    @property
+    def etag(self):
+        return '{}::{}'.format(self.dataset_version, self.file_id)
 
     @property
     def extra(self):

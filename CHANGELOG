@@ -2,6 +2,79 @@
 ChangeLog
 *********
 
+0.12.0 (2015-09-17)
+===================
+- waterbutler.server
+  - Restructured into API version modules
+  - API v1 has been implemented
+    - Only one endpoint exists /v1/resources/<>/providers/<>/<path>
+  - API v0 is now deprecated
+  - Callbacks will be retried if they do not get a 200 response
+
+- waterbutler.core
+  - Invalid providers are now handled properly
+  - WaterbutlerPath now has an identifier_path property for id based backends
+  - Revision is now an accepted parameter of Provider#metadata and Provider#download
+
+- Github now returns modifed dates when available
+- Google drive's title queries now only use single quotes (')
+- OsfStorage's validate_path function now works properly
+- Osfstorage now properly responds created to internal copies
+
+0.11.0 (2015-08-31)
+===================
+- OsfStorage now returns hashes
+
+0.10.0 (2015-08-10)
+===================
+- Allow S3 uploads to be encrypted at rest via S3's API
+
+0.9.0 (2015-07-29)
+==================
+
+- Web view links are included in the extra field when available
+- Add many a test for moving and copying, tasks and endpoints
+- Allow OsfStorage tasks to be disabled by adding including archive: false
+
+0.8.0 (2015-07-14)
+==================
+
+- Add support for passing the Range head through
+- Exceptions are no longer raised when a client connection cuts off early
+- ResponseStreamReader may override file names via .name
+- Calls to metadata now returns BaseMetadata objects or a list thereof
+- Upgrade to tornado 4.2, which increases compatability with asyncio
+- General code clean up
+- Add a style/contributing guide
+- Uploading files is now implemented with unix sockets and will not buffer the
+entire file into memory
+- Accept files up to 4.9GBs
+- view_url is included with file metadata requests
+- Flake8 is now much more aggressive
+- General code clean up
+
+0.7.0 (2015-06-18)
+==================
+
+- Read me updates
+- Various fixes for S3
+- Fixes to Dataverse's copy and move
+- Various fixes for figshare
+
+0.6.0 (2015-06-07)
+==================
+
+- Various fixes to Google drive
+- Allow response streams to be "unsizable"
+- Return an additional "etag" field with file metadata
+
+0.5.0 (2015-05-25)
+==================
+
+- Implement moving and expose it via http
+- Implement copying and expose it via http
+- Implement downloading as zip and expose it via http
+
 0.4.0 (2015-04-28)
 ==================
 

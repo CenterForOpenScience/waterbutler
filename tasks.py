@@ -14,6 +14,7 @@ def wheelhouse(develop=False):
 
 @task
 def install(develop=False, upgrade=False):
+    run('python setup.py develop')
     req_file = 'dev-requirements.txt' if develop else 'requirements.txt'
     cmd = 'pip install -r {}'.format(req_file)
 
@@ -31,6 +32,7 @@ def flake():
 
 @task
 def test(verbose=False):
+    flake()
     cmd = 'py.test --cov-report term-missing --cov waterbutler tests'
     if verbose:
         cmd += ' -v'
@@ -38,9 +40,14 @@ def test(verbose=False):
 
 
 @task
-def celery():
+def celery(loglevel='INFO', hostname='%h'):
     from waterbutler.tasks.app import app
-    app.worker_main(['worker'])
+    command = ['worker']
+    if loglevel:
+        command.extend(['--loglevel', loglevel])
+    if hostname:
+        command.extend(['--hostname', hostname])
+    app.worker_main(command)
 
 
 @task
