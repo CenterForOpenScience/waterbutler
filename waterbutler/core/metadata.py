@@ -1,6 +1,10 @@
 import abc
 import hashlib
 
+import furl
+
+from waterbutler.server import settings
+
 
 class BaseMetadata(metaclass=abc.ABCMeta):
     """The BaseMetadata object provides structure
@@ -13,8 +17,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
     def serialized(self):
         """The JSON serialization of metadata from WaterButler.
         .. warning::
-
-            This method determines the output of the REST API
+        This method determines the output of API v0
         """
         return {
             'extra': self.extra,
@@ -24,6 +27,37 @@ class BaseMetadata(metaclass=abc.ABCMeta):
             'provider': self.provider,
             'materialized': self.materialized_path,
             'etag': hashlib.sha256('{}::{}'.format(self.provider, self.etag).encode('utf-8')).hexdigest(),
+        }
+
+    def json_api_serialized(self, resource):
+        """The JSON API serialization of metadata from WaterButler.
+        .. warning::
+        This method determines the output of API v1
+        """
+        return {
+            'id': self.provider + self.path,
+            'type': 'files',
+            'attributes': self.serialized(),
+            'links': self._json_api_links(resource),
+        }
+
+    def _json_api_links(self, resource):
+        url = furl.furl(settings.DOMAIN)
+        segments = ['v1', 'resources', resource, 'providers', self.provider]
+        # If self is a folder, path ends with a slash which must be preserved. However, furl
+        # percent-encodes the trailing slash. Instead, turn folders into a list of (path_id, ''),
+        # and let furl add the slash for us.  The [1:] is because path always begins with a slash,
+        # meaning the first entry is always ''.
+        segments += self.path.split('/')[1:]
+        url.path.segments.extend(segments)
+        entity_url = url.url
+
+        return {
+            'new_folder': entity_url if self.is_folder else None,
+            'move': entity_url,
+            'upload': entity_url,
+            'download': entity_url if self.is_file else None,
+            'delete': entity_url,
         }
 
     def build_path(self, path):
@@ -174,6 +208,11 @@ class BaseFolderMetadata(BaseMetadata):
         ret = super().serialized()
         if self.children is not None:
             ret['children'] = [c.serialized() for c in self.children]
+        return ret
+
+    def json_api_serialized(self, resource):
+        ret = super().json_api_serialized(resource)
+        ret['attributes']['size'] = None
         return ret
 
     @property
