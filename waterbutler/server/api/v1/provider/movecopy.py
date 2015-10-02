@@ -100,11 +100,9 @@ class MoveCopyMixin:
                 )
             )
 
-        metadata = metadata.serialized()
-
         if created:
             self.set_status(201)
         else:
             self.set_status(200)
 
-        self.write(metadata)
+        self.write({'data': metadata.json_api_serialized(self.dest_resource)})
