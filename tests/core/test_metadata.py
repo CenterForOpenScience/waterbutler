@@ -92,3 +92,16 @@ class TestBaseMetadata:
             'modified': 'never',
             'size': 1337,
         }
+
+    def test_file_revision_json_api_serialize(self):
+        file_revision_metadata = utils.MockFileRevisionMetadata()
+        serialized = file_revision_metadata.json_api_serialized()
+
+        assert serialized['id'] == 1
+        assert serialized['type'] == 'file_versions'
+        assert serialized['attributes'] == {
+            'extra': {},
+            'version': 1,
+            'modified': 'never',
+            'versionIdentifier': 'versions',
+        }

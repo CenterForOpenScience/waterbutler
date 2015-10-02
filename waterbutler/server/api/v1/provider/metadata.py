@@ -108,7 +108,7 @@ class MetadataMixin:
         if asyncio.iscoroutine(result):
             result = yield from result
 
-        return self.write({'data': [r.serialized() for r in result]})
+        return self.write({'data': [r.json_api_serialized() for r in result]})
 
     @asyncio.coroutine
     def download_folder_as_zip(self):
