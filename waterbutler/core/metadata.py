@@ -175,6 +175,17 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
             'versionIdentifier': self.version_identifier,
         }
 
+    def json_api_serialized(self):
+        """The JSON API serialization of revision metadata from WaterButler.
+        .. warning::
+        This method determines the output of API v1
+        """
+        return {
+            'id': self.version,
+            'type': 'file_versions',
+            'attributes': self.serialized(),
+        }
+
     @abc.abstractproperty
     def modified(self):
         raise NotImplementedError
