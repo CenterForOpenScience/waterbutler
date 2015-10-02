@@ -565,6 +565,25 @@ class TestCRUD:
         content = yield from result.read()
         assert content == b'delicious'
 
+    @async
+    @pytest.mark.aiohttpretty
+    def test_download_by_path_revision(self, provider, repo_tree_metadata_root):
+        ref = hashlib.sha1().hexdigest()
+        file_sha = repo_tree_metadata_root['tree'][0]['sha']
+        path = yield from provider.validate_path('/file.txt', branch='other_branch')
+
+        url = provider.build_repo_url('git', 'blobs', file_sha)
+        tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
+        commit_url = provider.build_repo_url('commits', path=path.path.lstrip('/'), sha='Just a test')
+
+        aiohttpretty.register_uri('GET', url, body=b'delicious')
+        aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
+        aiohttpretty.register_json_uri('GET', commit_url, body=[{'commit': {'tree': {'sha': ref}}}])
+
+        result = yield from provider.download(path, revision='Just a test')
+        content = yield from result.read()
+        assert content == b'delicious'
+
     # @async
     # @pytest.mark.aiohttpretty
     # def test_download_bad_status(self, provider):
