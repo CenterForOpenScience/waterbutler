@@ -52,6 +52,7 @@ waterbutler-test.json, e.g.
   "SERVER_CONFIG": {
     "ADDRESS": "127.0.0.1",
     "PORT": 7777,
+    "DOMAIN": "http://127.0.0.1:7777",
     "DEBUG": true,
     "HMAC_SECRET": "changeme"
   },
