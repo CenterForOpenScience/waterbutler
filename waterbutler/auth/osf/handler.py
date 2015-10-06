@@ -36,12 +36,15 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         if view_only:
             bundle['view_only'] = view_only[0].decode()
 
-        bundle['exp'] = datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+        payload = {
+            'data': bundle,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+        }
 
         response = yield from aiohttp.request(
             'get',
             settings.API_URL,
-            params={'payload': jwt.encode(bundle, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)},
+            params={'payload': jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)},
             headers=headers,
             cookies=dict(request.cookies),
         )
@@ -53,7 +56,10 @@ class OsfAuthHandler(auth.BaseAuthHandler):
                 data = yield from response.read()
             raise exceptions.AuthError(data, code=response.status)
 
-        return jwt.decode((yield from response.json()), settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+        try:
+            return jwt.decode((yield from response.json()), settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)['data']
+        except KeyError:
+            raise exceptions.AuthError(data, code=response.status)
 
     @asyncio.coroutine
     def get(self, resource, provider, request):
@@ -77,13 +83,16 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         if view_only:
             params['view_only'] = view_only[0].decode()
 
-        params['exp'] = datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+        payload = {
+            'data': params,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+        }
 
         try:
             response = yield from aiohttp.request(
                 'get',
                 settings.API_URL,
-                params={'payload': jwt.encode(params, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)},
+                params={'payload': jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)},
                 headers=headers,
                 cookies=dict(request.cookies),
             )
@@ -97,4 +106,7 @@ class OsfAuthHandler(auth.BaseAuthHandler):
                 data = yield from response.read()
             raise exceptions.AuthError(data, code=response.status)
 
-        return jwt.decode((yield from response.json()), settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+        try:
+            return jwt.decode((yield from response.json()), settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)['data']
+        except KeyError:
+            raise exceptions.AuthError(data, code=response.status)
