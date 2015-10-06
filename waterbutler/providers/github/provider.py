@@ -64,12 +64,13 @@ class GitHubProvider(provider.BaseProvider):
             self.default_branch = self._repo['default_branch']
 
         path = GitHubPath(path)
+        branch_ref = kwargs.get('branch') or kwargs.get('ref') or self.default_branch
+
+        for part in path.parts:
+            part._id = (branch_ref, None)
 
         # TODO Validate that filesha is a valid sha
-        path.parts[-1]._id = (
-            kwargs.get('branch') or kwargs.get('ref') or self.default_branch,
-            kwargs.get('fileSha')
-        )
+        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
 
         return path
 

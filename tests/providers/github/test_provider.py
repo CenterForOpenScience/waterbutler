@@ -477,6 +477,8 @@ class TestValidatePath:
         assert path.name == 'path'
         assert isinstance(path.identifier, tuple)
         assert path.identifier == (provider.default_branch, None)
+        assert path.parts[0].identifier ==  (provider.default_branch, None)
+
 
     @async
     def test_validate_path_passes_branch(self, provider):
@@ -487,6 +489,7 @@ class TestValidatePath:
         assert path.name == 'path'
         assert isinstance(path.identifier, tuple)
         assert path.identifier == ('NotMaster', None)
+        assert path.parts[0].identifier ==  ('NotMaster', None)
 
     @async
     def test_validate_path_passes_ref(self, provider):
@@ -497,6 +500,7 @@ class TestValidatePath:
         assert path.name == 'path'
         assert isinstance(path.identifier, tuple)
         assert path.identifier == ('NotMaster', None)
+        assert path.parts[0].identifier ==  ('NotMaster', None)
 
     @async
     def test_validate_path_passes_file_sha(self, provider):
@@ -507,6 +511,7 @@ class TestValidatePath:
         assert path.name == 'path'
         assert isinstance(path.identifier, tuple)
         assert path.identifier == (provider.default_branch, 'Thisisasha')
+        assert path.parts[0].identifier ==  (provider.default_branch, None)
 
 
 class TestCRUD:
