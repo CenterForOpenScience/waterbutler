@@ -43,7 +43,26 @@ class OSFStorageProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
-        return self.validate_path(path, **kwargs)
+        if path == '/':
+            return WaterButlerPath('/', _ids=[self.root_id], folder=True)
+
+        implicit_folder = path.endswith('/')
+        obj_id = path.strip('/')
+
+        resp = yield from self.make_signed_request(
+            'GET',
+            self.build_url(obj_id, 'lineage'),
+            expects=(200,)
+        )
+
+        data = yield from resp.json()
+        explicit_folder = data['data'][0]['kind'] == 'folder'
+        if explicit_folder != implicit_folder:
+            raise exceptions.NotFoundError(str(path))
+
+        names, ids = zip(*[(x['name'], x['id']) for x in reversed(data['data'])])
+
+        return WaterButlerPath('/'.join(names), _ids=ids, folder=explicit_folder)
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
