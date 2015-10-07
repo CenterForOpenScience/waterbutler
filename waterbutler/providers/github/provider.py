@@ -58,6 +58,10 @@ class GitHubProvider(provider.BaseProvider):
         self.repo = self.settings['repo']
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         if not getattr(self, '_repo', None):
             self._repo = yield from self._fetch_repo()

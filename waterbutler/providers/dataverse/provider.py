@@ -43,6 +43,10 @@ class DataverseProvider(provider.BaseProvider):
         return super().build_url(*(tuple(path.split('/')) + segments), **query)
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
+
+    @asyncio.coroutine
     def validate_path(self, path, revision=None, **kwargs):
         """Ensure path is in configured dataset
 

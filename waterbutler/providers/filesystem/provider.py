@@ -23,6 +23,10 @@ class FileSystemProvider(provider.BaseProvider):
         os.makedirs(self.folder, exist_ok=True)
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path, prepend=self.folder)
 

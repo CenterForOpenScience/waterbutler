@@ -56,6 +56,10 @@ class S3Provider(provider.BaseProvider):
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 

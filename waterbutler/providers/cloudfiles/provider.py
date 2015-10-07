@@ -48,6 +48,10 @@ class CloudFilesProvider(provider.BaseProvider):
         self.use_public = self.settings.get('use_public', True)
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 

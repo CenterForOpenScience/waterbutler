@@ -43,7 +43,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
         self.auth = yield from auth_handler.get(self.resource, provider, self.request)
         self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
-        self.path = yield from self.provider.validate_path(self.path)
+        self.path = yield from self.provider.validate_v1_path(self.path)
 
         # The one special case
         if self.request.method == 'PUT' and self.path.is_file:

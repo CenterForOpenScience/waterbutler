@@ -45,6 +45,10 @@ class GoogleDriveProvider(provider.BaseProvider):
         self.folder = self.settings['folder']
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
+
+    @asyncio.coroutine
     def validate_path(self, path, file_id=None, **kwargs):
         if path == '/':
             return GoogleDrivePath('/', _ids=[self.folder['id']], folder=True)

@@ -42,6 +42,10 @@ class OSFStorageProvider(provider.BaseProvider):
         self.archive_credentials = credentials.get('archive')
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         if path == '/':
             return WaterButlerPath('/', _ids=[self.root_id], folder=True)
