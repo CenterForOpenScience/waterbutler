@@ -24,7 +24,15 @@ class FileSystemProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
-        return self.validate_path(path, **kwargs)
+        if not os.path.exists(self.folder + path):
+            raise exceptions.NotFoundError(str(path))
+
+        implicit_folder = path.endswith('/')
+        explicit_folder = os.path.isdir(self.folder + path)
+        if implicit_folder != explicit_folder:
+            raise exceptions.NotFoundError(str(path))
+
+        return WaterButlerPath(path, prepend=self.folder)
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
