@@ -132,9 +132,9 @@ class OSFStorageProvider(provider.BaseProvider):
         data = yield from resp.json()
 
         if data['kind'] == 'file':
-            return OsfStorageFileMetadata(data, str(dest_path)), resp.status == 201
+            return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
 
-        return OsfStorageFolderMetadata(data, str(dest_path)), resp.status == 201
+        return OsfStorageFolderMetadata(data, str(dest_path)), dest_path.identifier is None
 
     def intra_copy(self, dest_provider, src_path, dest_path):
         if dest_path.identifier:
