@@ -59,7 +59,37 @@ class GitHubProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
-        return self.validate_path(path, **kwargs)
+        if not getattr(self, '_repo', None):
+            self._repo = yield from self._fetch_repo()
+            self.default_branch = self._repo['default_branch']
+
+        branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
+
+        implicit_folder = path.endswith('/')
+
+        url = furl.furl(self.build_repo_url('contents', path))
+        url.args.update({'ref': branch_ref})
+        resp = yield from self.make_request(
+            'GET',
+            url.url,
+            expects=(200, ),
+            throws=exceptions.MetadataError
+        )
+
+        content = yield from resp.json()
+        explicit_folder = isinstance(content, list)
+
+        if implicit_folder != explicit_folder:
+            raise exceptions.NotFoundError(path)
+
+        path = GitHubPath(path)
+        for part in path.parts:
+            part._id = (branch_ref, None)
+
+        # TODO Validate that filesha is a valid sha
+        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
+
+        return path
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
@@ -68,7 +98,7 @@ class GitHubProvider(provider.BaseProvider):
             self.default_branch = self._repo['default_branch']
 
         path = GitHubPath(path)
-        branch_ref = kwargs.get('branch') or kwargs.get('ref') or self.default_branch
+        branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
 
         for part in path.parts:
             part._id = (branch_ref, None)
