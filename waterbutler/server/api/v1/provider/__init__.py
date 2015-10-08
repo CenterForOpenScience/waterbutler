@@ -162,6 +162,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                     'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else self.path.path,
                     'name': self.path.name,
                     'materialized': str(self.path),
+                    'provider': self.provider.NAME,
                 }
             })
 
