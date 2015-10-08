@@ -57,7 +57,7 @@ class OsfAuthHandler(auth.BaseAuthHandler):
             raise exceptions.AuthError(data, code=response.status)
 
         try:
-            return jwt.decode((yield from response.json()), settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)['data']
+            return jwt.decode((yield from response.json()), settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM, options={'require_exp': True})['data']
         except KeyError:
             raise exceptions.AuthError(data, code=response.status)
 
@@ -107,6 +107,6 @@ class OsfAuthHandler(auth.BaseAuthHandler):
             raise exceptions.AuthError(data, code=response.status)
 
         try:
-            return jwt.decode((yield from response.json()), settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)['data']
+            return jwt.decode((yield from response.json()), settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM, option={'require_exp': True})['data']
         except KeyError:
             raise exceptions.AuthError(data, code=response.status)
