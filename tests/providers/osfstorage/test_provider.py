@@ -242,6 +242,7 @@ class TestUploads:
         assert res.extra['version'] == 8
         assert res.provider == 'osfstorage'
         assert res.extra['downloads'] == 10
+        assert path.identifier_path == res.path
 
         inner_provider.delete.assert_called_once_with(WaterButlerPath('/uniquepath'))
         inner_provider.metadata.assert_called_once_with(WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
