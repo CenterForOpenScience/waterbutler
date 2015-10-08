@@ -225,7 +225,10 @@ class BoxProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        return BoxFileMetadata(data['entries'][0], path), path.identifier is None
+
+        created = path.identifier is None
+        path._parts[-1]._id = data['entries'][0]['id']
+        return BoxFileMetadata(data['entries'][0], path), created
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):

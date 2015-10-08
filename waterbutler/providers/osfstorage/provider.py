@@ -298,6 +298,7 @@ class OSFStorageProvider(provider.BaseProvider):
             'downloads': data['data']['downloads'],
         })
 
+        path._parts[-1]._id = metadata['path'].strip('/')
         return OsfStorageFileMetadata(metadata, str(path)), created
 
     @asyncio.coroutine
