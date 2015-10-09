@@ -44,6 +44,9 @@ class DataverseProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
+        if path != '/' and path.endswith('/'):
+            raise exceptions.NotFoundError(str(path))
+
         return self.validate_path(path, **kwargs)
 
     @asyncio.coroutine
