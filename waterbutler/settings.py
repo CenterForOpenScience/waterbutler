@@ -71,5 +71,7 @@ def get(key, default):
     return config.get(key, default)
 
 
+DEBUG = get('DEBUG', True)
+
 logging_config = get('LOGGING', DEFAULT_LOGGING_CONFIG)
 logging.config.dictConfig(logging_config)

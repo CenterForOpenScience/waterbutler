@@ -27,7 +27,7 @@ class MetadataMixin:
         if data.modified is not None:
             self.set_header('Last-Modified', data.modified)
         self.set_header('Content-Type', data.content_type or 'application/octet-stream')
-        self.set_header('X-Waterbutler-Metadata', json.dumps(data.serialized()))
+        self.set_header('X-Waterbutler-Metadata', json.dumps(data.json_api_serialized(self.resource)))
 
     @asyncio.coroutine
     def get_folder(self):
@@ -35,7 +35,7 @@ class MetadataMixin:
             return (yield from self.download_folder_as_zip())
 
         data = yield from self.provider.metadata(self.path)
-        return self.write({'data': [x.serialized() for x in data]})
+        return self.write({'data': [x.json_api_serialized(self.resource) for x in data]})
 
     @asyncio.coroutine
     def get_file(self):
@@ -98,7 +98,7 @@ class MetadataMixin:
         version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
 
         return self.write({
-            'data': (yield from self.provider.metadata(self.path, revision=version)).serialized()
+            'data': (yield from self.provider.metadata(self.path, revision=version)).json_api_serialized(self.resource)
         })
 
     @asyncio.coroutine
@@ -108,7 +108,7 @@ class MetadataMixin:
         if asyncio.iscoroutine(result):
             result = yield from result
 
-        return self.write({'data': [r.serialized() for r in result]})
+        return self.write({'data': [r.json_api_serialized() for r in result]})
 
     @asyncio.coroutine
     def download_folder_as_zip(self):
