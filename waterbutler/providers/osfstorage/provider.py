@@ -110,6 +110,9 @@ class OSFStorageProvider(provider.BaseProvider):
         return isinstance(other, self.__class__)
 
     def intra_move(self, dest_provider, src_path, dest_path):
+        if dest_path.identifier:
+            yield from dest_provider.delete(dest_path)
+
         resp = yield from self.make_signed_request(
             'POST',
             self.build_url('hooks', 'move'),
@@ -129,9 +132,9 @@ class OSFStorageProvider(provider.BaseProvider):
         data = yield from resp.json()
 
         if data['kind'] == 'file':
-            return OsfStorageFileMetadata(data, str(dest_path)), resp.status == 201
+            return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
 
-        return OsfStorageFolderMetadata(data, str(dest_path)), resp.status == 201
+        return OsfStorageFolderMetadata(data, str(dest_path)), dest_path.identifier is None
 
     def intra_copy(self, dest_provider, src_path, dest_path):
         if dest_path.identifier:
@@ -296,6 +299,7 @@ class OSFStorageProvider(provider.BaseProvider):
             'checkout': data['data']['checkout'],
         })
 
+        path._parts[-1]._id = metadata['path'].strip('/')
         return OsfStorageFileMetadata(metadata, str(path)), created
 
     @asyncio.coroutine

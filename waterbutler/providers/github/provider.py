@@ -64,12 +64,13 @@ class GitHubProvider(provider.BaseProvider):
             self.default_branch = self._repo['default_branch']
 
         path = GitHubPath(path)
+        branch_ref = kwargs.get('branch') or kwargs.get('ref') or self.default_branch
+
+        for part in path.parts:
+            part._id = (branch_ref, None)
 
         # TODO Validate that filesha is a valid sha
-        path.parts[-1]._id = (
-            kwargs.get('branch') or kwargs.get('ref') or self.default_branch,
-            kwargs.get('fileSha')
-        )
+        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
 
         return path
 
@@ -109,14 +110,14 @@ class GitHubProvider(provider.BaseProvider):
         return (yield from self._do_intra_move_or_copy(src_path, dest_path, False))
 
     @asyncio.coroutine
-    def download(self, path, **kwargs):
+    def download(self, path, revision=None, **kwargs):
         '''Get the stream to the specified file on github
         :param str path: The path to the file on github
         :param str ref: The git 'ref' a branch or commit sha at which to get the file from
         :param str fileSha: The sha of file to be downloaded if specifed path will be ignored
         :param dict kwargs: Ignored
         '''
-        data = yield from self.metadata(path)
+        data = yield from self.metadata(path, revision=revision)
         file_sha = path.identifier[1] or data.extra['fileSha']
 
         resp = yield from self.make_request(

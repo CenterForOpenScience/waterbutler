@@ -48,7 +48,7 @@ class CreateMixin:
     def create_folder(self):
         metadata = yield from self.provider.create_folder(self.path)
         self.set_status(201)
-        self.write(metadata.serialized())
+        self.write({'data': metadata.json_api_serialized(self.resource)})
 
     @asyncio.coroutine
     def upload_file(self):
@@ -60,4 +60,4 @@ class CreateMixin:
         if created:
             self.set_status(201)
 
-        self.write(metadata.serialized())
+        self.write({'data': metadata.json_api_serialized(self.resource)})

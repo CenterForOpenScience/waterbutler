@@ -55,6 +55,15 @@ class MockFolderMetadata(metadata.BaseFolderMetadata):
         super().__init__({})
 
 
+class MockFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
+    version = 1
+    version_identifier = 'versions'
+    modified = 'never'
+
+    def __init__(self):
+        super().__init__({})
+
+
 class MockProvider(provider.BaseProvider):
     NAME = 'MockProvider'
     copy = None

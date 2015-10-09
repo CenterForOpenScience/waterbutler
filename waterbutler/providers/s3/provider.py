@@ -40,9 +40,9 @@ class S3Provider(provider.BaseProvider):
         """
         super().__init__(auth, credentials, settings)
 
-        # If a bucket has capital letters in the name
-        # ordinary calling format MUST be used
-        if settings['bucket'] != settings['bucket'].lower():
+        # If a bucket has capital letters in the name ordinary calling format MUST be used
+        # If a bucket has multiple dots (sub.domain.bucket) ordinary calling format MUST be used
+        if settings['bucket'] != settings['bucket'].lower() or settings['bucket'].count('.') > 0:
             calling_format = OrdinaryCallingFormat()
         else:
             # if a bucket is out of the us Subdomain calling format MUST be used
