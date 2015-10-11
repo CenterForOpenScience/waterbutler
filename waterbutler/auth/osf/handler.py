@@ -32,19 +32,22 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         if cookie:
             bundle['cookie'] = cookie[0].decode()
 
+        query_params = {
+            'payload': jwt.encode({
+                'data': bundle,
+                'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+            }, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+        }
+
         view_only = request.query_arguments.get('view_only')
         if view_only:
-            bundle['view_only'] = view_only[0].decode()
-
-        payload = {
-            'data': bundle,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
-        }
+            # View only must go outside of the jwt
+            query_params['view_only'] = view_only[0].decode()
 
         response = yield from aiohttp.request(
             'get',
             settings.API_URL,
-            params={'payload': jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)},
+            params=query_params,
             headers=headers,
             cookies=dict(request.cookies),
         )
@@ -79,20 +82,23 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         if cookie:
             params['cookie'] = cookie[0].decode()
 
+        query_params = {
+            'payload': jwt.encode({
+                'data': params,
+                'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+            }, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+        }
+
         view_only = request.query_arguments.get('view_only')
         if view_only:
-            params['view_only'] = view_only[0].decode()
-
-        payload = {
-            'data': params,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
-        }
+            # View only must go outside of the jwt
+            query_params['view_only'] = view_only[0].decode()
 
         try:
             response = yield from aiohttp.request(
                 'get',
                 settings.API_URL,
-                params={'payload': jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)},
+                params=query_params,
                 headers=headers,
                 cookies=dict(request.cookies),
             )
