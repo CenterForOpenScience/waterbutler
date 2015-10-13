@@ -584,7 +584,7 @@ class GitHubProvider(provider.BaseProvider):
         old_commit_tree_sha = branch_data['commit']['commit']['tree']['sha']
 
         tree = yield from self._fetch_tree(old_commit_tree_sha, recursive=True)
-        exists = any(x['path'] == dest_path.path for x in tree['tree'])
+        exists = any(x['path'] == dest_path.path.rstrip('/') for x in tree['tree'])
 
         target, keep = None, []
 
@@ -653,4 +653,4 @@ class GitHubProvider(provider.BaseProvider):
             else:
                 folder.children.append(GitHubFileTreeMetadata(item))
 
-        return folder, exists
+        return folder, not exists
