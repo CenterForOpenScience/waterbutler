@@ -425,7 +425,17 @@ class GitHubProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError
         )
-        return (yield from resp.json())
+        tree = yield from resp.json()
+
+        if tree['truncated']:
+            raise exceptions.ProviderError(
+                ('Some folder operations on large GitHub repositories cannot be supported without'
+                 ' data loss.  To carry out this operation, please perform it in a local git'
+                 ' repository, then push to the target repository on GitHub.'),
+                code=501
+            )
+
+        return tree
 
     @asyncio.coroutine
     def _create_tree(self, tree):
