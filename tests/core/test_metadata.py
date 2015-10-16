@@ -42,9 +42,9 @@ class TestBaseMetadata:
             'modified': 'never',
             'size': 1337,
         }
-        assert serialized['links']['new_folder'] == None
+        assert 'new_folder' not in serialized['links']
         assert serialized['links']['move'].endswith(link_suffix)
-        assert serialized['links']['upload'].endswith(link_suffix)
+        assert serialized['links']['upload'].endswith(link_suffix + '?kind=file')
         assert serialized['links']['download'].endswith(link_suffix)
         assert serialized['links']['delete'].endswith(link_suffix)
 
@@ -66,10 +66,10 @@ class TestBaseMetadata:
             'etag': etag,
             'size': None,
         }
-        assert serialized['links']['new_folder'].endswith(link_suffix)
+        assert serialized['links']['new_folder'].endswith(link_suffix + '?kind=folder')
         assert serialized['links']['move'].endswith(link_suffix)
-        assert serialized['links']['upload'].endswith(link_suffix)
-        assert serialized['links']['download'] == None
+        assert serialized['links']['upload'].endswith(link_suffix + '?kind=folder')
+        assert 'download' not in serialized['links']
         assert serialized['links']['delete'].endswith(link_suffix)
 
     def test_folder_json_api_serialize(self):
