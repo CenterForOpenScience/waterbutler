@@ -4,6 +4,7 @@ from tests.utils import async
 
 import io
 import hashlib
+import base64
 
 import aiohttpretty
 from freezegun import freeze_time
@@ -242,6 +243,43 @@ def version_metadata():
         </Version>
     </ListVersionsResult>'''
 
+def list_objects_response(keys, truncated=False):
+    response = '''<?xml version="1.0" encoding="UTF-8"?>
+    <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+        <Name>bucket</Name>
+        <Prefix/>
+        <Marker/>
+        <MaxKeys>1000</MaxKeys>'''
+
+    response += '<IsTruncated>' + str(truncated).lower() + '</IsTruncated>'
+    response += ''.join(map(
+        lambda x: '<Contents><Key>{}</Key></Contents>'.format(x),
+        keys
+    ))
+
+    response += '</ListBucketResult>'
+
+    return response.encode('utf-8')
+
+def bulk_delete_body(keys):
+    payload = '<?xml version="1.0" encoding="UTF-8"?>'
+    payload += '<Delete>'
+    payload += ''.join(map(
+        lambda x: '<Object><Key>{}</Key></Object>'.format(x),
+        keys
+    ))
+    payload += '</Delete>'
+    payload = payload.encode('utf-8')
+
+    md5 = base64.b64encode(hashlib.md5(payload).digest())
+    headers = {
+        'Content-Length': str(len(payload)),
+        'Content-MD5': md5.decode('ascii'),
+        'Content-Type': 'text/xml',
+    }
+
+    return (payload, headers)
+
 def build_folder_params(path):
     return {'prefix': path.path, 'delimiter': '/'}
 
@@ -391,6 +429,96 @@ class TestCRUD:
         yield from provider.delete(path)
 
         assert aiohttpretty.has_call(method='DELETE', uri=url)
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_folder_delete(self, provider, contents_and_self):
+        path = WaterButlerPath('/some-folder/')
+
+        params = {'prefix': 'some-folder/'}
+        query_url = provider.bucket.generate_url(100, 'GET')
+        aiohttpretty.register_uri(
+            'GET',
+            query_url,
+            params=params,
+            body=contents_and_self,
+            status=200,
+        )
+
+        query_params = {'delete': ''}
+        (payload, headers) = bulk_delete_body(
+            ['thisfolder/', 'thisfolder/item1', 'thisfolder/item2']
+        )
+
+        delete_url = provider.bucket.generate_url(
+            100,
+            'POST',
+            query_parameters=query_params,
+            headers=headers,
+        )
+        aiohttpretty.register_uri('POST', delete_url, status=204)
+
+        yield from provider.delete(path)
+
+        assert aiohttpretty.has_call(method='GET', uri=query_url, params=params)
+        assert aiohttpretty.has_call(method='POST', uri=delete_url)
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_large_folder_delete(self, provider):
+        path = WaterButlerPath('/some-folder/')
+
+        query_url = provider.bucket.generate_url(100, 'GET')
+
+        keys_one = [str(x) for x in range(2500, 3500)]
+        response_one = list_objects_response(keys_one, truncated=True)
+        params_one = {'prefix': 'some-folder/'}
+
+        keys_two = [str(x) for x in range(3500, 3601)]
+        response_two = list_objects_response(keys_two)
+        params_two = {'prefix': 'some-folder/', 'marker': '3499'}
+
+        aiohttpretty.register_uri(
+            'GET',
+            query_url,
+            params=params_one,
+            body=response_one,
+            status=200,
+        )
+        aiohttpretty.register_uri(
+            'GET',
+            query_url,
+            params=params_two,
+            body=response_two,
+            status=200,
+        )
+
+        query_params = {'delete': None}
+
+        (payload_one, headers_one) = bulk_delete_body(keys_one)
+        delete_url_one = provider.bucket.generate_url(
+            100,
+            'POST',
+            query_parameters=query_params,
+            headers=headers_one,
+        )
+        aiohttpretty.register_uri('POST', delete_url_one, status=204)
+
+        (payload_two, headers_two) = bulk_delete_body(keys_two)
+        delete_url_two = provider.bucket.generate_url(
+            100,
+            'POST',
+            query_parameters=query_params,
+            headers=headers_two,
+        )
+        aiohttpretty.register_uri('POST', delete_url_two, status=204)
+
+        yield from provider.delete(path)
+
+        assert aiohttpretty.has_call(method='GET', uri=query_url, params=params_one)
+        assert aiohttpretty.has_call(method='GET', uri=query_url, params=params_two)
+        assert aiohttpretty.has_call(method='POST', uri=delete_url_one)
+        assert aiohttpretty.has_call(method='POST', uri=delete_url_two)
 
     @async
     @pytest.mark.aiohttpretty
