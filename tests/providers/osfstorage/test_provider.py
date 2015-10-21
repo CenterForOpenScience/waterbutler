@@ -112,7 +112,7 @@ def upload_response():
             'downloads': 10,
             'version': 8,
             'path': '/dfl893b1pdn11kd28b',
-            'checkout': '',
+            'checkout': 'me',
             'md5': 'abcdabcdabcdabcdabcdabcdabcd',
             'sha256': '123123123123123123',
         }
