@@ -58,7 +58,8 @@ class TestValidatePut(BaseCreateMixinTest):
         with pytest.raises(exceptions.InvalidParameters) as e:
             self.mixin.validate_put()
 
-        assert e.value.message == 'Path must end with a / if kind is folder'
+        assert e.value.message == 'Path must be a folder (and end with a "/") if trying to create a subfolder'
+        assert e.value.code == client.CONFLICT
 
     def test_length_required_for_files(self):
         self.mixin.path = '/'
