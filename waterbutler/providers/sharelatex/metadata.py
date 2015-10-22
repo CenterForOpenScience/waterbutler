@@ -37,7 +37,7 @@ class ShareLatexFileMetadata(BaseShareLatexMetadata, metadata.BaseFileMetadata):
         return ''
 
 
-class ShareLatexFolderMetadata(BaseShareLatexMetadata, metadata.BaseFolderMetadata):
+class ShareLatexProjectMetadata(BaseShareLatexMetadata, metadata.BaseFolderMetadata):
 
     @property
     def name(self):
