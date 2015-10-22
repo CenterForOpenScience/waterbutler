@@ -17,6 +17,7 @@ class ShareLatexProvider(provider.BaseProvider):
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
         self.project_id = settings.get('project_id')
+        self.auth_token = credentials.get('auth_token')
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
@@ -24,6 +25,7 @@ class ShareLatexProvider(provider.BaseProvider):
 
     def _build_project_url(self, *segments, **query):
         project_url = '/' + self.project_id + segments
+        query['auth_token'] = self.auth_token
         return provider.build_url(project_url, **query)
 
     @asyncio.coroutine
