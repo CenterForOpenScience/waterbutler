@@ -3,123 +3,46 @@ import os
 from waterbutler.core import metadata
 
 
-class ShareLatexMetadata(metadata.BaseMetadata):
+class BaseShareLatexMetadata(metadata.BaseMetadata):
 
     @property
     def provider(self):
         return 'sharelatex'
 
+
+class ShareLatexFileMetadata(BaseShareLatexMetadata, metadata.BaseFileMetadata):
+
     @property
     def name(self):
-        return os.path.split(self.path)[1]
-
-
-class ShareLatexFileMetadataHeaders(ShareLatexMetadata, metadata.BaseFileMetadata):
-
-    def __init__(self, path, headers):
-        self._path = path
-        # Cast to dict to clone as the headers will
-        # be destroyed when the request leaves scope
-        super().__init__(dict(headers))
+        return os.path.split(self.raw['path'])[1]
 
     @property
     def path(self):
-        return '/' + self._path
+        return self.build_path(self.raw['path'])
 
     @property
     def size(self):
-        return self.raw['CONTENT-LENGTH']
+        return self.raw['bytes']
+
+    @property
+    def modified(self):
+        return self.raw['modified']
 
     @property
     def content_type(self):
-        return self.raw['CONTENT-TYPE']
-
-    @property
-    def modified(self):
-        return self.raw['LAST-MODIFIED']
+        return self.raw['mime_type']
 
     @property
     def etag(self):
-        return self.raw['ETAG'].replace('"', '')
-
-    @property
-    def extra(self):
-        return {
-            'md5': self.raw['ETAG'].replace('"', ''),
-            'encryption': self.raw.get('X-AMZ-SERVER-SIDE-ENCRYPTION', '')
-        }
+        return ''
 
 
-class ShareLatexFileMetadata(ShareLatexMetadata, metadata.BaseFileMetadata):
-
-    @property
-    def path(self):
-        return '/' + self.raw['Key']
-
-    @property
-    def size(self):
-        return int(self.raw['Size'])
-
-    @property
-    def modified(self):
-        return self.raw['LastModified']
-
-    @property
-    def content_type(self):
-        return None  # TODO
-
-    @property
-    def etag(self):
-        return self.raw['ETag'].replace('"', '')
-
-    @property
-    def extra(self):
-        return {
-            'md5': self.raw['ETag'].replace('"', '')
-        }
-
-
-class ShareLatexFolderKeyMetadata(ShareLatexMetadata, metadata.BaseFolderMetadata):
+class ShareLatexFolderMetadata(BaseShareLatexMetadata, metadata.BaseFolderMetadata):
 
     @property
     def name(self):
-        return self.raw['Key'].split('/')[-2]
+        return os.path.split(self.raw['path'])[1]
 
     @property
     def path(self):
-        return '/' + self.raw['Key']
-
-
-class ShareLatexFolderMetadata(ShareLatexMetadata, metadata.BaseFolderMetadata):
-
-    @property
-    def name(self):
-        return self.raw['Prefix'].split('/')[-2]
-
-    @property
-    def path(self):
-        return '/' + self.raw['Prefix']
-
-
-# TODO dates!
-class ShareLatexRevision(metadata.BaseFileRevisionMetadata):
-
-    @property
-    def version_identifier(self):
-        return 'version'
-
-    @property
-    def version(self):
-        if self.raw['IsLatest'] == 'true':
-            return 'Latest'
-        return self.raw['VersionId']
-
-    @property
-    def modified(self):
-        return self.raw['LastModified']
-
-    @property
-    def extra(self):
-        return {
-            'md5': self.raw['ETag'].replace('"', '')
-        }
+        return self.build_path(self.raw['path'])
