@@ -24,7 +24,7 @@ class ShareLatexProvider(provider.BaseProvider):
         return WaterButlerPath(path)
 
     def _build_project_url(self, *segments, **query):
-        project_url = '/' + self.project_id + segments
+        project_url = self.project_id + segments
         query['auth_token'] = self.auth_token
         return provider.build_url(project_url, **query)
 
@@ -93,4 +93,4 @@ class ShareLatexProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):
-        raise exceptions.ProviderError({'message': 'sharelatex does not support file revisions.'}, code=405)
+        raise exceptions.ProviderError({'message': 'ShareLaTeX does not support file revisions.'}, code=405)
