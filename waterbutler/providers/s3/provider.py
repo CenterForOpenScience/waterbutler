@@ -151,6 +151,7 @@ class S3Provider(provider.BaseProvider):
                 encrypt_key=self.encrypt_uploads
             ),
             data=stream,
+            skip_auto_headers={'CONTENT-TYPE'},
             headers={'Content-Length': str(stream.size)},
             expects=(200, 201, ),
             throws=exceptions.UploadError,
@@ -159,6 +160,7 @@ class S3Provider(provider.BaseProvider):
         # TODO: nice assertion error goes here
         assert resp.headers['ETag'].replace('"', '') == stream.writers['md5'].hexdigest
 
+        yield from resp.release()
         return (yield from self.metadata(path, **kwargs)), not exists
 
     @asyncio.coroutine
@@ -223,12 +225,13 @@ class S3Provider(provider.BaseProvider):
         if (yield from self.exists(path)):
             raise exceptions.FolderNamingConflict(str(path))
 
-        yield from self.make_request(
+        yield from (yield from self.make_request(
             'PUT',
             self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'PUT'),
+            skip_auto_headers={'CONTENT-TYPE'},
             expects=(200, 201),
             throws=exceptions.CreateFolderError
-        )
+        )).release()
 
         return S3FolderMetadata({'Prefix': path.path})
 
