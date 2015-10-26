@@ -427,6 +427,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def validate_path(self, path, **kwargs):
         raise NotImplementedError
 
+    def path_from_metadata(self, parent_path, metadata):
+        return parent_path.child(metadata.name, _id=metadata.path.strip('/'), folder=metadata.is_folder)
+
     def revisions(self, **kwargs):
         return []  # TODO Raise 405 by default h/t @rliebz
 
