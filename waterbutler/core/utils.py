@@ -119,3 +119,63 @@ def send_signed_request(method, url, payload):
         }),
         headers={'Content-Type': 'application/json'},
     ))
+
+
+class ZipStreamGenerator:
+    def __init__(self, provider, parent_path, *metadata_objs):
+        self.provider = provider
+        self.parent_path = parent_path
+        self.remaining = [
+            (parent_path, metadata)
+            for metadata in metadata_objs
+        ]
+
+    async def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if not self.remaining:
+            raise StopAsyncIteration
+        path = self.provider.path_from_metadata(*self.remaining.pop(0))
+        if path.is_dir:
+            self.remaining.extend([
+                (path, item) for item in
+                await self.provider.metadata(path)
+            ])
+            return await self.__anext__()
+
+        return path.path.replace(self.parent_path.path, ''), await self.provider.download(path)
+
+
+class RequestHandlerContext:
+
+    def __init__(self, request_coro):
+        self.request = None
+        self.request_coro = request_coro
+
+    async def __aenter__(self):
+        self.request = await self.request_coro
+        return self.request
+
+    async def __aexit__(self, *exc_info):
+        self.request.close()
+        if any(exc_info):
+            raise exc_info
+
+
+class AsyncIterator:
+    """A wrapper class that makes normal iterators
+    look like async iterators
+    """
+
+    def __init__(self, iterable):
+        self.iterable = iter(iterable)
+
+    async def __aiter__(self):
+        return self.iterable
+
+    async def __anext__(self):
+        try:
+            return next(self.iterable)
+        except StopIteration:
+            raise StopAsyncIteration

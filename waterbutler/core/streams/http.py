@@ -179,6 +179,7 @@ class ResponseStreamReader(BaseStream):
 
         if not chunk:
             self.feed_eof()
+            yield from self.response.release()
 
         return chunk
 

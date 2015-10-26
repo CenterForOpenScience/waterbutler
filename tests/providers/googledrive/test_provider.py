@@ -1,7 +1,5 @@
 import pytest
 
-from tests.utils import async
-
 import io
 
 import aiohttpretty
@@ -65,17 +63,9 @@ def provider(auth, credentials, settings):
 
 class TestCRUD:
 
-    # @async
-    # @pytest.mark.aiohttpretty
-    # def test_download_drive(self, provider):
-    #     path = '/birdie\'"".jpg'
-    #     item = fixtures.list_file['items'][0]
-    #     query = provider._build_query(provider.folder['id'], title=path.lstrip('/'))
-    #     assert 'birdie\\\'\\"\\".jpg' in query
-
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_download_drive(self, provider):
+    async def test_download_drive(self, provider):
         body = b'we love you conrad'
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
@@ -86,14 +76,14 @@ class TestCRUD:
         aiohttpretty.register_json_uri('GET', metadata_url, body=item)
         aiohttpretty.register_uri('GET', download_file_url, body=body, auto_length=True)
 
-        result = yield from provider.download(path)
+        result = await provider.download(path)
 
-        content = yield from result.read()
+        content = await result.read()
         assert content == body
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_download_drive_revision(self, provider):
+    async def test_download_drive_revision(self, provider):
         revision = 'oldest'
         body = b'we love you conrad'
         item = fixtures.list_file['items'][0]
@@ -107,14 +97,14 @@ class TestCRUD:
         aiohttpretty.register_json_uri('GET', metadata_url, body=item)
         aiohttpretty.register_uri('GET', download_file_url, body=body, auto_length=True)
 
-        result = yield from provider.download(path, revision=revision)
-        content = yield from result.read()
+        result = await provider.download(path, revision=revision)
+        content = await result.read()
 
         assert content == body
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_download_docs(self, provider):
+    async def test_download_docs(self, provider):
         body = b'we love you conrad'
         item = fixtures.docs_file_metadata
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
@@ -127,13 +117,13 @@ class TestCRUD:
         aiohttpretty.register_uri('GET', download_file_url, body=body, auto_length=True)
         aiohttpretty.register_json_uri('GET', revisions_url, body={'items': [{'id': 'foo'}]})
 
-        result = yield from provider.download(path)
-        content = yield from result.read()
+        result = await provider.download(path)
+        content = await result.read()
         assert content == body
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_upload_create(self, provider, file_stream):
+    async def test_upload_create(self, provider, file_stream):
         upload_id = '7'
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
@@ -144,7 +134,7 @@ class TestCRUD:
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         aiohttpretty.register_uri('POST', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
 
-        result, created = yield from provider.upload(file_stream, path)
+        result, created = await provider.upload(file_stream, path)
 
         expected = GoogleDriveFileMetadata(item, path)
 
@@ -153,9 +143,9 @@ class TestCRUD:
         assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
         assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_upload_doesnt_unquote(self, provider, file_stream):
+    async def test_upload_doesnt_unquote(self, provider, file_stream):
         upload_id = '7'
         item = fixtures.list_file['items'][0]
         path = GoogleDrivePath('/birdie%2F %20".jpg', _ids=(provider.folder['id'], None))
@@ -166,7 +156,7 @@ class TestCRUD:
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         aiohttpretty.register_uri('POST', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
 
-        result, created = yield from provider.upload(file_stream, path)
+        result, created = await provider.upload(file_stream, path)
 
         expected = GoogleDriveFileMetadata(item, path)
 
@@ -175,9 +165,9 @@ class TestCRUD:
         assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
         assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_upload_update(self, provider, file_stream):
+    async def test_upload_update(self, provider, file_stream):
         upload_id = '7'
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
@@ -187,7 +177,7 @@ class TestCRUD:
 
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         aiohttpretty.register_uri('PUT', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
-        result, created = yield from provider.upload(file_stream, path)
+        result, created = await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='PUT', uri=start_upload_url)
         assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
@@ -195,9 +185,9 @@ class TestCRUD:
         expected = GoogleDriveFileMetadata(item, path)
         assert result == expected
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_upload_create_nested(self, provider, file_stream):
+    async def test_upload_create_nested(self, provider, file_stream):
         upload_id = '7'
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath(
@@ -209,7 +199,7 @@ class TestCRUD:
         finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
         aiohttpretty.register_uri('POST', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
-        result, created = yield from provider.upload(file_stream, path)
+        result, created = await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
         assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
@@ -217,68 +207,68 @@ class TestCRUD:
         expected = GoogleDriveFileMetadata(item, path)
         assert result == expected
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_delete(self, provider):
+    async def test_delete(self, provider):
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(None, item['id']))
         delete_url = provider.build_url('files', item['id'])
         aiohttpretty.register_uri('DELETE', delete_url, status=204)
 
-        result = yield from provider.delete(path)
+        result = await provider.delete(path)
 
         assert result is None
         assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_delete_folder(self, provider):
+    async def test_delete_folder(self, provider):
         item = fixtures.folder_metadata
         delete_url = provider.build_url('files', item['id'])
         path = WaterButlerPath('/foobar/', _ids=('doesntmatter', item['id']))
 
         aiohttpretty.register_uri('DELETE', delete_url, status=204)
 
-        result = yield from provider.delete(path)
+        result = await provider.delete(path)
 
         assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_delete_not_existing(self, provider):
+    async def test_delete_not_existing(self, provider):
         with pytest.raises(exceptions.NotFoundError):
-            yield from provider.delete(WaterButlerPath('/foobar/'))
+            await provider.delete(WaterButlerPath('/foobar/'))
 
 
 class TestMetadata:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_file_root(self, provider):
+    async def test_metadata_file_root(self, provider):
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], fixtures.list_file['items'][0]['id']))
 
         list_file_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', list_file_url, body=fixtures.list_file['items'][0])
 
-        result = yield from provider.metadata(path)
+        result = await provider.metadata(path)
 
         expected = GoogleDriveFileMetadata(fixtures.list_file['items'][0], path)
         assert result == expected
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_file_root_not_found(self, provider):
+    async def test_metadata_file_root_not_found(self, provider):
         path = '/birdie.jpg'
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
 
         with pytest.raises(exceptions.MetadataError) as exc_info:
-            yield from provider.metadata(path)
+            await provider.metadata(path)
 
         assert exc_info.value.code == 404
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_file_nested(self, provider):
+    async def test_metadata_file_nested(self, provider):
         path = GoogleDrivePath(
             '/hugo/kim/pins',
             _ids=[str(x) for x in range(4)]
@@ -289,34 +279,34 @@ class TestMetadata:
 
         aiohttpretty.register_json_uri('GET', url, body=item)
 
-        result = yield from provider.metadata(path)
+        result = await provider.metadata(path)
 
         expected = GoogleDriveFileMetadata(item, path)
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=url)
 
-    # @async
+    # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
-    # def test_metadata_file_nested_not_child(self, provider):
+    # async def test_metadata_file_nested_not_child(self, provider):
     #     path = '/ed/sullivan/show.mp3'
     #     query = provider._build_query(provider.folder['id'], title='ed')
     #     url = provider.build_url('files', q=query, alt='json')
     #     aiohttpretty.register_json_uri('GET', url, body={'items': []})
 
     #     with pytest.raises(exceptions.MetadataError) as exc_info:
-    #         yield from provider.metadata(path)
+    #         await provider.metadata(path)
 
     #     assert exc_info.value.code == 404
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_root_folder(self, provider):
-        path = yield from provider.validate_path('/')
+    async def test_metadata_root_folder(self, provider):
+        path = await provider.validate_path('/')
         query = provider._build_query(provider.folder['id'])
         list_file_url = provider.build_url('files', q=query, alt='json')
         aiohttpretty.register_json_uri('GET', list_file_url, body=fixtures.list_file)
 
-        result = yield from provider.metadata(path)
+        result = await provider.metadata(path)
 
         expected = GoogleDriveFileMetadata(
             fixtures.list_file['items'][0],
@@ -324,9 +314,9 @@ class TestMetadata:
         )
         assert result == [expected]
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_folder_nested(self, provider):
+    async def test_metadata_folder_nested(self, provider):
         path = GoogleDrivePath(
             '/hugo/kim/pins/',
             _ids=[str(x) for x in range(4)]
@@ -340,16 +330,16 @@ class TestMetadata:
 
         aiohttpretty.register_json_uri('GET', url, body=body)
 
-        result = yield from provider.metadata(path)
+        result = await provider.metadata(path)
 
         expected = GoogleDriveFileMetadata(item, path.child(item['title']))
 
         assert result == [expected]
         assert aiohttpretty.has_call(method='GET', uri=url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_folder_metadata(self, provider):
+    async def test_folder_metadata(self, provider):
         path = GoogleDrivePath(
             '/hugo/kim/pins/',
             _ids=[str(x) for x in range(4)]
@@ -363,7 +353,7 @@ class TestMetadata:
 
         aiohttpretty.register_json_uri('GET', url, body=body)
 
-        result = yield from provider.metadata(path)
+        result = await provider.metadata(path)
 
         expected = GoogleDriveFolderMetadata(item, path.child(item['title'], folder=True))
 
@@ -373,16 +363,16 @@ class TestMetadata:
 
 class TestRevisions:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_get_revisions(self, provider):
+    async def test_get_revisions(self, provider):
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=('doesntmatter', item['id']))
 
         revisions_url = provider.build_url('files', item['id'], 'revisions')
         aiohttpretty.register_json_uri('GET', revisions_url, body=fixtures.revisions_list)
 
-        result = yield from provider.revisions(path)
+        result = await provider.revisions(path)
 
         expected = [
             GoogleDriveRevision(each)
@@ -390,9 +380,9 @@ class TestRevisions:
         ]
         assert result == expected
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_get_revisions_no_revisions(self, provider):
+    async def test_get_revisions_no_revisions(self, provider):
         item = fixtures.list_file['items'][0]
         metadata_url = provider.build_url('files', item['id'])
         revisions_url = provider.build_url('files', item['id'], 'revisions')
@@ -401,7 +391,7 @@ class TestRevisions:
         aiohttpretty.register_json_uri('GET', metadata_url, body=item)
         aiohttpretty.register_json_uri('GET', revisions_url, body=fixtures.revisions_list_empty)
 
-        result = yield from provider.revisions(path)
+        result = await provider.revisions(path)
 
         expected = [
             GoogleDriveRevision({
@@ -411,54 +401,54 @@ class TestRevisions:
         ]
         assert result == expected
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_get_revisions_doesnt_exist(self, provider):
+    async def test_get_revisions_doesnt_exist(self, provider):
         with pytest.raises(exceptions.NotFoundError):
-            yield from provider.revisions(WaterButlerPath('/birdie.jpg'))
+            await provider.revisions(WaterButlerPath('/birdie.jpg'))
 
 
 class TestCreateFolder:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_already_exists(self, provider):
+    async def test_already_exists(self, provider):
         path = WaterButlerPath('/hugo/', _ids=('doesnt', 'matter'))
 
         with pytest.raises(exceptions.FolderNamingConflict) as e:
-            yield from provider.create_folder(path)
+            await provider.create_folder(path)
 
         assert e.value.code == 409
         assert e.value.message == 'Cannot create folder "{}" because a file or folder already exists at path "{}"'.format(path.name, str(path))
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_returns_metadata(self, provider):
+    async def test_returns_metadata(self, provider):
         path = WaterButlerPath('/osf%20test/', _ids=(provider.folder['id'], None))
 
         aiohttpretty.register_json_uri('POST', provider.build_url('files'), body=fixtures.folder_metadata)
 
-        resp = yield from provider.create_folder(path)
+        resp = await provider.create_folder(path)
 
         assert resp.kind == 'folder'
         assert resp.name == 'osf test'
         assert resp.path == '/osf%20test/'
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_raises_non_404(self, provider):
+    async def test_raises_non_404(self, provider):
         path = WaterButlerPath('/hugo/kim/pins/', _ids=(provider.folder['id'], 'something', 'something', None))
 
         url = provider.build_url('files')
         aiohttpretty.register_json_uri('POST', url, status=418)
 
         with pytest.raises(exceptions.CreateFolderError) as e:
-            yield from provider.create_folder(path)
+            await provider.create_folder(path)
 
         assert e.value.code == 418
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_must_be_folder(self, provider, monkeypatch):
+    async def test_must_be_folder(self, provider, monkeypatch):
         with pytest.raises(exceptions.CreateFolderError) as e:
-            yield from provider.create_folder(WaterButlerPath('/carp.fish', _ids=('doesnt', 'matter')))
+            await provider.create_folder(WaterButlerPath('/carp.fish', _ids=('doesnt', 'matter')))

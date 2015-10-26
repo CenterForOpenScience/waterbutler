@@ -6,6 +6,7 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.utils import AsyncIterator
 
 from waterbutler.providers.dataverse import settings
 from waterbutler.providers.dataverse.metadata import DataverseRevision
@@ -126,7 +127,7 @@ class DataverseProvider(provider.BaseProvider):
         :rtype: dict, bool
         """
 
-        stream = streams.ZipStreamReader((path.name, stream))
+        stream = streams.ZipStreamReader(AsyncIterator([(path.name, stream)]))
 
         # Write stream to disk (Necessary to find zip file size)
         f = tempfile.TemporaryFile()

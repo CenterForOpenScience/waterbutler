@@ -8,6 +8,8 @@ import aiohttp
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
+from waterbutler.core.utils import ZipStreamGenerator
+from waterbutler.core.utils import RequestHandlerContext
 
 
 def build_url(base, *segments, **query):
@@ -127,6 +129,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if expects and response.status not in expects:
             raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
         return response
+
+    def request(self, *args, **kwargs):
+        return RequestHandlerContext(self.make_request(*args, **kwargs))
 
     @asyncio.coroutine
     def move(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
@@ -344,36 +349,18 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def revalidate_path(self, base, path, folder=False):
         return base.child(path, folder=folder)
 
-    @asyncio.coroutine
-    def zip(self, path, **kwargs):
+    async def zip(self, path, **kwargs):
         """Streams a Zip archive of the given folder
 
         :param str path: The folder to compress
         """
+
+        metadata = await self.metadata(path)
         if path.is_file:
-            base_path = path.parent.path
-        else:
-            base_path = path.path
+            metadata = [metadata]
+            path = path.parent
 
-        names, coros, remaining = [], [], [path]
-
-        while remaining:
-            path = remaining.pop()
-            metadata = yield from self.metadata(path)
-
-            for item in metadata:
-                current_path = yield from self.revalidate_path(
-                    path,
-                    item.name,
-                    folder=item.is_folder
-                )
-                if current_path.is_file:
-                    names.append(current_path.path.replace(base_path, '', 1))
-                    coros.append(self.__zip_defered_download(current_path))
-                else:
-                    remaining.append(current_path)
-
-        return streams.ZipStreamReader(*zip(names, coros))
+        return streams.ZipStreamReader(ZipStreamGenerator(self, path, *metadata))
 
     def __zip_defered_download(self, path):
         """Returns a scoped lambda to defer the execution
@@ -426,6 +413,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def validate_path(self, path, **kwargs):
         raise NotImplementedError
+
+    def path_from_metadata(self, parent_path, metadata):
+        return parent_path.child(metadata.name, _id=metadata.path.strip('/'), folder=metadata.is_folder)
 
     def revisions(self, **kwargs):
         return []  # TODO Raise 405 by default h/t @rliebz

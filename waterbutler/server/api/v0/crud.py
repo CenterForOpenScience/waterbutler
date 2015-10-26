@@ -100,7 +100,7 @@ class CRUDHandler(core.BaseProviderHandler):
         if ext in mime_types:
             self.set_header('Content-Type', mime_types[ext])
 
-        yield self.write_stream(result)
+        yield from self.write_stream(result)
 
     @tornado.gen.coroutine
     def post(self):
@@ -137,7 +137,7 @@ class CRUDHandler(core.BaseProviderHandler):
         """Delete a file."""
 
         yield from self.provider.delete(**self.arguments)
-        self.set_status(http.client.NO_CONTENT)
+        self.set_status(int(http.client.NO_CONTENT))
 
         self._send_hook(
             'delete',

@@ -49,8 +49,6 @@ class ZipLocalFileData(BaseStream):
 
     @asyncio.coroutine
     def _read(self, n=-1, *args, **kwargs):
-        if callable(self.stream):
-            self.stream = yield from (self.stream())
 
         ret = self._buffer
 
@@ -193,22 +191,17 @@ class ZipLocalFile(MultiStream):
         )
 
 
-class ZipArchiveCentralDirectory(BaseStream):
+class ZipArchiveCentralDirectory(StringStream):
     """The central directory for a zip archive
 
     Note: This class is tightly coupled to ZipStreamReader, and should not be
     used separately
     """
-    def __init__(self, files, *args, **kwargs):
-        super().__init__()
+    def __init__(self, files):
         self.files = files
+        super().__init__(self.build_content())
 
-    @property
-    def size(self):
-        return 0
-
-    @asyncio.coroutine
-    def _read(self, n=-1):
+    def build_content(self):
         file_headers = []
         cumulative_offset = 0
         for file in self.files:
@@ -231,18 +224,39 @@ class ZipArchiveCentralDirectory(BaseStream):
             cumulative_offset,
             0,
         )
-        self.feed_eof()
 
         return b''.join((file_headers, endrec))
 
 
-class ZipStreamReader(MultiStream):
+class ZipStreamReader(asyncio.StreamReader):
     """Combines one or more streams into a single, Zip-compressed stream"""
-    def __init__(self, *streams):
+    def __init__(self, stream_gen):
+        self._eof = False
+        self.stream = None
+        self.streams = stream_gen
+        self.finished_streams = []
         # Each incoming stream should be wrapped in a _ZipFile instance
-        streams = [ZipLocalFile(each) for each in streams]
+        super().__init__()
 
-        # Append a stream for the archive's footer (central directory)
-        streams.append(ZipArchiveCentralDirectory(streams.copy()))
+    async def read(self, n=-1):
+        if n < 0:
+            # Parent class will handle auto chunking for us
+            return await super().read(n)
 
-        super().__init__(*streams)
+        if not self.stream:
+            try:
+                self.stream = ZipLocalFile(await self.streams.__anext__())
+            except StopAsyncIteration:
+                if self._eof:
+                    return b''
+                self._eof = True
+                # Append a stream for the archive's footer (central directory)
+                self.stream = ZipArchiveCentralDirectory(self.finished_streams)
+
+        chunk = await self.stream.read(n)
+        if len(chunk) < n and self.stream.at_eof():
+            self.finished_streams.append(self.stream)
+            self.stream = None
+            chunk += await self.read(n - len(chunk))
+
+        return chunk

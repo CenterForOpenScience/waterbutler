@@ -5,8 +5,6 @@ import shutil
 import tempfile
 from unittest import mock
 
-from decorator import decorator
-
 import pytest
 from tornado import testing
 from tornado.platform.asyncio import AsyncIOMainLoop
@@ -21,12 +19,6 @@ class MockCoroutine(mock.Mock):
     @asyncio.coroutine
     def __call__(self, *args, **kwargs):
         return super().__call__(*args, **kwargs)
-
-
-@decorator
-def async(func, *args, **kwargs):
-    future = func(*args, **kwargs)
-    asyncio.get_event_loop().run_until_complete(future)
 
 
 class MockFileMetadata(metadata.BaseFileMetadata):
@@ -128,6 +120,11 @@ class MockProvider2(MockProvider1):
 class HandlerTestCase(testing.AsyncHTTPTestCase):
 
     def setUp(self):
+        policy = asyncio.get_event_loop_policy()
+        policy.get_event_loop().close()
+        self.event_loop = policy.new_event_loop()
+        policy.set_event_loop(self.event_loop)
+
         super().setUp()
 
         def get_identity(*args, **kwargs):
@@ -154,6 +151,7 @@ class HandlerTestCase(testing.AsyncHTTPTestCase):
         super().tearDown()
         self.identity_patcher.stop()
         self.make_provider_patcher.stop()
+        self.event_loop.close()
 
     def get_app(self):
         return make_app(debug=False)
