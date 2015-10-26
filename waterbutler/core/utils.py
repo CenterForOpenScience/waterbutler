@@ -161,3 +161,21 @@ class RequestHandlerContext:
         self.request.close()
         if any(exc_info):
             raise exc_info
+
+
+class AsyncIterator:
+    """A wrapper class that makes normal iterators
+    look like async iterators
+    """
+
+    def __init__(self, iterable):
+        self.iterable = iter(iterable)
+
+    async def __aiter__(self):
+        return self.iterable
+
+    async def __anext__(self):
+        try:
+            return next(self.iterable)
+        except StopIteration:
+            raise StopAsyncIteration
