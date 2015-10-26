@@ -1,13 +1,10 @@
-decorator==3.4.0
-flake8==2.3.0
-freezegun==0.3.4
-ipdb==0.8
-ipython==2.3.1
-jinja2==2.7.3
-pytest==2.6.4
-pytest-cov==1.8.1
-pyzmq==14.4.1
-colorlog==2.5.0
-redis==2.10.3
--e git+https://github.com/centerforopenscience/aiohttpretty.git#egg=aiohttpretty
 -r requirements.txt
+-e git+https://github.com/centerforopenscience/aiohttpretty.git#egg=aiohttpretty
+colorlog
+decorator
+flake8
+freezegun
+ipdb
+ipython
+pytest-cov
+pytest
