@@ -22,4 +22,4 @@ class ZipHandler(core.BaseProviderHandler):
 
         result = yield from self.provider.zip(**self.arguments)
 
-        yield self.write_stream(result)
+        yield from self.write_stream(result)

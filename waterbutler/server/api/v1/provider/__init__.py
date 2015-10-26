@@ -57,7 +57,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         """Get metadata for a folder or file
         """
         if self.path.is_dir:
-            return self.set_status(http.client.NOT_IMPLEMENTED)  # Metadata on the folder itself TODO
+            return self.set_status(int(http.client.NOT_IMPLEMENTED))  # Metadata on the folder itself TODO
         return (yield from self.header_file_metadata())
 
     @tornado.gen.coroutine
@@ -84,7 +84,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     @tornado.gen.coroutine
     def delete(self, **_):
         yield from self.provider.delete(self.path)
-        self.set_status(http.client.NO_CONTENT)
+        self.set_status(int(http.client.NO_CONTENT))
 
     @tornado.gen.coroutine
     def data_received(self, chunk):

@@ -49,7 +49,7 @@ class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.Re
         etype, exc, _ = exc_info
 
         if issubclass(etype, exceptions.PluginError):
-            self.set_status(exc.code)
+            self.set_status(int(exc.code))
             if exc.data:
                 self.finish(exc.data)
             else:

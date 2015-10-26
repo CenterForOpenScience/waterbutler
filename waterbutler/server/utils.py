@@ -1,4 +1,5 @@
-import tornado.gen
+import asyncio
+import tornado.iostream
 from waterbutler.server import settings
 
 
@@ -62,7 +63,7 @@ class UtilMixin:
     def set_status(self, code, reason=None):
         return super().set_status(code, reason or HTTP_REASONS.get(code))
 
-    @tornado.gen.coroutine
+    @asyncio.coroutine
     def write_stream(self, stream):
         try:
             while True:
