@@ -11,3 +11,4 @@ pyflakes
 pytest
 pytest-asyncio
 pytest-cov
+redis
