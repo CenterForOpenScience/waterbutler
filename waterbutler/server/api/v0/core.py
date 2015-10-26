@@ -105,6 +105,7 @@ class BaseProviderHandler(BaseHandler):
         if resp.status != 200:
             raise Exception('Callback was unsuccessful, got {}'.format(resp))
         logger.info('Successfully sent callback for a {} request'.format(action))
+        yield from resp.release()
 
 
 class BaseCrossProviderHandler(BaseHandler):
@@ -167,3 +168,4 @@ class BaseCrossProviderHandler(BaseHandler):
         if resp.status != 200:
             raise Exception('Callback was unsuccessful, got {}'.format(resp))
         logger.info('Successfully sent callback for a {} request'.format(action))
+        yield from resp.release()
