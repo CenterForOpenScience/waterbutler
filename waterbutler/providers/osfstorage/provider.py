@@ -11,6 +11,7 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.utils import RequestHandlerContext
 
 from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.tasks import backup
@@ -184,8 +185,10 @@ class OSFStorageProvider(provider.BaseProvider):
 
         return (yield from self.make_request(method, url, data=data, params=params, **kwargs))
 
-    @asyncio.coroutine
-    def download(self, path, version=None, revision=None, mode=None, **kwargs):
+    def signed_request(self, *args, **kwargs):
+        return RequestHandlerContext(self.make_signed_request(*args, **kwargs))
+
+    async def download(self, path, version=None, revision=None, mode=None, **kwargs):
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
@@ -195,22 +198,22 @@ class OSFStorageProvider(provider.BaseProvider):
             version = revision
 
         # osf storage metadata will return a virtual path within the provider
-        resp = yield from self.make_signed_request(
+        async with self.signed_request(
             'GET',
             self.build_url(path.identifier, 'download', version=version, mode=mode),
             expects=(200, ),
             throws=exceptions.DownloadError,
-        )
+        ) as resp:
+            data = await resp.json()
 
-        data = yield from resp.json()
         provider = self.make_provider(data['settings'])
         name = data['data'].pop('name')
-        data['data']['path'] = yield from provider.validate_path('/' + data['data']['path'])
+        data['data']['path'] = await provider.validate_path('/' + data['data']['path'])
         download_kwargs = {}
         download_kwargs.update(kwargs)
         download_kwargs.update(data['data'])
         download_kwargs['displayName'] = kwargs.get('displayName', name)
-        return (yield from provider.download(**download_kwargs))
+        return await provider.download(**download_kwargs)
 
     @asyncio.coroutine
     def upload(self, stream, path, **kwargs):
