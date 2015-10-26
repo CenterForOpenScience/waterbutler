@@ -348,36 +348,18 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def revalidate_path(self, base, path, folder=False):
         return base.child(path, folder=folder)
 
-    @asyncio.coroutine
-    def zip(self, path, **kwargs):
+    async def zip(self, path, **kwargs):
         """Streams a Zip archive of the given folder
 
         :param str path: The folder to compress
         """
+
+        metadata = await self.metadata(path)
         if path.is_file:
-            base_path = path.parent.path
-        else:
-            base_path = path.path
+            metadata = [metadata]
+            path = path.parent
 
-        names, coros, remaining = [], [], [path]
-
-        while remaining:
-            path = remaining.pop()
-            metadata = yield from self.metadata(path)
-
-            for item in metadata:
-                current_path = yield from self.revalidate_path(
-                    path,
-                    item.name,
-                    folder=item.is_folder
-                )
-                if current_path.is_file:
-                    names.append(current_path.path.replace(base_path, '', 1))
-                    coros.append(self.__zip_defered_download(current_path))
-                else:
-                    remaining.append(current_path)
-
-        return streams.ZipStreamReader(*zip(names, coros))
+        return streams.ZipStreamReader(ZipStreamGenerator(self, path, *metadata))
 
     def __zip_defered_download(self, path):
         """Returns a scoped lambda to defer the execution

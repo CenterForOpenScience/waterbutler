@@ -121,6 +121,32 @@ def send_signed_request(method, url, payload):
     ))
 
 
+class ZipStreamGenerator:
+    def __init__(self, provider, parent_path, *metadata_objs):
+        self.provider = provider
+        self.parent_path = parent_path
+        self.remaining = [
+            (parent_path, metadata)
+            for metadata in metadata_objs
+        ]
+
+    async def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if not self.remaining:
+            raise StopAsyncIteration
+        path = self.provider.path_from_metadata(*self.remaining.pop(0))
+        if path.is_dir:
+            self.remaining.extend([
+                (path, item) for item in
+                await self.provider.metadata(path)
+            ])
+            return await self.__anext__()
+
+        return path.path.replace(self.parent_path.path, ''), await self.provider.download(path)
+
+
 class RequestHandlerContext:
 
     def __init__(self, request_coro):
