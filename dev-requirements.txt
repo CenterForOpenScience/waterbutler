@@ -1,10 +1,13 @@
 -r requirements.txt
+
 -e git+https://github.com/centerforopenscience/aiohttpretty.git#egg=aiohttpretty
 colorlog
 flake8
 freezegun
 ipdb
 ipython
+pep8
+pyflakes
+pytest
 pytest-asyncio
 pytest-cov
-pytest
