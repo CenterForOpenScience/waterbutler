@@ -157,10 +157,10 @@ class RequestHandlerContext:
         self.request = await self.request_coro
         return self.request
 
-    async def __aexit__(self, *exc_info):
-        self.request.close()
-        if any(exc_info):
-            raise exc_info
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.request.release()
+        if exc_type:
+            raise exc_val.with_traceback(exc_tb)
 
 
 class AsyncIterator:
