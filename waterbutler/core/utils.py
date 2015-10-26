@@ -119,3 +119,19 @@ def send_signed_request(method, url, payload):
         }),
         headers={'Content-Type': 'application/json'},
     ))
+
+
+class RequestHandlerContext:
+
+    def __init__(self, request_coro):
+        self.request = None
+        self.request_coro = request_coro
+
+    async def __aenter__(self):
+        self.request = await self.request_coro
+        return self.request
+
+    async def __aexit__(self, *exc_info):
+        self.request.close()
+        if any(exc_info):
+            raise exc_info

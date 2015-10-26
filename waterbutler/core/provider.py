@@ -8,6 +8,7 @@ import aiohttp
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
+from waterbutler.core.utils import RequestHandlerContext
 
 
 def build_url(base, *segments, **query):
@@ -127,6 +128,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if expects and response.status not in expects:
             raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
         return response
+
+    def request(self, *args, **kwargs):
+        return RequestHandlerContext(self.make_request(*args, **kwargs))
 
     @asyncio.coroutine
     def move(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
