@@ -6,7 +6,6 @@ from unittest import mock
 from waterbutler.core import exceptions
 from waterbutler.server.api.v1.provider.create import CreateMixin
 
-from tests.utils import async
 from tests.utils import MockCoroutine
 
 
@@ -118,33 +117,32 @@ class TestUploadFile(BaseCreateMixinTest):
         self.mixin.wsock = mock.Mock()
         self.mixin.writer = mock.Mock()
 
-    def test_created(self):
+    @pytest.mark.asyncio
+    async def test_created(self):
         metadata = mock.Mock()
         self.mixin.resource = '3rqws'
         self.mixin.uploader = asyncio.Future()
         metadata.json_api_serialized.return_value = {'day': 'tum'}
         self.mixin.uploader.set_result((metadata, True))
 
-        yield from self.mixin.upload_file()
+        await self.mixin.upload_file()
 
         assert self.mixin.wsock.close.called
         assert self.mixin.writer.close.called
         assert self.mixin.set_status.assert_called_once_with(201) is None
         assert self.mixin.write.assert_called_once_with({'data': {'day': 'tum'}}) is None
 
-    @async
-    def test_not_created(self):
+    @pytest.mark.asyncio
+    async def test_not_created(self):
         metadata = mock.Mock()
         self.mixin.resource = '3rqws'
         self.mixin.uploader = asyncio.Future()
         metadata.json_api_serialized.return_value = {'day': 'ta'}
         self.mixin.uploader.set_result((metadata, False))
 
-        yield from self.mixin.upload_file()
+        await self.mixin.upload_file()
 
         assert self.mixin.wsock.close.called
         assert self.mixin.writer.close.called
         assert self.mixin.set_status.called is False
         assert self.mixin.write.assert_called_once_with({'data': {'day': 'ta'}}) is None
-
-

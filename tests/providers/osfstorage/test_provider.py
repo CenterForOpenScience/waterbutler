@@ -7,7 +7,6 @@ import pytest
 import aiohttpretty
 
 from tests import utils
-from tests.utils import async
 
 from waterbutler.core import streams
 from waterbutler.core import metadata
@@ -128,16 +127,16 @@ def mock_folder_path():
     return WaterButlerPath('/unrelatedfolder/', _ids=('rootId', 'another'))
 
 
-@async
+@pytest.mark.asyncio
 @pytest.mark.aiohttpretty
-def test_download(monkeypatch, provider_and_mock, osf_response, mock_path):
+async def test_download(monkeypatch, provider_and_mock, osf_response, mock_path):
     provider, inner_provider = provider_and_mock
 
     url = 'https://waterbutler.io/{}/download/?mode&version'.format(mock_path.identifier)
 
     aiohttpretty.register_json_uri('GET', url, body=osf_response)
 
-    yield from provider.download(mock_path)
+    await provider.download(mock_path)
 
     assert provider.make_provider.called
     assert inner_provider.download.called
@@ -147,33 +146,33 @@ def test_download(monkeypatch, provider_and_mock, osf_response, mock_path):
     inner_provider.download.assert_called_once_with(path=WaterButlerPath('/test/path'), displayName='unrelatedpath')
 
 
-@async
+@pytest.mark.asyncio
 @pytest.mark.aiohttpretty
-def test_delete(monkeypatch, provider, mock_path):
+async def test_delete(monkeypatch, provider, mock_path):
     path = WaterButlerPath('/unrelatedpath', _ids=('Doesntmatter', 'another'))
     aiohttpretty.register_uri('DELETE', 'https://waterbutler.io/another/', status_code=200)
 
-    yield from provider.delete(path)
+    await provider.delete(path)
 
     assert aiohttpretty.has_call(method='DELETE', uri='https://waterbutler.io/another/', check_params=False)
 
 
-@async
+@pytest.mark.asyncio
 @pytest.mark.aiohttpretty
-def test_provider_metadata_empty(monkeypatch, provider, mock_folder_path):
+async def test_provider_metadata_empty(monkeypatch, provider, mock_folder_path):
     url = 'https://waterbutler.io/{}/children/'.format(mock_folder_path.identifier)
     aiohttpretty.register_json_uri('GET', url, status_code=200, body=[])
 
-    res = yield from provider.metadata(mock_folder_path)
+    res = await provider.metadata(mock_folder_path)
 
     assert res == []
 
     assert aiohttpretty.has_call(method='GET', uri=url)
 
 
-@async
+@pytest.mark.asyncio
 @pytest.mark.aiohttpretty
-def test_provider_metadata(monkeypatch, provider, mock_folder_path):
+async def test_provider_metadata(monkeypatch, provider, mock_folder_path):
     items = [
         {
             'name': 'foo',
@@ -202,7 +201,7 @@ def test_provider_metadata(monkeypatch, provider, mock_folder_path):
     url = 'https://waterbutler.io/{}/children/'.format(mock_folder_path.identifier)
     aiohttpretty.register_json_uri('GET', url, status=200, body=items)
 
-    res = yield from provider.metadata(mock_folder_path)
+    res = await provider.metadata(mock_folder_path)
 
     assert isinstance(res, list)
 
@@ -223,9 +222,9 @@ class TestUploads:
         monkeypatch.setattr(basepath.format('settings.RUN_TASKS'), False)
         monkeypatch.setattr(basepath.format('uuid.uuid4'), lambda: 'uniquepath')
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_upload_new(self, monkeypatch, provider_and_mock, file_stream, upload_response):
+    async def test_upload_new(self, monkeypatch, provider_and_mock, file_stream, upload_response):
         self.patch_tasks(monkeypatch)
 
         path = WaterButlerPath('/newfile', _ids=('rootId', None))
@@ -235,7 +234,7 @@ class TestUploads:
         provider, inner_provider = provider_and_mock
         inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())
 
-        res, created = yield from provider.upload(file_stream, path)
+        res, created = await provider.upload(file_stream, path)
 
         assert created is True
         assert res.name == 'newfile'
@@ -248,9 +247,9 @@ class TestUploads:
         inner_provider.metadata.assert_called_once_with(WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
         inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'), check_created=False, fetch_metadata=False)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_upload_existing(self, monkeypatch, provider_and_mock, file_stream):
+    async def test_upload_existing(self, monkeypatch, provider_and_mock, file_stream):
         self.patch_tasks(monkeypatch)
         provider, inner_provider = provider_and_mock
 
@@ -262,7 +261,7 @@ class TestUploads:
 
         aiohttpretty.register_json_uri('POST', url, status=200, body={'data': {'downloads': 10, 'version': 8, 'path': '/24601', 'md5': '1234', 'sha256': '2345'}})
 
-        res, created = yield from provider.upload(file_stream, path)
+        res, created = await provider.upload(file_stream, path)
 
         assert created is False
         assert res.name == 'foopath'
@@ -275,9 +274,9 @@ class TestUploads:
         inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'), check_created=False, fetch_metadata=False)
         inner_provider.move.assert_called_once_with(inner_provider, WaterButlerPath('/uniquepath'), WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_upload_and_tasks(self, monkeypatch, provider_and_mock, file_stream, credentials, settings):
+    async def test_upload_and_tasks(self, monkeypatch, provider_and_mock, file_stream, credentials, settings):
         provider, inner_provider = provider_and_mock
         basepath = 'waterbutler.providers.osfstorage.provider.{}'
         path = WaterButlerPath('/foopath', _ids=('Test', 'OtherTest'))
@@ -296,7 +295,7 @@ class TestUploads:
         monkeypatch.setattr(basepath.format('os.rename'), lambda *_: None)
         monkeypatch.setattr(basepath.format('uuid.uuid4'), lambda: 'uniquepath')
 
-        res, created = yield from provider.upload(file_stream, path)
+        res, created = await provider.upload(file_stream, path)
 
         assert created is True
         assert res.name == 'foopath'

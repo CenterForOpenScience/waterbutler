@@ -129,7 +129,10 @@ class TestServerFuzzingMocks(ServerTestCase):
     @testing.gen_test
     def test_head_with_folder(self):
         with pytest.raises(httpclient.HTTPError) as exc:
-            yield self.http_client.fetch(self.get_url('/resources/jernk/providers/jaaaaank/'), method='HEAD')
+            yield self.http_client.fetch(
+                self.get_url('/resources/jernk/providers/jaaaaank/'),
+                method='HEAD'
+            )
 
         assert exc.value.code == client.NOT_IMPLEMENTED
 
