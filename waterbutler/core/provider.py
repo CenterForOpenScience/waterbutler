@@ -8,6 +8,7 @@ import aiohttp
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
+from waterbutler.core.utils import ZipStreamGenerator
 from waterbutler.core.utils import RequestHandlerContext
 
 
