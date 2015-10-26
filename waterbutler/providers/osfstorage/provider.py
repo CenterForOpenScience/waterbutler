@@ -96,12 +96,14 @@ class OSFStorageProvider(provider.BaseProvider):
 
         :param dict settings: Overridden settings
         """
-        return utils.make_provider(
-            self.provider_name,
-            self.auth,
-            self.credentials['storage'],
-            self.settings['storage'],
-        )
+        if not getattr(self, '_inner_provider', None):
+            self._inner_provider = utils.make_provider(
+                self.provider_name,
+                self.auth,
+                self.credentials['storage'],
+                self.settings['storage'],
+            )
+        return self._inner_provider
 
     def can_intra_copy(self, other, path=None):
         return isinstance(other, self.__class__)
