@@ -362,12 +362,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         return streams.ZipStreamReader(ZipStreamGenerator(self, path, *metadata))
 
-    def __zip_defered_download(self, path):
-        """Returns a scoped lambda to defer the execution
-        of the download coroutine
-        """
-        return lambda: self.download(path)
-
     @abc.abstractmethod
     def download(self, **kwargs):
         """Download a file from this provider.
