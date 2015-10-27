@@ -74,6 +74,7 @@ class ShareLatexProvider(provider.BaseProvider):
 
         resp = yield from self.make_request(
             'GET', url,
+            headers={'content-type', 'application/json'},
             expects=(200, ),
             throws=exceptions.MetadataError
         )
