@@ -1,4 +1,6 @@
 import asyncio
+import datetime
+import os
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -16,15 +18,15 @@ class ShareLatexProvider(provider.BaseProvider):
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
-        self.project_id = settings.get('project_id')
-        self.auth_token = credentials.get('auth_token')
+        self.project_id = settings.get('bucket')
+        self.auth_token = credentials.get('access_key')
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
     def _build_project_url(self, *segments, **query):
-        project_url = self.project_id + segments
+        project_url = self.project_id #+ segments
         query['auth_token'] = self.auth_token
         return provider.build_url(project_url, **query)
 
@@ -70,27 +72,85 @@ class ShareLatexProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, **kwargs):
-        url = self._build_project_url(path.path)
+        url = self._build_project_url(path.full_path + '/project/')
+        query = {}
+        query['auth_token'] = self.auth_token
+        url = self.build_url('project', self.project_id, 'docs', **query)
 
         resp = yield from self.make_request(
             'GET', url,
-            headers={'content-type', 'application/json'},
             expects=(200, ),
+            headers={
+                'Content-Type': 'application/json'
+            },
             throws=exceptions.MetadataError
         )
 
         data = yield from resp.json()
 
-        if path.is_dir:
-            ret = []
-            for item in data['contents']:
-                if item['is_dir']:
-                    ret.append(ShareLatexProjectMetadata(item))
-                else:
-                    ret.append(ShareLatexFileMetadata(item))
-            return ret
+    #   if path.identifier is None:
+    #       raise exceptions.NotFoundError(str(path))
 
-        return ShareLatexFileMetadata(data)
+        ret = []
+        if str(path) is '/':
+
+            for doc in data['rootFolder'][0]['docs']:
+                metadata = self._metadata_file(path, doc['name'])
+                ret.append(ShareLatexFileMetadata(metadata))
+            for fil in data['rootFolder'][0]['fileRefs']:
+                metadata = self._metadata_file(path, fil['name'])
+                ret.append(ShareLatexFileMetadata(metadata))
+            for fol in data['rootFolder'][0]['folders']:
+                metadata = self._metadata_folder(path, fol['name'])
+                ret.append(ShareLatexProjectMetadata(metadata))
+
+        else:
+
+            folders_old = []
+            folders = data['rootFolder'][0]['folders']
+            docs = data['rootFolder'][0]['docs']
+            path_exploded = str(path).strip('/').split('/')
+            found = False
+
+            for p in path_exploded:
+                 folders_old = folders
+                 folders = self._search_folders(p, folders)
+
+            for f in folders_old:
+                for doc in f['docs']:
+                    metadata = self._metadata_file(path, doc['name'])
+                    ret.append(ShareLatexFileMetadata(metadata))
+
+                for filename in f['fileRefs']:
+                    metadata = self._metadata_file(path, filename['name'])
+                    ret.append(ShareLatexFileMetadata(metadata))
+
+            for f in folders:
+                metadata = self._metadata_folder(path, f['name'])
+                ret.append(ShareLatexProjectMetadata(metadata))
+
+        return ret
+
+    def _search_folders(self, name, folders):
+       for f in folders:
+           if (name == f['name']):
+               return f['folders']
+       raise exceptions.NotFoundError(str(path))
+
+    def _metadata_file(self, path, file_name=''):
+        full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
+        modified = datetime.datetime.fromtimestamp(1445967864)#os.path.getmtime(full_path))
+        return {
+            'path': full_path,
+            'size': 123,
+            'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
+            'mime_type': "application/json" #mimetypes.guess_type(full_path)[0],
+        }
+
+    def _metadata_folder(self, path, folder_name):
+        return {
+            'path': os.path.join(path.path, folder_name),
+        }
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):

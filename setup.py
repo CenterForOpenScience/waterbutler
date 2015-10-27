@@ -50,7 +50,7 @@ setup(
             'dataverse = waterbutler.providers.dataverse:DataverseProvider',
             'box = waterbutler.providers.box:BoxProvider',
             'googledrive = waterbutler.providers.googledrive:GoogleDriveProvider',
-            'sharelatex = waterbutler.providers.sharelatex:ShareLatex',
+            'sharelatex = waterbutler.providers.sharelatex:ShareLatexProvider',
         ],
         'waterbutler.providers.tasks': [
             'osfstorage_parity = waterbutler.providers.osfstorage.tasks.parity',

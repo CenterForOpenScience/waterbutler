@@ -22,7 +22,7 @@ class ShareLatexFileMetadata(BaseShareLatexMetadata, metadata.BaseFileMetadata):
 
     @property
     def size(self):
-        return self.raw['bytes']
+        return self.raw['size']
 
     @property
     def modified(self):
