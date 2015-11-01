@@ -152,11 +152,14 @@ def test_download(monkeypatch, provider_and_mock, osf_response, mock_path):
 @pytest.mark.aiohttpretty
 def test_delete(monkeypatch, provider, mock_path):
     path = WaterButlerPath('/unrelatedpath', _ids=('Doesntmatter', 'another'))
-    aiohttpretty.register_uri('DELETE', 'https://waterbutler.io/another/', status_code=200)
+    params = {'user': 'cat'}
+    base_url = provider.build_url(path.identifier)
+    url = provider.build_signed_url('DELETE', base_url, params=params)
+    aiohttpretty.register_uri('DELETE', url, params=params, status_code=200)
 
     yield from provider.delete(path)
 
-    assert aiohttpretty.has_call(method='DELETE', uri='https://waterbutler.io/another/', check_params=False)
+    assert aiohttpretty.has_call(method='DELETE', uri=url, check_params=False)
 
 
 @async
