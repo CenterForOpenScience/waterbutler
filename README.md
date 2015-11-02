@@ -19,7 +19,7 @@ invoke server
 
 ### startup commands
 
-In order to run waterbutler, you must have a virtualenv created for waterbutler running python3.3 or higher.  This can be created with the following commands:
+In order to run waterbutler, you must have a virtualenv created for waterbutler running python3.5.  This can be created with the following commands:
 
 ```bash
 # MacOSX: Install the latest version of python3

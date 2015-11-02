@@ -91,7 +91,7 @@ class MetadataMixin:
         if ext in mime_types:
             self.set_header('Content-Type', mime_types[ext])
 
-        yield self.write_stream(stream)
+        yield from self.write_stream(stream)
 
     @asyncio.coroutine
     def file_metadata(self):
@@ -120,4 +120,4 @@ class MetadataMixin:
 
         result = yield from self.provider.zip(self.path)
 
-        yield self.write_stream(result)
+        yield from self.write_stream(result)

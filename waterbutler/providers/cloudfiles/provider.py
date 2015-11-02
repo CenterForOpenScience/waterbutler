@@ -218,15 +218,14 @@ class CloudFilesProvider(provider.BaseProvider):
         })
         return url.url
 
-    @asyncio.coroutine
-    def _ensure_connection(self):
+    async def _ensure_connection(self):
         """Defines token, endpoint and temp_url_key if they are not already defined
         :raises ProviderError: If no temp url key is available
         """
         # Must have a temp url key for download and upload
         # Currently You must have one for everything however
         if not self.token or not self.endpoint:
-            data = yield from self._get_token()
+            data = await self._get_token()
             self.token = data['access']['token']['id']
             if self.use_public:
                 self.public_endpoint, _ = self._extract_endpoints(data)
@@ -234,11 +233,11 @@ class CloudFilesProvider(provider.BaseProvider):
             else:
                 self.public_endpoint, self.endpoint = self._extract_endpoints(data)
         if not self.temp_url_key:
-            resp = yield from self.make_request('HEAD', self.endpoint, expects=(204, ))
-            try:
-                self.temp_url_key = resp.headers['X-Account-Meta-Temp-URL-Key'].encode()
-            except KeyError:
-                raise exceptions.ProviderError('No temp url key is available', code=503)
+            async with self.request('HEAD', self.endpoint, expects=(204, )) as resp:
+                try:
+                    self.temp_url_key = resp.headers['X-Account-Meta-Temp-URL-Key'].encode()
+                except KeyError:
+                    raise exceptions.ProviderError('No temp url key is available', code=503)
 
     def _extract_endpoints(self, data):
         """Pulls both the public and internal cloudfiles urls,

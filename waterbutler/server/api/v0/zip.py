@@ -17,9 +17,9 @@ class ZipHandler(core.BaseProviderHandler):
         self.set_header('Content-Type', 'application/zip')
         self.set_header(
             'Content-Disposition',
-            utils.make_disposition('download.zip')
+            utils.make_disposition(self.path.name + '.zip')
         )
 
         result = yield from self.provider.zip(**self.arguments)
 
-        yield self.write_stream(result)
+        yield from self.write_stream(result)

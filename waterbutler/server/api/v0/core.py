@@ -49,7 +49,7 @@ class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.Re
         etype, exc, _ = exc_info
 
         if issubclass(etype, exceptions.PluginError):
-            self.set_status(exc.code)
+            self.set_status(int(exc.code))
             if exc.data:
                 self.finish(exc.data)
             else:
@@ -105,6 +105,7 @@ class BaseProviderHandler(BaseHandler):
         if resp.status != 200:
             raise Exception('Callback was unsuccessful, got {}'.format(resp))
         logger.info('Successfully sent callback for a {} request'.format(action))
+        yield from resp.release()
 
 
 class BaseCrossProviderHandler(BaseHandler):
@@ -167,3 +168,4 @@ class BaseCrossProviderHandler(BaseHandler):
         if resp.status != 200:
             raise Exception('Callback was unsuccessful, got {}'.format(resp))
         logger.info('Successfully sent callback for a {} request'.format(action))
+        yield from resp.release()
