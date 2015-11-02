@@ -1,10 +1,17 @@
 import asyncio
+import datetime
+
+import jwe
+import jwt
 import aiohttp
 
 from waterbutler.core import auth
 from waterbutler.core import exceptions
 
 from waterbutler.auth.osf import settings
+
+
+JWE_KEY = jwe.kdf(settings.JWE_SECRET.encode(), settings.JWE_SALT.encode())
 
 
 class OsfAuthHandler(auth.BaseAuthHandler):
@@ -17,68 +24,32 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         'delete': 'delete',
     }
 
-    @asyncio.coroutine
-    def fetch(self, request, bundle):
-        """Used for v0"""
-        headers = {'Content-Type': 'application/json'}
+    def build_payload(self, bundle, view_only=None, cookie=None):
+        query_params = {}
 
-        if 'Authorization' in request.headers:
-            headers['Authorization'] = request.headers['Authorization']
-
-        cookie = request.query_arguments.get('cookie')
         if cookie:
-            bundle['cookie'] = cookie[0].decode()
+            bundle['cookie'] = cookie
 
-        view_only = request.query_arguments.get('view_only')
         if view_only:
-            bundle['view_only'] = view_only[0].decode()
+            # View only must go outside of the jwt
+            query_params['view_only'] = view_only
 
-        response = yield from aiohttp.request(
-            'get',
-            settings.API_URL,
-            params=bundle,
-            headers=headers,
-            cookies=dict(request.cookies),
-        )
+        query_params['payload'] = jwe.encrypt(jwt.encode({
+            'data': bundle,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+        }, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM), JWE_KEY)
 
-        if response.status != 200:
-            try:
-                data = yield from response.json()
-            except ValueError:
-                data = yield from response.read()
-            raise exceptions.AuthError(data, code=response.status)
-
-        return (yield from response.json())
+        return query_params
 
     @asyncio.coroutine
-    def get(self, resource, provider, request):
-        """Used for v1"""
-        headers = {'Content-Type': 'application/json'}
-
-        if 'Authorization' in request.headers:
-            headers['Authorization'] = request.headers['Authorization']
-
-        params = {
-            'nid': resource,
-            'provider': provider,
-            'action': self.ACTION_MAP[request.method.lower()]
-        }
-
-        cookie = request.query_arguments.get('cookie')
-        if cookie:
-            params['cookie'] = cookie[0].decode()
-
-        view_only = request.query_arguments.get('view_only')
-        if view_only:
-            params['view_only'] = view_only[0].decode()
-
+    def make_request(self, params, headers, cookies):
         try:
             response = yield from aiohttp.request(
                 'get',
                 settings.API_URL,
                 params=params,
                 headers=headers,
-                cookies=dict(request.cookies),
+                cookies=cookies,
             )
         except aiohttp.errors.ClientError:
             raise exceptions.AuthError('Unable to connect to auth sever', code=503)
@@ -90,4 +61,59 @@ class OsfAuthHandler(auth.BaseAuthHandler):
                 data = yield from response.read()
             raise exceptions.AuthError(data, code=response.status)
 
-        return (yield from response.json())
+        try:
+            raw = yield from response.json()
+            signed_jwt = jwe.decrypt(raw['payload'].encode(), JWE_KEY)
+            data = jwt.decode(signed_jwt, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM, options={'require_exp': True})
+            return data['data']
+        except (jwt.InvalidTokenError, KeyError):
+            raise exceptions.AuthError(data, code=response.status)
+
+    @asyncio.coroutine
+    def fetch(self, request, bundle):
+        """Used for v0"""
+        headers = {'Content-Type': 'application/json'}
+
+        if 'Authorization' in request.headers:
+            headers['Authorization'] = request.headers['Authorization']
+
+        cookie = request.query_arguments.get('cookie')
+        if cookie:
+            cookie = cookie[0].decode()
+
+        view_only = request.query_arguments.get('view_only')
+        if view_only:
+            view_only = view_only[0].decode()
+
+        return (yield from self.make_request(
+            self.build_payload(bundle, cookie=cookie, view_only=view_only),
+            headers,
+            dict(request.cookies)
+        ))
+
+    @asyncio.coroutine
+    def get(self, resource, provider, request):
+        """Used for v1"""
+        headers = {'Content-Type': 'application/json'}
+
+        if 'Authorization' in request.headers:
+            headers['Authorization'] = request.headers['Authorization']
+
+        cookie = request.query_arguments.get('cookie')
+        if cookie:
+            cookie = cookie[0].decode()
+
+        view_only = request.query_arguments.get('view_only')
+        if view_only:
+            # View only must go outside of the jwt
+            view_only = view_only[0].decode()
+
+        return (yield from self.make_request(
+            self.build_payload({
+                'nid': resource,
+                'provider': provider,
+                'action': self.ACTION_MAP[request.method.lower()]
+            }, cookie=cookie, view_only=view_only),
+            headers,
+            dict(request.cookies)
+        ))

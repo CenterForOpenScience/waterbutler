@@ -2,6 +2,15 @@
 ChangeLog
 *********
 
+0.13.0 (2015-10-08)
+===================
+- waterbutler API v1 now returns JSON API formatted data
+- DEBUG is now an option for waterbutler root settings
+- OSF auth handler now authenticates via JWTs
+- Moves and copies done via v1 will now return a 409 rather than implicitly overwriting
+- Failed log callbacks are now logged
+- Various smaller fixes
+
 0.12.0 (2015-09-17)
 ===================
 - waterbutler.server

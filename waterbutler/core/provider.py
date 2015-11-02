@@ -324,12 +324,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
         the correct file path to upload to and indicate if that file exists or not
 
         :param WaterbutlerPath path: An object supporting the waterbutler path API
-        :param str conflict: replace or keep
+        :param str conflict: replace, keep, warn
         :rtype: (WaterButlerPath, dict or False)
+        :raises: NamingConflict
         """
         exists = yield from self.exists(path, **kwargs)
-        if not exists or conflict != 'keep':
+        if not exists or conflict == 'replace':
             return path, exists
+        if conflict == 'warn':
+            raise exceptions.NamingConflict(path)
 
         while (yield from self.exists(path.increment_name(), **kwargs)):
             pass

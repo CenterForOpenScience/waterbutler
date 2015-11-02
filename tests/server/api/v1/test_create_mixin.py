@@ -97,7 +97,8 @@ class TestCreateFolder(BaseCreateMixinTest):
     def test_created(self):
         metadata = mock.Mock()
         self.mixin.path = 'apath'
-        metadata.serialized.return_value = {'day': 'tum'}
+        self.mixin.resource = '3rqws'
+        metadata.json_api_serialized.return_value = {'day': 'tum'}
         self.mixin.provider = mock.Mock(
             create_folder=MockCoroutine(return_value=metadata)
         )
@@ -105,7 +106,7 @@ class TestCreateFolder(BaseCreateMixinTest):
         yield from self.mixin.create_folder()
 
         assert self.mixin.set_status.assert_called_once_with(201) is None
-        assert self.mixin.write.assert_called_once_with({'day': 'tum'}) is None
+        assert self.mixin.write.assert_called_once_with({'data': {'day': 'tum'}}) is None
         assert self.mixin.provider.create_folder.assert_called_once_with('apath') is None
 
 
@@ -118,8 +119,9 @@ class TestUploadFile(BaseCreateMixinTest):
 
     def test_created(self):
         metadata = mock.Mock()
+        self.mixin.resource = '3rqws'
         self.mixin.uploader = asyncio.Future()
-        metadata.serialized.return_value = {'day': 'tum'}
+        metadata.json_api_serialized.return_value = {'day': 'tum'}
         self.mixin.uploader.set_result((metadata, True))
 
         yield from self.mixin.upload_file()
@@ -127,13 +129,14 @@ class TestUploadFile(BaseCreateMixinTest):
         assert self.mixin.wsock.close.called
         assert self.mixin.writer.close.called
         assert self.mixin.set_status.assert_called_once_with(201) is None
-        assert self.mixin.write.assert_called_once_with({'day': 'tum'}) is None
+        assert self.mixin.write.assert_called_once_with({'data': {'day': 'tum'}}) is None
 
     @async
     def test_not_created(self):
         metadata = mock.Mock()
+        self.mixin.resource = '3rqws'
         self.mixin.uploader = asyncio.Future()
-        metadata.serialized.return_value = {'day': 'ta'}
+        metadata.json_api_serialized.return_value = {'day': 'ta'}
         self.mixin.uploader.set_result((metadata, False))
 
         yield from self.mixin.upload_file()
@@ -141,6 +144,6 @@ class TestUploadFile(BaseCreateMixinTest):
         assert self.mixin.wsock.close.called
         assert self.mixin.writer.close.called
         assert self.mixin.set_status.called is False
-        assert self.mixin.write.assert_called_once_with({'day': 'ta'}) is None
+        assert self.mixin.write.assert_called_once_with({'data': {'day': 'ta'}}) is None
 
 
