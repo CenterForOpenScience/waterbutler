@@ -112,6 +112,7 @@ def upload_response():
             'downloads': 10,
             'version': 8,
             'path': '/dfl893b1pdn11kd28b',
+            'checkout': None,
             'md5': 'abcdabcdabcdabcdabcdabcdabcd',
             'sha256': '123123123123123123',
         }
@@ -242,6 +243,7 @@ class TestUploads:
         assert res.extra['version'] == 8
         assert res.provider == 'osfstorage'
         assert res.extra['downloads'] == 10
+        assert res.extra['checkout'] is None
         assert path.identifier_path == res.path
 
         inner_provider.delete.assert_called_once_with(WaterButlerPath('/uniquepath'))
@@ -260,7 +262,7 @@ class TestUploads:
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
-        aiohttpretty.register_json_uri('POST', url, status=200, body={'data': {'downloads': 10, 'version': 8, 'path': '/24601', 'md5': '1234', 'sha256': '2345'}})
+        aiohttpretty.register_json_uri('POST', url, status=200, body={'data': {'downloads': 10, 'version': 8, 'path': '/24601', 'checkout': 'hmoco', 'md5': '1234', 'sha256': '2345'}})
 
         res, created = yield from provider.upload(file_stream, path)
 
@@ -270,6 +272,7 @@ class TestUploads:
         assert res.extra['version'] == 8
         assert res.provider == 'osfstorage'
         assert res.extra['downloads'] == 10
+        assert res.extra['checkout'] == 'hmoco'
 
         inner_provider.metadata.assert_called_once_with(WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
         inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'), check_created=False, fetch_metadata=False)
@@ -288,7 +291,7 @@ class TestUploads:
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
-        aiohttpretty.register_json_uri('POST', url, status=201, body={'version': 'versionpk', 'data': {'version': 42, 'downloads': 30, 'path': '/alkjdaslke09', 'md5': 'abcd', 'sha256': 'bcde'}})
+        aiohttpretty.register_json_uri('POST', url, status=201, body={'version': 'versionpk', 'data': {'version': 42, 'downloads': 30, 'path': '/alkjdaslke09', 'checkout': None, 'md5': 'abcd', 'sha256': 'bcde'}})
 
         monkeypatch.setattr(basepath.format('backup.main'), mock_backup)
         monkeypatch.setattr(basepath.format('parity.main'), mock_parity)
@@ -303,6 +306,7 @@ class TestUploads:
         assert res.extra['version'] == 42
         assert res.provider == 'osfstorage'
         assert res.extra['downloads'] == 30
+        assert res.extra['checkout'] is None
 
         inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'), check_created=False, fetch_metadata=False)
         complete_path = os.path.join(FILE_PATH_COMPLETE, file_stream.writers['sha256'].hexdigest)
