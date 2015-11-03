@@ -621,7 +621,7 @@ class TestOperations:
             assert hasattr(item, 'version')
             assert hasattr(item, 'version_identifier')
 
-        assert aiohttpretty.has_call(method='GET', uri=url)
+        assert aiohttpretty.has_call(method='GET', uri=url, params=params)
 
     def test_equality(self, provider):
         assert provider.can_intra_copy(provider)
