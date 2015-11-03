@@ -6,6 +6,7 @@ import io
 import hashlib
 
 import aiohttpretty
+from freezegun import freeze_time
 
 from waterbutler.core import streams
 from waterbutler.core import metadata
@@ -275,6 +276,7 @@ class TestValidatePath:
         assert not path.is_root
 
 
+@freeze_time('2015-10-31 12:00:01')
 class TestCRUD:
 
     @async
@@ -401,6 +403,7 @@ class TestCRUD:
         assert ret_url == url
 
 
+@freeze_time('2015-10-31 12:00:01')
 class TestMetadata:
 
     @async
@@ -505,6 +508,7 @@ class TestMetadata:
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
 
 
+@freeze_time('2015-10-31 12:00:01')
 class TestCreateFolder:
 
     @async
@@ -581,6 +585,7 @@ class TestCreateFolder:
         assert resp.path == '/doesntalreadyexists/'
 
 
+@freeze_time('2015-10-31 12:00:01')
 class TestOperations:
 
     # @async
