@@ -6,6 +6,7 @@ import io
 import hashlib
 
 import aiohttpretty
+from freezegun import freeze_time
 
 from waterbutler.core import streams
 from waterbutler.core import metadata
@@ -241,6 +242,9 @@ def version_metadata():
         </Version>
     </ListVersionsResult>'''
 
+def build_folder_params(path):
+    return {'prefix': path.path, 'delimiter': '/'}
+
 
 class TestValidatePath:
 
@@ -272,6 +276,7 @@ class TestValidatePath:
         assert not path.is_root
 
 
+@freeze_time('2015-10-31 12:00:01')
 class TestCRUD:
 
     @async
@@ -398,6 +403,7 @@ class TestCRUD:
         assert ret_url == url
 
 
+@freeze_time('2015-10-31 12:00:01')
 class TestMetadata:
 
     @async
@@ -405,7 +411,9 @@ class TestMetadata:
     def test_metadata_folder(self, provider, folder_metadata):
         path = WaterButlerPath('/darp/')
         url = provider.bucket.generate_url(100)
-        aiohttpretty.register_uri('GET', url, body=folder_metadata, headers={'Content-Type': 'application/xml'})
+        params = build_folder_params(path)
+        aiohttpretty.register_uri('GET', url, params=params, body=folder_metadata,
+                                  headers={'Content-Type': 'application/xml'})
 
         result = yield from provider.metadata(path)
 
@@ -420,7 +428,8 @@ class TestMetadata:
     def test_metadata_folder_self_listing(self, provider, contents_and_self):
         path = WaterButlerPath('/thisfolder/')
         url = provider.bucket.generate_url(100)
-        aiohttpretty.register_uri('GET', url, body=contents_and_self)
+        params = build_folder_params(path)
+        aiohttpretty.register_uri('GET', url, params=params, body=contents_and_self)
 
         result = yield from provider.metadata(path)
 
@@ -434,7 +443,9 @@ class TestMetadata:
     def test_just_a_folder_metadata_folder(self, provider, just_a_folder_metadata):
         path = WaterButlerPath('/')
         url = provider.bucket.generate_url(100)
-        aiohttpretty.register_uri('GET', url, body=just_a_folder_metadata, headers={'Content-Type': 'application/xml'})
+        params = build_folder_params(path)
+        aiohttpretty.register_uri('GET', url, params=params, body=just_a_folder_metadata,
+                                  headers={'Content-Type': 'application/xml'})
 
         result = yield from provider.metadata(path)
 
@@ -497,6 +508,7 @@ class TestMetadata:
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
 
 
+@freeze_time('2015-10-31 12:00:01')
 class TestCreateFolder:
 
     @async
@@ -504,7 +516,9 @@ class TestCreateFolder:
     def test_raise_409(self, provider, just_a_folder_metadata):
         path = WaterButlerPath('/alreadyexists/')
         url = provider.bucket.generate_url(100, 'GET')
-        aiohttpretty.register_uri('GET', url, body=just_a_folder_metadata, headers={'Content-Type': 'application/xml'})
+        params = build_folder_params(path)
+        aiohttpretty.register_uri('GET', url, params=params, body=just_a_folder_metadata,
+                                  headers={'Content-Type': 'application/xml'})
 
         with pytest.raises(exceptions.FolderNamingConflict) as e:
             yield from provider.create_folder(path)
@@ -528,9 +542,10 @@ class TestCreateFolder:
     def test_errors_out(self, provider):
         path = WaterButlerPath('/alreadyexists/')
         url = provider.bucket.generate_url(100, 'GET')
+        params = build_folder_params(path)
         create_url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
 
-        aiohttpretty.register_uri('GET', url, status=404)
+        aiohttpretty.register_uri('GET', url, params=params, status=404)
         aiohttpretty.register_uri('PUT', create_url, status=403)
 
         with pytest.raises(exceptions.CreateFolderError) as e:
@@ -543,8 +558,9 @@ class TestCreateFolder:
     def test_errors_out_metadata(self, provider):
         path = WaterButlerPath('/alreadyexists/')
         url = provider.bucket.generate_url(100, 'GET')
+        params = build_folder_params(path)
 
-        aiohttpretty.register_uri('GET', url, status=403)
+        aiohttpretty.register_uri('GET', url, params=params, status=403)
 
         with pytest.raises(exceptions.MetadataError) as e:
             yield from provider.create_folder(path)
@@ -556,9 +572,10 @@ class TestCreateFolder:
     def test_creates(self, provider):
         path = WaterButlerPath('/doesntalreadyexists/')
         url = provider.bucket.generate_url(100, 'GET')
+        params = build_folder_params(path)
         create_url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
 
-        aiohttpretty.register_uri('GET', url, status=404)
+        aiohttpretty.register_uri('GET', url, params=params, status=404)
         aiohttpretty.register_uri('PUT', create_url, status=200)
 
         resp = yield from provider.create_folder(path)
@@ -568,6 +585,7 @@ class TestCreateFolder:
         assert resp.path == '/doesntalreadyexists/'
 
 
+@freeze_time('2015-10-31 12:00:01')
 class TestOperations:
 
     # @async
@@ -595,7 +613,8 @@ class TestOperations:
     def test_version_metadata(self, provider, version_metadata):
         path = WaterButlerPath('/my-image.jpg')
         url = provider.bucket.generate_url(100, 'GET', query_parameters={'versions': ''})
-        aiohttpretty.register_uri('GET', url, status=200, body=version_metadata)
+        params = build_folder_params(path)
+        aiohttpretty.register_uri('GET', url, params=params, status=200, body=version_metadata)
 
         data = yield from provider.revisions(path)
 
@@ -607,7 +626,7 @@ class TestOperations:
             assert hasattr(item, 'version')
             assert hasattr(item, 'version_identifier')
 
-        assert aiohttpretty.has_call(method='GET', uri=url)
+        assert aiohttpretty.has_call(method='GET', uri=url, params=params)
 
     def test_equality(self, provider):
         assert provider.can_intra_copy(provider)
