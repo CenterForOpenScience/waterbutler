@@ -134,16 +134,17 @@ def mock_folder_path():
 def test_download(monkeypatch, provider_and_mock, osf_response, mock_path):
     provider, inner_provider = provider_and_mock
 
-    url = 'https://waterbutler.io/{}/download/?mode&version'.format(mock_path.identifier)
+    base_url = provider.build_url(mock_path.identifier, 'download', version=None, mode=None)
+    url, _, params = provider.build_signed_url('GET', base_url)
 
-    aiohttpretty.register_json_uri('GET', url, body=osf_response)
+    aiohttpretty.register_json_uri('GET', url, params=params, body=osf_response)
 
     yield from provider.download(mock_path)
 
     assert provider.make_provider.called
     assert inner_provider.download.called
 
-    assert aiohttpretty.has_call(method='GET', uri=url, check_params=False)
+    assert aiohttpretty.has_call(method='GET', uri=url, params=params)
     provider.make_provider.assert_called_once_with(osf_response['settings'])
     inner_provider.download.assert_called_once_with(path=WaterButlerPath('/test/path'), displayName='unrelatedpath')
 
@@ -154,7 +155,7 @@ def test_delete(monkeypatch, provider, mock_path):
     path = WaterButlerPath('/unrelatedpath', _ids=('Doesntmatter', 'another'))
     params = {'user': 'cat'}
     base_url = provider.build_url(path.identifier)
-    url = provider.build_signed_url('DELETE', base_url, params=params)
+    url, _, params = provider.build_signed_url('DELETE', base_url, params=params)
     aiohttpretty.register_uri('DELETE', url, params=params, status_code=200)
 
     yield from provider.delete(path)
@@ -165,14 +166,15 @@ def test_delete(monkeypatch, provider, mock_path):
 @async
 @pytest.mark.aiohttpretty
 def test_provider_metadata_empty(monkeypatch, provider, mock_folder_path):
-    url = 'https://waterbutler.io/{}/children/'.format(mock_folder_path.identifier)
-    aiohttpretty.register_json_uri('GET', url, status_code=200, body=[])
+    base_url = provider.build_url(mock_folder_path.identifier, 'children')
+    url, _, params = provider.build_signed_url('GET', base_url)
+    aiohttpretty.register_json_uri('GET', url, params=params, status_code=200, body=[])
 
     res = yield from provider.metadata(mock_folder_path)
 
     assert res == []
 
-    assert aiohttpretty.has_call(method='GET', uri=url)
+    assert aiohttpretty.has_call(method='GET', uri=url, params=params)
 
 
 @async
@@ -203,8 +205,8 @@ def test_provider_metadata(monkeypatch, provider, mock_folder_path):
             'kind': 'folder'
         }
     ]
-    url = 'https://waterbutler.io/{}/children/'.format(mock_folder_path.identifier)
-    aiohttpretty.register_json_uri('GET', url, status=200, body=items)
+    url, _, params = provider.build_signed_url('GET', provider.build_url(mock_folder_path.identifier, 'children'))
+    aiohttpretty.register_json_uri('GET', url, params=params, status=200, body=items)
 
     res = yield from provider.metadata(mock_folder_path)
 
@@ -216,7 +218,7 @@ def test_provider_metadata(monkeypatch, provider, mock_folder_path):
         assert item.path is not None
         assert item.provider == 'osfstorage'
 
-    assert aiohttpretty.has_call(method='GET', uri=url)
+    assert aiohttpretty.has_call(method='GET', uri=url, params=params)
 
 
 class TestUploads:

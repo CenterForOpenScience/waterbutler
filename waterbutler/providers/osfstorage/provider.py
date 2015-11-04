@@ -179,11 +179,11 @@ class OSFStorageProvider(provider.BaseProvider):
             elif url[url.rfind('?') - 1] != '/':
                 url = url.replace('?', '/?')
 
-        return url
+        return url, data, params
 
     @asyncio.coroutine
     def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
-        url = self.build_signed_url(method, url, data=data, params=params, ttl=ttl, **kwargs)
+        url, data, params = self.build_signed_url(method, url, data=data, params=params, ttl=ttl, **kwargs)
         return (yield from self.make_request(method, url, data=data, params=params, **kwargs))
 
     @asyncio.coroutine
