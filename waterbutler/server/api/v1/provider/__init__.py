@@ -24,7 +24,8 @@ IDENTIFIER_PATHS = ('box', 'osfstorage')
 
 @tornado.web.stream_request_body
 class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixin):
-    VALIDATORS = {'put': 'validate_put', 'post': 'validate_post'}
+    PRE_VALIDATORS = {'put': 'prevalidate_put', 'post': 'prevalidate_post'}
+    POST_VALIDATORS = {'put': 'postvalidate_put'}
     PATTERN = r'/resources/(?P<resource>(?:\w|\d)+)/providers/(?P<provider>(?:\w|\d)+)(?P<path>/.*/?)'
 
     @tornado.gen.coroutine
@@ -39,13 +40,22 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
 
-        if method in self.VALIDATORS:
-            # create must validate before accepting files
-            getattr(self, self.VALIDATORS[method])()
+        # pre-validator methods perform validations that can be performed before ensuring that the
+        # path given by the url is valid.  An example would be making sure that a particular query
+        # parameter matches and allowed value.  We do this because validating the path requires
+        # issuing one or more API calls to the provider, and some providers are quite stingy with
+        # their rate limits.
+        if method in self.PRE_VALIDATORS:
+            getattr(self, self.PRE_VALIDATORS[method])()
 
         self.auth = yield from auth_handler.get(self.resource, provider, self.request)
         self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
         self.path = yield from self.provider.validate_v1_path(self.path)
+
+        # post-validator methods perform validations that expect that the path given in the url has
+        # been verified for existence and type.
+        if method in self.POST_VALIDATORS:
+            getattr(self, self.POST_VALIDATORS[method])()
 
         # The one special case
         if method == 'put' and self.path.is_file:
