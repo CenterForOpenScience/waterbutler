@@ -108,18 +108,20 @@ class TestCreateFolder(BaseCreateMixinTest):
 
     def test_created(self):
         metadata = mock.Mock()
-        self.mixin.path = 'apath'
+        self.mixin.path = '/'
         self.mixin.resource = '3rqws'
         metadata.json_api_serialized.return_value = {'day': 'tum'}
         self.mixin.provider = mock.Mock(
             create_folder=MockCoroutine(return_value=metadata)
         )
+        target = WaterButlerPath('/apath/')
+        self.mixin.target_path = target
 
         yield from self.mixin.create_folder()
 
         assert self.mixin.set_status.assert_called_once_with(201) is None
         assert self.mixin.write.assert_called_once_with({'data': {'day': 'tum'}}) is None
-        assert self.mixin.provider.create_folder.assert_called_once_with('apath') is None
+        assert self.mixin.provider.create_folder.assert_called_once_with(target) is None
 
 
 class TestUploadFile(BaseCreateMixinTest):

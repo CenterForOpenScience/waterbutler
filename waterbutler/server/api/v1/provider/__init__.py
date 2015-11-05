@@ -58,7 +58,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             getattr(self, self.POST_VALIDATORS[method])()
 
         # The one special case
-        if method == 'put' and self.path.is_file:
+        if method == 'put' and self.target_path.is_file:
             yield from self.prepare_stream()
         else:
             self.stream = None
@@ -85,9 +85,9 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     @tornado.gen.coroutine
     def put(self, **_):
         """Defined in CreateMixin"""
-        if self.path.is_file:
+        if self.target_path.is_file:
             return (yield from self.upload_file())
-        return (yield from self.create_folder())
+        return(yield from self.create_folder())
 
     @tornado.gen.coroutine
     def post(self, **_):
@@ -118,7 +118,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         _, self.writer = yield from asyncio.open_unix_connection(sock=self.wsock)
 
         self.stream = RequestStreamReader(self.request, self.reader)
-        self.uploader = asyncio.async(self.provider.upload(self.stream, self.path))
+        self.uploader = asyncio.async(self.provider.upload(self.stream, self.target_path))
 
     def on_finish(self):
         status, method = self.get_status(), self.request.method.upper()
@@ -131,7 +131,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
         # Done here just because method is defined
         action = {
-            'PUT': lambda: ('create' if self.path.is_file else 'create_folder') if status == 201 else 'update',
+            'PUT': lambda: ('create' if self.target_path.is_file else 'create_folder') if status == 201 else 'update',
             'POST': lambda: 'move' if self.json['action'] == 'rename' else self.json['action'],
             'DELETE': lambda: 'delete'
         }[method]()
@@ -169,12 +169,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         else:
             # This is adequate for everything but github
             # If extra can be included it will link to the given sha
+            payload_path = self.target_path or self.path
             payload.update({
                 'metadata': {
                     # Hack: OSF and box use identifiers to refer to files
-                    'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else self.path.path,
-                    'name': self.path.name,
-                    'materialized': str(self.path),
+                    'path': payload_path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else payload_path.path,
+                    'name': payload_path.name,
+                    'materialized': str(self.payload_path),
                     'provider': self.provider.NAME,
                 }
             })

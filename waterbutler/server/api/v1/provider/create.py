@@ -1,4 +1,3 @@
-import os
 import asyncio
 
 from waterbutler.core import exceptions
@@ -46,25 +45,23 @@ class CreateMixin:
 
         self.childs_name = self.get_query_argument('name', default=None)
 
-        if self.path.is_dir and self.childs_name is None:
-            raise exceptions.InvalidParameters('Missing required parameter \'name\'')
-
-        if self.path.is_file and self.childs_name is not None:
-            raise exceptions.InvalidParameters("'name' parameter doesn't apply to actions on files")
-
         if self.path.is_dir:
-            self.path = os.path.join(self.path, self.childs_name)
+            if self.childs_name is None:
+                raise exceptions.InvalidParameters('Missing required parameter \'name\'')
+            self.target_path = self.path.child(self.childs_name, folder=(self.kind == 'folder'))
+        else:
+            if self.childs_name is not None:
+                raise exceptions.InvalidParameters("'name' parameter doesn't apply to actions on files")
             if self.kind == 'folder':
-                self.path += '/'
-        elif self.kind == 'folder':
-            raise exceptions.InvalidParameters(
-                'Path must be a folder (and end with a "/") if trying to create a subfolder',
-                code=409
-            )
+                raise exceptions.InvalidParameters(
+                    'Path must be a folder (and end with a "/") if trying to create a subfolder',
+                    code=409
+                )
+            self.target_path = self.path
 
     @asyncio.coroutine
     def create_folder(self):
-        metadata = yield from self.provider.create_folder(self.path)
+        metadata = yield from self.provider.create_folder(self.target_path)
         self.set_status(201)
         self.write({'data': metadata.json_api_serialized(self.resource)})
 
