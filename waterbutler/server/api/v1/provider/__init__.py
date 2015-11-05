@@ -29,24 +29,26 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     @tornado.gen.coroutine
     def prepare(self, *args, **kwargs):
+        method = self.request.method.lower()
+
         # TODO Find a nicer way to handle this
-        if self.request.method.lower() == 'options':
+        if method == 'options':
             return
 
         self.path = self.path_kwargs['path'] or '/'
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
 
-        if self.request.method.lower() in self.VALIDATORS:
+        if method in self.VALIDATORS:
             # create must validate before accepting files
-            getattr(self, self.VALIDATORS[self.request.method.lower()])()
+            getattr(self, self.VALIDATORS[method])()
 
         self.auth = yield from auth_handler.get(self.resource, provider, self.request)
         self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
         self.path = yield from self.provider.validate_v1_path(self.path)
 
         # The one special case
-        if self.request.method == 'PUT' and self.path.is_file:
+        if method == 'put' and self.path.is_file:
             yield from self.prepare_stream()
         else:
             self.stream = None
