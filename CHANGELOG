@@ -2,6 +2,13 @@
 ChangeLog
 *********
 
+0.14.0 (2015-11-05)
+===================
+- Update to a python3.5 compliant version of invoke
+- Raise proper exceptions for github repos with too many fiels
+- Updates for OSFStorage file checkout
+- Clean up JSON API Responses
+
 0.13.0 (2015-10-08)
 ===================
 - waterbutler API v1 now returns JSON API formatted data
