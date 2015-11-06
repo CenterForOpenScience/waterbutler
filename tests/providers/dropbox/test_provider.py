@@ -111,6 +111,10 @@ def file_metadata():
     }
 
 
+def build_folder_metadata_params(path):
+    return {'root': 'auto', 'path': path.full_path}
+
+
 class TestValidatePath:
 
     @async
@@ -236,8 +240,9 @@ class TestCreateFolder:
     def test_already_exists(self, provider):
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
         url = provider.build_url('fileops', 'create_folder')
+        params = build_folder_metadata_params(path)
 
-        aiohttpretty.register_json_uri('POST', url, status=403, body={
+        aiohttpretty.register_json_uri('POST', url, params=params, status=403, body={
             'error': 'because a file or folder already exists at path'
         })
 
@@ -252,8 +257,9 @@ class TestCreateFolder:
     def test_forbidden(self, provider):
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
         url = provider.build_url('fileops', 'create_folder')
+        params = build_folder_metadata_params(path)
 
-        aiohttpretty.register_json_uri('POST', url, status=403, body={
+        aiohttpretty.register_json_uri('POST', url, params=params, status=403, body={
             'error': 'because I hate you'
         })
 
@@ -268,8 +274,9 @@ class TestCreateFolder:
     def test_raises_on_errors(self, provider):
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
         url = provider.build_url('fileops', 'create_folder')
+        params = build_folder_metadata_params(path)
 
-        aiohttpretty.register_json_uri('POST', url, status=418, body={})
+        aiohttpretty.register_json_uri('POST', url, params=params, status=418, body={})
 
         with pytest.raises(exceptions.CreateFolderError) as e:
             yield from provider.create_folder(path)
@@ -282,8 +289,9 @@ class TestCreateFolder:
         file_metadata['path'] = '/newfolder'
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
         url = provider.build_url('fileops', 'create_folder')
+        params = build_folder_metadata_params(path)
 
-        aiohttpretty.register_json_uri('POST', url, status=200, body=file_metadata)
+        aiohttpretty.register_json_uri('POST', url, params=params, status=200, body=file_metadata)
 
         resp = yield from provider.create_folder(path)
 

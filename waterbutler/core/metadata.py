@@ -42,6 +42,16 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         }
 
     def _json_api_links(self, resource):
+        entity_url = self._entity_url(resource)
+        actions = {
+            'move': entity_url,
+            'upload': entity_url + '?kind=file',
+            'delete': entity_url,
+        }
+
+        return actions
+
+    def _entity_url(self, resource):
         url = furl.furl(settings.DOMAIN)
         segments = ['v1', 'resources', resource, 'providers', self.provider]
         # If self is a folder, path ends with a slash which must be preserved. However, furl
@@ -50,15 +60,8 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         # meaning the first entry is always ''.
         segments += self.path.split('/')[1:]
         url.path.segments.extend(segments)
-        entity_url = url.url
 
-        return {
-            'new_folder': entity_url if self.is_folder else None,
-            'move': entity_url,
-            'upload': entity_url,
-            'download': entity_url if self.is_file else None,
-            'delete': entity_url,
-        }
+        return url.url
 
     def build_path(self, path):
         if not path.startswith('/'):
@@ -139,6 +142,11 @@ class BaseFileMetadata(BaseMetadata):
             'modified': self.modified,
             'size': self.size,
         })
+
+    def _json_api_links(self, resource):
+        ret = super()._json_api_links(resource)
+        ret['download'] = self._entity_url(resource)
+        return ret
 
     @property
     def kind(self):
@@ -224,6 +232,11 @@ class BaseFolderMetadata(BaseMetadata):
     def json_api_serialized(self, resource):
         ret = super().json_api_serialized(resource)
         ret['attributes']['size'] = None
+        return ret
+
+    def _json_api_links(self, resource):
+        ret = super()._json_api_links(resource)
+        ret['new_folder'] = self._entity_url(resource) + '?kind=folder'
         return ret
 
     @property

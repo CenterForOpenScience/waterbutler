@@ -29,7 +29,10 @@ class CreateMixin:
             if self.kind == 'folder':
                 self.path += '/'
         elif self.kind == 'folder':
-            raise exceptions.InvalidParameters('Path must end with a / if kind is folder')
+            raise exceptions.InvalidParameters(
+                'Path must be a folder (and end with a "/") if trying to create a subfolder',
+                code=409
+            )
 
         length = self.request.headers.get('Content-Length')
 

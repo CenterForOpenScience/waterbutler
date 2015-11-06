@@ -163,8 +163,7 @@ class OSFStorageProvider(provider.BaseProvider):
 
         return OsfStorageFolderMetadata(data, str(dest_path)), dest_path.identifier is None
 
-    @asyncio.coroutine
-    def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
+    def build_signed_url(self, method, url, data=None, params=None, ttl=100, **kwargs):
         signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
         if method.upper() in QUERY_METHODS:
             signed = signing.sign_data(signer, params or {}, ttl=ttl)
@@ -180,6 +179,11 @@ class OSFStorageProvider(provider.BaseProvider):
             elif url[url.rfind('?') - 1] != '/':
                 url = url.replace('?', '/?')
 
+        return url, data, params
+
+    @asyncio.coroutine
+    def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
+        url, data, params = self.build_signed_url(method, url, data=data, params=params, ttl=ttl, **kwargs)
         return (yield from self.make_request(method, url, data=data, params=params, **kwargs))
 
     @asyncio.coroutine
@@ -296,8 +300,10 @@ class OSFStorageProvider(provider.BaseProvider):
             'sha256': data['data']['sha256'],
             'version': data['data']['version'],
             'downloads': data['data']['downloads'],
+            'checkout': data['data']['checkout'],
         })
 
+        path._parts[-1]._id = metadata['path'].strip('/')
         return OsfStorageFileMetadata(metadata, str(path)), created
 
     @asyncio.coroutine

@@ -317,11 +317,11 @@ class TestUpload:
 
         metadata, created = yield from provider.upload(file_stream, path)
 
-        path.parts[-1]._id = file_metadata['entries'][0]['id']
         expected = BoxFileMetadata(file_metadata['entries'][0], path).serialized()
 
         assert metadata.serialized() == expected
         assert created is True
+        assert path.identifier_path == metadata.path
         assert aiohttpretty.has_call(method='POST', uri=upload_url)
 
     @async
