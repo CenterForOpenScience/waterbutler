@@ -34,13 +34,13 @@ def credentials():
 @pytest.fixture
 def settings():
     return {
-        'bucket': 'to define',
+        'project': 'to define',
     }
 
 @pytest.fixture
 def empty_project_settings():
     return {
-        'bucket': fixtures.empty_project_id 
+        'project': fixtures.empty_project_id
     }
 
 
@@ -51,11 +51,6 @@ def default_provider(auth, credentials, settings):
 @pytest.fixture
 def empty_project_provider(auth, credentials, empty_project_settings):
     return provider.ShareLatexProvider(auth, credentials, empty_project_settings)
-
-
-@pytest.fixture
-def default_metadata():
-    return {}
 
 @pytest.fixture
 def metadata_empty_project():
@@ -70,17 +65,15 @@ class TestMetadata:
         assert metadata.kind == 'folder'
         assert metadata.provider == 'sharelatex'
         assert metadata.path == path
-        assert metadata.name == nam
+        assert metadata.name == name
 
 
     @async
     @pytest.mark.aiohttpretty
     def test_metadata_folder_root_with_no_contents(self, empty_project_provider, metadata_empty_project):
-        path = yield from empty_project_provider.validate_path('/')
-        url = empty_project_provider.build_url('project', empty_project_provider.project_id)
-        aiohttpretty.register_json_uri('GET', url, body=metadata_empty_project)
+        root_folder_path = yield from empty_project_provider.validate_path('/')
+        root_folder_url = empty_project_provider.build_url('project', empty_project_provider.project_id, 'docs')
+        aiohttpretty.register_json_uri('GET', root_folder_url, body=metadata_empty_project)
 
-        result = yield from empty_project_provider.metadata(path)
-
-        assert aiohttpretty.has_call(method='GET', uri=url)
-        check_metadata_is_folder_with_path_and_name(result, '/', fixtures.empty_project_name)
+        with pytest.raises(exceptions.NotFoundError) as e:
+            yield from empty_project_provider.metadata(root_folder_path)

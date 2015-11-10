@@ -18,21 +18,20 @@ class ShareLatexProvider(provider.BaseProvider):
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
-        self.project_id = settings.get('bucket')
+        self.project_id = settings.get('project')
         self.auth_token = credentials.get('access_key')
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
-    def _build_project_url(self, *segments, **query):
-        project_url = self.project_id
+    def build_url(self, *segments, **query):
         query['auth_token'] = self.auth_token
-        return provider.build_url(project_url, **query)
+        return provider.build_url(*segments, **query)
 
     @asyncio.coroutine
     def download(self, path, **kwargs):
-        url = self._build_project_url(path.path)
+        url = self.build_url('/project/download/file/', path.path)
 
         resp = yield from self.make_request(
             'GET',
@@ -72,10 +71,7 @@ class ShareLatexProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, **kwargs):
-        url = self._build_project_url(path.full_path + '/project/')
-        query = {}
-        query['auth_token'] = self.auth_token
-        url = self.build_url('project', self.project_id, 'docs', **query)
+        url = self.build_url('project', self.project_id, 'docs')
 
         resp = yield from self.make_request(
             'GET', url,
@@ -88,8 +84,8 @@ class ShareLatexProvider(provider.BaseProvider):
 
         data = yield from resp.json()
 
-    #   if path.identifier is None:
-    #       raise exceptions.NotFoundError(str(path))
+        if not data:
+           raise exceptions.NotFoundError(str(path))
 
         ret = []
         if str(path) is '/':
