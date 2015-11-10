@@ -297,7 +297,10 @@ class BoxProvider(provider.BaseProvider):
         if resp.status == 409:
             raise exceptions.FolderNamingConflict(str(path))
 
-        return BoxFolderMetadata((yield from resp.json()), path)
+        resp_json = yield from resp.json()
+        # save new folder's id into the WaterButlerPath object. logs will need it later.
+        path._parts[-1]._id = resp_json['id']
+        return BoxFolderMetadata(resp_json, path)
 
     def _assert_child(self, paths, target=None):
         if self.folder == 0:
