@@ -571,3 +571,4 @@ class TestCreateFolder:
         assert resp.name == '50 shades of nope'
         assert resp.path == '/{}/'.format(folder_object_metadata['id'])
         assert isinstance(resp, BoxFolderMetadata)
+        assert path.identifier_path == '/' + folder_object_metadata['id'] + '/'
