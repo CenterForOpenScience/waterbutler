@@ -26,7 +26,7 @@ class ShareLatexProvider(provider.BaseProvider):
         return WaterButlerPath(path)
 
     def _build_project_url(self, *segments, **query):
-        project_url = self.project_id #+ segments
+        project_url = self.project_id
         query['auth_token'] = self.auth_token
         return provider.build_url(project_url, **query)
 
@@ -105,16 +105,13 @@ class ShareLatexProvider(provider.BaseProvider):
                 ret.append(ShareLatexProjectMetadata(metadata))
 
         else:
-
             folders_old = []
             folders = data['rootFolder'][0]['folders']
-            docs = data['rootFolder'][0]['docs']
             path_exploded = str(path).strip('/').split('/')
-            found = False
 
             for p in path_exploded:
-                 folders_old = folders
-                 folders = self._search_folders(p, folders)
+                folders_old = folders
+                folders = self._search_folders(p, folders)
 
             for f in folders_old:
                 for doc in f['docs']:
@@ -132,19 +129,19 @@ class ShareLatexProvider(provider.BaseProvider):
         return ret
 
     def _search_folders(self, name, folders):
-       for f in folders:
-           if (name == f['name']):
-               return f['folders']
-       raise exceptions.NotFoundError(str(path))
+        for f in folders:
+            if (name == f['name']):
+                return f['folders']
+        raise exceptions.NotFoundError(str(folders))
 
     def _metadata_file(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
-        modified = datetime.datetime.fromtimestamp(1445967864)#os.path.getmtime(full_path))
+        modified = datetime.datetime.fromtimestamp(1445967864)
         return {
             'path': full_path,
             'size': 123,
             'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
-            'mime_type': "application/json" #mimetypes.guess_type(full_path)[0],
+            'mime_type': 'application/json',
         }
 
     def _metadata_folder(self, path, folder_name):
