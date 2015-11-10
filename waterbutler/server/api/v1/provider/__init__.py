@@ -132,6 +132,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             'action': action,
             'time': time.time() + 60,
             'auth': self.auth['auth'],
+            'provider': self.provider.NAME,
         }
 
         if action in ('move', 'copy'):
