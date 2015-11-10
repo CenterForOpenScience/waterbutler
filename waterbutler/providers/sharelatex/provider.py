@@ -85,7 +85,7 @@ class ShareLatexProvider(provider.BaseProvider):
         data = yield from resp.json()
 
         if not data:
-           raise exceptions.NotFoundError(str(path))
+            raise exceptions.NotFoundError(str(path))
 
         ret = []
         if str(path) is '/':
