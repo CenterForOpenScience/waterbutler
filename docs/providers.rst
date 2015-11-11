@@ -9,6 +9,7 @@ Providers
    provider.cloudfiles
    provider.dataverse
    provider.dropbox
+   provider.dryad
    provider.figshare
    provider.filesystem
    provider.github
