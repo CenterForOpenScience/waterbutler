@@ -14,12 +14,12 @@ from waterbutler.providers.sharelatex.metadata import ShareLatexProjectMetadata
 
 class ShareLatexProvider(provider.BaseProvider):
     NAME = 'sharelatex'
-    BASE_URL = settings.BASE_URL
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
         self.project_id = settings.get('project')
-        self.auth_token = credentials.get('access_key')
+        self.auth_token = credentials.get('auth_token')
+        self.sharelatex_url = credentials.get('sharelatex_url')
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
@@ -27,7 +27,7 @@ class ShareLatexProvider(provider.BaseProvider):
 
     def build_url(self, *segments, **query):
         query['auth_token'] = self.auth_token
-        return provider.build_url(*segments, **query)
+        return provider.build_url(self.sharelatex_url, 'api', 'v1', *segments, **query)
 
     @asyncio.coroutine
     def download(self, path, **kwargs):
