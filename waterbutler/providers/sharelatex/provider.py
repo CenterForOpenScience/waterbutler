@@ -87,6 +87,10 @@ class ShareLatexProvider(provider.BaseProvider):
         if not data:
             raise exceptions.NotFoundError(str(path))
 
+        if path.is_file:
+            metadata = self._metadata_file(path, str(path))
+            return (ShareLatexFileMetadata(metadata))
+
         ret = []
         if str(path) is '/':
 
@@ -122,13 +126,14 @@ class ShareLatexProvider(provider.BaseProvider):
                 metadata = self._metadata_folder(path, f['name'])
                 ret.append(ShareLatexProjectMetadata(metadata))
 
+
         return ret
 
     def _search_folders(self, name, folders):
         for f in folders:
             if (name == f['name']):
                 return f['folders']
-        raise exceptions.NotFoundError(str(folders))
+        #raise exceptions.NotFoundError(str(folders))
 
     def _metadata_file(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
@@ -137,7 +142,7 @@ class ShareLatexProvider(provider.BaseProvider):
             'path': full_path,
             'size': 123,
             'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
-            'mime_type': 'application/json',
+            'mimetype': 'text/plain'
         }
 
     def _metadata_folder(self, path, folder_name):
@@ -145,6 +150,6 @@ class ShareLatexProvider(provider.BaseProvider):
             'path': os.path.join(path.path, folder_name),
         }
 
-    @asyncio.coroutine
-    def revisions(self, path, **kwargs):
-        raise exceptions.ProviderError({'message': 'ShareLaTeX does not support file revisions.'}, code=405)
+    #@asyncio.coroutine
+    #def revisions(self, path, **kwargs):
+    #    raise exceptions.ProviderError({'message': 'ShareLaTeX does not support file revisions.'}, code=405)

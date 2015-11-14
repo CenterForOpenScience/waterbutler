@@ -30,11 +30,17 @@ class ShareLatexFileMetadata(BaseShareLatexMetadata, metadata.BaseFileMetadata):
 
     @property
     def content_type(self):
-        return self.raw['mime_type']
+        return self.raw['mimetype']
 
     @property
     def etag(self):
         return ''
+
+    @property
+    def extra(self):
+        return {
+            'status': 'ok',
+        }
 
 
 class ShareLatexProjectMetadata(BaseShareLatexMetadata, metadata.BaseFolderMetadata):
