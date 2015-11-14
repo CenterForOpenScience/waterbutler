@@ -31,7 +31,7 @@ class ShareLatexProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def download(self, path, **kwargs):
-        url = self.build_url('/project/download/file/', path.path)
+        url = self.build_url('project', self.project_id,'file', path.path)
 
         resp = yield from self.make_request(
             'GET',
@@ -40,7 +40,7 @@ class ShareLatexProvider(provider.BaseProvider):
             throws=exceptions.DownloadError,
         )
 
-        return streams.ResponseStreamReader(resp)
+        return streams.ResponseStreamReader(resp, None, None, True)
 
     @asyncio.coroutine
     def upload(self, stream, path, conflict='replace', **kwargs):
