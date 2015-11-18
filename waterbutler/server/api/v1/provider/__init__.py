@@ -175,7 +175,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                     # Hack: OSF and box use identifiers to refer to files
                     'path': payload_path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else payload_path.path,
                     'name': payload_path.name,
-                    'materialized': str(self.payload_path),
+                    'materialized': str(payload_path),
                     'provider': self.provider.NAME,
                 }
             })
