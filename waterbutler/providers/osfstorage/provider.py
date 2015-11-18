@@ -357,10 +357,10 @@ class OSFStorageProvider(provider.BaseProvider):
             expects=(201, )
         )
 
-        return OsfStorageFolderMetadata(
-            (yield from resp.json())['data'],
-            str(path)
-        )
+        resp_json = yield from resp.json()
+        # save new folder's id into the WaterButlerPath object. logs will need it later.
+        path._parts[-1]._id = resp_json['data']['path'].strip('/')
+        return OsfStorageFolderMetadata(resp_json['data'], str(path))
 
     @asyncio.coroutine
     def _item_metadata(self, path, revision=None):
