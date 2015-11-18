@@ -3,6 +3,7 @@ import pytest
 from tests.utils import async
 
 import io
+from http import client
 
 import aiohttpretty
 
@@ -116,6 +117,52 @@ def build_folder_metadata_params(path):
 
 
 class TestValidatePath:
+
+    @async
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize('settings', [{'folder': '/'}])
+    def test_validate_v1_path_file(self, provider, file_metadata):
+        file_path = 'Photos/Getting_Started.pdf'
+
+        metadata_url = provider.build_url('metadata', 'auto', file_path)
+        aiohttpretty.register_json_uri('GET', metadata_url, body=file_metadata)
+
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/' + file_path)
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/' + file_path + '/')
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/' + file_path)
+
+        assert wb_path_v1 == wb_path_v0
+
+    @async
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize('settings', [{'folder': '/'}])
+    def test_validate_v1_path_folder(self, provider, folder_metadata):
+        folder_path = 'Photos'
+
+        metadata_url = provider.build_url('metadata', 'auto', folder_path)
+        aiohttpretty.register_json_uri('GET', metadata_url, body=folder_metadata)
+
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/' + folder_path + '/')
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/' + folder_path)
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/' + folder_path + '/')
+
+        assert wb_path_v1 == wb_path_v0
 
     @async
     def test_returns_path_obj(self, provider):

@@ -72,6 +72,7 @@ class MockProvider(provider.BaseProvider):
     upload = None
     download = None
     metadata = None
+    validate_v1_path = None
     validate_path = None
     revalidate_path = None
 
@@ -83,13 +84,17 @@ class MockProvider(provider.BaseProvider):
         self.upload = MockCoroutine()
         self.download = MockCoroutine()
         self.metadata = MockCoroutine()
-        self.validate_path = MockCoroutine()
+        self.validate_v1_path = MockCoroutine()
         self.revalidate_path = MockCoroutine()
 
 
 class MockProvider1(provider.BaseProvider):
 
     NAME = 'MockProvider1'
+
+    @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):

@@ -71,6 +71,10 @@ class FigshareProjectProvider(BaseFigshareProvider):
         self.project_id = self.settings['project_id']
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         split = path.rstrip('/').split('/')[1:]
         wbpath = WaterButlerPath('/', _ids=(self.settings['project_id'], ), folder=True)
@@ -219,6 +223,10 @@ class FigshareArticleProvider(BaseFigshareProvider):
         super().__init__(auth, credentials, settings)
         self.article_id = self.settings['article_id']
         self.child = child
+
+    @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
 
     @asyncio.coroutine
     def validate_path(self, path, parent=None, **kwargs):

@@ -56,6 +56,34 @@ class S3Provider(provider.BaseProvider):
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        if path == '/':
+            return WaterButlerPath(path)
+
+        implicit_folder = path.endswith('/')
+
+        if implicit_folder:
+            resp = yield from self.make_request(
+                'GET',
+                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
+                params={'prefix': path, 'delimiter': '/'},
+                expects=(200, 404),
+                throws=exceptions.MetadataError,
+            )
+        else:
+            resp = yield from self.make_request(
+                'HEAD',
+                self.bucket.new_key(path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
+                expects=(200, 404),
+                throws=exceptions.MetadataError,
+            )
+
+        if resp.status == 404:
+            raise exceptions.NotFoundError(str(path))
+
+        return WaterButlerPath(path)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 

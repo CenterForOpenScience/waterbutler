@@ -24,6 +24,39 @@ class BoxProvider(provider.BaseProvider):
         self.folder = self.settings['folder']
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        if path == '/':
+            return WaterButlerPath('/', _ids=[self.folder])
+
+        obj_id = path.strip('/')
+        files_or_folders = 'folders' if path.endswith('/') else 'files'
+
+        # Box file ids must be a valid base10 number
+        if not obj_id.isdecimal():
+            raise exceptions.NotFoundError(str(path))
+
+        response = yield from self.make_request(
+            'get',
+            self.build_url(files_or_folders, obj_id, fields='id,name,path_collection'),
+            expects=(200, 404,),
+            throws=exceptions.MetadataError,
+        )
+
+        if response.status == 404:
+            raise exceptions.NotFoundError(str(path))
+
+        data = yield from response.json()
+
+        names, ids = zip(*[
+            (x['name'], x['id'])
+            for x in
+            data['path_collection']['entries'] + [data]
+        ])
+        names, ids = ('',) + names[ids.index(self.folder) + 1:], ids[ids.index(self.folder):]
+
+        return WaterButlerPath('/'.join(names), _ids=ids, folder=path.endswith('/'))
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         if path == '/':
             return WaterButlerPath('/', _ids=[self.folder])
