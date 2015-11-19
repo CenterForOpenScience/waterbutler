@@ -7,7 +7,6 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
-from waterbutler.providers.sharelatex import settings
 from waterbutler.providers.sharelatex.metadata import ShareLatexFileMetadata
 from waterbutler.providers.sharelatex.metadata import ShareLatexProjectMetadata
 
@@ -23,7 +22,7 @@ class ShareLatexProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
-        return validate_path(path, **kwargs)
+        return self.validate_path(path, **kwargs)
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
@@ -34,13 +33,17 @@ class ShareLatexProvider(provider.BaseProvider):
         return provider.build_url(self.sharelatex_url, 'api', 'v1', *segments, **query)
 
     @asyncio.coroutine
-    def download(self, path, **kwargs):
-        url = self.build_url('project', self.project_id,'file', path.path)
+    def download(self, path, accept_url=False, range=None, **kwargs):
+        url = self.build_url('project', self.project_id, 'file', path.path)
+
+        if accept_url:
+            return url
 
         resp = yield from self.make_request(
             'GET',
             url,
-            expects=(200),
+            range=range,
+            expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 
@@ -129,7 +132,6 @@ class ShareLatexProvider(provider.BaseProvider):
         for f in folders:
             if (name == f['name']):
                 return (f['folders'])
-        #raise exceptions.NotFoundError(str(folders))
 
     def _metadata_file(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
@@ -138,7 +140,7 @@ class ShareLatexProvider(provider.BaseProvider):
             'path': full_path,
             'size': 123,
             'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
-            'mimetype': 'text/plain' #TODO
+            'mimetype': 'text/plain'  # TODO
         }
         return ShareLatexFileMetadata(metadata)
 
@@ -147,15 +149,11 @@ class ShareLatexProvider(provider.BaseProvider):
 
     def _metadata_doc(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
-        modified = datetime.datetime.fromtimestamp(1445967864) # TODO
+        modified = datetime.datetime.fromtimestamp(1445967864)  # TODO
         metadata = {
             'path': full_path,
-            'size': 123, #TODO
+            'size': 123,  # TODO
             'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
             'mimetype': 'application/x-tex'
         }
         return ShareLatexFileMetadata(metadata)
-
-    #@asyncio.coroutine
-    #def revisions(self, path, **kwargs):
-    #    raise exceptions.ProviderError({'message': 'ShareLaTeX does not support file revisions.'}, code=405)
