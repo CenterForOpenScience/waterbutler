@@ -95,14 +95,11 @@ class ShareLatexProvider(provider.BaseProvider):
         if str(path) is '/':
 
             for doc in data['rootFolder'][0]['docs']:
-                metadata = self._metadata_file(path, doc['name'])
-                ret.append(ShareLatexFileMetadata(metadata))
+                ret.append(self._metadata_doc(path, doc['name']))
             for fil in data['rootFolder'][0]['fileRefs']:
-                metadata = self._metadata_file(path, fil['name'])
-                ret.append(ShareLatexFileMetadata(metadata))
+                ret.append(self._metadata_file(path, fil['name']))
             for fol in data['rootFolder'][0]['folders']:
-                metadata = self._metadata_folder(path, fol['name'])
-                ret.append(ShareLatexProjectMetadata(metadata))
+                ret.append(self._metadata_folder(path, fol['name']))
 
         else:
             folders_old = []
@@ -115,40 +112,48 @@ class ShareLatexProvider(provider.BaseProvider):
 
             for f in folders_old:
                 for doc in f['docs']:
-                    metadata = self._metadata_file(path, doc['name'])
-                    ret.append(ShareLatexFileMetadata(metadata))
+                    ret.append(self._metadata_doc(path, doc['name']))
 
                 for filename in f['fileRefs']:
-                    metadata = self._metadata_file(path, filename['name'])
-                    ret.append(ShareLatexFileMetadata(metadata))
+                    ret.append(self._metadata_file(path, filename['name']))
 
             for f in folders:
-                metadata = self._metadata_folder(path, f['name'])
-                ret.append(ShareLatexProjectMetadata(metadata))
-
+                ret.append(self._metadata_folder(path, f['name']))
 
         return ret
 
     def _search_folders(self, name, folders):
         for f in folders:
             if (name == f['name']):
-                return f['folders']
+                return ShareLatexProjectMetadata(f['folders'])
         #raise exceptions.NotFoundError(str(folders))
 
     def _metadata_file(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
         modified = datetime.datetime.fromtimestamp(1445967864)
-        return {
+        metadata = {
             'path': full_path,
             'size': 123,
             'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
-            'mimetype': 'text/plain'
+            'mimetype': 'text/plain' #TODO
         }
+        return ShareLatexFileMetadata(metadata)
 
     def _metadata_folder(self, path, folder_name):
         return {
             'path': os.path.join(path.path, folder_name),
         }
+
+    def _metadata_doc(self, path, file_name=''):
+        full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
+        modified = datetime.datetime.fromtimestamp(1445967864) # TODO
+        metadata = {
+            'path': full_path,
+            'size': 123, #TODO
+            'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
+            'mimetype': 'application/x-tex'
+        }
+        return ShareLatexFileMetadata(metadata)
 
     #@asyncio.coroutine
     #def revisions(self, path, **kwargs):
