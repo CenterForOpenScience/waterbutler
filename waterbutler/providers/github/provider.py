@@ -117,6 +117,9 @@ class GitHubProvider(provider.BaseProvider):
     def revalidate_path(self, base, path, folder=False):
         return base.child(path, _id=((base.identifier[0], None)), folder=folder)
 
+    def can_duplicate_names(self):
+        return False
+
     @property
     def default_headers(self):
         return {'Authorization': 'token {}'.format(self.token)}

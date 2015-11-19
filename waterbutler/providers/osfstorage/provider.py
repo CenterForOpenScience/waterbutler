@@ -126,6 +126,9 @@ class OSFStorageProvider(provider.BaseProvider):
             self.settings['storage'],
         )
 
+    def can_duplicate_names(self):
+        return True
+
     def can_intra_copy(self, other, path=None):
         return isinstance(other, self.__class__)
 

@@ -96,6 +96,9 @@ class GoogleDriveProvider(provider.BaseProvider):
         _id, name, mime = list(map(parts[-1].__getitem__, ('id', 'title', 'mimeType')))
         return base.child(name, _id=_id, folder='folder' in mime)
 
+    def can_duplicate_names(self):
+        return True
+
     @property
     def default_headers(self):
         return {'authorization': 'Bearer {}'.format(self.token)}

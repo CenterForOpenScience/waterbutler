@@ -195,6 +195,9 @@ class CloudFilesProvider(provider.BaseProvider):
         endpoint = _endpoint or self.endpoint
         return provider.build_url(endpoint, self.container, *path.split('/'), **query)
 
+    def can_duplicate_names(self):
+        return False
+
     def can_intra_copy(self, dest_provider, path=None):
         return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
 
