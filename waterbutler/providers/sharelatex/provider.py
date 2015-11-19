@@ -22,6 +22,10 @@ class ShareLatexProvider(provider.BaseProvider):
         self.sharelatex_url = credentials.get('sharelatex_url')
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return validate_path(path, **kwargs)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
@@ -88,8 +92,7 @@ class ShareLatexProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         if path.is_file:
-            metadata = self._metadata_file(path, str(path))
-            return (ShareLatexFileMetadata(metadata))
+            return self._metadata_file(path, str(path))
 
         ret = []
         if str(path) is '/':
@@ -125,7 +128,7 @@ class ShareLatexProvider(provider.BaseProvider):
     def _search_folders(self, name, folders):
         for f in folders:
             if (name == f['name']):
-                return ShareLatexProjectMetadata(f['folders'])
+                return (f['folders'])
         #raise exceptions.NotFoundError(str(folders))
 
     def _metadata_file(self, path, file_name=''):
@@ -140,9 +143,7 @@ class ShareLatexProvider(provider.BaseProvider):
         return ShareLatexFileMetadata(metadata)
 
     def _metadata_folder(self, path, folder_name):
-        return {
-            'path': os.path.join(path.path, folder_name),
-        }
+        return ShareLatexProjectMetadata({'path': os.path.join(path.path, folder_name)})
 
     def _metadata_doc(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
