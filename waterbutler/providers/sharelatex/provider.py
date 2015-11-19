@@ -36,7 +36,7 @@ class ShareLatexProvider(provider.BaseProvider):
         resp = yield from self.make_request(
             'GET',
             url,
-            expects=(200, 206),
+            expects=(200),
             throws=exceptions.DownloadError,
         )
 
