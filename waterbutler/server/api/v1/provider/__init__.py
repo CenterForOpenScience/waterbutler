@@ -52,6 +52,8 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
         self.path = yield from self.provider.validate_v1_path(self.path)
 
+        self.target_path = None
+
         # post-validator methods perform validations that expect that the path given in the url has
         # been verified for existence and type.
         if method in self.POST_VALIDATORS:
