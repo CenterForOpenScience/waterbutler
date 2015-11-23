@@ -552,6 +552,12 @@ class GitHubProvider(provider.BaseProvider):
                 else:
                     raise
 
+            if isinstance(data, dict):
+                raise exceptions.MetadataError(
+                    'Could not retrieve folder "{0}"'.format(str(path)),
+                    code=404,
+                )
+
             ret = []
             for item in data:
                 if item['type'] == 'dir':
