@@ -31,6 +31,11 @@ class GitHubPathPart(path.WaterButlerPathPart):
 class GitHubPath(path.WaterButlerPath):
     PART_CLASS = GitHubPathPart
 
+    def child(self, name, _id=None, folder=False):
+        if _id is None:
+            _id = (self.identifier[0], None)
+        return super().child(name, _id=_id, folder=folder)
+
 
 class GitHubProvider(provider.BaseProvider):
     NAME = 'github'
