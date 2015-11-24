@@ -12,9 +12,16 @@ from waterbutler.providers.sharelatex.metadata import ShareLatexProjectMetadata
 
 
 class ShareLatexProvider(provider.BaseProvider):
+    """Provider for ShareLaTeX"""
+
     NAME = 'sharelatex'
 
     def __init__(self, auth, credentials, settings):
+        """
+        :param dict auth: Not used
+        :param dict credentials: Contains `auth_token` and `sharelatex_url`
+        :param dict settings: Contains `project` the project_id
+        """
         super().__init__(auth, credentials, settings)
         self.project_id = settings.get('project')
         self.auth_token = credentials.get('auth_token')
@@ -29,19 +36,37 @@ class ShareLatexProvider(provider.BaseProvider):
         return WaterButlerPath(path)
 
     def build_url(self, *segments, **query):
+        """Reimplementation of build_url to add the auth token on query
+        and specify the api version
+        :param dict \*segments: Other segments to be append on url
+        :param dict \*\*query: Additional query arguments
+        """
         query['auth_token'] = self.auth_token
         return provider.build_url(self.sharelatex_url, 'api', 'v1', *segments, **query)
 
     @asyncio.coroutine
     def upload(self, stream, path, conflict='replace', **kwargs):
+        """Not implemented on ShareLaTeX
+        """
         pass
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
+        """Not implemented on ShareLaTeX
+        """
         pass
 
     @asyncio.coroutine
     def download(self, path, accept_url=False, range=None, **kwargs):
+        """Returns a ResponseWrapper (Stream) for the specified path
+        or returns the url if the accept_url is True
+        raises FileNotFoundError if the status from ShareLaTeX is not 200
+
+        :param str path: Path to the file you want to download
+        :param dict \*\*kwargs: Additional arguments that are ignored
+        :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
+        :raises: :class:`waterbutler.core.exceptions.DownloadError`
+        """
         url = self.build_url('project', self.project_id, 'file', path.path)
 
         if accept_url:
@@ -59,6 +84,15 @@ class ShareLatexProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, **kwargs):
+        """Get Metadata about the requested project
+        :param str path: The path to a project
+        :param dict \*\*kwargs: Additional arguments that are ignored
+        :rtype list: List containing
+        `waterbutler.providers.sharelatex.metadata.ShareLatexFileMetadata` and
+        `waterbutler.providers.sharelatex.metadata.ShareLatexProjectMetadata`
+        :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        """
         url = self.build_url('project', self.project_id, 'docs')
 
         resp = yield from self.make_request(
