@@ -195,6 +195,19 @@ class TestMetadata:
         for f in files:
             assert f.kind == 'file'
 
+    @async
+    @pytest.mark.aiohttpretty
+    def test_file_metadata_one_level(self, default_project_provider, default_project_metadata):
+        path = yield from default_project_provider.validate_path('/raw.txt')
+        url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
+
+        aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
+
+        result = yield from default_project_provider.metadata(path)
+
+        assert result.kind == 'file'
+        assert result.mimetime == 'text/plain'
+
 
 class TestCRUD:
 
@@ -231,3 +244,15 @@ class TestCRUD:
 
         result = yield from default_project_provider.download(path, accept_url=True)
         assert result == url
+
+
+class TestOperations:
+
+
+    def test_can_intra_copy(self, default_project_provider):
+        result = default_project_provider.can_intra_copy(default_project_provider):
+        assert result == False
+
+    def test_can_intra_move(self, default_project_provider):
+        result = default_project_provider.can_intra_move(default_project_provider)
+        assert result == False

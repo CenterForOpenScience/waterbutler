@@ -97,6 +97,10 @@ default_project_metadata = {
            'name': 'Fontin-Italicaaaa.otf',
            'mimetype': 'application/x-font-opentype'
        }, {
+           '_id': '10f6d8f1220e40386043a210',
+           'name': 'raw.txt',
+           'mimetype': 'text/plain'
+       }, {
            '_id': '0616f133296ba6caaba51c09',
            'name': 'avatar.jpg',
            'mimetype': 'application/jpeg'
