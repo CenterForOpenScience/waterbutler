@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import os
 
 from waterbutler.core import streams
@@ -11,16 +12,9 @@ from waterbutler.providers.sharelatex.metadata import ShareLatexProjectMetadata
 
 
 class ShareLatexProvider(provider.BaseProvider):
-    """Provider for ShareLaTeX"""
-
     NAME = 'sharelatex'
 
     def __init__(self, auth, credentials, settings):
-        """
-        :param dict auth: Not used
-        :param dict credentials: Contains `auth_token` and `sharelatex_url`
-        :param dict settings: Contains `project` the project_id
-        """
         super().__init__(auth, credentials, settings)
         self.project_id = settings.get('project')
         self.auth_token = credentials.get('auth_token')
@@ -35,43 +29,19 @@ class ShareLatexProvider(provider.BaseProvider):
         return WaterButlerPath(path)
 
     def build_url(self, *segments, **query):
-        """Reimplementation of build_url to add the auth token on query
-        and specify the api version
-
-        :param dict \*segments: Other segments to be append on url
-        :param dict \*\*query: Additional query arguments
-        :returns: the `url` created
-        :rtype: :class: `string`
-        """
         query['auth_token'] = self.auth_token
         return provider.build_url(self.sharelatex_url, 'api', 'v1', *segments, **query)
 
     @asyncio.coroutine
     def upload(self, stream, path, conflict='replace', **kwargs):
-        """Not implemented on ShareLaTeX
-        """
         pass
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
-        """Not implemented on ShareLaTeX
-        """
         pass
 
     @asyncio.coroutine
     def download(self, path, accept_url=False, range=None, **kwargs):
-        """Returns the url when `accept_url` otherwise returns a ResponseWrapper
-        (Stream) for the specified path and raises exception if the status from
-        ShareLaTeX is not 200
-
-        :param str path: Path to the file you want to download
-        :param dict \*\*kwargs: Additional arguments that are ignored
-        :returns: the `file stream`
-        :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
-        :returns: the `url`
-        :rtype: :class:`string`
-        :raises: :class:`waterbutler.core.exceptions.DownloadError`
-        """
         url = self.build_url('project', self.project_id, 'file', path.path)
 
         if accept_url:
@@ -89,16 +59,6 @@ class ShareLatexProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, **kwargs):
-        """Get metdata about the specified resource from this provider.
-        Will be a :class:`list` if the resource is a directory otherwise an instance of :class:`waterbutler.providers.sharelatex.metadata.ShareLatexFileMetadata`
-
-        :param str path: The path to a project
-        :param dict \*\*kwargs: Arguments to be parsed by child classes
-        :rtype: :class:`waterbutler.providers.sharelatex.metadata.ShareLatexFileMetadata`
-        :rtype: :class:`list` of :class:`ShareLatexFileMetadata` and :class:`ShareLatexFolderMetadata`
-        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
-        :raises: :class:`waterbutler.core.exceptions.MetadataError`
-        """
         url = self.build_url('project', self.project_id, 'docs')
 
         resp = yield from self.make_request(
@@ -124,7 +84,7 @@ class ShareLatexProvider(provider.BaseProvider):
             for doc in data['rootFolder'][0]['docs']:
                 ret.append(self._metadata_doc(path, doc['name']))
             for fil in data['rootFolder'][0]['fileRefs']:
-                ret.append(self._metadata_file(path, fil['name'], fil['mimetype']))
+                ret.append(self._metadata_file(path, fil['name']))
             for fol in data['rootFolder'][0]['folders']:
                 ret.append(self._metadata_folder(path, fol['name']))
 
@@ -142,7 +102,7 @@ class ShareLatexProvider(provider.BaseProvider):
                     ret.append(self._metadata_doc(path, doc['name']))
 
                 for filename in f['fileRefs']:
-                    ret.append(self._metadata_file(path, filename['name'], filename['mimetype']))
+                    ret.append(self._metadata_file(path, filename['name']))
 
             for f in folders:
                 ret.append(self._metadata_folder(path, f['name']))
@@ -154,12 +114,14 @@ class ShareLatexProvider(provider.BaseProvider):
             if (name == f['name']):
                 return (f['folders'])
 
-    def _metadata_file(self, path, file_name='', mimetype='text/plain'):
+    def _metadata_file(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
+        modified = datetime.datetime.fromtimestamp(1445967864)
         metadata = {
             'path': full_path,
-            'size': 123,  # TODO
-            'mimetype': mimetype
+            'size': 123,
+            'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
+            'mimetype': 'text/plain'  # TODO
         }
         return ShareLatexFileMetadata(metadata)
 
@@ -168,9 +130,11 @@ class ShareLatexProvider(provider.BaseProvider):
 
     def _metadata_doc(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
+        modified = datetime.datetime.fromtimestamp(1445967864)  # TODO
         metadata = {
             'path': full_path,
             'size': 123,  # TODO
+            'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
             'mimetype': 'application/x-tex'
         }
         return ShareLatexFileMetadata(metadata)

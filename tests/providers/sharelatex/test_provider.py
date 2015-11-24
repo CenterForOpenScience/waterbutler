@@ -66,37 +66,16 @@ def default_project_provider(auth, credentials, settings):
 def default_project_metadata():
     return fixtures.default_project_metadata
 
-@pytest.fixture
-def only_docs_metadata():
-    return fixtures.only_docs_metadata
-
 
 class TestMetadata:
 
-
-    def only_files(self, items):
-        result = []
-        for f in items:
-            if f.kind == 'file':
-                result.append(f)
-        return result
-
-    def contains_file_with_type(self, items, t):
-        result = []
-        files = self.only_files(items)
-        for f in files:
-            path = str(f.path)
-            if path.find(t) != -1:
-                result.append(f)
-        return result
 
     def check_metadata_is_folder_with_path_and_name(self, metadata, path):
         assert metadata[0].kind == 'file'
         assert metadata[0].provider == 'sharelatex'
         assert metadata[0].path == '/projetoprincipal.tex'
-        assert metadata[0].size == int('123')
-        assert metadata[0].content_type == 'application/x-tex'
         # TODO: test size, mimetime, other files and folders.
+
 
     @async
     @pytest.mark.aiohttpretty
@@ -110,17 +89,8 @@ class TestMetadata:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_metadata_not_found(self, default_project_provider, empty_metadata):
-        path = yield from default_project_provider.validate_path('/')
-        url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
-        aiohttpretty.register_json_uri('GET', url, status=404)
-
-        with pytest.raises(exceptions.MetadataError) as e:
-            yield from default_project_provider.metadata(path)
-
-    @async
-    @pytest.mark.aiohttpretty
     def test_root_folder_with_one_folder(self, default_project_provider, default_project_metadata):
+
         root_folder_path = yield from default_project_provider.validate_path('/')
         root_folder_url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
@@ -133,6 +103,7 @@ class TestMetadata:
     @async
     @pytest.mark.aiohttpretty
     def test_root_folder_without_folders(self, default_project_provider, only_files_metadata):
+
         root_folder_path = yield from default_project_provider.validate_path('/')
         root_folder_url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
@@ -140,11 +111,13 @@ class TestMetadata:
 
         result = yield from default_project_provider.metadata(root_folder_path)
         for f in result:
-            assert f.kind == 'file'
+            assert f.kind is 'file'
+
 
     @async
     @pytest.mark.aiohttpretty
     def test_root_folder_without_files(self, default_project_provider, only_folders_metadata):
+
         root_folder_path = yield from default_project_provider.validate_path('/')
         root_folder_url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
@@ -152,48 +125,7 @@ class TestMetadata:
 
         result = yield from default_project_provider.metadata(root_folder_path)
         for f in result:
-            assert f.kind == 'folder'
-
-    @async
-    @pytest.mark.aiohttpretty
-    def test_tex_metadata(self, default_project_provider, only_docs_metadata):
-        path = yield from default_project_provider.validate_path('/')
-        url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
-
-        aiohttpretty.register_json_uri('GET', url, body=only_docs_metadata)
-
-        result = yield from default_project_provider.metadata(path)
-        for f in result:
-            p = str(f.path)
-            assert f.content_type == 'application/x-tex'
-            assert p.find('.tex') != -1
-
-    @async
-    @pytest.mark.aiohttpretty
-    def test_other_files_metadata_one_level(self, default_project_provider, default_project_metadata):
-        path = yield from default_project_provider.validate_path('/')
-        url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
-
-        aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
-
-        result = yield from default_project_provider.metadata(path)
-
-        fonts = self.contains_file_with_type(result, 'otf')
-        images = self.contains_file_with_type(result, 'jpg')
-        files = self.only_files(result)
-
-        assert fonts
-        assert images
-        assert files
-
-        for font in fonts:
-            assert font.content_type == 'application/x-font-opentype'
-
-        for image in images:
-            assert image.content_type == 'application/jpeg'
-
-        for f in files:
-            assert f.kind == 'file'
+            assert f.kind is 'folder'
 
 
 class TestCRUD:
