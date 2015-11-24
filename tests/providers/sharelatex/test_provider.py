@@ -93,7 +93,7 @@ class TestMetadata:
         assert metadata[0].kind == 'file'
         assert metadata[0].provider == 'sharelatex'
         assert metadata[0].path == '/projetoprincipal.tex'
-        assert metadata[0].size == '123'
+        assert metadata[0].size == int('123')
         assert metadata[0].content_type == 'application/x-tex'
         # TODO: test size, mimetime, other files and folders.
 

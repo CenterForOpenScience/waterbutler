@@ -29,6 +29,10 @@ class ShareLatexFileMetadata(BaseShareLatexMetadata, metadata.BaseFileMetadata):
         return self.raw['modified']
 
     @property
+    def modified(self):
+        return None
+
+    @property
     def content_type(self):
         return self.raw['mimetype']
 

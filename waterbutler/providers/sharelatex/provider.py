@@ -118,7 +118,7 @@ class ShareLatexProvider(provider.BaseProvider):
             for doc in data['rootFolder'][0]['docs']:
                 ret.append(self._metadata_doc(path, doc['name']))
             for fil in data['rootFolder'][0]['fileRefs']:
-                ret.append(self._metadata_file(path, fil['name']))
+                ret.append(self._metadata_file(path, fil['name'], fil['mimetype']))
             for fol in data['rootFolder'][0]['folders']:
                 ret.append(self._metadata_folder(path, fol['name']))
 
@@ -136,7 +136,7 @@ class ShareLatexProvider(provider.BaseProvider):
                     ret.append(self._metadata_doc(path, doc['name']))
 
                 for filename in f['fileRefs']:
-                    ret.append(self._metadata_file(path, filename['name']))
+                    ret.append(self._metadata_file(path, filename['name'], filename['mimetype']))
 
             for f in folders:
                 ret.append(self._metadata_folder(path, f['name']))
@@ -148,14 +148,12 @@ class ShareLatexProvider(provider.BaseProvider):
             if (name == f['name']):
                 return (f['folders'])
 
-    def _metadata_file(self, path, file_name=''):
+    def _metadata_file(self, path, file_name='', mimetype='text/plain'):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
-        modified = datetime.datetime.fromtimestamp(1445967864)
         metadata = {
             'path': full_path,
-            'size': 123,
-            'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
-            'mimetype': 'text/plain'  # TODO
+            'size': 123,  # TODO
+            'mimetype': mimetype
         }
         return ShareLatexFileMetadata(metadata)
 
@@ -164,11 +162,9 @@ class ShareLatexProvider(provider.BaseProvider):
 
     def _metadata_doc(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
-        modified = datetime.datetime.fromtimestamp(1445967864)  # TODO
         metadata = {
             'path': full_path,
             'size': 123,  # TODO
-            'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
             'mimetype': 'application/x-tex'
         }
         return ShareLatexFileMetadata(metadata)
