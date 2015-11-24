@@ -49,7 +49,6 @@ class ShareLatexProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp, None, None, True)
 
-
     @asyncio.coroutine
     def metadata(self, path, **kwargs):
         url = self.build_url('project', self.project_id, 'docs')
