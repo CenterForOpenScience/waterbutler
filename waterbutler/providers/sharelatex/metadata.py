@@ -18,7 +18,7 @@ class ShareLatexFileMetadata(BaseShareLatexMetadata, metadata.BaseFileMetadata):
 
     @property
     def path(self):
-        return self.build_path(self.raw['path'])
+        return self.raw['name']
 
     @property
     def size(self):

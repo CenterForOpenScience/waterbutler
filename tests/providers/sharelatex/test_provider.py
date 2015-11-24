@@ -181,6 +181,10 @@ class TestMetadata:
         images = self.contain_file_with_type(result, 'jpg')
         files = self.only_files(result)
 
+        assert fonts
+        assert images
+        assert files
+
         for font in fonts:
             assert font.content_type == 'application/x-font-opentype'
 
@@ -190,9 +194,6 @@ class TestMetadata:
         for f in files:
             assert f.kind == 'file'
 
-        assert fonts
-        assert images
-        assert files
 
 class TestCRUD:
 
