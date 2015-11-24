@@ -172,13 +172,13 @@ class TestMetadata:
     def test_other_files_metadata(self, default_project_provider, default_project_metadata):
         path = yield from default_project_provider.validate_path('/')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
-        fonts = self.contain_file_with_type(result, 'otf')
-        images = self.contain_file_with_type(result, 'jpg')
-        files = self.only_files(result)
-
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
         result = yield from default_project_provider.metadata(path)
+
+        fonts = self.contain_file_with_type(result, 'otf')
+        images = self.contain_file_with_type(result, 'jpg')
+        files = self.only_files(result)
 
         for font in fonts:
             assert font.content_type == 'application/x-font-opentype'
