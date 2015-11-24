@@ -14,3 +14,4 @@ Providers
    provider.github
    provider.googledrive
    provider.osfstorage
+   provider.sharelatex

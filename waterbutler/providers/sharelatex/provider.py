@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import os
 
 from waterbutler.core import streams
@@ -38,8 +37,11 @@ class ShareLatexProvider(provider.BaseProvider):
     def build_url(self, *segments, **query):
         """Reimplementation of build_url to add the auth token on query
         and specify the api version
+
         :param dict \*segments: Other segments to be append on url
         :param dict \*\*query: Additional query arguments
+        :returns: the `url` created
+        :rtype: :class: `string`
         """
         query['auth_token'] = self.auth_token
         return provider.build_url(self.sharelatex_url, 'api', 'v1', *segments, **query)
@@ -58,13 +60,16 @@ class ShareLatexProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def download(self, path, accept_url=False, range=None, **kwargs):
-        """Returns a ResponseWrapper (Stream) for the specified path
-        or returns the url if the accept_url is True
-        raises FileNotFoundError if the status from ShareLaTeX is not 200
+        """Returns the url when `accept_url` otherwise returns a ResponseWrapper
+        (Stream) for the specified path and raises exception if the status from
+        ShareLaTeX is not 200
 
         :param str path: Path to the file you want to download
         :param dict \*\*kwargs: Additional arguments that are ignored
+        :returns: the `file stream`
         :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
+        :returns: the `url`
+        :rtype: :class:`string`
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
         url = self.build_url('project', self.project_id, 'file', path.path)
@@ -84,14 +89,15 @@ class ShareLatexProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, **kwargs):
-        """Get Metadata about the requested project
+        """Get metdata about the specified resource from this provider.
+        Will be a :class:`list` if the resource is a directory otherwise an instance of :class:`waterbutler.providers.sharelatex.metadata.ShareLatexFileMetadata`
+
         :param str path: The path to a project
-        :param dict \*\*kwargs: Additional arguments that are ignored
-        :rtype list: List containing
-        `waterbutler.providers.sharelatex.metadata.ShareLatexFileMetadata` and
-        `waterbutler.providers.sharelatex.metadata.ShareLatexProjectMetadata`
-        :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        :param dict \*\*kwargs: Arguments to be parsed by child classes
+        :rtype: :class:`waterbutler.providers.sharelatex.metadata.ShareLatexFileMetadata`
+        :rtype: :class:`list` of :class:`ShareLatexFileMetadata` and :class:`ShareLatexFolderMetadata`
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :raises: :class:`waterbutler.core.exceptions.MetadataError`
         """
         url = self.build_url('project', self.project_id, 'docs')
 

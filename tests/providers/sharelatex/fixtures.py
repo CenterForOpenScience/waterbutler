@@ -10,7 +10,7 @@ default_project_metadata = {
        'name': 'rootFolder',
        'folders': [{
            '_id': '5616f96b296ba6c34bd55c5c',
-           'name': 'OutroDiretorioNaRaiz',
+           'name': 'otherDirOnRoot',
            'folders': [{
                '_id': '56170549296ba6c34bd55d67',
                'name': 'teste1',
@@ -31,7 +31,7 @@ default_project_metadata = {
            'fileRefs': [],
            'docs': [{
                '_id': '5616fc33296ba6c34bd55c89',
-               'name': 'name.tex',
+               'name': 'newName.tex',
                'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fc7b296ba6c34bd55c90',
@@ -43,11 +43,11 @@ default_project_metadata = {
                'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fc88296ba6c34bd55c92',
-               'name': 'name.tex',
+               'name': 'nameOther.tex',
                'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fccd296ba6c34bd55c93',
-               'name': 'name1.tex',
+               'name': 'name12.tex',
                'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fd6f296ba6c34bd55c98',
@@ -55,15 +55,15 @@ default_project_metadata = {
                'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fdb2296ba6c34bd55cae',
-               'name': 'name1.tex',
+               'name': 'name2.tex',
                'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fdbf296ba6c34bd55caf',
-               'name': 'name1.tex',
+               'name': 'name3.tex',
                'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fdd2296ba6c34bd55cb8',
-               'name': 'nameNEISMALUCO.tex',
+               'name': 'another.tex',
                'mimetype': 'application/x-tex'
            }]
        }, {
@@ -203,11 +203,11 @@ only_docs_metadata = {
        'fileRefs': [],
        'docs': [{
            '_id': '5616fc33296ba6c34bd55c89',
-           'name': 'name.tex',
+           'name': '123name.tex',
            'mimetype': 'application/x-tex'
        }, {
            '_id': '5616fc7b296ba6c34bd55c90',
-           'name': 'name.tex',
+           'name': 'name_test.tex',
            'mimetype': 'application/x-tex'
        }, {
            '_id': '5616fc7e296ba6c34bd55c91',
@@ -215,27 +215,27 @@ only_docs_metadata = {
            'mimetype': 'application/x-tex'
        }, {
            '_id': '5616fc88296ba6c34bd55c92',
-           'name': 'name.tex',
+           'name': 'name-novo.tex',
            'mimetype': 'application/x-tex'
        }, {
            '_id': '5616fccd296ba6c34bd55c93',
-           'name': 'name1.tex',
+           'name': 'name5.tex',
            'mimetype': 'application/x-tex'
        }, {
            '_id': '5616fd6f296ba6c34bd55c98',
-           'name': 'name1.tex',
+           'name': 'name6.tex',
            'mimetype': 'application/x-tex'
        }, {
            '_id': '5616fdb2296ba6c34bd55cae',
-           'name': 'name1.tex',
+           'name': 'name7.tex',
            'mimetype': 'application/x-tex'
        }, {
            '_id': '5616fdbf296ba6c34bd55caf',
-           'name': 'name1.tex',
+           'name': 'name8.tex',
            'mimetype': 'application/x-tex'
        }, {
            '_id': '5616fdd2296ba6c34bd55cb8',
-           'name': 'nameNEISMALUCO.tex',
+           'name': 'other.tex',
            'mimetype': 'application/x-tex'
        }]
     }]
