@@ -96,7 +96,7 @@ class TestMetadata:
         assert metadata[0].path == '/projetoprincipal.tex'
         assert metadata[0].size == int('123')
         assert metadata[0].content_type == 'application/x-tex'
-        # TODO: test size, mimetime, other files and folders.
+        # TODO: test size, mimetype, other files and folders.
 
     @async
     @pytest.mark.aiohttpretty
@@ -206,7 +206,7 @@ class TestMetadata:
         result = yield from default_project_provider.metadata(path)
 
         assert result.kind == 'file'
-        assert result.mimetime == 'text/plain'
+        assert result.content_type == 'text/plain'
 
 
 class TestCRUD:
