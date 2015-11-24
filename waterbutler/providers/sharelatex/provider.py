@@ -33,6 +33,14 @@ class ShareLatexProvider(provider.BaseProvider):
         return provider.build_url(self.sharelatex_url, 'api', 'v1', *segments, **query)
 
     @asyncio.coroutine
+    def upload(self, stream, path, conflict='replace', **kwargs):
+        pass
+
+    @asyncio.coroutine
+    def delete(self, path, **kwargs):
+        pass
+
+    @asyncio.coroutine
     def download(self, path, accept_url=False, range=None, **kwargs):
         url = self.build_url('project', self.project_id, 'file', path.path)
 

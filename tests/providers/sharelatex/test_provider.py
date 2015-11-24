@@ -163,24 +163,3 @@ class TestCRUD:
 
         result = yield from default_project_provider.download(path, accept_url=True)
         assert result == url
-
-    @async
-    @pytest.mark.aiohttpretty
-    def test_create_folder(self, default_project_provider):
-        path = yield from default_project_provider.validate_path('/')
-        with pytest.raises(exceptions.NotImplementedError) as e:
-            yield from empty_project_provider.create_folder(path)
-
-    @async
-    @pytest.mark.aiohttpretty
-    def test_upload(self, default_project_provider):
-        path = yield from default_project_provider.validate_path('/')
-        with pytest.raises(exceptions.NotImplementedError) as e:
-            yield from empty_project_provider.upload(path)
-
-    @async
-    @pytest.mark.aiohttpretty
-    def test_delete(self, default_project_provider):
-        path = yield from default_project_provider.validate_path('/')
-        with pytest.raises(exceptions.NotImplementedError) as e:
-            yield from empty_project_provider.delete(path)
