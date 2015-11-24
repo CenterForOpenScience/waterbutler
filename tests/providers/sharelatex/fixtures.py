@@ -1,4 +1,3 @@
-
 empty_project_id = '00000'
 
 default_project_metadata = {
@@ -21,11 +20,7 @@ default_project_metadata = {
                '_id': '5617055e296ba6c34bd55d70',
                'name': 'withJPEGImage',
                'folders': [],
-               'fileRefs': [{
-                   '_id': '0616f133296ba6caaba51c09',
-                   'name': 'avatar.jpg',
-                   'mimetype': 'application/jpeg'
-                   }],
+               'fileRefs': [],
                'docs': []
            }],
            'fileRefs': [],
@@ -101,6 +96,10 @@ default_project_metadata = {
            '_id': '5613d8f99a0e10086003a3bf',
            'name': 'Fontin-Italicaaaa.otf',
            'mimetype': 'application/x-font-opentype'
+       }, {
+           '_id': '0616f133296ba6caaba51c09',
+           'name': 'avatar.jpg',
+           'mimetype': 'application/jpeg'
        }],
        'docs': [{
            '_id': '5613d8f99a0e10086003a3c2',
