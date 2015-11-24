@@ -16,7 +16,7 @@ default_project_metadata = {
                'folders': [],
                'fileRefs': [],
                'docs': []
-           }]
+           }],
            'fileRefs': [],
            'docs': [{
                '_id': '5616fc33296ba6c34bd55c89',
