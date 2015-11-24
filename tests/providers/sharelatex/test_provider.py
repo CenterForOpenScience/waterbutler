@@ -90,6 +90,7 @@ class TestMetadata:
         with pytest.raises(exceptions.NotFoundError) as e:
             yield from empty_project_provider.metadata(root_folder_path)
 
+    @async
     @pytest.mark.aiohttpretty
     def test_metadata_not_found(self, default_project_provider, empty_metadata):
         path = yield from default_project_provider.validate_path('/')
@@ -146,7 +147,7 @@ class TestMetadata:
         result = yield from default_project_provider.metadata(path)
 
         for f in result:
-            f.mimetype == 'application/x-tex'
+            f.content_type == 'application/x-tex'
 
 
 class TestCRUD:
