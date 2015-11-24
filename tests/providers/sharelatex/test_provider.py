@@ -250,7 +250,7 @@ class TestOperations:
 
 
     def test_can_intra_copy(self, default_project_provider):
-        result = default_project_provider.can_intra_copy(default_project_provider):
+        result = default_project_provider.can_intra_copy(default_project_provider)
         assert result == False
 
     def test_can_intra_move(self, default_project_provider):
