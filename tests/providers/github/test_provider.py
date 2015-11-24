@@ -18,6 +18,7 @@ from waterbutler.core.provider import build_url
 
 from waterbutler.providers.github import GitHubProvider
 from waterbutler.providers.github import settings as github_settings
+from waterbutler.providers.github.provider import GitHubPath
 from waterbutler.providers.github.metadata import GitHubRevision
 from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
 from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
@@ -468,6 +469,15 @@ class TestHelpers:
 
 
 class TestValidatePath:
+
+    def test_child_gets_branch(self):
+        parent = GitHubPath('/', _ids=[('master', None)], folder=True)
+
+        child_file = parent.child('childfile', folder=False)
+        assert child_file.identifier[0] == 'master'
+
+        child_folder = parent.child('childfolder', folder=True)
+        assert child_folder.identifier[0] == 'master'
 
     @async
     @pytest.mark.aiohttpretty
