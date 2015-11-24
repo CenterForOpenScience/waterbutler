@@ -83,7 +83,8 @@ class TestMetadata:
 
     def contain_file_with_type(self, items, t):
         result = []
-        for f in self.only_files(items):
+        files = self.only_files(items)
+        for f in files:
             path = str(f.path)
             if path.find(t) != -1:
                 result.append(f)
@@ -191,7 +192,7 @@ class TestMetadata:
 
         assert fonts
         assert images
-        assert f
+        assert files
 
 class TestCRUD:
 
