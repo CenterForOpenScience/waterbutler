@@ -16,13 +16,7 @@ default_project_metadata = {
                'folders': [],
                'fileRefs': [],
                'docs': []
-           }, {
-               '_id': '5617055e296ba6c34bd55d70',
-               'name': 'withJPEGImage',
-               'folders': [],
-               'fileRefs': [],
-               'docs': []
-           }],
+           }]
            'fileRefs': [],
            'docs': [{
                '_id': '5616fc33296ba6c34bd55c89',
@@ -67,9 +61,27 @@ default_project_metadata = {
            'folders': [{
                '_id': '562fc8add03a0a453168050b',
                'name': 'fora2',
-               'folders': [],
+               'folders': [{
+                   '_id': '12220542291baacf4bf55dff',
+                   'name': 'secondLevel',
+                   'folders': [],
+                   'fileRefs': [{
+                       '_id': '01aacdd2dd62a0e31be22131',
+                       'name': 'more.txt',
+                       'mimetype': 'text/plain'
+                    }],
+                   'docs': [{
+                       '_id': '99aaf8f99a1110ef6002a3c1',
+                       'name': 'document.tex',
+                       'mimetype': 'application/x-tex'
+                    }]
+                }],
                'fileRefs': [],
-               'docs': []
+               'docs': [{
+                   '_id': '0feb01f91a0010abc002a0b0',
+                   'name': 'example.tex',
+                   'mimetype': 'application/x-tex'
+                }]
            }, {
                '_id': '562fc8c3d03a0a453168050d',
                'name': 'fora3',
@@ -77,7 +89,11 @@ default_project_metadata = {
                'fileRefs': [],
                'docs': []
            }],
-           'fileRefs': [],
+           'fileRefs': [{
+               '_id': '1616cdd21962a0c31bd22338',
+               'name': 'pngImage.png',
+               'mimetype': 'image/png'
+            }],
            'docs': []
        }],
        'fileRefs': [{
@@ -103,7 +119,7 @@ default_project_metadata = {
        }, {
            '_id': '0616f133296ba6caaba51c09',
            'name': 'avatar.jpg',
-           'mimetype': 'application/jpeg'
+           'mimetype': 'image/jpeg'
        }],
        'docs': [{
            '_id': '5613d8f99a0e10086003a3c2',

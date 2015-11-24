@@ -156,7 +156,7 @@ class TestMetadata:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_tex_metadata(self, default_project_provider, only_docs_metadata):
+    def test_tex_on_root_folder(self, default_project_provider, only_docs_metadata):
         path = yield from default_project_provider.validate_path('/')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
@@ -170,7 +170,7 @@ class TestMetadata:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_other_files_metadata_one_level(self, default_project_provider, default_project_metadata):
+    def test_other_files_on_root_folder(self, default_project_provider, default_project_metadata):
         path = yield from default_project_provider.validate_path('/')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
@@ -190,14 +190,14 @@ class TestMetadata:
             assert font.content_type == 'application/x-font-opentype'
 
         for image in images:
-            assert image.content_type == 'application/jpeg'
+            assert image.content_type == 'image/jpeg'
 
         for f in files:
             assert f.kind == 'file'
 
     @async
     @pytest.mark.aiohttpretty
-    def test_file_metadata_one_level(self, default_project_provider, default_project_metadata):
+    def test_file_on_root_folder(self, default_project_provider, default_project_metadata):
         path = yield from default_project_provider.validate_path('/raw.txt')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
@@ -207,6 +207,83 @@ class TestMetadata:
 
         assert result.kind == 'file'
         assert result.content_type == 'text/plain'
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_file_in_one_level_dir(self, default_project_provider, default_project_metadata):
+        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/pngImage.png')
+        url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
+
+        aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
+
+        result = yield from default_project_provider.metadata(path)
+
+        assert result.kind == 'file'
+        assert result.content_type == 'image/png'
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_folder_in_one_level_dir(self, default_project_provider, default_project_metadata):
+        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/')
+        url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
+
+        aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
+
+        result = yield from default_project_provider.metadata(path)
+
+        assert result
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_file_in_two_level_dir(self, default_project_provider, default_project_metadata):
+        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/more.txt')
+        url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
+
+        aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
+
+        result = yield from default_project_provider.metadata(path)
+
+        assert result.kind == 'file'
+        assert result.content_type == 'text/plain'
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_folder_in_two_level_dir(self, default_project_provider, default_project_metadata):
+        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/')
+        url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
+
+        aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
+
+        result = yield from default_project_provider.metadata(path)
+
+        assert result
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_tex_in_one_level_dir(self, default_project_provider, default_project_metadata):
+        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/example.tex')
+        url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
+
+        aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
+
+        result = yield from default_project_provider.metadata(path)
+
+        assert result.kind == 'file'
+        assert result.content_type == 'image/png'
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_tex_in_two_level_dir(self, default_project_provider, default_project_metadata):
+        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/document.tex')
+        url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
+
+        aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
+
+        result = yield from default_project_provider.metadata(path)
+
+        assert result.kind == 'file'
+        assert result.content_type = 'application/x-tex'
+
 
 
 class TestCRUD:
