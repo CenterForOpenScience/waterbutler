@@ -115,13 +115,6 @@ class ShareLatexProvider(provider.BaseProvider):
         if not data:
             raise exceptions.NotFoundError(str(path))
 
-        if path.is_file:
-            p = str(path)
-            if p.find('.tex'):
-                return self._metadata_doc(path, str(path))
-
-            return self._metadata_file(path, str(path))
-
         ret = []
         if str(path) is '/':
 
@@ -151,6 +144,10 @@ class ShareLatexProvider(provider.BaseProvider):
             for f in folders:
                 ret.append(self._metadata_folder(path, f['name']))
 
+        if path.is_file:
+            for x in ret:
+                if x.path == path:
+                    return x
         return ret
 
     def _search_folders(self, name, folders):
