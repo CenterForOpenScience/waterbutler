@@ -136,7 +136,7 @@ class TestCRUD:
     def test_download_error(self, empty_project_provider):
         path = yield from empty_project_provider.validate_path('/')
         url = empty_project_provider.build_url('project', empty_project_provider.project_id, 'file', path.path)
-        aiohttpretty.register_json_uri('GET', url)
+        aiohttpretty.register_uri('GET', url, status=404)
 
         with pytest.raises(exceptions.DownloadError) as e:
             yield from empty_project_provider.download(path)
@@ -147,7 +147,7 @@ class TestCRUD:
         body = b'castle on a cloud'
         path = yield from default_project_provider.validate_path('/raw.txt')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'file', path.path)
-        aiohttpretty.register_json_uri('GET', url, body=body)
+        aiohttpretty.register_uri('GET', url, body=body)
 
         result = yield from default_project_provider.download(path)
         content = yield from result.read()
@@ -159,7 +159,7 @@ class TestCRUD:
     def test_download_when_accept_url(self, default_project_provider):
         path = yield from default_project_provider.validate_path('/raw.txt')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'file', path.path)
-        aiohttpretty.register_json_uri('GET', url)
+        aiohttpretty.register_uri('GET', url)
 
         result = yield from default_project_provider.download(path, accept_url=True)
         assert result == url
