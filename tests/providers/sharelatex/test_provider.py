@@ -125,7 +125,7 @@ class TestMetadata:
 
         result = yield from default_project_provider.metadata(root_folder_path)
         for f in result:
-            assert f.kind not 'file'
+            assert f.kind is 'folder'
 
 
 class TestCRUD:
