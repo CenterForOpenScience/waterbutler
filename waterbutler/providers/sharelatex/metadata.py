@@ -26,10 +26,6 @@ class ShareLatexFileMetadata(BaseShareLatexMetadata, metadata.BaseFileMetadata):
 
     @property
     def modified(self):
-        return self.raw['modified']
-
-    @property
-    def modified(self):
         return None
 
     @property
