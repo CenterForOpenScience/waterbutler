@@ -116,6 +116,10 @@ class ShareLatexProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         if path.is_file:
+            p = str(path)
+            if p.find('.tex'):
+                return self._metadata_doc(path, str(path))
+
             return self._metadata_file(path, str(path))
 
         ret = []
