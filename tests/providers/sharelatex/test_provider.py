@@ -81,9 +81,10 @@ class TestMetadata:
                 result.append(f)
         return result
 
-    def contain_file_with_type(self, items, t):
+    def contains_file_with_type(self, items, t):
         result = []
-        for f in self.only_files(items):
+        files = self.only_files(items)
+        for f in files:
             path = str(f.path)
             if path.find(t) != -1:
                 result.append(f)
@@ -169,16 +170,21 @@ class TestMetadata:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_other_files_metadata(self, default_project_provider, default_project_metadata):
+    def test_other_files_metadata_one_level(self, default_project_provider, default_project_metadata):
         path = yield from default_project_provider.validate_path('/')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
+
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
         result = yield from default_project_provider.metadata(path)
 
-        fonts = self.contain_file_with_type(result, 'otf')
-        images = self.contain_file_with_type(result, 'jpg')
+        fonts = self.contains_file_with_type(result, 'otf')
+        images = self.contains_file_with_type(result, 'jpg')
         files = self.only_files(result)
+
+        assert fonts
+        assert images
+        assert files
 
         for font in fonts:
             assert font.content_type == 'application/x-font-opentype'
@@ -189,9 +195,6 @@ class TestMetadata:
         for f in files:
             assert f.kind == 'file'
 
-        assert fonts
-        assert images
-        assert f
 
 class TestCRUD:
 
