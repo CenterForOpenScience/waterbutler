@@ -282,7 +282,7 @@ class TestMetadata:
         result = yield from default_project_provider.metadata(path)
 
         assert result.kind == 'file'
-        assert result.content_type = 'application/x-tex'
+        assert result.content_type == 'application/x-tex'
 
 
 
