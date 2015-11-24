@@ -1,5 +1,3 @@
-empty_project_metadata = {}
-
 empty_project_id = '00000'
 
 default_project_metadata = {
@@ -90,5 +88,82 @@ default_project_metadata = {
            '_id': '5613d8f99a0e10086003a3c2',
            'name': 'projetoprincipal.tex'
        }]
+    }]
+}
+
+only_files_metadata = {
+    '_id': '5613d8f89a0e10086003a3bd',
+    'name': 'Professional CV',
+    'rootDoc_id': '5613d8f99a0e10086003a3c2',
+    'rootFolder': [{
+       '_id': '5613d8f89a0e10086003a3bc',
+       'name': 'rootFolder',
+       'folders': [],
+       'fileRefs': [{
+           '_id': '5613d8f99a0e10086003a3be',
+           'name': 'Fontin-Bold.otf'
+       }, {
+           '_id': '5613d8f99a0e10086003a3c1',
+           'name': 'Fontin.otf'
+       }, {
+           '_id': '5613d8f99a0e10086003a3c0',
+           'name': 'Fontin-SmallCaps.otf'
+       }, {
+           '_id': '5613d8f99a0e10086003a3bf',
+           'name': 'Fontin-Italicaaaa.otf'
+       }],
+       'docs': [{
+           '_id': '5613d8f99a0e10086003a3c2',
+           'name': 'projetoprincipal.tex'
+       }]
+    }]
+}
+
+only_folders_metadata = {
+    '_id': '5613d8f89a0e10086003a3bd',
+    'name': 'Professional CV',
+    'rootDoc_id': '5613d8f99a0e10086003a3c2',
+    'rootFolder': [{
+       '_id': '5613d8f89a0e10086003a3bc',
+       'name': 'rootFolder',
+       'folders': [{
+           '_id': '5616f96b296ba6c34bd55c5c',
+           'name': 'OutroDiretorioNaRaiz',
+           'folders': [{
+               '_id': '56170549296ba6c34bd55d67',
+               'name': 'teste1',
+               'folders': [],
+               'fileRefs': [],
+               'docs': []
+           }, {
+               '_id': '5617055e296ba6c34bd55d70',
+               'name': 'teste2',
+               'folders': [],
+               'fileRefs': [],
+               'docs': []
+           }],
+           'fileRefs': [],
+           'docs': []
+       }, {
+           '_id': '562fc7a5d03a0a45316804b9',
+           'name': 'UmDiretorioNaRaiz',
+           'folders': [{
+               '_id': '562fc8add03a0a453168050b',
+               'name': 'fora2',
+               'folders': [],
+               'fileRefs': [],
+               'docs': []
+           }, {
+               '_id': '562fc8c3d03a0a453168050d',
+               'name': 'fora3',
+               'folders': [],
+               'fileRefs': [],
+               'docs': []
+           }],
+           'fileRefs': [],
+           'docs': []
+       }],
+       'fileRefs': [],
+       'docs': []
     }]
 }

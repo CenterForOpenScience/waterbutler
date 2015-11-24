@@ -49,32 +49,6 @@ class ShareLatexProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp, None, None, True)
 
-    @asyncio.coroutine
-    def upload(self, stream, path, conflict='replace', **kwargs):
-        path, exists = yield from self.handle_name_conflict(path, conflict=conflict)
-        url = self._build_project_url(path.path)
-
-        resp = yield from self.make_request(
-            'PUT',
-            url,
-            data=stream,
-            headers={'Content-Length': str(stream.size)},
-            expects=(200, 201, ),
-            throws=exceptions.UploadError,
-        )
-
-        data = yield from resp.json()
-        return ShareLatexFileMetadata(data), not exists
-
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
-        url = self._build_project_url(path.path)
-        yield from self.make_request(
-            'DELETE',
-            url,
-            expects=(200, 204, ),
-            throws=exceptions.DeleteError,
-        )
 
     @asyncio.coroutine
     def metadata(self, path, **kwargs):
