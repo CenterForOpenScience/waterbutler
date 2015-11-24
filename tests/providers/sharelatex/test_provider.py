@@ -78,7 +78,7 @@ class TestMetadata:
         result = []
         for f in items:
             if f.kind == 'file':
-                result.push(f)
+                result.append(f)
         return result
 
     def contain_file_with_type(self, items, t):
@@ -86,7 +86,7 @@ class TestMetadata:
         for f in self.only_files(items):
             path = str(f.path)
             if path.find(t) != -1:
-                result.push(f)
+                result.append(f)
         return result
 
     def check_metadata_is_folder_with_path_and_name(self, metadata, path):
