@@ -77,7 +77,7 @@ class TestMetadata:
     def only_files(self, items):
         result = []
         for f in items:
-            if f.kind is 'file':
+            if f.kind == 'file':
                 result.push(f)
         return result
 
@@ -85,7 +85,7 @@ class TestMetadata:
         result = []
         for f in self.only_files(items):
             path = str(f.path)
-            if path.find(t) is not -1:
+            if path.find(t) != -1:
                 result.push(f)
         return result
 
@@ -139,7 +139,7 @@ class TestMetadata:
 
         result = yield from default_project_provider.metadata(root_folder_path)
         for f in result:
-            assert f.kind is 'file'
+            assert f.kind == 'file'
 
     @async
     @pytest.mark.aiohttpretty
@@ -151,7 +151,7 @@ class TestMetadata:
 
         result = yield from default_project_provider.metadata(root_folder_path)
         for f in result:
-            assert f.kind is 'folder'
+            assert f.kind == 'folder'
 
     @async
     @pytest.mark.aiohttpretty
@@ -165,7 +165,7 @@ class TestMetadata:
         for f in result:
             p = str(f.path)
             assert f.content_type == 'application/x-tex'
-            assert p.find('.tex') is not -1
+            assert p.find('.tex') != -1
 
     @async
     @pytest.mark.aiohttpretty
@@ -181,17 +181,17 @@ class TestMetadata:
         result = yield from default_project_provider.metadata(path)
 
         for font in fonts:
-            assert font.content_type = 'application/x-font-opentype'
+            assert font.content_type == 'application/x-font-opentype'
 
         for image in images:
             assert image.content_type == 'application/jpeg'
 
         for f in files:
-            assert f.kind is 'file'
+            assert f.kind == 'file'
 
-        assert is fonts
-        assert is images
-        assert is f
+        assert fonts
+        assert images
+        assert f
 
 class TestCRUD:
 
