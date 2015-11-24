@@ -1,3 +1,4 @@
+
 empty_project_id = '00000'
 
 default_project_metadata = {
@@ -26,31 +27,40 @@ default_project_metadata = {
            'fileRefs': [],
            'docs': [{
                '_id': '5616fc33296ba6c34bd55c89',
-               'name': 'name.tex'
+               'name': 'name.tex',
+               'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fc7b296ba6c34bd55c90',
-               'name': 'name.tex'
+               'name': 'name.tex',
+               'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fc7e296ba6c34bd55c91',
-               'name': 'namelll.tex'
+               'name': 'namelll.tex',
+               'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fc88296ba6c34bd55c92',
-               'name': 'name.tex'
+               'name': 'name.tex',
+               'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fccd296ba6c34bd55c93',
-               'name': 'name1.tex'
+               'name': 'name1.tex',
+               'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fd6f296ba6c34bd55c98',
-               'name': 'name1.tex'
+               'name': 'name1.tex',
+               'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fdb2296ba6c34bd55cae',
-               'name': 'name1.tex'
+               'name': 'name1.tex',
+               'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fdbf296ba6c34bd55caf',
-               'name': 'name1.tex'
+               'name': 'name1.tex',
+               'mimetype': 'application/x-tex'
            }, {
                '_id': '5616fdd2296ba6c34bd55cb8',
-               'name': 'nameNEISMALUCO.tex'
+               'name': 'nameNEISMALUCO.tex',
+               'mimetype': 'application/x-tex'
            }]
        }, {
            '_id': '562fc7a5d03a0a45316804b9',
@@ -73,20 +83,25 @@ default_project_metadata = {
        }],
        'fileRefs': [{
            '_id': '5613d8f99a0e10086003a3be',
-           'name': 'Fontin-Bold.otf'
+           'name': 'Fontin-Bold.otf',
+           'mimetype': 'application/x-font-opentype'
        }, {
            '_id': '5613d8f99a0e10086003a3c1',
-           'name': 'Fontin.otf'
+           'name': 'Fontin.otf',
+           'mimetype': 'application/x-font-opentype'
        }, {
            '_id': '5613d8f99a0e10086003a3c0',
-           'name': 'Fontin-SmallCaps.otf'
+           'name': 'Fontin-SmallCaps.otf',
+           'mimetype': 'application/x-font-opentype'
        }, {
            '_id': '5613d8f99a0e10086003a3bf',
-           'name': 'Fontin-Italicaaaa.otf'
+           'name': 'Fontin-Italicaaaa.otf',
+           'mimetype': 'application/x-font-opentype'
        }],
        'docs': [{
            '_id': '5613d8f99a0e10086003a3c2',
-           'name': 'projetoprincipal.tex'
+           'name': 'projetoprincipal.tex',
+           'mimetype': 'application/x-tex'
        }]
     }]
 }
@@ -101,20 +116,25 @@ only_files_metadata = {
        'folders': [],
        'fileRefs': [{
            '_id': '5613d8f99a0e10086003a3be',
-           'name': 'Fontin-Bold.otf'
+           'name': 'Fontin-Bold.otf',
+           'mimetype': 'application/x-font-opentype'
        }, {
            '_id': '5613d8f99a0e10086003a3c1',
-           'name': 'Fontin.otf'
+           'name': 'Fontin.otf',
+           'mimetype': 'application/x-font-opentype'
        }, {
            '_id': '5613d8f99a0e10086003a3c0',
-           'name': 'Fontin-SmallCaps.otf'
+           'name': 'Fontin-SmallCaps.otf',
+           'mimetype': 'application/x-font-opentype'
        }, {
            '_id': '5613d8f99a0e10086003a3bf',
-           'name': 'Fontin-Italicaaaa.otf'
+           'name': 'Fontin-Italicaaaa.otf',
+           'mimetype': 'application/x-font-opentype'
        }],
        'docs': [{
            '_id': '5613d8f99a0e10086003a3c2',
-           'name': 'projetoprincipal.tex'
+           'name': 'projetoprincipal.tex',
+           'mimetype': 'application/x-tex'
        }]
     }]
 }
@@ -165,5 +185,54 @@ only_folders_metadata = {
        }],
        'fileRefs': [],
        'docs': []
+    }]
+}
+
+only_docs_metadata = {
+    '_id': '5613d8f89a0e10086003a3bd',
+    'name': 'Professional CV',
+    'rootDoc_id': '5613d8f99a0e10086003a3c2',
+    'rootFolder': [{
+       '_id': '5613d8f89a0e10086003a3bc',
+       'name': 'rootFolder',
+       'folders': [],
+       'fileRefs': [],
+       'docs': [{
+           '_id': '5616fc33296ba6c34bd55c89',
+           'name': 'name.tex',
+           'mimetype': 'application/x-tex'
+       }, {
+           '_id': '5616fc7b296ba6c34bd55c90',
+           'name': 'name.tex',
+           'mimetype': 'application/x-tex'
+       }, {
+           '_id': '5616fc7e296ba6c34bd55c91',
+           'name': 'namelll.tex',
+           'mimetype': 'application/x-tex'
+       }, {
+           '_id': '5616fc88296ba6c34bd55c92',
+           'name': 'name.tex',
+           'mimetype': 'application/x-tex'
+       }, {
+           '_id': '5616fccd296ba6c34bd55c93',
+           'name': 'name1.tex',
+           'mimetype': 'application/x-tex'
+       }, {
+           '_id': '5616fd6f296ba6c34bd55c98',
+           'name': 'name1.tex',
+           'mimetype': 'application/x-tex'
+       }, {
+           '_id': '5616fdb2296ba6c34bd55cae',
+           'name': 'name1.tex',
+           'mimetype': 'application/x-tex'
+       }, {
+           '_id': '5616fdbf296ba6c34bd55caf',
+           'name': 'name1.tex',
+           'mimetype': 'application/x-tex'
+       }, {
+           '_id': '5616fdd2296ba6c34bd55cb8',
+           'name': 'nameNEISMALUCO.tex',
+           'mimetype': 'application/x-tex'
+       }]
     }]
 }
