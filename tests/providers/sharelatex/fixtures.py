@@ -19,9 +19,13 @@ default_project_metadata = {
                'docs': []
            }, {
                '_id': '5617055e296ba6c34bd55d70',
-               'name': 'teste2',
+               'name': 'withJPEGImage',
                'folders': [],
-               'fileRefs': [],
+               'fileRefs': [{
+                   '_id': '0616f133296ba6caaba51c09',
+                   'name': 'avatar.jpg',
+                   'mimetype': 'application/jpeg'
+                   }],
                'docs': []
            }],
            'fileRefs': [],

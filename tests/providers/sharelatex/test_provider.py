@@ -74,10 +74,27 @@ def only_docs_metadata():
 class TestMetadata:
 
 
+    def only_files(self, items):
+        result = []
+        for f in items:
+            if f.kind is 'file':
+                result.push(f)
+        return result
+
+    def contain_file_with_type(self, items, t):
+        result = []
+        for f in self.only_files(items):
+            path = str(f.path)
+            if path.find(t) is not -1:
+                result.push(f)
+        return result
+
     def check_metadata_is_folder_with_path_and_name(self, metadata, path):
         assert metadata[0].kind == 'file'
         assert metadata[0].provider == 'sharelatex'
         assert metadata[0].path == '/projetoprincipal.tex'
+        assert metadata[0].size == '123'
+        assert metadata[0].content_type == 'application/x-tex'
         # TODO: test size, mimetime, other files and folders.
 
     @async
@@ -145,10 +162,36 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', url, body=only_docs_metadata)
 
         result = yield from default_project_provider.metadata(path)
-
         for f in result:
-            f.content_type == 'application/x-tex'
+            p = str(f.path)
+            assert f.content_type == 'application/x-tex'
+            assert p.find('.tex') is not -1
 
+    @async
+    @pytest.mark.aiohttpretty
+    def test_other_files_metadata(self, default_project_provider, default_project_metadata):
+        path = yield from default_project_provider.validate_path('/')
+        url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
+        fonts = self.contain_file_with_type(result, 'otf')
+        images = self.contain_file_with_type(result, 'jpg')
+        files = self.only_files(result)
+
+        aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
+
+        result = yield from default_project_provider.metadata(path)
+
+        for font in fonts:
+            assert font.content_type = 'application/x-font-opentype'
+
+        for image in images:
+            assert image.content_type == 'application/jpeg'
+
+        for f in files:
+            assert f.kind is 'file'
+
+        assert is fonts
+        assert is images
+        assert is f
 
 class TestCRUD:
 
