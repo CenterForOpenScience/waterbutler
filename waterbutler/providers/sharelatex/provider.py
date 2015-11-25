@@ -126,6 +126,7 @@ class ShareLatexProvider(provider.BaseProvider):
                 ret.append(self._metadata_folder(path, fol['name']))
 
         else:
+            all_files = []
             folders_old = []
             folders = data['rootFolder'][0]['folders']
             path_exploded = str(path).strip('/').split('/')
@@ -136,16 +137,20 @@ class ShareLatexProvider(provider.BaseProvider):
 
             for f in folders_old:
                 for doc in f['docs']:
-                    ret.append(self._metadata_doc(path, doc['name']))
+                    new_doc = self._metadata_doc(path, doc['name'])
+                    ret.append(new_doc)
+                    all_files.append(new_doc)
 
                 for filename in f['fileRefs']:
-                    ret.append(self._metadata_file(path, filename['name'], filename['mimetype']))
+                    new_file = self._metadata_file(path, filename['name'], filename['mimetype'])
+                    ret.append(new_file)
+                    all_files.append(new_file)
 
             for f in folders:
                 ret.append(self._metadata_folder(path, f['name']))
 
         if path.is_file:
-            for x in ret:
+            for x in all_files:
                 if x.path == path:
                     return x
         return ret
