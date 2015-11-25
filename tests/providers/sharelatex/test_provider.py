@@ -118,6 +118,8 @@ class TestMetadata:
         with pytest.raises(exceptions.MetadataError) as e:
             yield from default_project_provider.metadata(path)
 
+        assert e.value.code == 404
+
     @async
     @pytest.mark.aiohttpretty
     def test_root_folder_with_one_folder(self, default_project_provider, default_project_metadata):
@@ -298,6 +300,8 @@ class TestCRUD:
 
         with pytest.raises(exceptions.DownloadError) as e:
             yield from empty_project_provider.download(path)
+
+        assert e.value.code == 404
 
     @async
     @pytest.mark.aiohttpretty

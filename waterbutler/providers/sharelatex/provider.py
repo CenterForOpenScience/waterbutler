@@ -129,6 +129,8 @@ class ShareLatexProvider(provider.BaseProvider):
             folders_old = []
             folders = data['rootFolder'][0]['folders']
             path_exploded = str(path).strip('/').split('/')
+            if path.is_file:
+                path_exploded.pop()
 
             for p in path_exploded:
                 folders_old = folders
