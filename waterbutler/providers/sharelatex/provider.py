@@ -116,6 +116,7 @@ class ShareLatexProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         ret = []
+        all_files = []
         if str(path) is '/':
 
             for doc in data['rootFolder'][0]['docs']:
@@ -126,28 +127,21 @@ class ShareLatexProvider(provider.BaseProvider):
                 ret.append(self._metadata_folder(path, fol['name']))
 
         else:
-            all_files = []
-            folders_old = []
             folders = data['rootFolder'][0]['folders']
             path_exploded = str(path).strip('/').split('/')
 
             for p in path_exploded:
-                folders_old = folders
-                folders = self._search_folders(p, folders)
-
-            for f in folders_old:
-                for doc in f['docs']:
-                    new_doc = self._metadata_doc(path, doc['name'])
-                    ret.append(new_doc)
-                    all_files.append(new_doc)
-
-                for filename in f['fileRefs']:
-                    new_file = self._metadata_file(path, filename['name'], filename['mimetype'])
-                    ret.append(new_file)
-                    all_files.append(new_file)
-
-            for f in folders:
-                ret.append(self._metadata_folder(path, f['name']))
+                for folders in self._search_folders(p, folders):
+                    for doc in folders['docs']:
+                        new_doc = self._metadata_doc(path, doc['name'])
+                        ret.append(new_doc)
+                        all_files.append(new_doc)
+                    for filename in f['fileRefs']:
+                        new_file = self._metadata_file(path, filename['name'], filename['mimetype'])
+                        ret.append(new_file)
+                        all_files.append(new_file)
+                    for f in folders['folders']:
+                       ret.append(self._metadata_folder(path, f['name']))
 
         if path.is_file:
             for x in all_files:
@@ -156,11 +150,9 @@ class ShareLatexProvider(provider.BaseProvider):
         return ret
 
     def _search_folders(self, name, folders):
-        result = []
         for f in folders:
             if (name == f['name']):
-                result = f['folders']
-        return result
+                yield f['folders']
 
     def _metadata_file(self, path, file_name='', mimetype='text/plain'):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
