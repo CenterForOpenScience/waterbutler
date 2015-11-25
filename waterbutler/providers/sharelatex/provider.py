@@ -136,12 +136,12 @@ class ShareLatexProvider(provider.BaseProvider):
                         new_doc = self._metadata_doc(path, doc['name'])
                         ret.append(new_doc)
                         all_files.append(new_doc)
-                    for filename in f['fileRefs']:
+                    for filename in folders['fileRefs']:
                         new_file = self._metadata_file(path, filename['name'], filename['mimetype'])
                         ret.append(new_file)
                         all_files.append(new_file)
                     for f in folders['folders']:
-                       ret.append(self._metadata_folder(path, f['name']))
+                        ret.append(self._metadata_folder(path, f['name']))
 
         if path.is_file:
             for x in all_files:
