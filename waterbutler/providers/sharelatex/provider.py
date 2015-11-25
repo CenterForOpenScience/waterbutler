@@ -153,9 +153,11 @@ class ShareLatexProvider(provider.BaseProvider):
         return ret
 
     def _search_folders(self, name, folders):
+        result = []
         for f in folders:
             if (name == f['name']):
-                return (f['folders'])
+                result = f['folders']
+        return result
 
     def _metadata_file(self, path, file_name='', mimetype='text/plain'):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
