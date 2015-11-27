@@ -22,7 +22,9 @@ class OneDriveProvider(provider.BaseProvider):
     BASE_URL = settings.BASE_URL
 
     def __init__(self, auth, credentials, settings):
+        logger.debug('__init__')        
         super().__init__(auth, credentials, settings)
+        logger.debug('token::' + repr(self.credentials))        
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
         logger.debug('__init__')
