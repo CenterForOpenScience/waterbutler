@@ -1,1 +1,1 @@
-from .provider import OneDriveProvider #noga
+from .provider import OneDriveProvider  # noqa
