@@ -251,13 +251,15 @@ class OneDriveProvider(provider.BaseProvider):
 
         logger.debug('data::{}'.format(repr(data)))
 
-        if 'folder' in data.keys() and 'children' in data.keys(): # and data['folder']['childCount'] > 0:            
+        if 'folder' in data.keys(): # and data['folder']['childCount'] > 0:            
             ret = []
-            for item in data['children']:
-                if 'folder' in item.keys():
-                    ret.append(OneDriveFolderMetadata(item, self.folder))
-                else:
-                    ret.append(OneDriveFileMetadata(item, self.folder))
+            ret.append(OneDriveFolderMetadata(data, self.folder))
+            if 'children' in data.keys():
+                for item in data['children']:
+                    if 'folder' in item.keys():
+                        ret.append(OneDriveFolderMetadata(item, self.folder))
+                    else:
+                        ret.append(OneDriveFileMetadata(item, self.folder))
             return ret
 
         return OneDriveFileMetadata(data, self.folder)
