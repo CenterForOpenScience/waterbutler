@@ -57,8 +57,9 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
 
     @property
     def content_type(self):
-        return 'foo-app' #TODO: fix this since we are calling this for a folder not a file
-        return self.raw['file']['mimeType'] #TODO: pull from file['mimetype'] - https://dev.onedrive.com/facets/file_facet.htm
+        if 'file' in self.raw.keys():
+            return self.raw['file']['mimeType']
+        return 'application/octet-stream'
 
     @property
     def etag(self):
