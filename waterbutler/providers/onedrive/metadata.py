@@ -11,7 +11,7 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
 
     @property
     def provider(self):
-        return 'dropbox'
+        return 'onedrive'
 
     def build_path(self, path):
         # TODO write a test for this
@@ -22,7 +22,7 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
     @property
     def extra(self):
         return {
-            'revisionId': self.raw['rev']
+            'revisionId': self.raw['cTag'] #TODO: rev?
         }
 
 
@@ -30,38 +30,39 @@ class OneDriveFolderMetadata(BaseOneDriveMetadata, metadata.BaseFolderMetadata):
 
     @property
     def name(self):
-        return os.path.split(self.raw['path'])[1]
+        return os.path.split(self.raw['name'])[1]
 
     @property
     def path(self):
-        return self.build_path(self.raw['path'])
+        return self.build_path(self.raw['id'])
 
 
 class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
 
     @property
     def name(self):
-        return os.path.split(self.raw['path'])[1]
+        return os.path.split(self.raw['name'])[1]
 
     @property
     def path(self):
-        return self.build_path(self.raw['path'])
+        return self.build_path(self.raw['id'])
 
     @property
     def size(self):
-        return self.raw['bytes']
+        return self.raw['size']
 
     @property
     def modified(self):
-        return self.raw['modified']
+        return self.raw['lastModifiedDateTime']
 
     @property
     def content_type(self):
-        return self.raw['mime_type']
+        return 'foo-app'
+        return self.raw['file']['mimeType'] #TODO: pull from file['mimetype'] - https://dev.onedrive.com/facets/file_facet.htm
 
     @property
     def etag(self):
-        return self.raw['rev']
+        return self.raw['eTag']
 
 
 # TODO dates!
@@ -73,8 +74,8 @@ class OneDriveRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def version(self):
-        return self.raw['rev']
+        return self.raw['eTag']
 
     @property
     def modified(self):
-        return self.raw['modified']
+        return self.raw['lastModifiedDateTime']

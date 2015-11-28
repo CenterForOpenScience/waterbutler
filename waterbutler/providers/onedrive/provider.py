@@ -27,7 +27,7 @@ class OneDriveProvider(provider.BaseProvider):
         logger.debug('token::' + repr(self.credentials))        
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
-        logger.debug('__init__')
+        
 
     @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
@@ -214,7 +214,10 @@ class OneDriveProvider(provider.BaseProvider):
             url = self.build_url('revisions', 'auto', path.full_path, rev_limit=250)
 
         else:
-            url = self.build_url('metadata', 'auto', path.full_path)
+            url = self.build_url('/drive/items/', path.full_path)
+            
+        logger.debug('metadata::{}'.format(repr(url)))
+        
         resp = yield from self.make_request(
             'GET', url,
             expects=(200, ),
@@ -222,6 +225,7 @@ class OneDriveProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
+        logger.debug("data::{}".format(repr(data)))
 
         if revision:
             try:
@@ -230,25 +234,27 @@ class OneDriveProvider(provider.BaseProvider):
                 raise exceptions.NotFoundError(str(path))
 
         # OneDrive will match a file or folder by name within the requested path
-        if path.is_file and data['is_dir']:
-            raise exceptions.MetadataError(
-                "Could not retrieve file '{}'".format(path),
-                code=http.client.NOT_FOUND,
-            )
+#         if path.is_file and data['is_dir']:
+#             raise exceptions.MetadataError(
+#                 "Could not retrieve file '{}'".format(path),
+#                 code=http.client.NOT_FOUND,
+#             )
 
-        if data.get('is_deleted'):
+        if data.get('deleted'):
             raise exceptions.MetadataError(
                 "Could not retrieve {kind} '{path}'".format(
-                    kind='folder' if data['is_dir'] else 'file',
+                    kind='folder' if data['folder'] else 'file',
                     path=path,
                 ),
                 code=http.client.NOT_FOUND,
             )
 
-        if data['is_dir']:
+        logger.debug('data::{}'.format(repr(data)))
+
+        if 'folder' in data.keys() and 'children' in data.keys(): # and data['folder']['childCount'] > 0:            
             ret = []
-            for item in data['contents']:
-                if item['is_dir']:
+            for item in data['children']:
+                if 'folder' in item.keys():
                     ret.append(OneDriveFolderMetadata(item, self.folder))
                 else:
                     ret.append(OneDriveFileMetadata(item, self.folder))
