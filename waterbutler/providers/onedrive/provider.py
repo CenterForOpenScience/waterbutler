@@ -27,7 +27,7 @@ class OneDriveProvider(provider.BaseProvider):
         logger.debug('token::' + repr(self.credentials))        
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
-        
+                
 
     @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
@@ -37,7 +37,7 @@ class OneDriveProvider(provider.BaseProvider):
         logger.debug('validate_v1_path self::{} path::{}'.format(repr(self), path))
 #         implicit_folder = path.endswith('/')
         resp = yield from self.make_request(
-            'GET', self.build_url('/drive/items/', self.folder),
+            'GET', self.build_url(self.folder),
             expects=(200,),
             throws=exceptions.MetadataError
         )
@@ -163,27 +163,41 @@ class OneDriveProvider(provider.BaseProvider):
         return folder, True
 
     @asyncio.coroutine
-    def download(self, path, revision=None, range=None, **kwargs):
+    def download(self, path, revision=None, range=None, **kwargs):   
+        
+        onedriveId = path.full_path[path.full_path.rindex('/') + 1:]
+        logger.debug('oneDriveId:: {} folder:: {}'.format(onedriveId, self.folder))
         if revision:
             url = self._build_content_url('files', 'auto', path.full_path, rev=revision)
         else:
             # Dont add unused query parameters
-            url = self._build_content_url('files', 'auto', path.full_path)
+            url = self._build_content_url(onedriveId)            
 
+        # Step 1: get metadata
+        logger.debug('url::{}'.format(url))        
+        metaData = yield from self.make_request(
+            'GET', url,
+            expects=(200, ),
+            throws=exceptions.MetadataError
+        )
+
+        data = yield from metaData.json()
+        
+        # Get downloadUrl from item
+        # Pass DownloadURl to make_request        
+        
+        downloadUrl = data['@content.downloadUrl']
+        logger.debug('data::{} downloadUrl::{}'.format(data, downloadUrl))            
+        
         resp = yield from self.make_request(
             'GET',
-            url,
+            downloadUrl,
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
         )
-
-        if 'Content-Length' not in resp.headers:
-            size = json.loads(resp.headers['X-DROPBOX-METADATA'])['bytes']
-        else:
-            size = None
-
-        return streams.ResponseStreamReader(resp, size=size)
+        
+        return streams.ResponseStreamReader(resp)
 
     @asyncio.coroutine
     def upload(self, stream, path, conflict='replace', **kwargs):
@@ -217,7 +231,7 @@ class OneDriveProvider(provider.BaseProvider):
             url = self.build_url('revisions', 'auto', path.full_path, rev_limit=250)
 
         else:
-            url = self.build_url('/drive/items/', path.full_path, expand='children')
+            url = self.build_url(path.full_path, expand='children')
             
         logger.debug('metadata::{}'.format(repr(url)))
         
