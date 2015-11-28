@@ -270,19 +270,20 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):
-        response = yield from self.make_request(
-            'GET',
-            self.build_url('revisions', 'auto', path.full_path, rev_limit=250),
-            expects=(200, ),
-            throws=exceptions.RevisionsError
-        )
-        data = yield from response.json()
-
-        return [
-            OneDriveRevision(item)
-            for item in data
-            if not item.get('is_deleted')
-        ]
+        return []
+#         response = yield from self.make_request(
+#             'GET',
+#             self.build_url('revisions', 'auto', path.full_path, rev_limit=250),
+#             expects=(200, ),
+#             throws=exceptions.RevisionsError
+#         )
+#         data = yield from response.json()
+# 
+#         return [
+#             OneDriveRevision(item)
+#             for item in data
+#             if not item.get('deleted')
+#         ]
 
     @asyncio.coroutine
     def create_folder(self, path, **kwargs):
