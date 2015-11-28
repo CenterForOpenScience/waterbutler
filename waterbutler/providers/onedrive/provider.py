@@ -214,7 +214,7 @@ class OneDriveProvider(provider.BaseProvider):
             url = self.build_url('revisions', 'auto', path.full_path, rev_limit=250)
 
         else:
-            url = self.build_url('/drive/items/', path.full_path)
+            url = self.build_url('/drive/items/', path.full_path, expand='children')
             
         logger.debug('metadata::{}'.format(repr(url)))
         
@@ -253,7 +253,7 @@ class OneDriveProvider(provider.BaseProvider):
 
         if 'folder' in data.keys(): # and data['folder']['childCount'] > 0:            
             ret = []
-            ret.append(OneDriveFolderMetadata(data, self.folder))
+            #ret.append(OneDriveFolderMetadata(data, self.folder))
             if 'children' in data.keys():
                 for item in data['children']:
                     if 'folder' in item.keys():
