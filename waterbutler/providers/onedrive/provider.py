@@ -21,13 +21,11 @@ class OneDriveProvider(provider.BaseProvider):
     NAME = 'onedrive'
     BASE_URL = settings.BASE_URL
 
-    def __init__(self, auth, credentials, settings):
-        logger.debug('__init__')        
-        super().__init__(auth, credentials, settings)
-        logger.debug('token::' + repr(self.credentials))        
+    def __init__(self, auth, credentials, settings):        
+        super().__init__(auth, credentials, settings)        
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
-    
+        logger.debug("__init__ credentials:{} settings:{}".format(repr(credentials), repr(settings)))    
 
     @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
@@ -200,19 +198,24 @@ class OneDriveProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(resp)
 
     @asyncio.coroutine
-    def upload(self, stream, path, conflict='replace', **kwargs):
+    def upload(self, stream, path, conflict='replace', **kwargs):        
         path, exists = yield from self.handle_name_conflict(path, conflict=conflict)
+        #  PUT /drive/items/{parent-id}/children/{filename}/content
+        upload_url = self.build_url(path.full_path.strip(str(path)) ,'children', str(path), "content")
+        
+        logger.debug("url:{}".format(upload_url))
 
         resp = yield from self.make_request(
             'PUT',
-            self._build_content_url('files_put', 'auto', path.full_path),
+            upload_url,
             headers={'Content-Length': str(stream.size)},
             data=stream,
-            expects=(200, ),
+            expects=(201, ),
             throws=exceptions.UploadError,
         )
 
         data = yield from resp.json()
+        logger.debug('upload:: data:{}'.format(data))        
         return OneDriveFileMetadata(data, self.folder), not exists
 
     @asyncio.coroutine
@@ -240,7 +243,7 @@ class OneDriveProvider(provider.BaseProvider):
         
         resp = yield from self.make_request(
             'GET', url,
-            expects=(200, ),
+            expects=(200, 400, ),
             throws=exceptions.MetadataError
         )
 
