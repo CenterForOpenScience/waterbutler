@@ -32,7 +32,7 @@ class OneDriveProvider(provider.BaseProvider):
         if path == '/':
             return WaterButlerPath(path, prepend=self.folder)
 
-        logger.debug('validate_v1_path self::{} path::{}'.format(repr(self), path))
+        logger.info('validate_v1_path self::{} path::{}'.format(repr(self), path))
 #         implicit_folder = path.endswith('/')
         resp = yield from self.make_request(
             'GET', self.build_url(self.folder),
@@ -41,8 +41,8 @@ class OneDriveProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        logger.debug('validate_v1_path data::{}'.format(repr(data)))
-        logger.debug('validate_v1_path::path{}'.format(path))
+        logger.info('validate_v1_path data::{}'.format(repr(data)))
+        logger.info('validate_v1_path::path{}'.format(path))
         
 #         explicit_folder = 'folder' in data.keys()
 #         if explicit_folder != implicit_folder:
@@ -62,6 +62,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def intra_copy(self, dest_provider, src_path, dest_path):
+        #  https://dev.onedrive.com/items/copy.htm
         try:
             if self == dest_provider:
                 resp = yield from self.make_request(
@@ -120,6 +121,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def intra_move(self, dest_provider, src_path, dest_path):
+        #  https://dev.onedrive.com/items/move.htm
         if dest_path.full_path.lower() == src_path.full_path.lower():
             # OneDrive does not support changing the casing in a file name
             raise exceptions.InvalidPathError('In OneDrive to change case, add or subtract other characters.')
@@ -164,7 +166,7 @@ class OneDriveProvider(provider.BaseProvider):
     def download(self, path, revision=None, range=None, **kwargs):   
         
         onedriveId = self._get_one_drive_id(path)
-        logger.debug('oneDriveId:: {} folder:: {}'.format(onedriveId, self.folder))
+        logger.info('oneDriveId:: {} folder:: {}'.format(onedriveId, self.folder))
         if revision:
             url = self._build_content_url('files', 'auto', path.full_path, rev=revision)
         else:
@@ -172,7 +174,7 @@ class OneDriveProvider(provider.BaseProvider):
             url = self._build_content_url(onedriveId)            
 
         # Step 1: get metadata
-        logger.debug('url::{}'.format(url))        
+        logger.info('url::{}'.format(url))        
         metaData = yield from self.make_request(
             'GET', url,
             expects=(200, ),
@@ -185,7 +187,7 @@ class OneDriveProvider(provider.BaseProvider):
         # Pass DownloadURl to make_request        
         
         downloadUrl = data['@content.downloadUrl']
-        logger.debug('data::{} downloadUrl::{}'.format(data, downloadUrl))            
+        logger.info('data::{} downloadUrl::{}'.format(data, downloadUrl))            
         
         resp = yield from self.make_request(
             'GET',
@@ -201,9 +203,10 @@ class OneDriveProvider(provider.BaseProvider):
     def upload(self, stream, path, conflict='replace', **kwargs):        
         path, exists = yield from self.handle_name_conflict(path, conflict=conflict)
         #  PUT /drive/items/{parent-id}/children/{filename}/content
+        #  TODO: uploads to sub-folders: upload url:https://api.onedrive.com/v1.0/drive/items/0/children/75BFE374EBEB1211%21118/owl.jpeg/content path:WaterButlerPath('/75BFE374EBEB1211!118/owl.jpeg', prepend='75BFE374EBEB1211!107') str(path):/75BFE374EBEB1211!118/owl.jpeg kwargs:{'nid': 'qua5g', 'action': 'upload', 'provider': 'onedrive'}
         upload_url = self.build_url(path.full_path.strip(str(path)) ,'children', str(path), "content")
         
-        logger.debug("url:{}".format(upload_url))
+        logger.info("upload url:{} path:{} str(path):{} kwargs:{}".format(upload_url, repr(path), str(path), repr(kwargs)))
 
         resp = yield from self.make_request(
             'PUT',
@@ -215,13 +218,13 @@ class OneDriveProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        logger.debug('upload:: data:{}'.format(data))        
+        logger.info('upload:: data:{}'.format(data))        
         return OneDriveFileMetadata(data, self.folder), not exists
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
         one_drive_id = self._get_one_drive_id(path)        
-        logger.debug("delete::id::{}".format(one_drive_id))
+        logger.info("delete::id::{}".format(one_drive_id))
                          
         yield from self.make_request(
             'DELETE',
@@ -251,7 +254,7 @@ class OneDriveProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        logger.debug("data::{}".format(repr(data)))
+        logger.debug("metadata data::{}".format(repr(data)))
 
 #  TODO: revisions?
 #         if revision:
@@ -276,7 +279,7 @@ class OneDriveProvider(provider.BaseProvider):
                 code=http.client.NOT_FOUND,
             )
 
-        logger.debug('data::{}'.format(repr(data)))
+        logger.info('data::{}'.format(repr(data)))
 
         if 'folder' in data.keys(): # and data['folder']['childCount'] > 0:            
             ret = []
@@ -293,20 +296,22 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):
-        return []
-#         response = yield from self.make_request(
-#             'GET',
-#             self.build_url('revisions', 'auto', path.full_path, rev_limit=250),
-#             expects=(200, ),
-#             throws=exceptions.RevisionsError
-#         )
-#         data = yield from response.json()
-# 
-#         return [
-#             OneDriveRevision(item)
-#             for item in data
-#             if not item.get('deleted')
-#         ]
+        #  https://dev.onedrive.com/items/view_delta.htm
+        #  return []
+        response = yield from self.make_request(
+            'GET',
+            self.build_url(str(path), 'view.delta', top=250),
+            expects=(200, ),
+            throws=exceptions.RevisionsError
+        )
+        data = yield from response.json()
+        logger.info('revisions: data::{}'.format(data['value']))
+ 
+        return [
+            OneDriveRevision(item)
+            for item in data['value']
+            if not item.get('deleted')
+        ]
 
     @asyncio.coroutine
     def create_folder(self, path, **kwargs):

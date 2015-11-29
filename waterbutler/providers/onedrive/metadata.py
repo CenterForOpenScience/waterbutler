@@ -66,7 +66,6 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
         return self.raw['eTag']
 
 
-# TODO dates!
 class OneDriveRevision(metadata.BaseFileRevisionMetadata):
 
     @property
