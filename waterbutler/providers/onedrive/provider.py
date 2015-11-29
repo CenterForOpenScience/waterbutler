@@ -237,10 +237,16 @@ class OneDriveProvider(provider.BaseProvider):
             url = self.build_url('revisions', 'auto', path.full_path, rev_limit=250)
 
         else:
-            url = self.build_url(path.full_path, expand='children')
-            
-        logger.debug('metadata::{}'.format(repr(url)))
-        
+            if str(path) == '/':
+                url = self.build_url(path.full_path, expand='children')
+            else:
+                url = self.build_url(str(path), expand='children')  #  handles root/sub1, root/sub1/sub2
+        #   url = self.build_url(path.full_path.strip(str(path)), expand='children')
+        #  full path: (root folder)  path::WaterButlerPath('/', prepend='75BFE374EBEB1211!107') fullpath::75BFE374EBEB1211!107/
+        #  full path: (root/sub1) path::WaterButlerPath('/75BFE374EBEB1211!118/', prepend='75BFE374EBEB1211!107') fullpath::75BFE374EBEB1211!107/75BFE374EBEB1211!118/
+
+        #raise ValueError('metadata url::{} path::{} fullpath::{}'.format(repr(url), repr(path), path.full_path))
+
         resp = yield from self.make_request(
             'GET', url,
             expects=(200, 400, ),
@@ -250,7 +256,7 @@ class OneDriveProvider(provider.BaseProvider):
         data = yield from resp.json()
         logger.debug("data::{}".format(repr(data)))
 
-#TODO: revisions?
+#  TODO: revisions?
 #         if revision:
 #             try:
 #                 data = next(v for v in (yield from resp.json()) if v['rev'] == revision)
