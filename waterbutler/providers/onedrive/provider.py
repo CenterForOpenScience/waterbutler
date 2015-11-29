@@ -241,11 +241,8 @@ class OneDriveProvider(provider.BaseProvider):
                 url = self.build_url(path.full_path, expand='children')
             else:
                 url = self.build_url(str(path), expand='children')  #  handles root/sub1, root/sub1/sub2
-        #   url = self.build_url(path.full_path.strip(str(path)), expand='children')
-        #  full path: (root folder)  path::WaterButlerPath('/', prepend='75BFE374EBEB1211!107') fullpath::75BFE374EBEB1211!107/
-        #  full path: (root/sub1) path::WaterButlerPath('/75BFE374EBEB1211!118/', prepend='75BFE374EBEB1211!107') fullpath::75BFE374EBEB1211!107/75BFE374EBEB1211!118/
 
-        #raise ValueError('metadata url::{} path::{} fullpath::{}'.format(repr(url), repr(path), path.full_path))
+        logger.debug('metadata url::{} path::{} fullpath::{}'.format(repr(url), repr(path), path.full_path))
 
         resp = yield from self.make_request(
             'GET', url,
