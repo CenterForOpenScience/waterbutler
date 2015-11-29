@@ -166,31 +166,29 @@ class OneDriveProvider(provider.BaseProvider):
     def download(self, path, revision=None, range=None, **kwargs):   
         
         onedriveId = self._get_one_drive_id(path)
-        logger.info('oneDriveId:: {} folder:: {} revision::{}'.format(onedriveId, self.folder, revision))
-        params = None
-        url = self._build_content_url(onedriveId)      
+        logger.info('oneDriveId:: {} folder:: {} revision::{}'.format(onedriveId, self.folder, revision))        
+        downloadUrl = None        
         if revision:
-            items = yield from self.revisions(path)
-            # for item in items:
-            #  loop through items and get file download link for downloaded item
-
-        # Step 1: get metadata
-        logger.info('url::{}'.format(url))        
-        metaData = yield from self.make_request(
-            'GET', url,
-            params=params, 
-            expects=(200, ),
-            throws=exceptions.MetadataError
-        )
-
-        data = yield from metaData.json()
-        
-        # Get downloadUrl from item
-        # Pass DownloadURl to make_request        
-        
-        downloadUrl = data['@content.downloadUrl']
-        logger.info('data::{} downloadUrl::{}'.format(data, downloadUrl))            
-        
+            items = yield from self._revisions_json(path)
+            for item in items['value']:
+                if item['eTag'] == revision:
+                    downloadUrl = item['@content.downloadUrl']                    
+                    break                    
+        else:
+            url = self._build_content_url(onedriveId)                                
+            logger.info('url::{}'.format(url))        
+            metaData = yield from self.make_request(
+                                                    'GET', 
+                                                    url, 
+                                                    expects=(200, ),
+                                                    throws=exceptions.MetadataError
+                                                    )
+            data = yield from metaData.json()
+            logger.info('data::{} downloadUrl::{}'.format(data, downloadUrl))  
+            downloadUrl = data['@content.downloadUrl']
+        if downloadUrl is None:
+            raise exceptions.NotFoundError(str(path))
+  
         resp = yield from self.make_request(
             'GET',
             downloadUrl,
@@ -298,14 +296,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):
-        #  https://dev.onedrive.com/items/view_delta.htm
-        #  return []
-#         response = yield from self.make_request(
-#             'GET',
-#             self.build_url(str(path), 'view.delta', top=250),
-#             expects=(200, ),
-#             throws=exceptions.RevisionsError
-#         )
+        #  https://dev.onedrive.com/items/view_delta.htm        
         data = yield from self._revisions_json(path, **kwargs)
         logger.info('revisions: data::{}'.format(data['value']))
  
