@@ -309,7 +309,7 @@ class OneDriveProvider(provider.BaseProvider):
     @asyncio.coroutine
     def _revisions_json(self, path, **kwargs):
         #  https://dev.onedrive.com/items/view_delta.htm
-        #  return []
+        #  TODO: 2015-11-29 - onedrive only appears to return the last delta for a token, period.  Not sure if there is a work around, from the docs: "The delta feed shows the latest state for each item, not each change. If an item were renamed twice, it would only show up once, with its latest name."
         response = yield from self.make_request(
             'GET',
             self.build_url(str(path), 'view.delta', top=250),
