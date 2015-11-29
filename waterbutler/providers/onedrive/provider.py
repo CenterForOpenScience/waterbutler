@@ -166,17 +166,19 @@ class OneDriveProvider(provider.BaseProvider):
     def download(self, path, revision=None, range=None, **kwargs):   
         
         onedriveId = self._get_one_drive_id(path)
-        logger.info('oneDriveId:: {} folder:: {}'.format(onedriveId, self.folder))
+        logger.info('oneDriveId:: {} folder:: {} revision::{}'.format(onedriveId, self.folder, revision))
+        params = None
+        url = self._build_content_url(onedriveId)      
         if revision:
-            url = self._build_content_url('files', 'auto', path.full_path, rev=revision)
-        else:
-            # Dont add unused query parameters
-            url = self._build_content_url(onedriveId)            
+            items = yield from self.revisions(path)
+            # for item in items:
+            #  loop through items and get file download link for downloaded item
 
         # Step 1: get metadata
         logger.info('url::{}'.format(url))        
         metaData = yield from self.make_request(
             'GET', url,
+            params=params, 
             expects=(200, ),
             throws=exceptions.MetadataError
         )
@@ -298,6 +300,25 @@ class OneDriveProvider(provider.BaseProvider):
     def revisions(self, path, **kwargs):
         #  https://dev.onedrive.com/items/view_delta.htm
         #  return []
+#         response = yield from self.make_request(
+#             'GET',
+#             self.build_url(str(path), 'view.delta', top=250),
+#             expects=(200, ),
+#             throws=exceptions.RevisionsError
+#         )
+        data = yield from self._revisions_json(path, **kwargs)
+        logger.info('revisions: data::{}'.format(data['value']))
+ 
+        return [
+            OneDriveRevision(item)
+            for item in data['value']
+            if not item.get('deleted')
+        ]
+        
+    @asyncio.coroutine
+    def _revisions_json(self, path, **kwargs):
+        #  https://dev.onedrive.com/items/view_delta.htm
+        #  return []
         response = yield from self.make_request(
             'GET',
             self.build_url(str(path), 'view.delta', top=250),
@@ -307,11 +328,7 @@ class OneDriveProvider(provider.BaseProvider):
         data = yield from response.json()
         logger.info('revisions: data::{}'.format(data['value']))
  
-        return [
-            OneDriveRevision(item)
-            for item in data['value']
-            if not item.get('deleted')
-        ]
+        return data
 
     @asyncio.coroutine
     def create_folder(self, path, **kwargs):
