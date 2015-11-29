@@ -27,7 +27,7 @@ class OneDriveProvider(provider.BaseProvider):
         logger.debug('token::' + repr(self.credentials))        
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
-                
+    
 
     @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
@@ -165,7 +165,7 @@ class OneDriveProvider(provider.BaseProvider):
     @asyncio.coroutine
     def download(self, path, revision=None, range=None, **kwargs):   
         
-        onedriveId = path.full_path[path.full_path.rindex('/') + 1:]
+        onedriveId = self._get_one_drive_id(path)
         logger.debug('oneDriveId:: {} folder:: {}'.format(onedriveId, self.folder))
         if revision:
             url = self._build_content_url('files', 'auto', path.full_path, rev=revision)
@@ -217,11 +217,14 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
+        one_drive_id = self._get_one_drive_id(path)        
+        logger.debug("delete::id::{}".format(one_drive_id))
+                         
         yield from self.make_request(
-            'POST',
-            self.build_url('fileops', 'delete'),
-            data={'root': 'auto', 'path': path.full_path},
-            expects=(200, ),
+            'DELETE',
+            self.build_url(one_drive_id),
+            data={},
+            expects=(204, ),
             throws=exceptions.DeleteError,
         )
 
@@ -334,3 +337,6 @@ class OneDriveProvider(provider.BaseProvider):
 
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
+    
+    def _get_one_drive_id(self, path): 
+        return path.full_path[path.full_path.rindex('/') + 1:]
