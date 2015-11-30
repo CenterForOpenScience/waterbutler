@@ -122,6 +122,7 @@ class OneDriveProvider(provider.BaseProvider):
     @asyncio.coroutine
     def intra_move(self, dest_provider, src_path, dest_path):
         #  https://dev.onedrive.com/items/move.htm
+        logger.info('intra_move dest_provider::{} src_path::{} dest_path::{}  self::{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(self)))
         if dest_path.full_path.lower() == src_path.full_path.lower():
             # OneDrive does not support changing the casing in a file name
             raise exceptions.InvalidPathError('In OneDrive to change case, add or subtract other characters.')
@@ -326,27 +327,32 @@ class OneDriveProvider(provider.BaseProvider):
         """
         :param str path: The path to create a folder at
         """
+        #  https://dev.onedrive.com/items/create.htm
+        #  PUT /drive/items/{parent-id}:/{name}
+        #  In the request body, supply a JSON representation of a Folder Item, as shown below.
         WaterButlerPath.validate_folder(path)
 
-        response = yield from self.make_request(
+        upload_url = self.build_url(path.full_path.strip(str(path)), 'children')
+        
+        logger.info("upload url:{} path:{} str(path):{} kwargs:{}".format(upload_url, repr(path), str(path), repr(kwargs)))
+        payload = {
+                    'name': str(path).strip('/'),
+                    'folder': {},
+                     "@name.conflictBehavior": "rename"
+                }
+
+        resp = yield from self.make_request(
             'POST',
-            self.build_url('fileops', 'create_folder'),
-            params={
-                'root': 'auto',
-                'path': path.full_path
-            },
-            expects=(200, 403),
-            throws=exceptions.CreateFolderError
+            upload_url,
+            data=json.dumps(payload),
+            headers = {'content-type': 'application/json'},
+            expects=(201, ),
+            throws=exceptions.CreateFolderError,
         )
 
-        data = yield from response.json()
-
-        if response.status == 403:
-            if 'because a file or folder already exists at path' in data.get('error'):
-                raise exceptions.FolderNamingConflict(str(path))
-            raise exceptions.CreateFolderError(data, code=403)
-
-        return OneDriveFolderMetadata(data, self.folder)
+        data = yield from resp.json()
+        logger.info('upload:: data:{}'.format(data))        
+        return OneDriveFolderMetadata(data, self.folder)        
 
     def can_intra_copy(self, dest_provider, path=None):
         return type(self) == type(dest_provider)
