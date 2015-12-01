@@ -4,6 +4,7 @@ import asyncio
 
 import logging
 
+from urllib.parse import urlparse
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -205,10 +206,17 @@ class OneDriveProvider(provider.BaseProvider):
         path, exists = yield from self.handle_name_conflict(path, conflict=conflict)
         #  PUT /drive/items/{parent-id}/children/{filename}/content
         #  TODO: uploads to sub-folders: upload url:https://api.onedrive.com/v1.0/drive/items/0/children/75BFE374EBEB1211%21118/owl.jpeg/content path:WaterButlerPath('/75BFE374EBEB1211!118/owl.jpeg', prepend='75BFE374EBEB1211!107') str(path):/75BFE374EBEB1211!118/owl.jpeg kwargs:{'nid': 'qua5g', 'action': 'upload', 'provider': 'onedrive'}
-        upload_url = self.build_url(path.full_path.strip(str(path)) ,'children', str(path), "content")
         
-        logger.info("upload url:{} path:{} str(path):{} kwargs:{}".format(upload_url, repr(path), str(path), repr(kwargs)))
-
+        #  path:WaterButlerPath('/75BFE374EBEB1211!118/onedrive-revisions.json', prepend='75BFE374EBEB1211!107') 
+        #  str(path):/75BFE374EBEB1211!118/onedrive-revisions.json 
+        #  str(full_path):75BFE374EBEB1211!107/75BFE374EBEB1211!118/onedrive-revisions.json
+        
+        fileName = self._get_one_drive_id(path)
+        path = urlparse(path.full_path.replace(fileName, '')).path.split('/')[-2]
+        upload_url = self.build_url(path ,'children', fileName, "content")
+        
+        logger.info("upload url:{} path:{} str(path):{} str(full_path):{} self:{}".format(upload_url, repr(path), str(path), str(path), repr(self.folder)))
+        
         resp = yield from self.make_request(
             'PUT',
             upload_url,
@@ -237,7 +245,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, revision=None, **kwargs):
-        logger.info('metadata path::{} revision::{} kwargs:{}  token:{}'.format(repr(path.full_path), repr(revision), repr(kwargs), self.token))
+        logger.debug('metadata path::{} revision::{} kwargs:{}  token:{}'.format(repr(path.full_path), repr(revision), repr(kwargs), self.token))
         if revision:
             url = self.build_url('revisions', 'auto', path.full_path, rev_limit=250)
 
@@ -249,7 +257,7 @@ class OneDriveProvider(provider.BaseProvider):
             else:
                 url = self.build_url(str(path), expand='children')  #  handles root/sub1, root/sub1/sub2
 
-        logger.info('metadata url::{} path::{} fullpath::{}'.format(repr(url), repr(path), path.full_path))
+        logger.debug('metadata url::{} path::{} fullpath::{}'.format(repr(url), repr(path), path.full_path))
 
         resp = yield from self.make_request(
             'GET', url,
@@ -258,10 +266,8 @@ class OneDriveProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        logger.info("metadata data::{}".format(repr(data)))
-#         if 'value' in data.keys():
-#             data = data['value'] #  root folder in onedrive has items under value attribute while sub-folders do not.        
-#         logger.info("metadata data::{}".format(repr(data)))
+        logger.debug("metadata data::{}".format(repr(data)))
+        
 #  TODO: revisions?
 #         if revision:
 #             try:
