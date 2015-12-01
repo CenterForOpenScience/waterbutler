@@ -212,7 +212,7 @@ class OneDriveProvider(provider.BaseProvider):
         #  str(full_path):75BFE374EBEB1211!107/75BFE374EBEB1211!118/onedrive-revisions.json
         
         fileName = self._get_one_drive_id(path)
-        path = urlparse(path.full_path.replace(fileName, '')).path.split('/')[-2]
+        path = self._get_sub_folder_path(path, fileName) #  urlparse(path.full_path.replace(fileName, '')).path.split('/')[-2]
         upload_url = self.build_url(path ,'children', fileName, "content")
         
         logger.info("upload url:{} path:{} str(path):{} str(full_path):{} self:{}".format(upload_url, repr(path), str(path), str(path), repr(self.folder)))
@@ -335,11 +335,13 @@ class OneDriveProvider(provider.BaseProvider):
         #  In the request body, supply a JSON representation of a Folder Item, as shown below.
         WaterButlerPath.validate_folder(path)
 
-        upload_url = self.build_url(path.full_path.strip(str(path)), 'children')
+        folderName = path.full_path.split('/')[-2]
+        parentFolder = path.full_path.split('/')[-3]
+        upload_url = self.build_url(parentFolder, 'children')
         
-        logger.info("upload url:{} path:{} str(path):{} kwargs:{}".format(upload_url, repr(path), str(path), repr(kwargs)))
+        logger.info("upload url:{} path:{} parentFolder:{} folderName:{}".format(upload_url, repr(path), str(parentFolder), repr(folderName)))
         payload = {
-                    'name': str(path).strip('/'),
+                    'name': folderName,
                     'folder': {},
                      "@name.conflictBehavior": "rename"
                 }
@@ -368,3 +370,6 @@ class OneDriveProvider(provider.BaseProvider):
     
     def _get_one_drive_id(self, path): 
         return path.full_path[path.full_path.rindex('/') + 1:]
+    
+    def _get_sub_folder_path(self, path, fileName):
+        return urlparse(path.full_path.replace(fileName, '')).path.split('/')[-2]
