@@ -237,16 +237,19 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, revision=None, **kwargs):
+        logger.info('metadata path::{} revision::{} kwargs:{}  token:{}'.format(repr(path.full_path), repr(revision), repr(kwargs), self.token))
         if revision:
             url = self.build_url('revisions', 'auto', path.full_path, rev_limit=250)
 
         else:
-            if str(path) == '/':
-                url = self.build_url(path.full_path, expand='children')
+            if (path.full_path == '0/'):
+                url = self.build_url('root', expand='children') #  handle when OSF is linked to root onedrive
+            elif str(path) == '/':
+                url = self.build_url(path.full_path, expand='children') #  OSF lined to sub folder
             else:
                 url = self.build_url(str(path), expand='children')  #  handles root/sub1, root/sub1/sub2
 
-        logger.debug('metadata url::{} path::{} fullpath::{}'.format(repr(url), repr(path), path.full_path))
+        logger.info('metadata url::{} path::{} fullpath::{}'.format(repr(url), repr(path), path.full_path))
 
         resp = yield from self.make_request(
             'GET', url,
@@ -255,8 +258,10 @@ class OneDriveProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        logger.debug("metadata data::{}".format(repr(data)))
-
+        logger.info("metadata data::{}".format(repr(data)))
+#         if 'value' in data.keys():
+#             data = data['value'] #  root folder in onedrive has items under value attribute while sub-folders do not.        
+#         logger.info("metadata data::{}".format(repr(data)))
 #  TODO: revisions?
 #         if revision:
 #             try:
@@ -264,14 +269,8 @@ class OneDriveProvider(provider.BaseProvider):
 #             except StopIteration:
 #                 raise exceptions.NotFoundError(str(path))
 
-        # OneDrive will match a file or folder by name within the requested path
-#         if path.is_file and data['is_dir']:
-#             raise exceptions.MetadataError(
-#                 "Could not retrieve file '{}'".format(path),
-#                 code=http.client.NOT_FOUND,
-#             )
 
-        if data.get('deleted'):
+        if data.get('deleted'): 
             raise exceptions.MetadataError(
                 "Could not retrieve {kind} '{path}'".format(
                     kind='folder' if data['folder'] else 'file',
@@ -279,12 +278,10 @@ class OneDriveProvider(provider.BaseProvider):
                 ),
                 code=http.client.NOT_FOUND,
             )
+        
 
-        logger.info('data::{}'.format(repr(data)))
-
-        if 'folder' in data.keys(): # and data['folder']['childCount'] > 0:            
+        if 'folder' in data.keys():            
             ret = []
-            #ret.append(OneDriveFolderMetadata(data, self.folder))
             if 'children' in data.keys():
                 for item in data['children']:
                     if 'folder' in item.keys():
