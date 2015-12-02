@@ -5,21 +5,21 @@ from waterbutler.providers.googledrive import utils
 
 class BaseGoogleDriveMetadata(metadata.BaseMetadata):
 
-    def __init__(self, raw, path):
+    def __init__(self, raw, path_obj):
         super().__init__(raw)
-        self._path = path
+        self._path_obj = path_obj
 
     @property
     def provider(self):
         return 'googledrive'
 
-    @property
-    def path(self):
-        return '/' + self._path.raw_path
+    # @property
+    # def path(self):
+    #     return '/' + self._path.raw_path
 
     @property
     def materialized_path(self):
-        return str(self._path)
+        return str(self._path_obj)
 
     @property
     def extra(self):
@@ -28,24 +28,28 @@ class BaseGoogleDriveMetadata(metadata.BaseMetadata):
 
 class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMetadata):
 
-    def __init__(self, raw, path):
-        super().__init__(raw, path)
-        self._path._is_folder = True
+    def __init__(self, raw, path_obj):
+        super().__init__(raw, path_obj)
+        self._path_obj._is_folder = True
 
-    @property
-    def id(self):
-        return self.raw['id']
+    # @property
+    # def id(self):
+    #     return self.raw['id']
 
     @property
     def name(self):
         return self.raw['title']
 
+    @property
+    def path(self):
+        return '/{}/'.format(self.raw['id'])
+
 
 class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata):
 
-    @property
-    def id(self):
-        return self.raw['id']
+    # @property
+    # def id(self):
+    #     return self.raw['id']
 
     @property
     def name(self):
@@ -54,6 +58,10 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
             ext = utils.get_extension(self.raw)
             title += ext
         return title
+
+    @property
+    def path(self):
+        return '/{0}'.format(self.raw['id'])
 
     @property
     def size(self):
@@ -88,7 +96,7 @@ class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
 
     @property
     def name(self):
-        title = self.raw.get('originalFilename', self._path.name)
+        title = self.raw.get('originalFilename', self._path_obj.name)
         if utils.is_docs_file(self.raw):
             ext = utils.get_extension(self.raw)
             title += ext
@@ -127,6 +135,14 @@ class GoogleDriveRevision(metadata.BaseFileRevisionMetadata):
     @property
     def version(self):
         return self.raw['id']
+
+    @property
+    def path(self):
+        return '/{}/'.format(self.raw['id'])
+        # try:
+        #     return '/{0}/{1}'.format(self.raw['id'], self.raw['name'])
+        # except KeyError:
+        #     return self.raw.get('path')
 
     @property
     def modified(self):

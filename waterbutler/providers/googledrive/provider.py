@@ -1,4 +1,4 @@
-import os
+# import os
 import http
 import json
 import asyncio
@@ -57,6 +57,10 @@ class GoogleDriveProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
+        names = list(names)
+        names[0] = ''
+        names = tuple(names)
+        print('v1')
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 
     @asyncio.coroutine
@@ -74,6 +78,13 @@ class GoogleDriveProvider(provider.BaseProvider):
         #     raise Exception  # TODO
 
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
+        names = list(names)
+        names[0] = ''
+        names = tuple(names)
+        print('names ' + str(names))
+        print('ids ' + str(ids))
+        # if 'folder' in parts[-1]['mimeType']:
+        #     names = names + '/'
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 
     @asyncio.coroutine
@@ -94,6 +105,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             'id': base.identifier,
         }])
         _id, name, mime = list(map(parts[-1].__getitem__, ('id', 'title', 'mimeType')))
+        print('reval _id ' + _id)
         return base.child(name, _id=_id, folder='folder' in mime)
 
     @property
@@ -355,47 +367,77 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def _resolve_path_to_ids(self, path, start_at=None):
-        ret = start_at or [{
+        """From path return full path and ids
+
+        Keyword arguments:
+        path -- Google Drive id /123 for file or /123/ for folder
+        start_at -- A list containing a dictionary representing the base from
+                    which to resolve path and ids. Defaults to waterbutler
+                    provider root
+
+        Returns: List of dictionaries in order of path from left to right
+
+        Assumes: caller will handle the case of path = '/'
+        """
+
+        target_root = start_at or [{
             'title': '',
             'mimeType': 'folder',
             'id': self.folder['id'],
         }]
-        item_id = ret[0]['id']
-        parts = [parse.unquote(x) for x in path.strip('/').split('/')]
 
-        while parts:
-            current_part = parts.pop(0)
+        target_id = path.strip('/')
+        target_root_id = target_root[0]['id']
 
+        id_list = None
+        working_lists = [[target_id]]
+        while working_lists:
+            current_list = working_lists.pop(0)
+            while current_list:
+                if current_list[0] == target_root_id:
+                    id_list = current_list
+                    break
+                resp = yield from self.make_request(
+                    'GET',
+                    self.build_url('files',
+                                   current_list[0],
+                                   'parents',
+                                   fields='items(id)'),
+                    expects=(200, ),
+                    throws=exceptions.MetadataError,
+                )
+                # Need to handle multiple parents
+                items = (yield from resp.json())['items']
+                if len(items) == 0:
+                    # no more parents in current_list
+                    # this is not the list you are looking for
+                    break
+                if len(items) > 1:
+                    while items:
+                        if len(items) == 1:
+                            current_list.insert(0, items[0]['id'])
+                            break
+                        new_list = current_list
+                        new_list.insert(0, items[-1]['id'])
+                        items.pop(-1)
+                        working_lists.append(new_list)
+                current_list.insert(0, items[0]['id'])
+            if id_list:
+                break
+
+        # TODO investigate batch request
+        ret = []
+        while id_list:
+            item_id = id_list.pop(0)
             resp = yield from self.make_request(
                 'GET',
-                self.build_url('files', item_id, 'children', q="title = '{}'".format(clean_query(current_part)), fields='items(id)'),
+                self.build_url('files',
+                               item_id,
+                               fields='id,title,mimeType'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
-
-            try:
-                item_id = (yield from resp.json())['items'][0]['id']
-            except (KeyError, IndexError):
-                if parts:
-                    raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
-                name, ext = os.path.splitext(current_part)
-                if ext not in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
-                    return ret + [{
-                        'id': None,
-                        'title': current_part,
-                        'mimeType': 'folder' if path.endswith('/') else '',
-                    }]
-                parts.append(name)
-
-            resp = yield from self.make_request(
-                'GET',
-                self.build_url('files', item_id, fields='id,title,mimeType'),
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            )
-
             ret.append((yield from resp.json()))
-
         return ret
 
     @asyncio.coroutine

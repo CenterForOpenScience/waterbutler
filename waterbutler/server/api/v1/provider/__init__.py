@@ -19,7 +19,7 @@ from waterbutler.server.api.v1.provider.movecopy import MoveCopyMixin
 logger = logging.getLogger(__name__)
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
 
-IDENTIFIER_PATHS = ('box', 'osfstorage')
+IDENTIFIER_PATHS = ('box', 'osfstorage', 'googledrive')
 
 
 @tornado.web.stream_request_body
