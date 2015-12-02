@@ -75,6 +75,7 @@ class MockProvider(provider.BaseProvider):
     validate_v1_path = None
     validate_path = None
     revalidate_path = None
+    can_duplicate_names = True
 
     def __init__(self, auth=None, settings=None, creds=None):
         super().__init__(auth or {}, settings or {}, creds or {})
@@ -117,6 +118,9 @@ class MockProvider1(provider.BaseProvider):
     @asyncio.coroutine
     def download(self, path, **kwargs):
         return b''
+
+    def can_duplicate_names(self):
+        return True
 
 
 class MockProvider2(MockProvider1):

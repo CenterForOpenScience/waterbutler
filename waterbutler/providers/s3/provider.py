@@ -89,6 +89,9 @@ class S3Provider(provider.BaseProvider):
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
+    def can_duplicate_names(self):
+        return True
+
     def can_intra_copy(self, dest_provider, path=None):
         return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
 
