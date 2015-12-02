@@ -22,7 +22,7 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
     @property
     def extra(self):
         return {
-            'revisionId': self.raw['cTag'] #TODO: rev?
+            'revisionId': self.raw['cTag']
         }
 
 

@@ -22,11 +22,11 @@ class OneDriveProvider(provider.BaseProvider):
     NAME = 'onedrive'
     BASE_URL = settings.BASE_URL
 
-    def __init__(self, auth, credentials, settings):        
-        super().__init__(auth, credentials, settings)        
+    def __init__(self, auth, credentials, settings):
+        super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
-        logger.debug("__init__ credentials:{} settings:{}".format(repr(credentials), repr(settings)))    
+        logger.debug("__init__ credentials:{} settings:{}".format(repr(credentials), repr(settings)))
 
     @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
@@ -34,7 +34,7 @@ class OneDriveProvider(provider.BaseProvider):
             return WaterButlerPath(path, prepend=self.folder)
 
         logger.info('validate_v1_path self::{} path::{}'.format(repr(self), path))
-#         implicit_folder = path.endswith('/')
+
         resp = yield from self.make_request(
             'GET', self.build_url(self.folder),
             expects=(200,),
@@ -44,12 +44,8 @@ class OneDriveProvider(provider.BaseProvider):
         data = yield from resp.json()
         logger.info('validate_v1_path data::{}'.format(repr(data)))
         logger.info('validate_v1_path::path{}'.format(path))
-        
-#         explicit_folder = 'folder' in data.keys()
-#         if explicit_folder != implicit_folder:
-#             raise exceptions.NotFoundError(str(path))
 
-        return WaterButlerPath(path)#, prepend=self.folder)
+        return WaterButlerPath(path)
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
@@ -65,20 +61,18 @@ class OneDriveProvider(provider.BaseProvider):
     def intra_copy(self, dest_provider, src_path, dest_path):
         #  https://dev.onedrive.com/items/copy.htm
         logger.info('intra_move dest_provider::{} src_path::{} dest_path::{}  self::{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(self)))
-        try:        
+        try:
             resp = yield from self.make_request(
                 'POST',
-                self.build_url('id', 'action.copy'),                
+                self.build_url('id', 'action.copy'),
                 data={
                     'name': 'new name',
-                    'parentReference': {
-                                        'id': 'parent_id'
-                                        }
+                    'parentReference': {'id': 'parent_id'}
                 },
-                headers = {'content-type': 'application/json'},
+                headers={'content-type': 'application/json'},
                 expects=(200, 201),
                 throws=exceptions.IntraCopyError,
-            )            
+            )
         except exceptions.IntraCopyError as e:
             if e.code != 403:
                 raise
@@ -87,10 +81,9 @@ class OneDriveProvider(provider.BaseProvider):
             resp, _ = yield from self.intra_copy(dest_provider, src_path, dest_path)
             return resp, False
 
-        
         data = yield from resp.json()
 
-        if not 'directory' in data.keys():
+        if 'directory' not in data.keys():
             return OneDriveFileMetadata(data, self.folder), True
 
         folder = OneDriveFolderMetadata(data, self.folder)
