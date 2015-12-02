@@ -405,7 +405,7 @@ class BoxProvider(provider.BaseProvider):
             return self._serialize_item(data)
 
         return [
-            self._serialize_item(each, path.child(each['name']))
+            self._serialize_item(each, path.child(each['name'], folder=(each['type'] == 'folder')))
             for each in data['entries']
         ]
 

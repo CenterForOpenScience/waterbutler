@@ -5,6 +5,8 @@ from urllib import parse
 
 import xmltodict
 
+import xml.sax.saxutils
+
 from boto.compat import BytesIO
 from boto.utils import compute_md5
 from boto.s3.connection import S3Connection
@@ -252,7 +254,7 @@ class S3Provider(provider.BaseProvider):
             payload = '<?xml version="1.0" encoding="UTF-8"?>'
             payload += '<Delete>'
             payload += ''.join(map(
-                lambda x: '<Object><Key>{}</Key></Object>'.format(x),
+                lambda x: '<Object><Key>{}</Key></Object>'.format(xml.sax.saxutils.escape(x)),
                 key_batch
             ))
             payload += '</Delete>'

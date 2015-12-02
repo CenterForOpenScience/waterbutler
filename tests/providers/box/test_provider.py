@@ -463,7 +463,7 @@ class TestMetadata:
             if x['type'] == 'file':
                 expected.append(BoxFileMetadata(x, path.child(x['name'])))
             else:
-                expected.append(BoxFolderMetadata(x, path.child(x['name'])))
+                expected.append(BoxFolderMetadata(x, path.child(x['name'], folder=True)))
 
         assert result == expected
 
