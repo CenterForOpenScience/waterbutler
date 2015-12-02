@@ -64,37 +64,21 @@ class OneDriveProvider(provider.BaseProvider):
     @asyncio.coroutine
     def intra_copy(self, dest_provider, src_path, dest_path):
         #  https://dev.onedrive.com/items/copy.htm
-        try:
-            if self == dest_provider:
-                resp = yield from self.make_request(
-                    'POST',
-                    self.build_url('fileops', 'copy'),
-                    data={
-                        'root': 'auto',
-                        'from_path': src_path.full_path,
-                        'to_path': dest_path.full_path,
-                    },
-                    expects=(200, 201),
-                    throws=exceptions.IntraCopyError,
-                )
-            else:
-                from_ref_resp = yield from self.make_request(
-                    'GET',
-                    self.build_url('copy_ref', 'auto', src_path.full_path),
-                )
-                from_ref_data = yield from from_ref_resp.json()
-                resp = yield from self.make_request(
-                    'POST',
-                    self.build_url('fileops', 'copy'),
-                    data={
-                        'root': 'auto',
-                        'from_copy_ref': from_ref_data['copy_ref'],
-                        'to_path': dest_path,
-                    },
-                    headers=dest_provider.default_headers,
-                    expects=(200, 201),
-                    throws=exceptions.IntraCopyError,
-                )
+        logger.info('intra_move dest_provider::{} src_path::{} dest_path::{}  self::{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(self)))
+        try:        
+            resp = yield from self.make_request(
+                'POST',
+                self.build_url('id', 'action.copy'),                
+                data={
+                    'name': 'new name',
+                    'parentReference': {
+                                        'id': 'parent_id'
+                                        }
+                },
+                headers = {'content-type': 'application/json'},
+                expects=(200, 201),
+                throws=exceptions.IntraCopyError,
+            )            
         except exceptions.IntraCopyError as e:
             if e.code != 403:
                 raise
@@ -103,17 +87,17 @@ class OneDriveProvider(provider.BaseProvider):
             resp, _ = yield from self.intra_copy(dest_provider, src_path, dest_path)
             return resp, False
 
-        # TODO Refactor into a function
+        
         data = yield from resp.json()
 
-        if not data['is_dir']:
+        if not 'directory' in data.keys():
             return OneDriveFileMetadata(data, self.folder), True
 
         folder = OneDriveFolderMetadata(data, self.folder)
 
         folder.children = []
-        for item in data['contents']:
-            if item['is_dir']:
+        for item in data['children']:
+            if 'directory' in item.keys():
                 folder.children.append(OneDriveFolderMetadata(item, self.folder))
             else:
                 folder.children.append(OneDriveFileMetadata(item, self.folder))
@@ -123,41 +107,54 @@ class OneDriveProvider(provider.BaseProvider):
     @asyncio.coroutine
     def intra_move(self, dest_provider, src_path, dest_path):
         #  https://dev.onedrive.com/items/move.htm
-        logger.info('intra_move dest_provider::{} src_path::{} dest_path::{}  self::{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(self)))
+        
         if dest_path.full_path.lower() == src_path.full_path.lower():
             # OneDrive does not support changing the casing in a file name
             raise exceptions.InvalidPathError('In OneDrive to change case, add or subtract other characters.')
 
+        #  PATCH /drive/items/{item-id}
+        #  use cases: file rename or file move or folder rename or folder move
+        #  file rename:   intra_move dest_provider::src_path::WaterButlerPath('/75BFE374EBEB1211!113', prepend='75BFE374EBEB1211!107') dest_path::WaterButlerPath('/Document1-a.docx', prepend='75BFE374EBEB1211!107')
+        #  file move to lower level: dest_provider::src_path::WaterButlerPath('/75BFE374EBEB1211!113', prepend='75BFE374EBEB1211!107') dest_path::WaterButlerPath('/75BFE374EBEB1211!118/75BFE374EBEB1211!113', prepend='75BFE374EBEB1211!107')
+        
+        # To simplify moving a file, moving a folder, renaming a folder, renaming a file: copy item then delete
+        target_onedrive_id = self._get_one_drive_id(src_path)
+        url = self.build_url(target_onedrive_id, 'action.copy')
+        payload = json.dumps({                    
+                    'parentReference': {
+                                        'id': dest_path.full_path.split('/')[-2]
+                                        }
+                })
+
+        logger.info('intra_move dest_provider::{} src_path::{} dest_path::{}  target_onedrive_id::{} url::{} payload:{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(target_onedrive_id), url, payload))
+        
         try:
             resp = yield from self.make_request(
                 'POST',
-                self.build_url('fileops', 'move'),
-                data={
-                    'root': 'auto',
-                    'to_path': dest_path.full_path,
-                    'from_path': src_path.full_path,
-                },
-                expects=(200, ),
+                url,                
+                data=payload,
+                headers = {'content-type': 'application/json', 'Prefer': 'respond-async'},
+                expects=(200, 202),
                 throws=exceptions.IntraMoveError,
-            )
+            )            
         except exceptions.IntraMoveError as e:
             if e.code != 403:
                 raise
-
-            yield from dest_provider.delete(dest_path)
-            resp, _ = yield from self.intra_move(dest_provider, src_path, dest_path)
-            return resp, False
+        # async required...async worked, now need to determine what to return to osf?
+#             yield from dest_provider.delete(dest_path)
+#             resp, _ = yield from self.intra_move(dest_provider, src_path, dest_path)
+#             return resp, False
 
         data = yield from resp.json()
 
-        if not data['is_dir']:
+        if not 'folder' in data.keys():
             return OneDriveFileMetadata(data, self.folder), True
 
         folder = OneDriveFolderMetadata(data, self.folder)
 
         folder.children = []
-        for item in data['contents']:
-            if item['is_dir']:
+        for item in data['children']:
+            if 'folder' in item.keys():
                 folder.children.append(OneDriveFolderMetadata(item, self.folder))
             else:
                 folder.children.append(OneDriveFileMetadata(item, self.folder))
