@@ -145,6 +145,9 @@ class BoxProvider(provider.BaseProvider):
 
         return base.child(name, _id=_id, folder=folder)
 
+    def can_duplicate_names(self):
+        return False
+
     def can_intra_move(self, other, path=None):
         return self == other
 

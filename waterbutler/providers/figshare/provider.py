@@ -63,6 +63,9 @@ class BaseFigshareProvider(provider.BaseProvider):
 
         return base.child(path, folder=False)
 
+    def can_duplicate_names(self):
+        return True
+
 
 class FigshareProjectProvider(BaseFigshareProvider):
 

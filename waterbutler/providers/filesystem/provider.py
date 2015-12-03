@@ -38,6 +38,9 @@ class FileSystemProvider(provider.BaseProvider):
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path, prepend=self.folder)
 
+    def can_duplicate_names(self):
+        return False
+
     @asyncio.coroutine
     def intra_copy(self, dest_provider, src_path, dest_path):
         exists = yield from self.exists(dest_path)
