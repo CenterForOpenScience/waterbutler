@@ -100,12 +100,9 @@ class TestMetadata:
     def check_kind_is_file(self, metadata):
         self.check_metadata_kind(metadata, 'file')
 
-    def check_metadata_file(self, metadata, path):
+    def check_metadata_file(self, metadata, extension):
         self.check_kind_is_file(metadata)
-        mimetype = mimetypes.guess_type(path.full_path)[0]
-        extension = mimetypes.guess_extension(path.full_path)[0]
         path_has_extension = metadata.path.find(extension) != -1
-        assert metadata.content_type == extension
         assert path_has_extension
 
 
@@ -118,6 +115,16 @@ class TestMetadata:
 
         with pytest.raises(exceptions.NotFoundError) as e:
             yield from empty_project_provider.metadata(root_folder_path)
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_file_not_found(self, empty_project_provider, default_project_metadata):
+        path = yield from empty_project_provider.validate_path('/a.txt')
+        url = empty_project_provider.build_url('project', empty_project_provider.project_id, 'docs')
+        aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
+
+        with pytest.raises(exceptions.NotFoundError) as e:
+            yield from empty_project_provider.metadata(path)
 
     @async
     @pytest.mark.aiohttpretty
@@ -172,9 +179,7 @@ class TestMetadata:
         assert result
 
         for f in result:
-            p = str(f.path)
-            assert f.content_type == 'application/x-tex'
-            assert p.find('.tex') != -1
+            self.check_metadata_file(f, '.tex')
 
     @async
     @pytest.mark.aiohttpretty
@@ -196,12 +201,14 @@ class TestMetadata:
 
         for font in fonts:
             assert font.content_type == 'application/x-font-opentype'
+            self.check_metadata_file(font, '.otf')
 
         for image in images:
             assert image.content_type == 'image/jpeg'
+            self.check_metadata_file(image, '.jpg')
 
         for f in files:
-            assert f.kind == 'file'
+            self.check_kind_is_file(f)
 
     @async
     @pytest.mark.aiohttpretty
@@ -213,6 +220,7 @@ class TestMetadata:
 
         result = yield from default_project_provider.metadata(path)
 
+        assert result.name == 'raw.txt'
         assert result.kind == 'file'
         assert result.content_type == 'text/plain'
 
@@ -227,6 +235,7 @@ class TestMetadata:
 
         result = yield from default_project_provider.metadata(path)
 
+        assert result.name == 'pngImage.png'
         assert result.kind == 'file'
         assert result.content_type == 'image/png'
 
@@ -252,6 +261,7 @@ class TestMetadata:
 
         result = yield from default_project_provider.metadata(path)
 
+        assert result.name == 'more.txt'
         assert result.kind == 'file'
         assert result.content_type == 'text/plain'
 
@@ -276,6 +286,7 @@ class TestMetadata:
 
         result = yield from default_project_provider.metadata(path)
 
+        assert result.name == 'example.tex'
         assert result.kind == 'file'
         assert result.content_type == 'application/x-tex'
 
@@ -290,6 +301,7 @@ class TestMetadata:
         result = yield from default_project_provider.metadata(path)
 
         assert path.is_file
+        assert result.name == 'document.tex'
         assert result.kind == 'file'
         assert result.content_type == 'application/x-tex'
 
@@ -342,6 +354,10 @@ class TestOperations:
 
     def test_can_intra_move(self, default_project_provider):
         result = default_project_provider.can_intra_move(default_project_provider)
+        assert result == False
+
+    def test_can_duplicate_names(self, default_project_provider):
+        result = default_project_provider.can_duplicate_names()
         assert result == False
 
 
