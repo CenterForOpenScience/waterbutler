@@ -46,7 +46,7 @@ class ShareLatexProvider(provider.BaseProvider):
         :rtype: :class: `string`
         """
         query['auth_token'] = self.auth_token
-        return provider.build_url(self.sharelatex_url, 'api', 'v1', *segments, **query)
+        return provider.build_url(self.sharelatex_url, *segments, **query)
 
     @asyncio.coroutine
     def upload(self, stream, path, conflict='replace', **kwargs):
@@ -74,7 +74,8 @@ class ShareLatexProvider(provider.BaseProvider):
         :rtype: :class:`string`
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
-        url = self.build_url('project', self.project_id, 'file', path.path)
+        segments = ('api', 'v1', 'project', self.project_id, 'file', path.path)
+        url = self.build_url(*segments)
 
         if accept_url:
             return url
@@ -101,7 +102,8 @@ class ShareLatexProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         :raises: :class:`waterbutler.core.exceptions.MetadataError`
         """
-        url = self.build_url('project', self.project_id, 'docs')
+        segments  = ('api', 'v1', 'project', self.project_id, 'docs')
+        url = self.build_url(*segments)
 
         resp = yield from self.make_request(
             'GET', url,
