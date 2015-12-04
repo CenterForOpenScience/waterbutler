@@ -33,6 +33,9 @@ class ShareLatexProvider(provider.BaseProvider):
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
+    def can_duplicate_names(self):
+        return False
+
     def build_url(self, *segments, **query):
         """Reimplementation of build_url to add the auth token on query
         and specify the api version
@@ -115,7 +118,6 @@ class ShareLatexProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         metadata = self._read_metadata_from_json(data, path)
-        print(path)
 
         if path.is_file:
             files = self._search_files(path, metadata)
