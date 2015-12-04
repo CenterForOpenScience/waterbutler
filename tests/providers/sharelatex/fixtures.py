@@ -60,28 +60,14 @@ default_project_metadata = {
            'name': 'UmDiretorioNaRaiz',
            'folders': [{
                '_id': '562fc8add03a0a453168050b',
-               'name': 'fora2',
-               'folders': [{
-                   '_id': '12220542291baacf4bf55dff',
-                   'name': 'secondLevel',
-                   'folders': [],
-                   'fileRefs': [{
-                       '_id': '01aacdd2dd62a0e31be22131',
-                       'name': 'more.txt',
-                       'mimetype': 'text/plain'
-                    }],
-                   'docs': [{
-                       '_id': '99aaf8f99a1110ef6002a3c1',
-                       'name': 'document.tex',
-                       'mimetype': 'application/x-tex'
-                    }]
-                }],
+               'name': 'secondLevel',
+               'folders': [],
                'fileRefs': [],
                'docs': [{
-                   '_id': '0feb01f91a0010abc002a0b0',
-                   'name': 'example.tex',
+                   '_id': 'f00aaa121a0011abdf02a1b1',
+                   'name': 'document.tex',
                    'mimetype': 'application/x-tex'
-                }]
+                }],
            }, {
                '_id': '562fc8c3d03a0a453168050d',
                'name': 'fora3',
@@ -94,7 +80,11 @@ default_project_metadata = {
                'name': 'pngImage.png',
                'mimetype': 'image/png'
             }],
-           'docs': []
+            'docs': [{
+                '_id': '09212a1579001aabdd02a1b3',
+                'name': 'example.tex',
+                'mimetype': 'application/x-tex'
+            }]
        }],
        'fileRefs': [{
            '_id': '5613d8f99a0e10086003a3be',

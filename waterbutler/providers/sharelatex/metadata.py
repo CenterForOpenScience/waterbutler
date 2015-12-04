@@ -1,5 +1,3 @@
-import os
-
 from waterbutler.core import metadata
 
 
@@ -14,7 +12,7 @@ class ShareLatexFileMetadata(BaseShareLatexMetadata, metadata.BaseFileMetadata):
 
     @property
     def name(self):
-        return os.path.split(self.raw['path'])[1]
+        return self.raw['name']
 
     @property
     def path(self):
@@ -39,12 +37,12 @@ class ShareLatexFileMetadata(BaseShareLatexMetadata, metadata.BaseFileMetadata):
         }
 
 
-class ShareLatexProjectMetadata(BaseShareLatexMetadata, metadata.BaseFolderMetadata):
+class ShareLatexFolderMetadata(BaseShareLatexMetadata, metadata.BaseFolderMetadata):
 
     @property
     def name(self):
-        return os.path.split(self.raw['path'])[1]
+        return self.raw['name']
 
     @property
     def path(self):
-        return self.build_path(self.raw['path'])
+        return self.raw['path']

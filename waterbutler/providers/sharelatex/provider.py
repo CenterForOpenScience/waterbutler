@@ -1,5 +1,4 @@
 import asyncio
-import os
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -7,7 +6,7 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.sharelatex.metadata import ShareLatexFileMetadata
-from waterbutler.providers.sharelatex.metadata import ShareLatexProjectMetadata
+from waterbutler.providers.sharelatex.metadata import ShareLatexFolderMetadata
 
 
 class ShareLatexProvider(provider.BaseProvider):
@@ -92,7 +91,7 @@ class ShareLatexProvider(provider.BaseProvider):
         """Get metdata about the specified resource from this provider.
         Will be a :class:`list` if the resource is a directory otherwise an instance of :class:`waterbutler.providers.sharelatex.metadata.ShareLatexFileMetadata`
 
-        :param str path: The path to a project
+        :param str path: The path to a project, file or tex document
         :param dict \*\*kwargs: Arguments to be parsed by child classes
         :rtype: :class:`waterbutler.providers.sharelatex.metadata.ShareLatexFileMetadata`
         :rtype: :class:`list` of :class:`ShareLatexFileMetadata` and :class:`ShareLatexFolderMetadata`
@@ -115,62 +114,75 @@ class ShareLatexProvider(provider.BaseProvider):
         if not data:
             raise exceptions.NotFoundError(str(path))
 
-        ret = []
-        all_files = []
-        if str(path) is '/':
-
-            for doc in data['rootFolder'][0]['docs']:
-                ret.append(self._metadata_doc(path, doc['name']))
-            for fil in data['rootFolder'][0]['fileRefs']:
-                ret.append(self._metadata_file(path, fil['name'], fil['mimetype']))
-            for fol in data['rootFolder'][0]['folders']:
-                ret.append(self._metadata_folder(path, fol['name']))
-
-        else:
-            folders = data['rootFolder'][0]['folders']
-            path_exploded = str(path).strip('/').split('/')
-
-            for p in path_exploded:
-                for folders in self._search_folders(p, folders):
-                    for doc in folders['docs']:
-                        new_doc = self._metadata_doc(path, doc['name'])
-                        ret.append(new_doc)
-                        all_files.append(new_doc)
-                    for filename in folders['fileRefs']:
-                        new_file = self._metadata_file(path, filename['name'], filename['mimetype'])
-                        ret.append(new_file)
-                        all_files.append(new_file)
-                    for f in folders['folders']:
-                        ret.append(self._metadata_folder(path, f['name']))
+        metadata = self._read_metadata_from_json(data, path)
+        print(path)
 
         if path.is_file:
-            for x in all_files:
-                if x.path == path:
-                    return x
+            files = self._search_files(path, metadata)
+            if not files:
+                raise exceptions.NotFoundError(str(path))
+            return files[0]
+
+        return metadata
+
+    def _read_metadata_from_json(self, data, path):
+        ret = []
+        metadata, base_path = self._read_path_metadata(data, path)
+        docs = metadata['docs']
+        files = metadata['fileRefs']
+        folders = metadata['folders']
+
+        for doc in docs:
+            new_doc = self._metadata_doc(base_path, doc['name'])
+            ret.append(new_doc)
+        for fil in files:
+            new_file = self._metadata_file(base_path, fil['name'], fil['mimetype'])
+            ret.append(new_file)
+        for fol in folders:
+            ret.append(self._metadata_folder(base_path, fol['name']))
+
         return ret
 
-    def _search_folders(self, name, folders):
-        for f in folders:
-            if (name == f['name']):
-                yield f['folders']
+    def _read_path_metadata(self, data, path):
+        last_dir = data['rootFolder'][0]
+        path_exploded = str(path).strip('/').split('/')
+        if path.is_file:
+            path_exploded.pop()
+        for p in path_exploded:
+            folders = last_dir['folders']
+            for folder in self._search_folders(p, folders):
+                last_dir = folder
+        return last_dir, '/'.join(path_exploded)
 
-    def _metadata_file(self, path, file_name='', mimetype='text/plain'):
-        full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
+    def _search_folders(self, name, folders):
+        return [x for x in folders if x['name'] == name]
+
+    def _only_files(self, metadata):
+        return [x for x in metadata if x.kind == 'file']
+
+    def _search_files(self, path, metadata):
+        only_files = self._only_files(metadata)
+        return [x for x in only_files if x.path == path.path]
+
+    def _metadata_file(self, base_path, file_name='', mimetype='text/plain'):
+        path = '/'.join([base_path, file_name])
+        print('xxxxxxxxxxxxxxxxxxx base path', base_path)
+        print('xxxxxxxxxxxxxxxxxxx file', path)
         metadata = {
-            'path': full_path,
+            'path': path,
+            'name': file_name,
             'size': 123,  # TODO
             'mimetype': mimetype
         }
         return ShareLatexFileMetadata(metadata)
 
     def _metadata_folder(self, path, folder_name):
-        return ShareLatexProjectMetadata({'path': os.path.join(path.path, folder_name)})
-
-    def _metadata_doc(self, path, file_name=''):
-        full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
+        print('xxxxxxxxxxxxxxxxxxx folder', path)
         metadata = {
-            'path': full_path,
-            'size': 123,  # TODO
-            'mimetype': 'application/x-tex'
+            'path': path,
+            'name': folder_name
         }
-        return ShareLatexFileMetadata(metadata)
+        return ShareLatexFolderMetadata(metadata)
+
+    def _metadata_doc(self, base_path, file_name=''):
+        return self._metadata_file(base_path, file_name, 'application/x-tex')

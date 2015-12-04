@@ -5,7 +5,7 @@ from tests.utils import async
 import io
 import json
 import random
-
+import mimetypes
 import aiohttpretty
 
 from waterbutler.core import streams
@@ -90,13 +90,24 @@ class TestMetadata:
                 result.append(f)
         return result
 
-    def check_metadata_is_folder_with_path_and_name(self, metadata, path):
-        assert metadata[0].kind == 'file'
-        assert metadata[0].provider == 'sharelatex'
-        assert metadata[0].path == '/projetoprincipal.tex'
-        assert metadata[0].size == int('123')
-        assert metadata[0].content_type == 'application/x-tex'
-        # TODO: test size, mimetype, other files and folders.
+    def check_metadata_kind(self, metadata, kind):
+        assert metadata.provider == 'sharelatex'
+        assert metadata.kind == kind
+
+    def check_kind_is_folder(self, metadata):
+        self.check_metadata_kind(metadata, 'folder')
+
+    def check_kind_is_file(self, metadata):
+        self.check_metadata_kind(metadata, 'file')
+
+    def check_metadata_file(self, metadata, path):
+        self.check_kind_is_file(metadata)
+        mimetype = mimetypes.guess_type(path.full_path)[0]
+        extension = mimetypes.guess_extension(path.full_path)[0]
+        path_has_extension = metadata.path.find(extension) != -1
+        assert metadata.content_type == extension
+        assert path_has_extension
+
 
     @async
     @pytest.mark.aiohttpretty
@@ -120,17 +131,6 @@ class TestMetadata:
 
         assert e.value.code == 404
 
-    @async
-    @pytest.mark.aiohttpretty
-    def test_root_folder_with_one_folder(self, default_project_provider, default_project_metadata):
-        root_folder_path = yield from default_project_provider.validate_path('/')
-        root_folder_url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
-
-        aiohttpretty.register_json_uri('GET', root_folder_url, body=default_project_metadata)
-
-        result = yield from default_project_provider.metadata(root_folder_path)
-
-        self.check_metadata_is_folder_with_path_and_name(result, root_folder_path)
 
     @async
     @pytest.mark.aiohttpretty
@@ -141,8 +141,10 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', root_folder_url, body=only_files_metadata)
 
         result = yield from default_project_provider.metadata(root_folder_path)
+
+        assert result
         for f in result:
-            assert f.kind == 'file'
+            self.check_metadata_is_file(f)
 
     @async
     @pytest.mark.aiohttpretty
@@ -154,7 +156,7 @@ class TestMetadata:
 
         result = yield from default_project_provider.metadata(root_folder_path)
         for f in result:
-            assert f.kind == 'folder'
+            self.check_metadata_is_folder(f)
 
     @async
     @pytest.mark.aiohttpretty
@@ -165,6 +167,8 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', url, body=only_docs_metadata)
 
         result = yield from default_project_provider.metadata(path)
+        assert result
+
         for f in result:
             p = str(f.path)
             assert f.content_type == 'application/x-tex'
@@ -265,13 +269,12 @@ class TestMetadata:
     def test_tex_in_one_level_dir(self, default_project_provider, default_project_metadata):
         path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/example.tex')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
-
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
         result = yield from default_project_provider.metadata(path)
 
         assert result.kind == 'file'
-        assert result.content_type == 'image/png'
+        assert result.content_type == 'application/x-tex'
 
     @async
     @pytest.mark.aiohttpretty
@@ -283,6 +286,7 @@ class TestMetadata:
 
         result = yield from default_project_provider.metadata(path)
 
+        assert path.is_file
         assert result.kind == 'file'
         assert result.content_type == 'application/x-tex'
 
@@ -329,7 +333,6 @@ class TestCRUD:
 
 class TestOperations:
 
-
     def test_can_intra_copy(self, default_project_provider):
         result = default_project_provider.can_intra_copy(default_project_provider)
         assert result == False
@@ -337,3 +340,32 @@ class TestOperations:
     def test_can_intra_move(self, default_project_provider):
         result = default_project_provider.can_intra_move(default_project_provider)
         assert result == False
+
+
+class TestValidatePath:
+
+    @async
+    def test_path_generation(self, default_project_provider):
+        file_path = '/one/two/three/four.abc'
+        folder_path = '/one/two/three/'
+
+        fil_path = yield from default_project_provider.validate_path(file_path)
+        fol_path = yield from default_project_provider.validate_path(folder_path)
+
+        assert fil_path.is_file
+        assert fol_path.is_dir
+        #assert fil_path.full_path == file_path
+        #assert fol_path.full_path == folder_path
+
+    @async
+    def test_validate_v1_path_generation(self, default_project_provider):
+        file_path = '/one/two/three/four.abc'
+        folder_path = '/one/two/three/'
+
+        fil_path = yield from default_project_provider.validate_v1_path(file_path)
+        fol_path = yield from default_project_provider.validate_v1_path(folder_path)
+
+        assert fil_path.is_file
+        assert fol_path.is_dir
+        #assert fil_path.full_path == file_path
+        #assert fol_path.full_path == folder_path
