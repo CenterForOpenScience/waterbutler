@@ -62,7 +62,11 @@ default_project_metadata = {
                '_id': '562fc8add03a0a453168050b',
                'name': 'secondLevel',
                'folders': [],
-               'fileRefs': [],
+               'fileRefs': [{
+                   '_id': '012aa2556b9011ab0f2211b3',
+                   'name': 'more.txt',
+                   'mimetype': 'text/plain'
+               }],
                'docs': [{
                    '_id': 'f00aaa121a0011abdf02a1b1',
                    'name': 'document.tex',

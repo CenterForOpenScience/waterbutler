@@ -31,7 +31,7 @@ class ShareLatexProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
-        return WaterButlerPath(path)
+        return WaterButlerPath(path, prepend='/')
 
     def can_duplicate_names(self):
         return False
@@ -120,10 +120,10 @@ class ShareLatexProvider(provider.BaseProvider):
         metadata = self._read_metadata_from_json(data, path)
 
         if path.is_file:
-            files = self._search_files(path, metadata)
-            if not files:
+            found = self._search_file(path, metadata)
+            if not found:
                 raise exceptions.NotFoundError(str(path))
-            return files[0]
+            return found
 
         return metadata
 
@@ -147,14 +147,18 @@ class ShareLatexProvider(provider.BaseProvider):
 
     def _read_path_metadata(self, data, path):
         last_dir = data['rootFolder'][0]
-        path_exploded = str(path).strip('/').split('/')
+        base_dir = ''
+        path_exploded = path.path.strip('/').split('/')
         if path.is_file:
             path_exploded.pop()
         for p in path_exploded:
             folders = last_dir['folders']
             for folder in self._search_folders(p, folders):
                 last_dir = folder
-        return last_dir, '/'.join(path_exploded)
+        if not path.is_root:
+            path_exploded.insert(0, base_dir)
+            base_dir = '/'.join(path_exploded)
+        return last_dir, base_dir
 
     def _search_folders(self, name, folders):
         return [x for x in folders if x['name'] == name]
@@ -162,14 +166,15 @@ class ShareLatexProvider(provider.BaseProvider):
     def _only_files(self, metadata):
         return [x for x in metadata if x.kind == 'file']
 
-    def _search_files(self, path, metadata):
+    def _search_file(self, path, metadata):
         only_files = self._only_files(metadata)
-        return [x for x in only_files if x.path == path.path]
+        for i in only_files:
+            if i.path == path.full_path:
+                return i
+        return None
 
     def _metadata_file(self, base_path, file_name='', mimetype='text/plain'):
         path = '/'.join([base_path, file_name])
-        print('xxxxxxxxxxxxxxxxxxx base path', base_path)
-        print('xxxxxxxxxxxxxxxxxxx file', path)
         metadata = {
             'path': path,
             'name': file_name,
@@ -179,7 +184,6 @@ class ShareLatexProvider(provider.BaseProvider):
         return ShareLatexFileMetadata(metadata)
 
     def _metadata_folder(self, path, folder_name):
-        print('xxxxxxxxxxxxxxxxxxx folder', path)
         metadata = {
             'path': path,
             'name': folder_name

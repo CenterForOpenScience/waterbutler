@@ -144,7 +144,7 @@ class TestMetadata:
 
         assert result
         for f in result:
-            self.check_metadata_is_file(f)
+            self.check_kind_is_file(f)
 
     @async
     @pytest.mark.aiohttpretty
@@ -155,8 +155,10 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', root_folder_url, body=only_folders_metadata)
 
         result = yield from default_project_provider.metadata(root_folder_path)
+
+        assert result
         for f in result:
-            self.check_metadata_is_folder(f)
+            self.check_kind_is_folder(f)
 
     @async
     @pytest.mark.aiohttpretty
@@ -217,7 +219,8 @@ class TestMetadata:
     @async
     @pytest.mark.aiohttpretty
     def test_file_in_one_level_dir(self, default_project_provider, default_project_metadata):
-        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/pngImage.png')
+        raw_path = '/UmDiretorioNaRaiz/pngImage.png'
+        path = yield from default_project_provider.validate_path(raw_path)
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
@@ -346,26 +349,34 @@ class TestValidatePath:
 
     @async
     def test_path_generation(self, default_project_provider):
+        root_path = '/'
         file_path = '/one/two/three/four.abc'
         folder_path = '/one/two/three/'
 
+        r_path = yield from default_project_provider.validate_path(root_path)
         fil_path = yield from default_project_provider.validate_path(file_path)
         fol_path = yield from default_project_provider.validate_path(folder_path)
 
+        assert r_path.is_root
         assert fil_path.is_file
         assert fol_path.is_dir
-        #assert fil_path.full_path == file_path
-        #assert fol_path.full_path == folder_path
+        assert r_path.full_path == root_path
+        assert fil_path.full_path == file_path
+        assert fol_path.full_path == folder_path
 
     @async
     def test_validate_v1_path_generation(self, default_project_provider):
+        root_path = '/'
         file_path = '/one/two/three/four.abc'
         folder_path = '/one/two/three/'
 
+        r_path = yield from default_project_provider.validate_v1_path(root_path)
         fil_path = yield from default_project_provider.validate_v1_path(file_path)
         fol_path = yield from default_project_provider.validate_v1_path(folder_path)
 
+        assert r_path.is_root
         assert fil_path.is_file
         assert fol_path.is_dir
-        #assert fil_path.full_path == file_path
-        #assert fol_path.full_path == folder_path
+        assert r_path.full_path == root_path 
+        assert fil_path.full_path == file_path
+        assert fol_path.full_path == folder_path
