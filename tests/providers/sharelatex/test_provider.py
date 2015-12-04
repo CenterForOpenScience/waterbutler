@@ -5,7 +5,6 @@ from tests.utils import async
 import io
 import json
 import random
-import mimetypes
 import aiohttpretty
 
 from waterbutler.core import streams
@@ -13,6 +12,8 @@ from waterbutler.core import exceptions
 
 from waterbutler.providers.sharelatex import metadata
 from waterbutler.providers.sharelatex import provider
+from waterbutler.providers.sharelatex.metadata import ShareLatexFileMetadata
+from waterbutler.providers.sharelatex.metadata import ShareLatexFolderMetadata
 
 from tests.providers.sharelatex import fixtures
 
@@ -105,7 +106,6 @@ class TestMetadata:
         path_has_extension = metadata.path.find(extension) != -1
         assert path_has_extension
 
-
     @async
     @pytest.mark.aiohttpretty
     def test_no_root_folder(self, empty_project_provider, empty_metadata):
@@ -137,7 +137,6 @@ class TestMetadata:
             yield from default_project_provider.metadata(path)
 
         assert e.value.code == 404
-
 
     @async
     @pytest.mark.aiohttpretty
@@ -305,6 +304,41 @@ class TestMetadata:
         assert result.kind == 'file'
         assert result.content_type == 'application/x-tex'
 
+    def test_file_metadata(self):
+        name = 'test.txt'
+        path = '/one/two/three/test.txt'
+        size = '1234'
+        mimetype = 'text/plain'
+        raw = {
+            'name': name,
+            'path': path,
+            'size': size,
+            'mimetype': mimetype
+        }
+
+        metadata = ShareLatexFileMetadata(raw)
+
+        self.check_metadata_file(metadata, 'txt')
+        assert metadata.name == name
+        assert metadata.size == size
+        assert metadata.path == path
+        assert metadata.content_type == mimetype
+        assert metadata.modified == None
+        assert metadata.extra['status'] == 'ok'
+
+    def test_folder_metadata(self):
+        path = '/one/two/three/four'
+        name = 'four'
+        raw = {
+            'name': name,
+            'path': path
+        }
+
+        metadata = ShareLatexFolderMetadata(raw)
+
+        self.check_kind_is_folder(metadata)
+        assert metadata.name == name
+        assert metadata.path == path
 
 
 class TestCRUD:
