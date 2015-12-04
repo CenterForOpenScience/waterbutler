@@ -7,6 +7,10 @@ class BaseShareLatexMetadata(metadata.BaseMetadata):
     def provider(self):
         return 'sharelatex'
 
+    @property
+    def etag(self):
+        return None
+
 
 class ShareLatexFileMetadata(BaseShareLatexMetadata, metadata.BaseFileMetadata):
 
