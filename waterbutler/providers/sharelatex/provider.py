@@ -102,7 +102,7 @@ class ShareLatexProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         :raises: :class:`waterbutler.core.exceptions.MetadataError`
         """
-        segments  = ('api', 'v1', 'project', self.project_id, 'docs')
+        segments = ('api', 'v1', 'project', self.project_id, 'docs')
         url = self.build_url(*segments)
 
         resp = yield from self.make_request(
