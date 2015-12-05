@@ -46,6 +46,9 @@ class DropboxProvider(provider.BaseProvider):
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path, prepend=self.folder)
 
+    def can_duplicate_names(self):
+        return False
+
     @property
     def default_headers(self):
         return {

@@ -382,6 +382,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return lambda: self.download(path)
 
     @abc.abstractmethod
+    def can_duplicate_names(self):
+        """Returns True if a file and a folder in the same directory can have identical names."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def download(self, **kwargs):
         """Download a file from this provider.
 
