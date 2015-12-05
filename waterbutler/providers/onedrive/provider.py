@@ -329,6 +329,9 @@ class OneDriveProvider(provider.BaseProvider):
         logger.info('upload:: data:{}'.format(data))
         return OneDriveFolderMetadata(data, self.folder)
 
+    def can_duplicate_names(self):
+        return False
+
     def can_intra_copy(self, dest_provider, path=None):
         return type(self) == type(dest_provider)
 
