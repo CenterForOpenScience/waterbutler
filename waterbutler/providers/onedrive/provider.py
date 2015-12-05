@@ -213,8 +213,9 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
-        one_drive_id = self._get_one_drive_id(path)
-        logger.info("delete::id::{}".format(one_drive_id))
+        is_folder = self._is_folder(path)        
+        one_drive_id = str(path).strip('/') if is_folder else self._get_one_drive_id(path)
+        logger.info("delete::id::{} path::{}".format(one_drive_id, path))
 
         yield from self.make_request(
             'DELETE',
@@ -340,6 +341,9 @@ class OneDriveProvider(provider.BaseProvider):
 
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
+
+    def _is_folder(self, path):
+        return True if str(path).endswith('/') else False
 
     def _get_one_drive_id(self, path):
         return path.full_path[path.full_path.rindex('/') + 1:]
