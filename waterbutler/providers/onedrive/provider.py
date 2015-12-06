@@ -113,17 +113,18 @@ class OneDriveProvider(provider.BaseProvider):
 
         # To simplify moving a file, moving a folder, renaming a folder, renaming a file: copy item then delete
         target_onedrive_id = self._get_one_drive_id(src_path)
-        url = self.build_url(target_onedrive_id, 'action.copy')
+        url = self.build_url(target_onedrive_id)
         payload = json.dumps({'parentReference': {'id': dest_path.full_path.split('/')[-2]}})
-
-        logger.info('intra_move dest_provider::{} src_path::{} dest_path::{}  target_onedrive_id::{} url::{} payload:{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(target_onedrive_id), url, payload))
+# path.parent, path.raw_path, path.is_dir
+        logger.info('intra_move d_parent d_is_dir dest_path::{} target_onedrive_id::{} url::{} payload:{}'.format(repr(dest_path.parent), dest_path.is_dir, repr(dest_path), repr(target_onedrive_id), url, payload))
 
         try:
             resp = yield from self.make_request(
-                'POST',
+                'PATCH',
                 url,
                 data=payload,
-                headers={'content-type': 'application/json', 'Prefer': 'respond-async'},
+#                 headers={'content-type': 'application/json', 'Prefer': 'respond-async'},
+                headers={'content-type': 'application/json'},
                 expects=(200, 202),
                 throws=exceptions.IntraMoveError,
             )
@@ -155,7 +156,10 @@ class OneDriveProvider(provider.BaseProvider):
     def download(self, path, revision=None, range=None, **kwargs):
 
         onedriveId = self._get_one_drive_id(path)
-        logger.info('oneDriveId:: {} folder:: {} revision::{}'.format(onedriveId, self.folder, revision))
+        logger.info('oneDriveId:: {} folder:: {} revision::{} path.parent:{}  raw::{} is_dir::{}  ext::{}'.format(onedriveId, self.folder, revision, path.parent, path.raw_path, path.is_dir, path.ext))
+#         if path.identifier is None:
+#             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)        
+#        if path type is file and ext is blank then get the metadata for the parent ID to get the full path of the child and download with that? parentReference
         downloadUrl = None
         if revision:
             items = yield from self._revisions_json(path)
@@ -164,6 +168,7 @@ class OneDriveProvider(provider.BaseProvider):
                     downloadUrl = item['@content.downloadUrl']
                     break
         else:
+#             url = self._build_root_url(path.full_path)
             url = self._build_content_url(onedriveId)
             logger.info('url::{}'.format(url))
             metaData = yield from self.make_request('GET',
@@ -172,7 +177,7 @@ class OneDriveProvider(provider.BaseProvider):
                                                     throws=exceptions.MetadataError
                                                     )
             data = yield from metaData.json()
-            logger.info('data::{} downloadUrl::{}'.format(data, downloadUrl))
+            logger.debug('data::{} downloadUrl::{}'.format(data, downloadUrl))
             downloadUrl = data['@content.downloadUrl']
         if downloadUrl is None:
             raise exceptions.NotFoundError(str(path))
@@ -227,7 +232,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, revision=None, **kwargs):
-        logger.debug('metadata path::{} revision::{} kwargs:{}  token:{}'.format(repr(path.full_path), repr(revision), repr(kwargs), self.token))
+        logger.info('metadata path::{} revision::{}  is_folder:{}'.format(repr(path.full_path), repr(revision), self._is_folder(path)))
 
         if (path.full_path == '0/'):
             #  handle when OSF is linked to root onedrive
@@ -239,13 +244,12 @@ class OneDriveProvider(provider.BaseProvider):
             #  handles root/sub1, root/sub1/sub2
             url = self.build_url(str(path), expand='children')
 
-        logger.debug('metadata url::{} path::{} fullpath::{}'.format(repr(url), repr(path), path.full_path))
-
         resp = yield from self.make_request(
             'GET', url,
             expects=(200, 400, ),
             throws=exceptions.MetadataError
         )
+        logger.debug("metadata resp::{}".format(repr(resp)))
 
         data = yield from resp.json()
         logger.debug("metadata data::{}".format(repr(data)))
@@ -338,6 +342,9 @@ class OneDriveProvider(provider.BaseProvider):
 
     def can_intra_move(self, dest_provider, path=None):
         return self == dest_provider
+
+    def _build_root_url(self, *segments, **query):
+        return provider.build_url(settings.BASE_ROOT_URL, *segments, **query)
 
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
