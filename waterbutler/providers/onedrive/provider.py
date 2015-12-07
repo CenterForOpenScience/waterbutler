@@ -82,6 +82,11 @@ class OneDriveProvider(provider.BaseProvider):
             resp, _ = yield from self.intra_copy(dest_provider, src_path, dest_path)
             return resp, False
 
+        # async required...async worked, now need to determine what to return to osf?
+#             yield from dest_provider.delete(dest_path)
+#             resp, _ = yield from self.intra_move(dest_provider, src_path, dest_path)
+#             return resp, False
+
         data = yield from resp.json()
 
         if 'directory' not in data.keys():
@@ -107,13 +112,12 @@ class OneDriveProvider(provider.BaseProvider):
         #  file rename:   intra_move dest_provider::src_path::WaterButlerPath('/75BFE374EBEB1211!113', prepend='75BFE374EBEB1211!107') dest_path::WaterButlerPath('/Document1-a.docx', prepend='75BFE374EBEB1211!107')
         #  file move to lower level: dest_provider::src_path::WaterButlerPath('/75BFE374EBEB1211!113', prepend='75BFE374EBEB1211!107') dest_path::WaterButlerPath('/75BFE374EBEB1211!118/75BFE374EBEB1211!113', prepend='75BFE374EBEB1211!107')
 
-        # To simplify moving a file, moving a folder, renaming a folder, renaming a file: copy item then delete
         target_onedrive_id = self._get_one_drive_id(src_path)
-        url = self.build_url(target_onedrive_id)
+        url = self.build_url(str(src_path))  # target_onedrive_id
         payload = json.dumps({'name': str(dest_path).strip('/'),
-                              'parentReference': {'id': dest_path.full_path.split('/')[-2]}})
+                              'parentReference': {'id': dest_path.parent.full_path.strip('/')}})  # dest_path.full_path.split('/')[-2]
 # path.parent, path.raw_path, path.is_dir
-        logger.info('intra_move dest_path::{} target_onedrive_id::{} url::{} payload:{}'.format(repr(dest_path), repr(target_onedrive_id), url, payload))
+        logger.info('intra_move dest_path::{} src_path::{} target_onedrive_id::{} url::{} payload:{}'.format(str(dest_path.parent.full_path), repr(src_path), repr(target_onedrive_id), url, payload))
 
         try:
             resp = yield from self.make_request(
@@ -127,10 +131,6 @@ class OneDriveProvider(provider.BaseProvider):
         except exceptions.IntraMoveError as e:
             if e.code != 403:
                 raise
-        # async required...async worked, now need to determine what to return to osf?
-#             yield from dest_provider.delete(dest_path)
-#             resp, _ = yield from self.intra_move(dest_provider, src_path, dest_path)
-#             return resp, False
 
         data = yield from resp.json()
         
