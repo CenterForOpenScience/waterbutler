@@ -133,20 +133,13 @@ class OneDriveProvider(provider.BaseProvider):
                 raise
 
         data = yield from resp.json()
-        
+
         logger.info('intra_move data:{}'.format(data))
-        
+
         if 'folder' not in data.keys():
             return OneDriveFileMetadata(data, self.folder), True
 
         folder = OneDriveFolderMetadata(data, self.folder)
-
-        folder.children = []
-        for item in data['children']:
-            if 'folder' in item.keys():
-                folder.children.append(OneDriveFolderMetadata(item, self.folder))
-            else:
-                folder.children.append(OneDriveFileMetadata(item, self.folder))
 
         return folder, True
 
@@ -249,7 +242,7 @@ class OneDriveProvider(provider.BaseProvider):
         logger.debug("metadata resp::{}".format(repr(resp)))
 
         data = yield from resp.json()
-        logger.debug("metadata data::{}".format(repr(data)))
+        logger.info("metadata data::{}".format(repr(data)))
 
         if data.get('deleted'):
             raise exceptions.MetadataError(
