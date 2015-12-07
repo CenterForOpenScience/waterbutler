@@ -110,9 +110,10 @@ class OneDriveProvider(provider.BaseProvider):
         # To simplify moving a file, moving a folder, renaming a folder, renaming a file: copy item then delete
         target_onedrive_id = self._get_one_drive_id(src_path)
         url = self.build_url(target_onedrive_id)
-        payload = json.dumps({'parentReference': {'id': dest_path.full_path.split('/')[-2]}})
+        payload = json.dumps({'name': str(dest_path).strip('/'),
+                              'parentReference': {'id': dest_path.full_path.split('/')[-2]}})
 # path.parent, path.raw_path, path.is_dir
-        logger.info('intra_move d_parent d_is_dir dest_path::{} target_onedrive_id::{} url::{} payload:{}'.format(repr(dest_path.parent), dest_path.is_dir, repr(dest_path), repr(target_onedrive_id), url, payload))
+        logger.info('intra_move dest_path::{} target_onedrive_id::{} url::{} payload:{}'.format(repr(dest_path), repr(target_onedrive_id), url, payload))
 
         try:
             resp = yield from self.make_request(
@@ -120,7 +121,7 @@ class OneDriveProvider(provider.BaseProvider):
                 url,
                 data=payload,
                 headers={'content-type': 'application/json'},
-                expects=(200, 202),
+                expects=(200, ),
                 throws=exceptions.IntraMoveError,
             )
         except exceptions.IntraMoveError as e:
@@ -132,7 +133,9 @@ class OneDriveProvider(provider.BaseProvider):
 #             return resp, False
 
         data = yield from resp.json()
-
+        
+        logger.info('intra_move data:{}'.format(data))
+        
         if 'folder' not in data.keys():
             return OneDriveFileMetadata(data, self.folder), True
 
