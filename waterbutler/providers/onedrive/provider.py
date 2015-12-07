@@ -102,10 +102,6 @@ class OneDriveProvider(provider.BaseProvider):
     def intra_move(self, dest_provider, src_path, dest_path):
         #  https://dev.onedrive.com/items/move.htm
 
-        if dest_path.full_path.lower() == src_path.full_path.lower():
-            # OneDrive does not support changing the casing in a file name
-            raise exceptions.InvalidPathError('In OneDrive to change case, add or subtract other characters.')
-
         #  PATCH /drive/items/{item-id}
         #  use cases: file rename or file move or folder rename or folder move
         #  file rename:   intra_move dest_provider::src_path::WaterButlerPath('/75BFE374EBEB1211!113', prepend='75BFE374EBEB1211!107') dest_path::WaterButlerPath('/Document1-a.docx', prepend='75BFE374EBEB1211!107')
