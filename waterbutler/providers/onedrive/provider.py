@@ -119,7 +119,6 @@ class OneDriveProvider(provider.BaseProvider):
                 'PATCH',
                 url,
                 data=payload,
-#                 headers={'content-type': 'application/json', 'Prefer': 'respond-async'},
                 headers={'content-type': 'application/json'},
                 expects=(200, 202),
                 throws=exceptions.IntraMoveError,
@@ -154,7 +153,7 @@ class OneDriveProvider(provider.BaseProvider):
         onedriveId = self._get_one_drive_id(path)
         logger.info('oneDriveId:: {} folder:: {} revision::{} path.parent:{}  raw::{} is_dir::{}  ext::{}'.format(onedriveId, self.folder, revision, path.parent, path.raw_path, path.is_dir, path.ext))
 #         if path.identifier is None:
-#             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)        
+#             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
 #        if path type is file and ext is blank then get the metadata for the parent ID to get the full path of the child and download with that? parentReference
         downloadUrl = None
         if revision:
@@ -164,7 +163,6 @@ class OneDriveProvider(provider.BaseProvider):
                     downloadUrl = item['@content.downloadUrl']
                     break
         else:
-#             url = self._build_root_url(path.full_path)
             url = self._build_content_url(onedriveId)
             logger.info('url::{}'.format(url))
             metaData = yield from self.make_request('GET',
@@ -214,7 +212,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
-        is_folder = self._is_folder(path)        
+        is_folder = self._is_folder(path)
         one_drive_id = str(path).strip('/') if is_folder else self._get_one_drive_id(path)
         logger.info("delete::id::{} path::{}".format(one_drive_id, path))
 
