@@ -72,7 +72,6 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         parts = yield from self._resolve_path_to_ids(path)
         if parts == 'reval':
-            print('###### reval invoked')
             return (yield from self.revalidate_path(
                 GoogleDrivePath('/', _ids=[self.folder]),
                 path,
