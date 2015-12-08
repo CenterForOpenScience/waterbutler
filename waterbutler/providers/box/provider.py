@@ -107,8 +107,6 @@ class BoxProvider(provider.BaseProvider):
         is_folder = path.endswith('/')
 
         ret = WaterButlerPath('/'.join(names), _ids=ids, folder=is_folder)
-        print('box names' + str(names))
-        print('box _ids' + str(ids))
 
         if new_name is not None:
             return (yield from self.revalidate_path(ret, new_name, folder=is_folder))

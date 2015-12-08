@@ -1,4 +1,3 @@
-# import os
 import http
 import json
 import asyncio
@@ -57,35 +56,36 @@ class GoogleDriveProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
-        names = list(names)
-        names[0] = ''
-        names = tuple(names)
-        print('v1')
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 
     @asyncio.coroutine
-    def validate_path(self, path, file_id=None, **kwargs):
+    def validate_path(self, path, **kwargs):
         if path == '/':
             return GoogleDrivePath('/', _ids=[self.folder['id']], folder=True)
 
+        ends_with_slash = path.endswith('/')
+
+        try:
+            path, new_name = path.strip('/').split('/')
+        except ValueError:
+            path, new_name = path.strip('/'), None
+
         parts = yield from self._resolve_path_to_ids(path)
-
-        # TODO Allow for just passing file_id
-        # if file_id:
-        #     parts = yield from self._resolve_id_to_parts(file_id)
-        # elif path:
-        # else:
-        #     raise Exception  # TODO
-
+        if parts == 'reval':
+            print('###### reval invoked')
+            return (yield from self.revalidate_path(
+                GoogleDrivePath('/', _ids=[self.folder]),
+                path,
+                folder=ends_with_slash
+            ))
+        is_folder = 'folder' in parts[-1]['mimeType']
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
-        names = list(names)
-        names[0] = ''
-        names = tuple(names)
-        print('names ' + str(names))
-        print('ids ' + str(ids))
-        # if 'folder' in parts[-1]['mimeType']:
-        #     names = names + '/'
-        return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
+
+        if new_name:
+            ids += (None, )
+            names += (new_name, )
+            is_folder = ends_with_slash
+        return GoogleDrivePath('/'.join(names), _ids=ids, folder=is_folder)
 
     @asyncio.coroutine
     def revalidate_path(self, base, name, folder=None):
@@ -99,14 +99,32 @@ class GoogleDriveProvider(provider.BaseProvider):
         if not name.endswith('/') and folder:
             name += '/'
 
-        parts = yield from self._resolve_path_to_ids(name, start_at=[{
-            'title': base.name,
-            'mimeType': 'folder',
-            'id': base.identifier,
-        }])
-        _id, name, mime = list(map(parts[-1].__getitem__, ('id', 'title', 'mimeType')))
-        print('reval _id ' + _id)
-        return base.child(name, _id=_id, folder='folder' in mime)
+        title = name.strip('/')
+
+        try:
+            bid = base.identifier['id']
+        except:
+            bid = base.identifier
+
+        resp = yield from self.make_request(
+            'GET',
+            self.build_url('files',
+                           bid,
+                           'children',
+                           orderBy='modifiedDate desc',
+                           q='title=\'{}\''.format(title),
+                           fields='items(id)'),
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
+        data = yield from resp.json()
+
+        try:
+            _id = data['items'][0]['id']
+        except IndexError:
+            _id = None
+
+        return base.child(title, _id=_id, folder=folder)
 
     def can_duplicate_names(self):
         return True
@@ -210,7 +228,12 @@ class GoogleDriveProvider(provider.BaseProvider):
         else:
             segments = ()
 
-        upload_metadata = self._build_upload_metadata(path.parent.identifier, path.name)
+        try:
+            pid = path.parent.identifier['id']
+        except:
+            pid = path.parent.identifier
+
+        upload_metadata = self._build_upload_metadata(pid, path.name)
         upload_id = yield from self._start_resumable_upload(not path.identifier, segments, stream.size, upload_metadata)
         data = yield from self._finish_resumable_upload(segments, stream, upload_id)
 
@@ -281,6 +304,10 @@ class GoogleDriveProvider(provider.BaseProvider):
         if path.identifier:
             raise exceptions.FolderNamingConflict(str(path))
 
+        try:
+            id = path.parent.identifier['id']
+        except:
+            id = path.parent.identifier
         resp = yield from self.make_request(
             'POST',
             self.build_url('files'),
@@ -290,7 +317,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             data=json.dumps({
                 'title': path.name,
                 'parents': [{
-                    'id': path.parent.identifier
+                    'id': id
                 }],
                 'mimeType': self.FOLDER_MIME_TYPE,
             }),
@@ -406,9 +433,13 @@ class GoogleDriveProvider(provider.BaseProvider):
                                    current_list[0],
                                    'parents',
                                    fields='items(id)'),
-                    expects=(200, ),
+                    expects=(200, 404, ),
                     throws=exceptions.MetadataError,
                 )
+
+                if resp.status == 404:
+                    return 'reval'
+
                 # Need to handle multiple parents
                 items = (yield from resp.json())['items']
                 if len(items) == 0:
@@ -430,6 +461,13 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         # TODO investigate batch request
         ret = []
+        if id_list[0] == self.folder['id']:
+            id_list.pop(0)
+            ret.append({
+                'title': '',
+                'mimeType': 'folder',
+                'id': self.folder['id'],
+            })
         while id_list:
             item_id = id_list.pop(0)
             resp = yield from self.make_request(
