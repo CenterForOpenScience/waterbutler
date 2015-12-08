@@ -61,47 +61,51 @@ class OneDriveProvider(provider.BaseProvider):
     @asyncio.coroutine
     def intra_copy(self, dest_provider, src_path, dest_path):
         #  https://dev.onedrive.com/items/copy.htm
-        logger.info('intra_move dest_provider::{} src_path::{} dest_path::{}  self::{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(self)))
+
+        url = self.build_url(str(src_path), 'action.copy')  # target_onedrive_id
+        payload = json.dumps({'parentReference': {'id': dest_path.parent.full_path.split('/')[-2]}})  # dest_path.full_path.split('/')[-2]
+
+        logger.info('intra_copy dest_provider::{} src_path::{} dest_path::{}  url::{} payload::{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(url), payload))
+
         try:
             resp = yield from self.make_request(
                 'POST',
-                self.build_url('id', 'action.copy'),
-                data={
-                    'name': 'new name',
-                    'parentReference': {'id': 'parent_id'}
-                },
-                headers={'content-type': 'application/json'},
-                expects=(200, 201),
+                url,
+                data=payload,
+                headers={'content-type': 'application/json', 'Prefer': 'respond-async'},
+                expects=(202, ),
                 throws=exceptions.IntraCopyError,
             )
         except exceptions.IntraCopyError as e:
             if e.code != 403:
                 raise
-
-            yield from dest_provider.delete(dest_path)
-            resp, _ = yield from self.intra_copy(dest_provider, src_path, dest_path)
-            return resp, False
+# 
+#             yield from dest_provider.delete(dest_path)
+#             resp, _ = yield from self.intra_copy(dest_provider, src_path, dest_path)
+#             return resp, False
 
         # async required...async worked, now need to determine what to return to osf?
 #             yield from dest_provider.delete(dest_path)
 #             resp, _ = yield from self.intra_move(dest_provider, src_path, dest_path)
 #             return resp, False
 
-        data = yield from resp.json()
-
-        if 'directory' not in data.keys():
-            return OneDriveFileMetadata(data, self.folder), True
-
-        folder = OneDriveFolderMetadata(data, self.folder)
-
-        folder.children = []
-        for item in data['children']:
-            if 'directory' in item.keys():
-                folder.children.append(OneDriveFolderMetadata(item, self.folder))
-            else:
-                folder.children.append(OneDriveFileMetadata(item, self.folder))
-
-        return folder, True
+        raise ValueError('todo: wire up Copy async response')
+#         data = yield from resp
+#         logger.debug('intra_copy post copy::{}'.format(repr(data)))
+# 
+#         if 'directory' not in data.keys():
+#             return OneDriveFileMetadata(data, self.folder), True
+# 
+#         folder = OneDriveFolderMetadata(data, self.folder)
+# 
+#         folder.children = []
+#         for item in data['children']:
+#             if 'directory' in item.keys():
+#                 folder.children.append(OneDriveFolderMetadata(item, self.folder))
+#             else:
+#                 folder.children.append(OneDriveFileMetadata(item, self.folder))
+# 
+#         return folder, True
 
     @asyncio.coroutine
     def intra_move(self, dest_provider, src_path, dest_path):
