@@ -63,13 +63,20 @@ def settings():
 def provider(auth, credentials, settings):
     return GoogleDriveProvider(auth, credentials, settings)
 
-
 @pytest.fixture
-def search_for_file_response():
+def search_for_parent_response():
     return {
         'items': [
-            {'id': '1234ideclarethumbwar'}
+            {'id': '19003e'}
         ]
+    }
+
+@pytest.fixture
+def file_name_querry_response():
+    return {
+        'id': '1234ideclareathumbwar',
+        'mimeType': 'text/plain',
+        'title': 'file.txt',
     }
 
 @pytest.fixture
@@ -81,41 +88,50 @@ def actual_file_response():
     }
 
 @pytest.fixture
-def search_for_folder_response():
-    return {
-        'items': [
-            {'id': 'whyis6afraidof7'}
-        ]
-    }
-
-@pytest.fixture
-def actual_folder_response():
+def folder_querry_response():
     return {
         'id': 'whyis6afraidof7',
         'mimeType': 'application/vnd.google-apps.folder',
         'title': 'A',
     }
 
+@pytest.fixture
+def folder_parent_response():
+        return {
+            'items': [
+                {'id': '19003e'}
+            ]
+        }
+
 class TestValidatePath:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_file(self, provider, search_for_file_response,
-                                           actual_file_response):
+    def test_validate_v1_path_file(self, provider,
+                                   actual_file_response,
+                                   search_for_parent_response,
+                                   file_name_querry_response):
         file_name = 'file.txt'
         file_id = '1234ideclarethumbwar'
 
-        query_url = provider.build_url(
-            'files', provider.folder['id'], 'children',
-            q="title = '{}'".format(file_name), fields='items(id)'
-        )
+        parent_query_url = provider.build_url(
+            'files', file_id, 'parents', fields='items(id)')
+        file_name_parent_url = provider.build_url(
+            'files', file_name, 'parents', fields='items(id)')
+        file_name_querry_url = provider.build_url(
+            'files', file_name, fields='id,title,mimeType')
         specific_url = provider.build_url('files', file_id, fields='id,title,mimeType')
 
-        aiohttpretty.register_json_uri('GET', query_url, body=search_for_file_response)
+        aiohttpretty.register_json_uri('GET', parent_query_url,
+                                       body=search_for_parent_response)
+        aiohttpretty.register_json_uri('GET', file_name_parent_url,
+                                       body=search_for_parent_response)
+        aiohttpretty.register_json_uri('GET', file_name_querry_url,
+                                       body=file_name_querry_response)
         aiohttpretty.register_json_uri('GET', specific_url, body=actual_file_response)
 
         try:
-            wb_path_v1 = yield from provider.validate_v1_path('/' + file_name)
+            wb_path_v1 = yield from provider.validate_v1_path('/' + file_id)
         except Exception as exc:
             pytest.fail(str(exc))
 
@@ -124,37 +140,38 @@ class TestValidatePath:
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = yield from provider.validate_path('/' + file_name)
+        wb_path_v0 = yield from provider.validate_path('/' + file_id)
 
         assert wb_path_v1 == wb_path_v0
 
     @async
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_folder(self, provider, search_for_folder_response,
-                                             actual_folder_response):
+    def test_validate_v1_path_folder(self, provider, folder_parent_response,
+                                     folder_querry_response):
         folder_name = 'foofolder'
         folder_id = 'whyis6afraidof7'
 
-        query_url = provider.build_url(
-            'files', provider.folder['id'], 'children',
-            q="title = '{}'".format(folder_name), fields='items(id)'
-        )
-        specific_url = provider.build_url('files', folder_id, fields='id,title,mimeType')
+        path_id_url = provider.build_url('files', folder_id, 'parents',
+                                         fields='items(id)')
+        path_querry_url = provider.build_url('files', folder_id,
+                                             fields='id,title,mimeType')
 
-        aiohttpretty.register_json_uri('GET', query_url, body=search_for_folder_response)
-        aiohttpretty.register_json_uri('GET', specific_url, body=actual_folder_response)
+        aiohttpretty.register_json_uri('GET', path_id_url,
+                                       body=folder_parent_response)
+        aiohttpretty.register_json_uri('GET', path_querry_url,
+                                       body=folder_querry_response)
 
         try:
-            wb_path_v1 = yield from provider.validate_v1_path('/' + folder_name + '/')
+            wb_path_v1 = yield from provider.validate_v1_path('/' + folder_id + '/')
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            yield from provider.validate_v1_path('/' + folder_name)
+            yield from provider.validate_v1_path('/' + folder_id)
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = yield from provider.validate_path('/' + folder_name + '/')
+        wb_path_v0 = yield from provider.validate_path('/' + folder_id + '/')
 
         assert wb_path_v1 == wb_path_v0
 
@@ -538,7 +555,7 @@ class TestCreateFolder:
 
         assert resp.kind == 'folder'
         assert resp.name == 'osf test'
-        assert resp.path == '/osf%20test/'
+        assert resp.path == '/0Bxtc_QrXguAwfmpVRE5vOGpQNVhJZ3F5ZHEwbjBid0lXaFUyQ3psaDltWENiVVNOaEdTNzA/'
 
     @async
     @pytest.mark.aiohttpretty

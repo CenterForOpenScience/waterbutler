@@ -23,14 +23,13 @@ def test_file_metadata_drive(basepath):
     parsed = GoogleDriveFileMetadata(item, path)
 
     assert parsed.provider == 'googledrive'
-    assert parsed.id == item['id']
     assert path.name == item['title']
     assert parsed.name == item['title']
     assert parsed.size == item['fileSize']
     assert parsed.modified == item['modifiedDate']
     assert parsed.content_type == item['mimeType']
     assert parsed.extra == {'revisionId': item['version'], 'webView': item['alternateLink']}
-    assert parsed.path == '/' + os.path.join(*[x.raw for x in path.parts])
+    assert parsed.path == '/' + item['id']
     assert parsed.materialized_path == str(path)
 
 
@@ -40,14 +39,13 @@ def test_file_metadata_drive_slashes(basepath):
     parsed = GoogleDriveFileMetadata(item, path)
 
     assert parsed.provider == 'googledrive'
-    assert parsed.id == item['id']
     assert parsed.name == item['title']
     assert parsed.name == path.name
     assert parsed.size == item['fileSize']
     assert parsed.modified == item['modifiedDate']
     assert parsed.content_type == item['mimeType']
     assert parsed.extra == {'revisionId': item['version'], 'webView': item['alternateLink']}
-    assert parsed.path == '/' + os.path.join(*[x.raw for x in path.parts])
+    assert parsed.path == '/' + item['id']
     assert parsed.materialized_path == str(path)
 
 
@@ -66,10 +64,9 @@ def test_folder_metadata():
     parsed = GoogleDriveFolderMetadata(item, path)
 
     assert parsed.provider == 'googledrive'
-    assert parsed.id == item['id']
     assert parsed.name == item['title']
     assert parsed.extra == {'revisionId': item['version']}
-    assert parsed.path == '/' + os.path.join(*[x.raw for x in path.parts]) + '/'
+    assert parsed.path == '/' + item['id'] + '/'
     assert parsed.materialized_path == str(path)
 
 
@@ -79,10 +76,9 @@ def test_folder_metadata_slash():
     parsed = GoogleDriveFolderMetadata(item, path)
 
     assert parsed.provider == 'googledrive'
-    assert parsed.id == item['id']
     assert parsed.name == item['title']
     assert parsed.extra == {'revisionId': item['version']}
-    assert parsed.path == '/' + os.path.join(*[x.raw for x in path.parts]) + '/'
+    assert parsed.path == '/' + item['id'] + '/'
     assert parsed.materialized_path == str(path)
 
 
