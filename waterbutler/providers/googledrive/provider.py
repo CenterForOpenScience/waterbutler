@@ -37,11 +37,25 @@ class GoogleDrivePath(path.WaterButlerPath):
 class GoogleDriveProvider(provider.BaseProvider):
     NAME = 'googledrive'
     BASE_URL = settings.BASE_URL
+    FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
+
+    async def validate_v1_path(self, path, **kwargs):
+        if path == '/':
+            return GoogleDrivePath('/', _ids=[self.folder['id']], folder=True)
+
+        implicit_folder = path.endswith('/')
+        parts = await self._resolve_path_to_ids(path)
+        explicit_folder = parts[-1]['mimeType'] == self.FOLDER_MIME_TYPE
+        if implicit_folder != explicit_folder:
+            raise exceptions.NotFoundError(str(path))
+
+        names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
+        return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 
     async def validate_path(self, path, file_id=None, **kwargs):
         if path == '/':
@@ -77,6 +91,9 @@ class GoogleDriveProvider(provider.BaseProvider):
         }])
         _id, name, mime = list(map(parts[-1].__getitem__, ('id', 'title', 'mimeType')))
         return base.child(name, _id=_id, folder='folder' in mime)
+
+    def can_duplicate_names(self):
+        return True
 
     @property
     def default_headers(self):
@@ -251,7 +268,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                 'parents': [{
                     'id': path.parent.identifier
                 }],
-                'mimeType': 'application/vnd.google-apps.folder'
+                'mimeType': self.FOLDER_MIME_TYPE,
             }),
             expects=(200, ),
             throws=exceptions.CreateFolderError,
@@ -264,7 +281,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     def _serialize_item(self, path, item, raw=False):
         if raw:
             return item
-        if item['mimeType'] == 'application/vnd.google-apps.folder':
+        if item['mimeType'] == self.FOLDER_MIME_TYPE:
             return GoogleDriveFolderMetadata(item, path)
         return GoogleDriveFileMetadata(item, path)
 

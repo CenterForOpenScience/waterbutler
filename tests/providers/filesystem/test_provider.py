@@ -3,6 +3,7 @@ import pytest
 import io
 import os
 import shutil
+from http import client
 
 from waterbutler.core import streams
 from waterbutler.core import metadata
@@ -45,6 +46,41 @@ def setup_filesystem(provider):
 
     with open(os.path.join(provider.folder, 'subfolder', 'nested.txt'), 'wb') as fp:
         fp.write(b'Here is my content')
+
+
+class TestValidatePath:
+
+    @async
+    def test_validate_v1_path_file(self, provider):
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/flower.jpg')
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/flower.jpg/')
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/flower.jpg')
+
+        assert wb_path_v1 == wb_path_v0
+
+    @async
+    def test_validate_v1_path_folder(self, provider):
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/subfolder/')
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/subfolder')
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/subfolder/')
+
+        assert wb_path_v1 == wb_path_v0
 
 
 class TestCRUD:

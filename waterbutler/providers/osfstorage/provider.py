@@ -41,6 +41,28 @@ class OSFStorageProvider(provider.BaseProvider):
         self.archive_settings = settings.get('archive')
         self.archive_credentials = credentials.get('archive')
 
+    async def validate_v1_path(self, path, **kwargs):
+        if path == '/':
+            return WaterButlerPath('/', _ids=[self.root_id], folder=True)
+
+        implicit_folder = path.endswith('/')
+        obj_id = path.strip('/')
+
+        resp = await self.make_signed_request(
+            'GET',
+            self.build_url(obj_id, 'lineage'),
+            expects=(200,)
+        )
+
+        data = await resp.json()
+        explicit_folder = data['data'][0]['kind'] == 'folder'
+        if explicit_folder != implicit_folder:
+            raise exceptions.NotFoundError(str(path))
+
+        names, ids = zip(*[(x['name'], x['id']) for x in reversed(data['data'])])
+
+        return WaterButlerPath('/'.join(names), _ids=ids, folder=explicit_folder)
+
     async def validate_path(self, path, **kwargs):
         if path == '/':
             return WaterButlerPath('/', _ids=[self.root_id], folder=True)
@@ -104,6 +126,9 @@ class OSFStorageProvider(provider.BaseProvider):
             )
         return self._inner_provider
 
+    def can_duplicate_names(self):
+        return True
+
     def can_intra_copy(self, other, path=None):
         return isinstance(other, self.__class__)
 
@@ -162,7 +187,7 @@ class OSFStorageProvider(provider.BaseProvider):
 
         return OsfStorageFolderMetadata(data, str(dest_path)), dest_path.identifier is None
 
-    async def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
+    def build_signed_url(self, method, url, data=None, params=None, ttl=100, **kwargs):
         signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
         if method.upper() in QUERY_METHODS:
             signed = signing.sign_data(signer, params or {}, ttl=ttl)
@@ -178,6 +203,10 @@ class OSFStorageProvider(provider.BaseProvider):
             elif url[url.rfind('?') - 1] != '/':
                 url = url.replace('?', '/?')
 
+        return url, data, params
+
+    async def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
+        url, data, params = self.build_signed_url(method, url, data=data, params=params, ttl=ttl, **kwargs)
         return await self.make_request(method, url, data=data, params=params, **kwargs)
 
     def signed_request(self, *args, **kwargs):
@@ -294,6 +323,7 @@ class OSFStorageProvider(provider.BaseProvider):
             'sha256': data['data']['sha256'],
             'version': data['data']['version'],
             'downloads': data['data']['downloads'],
+            'checkout': data['data']['checkout'],
         })
 
         path._parts[-1]._id = metadata['path'].strip('/')
@@ -345,6 +375,11 @@ class OSFStorageProvider(provider.BaseProvider):
             expects=(201, )
         ) as resp:
             return OsfStorageFolderMetadata((await resp.json())['data'], str(path))
+
+        resp_json = await resp.json()
+        # save new folder's id into the WaterButlerPath object. logs will need it later.
+        path._parts[-1]._id = resp_json['data']['path'].strip('/')
+        return OsfStorageFolderMetadata(resp_json['data'], str(path))
 
     async def _item_metadata(self, path, revision=None):
         async with self.signed_request(

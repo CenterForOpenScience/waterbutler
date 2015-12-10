@@ -22,6 +22,38 @@ class BoxProvider(provider.BaseProvider):
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
 
+    async def validate_v1_path(self, path, **kwargs):
+        if path == '/':
+            return WaterButlerPath('/', _ids=[self.folder])
+
+        obj_id = path.strip('/')
+        files_or_folders = 'folders' if path.endswith('/') else 'files'
+
+        # Box file ids must be a valid base10 number
+        if not obj_id.isdecimal():
+            raise exceptions.NotFoundError(str(path))
+
+        response = await self.make_request(
+            'get',
+            self.build_url(files_or_folders, obj_id, fields='id,name,path_collection'),
+            expects=(200, 404,),
+            throws=exceptions.MetadataError,
+        )
+
+        if response.status == 404:
+            raise exceptions.NotFoundError(str(path))
+
+        data = await response.json()
+
+        names, ids = zip(*[
+            (x['name'], x['id'])
+            for x in
+            data['path_collection']['entries'] + [data]
+        ])
+        names, ids = ('',) + names[ids.index(self.folder) + 1:], ids[ids.index(self.folder):]
+
+        return WaterButlerPath('/'.join(names), _ids=ids, folder=path.endswith('/'))
+
     async def validate_path(self, path, **kwargs):
         if path == '/':
             return WaterButlerPath('/', _ids=[self.folder])
@@ -107,6 +139,9 @@ class BoxProvider(provider.BaseProvider):
             name = path
 
         return base.child(name, _id=_id, folder=folder)
+
+    def can_duplicate_names(self):
+        return False
 
     def can_intra_move(self, other, path=None):
         return self == other
@@ -284,8 +319,10 @@ class BoxProvider(provider.BaseProvider):
             # Catch 409s to avoid race conditions
             if resp.status == 409:
                 raise exceptions.FolderNamingConflict(str(path))
-
-            return BoxFolderMetadata(await resp.json(), path)
+        resp_json = await resp.json()
+        # save new folder's id into the WaterButlerPath object. logs will need it later.
+        path._parts[-1]._id = resp_json['id']
+        return BoxFolderMetadata(resp.json, path)
 
     def _assert_child(self, paths, target=None):
         if self.folder == 0:
@@ -353,7 +390,7 @@ class BoxProvider(provider.BaseProvider):
             return self._serialize_item(data)
 
         return [
-            self._serialize_item(each, path.child(each['name']))
+            self._serialize_item(each, path.child(each['name'], folder=(each['type'] == 'folder')))
             for each in data['entries']
         ]
 

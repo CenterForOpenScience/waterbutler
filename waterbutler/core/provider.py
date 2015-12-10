@@ -363,6 +363,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return streams.ZipStreamReader(ZipStreamGenerator(self, path, *metadata))
 
     @abc.abstractmethod
+    def can_duplicate_names(self):
+        """Returns True if a file and a folder in the same directory can have identical names."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def download(self, **kwargs):
         """Download a file from this provider.
 
@@ -401,6 +406,22 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :rtype: :class:`waterbutler.core.metadata.BaseMetadata`
         :rtype: :class:`list` of :class:`waterbutler.core.metadata.BaseMetadata`
         :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def validate_v1_path(self, path, **kwargs):
+        """API v1 requires that requests against folder endpoints always end with a slash, and
+        requests against files never end with a slash.  This method checks the provider's metadata
+        for the given id and throws a 404 Not Found if the implicit and explicit types don't
+        match.  This method duplicates the logic in the provider's validate_path method, but
+        validate_path must currently accomodate v0 AND v1 semantics.  After v0's retirement, this
+        method can replace validate_path.
+
+        :param str path: user-supplied path to validate
+        :rtype: :class:`waterbutler.core.path`
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+
         """
         raise NotImplementedError
 

@@ -7,6 +7,7 @@ import logging
 import tornado.gen
 
 from waterbutler.core import utils
+from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
 from waterbutler.server.auth import AuthHandler
@@ -24,29 +25,43 @@ IDENTIFIER_PATHS = ('box', 'osfstorage')
 
 @tornado.web.stream_request_body
 class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixin):
-    VALIDATORS = {'put': 'validate_put', 'post': 'validate_post'}
+    PRE_VALIDATORS = {'put': 'prevalidate_put', 'post': 'prevalidate_post'}
+    POST_VALIDATORS = {'put': 'postvalidate_put'}
     PATTERN = r'/resources/(?P<resource>(?:\w|\d)+)/providers/(?P<provider>(?:\w|\d)+)(?P<path>/.*/?)'
 
     @tornado.gen.coroutine
     def prepare(self, *args, **kwargs):
+        method = self.request.method.lower()
+
         # TODO Find a nicer way to handle this
-        if self.request.method.lower() == 'options':
+        if method == 'options':
             return
 
         self.path = self.path_kwargs['path'] or '/'
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
 
-        if self.request.method.lower() in self.VALIDATORS:
-            # create must validate before accepting files
-            getattr(self, self.VALIDATORS[self.request.method.lower()])()
+        # pre-validator methods perform validations that can be performed before ensuring that the
+        # path given by the url is valid.  An example would be making sure that a particular query
+        # parameter matches and allowed value.  We do this because validating the path requires
+        # issuing one or more API calls to the provider, and some providers are quite stingy with
+        # their rate limits.
+        if method in self.PRE_VALIDATORS:
+            getattr(self, self.PRE_VALIDATORS[method])()
 
         self.auth = yield from auth_handler.get(self.resource, provider, self.request)
         self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
-        self.path = yield from self.provider.validate_path(self.path)
+        self.path = yield from self.provider.validate_v1_path(self.path)
+
+        self.target_path = None
+
+        # post-validator methods perform validations that expect that the path given in the url has
+        # been verified for existence and type.
+        if method in self.POST_VALIDATORS:
+            getattr(self, self.POST_VALIDATORS[method])()
 
         # The one special case
-        if self.request.method == 'PUT' and self.path.is_file:
+        if method == 'put' and self.target_path.is_file:
             yield from self.prepare_stream()
         else:
             self.stream = None
@@ -73,9 +88,22 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     @tornado.gen.coroutine
     def put(self, **_):
         """Defined in CreateMixin"""
-        if self.path.is_file:
+        # handle newfile vs. newfolder naming conflicts
+        if self.path.is_dir:
+            my_type_exists = yield from self.provider.exists(self.target_path)
+            if my_type_exists:
+                raise exceptions.NamingConflict(self.target_path)
+
+            if not self.provider.can_duplicate_names():
+                target_flipped = self.path.child(self.childs_name, folder=(self.kind != 'folder'))
+                other_exists = yield from self.provider.exists(target_flipped)
+                # the dropbox provider's metadata() method returns a [] here instead of True
+                if not isinstance(other_exists, bool) or other_exists:
+                    raise exceptions.NamingConflict(self.target_path)
+
+        if self.target_path.is_file:
             return (yield from self.upload_file())
-        return (yield from self.create_folder())
+        return(yield from self.create_folder())
 
     @tornado.gen.coroutine
     def post(self, **_):
@@ -106,7 +134,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         _, self.writer = yield from asyncio.open_unix_connection(sock=self.wsock)
 
         self.stream = RequestStreamReader(self.request, self.reader)
-        self.uploader = asyncio.async(self.provider.upload(self.stream, self.path))
+        self.uploader = asyncio.async(self.provider.upload(self.stream, self.target_path))
 
     def on_finish(self):
         status, method = self.get_status(), self.request.method.upper()
@@ -119,7 +147,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
         # Done here just because method is defined
         action = {
-            'PUT': lambda: ('create' if self.path.is_file else 'create_folder') if status == 201 else 'update',
+            'PUT': lambda: ('create' if self.target_path.is_file else 'create_folder') if status == 201 else 'update',
             'POST': lambda: 'move' if self.json['action'] == 'rename' else self.json['action'],
             'DELETE': lambda: 'delete'
         }[method]()
@@ -132,6 +160,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             'action': action,
             'time': time.time() + 60,
             'auth': self.auth['auth'],
+            'provider': self.provider.NAME,
         }
 
         if action in ('move', 'copy'):
@@ -156,12 +185,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         else:
             # This is adequate for everything but github
             # If extra can be included it will link to the given sha
+            payload_path = self.target_path or self.path
             payload.update({
                 'metadata': {
                     # Hack: OSF and box use identifiers to refer to files
-                    'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else self.path.path,
-                    'name': self.path.name,
-                    'materialized': str(self.path),
+                    'path': payload_path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else payload_path.path,
+                    'name': payload_path.name,
+                    'materialized': str(payload_path),
                     'provider': self.provider.NAME,
                 }
             })
