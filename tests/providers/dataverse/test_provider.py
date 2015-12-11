@@ -218,9 +218,9 @@ def empty_native_dataset_metadata():
 
 class TestValidatePath:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_file(self, provider, native_dataset_metadata):
+    async def test_validate_v1_path_file(self, provider, native_dataset_metadata):
         draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
         published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
 
@@ -230,28 +230,28 @@ class TestValidatePath:
         path = '/21'
 
         try:
-            wb_path_v1 = yield from provider.validate_v1_path(path)
+            wb_path_v1 = await provider.validate_v1_path(path)
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            yield from provider.validate_v1_path(path + '/')
+            await provider.validate_v1_path(path + '/')
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = yield from provider.validate_path(path)
+        wb_path_v0 = await provider.validate_path(path)
 
         assert wb_path_v1 == wb_path_v0
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_folder(self, provider):
+    async def test_validate_v1_path_folder(self, provider):
         try:
-            wb_path_v1 = yield from provider.validate_v1_path('/')
+            wb_path_v1 = await provider.validate_v1_path('/')
         except Exception as exc:
             pytest.fail(str(exc))
 
-        wb_path_v0 = yield from provider.validate_path('/')
+        wb_path_v0 = await provider.validate_path('/')
 
         assert wb_path_v1 == wb_path_v0
 

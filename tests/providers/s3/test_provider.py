@@ -285,9 +285,9 @@ def build_folder_params(path):
 
 class TestValidatePath:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_file(self, provider, file_metadata):
+    async def test_validate_v1_path_file(self, provider, file_metadata):
         file_path = 'foobah'
 
         params = {'prefix': '/' + file_path + '/', 'delimiter': '/'}
@@ -297,22 +297,22 @@ class TestValidatePath:
         aiohttpretty.register_uri('GET', bad_metadata_url, params=params, status=404)
 
         try:
-            wb_path_v1 = yield from provider.validate_v1_path('/' + file_path)
+            wb_path_v1 = await provider.validate_v1_path('/' + file_path)
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            yield from provider.validate_v1_path('/' + file_path + '/')
+            await provider.validate_v1_path('/' + file_path + '/')
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = yield from provider.validate_path('/' + file_path)
+        wb_path_v0 = await provider.validate_path('/' + file_path)
 
         assert wb_path_v1 == wb_path_v0
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_folder(self, provider, folder_metadata):
+    async def test_validate_v1_path_folder(self, provider, folder_metadata):
         folder_path = 'Photos'
 
         params = {'prefix': '/' + folder_path + '/', 'delimiter': '/'}
@@ -325,16 +325,16 @@ class TestValidatePath:
         aiohttpretty.register_uri('HEAD', bad_metadata_url, status=404)
 
         try:
-            wb_path_v1 = yield from provider.validate_v1_path('/' + folder_path + '/')
+            wb_path_v1 = await provider.validate_v1_path('/' + folder_path + '/')
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            yield from provider.validate_v1_path('/' + folder_path)
+            await provider.validate_v1_path('/' + folder_path)
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = yield from provider.validate_path('/' + folder_path + '/')
+        wb_path_v0 = await provider.validate_path('/' + folder_path + '/')
 
         assert wb_path_v1 == wb_path_v0
 
@@ -482,7 +482,8 @@ class TestCRUD:
 
         assert aiohttpretty.has_call(method='DELETE', uri=url)
 
-    def test_folder_delete(self, provider, contents_and_self):
+    @pytest.mark.asyncio
+    async def test_folder_delete(self, provider, contents_and_self):
         path = WaterButlerPath('/some-folder/')
 
         params = {'prefix': 'some-folder/'}
@@ -508,14 +509,14 @@ class TestCRUD:
         )
         aiohttpretty.register_uri('POST', delete_url, status=204)
 
-        yield from provider.delete(path)
+        await provider.delete(path)
 
         assert aiohttpretty.has_call(method='GET', uri=query_url, params=params)
         assert aiohttpretty.has_call(method='POST', uri=delete_url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_large_folder_delete(self, provider):
+    async def test_large_folder_delete(self, provider):
         path = WaterButlerPath('/some-folder/')
 
         query_url = provider.bucket.generate_url(100, 'GET')
@@ -563,7 +564,7 @@ class TestCRUD:
         )
         aiohttpretty.register_uri('POST', delete_url_two, status=204)
 
-        yield from provider.delete(path)
+        await provider.delete(path)
 
         assert aiohttpretty.has_call(method='GET', uri=query_url, params=params_one)
         assert aiohttpretty.has_call(method='GET', uri=query_url, params=params_two)

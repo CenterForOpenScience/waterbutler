@@ -477,9 +477,9 @@ class TestValidatePath:
         child_folder = parent.child('childfolder', folder=True)
         assert child_folder.identifier[0] == 'master'
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_file(self, provider, content_repo_metadata_root_file_txt):
+    async def test_validate_v1_path_file(self, provider, content_repo_metadata_root_file_txt):
         blob_path = 'file.txt'
         blob_url = provider.build_repo_url('contents', blob_path)
         blob_query = '?ref=' + provider.default_branch
@@ -490,22 +490,22 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', blob_bad_url, body=content_repo_metadata_root_file_txt)
 
         try:
-            wb_path_v1 = yield from provider.validate_v1_path('/' + blob_path)
+            wb_path_v1 = await provider.validate_v1_path('/' + blob_path)
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            yield from provider.validate_v1_path('/' + blob_path + '/')
+            await provider.validate_v1_path('/' + blob_path + '/')
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = yield from provider.validate_path('/' + blob_path)
+        wb_path_v0 = await provider.validate_path('/' + blob_path)
 
         assert wb_path_v1 == wb_path_v0
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_folder(self, provider, content_repo_metadata_root):
+    async def test_validate_v1_path_folder(self, provider, content_repo_metadata_root):
         tree_path = 'folder'
         tree_url = provider.build_repo_url('contents', tree_path)
         tree_query = '?ref=' + provider.default_branch
@@ -515,16 +515,16 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', tree_good_url, body=content_repo_metadata_root)
         aiohttpretty.register_json_uri('GET', tree_bad_url, body=content_repo_metadata_root)
         try:
-            wb_path_v1 = yield from provider.validate_v1_path('/' + tree_path + '/')
+            wb_path_v1 = await provider.validate_v1_path('/' + tree_path + '/')
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            yield from provider.validate_v1_path('/' + tree_path)
+            await provider.validate_v1_path('/' + tree_path)
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = yield from provider.validate_path('/' + tree_path + '/')
+        wb_path_v0 = await provider.validate_path('/' + tree_path + '/')
 
         assert wb_path_v1 == wb_path_v0
 

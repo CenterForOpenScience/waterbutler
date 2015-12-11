@@ -269,9 +269,9 @@ async def test_provider_metadata(monkeypatch, provider, mock_folder_path):
 
 class TestValidatePath:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_file(self, provider, file_lineage):
+    async def test_validate_v1_path_file(self, provider, file_lineage):
         file_path = '56152738cfe1912c7d74cad7'
 
         url, _, params = provider.build_signed_url('GET', 'https://waterbutler.io/{}/lineage/'.format(file_path))
@@ -279,38 +279,38 @@ class TestValidatePath:
 
         # folder_path = '56045626cfe191ead0264305'
         try:
-            wb_path_v1 = yield from provider.validate_v1_path('/' + file_path)
+            wb_path_v1 = await provider.validate_v1_path('/' + file_path)
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            yield from provider.validate_v1_path('/' + file_path + '/')
+            await provider.validate_v1_path('/' + file_path + '/')
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = yield from provider.validate_path('/' + file_path)
+        wb_path_v0 = await provider.validate_path('/' + file_path)
 
         assert wb_path_v1 == wb_path_v0
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_folder(self, provider, folder_lineage):
+    async def test_validate_v1_path_folder(self, provider, folder_lineage):
         folder_path = '56045626cfe191ead0264305'
 
         url, _, params = provider.build_signed_url('GET', 'https://waterbutler.io/{}/lineage/'.format(folder_path))
         aiohttpretty.register_json_uri('GET', url, params=params, status=200, body=folder_lineage)
 
         try:
-            wb_path_v1 = yield from provider.validate_v1_path('/' + folder_path + '/')
+            wb_path_v1 = await provider.validate_v1_path('/' + folder_path + '/')
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            yield from provider.validate_v1_path('/' + folder_path)
+            await provider.validate_v1_path('/' + folder_path)
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = yield from provider.validate_path('/' + folder_path + '/')
+        wb_path_v0 = await provider.validate_path('/' + folder_path + '/')
 
         assert wb_path_v1 == wb_path_v0
 

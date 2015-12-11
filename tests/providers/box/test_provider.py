@@ -270,9 +270,9 @@ def revisions_list_metadata():
 
 class TestValidatePath:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_file(self, provider, file_metadata):
+    async def test_validate_v1_path_file(self, provider, file_metadata):
         file_id = '5000948880'
 
         good_url = provider.build_url('files', file_id, fields='id,name,path_collection')
@@ -282,22 +282,22 @@ class TestValidatePath:
         aiohttpretty.register_uri('get', bad_url, status=404)
 
         try:
-            wb_path_v1 = yield from provider.validate_v1_path('/' + file_id)
+            wb_path_v1 = await provider.validate_v1_path('/' + file_id)
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            yield from provider.validate_v1_path('/' + file_id + '/')
+            await provider.validate_v1_path('/' + file_id + '/')
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = yield from provider.validate_path('/' + file_id)
+        wb_path_v0 = await provider.validate_path('/' + file_id)
 
         assert wb_path_v1 == wb_path_v0
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_folder(self, provider, folder_object_metadata):
+    async def test_validate_v1_path_folder(self, provider, folder_object_metadata):
         provider.folder = '0'
         folder_id = '11446498'
 
@@ -307,16 +307,16 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('get', good_url, body=folder_object_metadata, status=200)
         aiohttpretty.register_uri('get', bad_url, status=404)
         try:
-            wb_path_v1 = yield from provider.validate_v1_path('/' + folder_id + '/')
+            wb_path_v1 = await provider.validate_v1_path('/' + folder_id + '/')
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            yield from provider.validate_v1_path('/' + folder_id)
+            await provider.validate_v1_path('/' + folder_id)
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = yield from provider.validate_path('/' + folder_id + '/')
+        wb_path_v0 = await provider.validate_path('/' + folder_id + '/')
 
         assert wb_path_v1 == wb_path_v0
 
