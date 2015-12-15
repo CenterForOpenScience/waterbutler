@@ -28,7 +28,8 @@ def auth():
 @pytest.fixture
 def credentials():
     return {
-        'access_key': 'brian',
+        'auth_token': 'brian',
+        'sharelatex_url': 'www.sharelatex.com',
     }
 
 @pytest.fixture
