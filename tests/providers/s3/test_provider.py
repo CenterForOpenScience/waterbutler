@@ -483,6 +483,7 @@ class TestCRUD:
         assert aiohttpretty.has_call(method='DELETE', uri=url)
 
     @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_folder_delete(self, provider, contents_and_self):
         path = WaterButlerPath('/some-folder/')
 
