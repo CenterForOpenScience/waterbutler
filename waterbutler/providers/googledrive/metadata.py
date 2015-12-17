@@ -13,10 +13,6 @@ class BaseGoogleDriveMetadata(metadata.BaseMetadata):
     def provider(self):
         return 'googledrive'
 
-    # @property
-    # def path(self):
-    #     return '/' + self._path.raw_path
-
     @property
     def materialized_path(self):
         return str(self._path_obj)
@@ -32,10 +28,6 @@ class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMeta
         super().__init__(raw, path_obj)
         self._path_obj._is_folder = True
 
-    # @property
-    # def id(self):
-    #     return self.raw['id']
-
     @property
     def name(self):
         return self.raw['title']
@@ -46,10 +38,6 @@ class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMeta
 
 
 class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata):
-
-    # @property
-    # def id(self):
-    #     return self.raw['id']
 
     @property
     def name(self):
