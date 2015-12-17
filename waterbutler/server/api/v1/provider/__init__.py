@@ -175,11 +175,11 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                 },
                 'destination': {
                     'nid': self.dest_resource,
-                    'kind': self.dest_path.kind,
-                    'name': self.dest_path.name,
-                    'path': self.dest_path.identifier_path if self.dest_provider.NAME in IDENTIFIER_PATHS else self.dest_path.path,
+                    'kind': self.dest_meta.kind,
+                    'name': self.dest_meta.name,
+                    'path': self.dest_meta.path,
                     'provider': self.dest_provider.NAME,
-                    'materialized': str(self.dest_path),
+                    'materialized': self.dest_meta.materialized_path,
                 }
             })
         else:
