@@ -111,6 +111,8 @@ class MoveCopyMixin:
                 )
             )
 
+        self.dest_meta = metadata
+
         if created:
             self.set_status(201)
         else:
