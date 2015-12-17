@@ -29,9 +29,7 @@ def build_url(base, *segments, **query):
 
 
 class BaseProvider(metaclass=abc.ABCMeta):
-    """The base class for all providers.
-    Every provider must, at the least,
-    implement all abstract methods in this class
+    """The base class for all providers. Every provider must, at the least, implement all abstract methods in this class
 
     .. note::
         When adding a new provider you must add it to setup.py's
@@ -77,10 +75,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         }
 
     def build_url(self, *segments, **query):
-        """A nice wrapped around furl, builds urls based on self.BASE_URL
+        """A nice wrapper around furl, builds urls based on self.BASE_URL
 
-        :param (str, ...) segments: A tuple of string joined into /foo/bar/..
-        :param dict query: A dictionary that will be turned into query parameters ?foo=bar
+        :param tuple \*segments: A tuple of strings joined into /foo/bar/..
+        :param dict \*\*query: A dictionary that will be turned into query parameters ?foo=bar
         :rtype: str
         """
         return build_url(self.BASE_URL, *segments, **query)
@@ -242,10 +240,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def handle_naming(self, src_path, dest_path, rename=None, conflict='replace'):
-        """Given a WaterButlerPath and the desired name handle any potential
-        naming issues
+        """Given a WaterButlerPath and the desired name, handle any potential naming issues.
 
-        ie:
+        i.e.:
             cp /file.txt /folder/ -> /folder/file.txt
             cp /folder/ /folder/ -> /folder/folder/
             cp /file.txt /folder/file.txt -> /folder/file.txt
@@ -275,8 +272,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return dest_path
 
     def can_intra_copy(self, other, path=None):
-        """Indicates if a quick copy can be performed
-        between the current and `other`.
+        """Indicates if a quick copy can be performed between the current provider and `other`.
 
         .. note::
             Defaults to False
@@ -287,8 +283,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return False
 
     def can_intra_move(self, other, path=None):
-        """Indicates if a quick move can be performed
-        between the current and `other`.
+        """Indicates if a quick move can be performed between the current provider and `other`.
 
         .. note::
             Defaults to False
@@ -418,8 +413,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def metadata(self, **kwargs):
-        """Get metdata about the specified resource from this provider.
-        Will be a :class:`list` if the resource is a directory otherwise an instance of :class:`waterbutler.core.metadata.BaseFileMetadata`
+        """Get metdata about the specified resource from this provider. Will be a :class:`list`
+        if the resource is a directory otherwise an instance of
+        :class:`waterbutler.core.metadata.BaseFileMetadata`
 
         :param dict \*\*kwargs: Arguments to be parsed by child classes
         :rtype: :class:`waterbutler.core.metadata.BaseMetadata`
