@@ -72,7 +72,7 @@ def search_for_parent_response():
     }
 
 @pytest.fixture
-def file_name_querry_response():
+def file_name_query_response():
     return {
         'id': '1234ideclareathumbwar',
         'mimeType': 'text/plain',
@@ -88,7 +88,7 @@ def actual_file_response():
     }
 
 @pytest.fixture
-def folder_querry_response():
+def folder_query_response():
     return {
         'id': 'whyis6afraidof7',
         'mimeType': 'application/vnd.google-apps.folder',
@@ -110,7 +110,7 @@ class TestValidatePath:
     def test_validate_v1_path_file(self, provider,
                                    actual_file_response,
                                    search_for_parent_response,
-                                   file_name_querry_response):
+                                   file_name_query_response):
         file_name = 'file.txt'
         file_id = '1234ideclarethumbwar'
 
@@ -118,7 +118,7 @@ class TestValidatePath:
             'files', file_id, 'parents', fields='items(id)')
         file_name_parent_url = provider.build_url(
             'files', file_name, 'parents', fields='items(id)')
-        file_name_querry_url = provider.build_url(
+        file_name_query_url = provider.build_url(
             'files', file_name, fields='id,title,mimeType')
         specific_url = provider.build_url('files', file_id, fields='id,title,mimeType')
 
@@ -126,8 +126,8 @@ class TestValidatePath:
                                        body=search_for_parent_response)
         aiohttpretty.register_json_uri('GET', file_name_parent_url,
                                        body=search_for_parent_response)
-        aiohttpretty.register_json_uri('GET', file_name_querry_url,
-                                       body=file_name_querry_response)
+        aiohttpretty.register_json_uri('GET', file_name_query_url,
+                                       body=file_name_query_response)
         aiohttpretty.register_json_uri('GET', specific_url, body=actual_file_response)
 
         try:
@@ -147,19 +147,19 @@ class TestValidatePath:
     @async
     @pytest.mark.aiohttpretty
     def test_validate_v1_path_folder(self, provider, folder_parent_response,
-                                     folder_querry_response):
+                                     folder_query_response):
         folder_name = 'foofolder'
         folder_id = 'whyis6afraidof7'
 
         path_id_url = provider.build_url('files', folder_id, 'parents',
                                          fields='items(id)')
-        path_querry_url = provider.build_url('files', folder_id,
+        path_query_url = provider.build_url('files', folder_id,
                                              fields='id,title,mimeType')
 
         aiohttpretty.register_json_uri('GET', path_id_url,
                                        body=folder_parent_response)
-        aiohttpretty.register_json_uri('GET', path_querry_url,
-                                       body=folder_querry_response)
+        aiohttpretty.register_json_uri('GET', path_query_url,
+                                       body=folder_query_response)
 
         try:
             wb_path_v1 = yield from provider.validate_v1_path('/' + folder_id + '/')
