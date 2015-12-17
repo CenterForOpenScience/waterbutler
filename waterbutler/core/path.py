@@ -53,8 +53,24 @@ class WaterButlerPathPart:
 
 
 class WaterButlerPath:
-    """
-    A standardized and validated immutable WaterButler path.
+    """ A standardized and validated immutable WaterButler path.  This is our abstraction around
+    file paths in storage providers.  A WaterButlerPath is an array of WaterButlerPathPart objects.
+    Each PathPart has two important attributes, `value` and `_id`.  `value` is always the
+    human-readble component of the path. If the provider assigns ids to entities (see: Box, Google
+    Drive, OSFStorage), that id belongs in the `_id` attribute. If `/Foo/Bar/baz.txt` is stored on
+    Box, its path parts will be approximately:
+
+        [
+          { value: '/',       _id: None, }, # must have root
+          { value: 'Foo',     _id: '1112192435' },
+          { value: 'Bar',     _id: '1112202348' },
+          { value: 'baz.txt', _id: '1113345897' },
+        ]
+
+    If :func:`WaterButlerPath.identifier` is called on this object, it'll return the `_id` of the
+    last path part. :func:`WaterButlerPath.path` will return `/Foo/Bar/baz.txt`.
+
+    A valid WaterButlerPath should always have a root path part.
     """
 
     PART_CLASS = WaterButlerPathPart
