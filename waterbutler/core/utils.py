@@ -80,15 +80,15 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
 
         @as_task
         @functools.wraps(func)
-        def wrapped(*args, __retries=0, **kwargs):
+        async def wrapped(*args, __retries=0, **kwargs):
             try:
-                return (yield from asyncio.coroutine(func)(*args, **kwargs))
+                return (await asyncio.coroutine(func)(*args, **kwargs))
             except exceptions as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
                     logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting {4} seconds before retrying'.format(func, e, __retries, retries, wait_time))
 
-                    yield from asyncio.sleep(wait_time)
+                    await asyncio.sleep(wait_time)
                     return wrapped(*args, __retries=__retries + 1, **kwargs)
                 else:
                     # Logs before all things
@@ -108,10 +108,9 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
     return _async_retry
 
 
-@asyncio.coroutine
-def send_signed_request(method, url, payload):
+async def send_signed_request(method, url, payload):
     message, signature = signer.sign_payload(payload)
-    return (yield from aiohttp.request(
+    return (await aiohttp.request(
         method, url,
         data=json.dumps({
             'payload': message.decode(),

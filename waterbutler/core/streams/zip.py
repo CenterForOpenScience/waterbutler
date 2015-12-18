@@ -47,13 +47,12 @@ class ZipLocalFileData(BaseStream):
     def size(self):
         return 0
 
-    @asyncio.coroutine
-    def _read(self, n=-1, *args, **kwargs):
+    async def _read(self, n=-1, *args, **kwargs):
 
         ret = self._buffer
 
         while (n == -1 or len(ret) < n) and not self.stream.at_eof():
-            chunk = yield from self.stream.read(n, *args, **kwargs)
+            chunk = await self.stream.read(n, *args, **kwargs)
 
             # Update file info
             self.file.original_size += len(chunk)

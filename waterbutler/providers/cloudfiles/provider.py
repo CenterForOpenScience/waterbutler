@@ -2,7 +2,6 @@ import os
 import hmac
 import json
 import time
-import asyncio
 import hashlib
 import functools
 
@@ -23,10 +22,9 @@ def ensure_connection(func):
     """Runs ``_ensure_connection`` before continuing to the method
     """
     @functools.wraps(func)
-    @asyncio.coroutine
-    def wrapped(self, *args, **kwargs):
-        yield from self._ensure_connection()
-        return (yield from func(self, *args, **kwargs))
+    async def wrapped(self, *args, **kwargs):
+        await self._ensure_connection()
+        return (await func(self, *args, **kwargs))
     return wrapped
 
 
@@ -47,12 +45,10 @@ class CloudFilesProvider(provider.BaseProvider):
         self.container = self.settings['container']
         self.use_public = self.settings.get('use_public', True)
 
-    @asyncio.coroutine
-    def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path, **kwargs):
         return self.validate_path(path, **kwargs)
 
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
     @property
@@ -63,12 +59,11 @@ class CloudFilesProvider(provider.BaseProvider):
         }
 
     @ensure_connection
-    @asyncio.coroutine
-    def intra_copy(self, dest_provider, source_path, dest_path):
+    async def intra_copy(self, dest_provider, source_path, dest_path):
         url = dest_provider.build_url(dest_path.path)
-        exists = yield from dest_provider.exists(dest_path)
+        exists = await dest_provider.exists(dest_path)
 
-        yield from self.make_request(
+        await self.make_request(
             'PUT',
             url,
             headers={
@@ -77,11 +72,10 @@ class CloudFilesProvider(provider.BaseProvider):
             expects=(201, ),
             throws=exceptions.IntraCopyError,
         )
-        return (yield from dest_provider.metadata(dest_path)), not exists
+        return (await dest_provider.metadata(dest_path)), not exists
 
     @ensure_connection
-    @asyncio.coroutine
-    def download(self, path, accept_url=False, range=None, **kwargs):
+    async def download(self, path, accept_url=False, range=None, **kwargs):
         """Returns a ResponseStreamReader (Stream) for the specified path
         :param str path: Path to the object you want to download
         :param dict **kwargs: Additional arguments that are ignored
@@ -94,7 +88,7 @@ class CloudFilesProvider(provider.BaseProvider):
             parsed_url.args['filename'] = kwargs.get('displayName') or path.name
             return parsed_url.url
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET',
             self.sign_url(path),
             range=range,
@@ -104,21 +98,20 @@ class CloudFilesProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(resp)
 
     @ensure_connection
-    @asyncio.coroutine
-    def upload(self, stream, path, check_created=True, fetch_metadata=True, **kwargs):
+    async def upload(self, stream, path, check_created=True, fetch_metadata=True, **kwargs):
         """Uploads the given stream to CloudFiles
         :param ResponseStreamReader stream: The stream to put to CloudFiles
         :param str path: The full path of the object to upload to/into
         :rtype ResponseStreamReader:
         """
         if check_created:
-            created = not (yield from self.exists(path))
+            created = not (await self.exists(path))
         else:
             created = None
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         url = self.sign_url(path, 'PUT')
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'PUT',
             url,
             data=stream,
@@ -131,21 +124,20 @@ class CloudFilesProvider(provider.BaseProvider):
         assert resp.headers['ETag'].replace('"', '') == stream.writers['md5'].hexdigest
 
         if fetch_metadata:
-            metadata = yield from self.metadata(path)
+            metadata = await self.metadata(path)
         else:
             metadata = None
 
         return metadata, created
 
     @ensure_connection
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    async def delete(self, path, **kwargs):
         """Deletes the key at the specified path
         :param str path: The path of the key to delete
         :rtype ResponseStreamReader:
         """
         if path.is_dir:
-            metadata = yield from self.metadata(path, recursive=True)
+            metadata = await self.metadata(path, recursive=True)
 
             delete_files = [
                 os.path.join('/', self.container, path.child(item['name']).path)
@@ -155,7 +147,7 @@ class CloudFilesProvider(provider.BaseProvider):
             delete_files.append(os.path.join('/', self.container, path.path))
 
             query = {'bulk-delete': ''}
-            yield from self.make_request(
+            await self.make_request(
                 'DELETE',
                 self.build_url(**query),
                 data='\n'.join(delete_files),
@@ -166,7 +158,7 @@ class CloudFilesProvider(provider.BaseProvider):
                 },
             )
         else:
-            yield from self.make_request(
+            await self.make_request(
                 'DELETE',
                 self.build_url(path.path),
                 expects=(204, ),
@@ -174,17 +166,16 @@ class CloudFilesProvider(provider.BaseProvider):
             )
 
     @ensure_connection
-    @asyncio.coroutine
-    def metadata(self, path, recursive=False, **kwargs):
+    async def metadata(self, path, recursive=False, **kwargs):
         """Get Metadata about the requested file or folder
         :param str path: The path to a key or folder
         :rtype dict:
         :rtype list:
         """
         if path.is_dir:
-            return (yield from self._metadata_folder(path, recursive=recursive, **kwargs))
+            return (await self._metadata_folder(path, recursive=recursive, **kwargs))
         else:
-            return (yield from self._metadata_file(path, **kwargs))
+            return (await self._metadata_file(path, **kwargs))
 
     def build_url(self, path, _endpoint=None, **query):
         """Build the url for the specified object
@@ -259,14 +250,13 @@ class CloudFilesProvider(provider.BaseProvider):
                     if region['region'].lower() == self.region.lower():
                         return region['publicURL'], region['internalURL']
 
-    @asyncio.coroutine
-    def _get_token(self):
+    async def _get_token(self):
         """Fetches an access token from cloudfiles for actual api requests
         Returns the entire json response from the tokens endpoint
         Notably containing our token and proper endpoint to send requests to
         :rtype dict:
         """
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'POST',
             settings.AUTH_URL,
             data=json.dumps({
@@ -282,16 +272,16 @@ class CloudFilesProvider(provider.BaseProvider):
             },
             expects=(200, ),
         )
-        data = yield from resp.json()
+        data = await resp.json()
         return data
 
-    def _metadata_file(self, path, is_folder=False, **kwargs):
+    async def _metadata_file(self, path, is_folder=False, **kwargs):
         """Get Metadata about the requested file
         :param str path: The path to a key
         :rtype dict:
         :rtype list:
         """
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'HEAD',
             self.build_url(path.path),
             expects=(200, ),
@@ -306,7 +296,7 @@ class CloudFilesProvider(provider.BaseProvider):
 
         return CloudFilesHeaderMetadata(resp.headers, path.path)
 
-    def _metadata_folder(self, path, recursive=False, **kwargs):
+    async def _metadata_folder(self, path, recursive=False, **kwargs):
         """Get Metadata about the requested folder
         :param str path: The path to a folder
         :rtype dict:
@@ -316,19 +306,19 @@ class CloudFilesProvider(provider.BaseProvider):
         query = {'prefix': path.path}
         if not recursive:
             query.update({'delimiter': '/'})
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET',
             self.build_url('', **query),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
-        data = yield from resp.json()
+        data = await resp.json()
 
         # no data and the provider path is not root, we are left with either a file or a directory marker
         if not data and not path.is_root:
             # Convert the parent path into a directory marker (file) and check for an empty folder
             dir_marker = path.parent.child(path.name, folder=False)
-            metadata = yield from self._metadata_file(dir_marker, is_folder=True, **kwargs)
+            metadata = await self._metadata_file(dir_marker, is_folder=True, **kwargs)
             if not metadata:
                 raise exceptions.MetadataError(
                     'Could not retrieve folder \'{0}\''.format(str(path)),

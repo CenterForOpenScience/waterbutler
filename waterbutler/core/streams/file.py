@@ -33,11 +33,10 @@ class FileStreamReader(BaseStream):
                 break
             yield data
 
-    @asyncio.coroutine
-    def _read(self, size):
+    async def _read(self, size):
         self.file_gen = self.file_gen or self.read_as_gen()
         # add sleep of 0 so read will yield and continue in next io loop iteration
-        yield from asyncio.sleep(0)
+        await asyncio.sleep(0)
         self.read_size = size
         try:
             return next(self.file_gen)
