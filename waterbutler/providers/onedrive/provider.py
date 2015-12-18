@@ -67,19 +67,19 @@ class OneDriveProvider(provider.BaseProvider):
 
         logger.info('intra_copy dest_provider::{} src_path::{} dest_path::{}  url::{} payload::{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(url), payload))
 
-        try:
-            resp = yield from self.make_request(
-                'POST',
-                url,
-                data=payload,
-                headers={'content-type': 'application/json', 'Prefer': 'respond-async'},
-                expects=(202, ),
-                throws=exceptions.IntraCopyError,
-            )
-        except exceptions.IntraCopyError as e:
-            if e.code != 403:
-                raise
-# 
+#          try:
+#              resp = yield from self.make_request(
+#                  'POST',
+#                  url,
+#                  data=payload,
+#                  headers={'content-type': 'application/json', 'Prefer': 'respond-async'},
+#                  expects=(202, ),
+#                  throws=exceptions.IntraCopyError,
+#              )
+#          except exceptions.IntraCopyError as e:
+#              if e.code != 403:
+#                  raise
+#
 #             yield from dest_provider.delete(dest_path)
 #             resp, _ = yield from self.intra_copy(dest_provider, src_path, dest_path)
 #             return resp, False
@@ -92,19 +92,19 @@ class OneDriveProvider(provider.BaseProvider):
         raise ValueError('todo: wire up Copy async response')
 #         data = yield from resp
 #         logger.debug('intra_copy post copy::{}'.format(repr(data)))
-# 
+#
 #         if 'directory' not in data.keys():
 #             return OneDriveFileMetadata(data, self.folder), True
-# 
+#
 #         folder = OneDriveFolderMetadata(data, self.folder)
-# 
+#
 #         folder.children = []
 #         for item in data['children']:
 #             if 'directory' in item.keys():
 #                 folder.children.append(OneDriveFolderMetadata(item, self.folder))
 #             else:
 #                 folder.children.append(OneDriveFileMetadata(item, self.folder))
-# 
+#
 #         return folder, True
 
     @asyncio.coroutine
