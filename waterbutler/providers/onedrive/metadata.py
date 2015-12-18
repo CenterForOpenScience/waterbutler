@@ -10,7 +10,7 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
     def __init__(self, raw, path_obj):
         super().__init__(raw)
         self._path_obj = path_obj
-        logger.info('BaseOneDriveMetadata raw:{} path_obj:{}'.format(repr(raw), repr(path_obj)))
+#          logger.info('BaseOneDriveMetadata raw:{} path_obj:{}'.format(repr(raw), repr(path_obj)))
 
     @property
     def provider(self):
@@ -18,12 +18,15 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
 
     @property
     def materialized_path(self):
+#          return '/{}/{}'.format(self.raw['parentReference']['path'].replace('/drive/root:/', ''), self.raw['name'])
         return str(self._path_obj)
+#        return self.raw['name']
 
     @property
     def extra(self):
         return {
-            'id': self.raw['id']
+            'id': self.raw['id'],
+            'parentReference': self.raw['parentReference']['path']
         }
 
 

@@ -34,7 +34,7 @@ class OneDriveProvider(provider.BaseProvider):
         if path == '/':
             return WaterButlerPath(path, prepend=self.folder)
 
-        logger.info('validate_v1_path self::{} path::{}'.format(repr(self), path))
+        logger.info('validate_v1_path self::{} path::{}'.format(repr(self), repr(path)))
 
         resp = yield from self.make_request(
             'GET', self.build_url(self.folder),
@@ -51,17 +51,20 @@ class OneDriveProvider(provider.BaseProvider):
 #              data['parentReference']['entries'] + [data]
 #          ])
 #          names, ids = ('',) + names[ids.index(self.folder) + 1:], ids[ids.index(self.folder):]
+
         names = '/{}/{}'.format(data['parentReference']['path'].strip('/drive/root:/'), data['name'])
+        names = self._get_names(data)
         ids = [data['parentReference']['id'], data['id']]
         logger.info('validate_v1_path names::{} ids::{}'.format(repr(names), repr(ids)))
-        wb = WaterButlerPath('/'.join(names), _ids=ids, folder=path.endswith('/'))
+        wb = WaterButlerPath(names, _ids=ids, folder=path.endswith('/'))
         logger.info('validate_v1_path wb::{} '.format(repr(wb)))
         return wb
 #          return WaterButlerPath(path)
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
-        return WaterButlerPath(path, prepend=self.folder)
+        logger.info('validate_path self::{} path::{}'.format(repr(self), path))
+        return self.validate_v1_path(path, **kwargs)
 
     @property
     def default_headers(self):
@@ -237,7 +240,9 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, revision=None, **kwargs):
-        logger.info('metadata path::{} revision::{}'.format(repr(path.full_path), repr(revision)))
+        logger.info('metadata path::{} revision::{}'.format(repr(path.identifier), repr(revision)))
+        if path.identifier is None:
+            raise exceptions.NotFoundError(str(path))
 
         if (path.full_path == '0/'):
             #  handle when OSF is linked to root onedrive
@@ -247,11 +252,12 @@ class OneDriveProvider(provider.BaseProvider):
             url = self.build_url(path.full_path, expand='children')
         else:
             #  handles root/sub1, root/sub1/sub2
-            url = self.build_url(str(path), expand='children')
+            url = self.build_url(path.identifier, expand='children')
 
+        logger.info("metadata url::{}".format(repr(url)))
         resp = yield from self.make_request(
             'GET', url,
-            expects=(200, 400, ),
+            expects=(200, ),
             throws=exceptions.MetadataError
         )
         logger.debug("metadata resp::{}".format(repr(resp)))
@@ -359,6 +365,14 @@ class OneDriveProvider(provider.BaseProvider):
 
     def _get_one_drive_id(self, path):
         return path.full_path[path.full_path.rindex('/') + 1:]
+
+    def _get_names(self, data):
+        parent_path = data['parentReference']['path'].replace('/drive/root:', '')
+        if (len(parent_path) == 0):
+            names = '/{}'.format(data['name'])
+        else:
+            names = '/{}/{}'.format(parent_path, data['name'])
+        return names
 
     def _get_sub_folder_path(self, path, fileName):
         return urlparse(path.full_path.replace(fileName, '')).path.split('/')[-2]

@@ -450,18 +450,112 @@ def folder_list_metadata():
         
     }
 
+@pytest.fixture
+def file_root_parent_metadata2():
+    return {
+           "id": "75BFE374EBEB1211!128",
+           "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITEyOC42MzU4NTYxODI2MDA5MzAwMDA",
+           "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMjguMA",
+           "size": 998322,
+           "name": "sub1",
+           "parentReference": {
+              "id": "75BFE374EBEB1211!103",
+              "path": "/drive/root:",
+              "driveId": "75bfe374ebeb1211"
+           },
+           "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!128",
+           "folder": {
+              "childCount": 3
+           }
+    }
+
+@pytest.fixture
+def file_root_parent_metadata():
+    return {
+           "id": "75BFE374EBEB1211!150",
+        
+           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150",
+
+           "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+
+           "cTag": "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
+
+           "children": [],
+        
+           "image": {
+        
+              "width": 883,
+        
+              "height": 431
+        
+           },
+        
+           "file": {
+        
+              "hashes": {
+        
+                 "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4",
+        
+                 "crc32Hash": "6D98C9D5"
+        
+              },
+        
+              "mimeType": "image/jpeg"
+        
+           },   
+        
+           "fileSystemInfo": {
+        
+              "createdDateTime": "2015-12-02T20:25:26.51Z",
+        
+              "lastModifiedDateTime": "2015-12-08T21:51:15.593Z"
+        
+           },
+        
+           "createdDateTime": "2015-12-02T20:25:26.51Z",
+        
+           "size": 83736,
+        
+           "photo": {
+        
+              "takenDateTime": "2013-04-17T14:32:26Z"
+        
+           },
+        
+           "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
+        
+           "name": "elect-a.jpg",
+        
+           "@content.downloadUrl": "https://public-ch3302.files.1drv.com/y3mnrbLFOgJJ8JQA7Ots0pzvL0xHYJx9NQJylS6IoQqp5G2CIIG5IWCKT_ADdp035kbr3qEmz6Va5j8-NCplk4ZMG_cYipxUfhP-NNl-SjlKocwc7yDplc1qWEynHGm_lME_o98pKSxNg6sKbEphRPufHea_h7LU1XH2qkFEGOIZGHQlw_JmH9fvygq8_XY2iE-",
+        
+           "children@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('75BFE374EBEB1211%21150')/children",
+        
+           "parentReference": {
+        
+              "id": "75BFE374EBEB1211!107",
+        
+              "driveId": "75bfe374ebeb1211",
+        
+              "path": "/drive/root:"
+        
+           },
+        
+           "lastModifiedDateTime": "2015-12-08T21:51:15.593Z"
+    }
+
 
 @pytest.fixture
 def file_metadata():
     return {
            "id": "75BFE374EBEB1211!150",
         
-           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150",   
-        
+           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150",
+
            "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
-        
+
            "cTag": "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
-        
+
            "children": [],
         
            "image": {
@@ -951,34 +1045,54 @@ class TestMetadata:
 #         assert e.value.code == 404
 #         assert str(path) in e.value.message
 
-    @async
-    @pytest.mark.aiohttpretty
-    def test_metadata_root(self, provider, folder_object_metadata, folder_list_metadata):
-        path = WaterButlerPath('/0/', _ids=(provider.folder, ))
-        logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
-
-        list_url = provider.build_url('root', expand='children')
-
-        aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
-
-        result = yield from provider.metadata(path)
-
-        assert len(result) == 3
+#      @async
+#      @pytest.mark.aiohttpretty
+#      def test_metadata_root(self, provider, folder_object_metadata, folder_list_metadata):
+#          path = WaterButlerPath('/0/', _ids=(0, ))
+#          logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
+#  
+#          list_url = provider.build_url('root', expand='children')
+#  
+#          aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
+#  
+#          result = yield from provider.metadata(path)
+#  
+#          assert len(result) == 3
         
-
-    @async
+#      @async
+#      @pytest.mark.aiohttpretty
+#      def test_metadata_file_root_parent(self, provider, folder_object_metadata, file_root_parent_metadata):
+#          path = WaterButlerPath('/75BFE374EBEB1211!129/', _ids=(provider.folder, ))
+#          logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
+#  
+#          list_url = provider.build_url('75BFE374EBEB1211!129', expand='children')
+#  
+#          aiohttpretty.register_json_uri('GET', list_url, body=file_root_parent_metadata)
+#  
+#          result = yield from provider.metadata(path)
+#          logger.info('result:: {}'.format(repr(result)))
+#  
+#          assert '/{}'.format(file_root_parent_metadata['id']) == result.path        
+#      
     @pytest.mark.aiohttpretty
-    def test_metadata_sub_folder(self, provider, folder_object_metadata, folder_list_metadata):
-        path = WaterButlerPath('/foo/', _ids=(provider.folder, ))
-        logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
+    def test_metadata_file_root_parent_names(self, provider, folder_object_metadata, file_root_parent_metadata):
+        result = provider._get_names(file_root_parent_metadata)
 
-        list_url = provider.build_url('foo', expand='children')
+        assert result == '/elect-a.jpg'
 
-        aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
-
-        result = yield from provider.metadata(path)
-
-        assert len(result) == 3
+#      @async
+#      @pytest.mark.aiohttpretty
+#      def test_metadata_sub_folder(self, provider, folder_object_metadata, folder_list_metadata):
+#          path = WaterButlerPath('/foo/', _ids=(provider.folder, ))
+#          logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
+#  
+#          list_url = provider.build_url('foo', expand='children')
+#  
+#          aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
+#  
+#          result = yield from provider.metadata(path)
+#  
+#          assert len(result) == 3
 
 
 #     @async
