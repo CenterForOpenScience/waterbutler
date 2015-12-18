@@ -1045,35 +1045,35 @@ class TestMetadata:
 #         assert e.value.code == 404
 #         assert str(path) in e.value.message
 
-#      @async
-#      @pytest.mark.aiohttpretty
-#      def test_metadata_root(self, provider, folder_object_metadata, folder_list_metadata):
-#          path = WaterButlerPath('/0/', _ids=(0, ))
-#          logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
-#  
-#          list_url = provider.build_url('root', expand='children')
-#  
-#          aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
-#  
-#          result = yield from provider.metadata(path)
-#  
-#          assert len(result) == 3
+    @async
+    @pytest.mark.aiohttpretty
+    def test_metadata_root(self, provider, folder_object_metadata, folder_list_metadata):
+        path = WaterButlerPath('/0/', _ids=(0, ))
+        logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
+  
+        list_url = provider.build_url('root', expand='children')
+  
+        aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
+  
+        result = yield from provider.metadata(path)
+  
+        assert len(result) == 3
         
 #      @async
 #      @pytest.mark.aiohttpretty
 #      def test_metadata_file_root_parent(self, provider, folder_object_metadata, file_root_parent_metadata):
-#          path = WaterButlerPath('/75BFE374EBEB1211!129/', _ids=(provider.folder, ))
+#          path = WaterButlerPath('/75BFE374EBEB1211!129', _ids=('75BFE374EBEB1211!129', ))
 #          logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
-#  
+#    
 #          list_url = provider.build_url('75BFE374EBEB1211!129', expand='children')
-#  
+#    
 #          aiohttpretty.register_json_uri('GET', list_url, body=file_root_parent_metadata)
-#  
+#    
 #          result = yield from provider.metadata(path)
 #          logger.info('result:: {}'.format(repr(result)))
-#  
+#    
 #          assert '/{}'.format(file_root_parent_metadata['id']) == result.path        
-#      
+      
     @pytest.mark.aiohttpretty
     def test_metadata_file_root_parent_names(self, provider, folder_object_metadata, file_root_parent_metadata):
         result = provider._get_names(file_root_parent_metadata)

@@ -240,9 +240,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, revision=None, **kwargs):
-        logger.info('metadata path::{} revision::{}'.format(repr(path.identifier), repr(revision)))
-        if path.identifier is None:
-            raise exceptions.NotFoundError(str(path))
+        logger.info('metadata path::{} revision::{}'.format(repr(path.identifier), repr(revision)))        
 
         if (path.full_path == '0/'):
             #  handle when OSF is linked to root onedrive
@@ -252,6 +250,8 @@ class OneDriveProvider(provider.BaseProvider):
             url = self.build_url(path.full_path, expand='children')
         else:
             #  handles root/sub1, root/sub1/sub2
+            if path.identifier is None:
+                raise exceptions.NotFoundError(str(path))
             url = self.build_url(path.identifier, expand='children')
 
         logger.info("metadata url::{}".format(repr(url)))
