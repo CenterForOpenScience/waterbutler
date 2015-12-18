@@ -891,6 +891,54 @@ def revisions_list_metadata():
 #         assert str(path) in e.value.message
 
 
+
+class TestMoveOperations:
+
+#     @async
+#     def test_must_not_be_none(self, provider):
+#         path = WaterButlerPath('/Goats', _ids=(provider.folder, None))
+# 
+#         with pytest.raises(exceptions.NotFoundError) as e:
+#             yield from provider.metadata(path)
+# 
+#         assert e.value.code == 404
+#         assert str(path) in e.value.message
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_rename_file(self, provider, folder_object_metadata, folder_list_metadata):
+#         dest_path::WaterButlerPath('/elect-b.jpg', prepend='75BFE374EBEB1211!128') srcpath:WaterButlerPath('/75BFE374EBEB1211!132', prepend='75BFE374EBEB1211!128')
+        dest_path = WaterButlerPath('/elect-b.jpg', prepend='75BFE374EBEB1211!128')
+        src_path = WaterButlerPath('/75BFE374EBEB1211!132', prepend='75BFE374EBEB1211!128')
+        
+#         logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
+
+        list_url = provider.build_url(str(src_path))
+
+        aiohttpretty.register_json_uri('PATCH', list_url, body=folder_object_metadata)
+
+        result = yield from provider.intra_move(provider, src_path, dest_path)
+        
+        assert result is not None
+        
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_rename_folder(self, provider, folder_object_metadata, folder_list_metadata):
+#         dest_path::WaterButlerPath('/elect-b.jpg', prepend='75BFE374EBEB1211!128') srcpath:WaterButlerPath('/75BFE374EBEB1211!132', prepend='75BFE374EBEB1211!128')
+        dest_path = WaterButlerPath('/foo-bar', prepend='75BFE374EBEB1211!128')
+        src_path = WaterButlerPath('/75BFE374EBEB1211!132', prepend='75BFE374EBEB1211!128')
+        
+#         logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
+
+        list_url = provider.build_url(str(src_path))
+
+        aiohttpretty.register_json_uri('PATCH', list_url, body=folder_object_metadata)
+
+        result = yield from provider.intra_move(provider, src_path, dest_path)
+        
+        assert result is not None       
+
 class TestMetadata:
 
 #     @async
@@ -916,6 +964,22 @@ class TestMetadata:
         result = yield from provider.metadata(path)
 
         assert len(result) == 3
+        
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_metadata_sub_folder(self, provider, folder_object_metadata, folder_list_metadata):
+        path = WaterButlerPath('/foo/', _ids=(provider.folder, ))
+        logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
+
+        list_url = provider.build_url('foo', expand='children')
+
+        aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
+
+        result = yield from provider.metadata(path)
+
+        assert len(result) == 3
+
 
 #     @async
 #     @pytest.mark.aiohttpretty

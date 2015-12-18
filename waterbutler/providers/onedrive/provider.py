@@ -44,9 +44,20 @@ class OneDriveProvider(provider.BaseProvider):
 
         data = yield from resp.json()
         logger.info('validate_v1_path data::{}'.format(repr(data)))
-        logger.info('validate_v1_path::path{}'.format(path))
 
-        return WaterButlerPath(path)
+#          names, ids = zip(*[
+#              (x['name'], x['id'])
+#              for x in
+#              data['parentReference']['entries'] + [data]
+#          ])
+#          names, ids = ('',) + names[ids.index(self.folder) + 1:], ids[ids.index(self.folder):]
+        names = '/{}/{}'.format(data['parentReference']['path'].strip('/drive/root:/'), data['name'])
+        ids = [data['parentReference']['id'], data['id']]
+        logger.info('validate_v1_path names::{} ids::{}'.format(repr(names), repr(ids)))
+        wb = WaterButlerPath('/'.join(names), _ids=ids, folder=path.endswith('/'))
+        logger.info('validate_v1_path wb::{} '.format(repr(wb)))
+        return wb
+#          return WaterButlerPath(path)
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
@@ -151,7 +162,7 @@ class OneDriveProvider(provider.BaseProvider):
     def download(self, path, revision=None, range=None, **kwargs):
 
         onedriveId = self._get_one_drive_id(path)
-        logger.info('oneDriveId:: {} folder:: {} revision::{} path.parent:{}  raw::{} is_dir::{}  ext::{}'.format(onedriveId, self.folder, revision, path.parent, path.raw_path, path.is_dir, path.ext))
+        logger.info('oneDriveId:: {} folder:: {} revision::{} path.parent:{}  raw::{}  ext::{}'.format(onedriveId, self.folder, revision, path.parent, path.raw_path, path.ext))
 #         if path.identifier is None:
 #             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
 #        if path type is file and ext is blank then get the metadata for the parent ID to get the full path of the child and download with that? parentReference
@@ -212,7 +223,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
-        is_folder = self._is_folder(path)
+        is_folder = self.is_dir(path)
         one_drive_id = str(path).strip('/') if is_folder else self._get_one_drive_id(path)
         logger.info("delete::id::{} path::{}".format(one_drive_id, path))
 
@@ -226,7 +237,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, revision=None, **kwargs):
-        logger.info('metadata path::{} revision::{}  is_folder:{}'.format(repr(path.full_path), repr(revision), self._is_folder(path)))
+        logger.info('metadata path::{} revision::{}'.format(repr(path.full_path), repr(revision)))
 
         if (path.full_path == '0/'):
             #  handle when OSF is linked to root onedrive
@@ -343,8 +354,8 @@ class OneDriveProvider(provider.BaseProvider):
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
 
-    def _is_folder(self, path):
-        return True if str(path).endswith('/') else False
+#      def _is_folder(self, path):
+#          return True if str(path).endswith('/') else False
 
     def _get_one_drive_id(self, path):
         return path.full_path[path.full_path.rindex('/') + 1:]
