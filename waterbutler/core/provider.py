@@ -29,7 +29,8 @@ def build_url(base, *segments, **query):
 
 
 class BaseProvider(metaclass=abc.ABCMeta):
-    """The base class for all providers. Every provider must, at the least, implement all abstract methods in this class
+    """The base class for all providers. Every provider must, at the least, implement all abstract
+    methods in this class.
 
     .. note::
         When adding a new provider you must add it to setup.py's
