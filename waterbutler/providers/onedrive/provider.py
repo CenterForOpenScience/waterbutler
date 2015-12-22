@@ -227,13 +227,9 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
-        is_folder = self.is_dir(path)
-        one_drive_id = str(path).strip('/') if is_folder else self._get_one_drive_id(path)
-        logger.info("delete::id::{} path::{}".format(one_drive_id, path))
-
         yield from self.make_request(
             'DELETE',
-            self.build_url(one_drive_id),
+            self.build_url(path.identifier),
             data={},
             expects=(204, ),
             throws=exceptions.DeleteError,
@@ -300,21 +296,6 @@ class OneDriveProvider(provider.BaseProvider):
         ]
 
     @asyncio.coroutine
-    def _revisions_json(self, path, **kwargs):
-        #  https://dev.onedrive.com/items/view_delta.htm
-        #  TODO: 2015-11-29 - onedrive only appears to return the last delta for a token, period.  Not sure if there is a work around, from the docs: "The delta feed shows the latest state for each item, not each change. If an item were renamed twice, it would only show up once, with its latest name."
-        response = yield from self.make_request(
-            'GET',
-            self.build_url(str(path), 'view.delta', top=250),
-            expects=(200, ),
-            throws=exceptions.RevisionsError
-        )
-        data = yield from response.json()
-        logger.info('revisions: data::{}'.format(data['value']))
-
-        return data
-
-    @asyncio.coroutine
     def create_folder(self, path, **kwargs):
         """
         :param str path: The path to create a folder at
@@ -345,6 +326,23 @@ class OneDriveProvider(provider.BaseProvider):
         data = yield from resp.json()
         logger.info('upload:: data:{}'.format(data))
         return OneDriveFolderMetadata(data, self.folder)
+
+    @asyncio.coroutine
+    def _revisions_json(self, path, **kwargs):
+        #  https://dev.onedrive.com/items/view_delta.htm
+        #  TODO: 2015-11-29 - onedrive only appears to return the last delta for a token, period.  Not sure if there is a work around, from the docs: "The delta feed shows the latest state for each item, not each change. If an item were renamed twice, it would only show up once, with its latest name."
+        if path.identifier is None:
+                raise exceptions.NotFoundError(str(path))
+        response = yield from self.make_request(
+            'GET',
+            self.build_url(path.identifier, 'view.delta', top=250),
+            expects=(200, ),
+            throws=exceptions.RevisionsError
+        )
+        data = yield from response.json()
+        logger.info('revisions: data::{}'.format(data['value']))
+
+        return data
 
     def can_duplicate_names(self):
         return False
