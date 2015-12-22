@@ -4,6 +4,16 @@ from waterbutler.core import exceptions
 
 
 class WaterButlerPathPart:
+    """ A WaterButlerPathPart represents one level of a unix-style path.  For instance,
+    `/foo/bar/baz.txt` would be composed of four PathParts: the root, `foo`, `bar`, and `baz.txt`.
+    Each PathPart has a `value`, an `_id`, a `count`, and an `ext`.  The `value` is the
+    human-readable component of the path, such as `baz.txt` or `bar`.  The `_id` is the unique
+    identifier for the PathPart.  This is optional.  Some providers use unique identifiers, others
+    do not.  The `count` property is used for Mac-style renaming, where `(1)` is appended to a path
+    name when a copy operation encounters a naming conflict.  `ext` is inferred from the initial
+    path.
+    """
+
     DECODE = lambda x: x
     ENCODE = lambda x: x
 
@@ -142,63 +152,85 @@ class WaterButlerPath:
 
     @property
     def is_root(self):
+        """ Returns `True` if the path is the root directory. """
         return len(self._parts) == 1
 
     @property
     def is_dir(self):
+        """ Returns `True` if the path represents a folder. """
         return self._is_folder
 
     @property
     def kind(self):
+        """ Returns `folder` if the path represents a folder, otherwise returns `file`. """
         return 'folder' if self._is_folder else 'file'
 
     @property
     def is_file(self):
+        """ Returns `True` if the path represents a file. """
         return not self._is_folder
 
     @property
     def parts(self):
+        """ Returns the list of WaterButlerPathParts that comprise this WaterButlerPath. """
         return self._parts
 
     @property
     def name(self):
+        """ Returns the name of the file or folder. """
         return self._parts[-1].value
 
     @property
     def identifier(self):
+        """ Returns the ID of the file or folder. """
         return self._parts[-1].identifier
 
     @property
     def identifier_path(self):
+        """ Returns the ID formatted as a path for providers that use unique ids """
         return '/' + self._parts[-1].identifier + ('/' if self.is_dir else '')
 
     @property
     def ext(self):
+        """ Return the extension of the file """
         return self._parts[-1].ext
 
     @property
     def path(self):
+        """ Returns a unix-style human readable path, relative to the root of the provider. """
         if len(self.parts) == 1:
             return ''
         return '/'.join([x.value for x in self.parts[1:]]) + ('/' if self.is_dir else '')
 
     @property
     def raw_path(self):
+        """ I... don't know what this is. """
         if len(self.parts) == 1:
             return ''
         return '/'.join([x.raw for x in self.parts[1:]]) + ('/' if self.is_dir else '')
 
     @property
     def full_path(self):
+        """ Same as `.parts()`, but with the provider base folder prepended. """
         return '/'.join([x.value for x in self._prepend_parts + self.parts[1:]]) + ('/' if self.is_dir else '')
 
     @property
     def parent(self):
+        """ Returns a new WaterButlerPath that represents the parent of the current path.
+
+        Calling `.parent()` on the root path returns None.
+        """
         if len(self.parts) == 1:
             return None
         return self.__class__.from_parts(self.parts[:-1], folder=True, prepend=self._prepend)
 
     def child(self, name, _id=None, folder=False):
+        """ Create a child of the current WaterButlerPath, propagating prepend and id information to it.
+
+        :param name str: the name of the child entity
+        :param _id: the id of the child entity (defaults to None)
+        :param folder bool: whether or not the child is a folder (defaults to False)
+        """
         return self.__class__.from_parts(self.parts + [self.PART_CLASS(name, _id=_id)], folder=folder, prepend=self._prepend)
 
     def increment_name(self):
