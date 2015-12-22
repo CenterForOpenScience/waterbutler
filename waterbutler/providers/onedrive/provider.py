@@ -37,7 +37,7 @@ class OneDriveProvider(provider.BaseProvider):
         logger.info('validate_v1_path self::{} path::{}'.format(repr(self), repr(path)))
 
         resp = yield from self.make_request(
-            'GET', self.build_url(self.folder),
+            'GET', self.build_url(path),
             expects=(200,),
             throws=exceptions.MetadataError
         )
@@ -52,12 +52,13 @@ class OneDriveProvider(provider.BaseProvider):
 #          ])
 #          names, ids = ('',) + names[ids.index(self.folder) + 1:], ids[ids.index(self.folder):]
 
-        names = '/{}/{}'.format(data['parentReference']['path'].strip('/drive/root:/'), data['name'])
+#          names = self #  '/{}/{}'.format(data['parentReference']['path'].strip('/drive/root:/'), data['name'])
         names = self._get_names(data)
-        ids = [data['parentReference']['id'], data['id']]
+        ids = ['0', data['parentReference']['id'], data['id']]  # 0 is the root ID; TODO: is this correct?
         logger.info('validate_v1_path names::{} ids::{}'.format(repr(names), repr(ids)))
         wb = WaterButlerPath(names, _ids=ids, folder=path.endswith('/'))
-        logger.info('validate_v1_path wb::{} '.format(repr(wb)))
+        logger.info('validate_v1_path  wb._parts::{} '.format(repr(wb._parts)))
+
         return wb
 #          return WaterButlerPath(path)
 
@@ -240,7 +241,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def metadata(self, path, revision=None, **kwargs):
-        logger.info('metadata path::{} revision::{}'.format(repr(path.identifier), repr(revision)))        
+        logger.info('metadata identifier::{} path::{} revision::{}'.format(repr(path.identifier), repr(path), repr(revision)))
 
         if (path.full_path == '0/'):
             #  handle when OSF is linked to root onedrive
@@ -371,7 +372,7 @@ class OneDriveProvider(provider.BaseProvider):
         if (len(parent_path) == 0):
             names = '/{}'.format(data['name'])
         else:
-            names = '/{}/{}'.format(parent_path, data['name'])
+            names = '{}/{}'.format(parent_path, data['name'])
         return names
 
     def _get_sub_folder_path(self, path, fileName):

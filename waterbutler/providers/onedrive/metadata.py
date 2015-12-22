@@ -18,7 +18,7 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
 
     @property
     def materialized_path(self):
-#          return '/{}/{}'.format(self.raw['parentReference']['path'].replace('/drive/root:/', ''), self.raw['name'])
+        #  return '/{}/{}'.format(self.raw['parentReference']['path'].replace('/drive/root:/', ''), self.raw['name'])
         return str(self._path_obj)
 #        return self.raw['name']
 
