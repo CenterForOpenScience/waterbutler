@@ -58,6 +58,9 @@ class GoogleDriveProvider(provider.BaseProvider):
                 folder=implicit_folder
             )
             explicit_folder = v1reval._is_folder
+            if implicit_folder != explicit_folder:
+                raise exceptions.NotFoundError(str(path))
+            return(v1reval)
         else:
             explicit_folder = parts[-1]['mimeType'] == self.FOLDER_MIME_TYPE
         if implicit_folder != explicit_folder:
