@@ -120,15 +120,12 @@ class OneDriveProvider(provider.BaseProvider):
 
         #  PATCH /drive/items/{item-id}
         #  use cases: file rename or file move or folder rename or folder move
-        #  file rename:   intra_move dest_provider::src_path::WaterButlerPath('/75BFE374EBEB1211!113', prepend='75BFE374EBEB1211!107') dest_path::WaterButlerPath('/Document1-a.docx', prepend='75BFE374EBEB1211!107')
-        #  file move to lower level: dest_provider::src_path::WaterButlerPath('/75BFE374EBEB1211!113', prepend='75BFE374EBEB1211!107') dest_path::WaterButlerPath('/75BFE374EBEB1211!118/75BFE374EBEB1211!113', prepend='75BFE374EBEB1211!107')
 
-        target_onedrive_id = self._get_one_drive_id(src_path)
-        url = self.build_url(str(src_path))  # target_onedrive_id
-        payload = json.dumps({'name': str(dest_path).strip('/'),
-                              'parentReference': {'id': dest_path.parent.full_path.strip('/')}})  # dest_path.full_path.split('/')[-2]
-# path.parent, path.raw_path, path.is_dir
-        logger.info('intra_move dest_path::{} src_path::{} target_onedrive_id::{} url::{} payload:{}'.format(str(dest_path.parent.full_path), repr(src_path), repr(target_onedrive_id), url, payload))
+        url = self.build_url(src_path.identifier)
+        payload = json.dumps({'name': dest_path.name,
+                              'parentReference': {'id': dest_path.parent.full_path.strip('/') if dest_path.parent.identifier is None else dest_path.parent.identifier}})  # TODO: this feels like a hack.  parent.identifier is None
+
+        logger.info('intra_move dest_path::{} src_path::{} url::{} payload:{}'.format(str(dest_path.parent.identifier), repr(src_path), url, payload))
 
         try:
             resp = yield from self.make_request(
@@ -156,7 +153,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def download(self, path, revision=None, range=None, **kwargs):
-        
+
         logger.info('folder:: {} revision::{} path.parent:{}  raw::{}  ext::{}'.format(self.folder, revision, path.parent, path.raw_path, path.ext))
 #         if path.identifier is None:
 #             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
