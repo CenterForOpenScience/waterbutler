@@ -88,6 +88,40 @@ def actual_file_response():
     }
 
 @pytest.fixture
+def bogus_file_parent_response():
+    return {
+        'error': {
+            'errors': [
+                {'domain': 'global',
+                 'reason': 'notFound',
+                 'message': 'File not found: notthere',
+                 'locationType': 'other',
+                 'location': 'file',
+                },
+            ],
+            'code': 404,
+            'message': 'File not found: notthere',
+        }
+    }
+
+@pytest.fixture
+def bogus_file_child_response():
+    return {
+        "error": {
+            "errors": [
+                {"domain": "global",
+                 "reason": "notFound",
+                 "message": "File not found: ",
+                 "locationType": "other",
+                 "location": "file"
+                }, 
+            ],
+            "code": 404,
+            "message": "File not found: "
+        }
+    }
+
+@pytest.fixture
 def folder_query_response():
     return {
         'id': 'whyis6afraidof7',
@@ -110,7 +144,9 @@ class TestValidatePath:
     def test_validate_v1_path_file(self, provider,
                                    actual_file_response,
                                    search_for_parent_response,
-                                   file_name_query_response):
+                                   file_name_query_response,
+                                   bogus_file_parent_response,
+                                   bogus_file_child_response):
         file_name = 'file.txt'
         file_id = '1234ideclarethumbwar'
 
@@ -120,7 +156,22 @@ class TestValidatePath:
             'files', file_name, 'parents', fields='items(id)')
         file_name_query_url = provider.build_url(
             'files', file_name, fields='id,title,mimeType')
-        specific_url = provider.build_url('files', file_id, fields='id,title,mimeType')
+        specific_url = provider.build_url('files',
+                                          file_id,
+                                          fields='id,title,mimeType')
+        bogus_file_parent_url = provider.build_url('files',
+                                                   'notthere',
+                                                   'parents',
+                                                   fields='items(id)'
+                                                  )
+        query = "title='notthere'"
+        bogus_file_child_url = provider.build_url('files',
+                                                   '19003e',
+                                                   'children',
+                                                   q=query,
+                                                   orderBy='modifiedDate desc',
+                                                   fields='items(id)'
+                                                  )
 
         aiohttpretty.register_json_uri('GET', parent_query_url,
                                        body=search_for_parent_response)
@@ -128,7 +179,17 @@ class TestValidatePath:
                                        body=search_for_parent_response)
         aiohttpretty.register_json_uri('GET', file_name_query_url,
                                        body=file_name_query_response)
-        aiohttpretty.register_json_uri('GET', specific_url, body=actual_file_response)
+        aiohttpretty.register_json_uri('GET',
+                                       specific_url,
+                                       body=actual_file_response)
+        aiohttpretty.register_json_uri('GET',
+                                       bogus_file_parent_url,
+                                       status=404,
+                                       body=bogus_file_parent_response)
+        aiohttpretty.register_json_uri('GET',
+                                       bogus_file_child_url,
+                                       status=404,
+                                       body=bogus_file_child_response)
 
         try:
             wb_path_v1 = yield from provider.validate_v1_path('/' + file_id)
@@ -143,6 +204,11 @@ class TestValidatePath:
         wb_path_v0 = yield from provider.validate_path('/' + file_id)
 
         assert wb_path_v1 == wb_path_v0
+
+        with pytest.raises(exceptions.MetadataError) as exc_info:
+            yield from provider.validate_v1_path('/notthere')
+            assert exc_info.value.code == 404
+
 
     @async
     @pytest.mark.aiohttpretty
