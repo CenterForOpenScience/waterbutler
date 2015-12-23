@@ -6,6 +6,8 @@ import logging
 
 from urllib.parse import urlparse
 
+from itertools import repeat
+
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
@@ -34,7 +36,7 @@ class OneDriveProvider(provider.BaseProvider):
         if path == '/':
             return WaterButlerPath(path, prepend=self.folder)
 
-        logger.info('validate_v1_path self::{} path::{}'.format(repr(self), repr(path)))
+        logger.info('validate_v1_path self::{} path::{}  url:{}'.format(repr(self), repr(path), self.build_url(path)))
 
         resp = yield from self.make_request(
             'GET', self.build_url(path),
@@ -55,6 +57,7 @@ class OneDriveProvider(provider.BaseProvider):
 #          names = self #  '/{}/{}'.format(data['parentReference']['path'].strip('/drive/root:/'), data['name'])
         names = self._get_names(data)
         ids = ['0', data['parentReference']['id'], data['id']]  # 0 is the root ID; TODO: is this correct?
+        ids = self._get_ids(data)
         logger.info('validate_v1_path names::{} ids::{}'.format(repr(names), repr(ids)))
         wb = WaterButlerPath(names, _ids=ids, folder=path.endswith('/'))
         logger.info('validate_v1_path  wb._parts::{} '.format(repr(wb._parts)))
@@ -372,6 +375,15 @@ class OneDriveProvider(provider.BaseProvider):
         else:
             names = '{}/{}'.format(parent_path, data['name'])
         return names
+
+    def _get_ids(self, data):
+        ids = [data['parentReference']['id'], data['id']]
+        url_segment_count = len(urlparse(self._get_names(data)).path.split('/'))
+        if (len(ids) < url_segment_count):
+            for x in repeat(None, url_segment_count - len(ids)):
+                ids.insert(0, x)
+        #  ids.insert(0, '')  # add root id in
+        return ids
 
     def _get_sub_folder_path(self, path, fileName):
         return urlparse(path.full_path.replace(fileName, '')).path.split('/')[-2]

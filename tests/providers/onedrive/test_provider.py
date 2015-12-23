@@ -451,23 +451,72 @@ def folder_list_metadata():
     }
 
 @pytest.fixture
-def file_root_parent_metadata2():
+def file_root_folder_metadata():
     return {
            "id": "75BFE374EBEB1211!128",
            "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITEyOC42MzU4NTYxODI2MDA5MzAwMDA",
            "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMjguMA",
            "size": 998322,
-           "name": "sub1",
+           "name": "hello.jpg",
            "parentReference": {
               "id": "75BFE374EBEB1211!103",
-              "path": "/drive/root:",
+              "path": "/drive/root:/sam",
+              "driveId": "75bfe374ebeb1211"
+           },
+           "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!128",
+           "file": {
+                "hashes": {
+                   "crc32Hash": "6D98C9D5",
+                   "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4"
+                },
+                "mimeType": "image/jpeg"
+            },
+    }
+
+
+@pytest.fixture
+def folder_sub_folder_metadata():
+    return {
+           "id": "75BFE374EBEB1211!128",
+           "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITEyOC42MzU4NTYxODI2MDA5MzAwMDA",
+           "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMjguMA",
+           "size": 998322,
+           "name": "hello",
+           "parentReference": {
+              "id": "75BFE374EBEB1211!103",
+              "path": "/drive/root:/sam/i/am",
               "driveId": "75bfe374ebeb1211"
            },
            "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
            "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!128",
            "folder": {
               "childCount": 3
-           }
+            },
+    }
+
+@pytest.fixture
+def file_sub_folder_metadata():
+    return {
+           "id": "75BFE374EBEB1211!128",
+           "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITEyOC42MzU4NTYxODI2MDA5MzAwMDA",
+           "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMjguMA",
+           "size": 998322,
+           "name": "hello.jpg",
+           "parentReference": {
+              "id": "75BFE374EBEB1211!103",
+              "path": "/drive/root:/sam/i/am",
+              "driveId": "75bfe374ebeb1211"
+           },
+           "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!128",
+           "file": {
+                "hashes": {
+                   "crc32Hash": "6D98C9D5",
+                   "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4"
+                },
+                "mimeType": "image/jpeg"
+            },
     }
 
 @pytest.fixture
@@ -623,230 +672,29 @@ def file_metadata():
 @pytest.fixture
 def revisions_list_metadata():
     return {        
-#        "@odata.deltaLink": "https://api.onedrive.com/v1.0/drives('me')/items('75BFE374EBEB1211!132')/view.delta?$top=250&token=aTE09NjM1ODU0NDA1ODYxNDc7SUQ9NzVCRkUzNzRFQkVCMTIxMSExMzI7TFI9NjM1ODU0NDIzNjQ1NTA7RVA9NTtTTz0y",
-#     
-#        "@delta.token": "aTE09NjM1ODU0NDA1ODYxNDc7SUQ9NzVCRkUzNzRFQkVCMTIxMSExMzI7TFI9NjM1ODU0NDIzNjQ1NTA7RVA9NTtTTz0y",
-#     
-#        "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items",
-#     
-#        "value": [
-#     
-#                   {
-#             
-#                      "lastModifiedDateTime": "2015-12-11T14:23:06.143Z",
-#             
-#                      "name": "elect.jpg",
-#             
-#                      "size": 83736,
-#             
-#                      "file": {
-#             
-#                         "hashes": {
-#             
-#                            "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4",
-#             
-#                            "crc32Hash": "6D98C9D5"
-#             
-#                         },
-#             
-#                         "mimeType": "image/jpeg; charset=UTF-8"
-#             
-#                      },
-#             
-#                         "user": {
-#             
-#                            "id": "75bfe374ebeb1211",
-#             
-#                            "displayName": "Ryan Casey",
-#             
-#                            "thumbnails": {
-#             
-#                               "source": {
-#             
-#                                  "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:WebReady"
-#             
-#                               },
-#             
-#                               "small": {
-#             
-#                                  "height": 96,
-#             
-#                                  "width": 96,
-#             
-#                                  "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileStatic"
-#             
-#                               },
-#             
-#                               "medium": {
-#             
-#                                  "height": 180,
-#             
-#                                  "width": 180,
-#             
-#                                  "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileMedium"
-#             
-#                               },
-#             
-#                               "large": {
-#             
-#                                  "height": 1198,
-#             
-#                                  "width": 1198,
-#             
-#                                  "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileCroppedOriginal"
-#             
-#                               }
-#             
-#                            }
-#             
-#                         }
-#             
-#                      },
-#             
-#                      "cTag": "aYzo3NUJGRTM3NEVCRUIxMjExITEzMi4yNTc",
-#             
-#                      "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMzIuMw",
-#             
-#                      "createdDateTime": "2015-12-01T11:38:59.073Z",
-#             
-#                      "id": "75BFE374EBEB1211!132",
-#             
-#                      "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!132",
-#             
-#                         "user": {
-#             
-#                            "id": "75bfe374ebeb1211",
-#             
-#                            "displayName": "Ryan Casey",
-#             
-#                            "thumbnails": {
-#             
-#                               "source": {
-#             
-#                                  "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:WebReady"
-#             
-#                               },
-#             
-#                               "small": {
-#             
-#                                  "height": 96,
-#             
-#                                  "width": 96,
-#             
-#                                  "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileStatic"
-#             
-#                               },
-#             
-#                               "medium": {
-#             
-#                                  "height": 180,
-#             
-#                                  "width": 180,
-#             
-#                                  "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileMedium"
-#             
-#                               },
-#             
-#                               "large": {
-#             
-#                                  "height": 1198,
-#             
-#                                  "width": 1198,
-#             
-#                                  "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileCroppedOriginal"
-#             
-#                               }
-#             
-#                            }
-#             
-#                         },
-#             
-#                         "application": {
-#             
-#                            "id": "4416c3d3",
-#             
-#                            "displayName": "GT OSF OneDrive",
-#             
-#                            "thumbnails": {
-#             
-#                               "small": {
-#             
-#                                  "height": 50,
-#             
-#                                  "width": 50,
-#             
-#                                  "url": "https://public-sn3302.files.1drv.com/y3atLEyz-EB17OzMbWyJzwu39hoELyHbCjb13GdM4Jeq5vEVLllH7jt4ftWt4nvvsiT5UNQJTPdirhWACyo92cbGASFxSER2MCuTQKTtVi-Yvo09ENEPhScewG0sNMEqRun?psid=1"
-#             
-#                               }
-#             
-#                            }
-#             
-#                         }
-#             
-#                      },
-#             
-#                      "parentReference": {
-#             
-#                         "id": "75BFE374EBEB1211!128",
-#             
-#                         "driveId": "75bfe374ebeb1211"
-#             
-#                      },
-#             
-#                      "image": {
-#             
-#                         "height": 431,
-#             
-#                         "width": 883
-#             
-#                      },
-#             
-#                      "fileSystemInfo": {
-#             
-#                         "lastModifiedDateTime": "2015-12-11T14:23:06.143Z",
-#             
-#                         "createdDateTime": "2015-12-01T11:38:59.073Z"
-#             
-#                      },
-#             
-#                      "photo": {
-#             
-#                         "takenDateTime": "2013-04-17T14:32:26Z"
-#             
-#                      },
-#             
-#                      "@content.downloadUrl": "https://public-ch3302.files.1drv.com/y3mmg9Mn_vgJJuNnZYfH0beiugywKP4oNs7_RuneBi3haXsFaM4559Xqa4eH8TtkY8zyIYGmLfHFIVwQNCCIHubhtfQkWOSJwHQb3ySJpL_Py8enRsDj4ZhpXOEzJrFDs2Nkd_xNIdLCury1UfAMXdI4HdRxazBaEXI_iG8kiujv23r-CNDonz_TLe3qSQcikyYa2NXs6QOeAkFnGExGnwbzw"
-#             
-#               }]
     }
 
+  
+class TestValidatePath:
+ 
+    @async
+    @pytest.mark.aiohttpretty
+    def test_validate_v1_path_file(self, provider, file_root_parent_metadata):
+        file_id = '75BFE374EBEB1211!150'
+        file_id = '1234'
+ 
+        good_url = provider.build_url(file_id)
+ 
+        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
 
-# class TestValidatePath:
-# 
-#     @async
-#     @pytest.mark.aiohttpretty
-#     def test_validate_v1_path_file(self, provider, file_metadata):
-#         file_id = '5000948880'
-# 
-#         good_url = provider.build_url('files', file_id, fields='id,name,path_collection')
-#         bad_url = provider.build_url('folders', file_id, fields='id,name,path_collection')
-# 
-#         aiohttpretty.register_json_uri('get', good_url, body=file_metadata['entries'][0], status=200)
-#         aiohttpretty.register_uri('get', bad_url, status=404)
-# 
-#         try:
-#             wb_path_v1 = yield from provider.validate_v1_path('/' + file_id)
-#         except Exception as exc:
-#             pytest.fail(str(exc))
-# 
-#         with pytest.raises(exceptions.NotFoundError) as exc:
-#             yield from provider.validate_v1_path('/' + file_id + '/')
-# 
-#         assert exc.value.code == client.NOT_FOUND
-# 
-#         wb_path_v0 = yield from provider.validate_path('/' + file_id)
-# 
-#         assert wb_path_v1 == wb_path_v0
+        wb_path_v1 = yield from provider.validate_v1_path('/' + file_id)
+        
+        assert str(wb_path_v1) == '/{}'.format(file_root_parent_metadata['name'])
+
+        wb_path_v0 = yield from provider.validate_path('/' + file_id)
+
+        assert wb_path_v1 == wb_path_v0
+
 # 
 #     @async
 #     @pytest.mark.aiohttpretty
@@ -1058,6 +906,20 @@ class TestMetadata:
         result = yield from provider.metadata(path)
   
         assert len(result) == 3
+
+#      @async
+#      @pytest.mark.aiohttpretty
+#      def test_metadata_sub_oaths(self, provider, folder_object_metadata, folder_list_metadata):
+#          path = WaterButlerPath('/root/sub1/sub2/foobar.txt', _ids=('1234!1', '1234!2' ))
+#          logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
+#    
+#          list_url = provider.build_url('1234!2', expand='children')
+#    
+#          aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
+#    
+#          result = yield from provider.metadata(path)
+#    
+#          assert len(result) == 3
         
 #      @async
 #      @pytest.mark.aiohttpretty
@@ -1079,6 +941,21 @@ class TestMetadata:
         result = provider._get_names(file_root_parent_metadata)
 
         assert result == '/elect-a.jpg'
+
+    @pytest.mark.aiohttpretty
+    def test_metadata_ids_padding(self, provider, folder_object_metadata, file_sub_folder_metadata):
+        result = provider._get_ids(file_sub_folder_metadata)
+        assert result == [None, None, None, file_sub_folder_metadata['parentReference']['id'], file_sub_folder_metadata['id']]
+
+    @pytest.mark.aiohttpretty
+    def test_metadata_ids_no_padding(self, provider, folder_object_metadata, file_root_folder_metadata):
+        result = provider._get_ids(file_root_folder_metadata)
+        assert result == [None, file_root_folder_metadata['parentReference']['id'], file_root_folder_metadata['id']]        
+
+    @pytest.mark.aiohttpretty
+    def test_metadata_folder_ids_padding(self, provider, folder_sub_folder_metadata):
+        result = provider._get_ids(folder_sub_folder_metadata)
+        assert result == [None, None, None, folder_sub_folder_metadata['parentReference']['id'], folder_sub_folder_metadata['id']]
 
 #      @async
 #      @pytest.mark.aiohttpretty
