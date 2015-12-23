@@ -45,25 +45,11 @@ class OneDriveProvider(provider.BaseProvider):
         )
 
         data = yield from resp.json()
-        logger.info('validate_v1_path data::{}'.format(repr(data)))
 
-#          names, ids = zip(*[
-#              (x['name'], x['id'])
-#              for x in
-#              data['parentReference']['entries'] + [data]
-#          ])
-#          names, ids = ('',) + names[ids.index(self.folder) + 1:], ids[ids.index(self.folder):]
-
-#          names = self #  '/{}/{}'.format(data['parentReference']['path'].strip('/drive/root:/'), data['name'])
         names = self._get_names(data)
-        ids = ['0', data['parentReference']['id'], data['id']]  # 0 is the root ID; TODO: is this correct?
         ids = self._get_ids(data)
-        logger.info('validate_v1_path names::{} ids::{}'.format(repr(names), repr(ids)))
-        wb = WaterButlerPath(names, _ids=ids, folder=path.endswith('/'))
-        logger.info('validate_v1_path  wb._parts::{} '.format(repr(wb._parts)))
 
-        return wb
-#          return WaterButlerPath(path)
+        return WaterButlerPath(names, _ids=ids, folder=path.endswith('/'))
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
@@ -382,7 +368,6 @@ class OneDriveProvider(provider.BaseProvider):
         if (len(ids) < url_segment_count):
             for x in repeat(None, url_segment_count - len(ids)):
                 ids.insert(0, x)
-        #  ids.insert(0, '')  # add root id in
         return ids
 
     def _get_sub_folder_path(self, path, fileName):
