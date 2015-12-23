@@ -40,9 +40,12 @@ class OneDriveProvider(provider.BaseProvider):
 
         resp = yield from self.make_request(
             'GET', self.build_url(path),
-            expects=(200,),
+            expects=(200, 400),
             throws=exceptions.MetadataError
         )
+
+        if resp.status == 400:
+            return WaterButlerPath(path, prepend=self.folder)
 
         data = yield from resp.json()
 
