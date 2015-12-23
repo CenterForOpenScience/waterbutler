@@ -153,9 +153,8 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def download(self, path, revision=None, range=None, **kwargs):
-
-        onedriveId = self._get_one_drive_id(path)
-        logger.info('oneDriveId:: {} folder:: {} revision::{} path.parent:{}  raw::{}  ext::{}'.format(onedriveId, self.folder, revision, path.parent, path.raw_path, path.ext))
+        
+        logger.info('folder:: {} revision::{} path.parent:{}  raw::{}  ext::{}'.format(self.folder, revision, path.parent, path.raw_path, path.ext))
 #         if path.identifier is None:
 #             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
 #        if path type is file and ext is blank then get the metadata for the parent ID to get the full path of the child and download with that? parentReference
@@ -167,7 +166,7 @@ class OneDriveProvider(provider.BaseProvider):
                     downloadUrl = item['@content.downloadUrl']
                     break
         else:
-            url = self._build_content_url(onedriveId)
+            url = self._build_content_url(path.identifier)
             logger.info('url::{}'.format(url))
             metaData = yield from self.make_request('GET',
                                                     url,
