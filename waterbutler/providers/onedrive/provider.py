@@ -69,10 +69,21 @@ class OneDriveProvider(provider.BaseProvider):
     def intra_copy(self, dest_provider, src_path, dest_path):
         #  https://dev.onedrive.com/items/copy.htm
 
-        url = self.build_url(str(src_path), 'action.copy')  # target_onedrive_id
-        payload = json.dumps({'parentReference': {'id': dest_path.parent.full_path.split('/')[-2]}})  # dest_path.full_path.split('/')[-2]
+        url = self.build_url(src_path.identifier, 'action.copy')
+        payload = json.dumps({'name': dest_path.name,
+                              'parentReference': {'id': dest_path.parent.full_path.strip('/') if dest_path.parent.identifier is None else dest_path.parent.identifier}})  # TODO: this feels like a hack.  parent.identifier is None
 
         logger.info('intra_copy dest_provider::{} src_path::{} dest_path::{}  url::{} payload::{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(url), payload))
+        resp = yield from self.make_request(
+            'POST',
+            url,
+            data=payload,
+            headers={'content-type': 'application/json', 'Prefer': 'respond-async'},
+            expects=(202, ),
+            throws=exceptions.IntraCopyError,
+        )
+        if resp is None:
+            raise exceptions.IntraCopyError
 
 #          try:
 #              resp = yield from self.make_request(
