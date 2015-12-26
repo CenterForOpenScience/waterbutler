@@ -93,31 +93,14 @@ class OneDriveProvider(provider.BaseProvider):
         while (i < 100):
             logger.info('status::{}  i:{}'.format(repr(status), i))
             status = yield from self._copy_status(status_url)
-            #  status = backgroundify(self._copy_status(status_url))
+            #  status = backgroundify(self._copy_status(status_url))  #  TODO: determine how best to call status check without blocking and without returning to OSF
             if (status):
                 break
             i += 1
 
-        # async required...async worked, now need to determine what to return to osf?
         data = yield from self.metadata(src_path, None)
-        return data
+        return data, True
 
-#         data = yield from resp
-#         logger.debug('intra_copy post copy::{}'.format(repr(data)))
-#
-#         if 'directory' not in data.keys():
-#             return OneDriveFileMetadata(data, self.folder), True
-#
-#         folder = OneDriveFolderMetadata(data, self.folder)
-#
-#         folder.children = []
-#         for item in data['children']:
-#             if 'directory' in item.keys():
-#                 folder.children.append(OneDriveFolderMetadata(item, self.folder))
-#             else:
-#                 folder.children.append(OneDriveFileMetadata(item, self.folder))
-#
-#         return folder, True
     @asyncio.coroutine
     def _copy_status(self, status_url):
         #  docs: https://dev.onedrive.com/resources/asyncJobStatus.htm
