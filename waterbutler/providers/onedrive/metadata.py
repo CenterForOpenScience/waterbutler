@@ -66,7 +66,7 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
     @property
     def content_type(self):
         if 'file' in self.raw.keys():
-            return self.raw['file']['mimeType']
+            return self.raw['file'].get('mimeType')
         return 'application/octet-stream'
 
     @property

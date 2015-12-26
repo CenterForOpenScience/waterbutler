@@ -11,6 +11,7 @@ from itertools import repeat
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
+#  from waterbutler.tasks.core import backgroundify
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.onedrive import settings
@@ -84,30 +85,23 @@ class OneDriveProvider(provider.BaseProvider):
         )
         if resp is None:
             raise exceptions.IntraCopyError
-
-#          try:
-#              resp = yield from self.make_request(
-#                  'POST',
-#                  url,
-#                  data=payload,
-#                  headers={'content-type': 'application/json', 'Prefer': 'respond-async'},
-#                  expects=(202, ),
-#                  throws=exceptions.IntraCopyError,
-#              )
-#          except exceptions.IntraCopyError as e:
-#              if e.code != 403:
-#                  raise
-#
-#             yield from dest_provider.delete(dest_path)
-#             resp, _ = yield from self.intra_copy(dest_provider, src_path, dest_path)
-#             return resp, False
+        logger.info('resp::{}'.format(repr(resp)))
+        status_url = resp.headers['LOCATION']
+        logger.info('status_url::{}'.format(repr(status_url)))
+        i = 0
+        status = False
+        while (i < 100):
+            logger.info('status::{}  i:{}'.format(repr(status), i))
+            status = yield from self._copy_status(status_url)
+            #  status = backgroundify(self._copy_status(status_url))
+            if (status):
+                break
+            i += 1
 
         # async required...async worked, now need to determine what to return to osf?
-#             yield from dest_provider.delete(dest_path)
-#             resp, _ = yield from self.intra_move(dest_provider, src_path, dest_path)
-#             return resp, False
+        data = yield from self.metadata(src_path, None)
+        return data
 
-        raise ValueError('todo: wire up Copy async response')
 #         data = yield from resp
 #         logger.debug('intra_copy post copy::{}'.format(repr(data)))
 #
@@ -124,6 +118,19 @@ class OneDriveProvider(provider.BaseProvider):
 #                 folder.children.append(OneDriveFileMetadata(item, self.folder))
 #
 #         return folder, True
+    @asyncio.coroutine
+    def _copy_status(self, status_url):
+        #  docs: https://dev.onedrive.com/resources/asyncJobStatus.htm
+        status = 'notStarted'
+        resp = yield from self.make_request(
+            'GET', status_url,
+            expects=(200, 202),
+            throws=exceptions.IntraCopyError,
+        )
+        data = yield from resp.json()
+        status = data.get('status')
+        logger.info('_copy_status  status::{} resp:{} data::{}'.format(repr(status), repr(resp), repr(data)))
+        return True if resp.status == 200 else False
 
     @asyncio.coroutine
     def intra_move(self, dest_provider, src_path, dest_path):
