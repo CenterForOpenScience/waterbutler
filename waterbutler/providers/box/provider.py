@@ -83,8 +83,6 @@ class BoxProvider(provider.BaseProvider):
             if new_name is not None:
                 raise exceptions.MetadataError('Could not find {}'.format(path), code=404)
 
-            await response.release()
-
             return await self.revalidate_path(
                 WaterButlerPath('/', _ids=[self.folder]),
                 obj_id,
