@@ -12,13 +12,12 @@ from waterbutler.server import utils
 # for getting metadata and the actual files, respectively
 class MetadataMixin:
 
-    @asyncio.coroutine
-    def header_file_metadata(self):
+    async def header_file_metadata(self):
         # Going with version as its the most correct term
         # TODO Change all references of revision to version @chrisseto
         # revisions will still be accepted until necessary changes are made to OSF
         version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
-        data = yield from self.provider.metadata(self.path, revision=version)
+        data = await self.provider.metadata(self.path, revision=version)
 
         # Not setting etag for the moment
         # self.set_header('Etag', data.etag)  # This may not be appropriate
@@ -29,35 +28,32 @@ class MetadataMixin:
         self.set_header('Content-Type', data.content_type or 'application/octet-stream')
         self.set_header('X-Waterbutler-Metadata', json.dumps(data.json_api_serialized(self.resource)))
 
-    @asyncio.coroutine
-    def get_folder(self):
+    async def get_folder(self):
         if 'zip' in self.request.query_arguments:
-            return (yield from self.download_folder_as_zip())
+            return (await self.download_folder_as_zip())
 
-        data = yield from self.provider.metadata(self.path)
+        data = await self.provider.metadata(self.path)
         return self.write({'data': [x.json_api_serialized(self.resource) for x in data]})
 
-    @asyncio.coroutine
-    def get_file(self):
+    async def get_file(self):
         if 'meta' in self.request.query_arguments:
-            return (yield from self.file_metadata())
+            return (await self.file_metadata())
 
         if 'versions' in self.request.query_arguments or 'revisions' in self.request.query_arguments:
             # Going with versions as its the most correct term
             # TODO Change all references of revision to version @chrisseto
-            return (yield from self.get_file_revisions())
+            return (await self.get_file_revisions())
 
-        return (yield from self.download_file())
+        return (await self.download_file())
 
-    @asyncio.coroutine
-    def download_file(self):
+    async def download_file(self):
         if 'Range' not in self.request.headers:
             request_range = None
         else:
             request_range = tornado.httputil._parse_request_range(self.request.headers['Range'])
 
         version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
-        stream = yield from self.provider.download(
+        stream = await self.provider.download(
             self.path,
             revision=version,
             range=request_range,
@@ -91,33 +87,30 @@ class MetadataMixin:
         if ext in mime_types:
             self.set_header('Content-Type', mime_types[ext])
 
-        yield from self.write_stream(stream)
+        await self.write_stream(stream)
 
-    @asyncio.coroutine
-    def file_metadata(self):
+    async def file_metadata(self):
         version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
 
         return self.write({
-            'data': (yield from self.provider.metadata(self.path, revision=version)).json_api_serialized(self.resource)
+            'data': (await self.provider.metadata(self.path, revision=version)).json_api_serialized(self.resource)
         })
 
-    @asyncio.coroutine
-    def get_file_revisions(self):
+    async def get_file_revisions(self):
         result = self.provider.revisions(self.path)
 
         if asyncio.iscoroutine(result):
-            result = yield from result
+            result = await result
 
         return self.write({'data': [r.json_api_serialized() for r in result]})
 
-    @asyncio.coroutine
-    def download_folder_as_zip(self):
+    async def download_folder_as_zip(self):
         self.set_header('Content-Type', 'application/zip')
         self.set_header(
             'Content-Disposition',
             utils.make_disposition((self.path.name or 'download') + '.zip')
         )
 
-        result = yield from self.provider.zip(self.path)
+        result = await self.provider.zip(self.path)
 
-        yield from self.write_stream(result)
+        await self.write_stream(result)

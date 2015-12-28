@@ -65,7 +65,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         # TODO Allow for just passing file_id
         # if file_id:
-        #     parts = yield from self._resolve_id_to_parts(file_id)
+        #     parts = await self._resolve_id_to_parts(file_id)
         # elif path:
         # else:
         #     raise Exception  # TODO

@@ -1,5 +1,3 @@
-import tornado.gen
-
 from waterbutler.server import utils
 from waterbutler.server.api.v0 import core
 
@@ -10,8 +8,7 @@ class ZipHandler(core.BaseProviderHandler):
         'GET': 'download',
     }
 
-    @tornado.gen.coroutine
-    def get(self):
+    async def get(self):
         """Download as a Zip archive."""
 
         self.set_header('Content-Type', 'application/zip')
@@ -20,6 +17,6 @@ class ZipHandler(core.BaseProviderHandler):
             utils.make_disposition(self.path.name + '.zip')
         )
 
-        result = yield from self.provider.zip(**self.arguments)
+        result = await self.provider.zip(**self.arguments)
 
-        yield from self.write_stream(result)
+        await self.write_stream(result)

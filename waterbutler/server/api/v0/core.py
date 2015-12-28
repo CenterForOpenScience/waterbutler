@@ -1,6 +1,5 @@
 import json
 import time
-import asyncio
 import logging
 
 import tornado.web
@@ -70,8 +69,7 @@ class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.Re
 
 class BaseProviderHandler(BaseHandler):
 
-    @tornado.gen.coroutine
-    def prepare(self):
+    async def prepare(self):
         self.arguments = {
             key: list_or_value(value)
             for key, value in self.request.query_arguments.items()
@@ -81,7 +79,7 @@ class BaseProviderHandler(BaseHandler):
         except KeyError:
             return
 
-        self.payload = yield from auth_handler.fetch(self.request, self.arguments)
+        self.payload = await auth_handler.fetch(self.request, self.arguments)
 
         self.provider = utils.make_provider(
             self.arguments['provider'],
@@ -90,12 +88,12 @@ class BaseProviderHandler(BaseHandler):
             self.payload['settings'],
         )
 
-        self.path = yield from self.provider.validate_path(**self.arguments)
+        self.path = await self.provider.validate_path(**self.arguments)
         self.arguments['path'] = self.path  # TODO Not this
 
     @utils.async_retry(retries=5, backoff=5)
-    def _send_hook(self, action, metadata):
-        resp = yield from utils.send_signed_request('PUT', self.payload['callback_url'], {
+    async def _send_hook(self, action, metadata):
+        resp = await utils.send_signed_request('PUT', self.payload['callback_url'], {
             'action': action,
             'metadata': metadata,
             'auth': self.payload['auth'],
@@ -105,28 +103,26 @@ class BaseProviderHandler(BaseHandler):
         if resp.status != 200:
             raise Exception('Callback was unsuccessful, got {}'.format(resp))
         logger.info('Successfully sent callback for a {} request'.format(action))
-        yield from resp.release()
+        await resp.release()
 
 
 class BaseCrossProviderHandler(BaseHandler):
     JSON_REQUIRED = False
 
-    @tornado.gen.coroutine
-    def prepare(self):
+    async def prepare(self):
         try:
             self.action = self.ACTION_MAP[self.request.method]
         except KeyError:
             return
 
-        self.source_provider = yield from self.make_provider(prefix='from', **self.json['source'])
-        self.destination_provider = yield from self.make_provider(prefix='to', **self.json['destination'])
+        self.source_provider = await self.make_provider(prefix='from', **self.json['source'])
+        self.destination_provider = await self.make_provider(prefix='to', **self.json['destination'])
 
-        self.json['source']['path'] = yield from self.source_provider.validate_path(**self.json['source'])
-        self.json['destination']['path'] = yield from self.destination_provider.validate_path(**self.json['destination'])
+        self.json['source']['path'] = await self.source_provider.validate_path(**self.json['source'])
+        self.json['destination']['path'] = await self.destination_provider.validate_path(**self.json['destination'])
 
-    @asyncio.coroutine
-    def make_provider(self, provider, prefix='', **kwargs):
-        payload = yield from auth_handler.fetch(
+    async def make_provider(self, provider, prefix='', **kwargs):
+        payload = await auth_handler.fetch(
             self.request,
             dict(kwargs, provider=provider, action=self.action + prefix)
         )
@@ -150,8 +146,8 @@ class BaseCrossProviderHandler(BaseHandler):
         return self._json
 
     @utils.async_retry(retries=0, backoff=5)
-    def _send_hook(self, action, data):
-        resp = yield from utils.send_signed_request('PUT', self.callback_url, {
+    async def _send_hook(self, action, data):
+        resp = await utils.send_signed_request('PUT', self.callback_url, {
             'action': action,
             'source': {
                 'nid': self.json['source']['nid'],
@@ -168,4 +164,4 @@ class BaseCrossProviderHandler(BaseHandler):
         if resp.status != 200:
             raise Exception('Callback was unsuccessful, got {}'.format(resp))
         logger.info('Successfully sent callback for a {} request'.format(action))
-        yield from resp.release()
+        await resp.release()

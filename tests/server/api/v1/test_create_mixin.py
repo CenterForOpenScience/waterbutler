@@ -105,7 +105,8 @@ class TestValidatePut(BaseCreateMixinTest):
 
 class TestCreateFolder(BaseCreateMixinTest):
 
-    def test_created(self):
+    @pytest.mark.asyncio
+    async def test_created(self):
         metadata = mock.Mock()
         self.mixin.path = '/'
         self.mixin.resource = '3rqws'
@@ -116,7 +117,7 @@ class TestCreateFolder(BaseCreateMixinTest):
         target = WaterButlerPath('/apath/')
         self.mixin.target_path = target
 
-        yield from self.mixin.create_folder()
+        await self.mixin.create_folder()
 
         assert self.mixin.set_status.assert_called_once_with(201) is None
         assert self.mixin.write.assert_called_once_with({'data': {'day': 'tum'}}) is None

@@ -12,16 +12,16 @@ class AuthHandler:
             name_order=True,
         )
 
-    def fetch(self, request, bundle):
+    async def fetch(self, request, bundle):
         for extension in self.manager.extensions:
-            credential = yield from extension.obj.fetch(request, bundle)
+            credential = await extension.obj.fetch(request, bundle)
             if credential:
                 return credential
         raise AuthHandler('no valid credential found')
 
-    def get(self, resource, provider, request):
+    async def get(self, resource, provider, request):
         for extension in self.manager.extensions:
-            credential = yield from extension.obj.get(resource, provider, request)
+            credential = await extension.obj.get(resource, provider, request)
             if credential:
                 return credential
         raise AuthHandler('no valid credential found')
