@@ -68,6 +68,9 @@ class UtilMixin:
                 chunk = await stream.read(settings.CHUNK_SIZE)
                 if not chunk:
                     break
+                # Temp fix, write does not accept bytearrays currently
+                if isinstance(chunk, bytearray):
+                    chunk = bytes(chunk)
                 self.write(chunk)
                 del chunk
                 await self.flush()
