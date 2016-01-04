@@ -338,6 +338,14 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def revalidate_path(self, base, path, folder=False):
+        """Take a path and a base path and build a WaterButlerPath representing /base/path.  For
+        id-based providers, this will need to lookup the id of the new child object.
+
+        :param WaterButlerPath base: The base folder to look under
+        :param path str: the path of a child of `base`, relative to `base`
+        :param folder bool: whether the returned WaterButlerPath should represent a folder
+        :rtype: WaterButlerPath
+        """
         return base.child(path, folder=folder)
 
     @asyncio.coroutine
