@@ -27,8 +27,7 @@ brew install python3
 pip install virtualenv 
 pip install virtualenvwrapper 
 mkvirtualenv --python=python3 waterbutler
-pip install -U -r requirements.txt
-python setup.py develop
+invoke install
 invoke server
 ```
 
@@ -63,4 +62,13 @@ waterbutler-test.json, e.g.
       "API_URL": "http://localhost:5000/api/v1/files/auth/"
   }
 }
+```
+
+### running the tests (optional)
+To run all the tests you will need install some requirements, so try running:
+
+```bash
+workon waterbutler
+invoke install --develop
+invoke test
 ```
