@@ -53,12 +53,45 @@ class OneDriveProvider(provider.BaseProvider):
         names = self._get_names(data)
         ids = self._get_ids(data)
 
-        return WaterButlerPath(names, _ids=ids, folder=path.endswith('/'))
+        wb_path = WaterButlerPath(names, _ids=ids, folder=path.endswith('/'))
+        logger.info('wb_path::{}  IDs:{}'.format(repr(wb_path._parts), repr(ids)))
+        return wb_path
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         logger.info('validate_path self::{} path::{}'.format(repr(self), path))
         return self.validate_v1_path(path, **kwargs)
+
+    @asyncio.coroutine
+    def revalidate_path(self, base, path, folder=None):
+        logger.info('revalidate_path self::{} path::{} base::{}'.format(repr(self), base.full_path, repr(path))) 
+        url = self.build_url(base.full_path, expand='children')       
+        resp = yield from self.make_request(
+            'GET',
+            url,
+            expects=(200, ),
+            throws=exceptions.ProviderError
+        )
+
+        data = yield from resp.json()
+        lower_name = path.lower()
+        logger.info('revalidate_path data::{} '.format(repr(data)))
+        try:
+            item = next(
+                x for x in data['children']
+                if x['name'].lower() == lower_name and (
+                    folder is None or
+                    ('folder' in x.keys()) == folder
+                )
+            )
+            name = path  # Use path over x['name'] because of casing issues
+            _id = item['id']
+            folder = 'folder' in item.keys()
+        except StopIteration:
+            _id = None
+            name = path
+
+        return base.child(name, _id=_id, folder=folder)
 
     @property
     def default_headers(self):
@@ -72,7 +105,7 @@ class OneDriveProvider(provider.BaseProvider):
 
         url = self.build_url(src_path.identifier, 'action.copy')
         payload = json.dumps({'name': dest_path.name,
-                              'parentReference': {'id': dest_path.parent.full_path.strip('/') if dest_path.parent.identifier is None else dest_path.parent.identifier}})  # TODO: this feels like a hack.  parent.identifier is None
+                              'parentReference': {'id': dest_path.parent.full_path.strip('/') if dest_path.parent.identifier is None else dest_path.parent.identifier}})  # TODO: this feels like a hack.  parent.identifier is None in some cases.
 
         logger.info('intra_copy dest_provider::{} src_path::{} dest_path::{}  url::{} payload::{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(url), payload))
         resp = yield from self.make_request(
@@ -98,7 +131,7 @@ class OneDriveProvider(provider.BaseProvider):
                 break
             i += 1
 
-        data = yield from self.metadata(src_path, None)
+        data = yield from self.metadata(src_path, None)  # TODO: validate_v1_path to get destination ID/Name pair and then return self.metadata so OSF has new Destination path IDs.
         return data, True
 
     @asyncio.coroutine
@@ -155,10 +188,10 @@ class OneDriveProvider(provider.BaseProvider):
     @asyncio.coroutine
     def download(self, path, revision=None, range=None, **kwargs):
 
-        logger.info('folder:: {} revision::{} path.parent:{}  raw::{}  ext::{}'.format(self.folder, revision, path.parent, path.raw_path, path.ext))
-#         if path.identifier is None:
-#             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
-#        if path type is file and ext is blank then get the metadata for the parent ID to get the full path of the child and download with that? parentReference
+        logger.info('folder:: {} revision::{} path.identifier:{} path:{} path.parts:{}'.format(self.folder, revision, path.identifier, repr(path), repr(path._parts)))
+
+        if path.identifier is None:
+            raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
         downloadUrl = None
         if revision:
             items = yield from self._revisions_json(path)

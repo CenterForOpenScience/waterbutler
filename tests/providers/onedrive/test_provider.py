@@ -695,6 +695,23 @@ class TestValidatePath:
 
         assert wb_path_v1 == wb_path_v0
 
+    @async
+    @pytest.mark.aiohttpretty
+    def test_revalidate_path(self, provider, file_root_parent_metadata):
+        file_id = '75BFE374EBEB1211!150'
+        file_id = '1234'
+        file_name = 'elect-a.jpg'
+        expected_path = WaterButlerPath('/' + file_name, [None, file_id])
+ 
+        good_url = provider.build_url(file_id, expand='children')
+        base_path = WaterButlerPath('/', prepend=file_id)        
+ 
+        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
+
+        actual_path = yield from provider.revalidate_path(base_path, file_name, False)
+        
+        assert actual_path == expected_path
+
 # 
 #     @async
 #     @pytest.mark.aiohttpretty
