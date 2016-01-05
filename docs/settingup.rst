@@ -7,19 +7,14 @@ Install requirements
 
 .. code-block:: bash
 
-    pip install -U -r requirements.txt
+    invoke install
 
-Or for some nicities
-
-.. code-block:: bash
-
-    pip install -U -r dev-requirements.txt
-
-Required by the stevedore module. Allows for dynamic importing of providers
+Or for some nicities (like tests)
 
 .. code-block:: bash
 
-    python setup.py develop
+    invoke install --develop
+
 
 Start the server
 
