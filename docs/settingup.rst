@@ -1,7 +1,7 @@
 Setting Up
 ==========
 
-Make sure that you are using >= python3.3 and install invoke for your python version
+Make sure that you are using >= python3.3 and install invoke for your current python3 version.
 
 .. code-block:: bash
 
