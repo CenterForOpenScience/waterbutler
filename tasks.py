@@ -63,7 +63,7 @@ def server():
 
 @task
 def clean(verbose=False):
-    cmd = 'find . -name "*.pyc" -exec rm -rf {} \;'
+    cmd = 'find . -name "*.pyc" -delete'
     if verbose:
         print(cmd)
     run(cmd, pty=True)
