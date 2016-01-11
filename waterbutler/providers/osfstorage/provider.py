@@ -139,7 +139,7 @@ class OSFStorageProvider(provider.BaseProvider):
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
 
-        async with self.make_signed_request(
+        async with self.signed_request(
             'POST',
             self.build_url('hooks', 'move'),
             data=json.dumps({
