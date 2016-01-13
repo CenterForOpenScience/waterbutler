@@ -155,6 +155,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             'provider': self.provider.NAME,
         }
 
+        callback_url = None
         if action in ('move', 'copy'):
             payload.update({
                 'source': {
@@ -174,6 +175,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                     'materialized': self.dest_meta.materialized_path,
                 }
             })
+            callback_url = self.dest_auth['callback_url']
         else:
             # This is adequate for everything but github
             # If extra can be included it will link to the given sha
@@ -187,8 +189,9 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                     'provider': self.provider.NAME,
                 }
             })
+            callback_url = self.auth['callback_url']
 
-        resp = (await utils.send_signed_request('PUT', self.auth['callback_url'], payload))
+        resp = (await utils.send_signed_request('PUT', callback_url, payload))
 
         if resp.status != 200:
             data = await resp.read()
