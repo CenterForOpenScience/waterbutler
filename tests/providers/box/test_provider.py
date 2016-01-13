@@ -1,5 +1,4 @@
 import pytest
-import sys
 
 import io
 from http import client
@@ -287,10 +286,9 @@ class TestValidatePath:
         except Exception as exc:
             pytest.fail(str(exc))
 
-        try:
+        with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/' + file_id + '/')
-        except Exception as exc:
-            assert exc.code == client.NOT_FOUND
+            assert exc.value.code == client.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + file_id)
 
@@ -312,10 +310,9 @@ class TestValidatePath:
         except Exception as exc:
             pytest.fail(str(exc))
 
-        try:
+        with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/' + folder_id)
-        except Exception as exc:
-            assert exc.code == client.NOT_FOUND
+            assert exc.value.code == client.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + folder_id + '/')
 
