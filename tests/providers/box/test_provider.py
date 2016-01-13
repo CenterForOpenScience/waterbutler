@@ -288,7 +288,8 @@ class TestValidatePath:
 
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/' + file_id + '/')
-            assert exc.value.code == client.NOT_FOUND
+
+        assert exc.value.code == client.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + file_id)
 
@@ -312,7 +313,8 @@ class TestValidatePath:
 
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/' + folder_id)
-            assert exc.value.code == client.NOT_FOUND
+
+        assert exc.value.code == client.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + folder_id + '/')
 
@@ -348,7 +350,8 @@ class TestDownload:
 
         with pytest.raises(exceptions.DownloadError) as e:
             await provider.download(path)
-            assert e.value.code == 404
+        
+        assert e.value.code == 404
 
 
 class TestUpload:
@@ -424,8 +427,9 @@ class TestDelete:
 
         with pytest.raises(exceptions.NotFoundError) as e:
             await provider.delete(path)
-            assert e.value.code == 404
-            assert str(path) in e.value.message
+        
+        assert e.value.code == 404
+        assert str(path) in e.value.message
 
 
 class TestMetadata:
@@ -436,8 +440,9 @@ class TestMetadata:
 
         with pytest.raises(exceptions.NotFoundError) as e:
             await provider.metadata(path)
-            assert e.value.code == 404
-            assert str(path) in e.value.message
+        
+        assert e.value.code == 404
+        assert str(path) in e.value.message
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -507,7 +512,8 @@ class TestMetadata:
 
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.metadata(path)
-            assert exc.value.code == client.NOT_FOUND
+        
+        assert exc.value.code == client.NOT_FOUND
 
 
 class TestRevisions:
@@ -564,8 +570,9 @@ class TestCreateFolder:
 
         with pytest.raises(exceptions.CreateFolderError) as e:
             await provider.create_folder(path)
-            assert e.value.code == 400
-            assert e.value.message == 'Path must be a directory'
+        
+        assert e.value.code == 400
+        assert e.value.message == 'Path must be a directory'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -576,8 +583,9 @@ class TestCreateFolder:
 
         with pytest.raises(exceptions.FolderNamingConflict) as e:
             await provider.create_folder(path)
-            assert e.value.code == 409
-            assert e.value.message == 'Cannot create folder "Just a poor file from a poor folder" because a file or folder already exists at path "/Just a poor file from a poor folder/"'
+        
+        assert e.value.code == 409
+        assert e.value.message == 'Cannot create folder "Just a poor file from a poor folder" because a file or folder already exists at path "/Just a poor file from a poor folder/"'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -598,8 +606,9 @@ class TestCreateFolder:
 
         with pytest.raises(exceptions.FolderNamingConflict) as e:
             await provider.create_folder(path)
-            assert e.value.code == 409
-            assert e.value.message == 'Cannot create folder "50 shades of nope" because a file or folder already exists at path "/50 shades of nope/"'
+        
+        assert e.value.code == 409
+        assert e.value.message == 'Cannot create folder "50 shades of nope" because a file or folder already exists at path "/50 shades of nope/"'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
