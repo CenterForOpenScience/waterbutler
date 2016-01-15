@@ -2,6 +2,18 @@
 ChangeLog
 *********
 
+0.15.0 (2016-01-15)
+===================
+- Enforce V1 path semantics. Folders must have trailing slash, files must NOT
+have trailing slash.  Failing to abide results in a 404
+- Allow creating a file or folder in a directory with an identically-named
+entity of the opposite type, but only for those providers that allow it.
+- Fix recursive delete via s3 when folder name has special characters
+- Fix multiple 500s on github provider
+- Fix many v1 logging issues
+- Clarify install instructions, (thanks @rafaeldelucena!)
+- Add `clean` task to remove old .pyc files
+
 0.14.0 (2015-11-05)
 ===================
 - Update to a python3.5 compliant version of invoke
