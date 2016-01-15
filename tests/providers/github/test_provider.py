@@ -7,6 +7,7 @@ import os
 import json
 import base64
 import hashlib
+from http import client
 
 import aiohttpretty
 
@@ -17,6 +18,7 @@ from waterbutler.core.provider import build_url
 
 from waterbutler.providers.github import GitHubProvider
 from waterbutler.providers.github import settings as github_settings
+from waterbutler.providers.github.provider import GitHubPath
 from waterbutler.providers.github.metadata import GitHubRevision
 from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
 from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
@@ -467,6 +469,66 @@ class TestHelpers:
 
 
 class TestValidatePath:
+
+    def test_child_gets_branch(self):
+        parent = GitHubPath('/', _ids=[('master', None)], folder=True)
+
+        child_file = parent.child('childfile', folder=False)
+        assert child_file.identifier[0] == 'master'
+
+        child_folder = parent.child('childfolder', folder=True)
+        assert child_folder.identifier[0] == 'master'
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_validate_v1_path_file(self, provider, content_repo_metadata_root_file_txt):
+        blob_path = 'file.txt'
+        blob_url = provider.build_repo_url('contents', blob_path)
+        blob_query = '?ref=' + provider.default_branch
+        blob_good_url = blob_url + blob_query
+        blob_bad_url  = blob_url + '/' + blob_query
+
+        aiohttpretty.register_json_uri('GET', blob_good_url, body=content_repo_metadata_root_file_txt)
+        aiohttpretty.register_json_uri('GET', blob_bad_url, body=content_repo_metadata_root_file_txt)
+
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/' + blob_path)
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/' + blob_path + '/')
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/' + blob_path)
+
+        assert wb_path_v1 == wb_path_v0
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_validate_v1_path_folder(self, provider, content_repo_metadata_root):
+        tree_path = 'folder'
+        tree_url = provider.build_repo_url('contents', tree_path)
+        tree_query = '?ref=' + provider.default_branch
+        tree_good_url = tree_url + tree_query
+        tree_bad_url  = tree_url + '/' + tree_query
+
+        aiohttpretty.register_json_uri('GET', tree_good_url, body=content_repo_metadata_root)
+        aiohttpretty.register_json_uri('GET', tree_bad_url, body=content_repo_metadata_root)
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/' + tree_path + '/')
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/' + tree_path)
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/' + tree_path + '/')
+
+        assert wb_path_v1 == wb_path_v0
 
     @async
     def test_validate_path(self, provider):

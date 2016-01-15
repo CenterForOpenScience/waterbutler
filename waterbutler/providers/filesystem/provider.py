@@ -23,8 +23,23 @@ class FileSystemProvider(provider.BaseProvider):
         os.makedirs(self.folder, exist_ok=True)
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        if not os.path.exists(self.folder + path):
+            raise exceptions.NotFoundError(str(path))
+
+        implicit_folder = path.endswith('/')
+        explicit_folder = os.path.isdir(self.folder + path)
+        if implicit_folder != explicit_folder:
+            raise exceptions.NotFoundError(str(path))
+
+        return WaterButlerPath(path, prepend=self.folder)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path, prepend=self.folder)
+
+    def can_duplicate_names(self):
+        return False
 
     @asyncio.coroutine
     def intra_copy(self, dest_provider, src_path, dest_path):

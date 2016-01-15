@@ -10,25 +10,33 @@
 
 Docs can be found [here](https://waterbutler.readthedocs.org/en/latest/)
 
-### osf startup commands
+### Requirements
+
+In order to run waterbutler, you must have a virtualenv created for waterbutler running python3.3 or higher.
+
+For MacOSX, you can install the latest version of python3 using:
 
 ```bash
-invoke server
+brew install python3
 ```
 
+For Ubuntu users:
+
+```bash
+apt-get install python3
+
+```
 
 ### startup commands
 
-In order to run waterbutler, you must have a virtualenv created for waterbutler running python3.3 or higher.  This can be created with the following commands:
+After completing the installation of Python 3, you must create the virtual environment, this can be done with the following commands:
 
 ```bash
-# MacOSX: Install the latest version of python3
-brew install python3 
-pip install virtualenv 
-pip install virtualenvwrapper 
+pip install virtualenv
+pip install virtualenvwrapper
 mkvirtualenv --python=python3 waterbutler
-pip install -U -r requirements.txt
-python setup.py develop
+pip install invoke
+invoke install
 invoke server
 ```
 
@@ -53,14 +61,23 @@ waterbutler-test.json, e.g.
     "HMAC_SECRET": "changeme"
   },
   "SERVER_CONFIG": {
-    "ADDRESS": "127.0.0.1",
+    "ADDRESS": "localhost",
     "PORT": 7777,
-    "DOMAIN": "http://127.0.0.1:7777",
+    "DOMAIN": "http://localhost:7777",
     "DEBUG": true,
     "HMAC_SECRET": "changeme"
   },
   "OSF_AUTH_CONFIG": {
-      "API_URL": "http://127.0.0.1:5000/api/v1/files/auth/"
+      "API_URL": "http://localhost:5000/api/v1/files/auth/"
   }
 }
+```
+
+### running the tests (optional)
+To run all the tests you will need install some requirements, so try running:
+
+```bash
+workon waterbutler
+invoke install --develop
+invoke test
 ```

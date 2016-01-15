@@ -1,25 +1,24 @@
 Setting Up
 ==========
 
-Make sure that you are using >= python3.3
+Make sure that you are using >= python3.3 and install invoke for your current python3 version.
+
+.. code-block:: bash
+
+    pip install invoke
 
 Install requirements
 
 .. code-block:: bash
 
-    pip install -U -r requirements.txt
+    invoke install
 
-Or for some nicities
-
-.. code-block:: bash
-
-    pip install -U -r dev-requirements.txt
-
-Required by the stevedore module. Allows for dynamic importing of providers
+Or for some nicities (like tests)
 
 .. code-block:: bash
 
-    python setup.py develop
+    invoke install --develop
+
 
 Start the server
 

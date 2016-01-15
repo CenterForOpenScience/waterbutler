@@ -59,3 +59,11 @@ def rabbitmq():
 def server():
     from waterbutler.server.app import serve
     serve()
+
+
+@task
+def clean(verbose=False):
+    cmd = 'find . -name "*.pyc" -delete'
+    if verbose:
+        print(cmd)
+    run(cmd, pty=True)

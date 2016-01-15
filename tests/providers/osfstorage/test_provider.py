@@ -1,6 +1,7 @@
 import os
 import io
 import asyncio
+from http import client
 from unittest import mock
 
 import pytest
@@ -129,6 +130,52 @@ def mock_folder_path():
     return WaterButlerPath('/unrelatedfolder/', _ids=('rootId', 'another'))
 
 
+@pytest.fixture
+def folder_lineage():
+    return {
+        'data': [
+            {
+                'id': '56045626cfe191ead0264305',
+                'kind': 'folder',
+                'name': 'Lunchbuddy',
+                'path': '/56045626cfe191ead0264305/'
+            },
+            {
+                'id': '560012ffcfe1910de19a872f',
+                'kind': 'folder',
+                'name': '',
+                'path': '/560012ffcfe1910de19a872f/'
+            }
+        ]
+    }
+
+
+@pytest.fixture
+def file_lineage():
+    return {
+        'data': [
+            {
+                'contentType': None,
+                'downloads': 0,
+                'id': '56152738cfe1912c7d74cad7',
+                'kind': 'file',
+                'md5': '067a41deb18fc7b0bbbd748f24f89ebb',
+                'modified': '2015-10-07T10:07:52',
+                'name': 'bar.txt',
+                'path': '/56152738cfe1912c7d74cad7',
+                'sha256': 'ca01ef62c58964ce437fc300418c29a471ff92a991e4123a65ca8bf65d318710',
+                'size': 17,
+                'version': 1
+            },
+            {
+                'id': '560012ffcfe1910de19a872f',
+                'kind': 'folder',
+                'name': '',
+                'path': '/560012ffcfe1910de19a872f/'}
+        ]
+    }
+
+
 @async
 @pytest.mark.aiohttpretty
 def test_download(monkeypatch, provider_and_mock, osf_response, mock_path):
@@ -220,6 +267,53 @@ def test_provider_metadata(monkeypatch, provider, mock_folder_path):
 
     assert aiohttpretty.has_call(method='GET', uri=url, params=params)
 
+
+class TestValidatePath:
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_validate_v1_path_file(self, provider, file_lineage):
+        file_path = '56152738cfe1912c7d74cad7'
+
+        url, _, params = provider.build_signed_url('GET', 'https://waterbutler.io/{}/lineage/'.format(file_path))
+        aiohttpretty.register_json_uri('GET', url, params=params, status=200, body=file_lineage)
+
+        # folder_path = '56045626cfe191ead0264305'
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/' + file_path)
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/' + file_path + '/')
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/' + file_path)
+
+        assert wb_path_v1 == wb_path_v0
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_validate_v1_path_folder(self, provider, folder_lineage):
+        folder_path = '56045626cfe191ead0264305'
+
+        url, _, params = provider.build_signed_url('GET', 'https://waterbutler.io/{}/lineage/'.format(folder_path))
+        aiohttpretty.register_json_uri('GET', url, params=params, status=200, body=folder_lineage)
+
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/' + folder_path + '/')
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/' + folder_path)
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/' + folder_path + '/')
+
+        assert wb_path_v1 == wb_path_v0
 
 class TestUploads:
 

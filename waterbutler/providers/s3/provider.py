@@ -5,6 +5,10 @@ from urllib import parse
 
 import xmltodict
 
+import xml.sax.saxutils
+
+from boto.compat import BytesIO
+from boto.utils import compute_md5
 from boto.s3.connection import S3Connection
 from boto.s3.connection import OrdinaryCallingFormat
 from boto.s3.connection import SubdomainCallingFormat
@@ -54,8 +58,39 @@ class S3Provider(provider.BaseProvider):
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        if path == '/':
+            return WaterButlerPath(path)
+
+        implicit_folder = path.endswith('/')
+
+        if implicit_folder:
+            resp = yield from self.make_request(
+                'GET',
+                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
+                params={'prefix': path, 'delimiter': '/'},
+                expects=(200, 404),
+                throws=exceptions.MetadataError,
+            )
+        else:
+            resp = yield from self.make_request(
+                'HEAD',
+                self.bucket.new_key(path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
+                expects=(200, 404),
+                throws=exceptions.MetadataError,
+            )
+
+        if resp.status == 404:
+            raise exceptions.NotFoundError(str(path))
+
+        return WaterButlerPath(path)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
+
+    def can_duplicate_names(self):
+        return True
 
     def can_intra_copy(self, dest_provider, path=None):
         return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
@@ -167,12 +202,92 @@ class S3Provider(provider.BaseProvider):
 
         :param str path: The path of the key to delete
         """
-        yield from self.make_request(
-            'DELETE',
-            self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
-            expects=(200, 204, ),
-            throws=exceptions.DeleteError,
-        )
+
+        if path.is_file:
+            yield from self.make_request(
+                'DELETE',
+                self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
+                expects=(200, 204, ),
+                throws=exceptions.DeleteError,
+            )
+        else:
+            yield from self._delete_folder(path, **kwargs)
+
+    @asyncio.coroutine
+    def _delete_folder(self, path, **kwargs):
+        """On S3, folders are not first-class objects, but are instead inferred from the names
+        of their children.  A regular DELETE request issued against a folder will not work unless
+        that folder is completely empty.  To fully delete an occupied folder, we must delete all
+        of the comprising objects.  Amazon provides a bulk delete operation to simplify this.
+        """
+
+        more_to_come = True
+        content_keys = []
+        query_params = {'prefix': path.path}
+        marker = None
+
+        while more_to_come:
+            if marker is not None:
+                query_params['marker'] = marker
+
+            resp = yield from self.make_request(
+                'GET',
+                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
+                params=query_params,
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+
+            contents = yield from resp.read_and_close()
+            parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
+            more_to_come = parsed.get('IsTruncated') == 'true'
+            contents = parsed.get('Contents', [])
+
+            if isinstance(contents, dict):
+                contents = [contents]
+
+            content_keys.extend([content['Key'] for content in contents])
+            if len(content_keys) > 0:
+                marker = content_keys[-1]
+
+        while len(content_keys) > 0:
+            key_batch = content_keys[:1000]
+            del content_keys[:1000]
+
+            payload = '<?xml version="1.0" encoding="UTF-8"?>'
+            payload += '<Delete>'
+            payload += ''.join(map(
+                lambda x: '<Object><Key>{}</Key></Object>'.format(xml.sax.saxutils.escape(x)),
+                key_batch
+            ))
+            payload += '</Delete>'
+            payload = payload.encode('utf-8')
+            md5 = compute_md5(BytesIO(payload))
+
+            query_params = {'delete': ''}
+            headers = {
+                'Content-Length': str(len(payload)),
+                'Content-MD5': md5[1],
+                'Content-Type': 'text/xml',
+            }
+
+            # We depend on a customized version of boto that can make query parameters part of
+            # the signature.
+            url = self.bucket.generate_url(
+                settings.TEMP_URL_SECS,
+                'POST',
+                query_parameters=query_params,
+                headers=headers,
+            )
+            yield from self.make_request(
+                'POST',
+                url,
+                params=query_params,
+                data=payload,
+                headers=headers,
+                expects=(200, 204, ),
+                throws=exceptions.DeleteError,
+            )
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):

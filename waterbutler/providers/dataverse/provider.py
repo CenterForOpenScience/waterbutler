@@ -42,6 +42,16 @@ class DataverseProvider(provider.BaseProvider):
         # Need to split up the dataverse subpaths and push them into segments
         return super().build_url(*(tuple(path.split('/')) + segments), **query)
 
+    def can_duplicate_names(self):
+        return False
+
+    @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        if path != '/' and path.endswith('/'):
+            raise exceptions.NotFoundError(str(path))
+
+        return self.validate_path(path, **kwargs)
+
     @asyncio.coroutine
     def validate_path(self, path, revision=None, **kwargs):
         """Ensure path is in configured dataset
