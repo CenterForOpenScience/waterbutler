@@ -11,16 +11,14 @@ from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
 from waterbutler.server.auth import AuthHandler
+from waterbutler.constants import IDENTIFIER_PATHS
 from waterbutler.core.streams import RequestStreamReader
 from waterbutler.server.api.v1.provider.create import CreateMixin
 from waterbutler.server.api.v1.provider.metadata import MetadataMixin
 from waterbutler.server.api.v1.provider.movecopy import MoveCopyMixin
 
-
 logger = logging.getLogger(__name__)
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
-
-IDENTIFIER_PATHS = ('box', 'osfstorage')
 
 
 @tornado.web.stream_request_body
