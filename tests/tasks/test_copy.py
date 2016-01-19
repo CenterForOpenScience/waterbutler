@@ -150,7 +150,7 @@ class TestCopyTask:
                 'errors': [],
                 'action': 'copy',
                 'source': {
-                    'path': src_path.path,
+                    'path': '/' + src_path.path,
                     'name': src_path.name,
                     'materialized': str(src_path),
                     'provider': src.NAME,
