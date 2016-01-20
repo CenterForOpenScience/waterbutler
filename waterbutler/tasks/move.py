@@ -26,7 +26,6 @@ def move(src_bundle, dest_bundle, callback_url, auth, start_time=None, **kwargs)
         }),
         'destination': dict(dest_bundle, **{
             'path': dest_path.identifier_path if dest_provider.NAME in IDENTIFIER_PATHS else '/' + dest_path.path,
-            'path': dest_path.path,
             'name': dest_path.name,
             'materialized': str(dest_path),
             'provider': dest_provider.NAME,
