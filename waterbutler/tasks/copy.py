@@ -19,13 +19,13 @@ def copy(src_bundle, dest_bundle, callback_url, auth, start_time=None, **kwargs)
         'errors': [],
         'action': 'copy',
         'source': dict(src_bundle, **{
-            'path': src_path.identifier_path if src_provider.NAME in IDENTIFIER_PATHS else '/' + src_path.path,
+            'path': src_path.identifier_path if src_provider.NAME in IDENTIFIER_PATHS else '/' + src_path.raw_path,
             'name': src_path.name,
             'materialized': str(src_path),
             'provider': src_provider.NAME,
         }),
         'destination': dict(dest_bundle, **{
-            'path': dest_path.identifier_path if dest_provider.NAME in IDENTIFIER_PATHS else '/' + dest_path.path,
+            'path': dest_path.identifier_path if dest_provider.NAME in IDENTIFIER_PATHS else '/' + dest_path.raw_path,
             'name': dest_path.name,
             'materialized': str(dest_path),
             'provider': dest_provider.NAME,

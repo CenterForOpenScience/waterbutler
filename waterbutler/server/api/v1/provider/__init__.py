@@ -168,7 +168,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                     'nid': self.resource,
                     'kind': self.path.kind,
                     'name': self.path.name,
-                    'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else self.path.path,
+                    'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + self.path.raw_path,
                     'provider': self.provider.NAME,  # TODO rename to name
                     'materialized': str(self.path),
                 },
@@ -189,7 +189,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             payload.update({
                 'metadata': {
                     # Hack: OSF and box use identifiers to refer to files
-                    'path': payload_path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else payload_path.path,
+                    'path': payload_path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + payload_path.raw_path,
                     'name': payload_path.name,
                     'materialized': str(payload_path),
                     'provider': self.provider.NAME,
