@@ -155,7 +155,7 @@ class BaseCrossProviderHandler(BaseHandler):
         if self.source_provider.NAME in IDENTIFIER_PATHS:
             src_path = self.json['source']['path'].identifier_path
         else:
-            src_path = '/' + self.json['source']['path'].path
+            src_path = '/' + self.json['source']['path'].raw_path
 
         resp = yield from utils.send_signed_request('PUT', self.callback_url, {
             'action': action,

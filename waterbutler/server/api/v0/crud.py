@@ -142,7 +142,7 @@ class CRUDHandler(core.BaseProviderHandler):
         self._send_hook(
             'delete',
             {
-                'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + self.path.path,
+                'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + self.path.raw_path,
                 'materialized': str(self.arguments['path'])
             }
         )
