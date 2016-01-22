@@ -13,6 +13,7 @@ from waterbutler.core import signing
 from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.auth import AuthHandler
+from waterbutler.constants import IDENTIFIER_PATHS
 from waterbutler.server import utils as server_utils
 
 
@@ -147,12 +148,18 @@ class BaseCrossProviderHandler(BaseHandler):
 
     @utils.async_retry(retries=0, backoff=5)
     async def _send_hook(self, action, data):
+        src_path = None
+        if self.source_provider.NAME in IDENTIFIER_PATHS:
+            src_path = self.json['source']['path'].identifier_path
+        else:
+            src_path = '/' + self.json['source']['path'].raw_path
+
         resp = await utils.send_signed_request('PUT', self.callback_url, {
             'action': action,
             'source': {
                 'nid': self.json['source']['nid'],
                 'provider': self.source_provider.NAME,
-                'path': self.json['source']['path'].path,
+                'path': src_path,
                 'name': self.json['source']['path'].name,
                 'materialized': str(self.json['source']['path']),
             },

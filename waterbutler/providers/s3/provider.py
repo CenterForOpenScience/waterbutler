@@ -10,7 +10,6 @@ from boto.compat import BytesIO
 from boto.utils import compute_md5
 from boto.s3.connection import S3Connection
 from boto.s3.connection import OrdinaryCallingFormat
-from boto.s3.connection import SubdomainCallingFormat
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -43,20 +42,15 @@ class S3Provider(provider.BaseProvider):
         """
         super().__init__(auth, credentials, settings)
 
-        # If a bucket has capital letters in the name ordinary calling format MUST be used
-        # If a bucket has multiple dots (sub.domain.bucket) ordinary calling format MUST be used
-        if settings['bucket'] != settings['bucket'].lower() or settings['bucket'].count('.') > 0:
-            calling_format = OrdinaryCallingFormat()
-        else:
-            # if a bucket is out of the us Subdomain calling format MUST be used
-            calling_format = SubdomainCallingFormat()
-
         self.connection = S3Connection(credentials['access_key'],
-                credentials['secret_key'], calling_format=calling_format)
+                credentials['secret_key'], calling_format=OrdinaryCallingFormat())
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
+        self.region = None
 
     async def validate_v1_path(self, path, **kwargs):
+        await self._check_region()
+
         if path == '/':
             return WaterButlerPath(path)
 
@@ -99,7 +93,9 @@ class S3Provider(provider.BaseProvider):
         """Copy key from one S3 bucket to another. The credentials specified in
         `dest_provider` must have read access to `source.bucket`.
         """
+        await self._check_region()
         exists = await dest_provider.exists(dest_path)
+
         dest_key = dest_provider.bucket.new_key(dest_path.path)
 
         # ensure no left slash when joining paths
@@ -127,6 +123,8 @@ class S3Provider(provider.BaseProvider):
         :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
+        await self._check_region()
+
         if not path.is_file:
             raise exceptions.DownloadError('No file specified for download', code=400)
 
@@ -169,6 +167,8 @@ class S3Provider(provider.BaseProvider):
 
         :rtype: dict, bool
         """
+        await self._check_region()
+
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
 
@@ -197,6 +197,8 @@ class S3Provider(provider.BaseProvider):
 
         :param str path: The path of the key to delete
         """
+        await self._check_region()
+
         if path.is_file:
             await self.make_request(
                 'DELETE',
@@ -213,6 +215,7 @@ class S3Provider(provider.BaseProvider):
         that folder is completely empty.  To fully delete an occupied folder, we must delete all
         of the comprising objects.  Amazon provides a bulk delete operation to simplify this.
         """
+        await self._check_region()
 
         more_to_come = True
         content_keys = []
@@ -288,6 +291,8 @@ class S3Provider(provider.BaseProvider):
         :param str path: The path to a key
         :rtype list:
         """
+        await self._check_region()
+
         url = self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters={'versions': ''})
         resp = await self.make_request(
             'GET',
@@ -314,6 +319,8 @@ class S3Provider(provider.BaseProvider):
         :param WaterButlerPath path: The path to a key or folder
         :rtype: dict or list
         """
+        await self._check_region()
+
         if path.is_dir:
             return (await self._metadata_folder(path))
 
@@ -323,6 +330,8 @@ class S3Provider(provider.BaseProvider):
         """
         :param str path: The path to create a folder at
         """
+        await self._check_region()
+
         WaterButlerPath.validate_folder(path)
 
         if (await self.exists(path)):
@@ -338,6 +347,8 @@ class S3Provider(provider.BaseProvider):
             return S3FolderMetadata({'Prefix': path.path})
 
     async def _metadata_file(self, path, revision=None):
+        await self._check_region()
+
         if revision == 'Latest':
             revision = None
         resp = await self.make_request(
@@ -355,6 +366,8 @@ class S3Provider(provider.BaseProvider):
         return S3FileMetadataHeaders(path.path, resp.headers)
 
     async def _metadata_folder(self, path):
+        await self._check_region()
+
         resp = await self.make_request(
             'GET',
             self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
@@ -402,3 +415,38 @@ class S3Provider(provider.BaseProvider):
                 items.append(S3FileMetadata(content))
 
         return items
+
+    async def _check_region(self):
+        """Lookup the region via bucket name, then update the host to match.
+
+        Manually constructing the connection hostname allows us to use OrdinaryCallingFormat
+        instead of SubdomainCallingFormat, which can break on buckets with periods in their name.
+        The default region, US East (N. Virginia), is represented by the empty string and does not
+        require changing the host.  Ireland is represented by the string 'EU', with the host
+        parameter 'eu-west-1'.  All other regions return the host parameter as the region name.
+
+        Region Naming: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
+        """
+        if self.region is None:
+            self.region = await self._get_bucket_region()
+            if self.region == 'EU':
+                self.region = 'eu-west-1'
+
+            if self.region != '':
+                self.connection.host = self.connection.host.replace('s3.', 's3-' + self.region + '.', 1)
+
+    async def _get_bucket_region(self):
+        """Bucket names are unique across all regions.
+
+        Endpoint doc: http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html
+        """
+        resp = await self.make_request(
+            'GET',
+            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters={'location': ''}),
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
+
+        contents = await resp.read_and_close()
+        parsed = xmltodict.parse(contents, strip_whitespace=False)
+        return parsed['LocationConstraint'].get('#text', '')

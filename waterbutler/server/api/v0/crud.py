@@ -11,8 +11,8 @@ import tornado.platform.asyncio
 from waterbutler.core import mime_types
 from waterbutler.server import utils
 from waterbutler.server.api.v0 import core
+from waterbutler.constants import IDENTIFIER_PATHS
 from waterbutler.core.streams import RequestStreamReader
-
 
 TRUTH_MAP = {
     'true': True,
@@ -134,7 +134,7 @@ class CRUDHandler(core.BaseProviderHandler):
         self._send_hook(
             'delete',
             {
-                'path': str(self.arguments['path']),
+                'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + self.path.raw_path,
                 'materialized': str(self.arguments['path'])
             }
         )

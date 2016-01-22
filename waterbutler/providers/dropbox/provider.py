@@ -53,6 +53,8 @@ class DropboxProvider(provider.BaseProvider):
         }
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
+        dest_folder = dest_provider.folder
+
         try:
             if self == dest_provider:
                 resp = await self.make_request(
@@ -96,16 +98,16 @@ class DropboxProvider(provider.BaseProvider):
         data = await resp.json()
 
         if not data['is_dir']:
-            return DropboxFileMetadata(data, self.folder), True
+            return DropboxFileMetadata(data, dest_folder), True
 
-        folder = DropboxFolderMetadata(data, self.folder)
+        folder = DropboxFolderMetadata(data, dest_folder)
 
         folder.children = []
         for item in data['contents']:
             if item['is_dir']:
-                folder.children.append(DropboxFolderMetadata(item, self.folder))
+                folder.children.append(DropboxFolderMetadata(item, dest_folder))
             else:
-                folder.children.append(DropboxFileMetadata(item, self.folder))
+                folder.children.append(DropboxFileMetadata(item, dest_folder))
 
         return folder, True
 
@@ -113,6 +115,8 @@ class DropboxProvider(provider.BaseProvider):
         if dest_path.full_path.lower() == src_path.full_path.lower():
             # Dropbox does not support changing the casing in a file name
             raise exceptions.InvalidPathError('In Dropbox to change case, add or subtract other characters.')
+
+        dest_folder = dest_provider.folder
 
         try:
             resp = await self.make_request(
@@ -137,16 +141,16 @@ class DropboxProvider(provider.BaseProvider):
         data = await resp.json()
 
         if not data['is_dir']:
-            return DropboxFileMetadata(data, self.folder), True
+            return DropboxFileMetadata(data, dest_folder), True
 
-        folder = DropboxFolderMetadata(data, self.folder)
+        folder = DropboxFolderMetadata(data, dest_folder)
 
         folder.children = []
         for item in data['contents']:
             if item['is_dir']:
-                folder.children.append(DropboxFolderMetadata(item, self.folder))
+                folder.children.append(DropboxFolderMetadata(item, dest_folder))
             else:
-                folder.children.append(DropboxFileMetadata(item, self.folder))
+                folder.children.append(DropboxFileMetadata(item, dest_folder))
 
         return folder, True
 

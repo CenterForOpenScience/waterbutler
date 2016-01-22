@@ -1,5 +1,7 @@
 import pytest
 
+from tests.utils import MockCoroutine
+
 import io
 import base64
 import hashlib
@@ -44,7 +46,9 @@ def settings():
 
 @pytest.fixture
 def provider(auth, credentials, settings):
-    return S3Provider(auth, credentials, settings)
+    provider = S3Provider(auth, credentials, settings)
+    provider._check_region = MockCoroutine()
+    return provider
 
 
 @pytest.fixture
@@ -242,6 +246,13 @@ def version_metadata():
         </Version>
     </ListVersionsResult>'''
 
+def location_response(location):
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<LocationConstraint xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
+        '{}</LocationConstraint>'
+    ).format(location)
+
 def list_objects_response(keys, truncated=False):
     response = '''<?xml version="1.0" encoding="UTF-8"?>
     <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
@@ -281,6 +292,38 @@ def bulk_delete_body(keys):
 
 def build_folder_params(path):
     return {'prefix': path.path, 'delimiter': '/'}
+
+
+class TestRegionDetection:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize("region_name,host", [
+        ('',               's3.amazonaws.com'),
+        ('EU',             's3-eu-west-1.amazonaws.com'),
+        ('us-west-1',      's3-us-west-1.amazonaws.com'),
+        ('us-west-2',      's3-us-west-2.amazonaws.com'),
+        ('eu-central-1',   's3-eu-central-1.amazonaws.com'),
+        ('ap-northeast-1', 's3-ap-northeast-1.amazonaws.com'),
+        ('ap-northeast-2', 's3-ap-northeast-2.amazonaws.com'),
+        ('ap-southeast-1', 's3-ap-southeast-1.amazonaws.com'),
+        ('ap-southeast-2', 's3-ap-southeast-2.amazonaws.com'),
+        ('sa-east-1',      's3-sa-east-1.amazonaws.com'),
+    ])
+
+    async def test_region_host(self, auth, credentials, settings, region_name, host):
+        provider = S3Provider(auth, credentials, settings)
+        orig_host = provider.connection.host
+
+        region_url = provider.bucket.generate_url(
+            100,
+            'GET',
+            query_parameters={'location': ''},
+        )
+        aiohttpretty.register_uri('GET', region_url, status=200, body=location_response(region_name))
+
+        await provider._check_region()
+        assert provider.connection.host == host
 
 
 class TestValidatePath:

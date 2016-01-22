@@ -137,7 +137,7 @@ class TestMoveTask:
         metadata = test_utils.MockFileMetadata()
         src.move.return_value = (metadata, False)
 
-        dt = datetime.datetime.utcfromtimestamp(60)
+        dt = datetime.datetime.utcfromtimestamp(60).replace(tzinfo=datetime.timezone.utc)
         with freezegun.freeze_time(dt):
             ret1, ret2 = move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), 'Test.com', {'auth': {'user': 'name'}})
 
@@ -150,7 +150,7 @@ class TestMoveTask:
                 'errors': [],
                 'action': 'move',
                 'source': {
-                    'path': src_path.path,
+                    'path': '/' + src_path.raw_path,
                     'name': src_path.name,
                     'materialized': str(src_path),
                     'provider': src.NAME,
