@@ -36,6 +36,7 @@ class WaterButlerPathPart:
 
     @property
     def raw(self):
+        """ The `value` as passed through the `ENCODE` function"""
         return self.__class__.ENCODE(self.value)
 
     @property
@@ -81,6 +82,12 @@ class WaterButlerPath:
     last path part. :func:`WaterButlerPath.path` will return `/Foo/Bar/baz.txt`.
 
     A valid WaterButlerPath should always have a root path part.
+
+    Some providers, such as Google Drive, require paths to be encoded when used in URLs.
+    WaterButlerPathPart has `ENCODE` and `DECODE` class methods that handle this. The encoded path
+    is available through the `.raw_path()` method.
+
+    To get a human-readable materialized path, call `str()` on the WaterButlerPath.
     """
 
     PART_CLASS = WaterButlerPathPart
@@ -197,21 +204,25 @@ class WaterButlerPath:
 
     @property
     def path(self):
-        """ Returns a unix-style human readable path, relative to the root of the provider. """
+        """ Returns a unix-style human readable path, relative to the provider storage root.
+        Does NOT include a leading slash.  Calling `.path()` on the storage root returns the
+        empty string.
+        """
         if len(self.parts) == 1:
             return ''
         return '/'.join([x.value for x in self.parts[1:]]) + ('/' if self.is_dir else '')
 
     @property
     def raw_path(self):
-        """ I... don't know what this is. """
+        """ Like `.path()`, but passes each path segment through the PathPart's ENCODE function.
+        """
         if len(self.parts) == 1:
             return ''
         return '/'.join([x.raw for x in self.parts[1:]]) + ('/' if self.is_dir else '')
 
     @property
     def full_path(self):
-        """ Same as `.parts()`, but with the provider base folder prepended. """
+        """ Same as `.path()`, but with the provider storage root prepended. """
         return '/'.join([x.value for x in self._prepend_parts + self.parts[1:]]) + ('/' if self.is_dir else '')
 
     @property
@@ -245,6 +256,7 @@ class WaterButlerPath:
         return isinstance(other, self.__class__) and str(self) == str(other)
 
     def __str__(self):
+        """ Returns the materialized path """
         return '/'.join([x.value for x in self.parts]) + ('/' if self.is_dir else '')
 
     def __repr__(self):
