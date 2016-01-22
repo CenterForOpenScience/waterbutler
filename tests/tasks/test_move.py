@@ -150,7 +150,7 @@ class TestMoveTask:
                 'errors': [],
                 'action': 'move',
                 'source': {
-                    'path': src_path.path,
+                    'path': '/' + src_path.raw_path,
                     'name': src_path.name,
                     'materialized': str(src_path),
                     'provider': src.NAME,

@@ -11,16 +11,14 @@ from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
 from waterbutler.server.auth import AuthHandler
+from waterbutler.constants import IDENTIFIER_PATHS
 from waterbutler.core.streams import RequestStreamReader
 from waterbutler.server.api.v1.provider.create import CreateMixin
 from waterbutler.server.api.v1.provider.metadata import MetadataMixin
 from waterbutler.server.api.v1.provider.movecopy import MoveCopyMixin
 
-
 logger = logging.getLogger(__name__)
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
-
-IDENTIFIER_PATHS = ('box', 'osfstorage')
 
 
 @tornado.web.stream_request_body
@@ -170,7 +168,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                     'nid': self.resource,
                     'kind': self.path.kind,
                     'name': self.path.name,
-                    'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else self.path.path,
+                    'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + self.path.raw_path,
                     'provider': self.provider.NAME,  # TODO rename to name
                     'materialized': str(self.path),
                 },
@@ -191,7 +189,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             payload.update({
                 'metadata': {
                     # Hack: OSF and box use identifiers to refer to files
-                    'path': payload_path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else payload_path.path,
+                    'path': payload_path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + payload_path.raw_path,
                     'name': payload_path.name,
                     'materialized': str(payload_path),
                     'provider': self.provider.NAME,
