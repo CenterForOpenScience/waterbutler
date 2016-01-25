@@ -1,4 +1,5 @@
 import os
+# import asyncio
 
 from waterbutler.core.streams import BaseStream
 
@@ -24,16 +25,30 @@ class FileStreamReader(BaseStream):
         self.file_pointer.close()
         self.feed_eof()
 
-    def read_as_gen(self):
-        self.file_pointer.seek(0)
-        while True:
-            chunk = self.file_pointer.read(self.read_size)
-            if not chunk:
-                self.feed_eof()
-                chunk = b''
-            yield chunk
+    class read_chunks:
+        def __init__(self, read_size, fp):
+            self.done = False
+            self.read_size = read_size
+            self.fp = fp
 
-    async def _read(self, size):
-        self.file_gen = self.file_gen or self.read_as_gen()
-        self.read_size = size
-        return next(self.file_gen)
+        async def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            if self.done:
+                raise StopAsyncIteration
+            return await self.get_chunk()
+
+        async def get_chunk(self):
+            while True:
+                chunk = self.fp.read(self.read_size)
+                if not chunk:
+                    chunk = b''
+                    self.done = True
+                return chunk
+
+    async def _read(self, read_size):
+        async for chunk in self.read_chunks(read_size, self.file_pointer):
+            if chunk == b'':
+                self.feed_eof()
+            return chunk
