@@ -57,6 +57,7 @@ class FileStreamReader(BaseStream):
             if not chunk:
                 chunk = b''
                 self.done = True
+                self.feed_eof()
             yield chunk
 
     async def _read(self, read_size):
