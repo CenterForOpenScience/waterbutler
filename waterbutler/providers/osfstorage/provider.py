@@ -244,7 +244,6 @@ class OSFStorageProvider(provider.BaseProvider):
         wrapped_stream = streams.stream_wrapper(resp_stream)
         return wrapped_stream
 
-
     @asyncio.coroutine
     def upload(self, stream, path, **kwargs):
 

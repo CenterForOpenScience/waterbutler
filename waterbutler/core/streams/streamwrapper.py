@@ -110,11 +110,6 @@ class EncResponseReader(ResponseStreamReader):
                 return dec_chunk
             return b''
 
-        if not chunk:
-            self.feed_eof()
-
-        return chunk
-
 
 # EncRequestStreamReader inherits from RequestStreamReader which handles file upload
 class EncRequestStreamReader(RequestStreamReader):
@@ -161,7 +156,7 @@ class EncRequestStreamReader(RequestStreamReader):
 
 # two helper method to calculate length for Base64 En/Decoding
 def length_b64encode(size):
-    return (int((size-1) / 3) + 1) * 4
+    return (int((size - 1) / 3) + 1) * 4
 
 
 def length_b64decode(size, pad):
