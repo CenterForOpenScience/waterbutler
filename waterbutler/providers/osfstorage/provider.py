@@ -238,10 +238,19 @@ class OSFStorageProvider(provider.BaseProvider):
         download_kwargs.update(kwargs)
         download_kwargs.update(data['data'])
         download_kwargs['displayName'] = kwargs.get('displayName', name)
-        return (yield from provider.download(**download_kwargs))
+
+        # wrap streams for en/decryption
+        resp_stream = yield from provider.download(**download_kwargs)
+        wrapped_stream = streams.stream_wrapper(resp_stream)
+        return wrapped_stream
 
     @asyncio.coroutine
     def upload(self, stream, path, **kwargs):
+
+        # wrap streams for en/decryption
+        wrapped_stream = streams.stream_wrapper(stream)
+        stream = wrapped_stream
+
         self._create_paths()
 
         pending_name = str(uuid.uuid4())
