@@ -23,7 +23,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
 
     @property
     def web_view(self):
-        segments = ('articles', self.parent['title'], str(self.article_id))
+        segments = ('account', 'articles', str(self.article_id))
         return build_url(settings.VIEW_URL, *segments)
 
     @property
