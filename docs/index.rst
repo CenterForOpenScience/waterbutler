@@ -31,7 +31,6 @@ This documentation is also available in `PDF and Epub formats
     api
     releases
     providers
-    faq
     streams
 
 * :ref:`genindex`
