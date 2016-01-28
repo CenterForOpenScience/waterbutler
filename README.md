@@ -12,7 +12,7 @@ Docs can be found [here](https://waterbutler.readthedocs.org/en/latest/)
 
 ### Requirements
 
-In order to run waterbutler, you must have a virtualenv created for waterbutler running python3.3 or higher.
+In order to run waterbutler, you must have a virtualenv created for waterbutler running python 3.5 .
 
 For MacOSX, you can install the latest version of python3 using:
 
@@ -23,18 +23,18 @@ brew install python3
 For Ubuntu users:
 
 ```bash
-apt-get install python3
+apt-get install python3.5
 
 ```
 
 ### startup commands
 
-After completing the installation of Python 3, you must create the virtual environment, this can be done with the following commands:
+After completing the installation of Python 3.5, you must create the virtual environment, this can be done with the following commands:
 
 ```bash
 pip install virtualenv
 pip install virtualenvwrapper
-mkvirtualenv --python=python3 waterbutler
+mkvirtualenv --python=python3.5 waterbutler
 pip install invoke
 invoke install
 invoke server

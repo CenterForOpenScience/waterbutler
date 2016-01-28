@@ -1,5 +1,3 @@
-import asyncio
-
 from waterbutler.core import exceptions
 
 
@@ -59,17 +57,15 @@ class CreateMixin:
                 )
             self.target_path = self.path
 
-    @asyncio.coroutine
-    def create_folder(self):
-        metadata = yield from self.provider.create_folder(self.target_path)
+    async def create_folder(self):
+        metadata = await self.provider.create_folder(self.target_path)
         self.set_status(201)
         self.write({'data': metadata.json_api_serialized(self.resource)})
 
-    @asyncio.coroutine
-    def upload_file(self):
+    async def upload_file(self):
         self.writer.write_eof()
 
-        metadata, created = yield from self.uploader
+        metadata, created = await self.uploader
         self.writer.close()
         self.wsock.close()
         if created:

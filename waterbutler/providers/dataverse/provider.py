@@ -6,6 +6,7 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.utils import AsyncIterator
 
 from waterbutler.providers.dataverse import settings
 from waterbutler.providers.dataverse.metadata import DataverseRevision
@@ -52,8 +53,7 @@ class DataverseProvider(provider.BaseProvider):
 
         return self.validate_path(path, **kwargs)
 
-    @asyncio.coroutine
-    def validate_path(self, path, revision=None, **kwargs):
+    async def validate_path(self, path, revision=None, **kwargs):
         """Ensure path is in configured dataset
 
         :param str path: The path to a file
@@ -67,7 +67,7 @@ class DataverseProvider(provider.BaseProvider):
         path = path.strip('/')
 
         wbpath = None
-        for item in (yield from self._maybe_fetch_metadata(version=revision)):
+        for item in (await self._maybe_fetch_metadata(version=revision)):
             if path == item.extra['fileId']:
                 wbpath = WaterButlerPath('/' + item.name, _ids=(None, item.extra['fileId']))
         wbpath = wbpath or WaterButlerPath('/' + path)
@@ -75,12 +75,11 @@ class DataverseProvider(provider.BaseProvider):
         wbpath.revision = revision
         return wbpath
 
-    @asyncio.coroutine
-    def revalidate_path(self, base, path, folder=False, revision=None):
+    async def revalidate_path(self, base, path, folder=False, revision=None):
         path = path.strip('/')
 
         wbpath = None
-        for item in (yield from self._maybe_fetch_metadata(version=revision)):
+        for item in (await self._maybe_fetch_metadata(version=revision)):
             if path == item.name:
                 # Dataverse cant have folders
                 wbpath = base.child(item.name, _id=item.extra['fileId'], folder=False)
@@ -89,17 +88,15 @@ class DataverseProvider(provider.BaseProvider):
         wbpath.revision = revision or base.revision
         return wbpath
 
-    @asyncio.coroutine
-    def _maybe_fetch_metadata(self, version=None, refresh=False):
+    async def _maybe_fetch_metadata(self, version=None, refresh=False):
         if refresh or self._metadata_cache.get(version) is None:
             for v in ((version, ) or ('latest', 'latest-published')):
-                self._metadata_cache[v] = yield from self._get_data(v)
+                self._metadata_cache[v] = await self._get_data(v)
         if version:
             return self._metadata_cache[version]
         return sum(self._metadata_cache.values(), [])
 
-    @asyncio.coroutine
-    def download(self, path, revision=None, range=None, **kwargs):
+    async def download(self, path, revision=None, range=None, **kwargs):
         """Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from Dataverse is not 200
 
@@ -116,7 +113,7 @@ class DataverseProvider(provider.BaseProvider):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET',
             self.build_url(settings.DOWN_BASE_URL, path.identifier, key=self.token),
             range=range,
@@ -125,8 +122,7 @@ class DataverseProvider(provider.BaseProvider):
         )
         return streams.ResponseStreamReader(resp)
 
-    @asyncio.coroutine
-    def upload(self, stream, path, **kwargs):
+    async def upload(self, stream, path, **kwargs):
         """Zips the given stream then uploads to Dataverse.
         This will delete existing draft files with the same name.
 
@@ -136,14 +132,14 @@ class DataverseProvider(provider.BaseProvider):
         :rtype: dict, bool
         """
 
-        stream = streams.ZipStreamReader((path.name, stream))
+        stream = streams.ZipStreamReader(AsyncIterator([(path.name, stream)]))
 
         # Write stream to disk (Necessary to find zip file size)
         f = tempfile.TemporaryFile()
-        chunk = yield from stream.read()
+        chunk = await stream.read()
         while chunk:
             f.write(chunk)
-            chunk = yield from stream.read()
+            chunk = await stream.read()
         stream = streams.FileStreamReader(f)
 
         dv_headers = {
@@ -155,9 +151,9 @@ class DataverseProvider(provider.BaseProvider):
 
         # Delete old file if it exists
         if path.identifier:
-            yield from self.delete(path)
+            await self.delete(path)
 
-        yield from self.make_request(
+        await self.make_request(
             'POST',
             self.build_url(settings.EDIT_MEDIA_BASE_URL, 'study', self.doi),
             headers=dv_headers,
@@ -168,22 +164,21 @@ class DataverseProvider(provider.BaseProvider):
         )
 
         # Find appropriate version of file
-        metadata = yield from self._get_data('latest')
+        metadata = await self._get_data('latest')
         files = metadata if isinstance(metadata, list) else []
         file_metadata = next(file for file in files if file.name == path.name)
 
         return file_metadata, path.identifier is None
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    async def delete(self, path, **kwargs):
         """Deletes the key at the specified path
 
         :param str path: The path of the key to delete
         """
         # Can only delete files in draft
-        path = yield from self.validate_path('/' + path.identifier, version='latest', throw=True)
+        path = await self.validate_path('/' + path.identifier, version='latest', throw=True)
 
-        yield from self.make_request(
+        await self.make_request(
             'DELETE',
             self.build_url(settings.EDIT_MEDIA_BASE_URL, 'file', path.identifier),
             auth=(self.token, ),
@@ -191,8 +186,7 @@ class DataverseProvider(provider.BaseProvider):
             throws=exceptions.DeleteError,
         )
 
-    @asyncio.coroutine
-    def metadata(self, path, version=None, **kwargs):
+    async def metadata(self, path, version=None, **kwargs):
         """
         :param str version:
 
@@ -203,13 +197,13 @@ class DataverseProvider(provider.BaseProvider):
         version = version or path.revision
 
         if path.is_root:
-            return (yield from self._maybe_fetch_metadata(version=version))
+            return (await self._maybe_fetch_metadata(version=version))
 
         try:
             return next(
                 item
                 for item in
-                (yield from self._maybe_fetch_metadata(version=version))
+                (await self._maybe_fetch_metadata(version=version))
                 if item.extra['fileId'] == path.identifier
             )
         except StopIteration:
@@ -218,8 +212,7 @@ class DataverseProvider(provider.BaseProvider):
                 code=http.client.NOT_FOUND,
             )
 
-    @asyncio.coroutine
-    def revisions(self, path, **kwargs):
+    async def revisions(self, path, **kwargs):
         """Get past versions of the request file. Orders versions based on
         `_get_all_data()`
 
@@ -227,14 +220,13 @@ class DataverseProvider(provider.BaseProvider):
         :rtype list:
         """
 
-        metadata = yield from self._get_data()
+        metadata = await self._get_data()
         return [
             DataverseRevision(item.extra['datasetVersion'])
             for item in metadata if item.extra['fileId'] == path.identifier
         ]
 
-    @asyncio.coroutine
-    def _get_data(self, version=None):
+    async def _get_data(self, version=None):
         """Get list of file metadata for a given dataset version
 
         :param str version:
@@ -245,20 +237,20 @@ class DataverseProvider(provider.BaseProvider):
         """
 
         if not version:
-            return (yield from self._get_all_data())
+            return (await self._get_all_data())
 
         url = self.build_url(
             settings.JSON_BASE_URL.format(self._id, version),
             key=self.token,
         )
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET',
             url,
             expects=(200, ),
             throws=exceptions.MetadataError
         )
 
-        data = yield from resp.json()
+        data = await resp.json()
         data = data['data']
 
         dataset_metadata = DataverseDatasetMetadata(
@@ -267,16 +259,15 @@ class DataverseProvider(provider.BaseProvider):
 
         return [item for item in dataset_metadata.contents]
 
-    @asyncio.coroutine
-    def _get_all_data(self):
+    async def _get_all_data(self):
         """Get list of file metadata for all dataset versions"""
         try:
-            published_data = yield from self._get_data('latest-published')
+            published_data = await self._get_data('latest-published')
         except exceptions.MetadataError as e:
             if e.code != 404:
                 raise
             published_data = []
-        draft_data = yield from self._get_data('latest')
+        draft_data = await self._get_data('latest')
 
         # Prefer published to guarantee users get published version by default
         return published_data + draft_data

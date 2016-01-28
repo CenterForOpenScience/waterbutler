@@ -33,10 +33,9 @@ class BaseStream(asyncio.StreamReader, metaclass=abc.ABCMeta):
             if hasattr(writer, 'can_write_eof') and writer.can_write_eof():
                 writer.write_eof()
 
-    @asyncio.coroutine
-    def read(self, size=-1):
+    async def read(self, size=-1):
         eof = self.at_eof()
-        data = yield from self._read(size)
+        data = await self._read(size)
         if not eof:
             for reader in self.readers.values():
                 reader.feed_data(data)
@@ -79,18 +78,17 @@ class MultiStream(asyncio.StreamReader):
         if not self.stream:
             self._cycle()
 
-    @asyncio.coroutine
-    def read(self, n=-1):
+    async def read(self, n=-1):
         if n < 0:
-            return (yield from super().read(n))
+            return (await super().read(n))
 
         chunk = b''
 
         while self.stream and (len(chunk) < n or n == -1):
             if n == -1:
-                chunk += yield from self.stream.read(-1)
+                chunk += await self.stream.read(-1)
             else:
-                chunk += yield from self.stream.read(n - len(chunk))
+                chunk += await self.stream.read(n - len(chunk))
 
             if self.stream.at_eof():
                 self._cycle()
@@ -121,6 +119,5 @@ class StringStream(BaseStream):
     def size(self):
         return self._size
 
-    @asyncio.coroutine
-    def _read(self, n=-1):
-        return (yield from asyncio.StreamReader.read(self, n))
+    async def _read(self, n=-1):
+        return (await asyncio.StreamReader.read(self, n))
