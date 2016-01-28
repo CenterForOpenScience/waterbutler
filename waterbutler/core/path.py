@@ -69,7 +69,7 @@ class WaterButlerPath:
     Each PathPart has two important attributes, `value` and `_id`.  `value` is always the
     human-readble component of the path. If the provider assigns ids to entities (see: Box, Google
     Drive, OSFStorage), that id belongs in the `_id` attribute. If `/Foo/Bar/baz.txt` is stored on
-    Box, its path parts will be approximately:
+    Box, its path parts will be approximately::
 
         [
           { value: '/',       _id: None, }, # must have root
@@ -238,9 +238,9 @@ class WaterButlerPath:
     def child(self, name, _id=None, folder=False):
         """ Create a child of the current WaterButlerPath, propagating prepend and id information to it.
 
-        :param name str: the name of the child entity
+        :param str name: the name of the child entity
         :param _id: the id of the child entity (defaults to None)
-        :param folder bool: whether or not the child is a folder (defaults to False)
+        :param bool folder: whether or not the child is a folder (defaults to False)
         """
         return self.__class__.from_parts(self.parts + [self.PART_CLASS(name, _id=_id)], folder=folder, prepend=self._prepend)
 

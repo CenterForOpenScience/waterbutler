@@ -88,6 +88,8 @@ To update an existing file, issue a PUT request to the file's upload link with t
 
 **Rename (files, folders)**
 
+::
+
     Method:        POST
     Query Params:  <none>
     Body (JSON):   {

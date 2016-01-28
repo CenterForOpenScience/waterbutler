@@ -11,7 +11,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
     WaterButler.  It also implements the API serialization methods to turn metadata objects
     into primitive data structures suitable for serializing.
 
-    The basic metadata response looks like:
+    The basic metadata response looks like::
 
         {
           "path": "",
@@ -22,7 +22,6 @@ class BaseMetadata(metaclass=abc.ABCMeta):
           "provider": "",
           "etag": "",
         }
-
     """
 
     def __init__(self, raw):
@@ -31,8 +30,9 @@ class BaseMetadata(metaclass=abc.ABCMeta):
     def serialized(self):
         """Returns a dict of primitives suitable for serializing into JSON.
 
-        .. warning::
-        This method determines the output of API v0 and v1.
+        .. note::
+
+            This method determines the output of API v0 and v1.
 
         :rtype: dict
         """
@@ -52,8 +52,9 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         metadata under the `attributes` key.  A `links` object provides a dict of actions and the
         urls where those actions can be performed.
 
-        .. warning::
-        This method determines the output of API v1.
+        .. note::
+
+            This method determines the output of API v1.
 
         :rtype: dict
         """
@@ -128,6 +129,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
     def name(self):
         """ The user-facing name of the entity, excluding parent folder(s).
         ::
+
             /bar/foo.txt -> foo.txt
             /<someid> -> whatever.png
         """
@@ -139,7 +141,8 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         that track entities with unique IDs, this will be the ID.  For providers that do not, this
         will usually be the full unix-style path of the file or folder.
 
-        ..note::
+        .. note::
+
             All paths MUST start with a `/`
             All folder entities MUST end with a `/`
             File entities MUST never end with a `/`
@@ -151,17 +154,20 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         """ The unix-style path of the file relative the the root of the provider.  Encoded
         entities should be decoded.
 
-        e.g.
+        e.g.::
+
             path              -> /313c57f9a9edeb87139b205beaed
             name              -> Foo.txt
             materialized_path -> /Parent Folder/Foo.txt
 
-        ..note::
+        .. note::
+
             All materialized_paths MUST start with a `/`
             All folder entities MUST end with a `/`
             File entities MUST never end with a `/`
 
-        ..note::
+        .. note::
+
             Defaults to `self.path`
         """
         return self.path
@@ -249,8 +255,10 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
 
     def json_api_serialized(self):
         """The JSON API serialization of revision metadata from WaterButler.
-        .. warning::
-        This method determines the output of API v1
+
+        .. note::
+
+            This method determines the output of API v1
         """
         return {
             'id': self.version,

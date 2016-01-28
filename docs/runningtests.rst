@@ -1,5 +1,5 @@
 Running Tests
-==========
+=============
 
 Make sure that you already have dev-requirements
 

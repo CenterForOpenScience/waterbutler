@@ -112,7 +112,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :type expects: tuple of ints
         :param Exception throws: The exception to be raised from expects
         :param tuple \*args: args passed to :func:`aiohttp.request`
-        :param dict \*kwargs: kwargs passed to :func:`aiohttp.request`
+        :param dict \*\*kwargs: kwargs passed to :func:`aiohttp.request`
         :rtype: :class:`aiohttp.Response`
         :raises ProviderError: Raised if expects is defined
         """
