@@ -1,5 +1,17 @@
-v1 REST API
-===========
+API
+===
+
+v0 API
+------
+
+.. warning::
+
+   The v0 WaterButler API is deprecated and should no longer be used.  It is only documented to provide a reference for legacy consumers.
+
+TODO: v0 api docs
+
+v1 API
+------
 
 The version 1 WaterButler API tries to conform to RESTful principals. A v1 url takes the form:
 
