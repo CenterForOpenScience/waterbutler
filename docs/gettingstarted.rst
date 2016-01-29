@@ -38,7 +38,7 @@ Start the server
 Contributing
 ------------
 
-See https://github.com/CenterForOpenScience/waterbutler/blob/develop/CONTRIBUTING.md.
+`See CONTRIBUTING.md <https://github.com/CenterForOpenScience/waterbutler/blob/develop/CONTRIBUTING.md>`_.
 
 Running Tests
 -------------
