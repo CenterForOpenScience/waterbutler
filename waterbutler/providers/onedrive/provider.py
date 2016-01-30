@@ -77,8 +77,8 @@ class OneDriveProvider(provider.BaseProvider):
         #  then query children using full path and child path
 
         data = yield from resp.json()
-        parent_path = data['parentReference']['path'].replace('/drive/root:', '')
-        path_stripped = parent_path.strip('/')
+#          parent_path = data['parentReference']['path'].replace('/drive/root:', '')
+#          path_stripped = parent_path.strip('/')
 
 #          url = '{}{}{}/{}'.format(settings.BASE_ROOT_URL, parent_path, str(base), 'children')  # self._build_root_url(parent_path, str(base), 'children')
 #          url = settings.BASE_ROOT_URL + data['parentReference']['path'] + str(base) + '/children'  # self._build_root_url(parent_path, str(base), 'children')
@@ -92,7 +92,7 @@ class OneDriveProvider(provider.BaseProvider):
 #          )
 #          data = yield from resp.json()
 
-        lower_name = path.lower()
+#          lower_name = path.lower()
         logger.info('revalidate_path data::{} '.format(repr(data)))
 #          try:
 #              item = next(
@@ -110,7 +110,7 @@ class OneDriveProvider(provider.BaseProvider):
 #              name = path
         names = self._get_names(data)
         ids = self._get_ids(data)
-        folder = ('folder' in data.keys()) 
+        folder = ('folder' in data.keys())
 
 #          wb_path = WaterButlerPath(names, _ids=ids, folder=path.endswith('/'))
         logger.info('names::{}  IDs:{}'.format(repr(names), repr(ids)))
