@@ -60,185 +60,97 @@ def file_stream(file_like):
 
 @pytest.fixture
 def folder_object_metadata():
-    return {
-       "lastModifiedBy": {
-    
-          "user": {
-    
-             "thumbnails": {
-    
-                "source": {
-    
-                   "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:WebReady"
-    
-                },
-    
-                "large": {
-    
-                   "height": 1198,
-    
-                   "width": 1198,
-    
-                   "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileCroppedOriginal"
-    
-                },
-    
-                "medium": {
-    
-                   "height": 180,
-    
-                   "width": 180,
-    
-                   "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileMedium"
-    
-                },
-    
-                "small": {
-    
-                   "height": 96,
-    
-                   "width": 96,
-    
-                   "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileStatic"
-    
-                }
-    
-             },
-    
-             "id": "75bfe374ebeb1211",
-    
-             "displayName": "Ryan Casey"
-    
-          },
-    
-          "application": {
-    
-             "thumbnails": {
-    
-                "small": {
-    
-                   "height": 50,
-    
-                   "width": 50,
-    
-                   "url": "https://public-sn3302.files.1drv.com/y3atLEyz-EB17OzMbWyJzwu39hoELyHbCjb13GdM4Jeq5vEVLllH7jt4ftWt4nvvsiT5UNQJTPdirhWACyo92cbGASFxSER2MCuTQKTtVi-Yvo09ENEPhScewG0sNMEqRun?psid=1"
-    
-                }
-    
-             },
-    
-             "id": "4416c3d3",
-    
-             "displayName": "GT OSF OneDrive"
-    
-          }
-    
-       },
-    
+    return {    
        "size": 119410,
-    
        "name": "sub1-b",
-    
-       "fileSystemInfo": {
-    
-          "lastModifiedDateTime": "2015-12-07T16:45:28.46Z",
-    
-          "createdDateTime": "2015-11-29T17:21:09.997Z"
-    
-       },
-    
        "folder": {
-    
           "childCount": 4
-    
        },
-    
        "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
-    
        "id": "75BFE374EBEB1211!118",
-    
        "createdDateTime": "2015-11-29T17:21:09.997Z",
-    
        "lastModifiedDateTime": "2015-12-07T16:45:28.46Z",
-    
-       "parentReference": {
-    
+       "parentReference": {    
           "driveId": "75bfe374ebeb1211",
-    
           "path": "/drive/root:/ryan-test1",
-    
           "id": "75BFE374EBEB1211!107"
-    
        },
-    
-       "createdBy": {
-    
-          "user": {
-    
-             "thumbnails": {
-    
-                "source": {
-    
-                   "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:WebReady"
-    
-                },
-    
-                "large": {
-    
-                   "height": 1198,
-    
-                   "width": 1198,
-    
-                   "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileCroppedOriginal"
-    
-                },
-    
-                "medium": {
-    
-                   "height": 180,
-    
-                   "width": 180,
-    
-                   "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileMedium"
-    
-                },
-    
-                "small": {
-    
-                   "height": 96,
-    
-                   "width": 96,
-    
-                   "url": "https://storage.live.com/users/0x75bfe374ebeb1211/myprofile/expressionprofile/profilephoto:UserTileStatic"
-    
-                }
-    
-             },
-    
-             "id": "75bfe374ebeb1211",
-    
-             "displayName": "Ryan Casey"
-    
-          },
-    
-          "application": {
-    
-             "id": "44048800",
-    
-             "displayName": "OneDrive website"
-    
-          }
-    
-       },
-    
        "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!118",
-    
        "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITExOC42MzU4NTEwMzUyODQ2MDAwMDA",
-    
-       "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMTguMw"
-
+       "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMTguMw",
+       "children": [        
+              {
+                 "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!118",
+                 "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMTguMw",
+                 "fileSystemInfo": {
+                    "lastModifiedDateTime": "2015-12-07T16:45:28.46Z",
+                    "createdDateTime": "2015-11-29T17:21:09.997Z"
+                 },
+                 "id": "75BFE374EBEB1211!118",
+                 "lastModifiedDateTime": "2015-12-09T01:48:52.31Z",
+                 "size": 119410,
+                 "createdDateTime": "2015-11-29T17:21:09.997Z",
+                 "folder": {
+                    "childCount": 4
+                 },
+                 "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITExOC42MzU4NTIyMjUzMjMxMDAwMDA",
+                 "name": "sub1-b",
+                 "parentReference": {
+                    "driveId": "75bfe374ebeb1211",
+                    "path": "/drive/root:/ryan-test1/sub1",
+                    "id": "75BFE374EBEB1211!107"
+                 }
+              },
+              {
+                 "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!143",
+                 "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExNDMuMTI",
+                 "fileSystemInfo": {
+                    "lastModifiedDateTime": "2015-12-07T17:26:09.48Z",
+                    "createdDateTime": "2015-12-01T16:52:33.07Z"
+                 },        
+                 "id": "75BFE374EBEB1211!143",
+                 "lastModifiedDateTime": "2015-12-07T17:26:09.48Z",
+                 "size": 0,
+                 "createdDateTime": "2015-12-01T16:52:33.07Z",
+                 "folder": {
+                    "childCount": 1
+                 },
+                 "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITE0My42MzU4NTEwNTk2OTQ4MDAwMDA",
+                 "name": "sub1-z",
+                 "parentReference": {
+                    "driveId": "75bfe374ebeb1211",
+                    "path": "/drive/root:/ryan-test1/sub1",
+                    "id": "75BFE374EBEB1211!107"
+                 }
+              },
+              {
+                 "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150",
+                 "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
+                 "fileSystemInfo": {
+                    "lastModifiedDateTime": "2015-12-08T21:51:15.593Z",
+                    "createdDateTime": "2015-12-02T20:25:26.51Z"
+                 },         
+                 "id": "75BFE374EBEB1211!150",
+                 "lastModifiedDateTime": "2015-12-08T21:51:15.593Z",
+                 "size": 83736,
+                 "@content.downloadUrl": "https://public-ch3302.files.1drv.com/y3mgyZqUob4fS1RGIHa8w3tl0ozOlXXiKPMmz3hxZ0KbMqyZmIOnzXL8G9fWREL01mog9XRQn2g2qExRSSFce9ixl7fOlq_yjwOxX-6F2CNzgp3-wE9oThZSrvTix8h7cMD32RHd-__uwGK6Db0ErsGuxorWJKfRlmkpJFn7b8F9ZVvsIsLOmJWVKMyxrQMfves",
+                 "cTag": "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
+                 "file": {
+                    "mimeType": "image/jpeg",
+                    "hashes": {
+                       "crc32Hash": "6D98C9D5",
+                       "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4"
+                    }
+                 },
+                 "name": "elect-a.jpg",
+                 "parentReference": {
+                    "driveId": "75bfe374ebeb1211",
+                    "path": "/drive/root:/ryan-test1/sub1",
+                    "id": "75BFE374EBEB1211!107"
+                 },        
+              }
+           ],
     }
-
 
 @pytest.fixture
 def folder_list_metadata():
@@ -523,73 +435,32 @@ def file_sub_folder_metadata():
 def file_root_parent_metadata():
     return {
            "id": "75BFE374EBEB1211!150",
-        
            "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150",
-
            "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
-
            "cTag": "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
-
            "children": [],
-        
-           "image": {
-        
-              "width": 883,
-        
-              "height": 431
-        
-           },
-        
-           "file": {
-        
+           "file": {        
               "hashes": {
-        
-                 "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4",
-        
+                 "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4",        
                  "crc32Hash": "6D98C9D5"
-        
-              },
-        
+              },        
               "mimeType": "image/jpeg"
-        
-           },   
-        
+           },
            "fileSystemInfo": {
-        
               "createdDateTime": "2015-12-02T20:25:26.51Z",
-        
               "lastModifiedDateTime": "2015-12-08T21:51:15.593Z"
-        
            },
-        
            "createdDateTime": "2015-12-02T20:25:26.51Z",
-        
            "size": 83736,
-        
-           "photo": {
-        
-              "takenDateTime": "2013-04-17T14:32:26Z"
-        
-           },
-        
            "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
-        
            "name": "elect-a.jpg",
-        
            "@content.downloadUrl": "https://public-ch3302.files.1drv.com/y3mnrbLFOgJJ8JQA7Ots0pzvL0xHYJx9NQJylS6IoQqp5G2CIIG5IWCKT_ADdp035kbr3qEmz6Va5j8-NCplk4ZMG_cYipxUfhP-NNl-SjlKocwc7yDplc1qWEynHGm_lME_o98pKSxNg6sKbEphRPufHea_h7LU1XH2qkFEGOIZGHQlw_JmH9fvygq8_XY2iE-",
-        
            "children@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('75BFE374EBEB1211%21150')/children",
-        
            "parentReference": {
-        
               "id": "75BFE374EBEB1211!107",
-        
               "driveId": "75bfe374ebeb1211",
-        
               "path": "/drive/root:"
-        
            },
-        
            "lastModifiedDateTime": "2015-12-08T21:51:15.593Z"
     }
 
@@ -697,20 +568,50 @@ class TestValidatePath:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_revalidate_path(self, provider, file_root_parent_metadata):
-        file_id = '75BFE374EBEB1211!150'
+    def test_revalidate_path_no_child_folders(self, provider, file_root_parent_metadata):
         file_id = '1234'
         file_name = 'elect-a.jpg'
         expected_path = WaterButlerPath('/' + file_name, [None, file_id])
- 
-        good_url = provider.build_url(file_id, expand='children')
-        base_path = WaterButlerPath('/', prepend=file_id)        
- 
+        base_path = WaterButlerPath('/', prepend=file_id)
+        
+        good_url = provider._build_root_url('drive/root:', file_name)
         aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
+#          good_url = provider._build_root_url('/drive/root:', 'children') 
+#          aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
 
         actual_path = yield from provider.revalidate_path(base_path, file_name, False)
         
         assert actual_path == expected_path
+    
+    @async
+    @pytest.mark.aiohttpretty
+    def test_revalidate_path_has_child_folders(self, provider, folder_object_metadata):
+        file_id = '1234'
+        file_name = 'elect-a.jpg'
+        base_path = WaterButlerPath('/sub1-b', prepend=file_id)
+        expected_path = WaterButlerPath('/sub1-b/' + file_name, [None, None, file_id])
+     
+        good_url = provider._build_root_url('drive/root:', 'sub1-b', file_name)
+        aiohttpretty.register_json_uri('GET', good_url, body=folder_object_metadata, status=200)
+#          good_url = provider._build_root_url('/drive/root:', 'ryan-test1', 'sub1-b', 'children')         
+#          aiohttpretty.register_json_uri('GET', good_url, body=folder_object_metadata, status=200)
+    
+        actual_path = yield from provider.revalidate_path(base_path, file_name, False)
+            
+        assert '/sub1-b/' + file_name == str(expected_path)
+#          assert actual_path == expected_path
+
+        #        "name": "sub1-b",
+#         "folder": {
+#            "childCount": 4
+#         },
+#         "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+#         "id": "75BFE374EBEB1211!118",
+#         "createdDateTime": "2015-11-29T17:21:09.997Z",
+#         "lastModifiedDateTime": "2015-12-07T16:45:28.46Z",
+#         "parentReference": {    
+#            "driveId": "75bfe374ebeb1211",
+#            "path": "/drive/root:/ryan-test1",        
 
 # 
 #     @async

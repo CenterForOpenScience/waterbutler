@@ -64,34 +64,58 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def revalidate_path(self, base, path, folder=None):
-        logger.info('revalidate_path self::{} path::{} base::{}'.format(repr(self), base.full_path, repr(path))) 
-        url = self.build_url(base.full_path, expand='children')       
+        logger.info('revalidate_path self::{} base::{} path::{}'.format(repr(self), str(base), str(path)))
+        url = self._build_root_url('drive/root:', str(base), str(path))
+        logger.info('revalidate_path url::{} '.format(url))
         resp = yield from self.make_request(
             'GET',
             url,
             expects=(200, ),
             throws=exceptions.ProviderError
         )
+        #  get full path for base item;
+        #  then query children using full path and child path
 
         data = yield from resp.json()
+        parent_path = data['parentReference']['path'].replace('/drive/root:', '')
+        path_stripped = parent_path.strip('/')
+
+#          url = '{}{}{}/{}'.format(settings.BASE_ROOT_URL, parent_path, str(base), 'children')  # self._build_root_url(parent_path, str(base), 'children')
+#          url = settings.BASE_ROOT_URL + data['parentReference']['path'] + str(base) + '/children'  # self._build_root_url(parent_path, str(base), 'children')
+#          url = self._build_root_url(data['parentReference']['path'], str(base), 'children')
+#          logger.info('revalidate_path url::{} parent_path:{}  str(base):{}  str(path):{}'.format(repr(url), path_stripped, str(base), str(path)))
+#          resp = yield from self.make_request(
+#              'GET',
+#              url,
+#              expects=(200, ),
+#              throws=exceptions.ProviderError
+#          )
+#          data = yield from resp.json()
+
         lower_name = path.lower()
         logger.info('revalidate_path data::{} '.format(repr(data)))
-        try:
-            item = next(
-                x for x in data['children']
-                if x['name'].lower() == lower_name and (
-                    folder is None or
-                    ('folder' in x.keys()) == folder
-                )
-            )
-            name = path  # Use path over x['name'] because of casing issues
-            _id = item['id']
-            folder = 'folder' in item.keys()
-        except StopIteration:
-            _id = None
-            name = path
+#          try:
+#              item = next(
+#                  x for x in data['children']
+#                  if x['name'].lower() == lower_name and (
+#                      folder is None or
+#                      ('folder' in x.keys()) == folder
+#                  )
+#              )
+#              name = path  # Use path over x['name'] because of casing issues
+#              _id = item['id']
+#              folder = 'folder' in item.keys()
+#          except StopIteration:
+#              _id = None
+#              name = path
+        names = self._get_names(data)
+        ids = self._get_ids(data)
+        folder = ('folder' in data.keys()) 
 
-        return base.child(name, _id=_id, folder=folder)
+#          wb_path = WaterButlerPath(names, _ids=ids, folder=path.endswith('/'))
+        logger.info('names::{}  IDs:{}'.format(repr(names), repr(ids)))
+
+        return base.child(path, _id=ids[-1], folder=folder)
 
     @property
     def default_headers(self):
