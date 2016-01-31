@@ -192,13 +192,14 @@ class DropboxProvider(provider.BaseProvider):
         return DropboxFileMetadata(data, self.folder), not exists
 
     async def delete(self, path, **kwargs):
-        await self.make_request(
+        resp = await self.make_request(
             'POST',
             self.build_url('fileops', 'delete'),
             data={'root': 'auto', 'path': path.full_path},
             expects=(200, ),
             throws=exceptions.DeleteError,
         )
+        await resp.release()
 
     async def metadata(self, path, revision=None, **kwargs):
         if revision:

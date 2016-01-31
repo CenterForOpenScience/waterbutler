@@ -151,7 +151,7 @@ class DataverseProvider(provider.BaseProvider):
         if path.identifier:
             await self.delete(path)
 
-        await self.make_request(
+        resp = await self.make_request(
             'POST',
             self.build_url(settings.EDIT_MEDIA_BASE_URL, 'study', self.doi),
             headers=dv_headers,
@@ -160,6 +160,7 @@ class DataverseProvider(provider.BaseProvider):
             expects=(201, ),
             throws=exceptions.UploadError
         )
+        await resp.release()
 
         # Find appropriate version of file
         metadata = await self._get_data('latest')
@@ -176,13 +177,14 @@ class DataverseProvider(provider.BaseProvider):
         # Can only delete files in draft
         path = await self.validate_path('/' + path.identifier, version='latest', throw=True)
 
-        await self.make_request(
+        resp = await self.make_request(
             'DELETE',
             self.build_url(settings.EDIT_MEDIA_BASE_URL, 'file', path.identifier),
             auth=(self.token, ),
             expects=(204, ),
             throws=exceptions.DeleteError,
         )
+        await resp.release()
 
     async def metadata(self, path, version=None, **kwargs):
         """

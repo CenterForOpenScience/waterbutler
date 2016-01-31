@@ -311,12 +311,13 @@ class FigshareArticleProvider(BaseFigshareProvider):
         return streams.ResponseStreamReader(resp)
 
     async def delete(self, path, **kwargs):
-        await self.make_request(
+        resp = await self.make_request(
             'DELETE',
             self.build_url('articles', str(self.article_id), 'files', str(path.identifier)),
             expects=(200, ),
             throws=exceptions.DeleteError,
         )
+        await resp.release()
 
     async def upload(self, stream, path, **kwargs):
         article_json = await self._get_article_json()

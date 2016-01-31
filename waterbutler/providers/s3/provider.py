@@ -72,6 +72,8 @@ class S3Provider(provider.BaseProvider):
                 throws=exceptions.MetadataError,
             )
 
+        await resp.release()
+
         if resp.status == 404:
             raise exceptions.NotFoundError(str(path))
 
@@ -106,12 +108,13 @@ class S3Provider(provider.BaseProvider):
             'PUT',
             headers=headers,
         )
-        await self.make_request(
+        resp = await self.make_request(
             'PUT', url,
             headers=headers,
             expects=(200, ),
             throws=exceptions.IntraCopyError,
         )
+        await resp.release()
         return (await dest_provider.metadata(dest_path)), not exists
 
     async def download(self, path, accept_url=False, version=None, range=None, **kwargs):
@@ -200,12 +203,13 @@ class S3Provider(provider.BaseProvider):
         await self._check_region()
 
         if path.is_file:
-            await self.make_request(
+            resp = await self.make_request(
                 'DELETE',
                 self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
                 expects=(200, 204, ),
                 throws=exceptions.DeleteError,
             )
+            await resp.release()
         else:
             await self._delete_folder(path, **kwargs)
 
@@ -275,7 +279,7 @@ class S3Provider(provider.BaseProvider):
                 query_parameters=query_params,
                 headers=headers,
             )
-            await self.make_request(
+            resp = await self.make_request(
                 'POST',
                 url,
                 params=query_params,
@@ -284,6 +288,7 @@ class S3Provider(provider.BaseProvider):
                 expects=(200, 204, ),
                 throws=exceptions.DeleteError,
             )
+            await resp.release()
 
     async def revisions(self, path, **kwargs):
         """Get past versions of the requested key
@@ -388,12 +393,13 @@ class S3Provider(provider.BaseProvider):
             # If contents and prefixes are empty then this "folder"
             # must exist as a key with a / at the end of the name
             # if the path is root there is no need to test if it exists
-            await self.make_request(
+            resp = await self.make_request(
                 'HEAD',
                 self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
+            await resp.release()
 
         if isinstance(contents, dict):
             contents = [contents]

@@ -310,7 +310,7 @@ class GitHubProvider(provider.BaseProvider):
             'message': message or settings.DELETE_FILE_MESSAGE,
         }
 
-        await self.make_request(
+        resp = await self.make_request(
             'DELETE',
             self.build_repo_url('contents', path.path),
             headers={'Content-Type': 'application/json'},
@@ -318,6 +318,7 @@ class GitHubProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.DeleteError,
         )
+        await resp.release()
 
     async def _delete_folder(self, path, message=None, **kwargs):
         branch_data = await self._fetch_branch(path.identifier[0])
@@ -405,7 +406,7 @@ class GitHubProvider(provider.BaseProvider):
 
         # Update repository reference, point to the newly created commit.
         # No need to store data, rely on expects to raise exceptions
-        await self.make_request(
+        resp = await self.make_request(
             'PATCH',
             self.build_repo_url('git', 'refs', 'heads', path.identifier[0]),
             headers={'Content-Type': 'application/json'},
@@ -413,6 +414,7 @@ class GitHubProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.DeleteError,
         )
+        await resp.release()
 
     async def _fetch_branch(self, branch):
         resp = await self.make_request(
@@ -664,7 +666,7 @@ class GitHubProvider(provider.BaseProvider):
 
         # Update repository reference, point to the newly created commit.
         # No need to store data, rely on expects to raise exceptions
-        await self.make_request(
+        resp = await self.make_request(
             'PATCH',
             self.build_repo_url('git', 'refs', 'heads', branch),
             headers={'Content-Type': 'application/json'},
@@ -672,6 +674,7 @@ class GitHubProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.DeleteError,
         )
+        await resp.release()
 
         if dest_path.is_file:
             assert len(blobs) == 1, 'Destination file should have exactly one candidate'

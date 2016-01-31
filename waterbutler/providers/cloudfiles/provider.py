@@ -63,7 +63,7 @@ class CloudFilesProvider(provider.BaseProvider):
         url = dest_provider.build_url(dest_path.path)
         exists = await dest_provider.exists(dest_path)
 
-        await self.make_request(
+        resp = await self.make_request(
             'PUT',
             url,
             headers={
@@ -72,6 +72,7 @@ class CloudFilesProvider(provider.BaseProvider):
             expects=(201, ),
             throws=exceptions.IntraCopyError,
         )
+        await resp.release()
         return (await dest_provider.metadata(dest_path)), not exists
 
     @ensure_connection
