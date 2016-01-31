@@ -16,8 +16,7 @@ from waterbutler.core.path import WaterButlerPath
 
 
 class MockCoroutine(mock.Mock):
-    @asyncio.coroutine
-    def __call__(self, *args, **kwargs):
+    async def __call__(self, *args, **kwargs):
         return super().__call__(*args, **kwargs)
 
 
