@@ -44,8 +44,8 @@ class CRUDHandler(core.BaseProviderHandler):
 
             self.stream = RequestStreamReader(self.request, self.reader)
 
-            self.uploader = self.provider.upload(self.stream,
-                                                 **self.arguments)
+            self.uploader = asyncio.ensure_future(self.provider.upload(self.stream,
+                                                 **self.arguments))
         else:
             self.stream = None
 

@@ -124,7 +124,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         _, self.writer = await asyncio.open_unix_connection(sock=self.wsock)
 
         self.stream = RequestStreamReader(self.request, self.reader)
-        self.uploader = self.provider.upload(self.stream, self.target_path)
+        self.uploader = asyncio.ensure_future(self.provider.upload(self.stream, self.target_path))
 
     def on_finish(self):
         status, method = self.get_status(), self.request.method.upper()

@@ -350,7 +350,7 @@ class TestDownload:
 
         with pytest.raises(exceptions.DownloadError) as e:
             await provider.download(path)
-        
+
         assert e.value.code == 404
 
 
@@ -427,7 +427,7 @@ class TestDelete:
 
         with pytest.raises(exceptions.NotFoundError) as e:
             await provider.delete(path)
-        
+
         assert e.value.code == 404
         assert str(path) in e.value.message
 
@@ -440,7 +440,7 @@ class TestMetadata:
 
         with pytest.raises(exceptions.NotFoundError) as e:
             await provider.metadata(path)
-        
+
         assert e.value.code == 404
         assert str(path) in e.value.message
 
@@ -512,7 +512,7 @@ class TestMetadata:
 
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.metadata(path)
-        
+
         assert exc.value.code == client.NOT_FOUND
 
 
@@ -570,7 +570,7 @@ class TestCreateFolder:
 
         with pytest.raises(exceptions.CreateFolderError) as e:
             await provider.create_folder(path)
-        
+
         assert e.value.code == 400
         assert e.value.message == 'Path must be a directory'
 
@@ -583,7 +583,7 @@ class TestCreateFolder:
 
         with pytest.raises(exceptions.FolderNamingConflict) as e:
             await provider.create_folder(path)
-        
+
         assert e.value.code == 409
         assert e.value.message == 'Cannot create folder "Just a poor file from a poor folder" because a file or folder already exists at path "/Just a poor file from a poor folder/"'
 
@@ -606,7 +606,7 @@ class TestCreateFolder:
 
         with pytest.raises(exceptions.FolderNamingConflict) as e:
             await provider.create_folder(path)
-        
+
         assert e.value.code == 409
         assert e.value.message == 'Cannot create folder "50 shades of nope" because a file or folder already exists at path "/50 shades of nope/"'
 

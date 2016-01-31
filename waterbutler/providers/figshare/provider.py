@@ -212,7 +212,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
         self.child = child
 
     async def validate_v1_path(self, path, **kwargs):
-        return self.validate_path(path, **kwargs)
+        return await self.validate_path(path, **kwargs)
 
     async def validate_path(self, path, parent=None, **kwargs):
         split = path.rstrip('/').split('/')[1:]

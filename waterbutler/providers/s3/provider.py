@@ -234,7 +234,7 @@ class S3Provider(provider.BaseProvider):
                 throws=exceptions.MetadataError,
             )
 
-            contents = await resp.read_and_close()
+            contents = await resp.read()
             parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
             more_to_come = parsed.get('IsTruncated') == 'true'
             contents = parsed.get('Contents', [])
@@ -301,7 +301,7 @@ class S3Provider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
-        content = await resp.read_and_close()
+        content = await resp.read()
         versions = xmltodict.parse(content)['ListVersionsResult'].get('Version') or []
 
         if isinstance(versions, dict):
@@ -363,6 +363,7 @@ class S3Provider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
+        await resp.release()
         return S3FileMetadataHeaders(path.path, resp.headers)
 
     async def _metadata_folder(self, path):
@@ -376,7 +377,7 @@ class S3Provider(provider.BaseProvider):
             throws=exceptions.MetadataError,
         )
 
-        contents = await resp.read_and_close()
+        contents = await resp.read()
 
         parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
 
@@ -447,6 +448,6 @@ class S3Provider(provider.BaseProvider):
             throws=exceptions.MetadataError,
         )
 
-        contents = await resp.read_and_close()
+        contents = await resp.read()
         parsed = xmltodict.parse(contents, strip_whitespace=False)
         return parsed['LocationConstraint'].get('#text', '')

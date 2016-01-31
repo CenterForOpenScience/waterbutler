@@ -119,6 +119,7 @@ class CloudFilesProvider(provider.BaseProvider):
             expects=(200, 201),
             throws=exceptions.UploadError,
         )
+        await resp.release()
         # md5 is returned as ETag header as long as server side encryption is not used.
         # TODO: nice assertion error goes here
         assert resp.headers['ETag'].replace('"', '') == stream.writers['md5'].hexdigest
@@ -147,7 +148,7 @@ class CloudFilesProvider(provider.BaseProvider):
             delete_files.append(os.path.join('/', self.container, path.path))
 
             query = {'bulk-delete': ''}
-            await self.make_request(
+            resp = await self.make_request(
                 'DELETE',
                 self.build_url(**query),
                 data='\n'.join(delete_files),
@@ -158,12 +159,13 @@ class CloudFilesProvider(provider.BaseProvider):
                 },
             )
         else:
-            await self.make_request(
+            resp = await self.make_request(
                 'DELETE',
                 self.build_url(path.path),
                 expects=(204, ),
                 throws=exceptions.DeleteError,
             )
+        await resp.release()
 
     @ensure_connection
     async def metadata(self, path, recursive=False, **kwargs):
@@ -287,6 +289,8 @@ class CloudFilesProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
+
+        await resp.release()
 
         if (resp.headers['Content-Type'] == 'application/directory' and not is_folder):
             raise exceptions.MetadataError(

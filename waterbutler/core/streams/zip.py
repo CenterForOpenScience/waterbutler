@@ -24,8 +24,7 @@ class ZipLocalFileDescriptor(BaseStream):
     def size(self):
         return 0
 
-    @asyncio.coroutine
-    def _read(self, *args, **kwargs):
+    async def _read(self, *args, **kwargs):
         """Create 16 byte descriptor of file CRC, file size, and compress size"""
         self._eof = True
         return self.file.descriptor

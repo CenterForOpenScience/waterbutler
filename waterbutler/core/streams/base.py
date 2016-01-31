@@ -44,8 +44,7 @@ class BaseStream(asyncio.StreamReader, metaclass=abc.ABCMeta):
         return data
 
     @abc.abstractmethod
-    @asyncio.coroutine
-    def _read(self, size):
+    async def _read(self, size):
         pass
 
 

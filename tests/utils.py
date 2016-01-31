@@ -85,30 +85,24 @@ class MockProvider1(provider.BaseProvider):
 
     NAME = 'MockProvider1'
 
-    @asyncio.coroutine
-    def validate_v1_path(self, path, **kwargs):
-        return self.validate_path(path, **kwargs)
+    async def validate_v1_path(self, path, **kwargs):
+        return await self.validate_path(path, **kwargs)
 
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
-    @asyncio.coroutine
-    def upload(self, stream, path, **kwargs):
+    async def upload(self, stream, path, **kwargs):
         return MockFileMetadata(), True
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    async def delete(self, path, **kwargs):
         pass
 
-    @asyncio.coroutine
-    def metadata(self, path, throw=None, **kwargs):
+    async def metadata(self, path, throw=None, **kwargs):
         if throw:
             raise throw
         return MockFolderMetadata()
 
-    @asyncio.coroutine
-    def download(self, path, **kwargs):
+    async def download(self, path, **kwargs):
         return b''
 
     def can_duplicate_names(self):
