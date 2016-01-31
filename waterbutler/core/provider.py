@@ -213,12 +213,14 @@ class BaseProvider(metaclass=abc.ABCMeta):
         futures = []
         for item in (await self.metadata(src_path)):
             futures.append(
-                func(
-                    dest_provider,
-                    # TODO figure out a way to cut down on all the requests made here
-                    (await self.revalidate_path(src_path, item.name, folder=item.is_folder)),
-                    (await dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
-                    handle_naming=False,
+                asyncio.ensure_future(
+                    func(
+                        dest_provider,
+                        # TODO figure out a way to cut down on all the requests made here
+                        (await self.revalidate_path(src_path, item.name, folder=item.is_folder)),
+                        (await dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
+                        handle_naming=False,
+                    )
                 )
             )
 
