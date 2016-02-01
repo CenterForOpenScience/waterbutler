@@ -25,28 +25,6 @@ class FileStreamReader(BaseStream):
         self.file_pointer.close()
         self.feed_eof()
 
-    class read_chunks:
-        def __init__(self, read_size, fp):
-            self.done = False
-            self.read_size = read_size
-            self.fp = fp
-
-        async def __aiter__(self):
-            return self
-
-        async def __anext__(self):
-            if self.done:
-                raise StopAsyncIteration
-            return await self.get_chunk()
-
-        async def get_chunk(self):
-            while True:
-                chunk = self.fp.read(self.read_size)
-                if not chunk:
-                    chunk = b''
-                    self.done = True
-                return chunk
-
     @agent.async_generator
     def chunk_reader(self):
         self.done = False
