@@ -13,13 +13,11 @@ def wheelhouse(develop=False):
 
 
 @task
-def install(develop=False, upgrade=False):
+def install(develop=False):
     run('python setup.py develop')
     req_file = 'dev-requirements.txt' if develop else 'requirements.txt'
-    cmd = 'pip install -r {}'.format(req_file)
+    cmd = 'pip install --upgrade -r {}'.format(req_file)
 
-    if upgrade:
-        cmd += ' --upgrade'
     if WHEELHOUSE_PATH:
         cmd += ' --no-index --find-links={}'.format(WHEELHOUSE_PATH)
     run(cmd, pty=True)
