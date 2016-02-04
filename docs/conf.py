@@ -9,7 +9,7 @@ import waterbutler.server  # noqa
 master_doc = "index"
 
 project = "WaterButler"
-copyright = "2014, Center For Open Science"
+copyright = "2016, Center For Open Science"
 
 version = release = waterbutler.__version__
 

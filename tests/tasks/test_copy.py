@@ -137,7 +137,7 @@ class TestCopyTask:
         metadata = test_utils.MockFileMetadata()
         src.copy.return_value = (metadata, False)
 
-        dt = datetime.datetime.utcfromtimestamp(60)
+        dt = datetime.datetime.utcfromtimestamp(60).replace(tzinfo=datetime.timezone.utc)
         with freezegun.freeze_time(dt):
             ret1, ret2 = copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle), 'Test.com', {'auth': {'user': 'name'}})
 
