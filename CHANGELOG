@@ -2,6 +2,17 @@
 ChangeLog
 *********
 
+0.16.0 (2016-02-03)
+===================
+- Feature: Support S3 buckets with periods in their name for non-US East
+regions.
+- Feature: Started filling out and reorganizng the dev docs!  The v1 API is
+now documented, and waterbutler.core.metadata, waterbutler.core.path have
+a lot more docstrings.  A skeleton overview of WaterButler is available.  More
+to come...
+- Fix: Make the filesystem provider declare timezones for their modified date.
+- Fix: Update FigShare's web view URL for viewing unpublished files.
+
 0.15.1 (2016-01-21)
 ===================
 - Fix incorrect logging of paths for move/copy task and v0 deletes
@@ -23,7 +34,7 @@ entity of the opposite type, but only for those providers that allow it.
 0.14.0 (2015-11-05)
 ===================
 - Update to a python3.5 compliant version of invoke
-- Raise proper exceptions for github repos with too many fiels
+- Raise proper exceptions for github repos with too many fields
 - Updates for OSFStorage file checkout
 - Clean up JSON API Responses
 
