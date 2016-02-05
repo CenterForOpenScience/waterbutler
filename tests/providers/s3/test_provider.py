@@ -294,6 +294,7 @@ def build_folder_params(path):
     return {'prefix': path.path, 'delimiter': '/'}
 
 
+@freeze_time('2015-10-31 12:00:01')
 class TestRegionDetection:
 
     @async
@@ -325,6 +326,7 @@ class TestRegionDetection:
         assert provider.connection.host == host
 
 
+@freeze_time('2015-10-31 12:00:01')
 class TestValidatePath:
 
     @async

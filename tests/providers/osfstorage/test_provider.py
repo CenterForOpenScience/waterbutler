@@ -6,6 +6,8 @@ from unittest import mock
 
 import pytest
 import aiohttpretty
+from freezegun import freeze_time
+
 
 from tests import utils
 from tests.utils import async
@@ -178,6 +180,7 @@ def file_lineage():
 
 @async
 @pytest.mark.aiohttpretty
+@freeze_time('2015-10-31 12:00:01')
 def test_download(monkeypatch, provider_and_mock, osf_response, mock_path):
     provider, inner_provider = provider_and_mock
 
@@ -198,6 +201,7 @@ def test_download(monkeypatch, provider_and_mock, osf_response, mock_path):
 
 @async
 @pytest.mark.aiohttpretty
+@freeze_time('2015-10-31 12:00:01')
 def test_delete(monkeypatch, provider, mock_path):
     path = WaterButlerPath('/unrelatedpath', _ids=('Doesntmatter', 'another'))
     params = {'user': 'cat'}
@@ -212,6 +216,7 @@ def test_delete(monkeypatch, provider, mock_path):
 
 @async
 @pytest.mark.aiohttpretty
+@freeze_time('2015-10-31 12:00:01')
 def test_provider_metadata_empty(monkeypatch, provider, mock_folder_path):
     base_url = provider.build_url(mock_folder_path.identifier, 'children')
     url, _, params = provider.build_signed_url('GET', base_url)
@@ -226,6 +231,7 @@ def test_provider_metadata_empty(monkeypatch, provider, mock_folder_path):
 
 @async
 @pytest.mark.aiohttpretty
+@freeze_time('2015-10-31 12:00:01')
 def test_provider_metadata(monkeypatch, provider, mock_folder_path):
     items = [
         {
@@ -268,6 +274,7 @@ def test_provider_metadata(monkeypatch, provider, mock_folder_path):
     assert aiohttpretty.has_call(method='GET', uri=url, params=params)
 
 
+@freeze_time('2015-10-31 12:00:01')
 class TestValidatePath:
 
     @async
@@ -315,6 +322,7 @@ class TestValidatePath:
 
         assert wb_path_v1 == wb_path_v0
 
+@freeze_time('2015-10-31 12:00:01')
 class TestUploads:
 
     def patch_tasks(self, monkeypatch):
