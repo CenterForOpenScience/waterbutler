@@ -69,7 +69,6 @@ class OneDriveProvider(provider.BaseProvider):
         logger.info('revalidate_path base::{} path::{}'.format(repr(base.full_path), repr(path)))
 
         if (base.identifier is not None):
-            logger.info('ID')
             url = self.build_url(base.identifier)
             resp = yield from self.make_request(
                 'GET', url,
@@ -81,11 +80,9 @@ class OneDriveProvider(provider.BaseProvider):
             url = self._build_root_url("drive/root:", folder_path, str(path))
         elif (base._prepend is None):
             #  in a sub-folder, no need to get the root id
-            logger.info('Yes Prepend')
             url = self._build_root_url('drive/root:', base.full_path, str(path))
         else:
             #  root: get folder name and build path from it
-            logger.info('No Prepend')
             url = self.build_url(base._prepend)
             resp = yield from self.make_request(
                 'GET', url,
@@ -95,7 +92,6 @@ class OneDriveProvider(provider.BaseProvider):
             data = yield from resp.json()
             url = self._build_root_url("drive/root:", self._get_names(data), str(path))
 
-        logger.info('revalidate_path url::{}'.format(url))
         resp = yield from self.make_request(
             'GET',
             url,

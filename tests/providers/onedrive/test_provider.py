@@ -572,13 +572,16 @@ class TestValidatePath:
         file_id = '1234'
         file_name = 'elect-a.jpg'
         parent_id = '75BFE374EBEB1211!107'
-        expected_path = WaterButlerPath('/ddd/' + file_name, [None, file_id])
-        base_path = WaterButlerPath('/ddd', [None, file_id])
+        expected_path = WaterButlerPath('/' + file_name, [None, file_id])
+        base_path = WaterButlerPath('/', [file_id])
 
-        good_url = "https://api.onedrive.com/v1.0/drive/root%3A/ddd/{}".format(file_name)
+        good_url = "https://api.onedrive.com/v1.0/drive/root%3A/{}/{}".format(file_name, file_name)
         aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
 
         good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(parent_id)
+        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
+
+        good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(file_id)
         aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
 
         actual_path = yield from provider.revalidate_path(base_path, file_name, False)
