@@ -73,6 +73,16 @@ class OneDriveProvider(provider.BaseProvider):
             #  in a sub-folder, no need to get the root id
             logger.info('No Prepend')
             url = self._build_root_url('drive/root:', base.full_path, str(path))
+        elif (base.identifier is not None):
+            url = self.build_url(base.identifier)
+            resp = yield from self.make_request(
+                'GET', url,
+                expects=(200, ),
+                throws=exceptions.MetadataError
+            )
+            data = yield from resp.json()
+            folder_path = self._get_names(data)
+            url = self._build_root_url("drive/root:", folder_path, str(path))
         else:
             #  root: get folder name and build path from it
             logger.info('Yes Prepend')
@@ -84,7 +94,12 @@ class OneDriveProvider(provider.BaseProvider):
             )
             logger.info('revalidate_path url-0b::{} '.format(url))
             data = yield from resp.json()
-            url = self._build_root_url("drive/root:", self._get_names(data), str(path))
+            folder_path = self._get_names(data)
+            logger.info('revalidate_path folder_path::{} '.format(folder_path))
+            folder_path2 = data['parentReference']['path'].replace('/drive/root:', '')
+            logger.info('revalidate_path folder_path::{} '.format(folder_path2))
+            logger.info('revalidate_path data::{} '.format(data))
+            url = self._build_root_url("drive/root:", folder_path, str(path))
 
         logger.info('revalidate_path url-1::{} '.format(url))
         resp = yield from self.make_request(
