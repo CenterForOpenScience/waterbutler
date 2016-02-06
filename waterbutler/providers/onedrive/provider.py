@@ -64,16 +64,12 @@ class OneDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def revalidate_path(self, base, path, folder=None):
-        #  TODO: in get zip root, we have the ID as the prepend; need to get its full path and then use that in
         logger.info('revalidate_path base::{} path::{}  base.id::{}'.format(base._prepend, path, base.identifier))
         logger.info('revalidate_path self::{} base::{} path::{}'.format(str(self), repr(base), repr(path)))
         logger.info('revalidate_path base::{} path::{}'.format(repr(base.full_path), repr(path)))
 
-        if (base._prepend is None):
-            #  in a sub-folder, no need to get the root id
-            logger.info('No Prepend')
-            url = self._build_root_url('drive/root:', base.full_path, str(path))
-        elif (base.identifier is not None):
+        if (base.identifier is not None):
+            logger.info('ID')
             url = self.build_url(base.identifier)
             resp = yield from self.make_request(
                 'GET', url,
@@ -83,41 +79,39 @@ class OneDriveProvider(provider.BaseProvider):
             data = yield from resp.json()
             folder_path = self._get_names(data)
             url = self._build_root_url("drive/root:", folder_path, str(path))
+        elif (base._prepend is None):
+            #  in a sub-folder, no need to get the root id
+            logger.info('Yes Prepend')
+            url = self._build_root_url('drive/root:', base.full_path, str(path))
         else:
             #  root: get folder name and build path from it
-            logger.info('Yes Prepend')
+            logger.info('No Prepend')
             url = self.build_url(base._prepend)
             resp = yield from self.make_request(
                 'GET', url,
                 expects=(200, ),
                 throws=exceptions.MetadataError
             )
-            logger.info('revalidate_path url-0b::{} '.format(url))
             data = yield from resp.json()
-            folder_path = self._get_names(data)
-            logger.info('revalidate_path folder_path::{} '.format(folder_path))
-            folder_path2 = data['parentReference']['path'].replace('/drive/root:', '')
-            logger.info('revalidate_path folder_path::{} '.format(folder_path2))
-            logger.info('revalidate_path data::{} '.format(data))
-            url = self._build_root_url("drive/root:", folder_path, str(path))
+            url = self._build_root_url("drive/root:", self._get_names(data), str(path))
 
-        logger.info('revalidate_path url-1::{} '.format(url))
+        logger.info('revalidate_path url::{}'.format(url))
         resp = yield from self.make_request(
             'GET',
             url,
-            expects=(200, ),
+            expects=(200, 404, ),
             throws=exceptions.ProviderError
         )
 
-        data = yield from resp.json()
-#          logger.info('revalidate_path data::{} '.format(repr(data)))
-        names = self._get_names(data)
-        ids = self._get_ids(data)
-        folder = ('folder' in data.keys())
+        if (resp.status == 404):
+            ids = None
+            folder = False
+        else:
+            data = yield from resp.json()
+            ids = self._get_ids(data)[-1]
+            folder = ('folder' in data.keys())
 
-        logger.info('names::{}  IDs:{} folder:{}'.format(repr(names), repr(ids), folder))
-
-        return base.child(path, _id=ids[-1], folder=folder)
+        return base.child(path, _id=ids, folder=folder)
 
     @property
     def default_headers(self):
