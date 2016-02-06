@@ -568,13 +568,17 @@ class TestValidatePath:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_revalidate_path_no_child_folders(self, provider, file_root_parent_metadata):
+    def test_revalidate_path_no_child_folders_sub_folder(self, provider, file_root_parent_metadata):
         file_id = '1234'
         file_name = 'elect-a.jpg'
+        parent_id = '75BFE374EBEB1211!107'
         expected_path = WaterButlerPath('/' + file_name, [None, file_id])
-        base_path = WaterButlerPath('/', prepend=file_id)
+        base_path = WaterButlerPath('/', prepend=parent_id)
         
-        good_url = provider._build_root_url('drive/root:', file_name)
+        good_url = "https://api.onedrive.com/v1.0/drive/root%3A/{}/{}".format(file_name, file_name)
+        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
+        
+        good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(parent_id)
         aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
 #          good_url = provider._build_root_url('/drive/root:', 'children') 
 #          aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
@@ -588,16 +592,20 @@ class TestValidatePath:
     def test_revalidate_path_has_child_folders(self, provider, folder_object_metadata):
         file_id = '1234'
         file_name = 'elect-a.jpg'
-        base_path = WaterButlerPath('/sub1-b', prepend=file_id)
+        parent_id = '75BFE374EBEB1211!107'
+        base_path = WaterButlerPath('/sub1-b', prepend=parent_id)
         expected_path = WaterButlerPath('/sub1-b/' + file_name, [None, None, file_id])
-     
-        good_url = provider._build_root_url('drive/root:', 'sub1-b', file_name)
+       
+        good_url = provider._build_root_url('drive/root:', 'ryan-test1', 'sub1-b', file_name)
+        aiohttpretty.register_json_uri('GET', good_url, body=folder_object_metadata, status=200)
+
+        good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(parent_id)
         aiohttpretty.register_json_uri('GET', good_url, body=folder_object_metadata, status=200)
 #          good_url = provider._build_root_url('/drive/root:', 'ryan-test1', 'sub1-b', 'children')         
 #          aiohttpretty.register_json_uri('GET', good_url, body=folder_object_metadata, status=200)
-    
+      
         actual_path = yield from provider.revalidate_path(base_path, file_name, False)
-            
+              
         assert '/sub1-b/' + file_name == str(expected_path)
 #          assert actual_path == expected_path
 
