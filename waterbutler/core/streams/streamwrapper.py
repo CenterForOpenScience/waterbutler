@@ -2,7 +2,7 @@ import asyncio
 import os
 
 from waterbutler.core.streams import BaseStream, RequestStreamReader, FileStreamReader, ResponseStreamReader
-from waterbutler.encryption.blockcipher import decrypt_block, encrypt_block
+from waterbutler.encryption import decrypt_block, encrypt_block
 
 # CHUNK_SIZE must be the same as
 #   CHUNK_SIZE in server/settings.py
