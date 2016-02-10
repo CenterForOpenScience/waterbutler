@@ -17,4 +17,4 @@ from waterbutler.core.streams.base64 import Base64EncodeStream  # noqa
 
 from waterbutler.core.streams.json import JSONStream  # noqa
 
-from waterbutler.core.streams.streamwrapper import stream_wrapper
+from waterbutler.core.streams.streamwrapper import stream_wrapper  # noga

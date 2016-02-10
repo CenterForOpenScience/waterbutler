@@ -1,12 +1,11 @@
 import jwe
 # PyJWE 0.1.5 and 0.1.6 compatible
 
-# development only, simple default key is used
-# TODO: 1. generate key based on user credential
-# TODO: 2. store key somewhere safe
+from waterbutler.encryption import settings
 
-key = b'default_key'
-salt = b'default_salt'
+
+key = settings.OSFSTORAGE_JWE_SECRET
+salt = settings.OSFSTORAGE_JWE_SALT
 derived_key = jwe.kdf(key, salt)
 
 
