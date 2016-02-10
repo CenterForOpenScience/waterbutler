@@ -21,4 +21,3 @@ from waterbutler.core.streams.streamwrapper import stream_wrapper  # noqa
 from waterbutler.core.streams.streamwrapper import EncFileStreamReader  # noqa
 from waterbutler.core.streams.streamwrapper import EncRequestStreamReader  # noqa
 from waterbutler.core.streams.streamwrapper import EncResponseReader  # noqa
-
