@@ -199,11 +199,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         try:
             yield from dest_provider.delete(dest_path)
-            created = True
+            created = False
         except exceptions.ProviderError as e:
             if e.code != 404:
                 raise
-            created = False
+            created = True
 
         folder = yield from dest_provider.create_folder(dest_path)
 
