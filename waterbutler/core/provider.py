@@ -241,6 +241,20 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def _folder_file_op(self, func, dest_provider, src_path, dest_path, **kwargs):
+        """Recursively apply func to src/dest path.
+
+        Called from: func: copy and move if src_path.is_dir.
+
+        Calls: func: dest_provider.delete and notes result for bool: created
+               func: dest_provider.create_folder
+               func: dest_provider.revalidate_path
+               func: self.metadata
+
+        :param coroutine func: to be applied to src/dest path
+        :param *Provider dest_provider: Destination provider
+        :param *ProviderPath src_path: Source path
+        :param *ProviderPath dest_path: Destination path
+        """
         assert src_path.is_dir, 'src_path must be a directory'
         assert asyncio.iscoroutinefunction(func), 'func must be a coroutine'
 
