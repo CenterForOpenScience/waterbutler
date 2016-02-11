@@ -29,6 +29,10 @@ from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
 
 class S3Provider(provider.BaseProvider):
     """Provider for the Amazon's S3
+
+    Quirks:
+        On S3, folders are not first-class objects, but are instead inferred from the names of their children.  A regular DELETE request issued against a folder will not work unless that folder is completely empty.  To fully delete an occupied folder, we must delete all of the comprising objects.  Amazon provides a bulk delete operation to simplify this.
+        A GET prefix query against a non-existant path returns 200
     """
     NAME = 's3'
 
@@ -227,10 +231,17 @@ class S3Provider(provider.BaseProvider):
 
     @asyncio.coroutine
     def _delete_folder(self, path, **kwargs):
-        """On S3, folders are not first-class objects, but are instead inferred from the names
-        of their children.  A regular DELETE request issued against a folder will not work unless
-        that folder is completely empty.  To fully delete an occupied folder, we must delete all
-        of the comprising objects.  Amazon provides a bulk delete operation to simplify this.
+        """Query for recursive contents of folder and delete in batches of 1000
+
+        Called from: func: delete if not path.is_file
+
+        Calls: func: self._check_region
+               func: self.make_request
+               func: self.bucket.generate_url
+
+        :param *ProviderPath path: Path to be deleted
+
+        On S3, folders are not first-class objects, but are instead inferred from the names of their children.  A regular DELETE request issued against a folder will not work unless that folder is completely empty.  To fully delete an occupied folder, we must delete all of the comprising objects.  Amazon provides a bulk delete operation to simplify this.
         """
         yield from self._check_region()
 
@@ -262,6 +273,10 @@ class S3Provider(provider.BaseProvider):
             content_keys.extend([content['Key'] for content in contents])
             if len(content_keys) > 0:
                 marker = content_keys[-1]
+
+        # Query against non-existant folder does not return 404
+        if len(content_keys) == 0:
+            raise exceptions.NotFoundError(str(path))
 
         while len(content_keys) > 0:
             key_batch = content_keys[:1000]
