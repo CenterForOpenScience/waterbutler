@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.16.1 (2016-02-11)
+===================
+- Fix: Properly freeze time in tests to avoid spurious test failures.
+- Update Sentry Raven client now that it has core asyncio support.
+
 0.16.0 (2016-02-03)
 ===================
 - Feature: Support S3 buckets with periods in their name for non-US East
