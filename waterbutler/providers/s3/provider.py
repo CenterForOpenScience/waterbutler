@@ -31,7 +31,12 @@ class S3Provider(provider.BaseProvider):
     """Provider for the Amazon's S3
 
     Quirks:
-        On S3, folders are not first-class objects, but are instead inferred from the names of their children.  A regular DELETE request issued against a folder will not work unless that folder is completely empty.  To fully delete an occupied folder, we must delete all of the comprising objects.  Amazon provides a bulk delete operation to simplify this.
+        On S3, folders are not first-class objects, but are instead inferred
+        from the names of their children.  A regular DELETE request issued
+        against a folder will not work unless that folder is completely empty.
+        To fully delete an occupied folder, we must delete all of the comprising
+        objects.  Amazon provides a bulk delete operation to simplify this.
+
         A GET prefix query against a non-existant path returns 200
     """
     NAME = 's3'
@@ -241,7 +246,11 @@ class S3Provider(provider.BaseProvider):
 
         :param *ProviderPath path: Path to be deleted
 
-        On S3, folders are not first-class objects, but are instead inferred from the names of their children.  A regular DELETE request issued against a folder will not work unless that folder is completely empty.  To fully delete an occupied folder, we must delete all of the comprising objects.  Amazon provides a bulk delete operation to simplify this.
+        On S3, folders are not first-class objects, but are instead inferred
+        from the names of their children.  A regular DELETE request issued
+        against a folder will not work unless that folder is completely empty.
+        To fully delete an occupied folder, we must delete all of the comprising
+        objects.  Amazon provides a bulk delete operation to simplify this.
         """
         yield from self._check_region()
 
@@ -299,8 +308,8 @@ class S3Provider(provider.BaseProvider):
                 'Content-Type': 'text/xml',
             }
 
-            # We depend on a customized version of boto that can make query parameters part of
-            # the signature.
+            # We depend on a customized version of boto that can make query
+            # parameters part of the signature.
             url = self.bucket.generate_url(
                 settings.TEMP_URL_SECS,
                 'POST',
@@ -481,7 +490,8 @@ class S3Provider(provider.BaseProvider):
     def _get_bucket_region(self):
         """Bucket names are unique across all regions.
 
-        Endpoint doc: http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html
+       Endpoint doc:
+       http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html
         """
         resp = yield from self.make_request(
             'GET',
