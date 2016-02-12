@@ -75,3 +75,5 @@ DEBUG = get('DEBUG', True)
 
 logging_config = get('LOGGING', DEFAULT_LOGGING_CONFIG)
 logging.config.dictConfig(logging_config)
+
+SENTRY_DSN = get('SENTRY_DSN', None)

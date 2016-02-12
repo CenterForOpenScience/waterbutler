@@ -6,8 +6,10 @@ import xmltodict
 
 import xml.sax.saxutils
 
+from boto import config as boto_config
 from boto.compat import BytesIO
 from boto.utils import compute_md5
+from boto.auth import get_auth_handler
 from boto.s3.connection import S3Connection
 from boto.s3.connection import OrdinaryCallingFormat
 
@@ -57,10 +59,11 @@ class S3Provider(provider.BaseProvider):
         implicit_folder = path.endswith('/')
 
         if implicit_folder:
+            params = {'prefix': path, 'delimiter': '/'}
             resp = await self.make_request(
                 'GET',
-                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
-                params={'prefix': path, 'delimiter': '/'},
+                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+                params=params,
                 expects=(200, 404),
                 throws=exceptions.MetadataError,
             )
@@ -175,16 +178,23 @@ class S3Provider(provider.BaseProvider):
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
 
+        headers = {'Content-Length': str(stream.size)}
+
+        # this is usually set in boto.s3.key.generate_url, but do it here
+        # do be explicit about our header payloads for signing purposes
+        if self.encrypt_uploads:
+            headers['x-amz-server-side-encryption'] = 'AES256'
+
+        upload_url = self.bucket.new_key(path.path).generate_url(
+            settings.TEMP_URL_SECS,
+            'PUT',
+            headers=headers,
+        )
         resp = await self.make_request(
             'PUT',
-            self.bucket.new_key(path.path).generate_url(
-                settings.TEMP_URL_SECS,
-                'PUT',
-                encrypt_key=self.encrypt_uploads
-            ),
+            upload_url,
             data=stream,
-            skip_auto_headers={'CONTENT-TYPE'},
-            headers={'Content-Length': str(stream.size)},
+            headers=headers,
             expects=(200, 201, ),
             throws=exceptions.UploadError,
         )
@@ -232,7 +242,7 @@ class S3Provider(provider.BaseProvider):
 
             resp = await self.make_request(
                 'GET',
-                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
+                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=query_params),
                 params=query_params,
                 expects=(200, ),
                 throws=exceptions.MetadataError,
@@ -298,11 +308,12 @@ class S3Provider(provider.BaseProvider):
         """
         await self._check_region()
 
-        url = self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters={'versions': ''})
+        query_params = {'prefix': path.path, 'delimiter': '/', 'versions': ''}
+        url = self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
         resp = await self.make_request(
             'GET',
             url,
-            params={'prefix': path.path, 'delimiter': '/'},
+            params=query_params,
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
@@ -374,10 +385,11 @@ class S3Provider(provider.BaseProvider):
     async def _metadata_folder(self, path):
         await self._check_region()
 
+        params = {'prefix': path.path, 'delimiter': '/'}
         resp = await self.make_request(
             'GET',
-            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
-            params={'prefix': path.path, 'delimiter': '/'},
+            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+            params=params,
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
@@ -441,6 +453,8 @@ class S3Provider(provider.BaseProvider):
 
             if self.region != '':
                 self.connection.host = self.connection.host.replace('s3.', 's3-' + self.region + '.', 1)
+                self.connection._auth_handler = get_auth_handler(
+                    self.connection.host, boto_config, self.connection.provider, self.connection._required_auth_capability())
 
     async def _get_bucket_region(self):
         """Bucket names are unique across all regions.

@@ -1,10 +1,8 @@
 -r requirements.txt
 
 -e git+https://github.com/centerforopenscience/aiohttpretty.git#egg=aiohttpretty
--e git+https://github.com/felliott/freezegun.git@fix/dir_type_errors#egg=freezegun
 colorlog
 flake8
-# freezegun
 ipdb
 ipython
 pep8

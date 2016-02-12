@@ -1,5 +1,6 @@
 import os
 import io
+import time
 import asyncio
 from http import client
 from unittest import mock
@@ -130,6 +131,12 @@ def mock_folder_path():
 
 
 @pytest.fixture
+def mock_time(monkeypatch):
+    mock_time = mock.Mock(return_value=1454684930.0)
+    monkeypatch.setattr(time, 'time', mock_time)
+
+
+@pytest.fixture
 def folder_lineage():
     return {
         'data': [
@@ -177,7 +184,7 @@ def file_lineage():
 
 @pytest.mark.asyncio
 @pytest.mark.aiohttpretty
-async def test_download(monkeypatch, provider_and_mock, osf_response, mock_path):
+async def test_download(monkeypatch, provider_and_mock, osf_response, mock_path, mock_time):
     provider, inner_provider = provider_and_mock
 
     base_url = provider.build_url(mock_path.identifier, 'download', version=None, mode=None)
@@ -197,7 +204,7 @@ async def test_download(monkeypatch, provider_and_mock, osf_response, mock_path)
 
 @pytest.mark.asyncio
 @pytest.mark.aiohttpretty
-async def test_delete(monkeypatch, provider, mock_path):
+async def test_delete(monkeypatch, provider, mock_path, mock_time):
     path = WaterButlerPath('/unrelatedpath', _ids=('Doesntmatter', 'another'))
     params = {'user': 'cat'}
     base_url = provider.build_url(path.identifier)
@@ -211,7 +218,7 @@ async def test_delete(monkeypatch, provider, mock_path):
 
 @pytest.mark.asyncio
 @pytest.mark.aiohttpretty
-async def test_provider_metadata_empty(monkeypatch, provider, mock_folder_path):
+async def test_provider_metadata_empty(monkeypatch, provider, mock_folder_path, mock_time):
     base_url = provider.build_url(mock_folder_path.identifier, 'children')
     url, _, params = provider.build_signed_url('GET', base_url)
     aiohttpretty.register_json_uri('GET', url, params=params, status_code=200, body=[])
@@ -225,7 +232,7 @@ async def test_provider_metadata_empty(monkeypatch, provider, mock_folder_path):
 
 @pytest.mark.asyncio
 @pytest.mark.aiohttpretty
-async def test_provider_metadata(monkeypatch, provider, mock_folder_path):
+async def test_provider_metadata(monkeypatch, provider, mock_folder_path, mock_time):
     items = [
         {
             'name': 'foo',
@@ -271,7 +278,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, file_lineage):
+    async def test_validate_v1_path_file(self, provider, file_lineage, mock_time):
         file_path = '56152738cfe1912c7d74cad7'
 
         url, _, params = provider.build_signed_url('GET', 'https://waterbutler.io/{}/lineage/'.format(file_path))
@@ -294,7 +301,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider, folder_lineage):
+    async def test_validate_v1_path_folder(self, provider, folder_lineage, mock_time):
         folder_path = '56045626cfe191ead0264305'
 
         url, _, params = provider.build_signed_url('GET', 'https://waterbutler.io/{}/lineage/'.format(folder_path))
@@ -324,7 +331,7 @@ class TestUploads:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_new(self, monkeypatch, provider_and_mock, file_stream, upload_response):
+    async def test_upload_new(self, monkeypatch, provider_and_mock, file_stream, upload_response, mock_time):
         self.patch_tasks(monkeypatch)
 
         path = WaterButlerPath('/newfile', _ids=('rootId', None))
@@ -350,7 +357,7 @@ class TestUploads:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_existing(self, monkeypatch, provider_and_mock, file_stream):
+    async def test_upload_existing(self, monkeypatch, provider_and_mock, file_stream, mock_time):
         self.patch_tasks(monkeypatch)
         provider, inner_provider = provider_and_mock
 
@@ -378,7 +385,7 @@ class TestUploads:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_and_tasks(self, monkeypatch, provider_and_mock, file_stream, credentials, settings):
+    async def test_upload_and_tasks(self, monkeypatch, provider_and_mock, file_stream, credentials, settings, mock_time):
         provider, inner_provider = provider_and_mock
         basepath = 'waterbutler.providers.osfstorage.provider.{}'
         path = WaterButlerPath('/foopath', _ids=('Test', 'OtherTest'))

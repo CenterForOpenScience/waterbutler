@@ -5,8 +5,7 @@ import functools
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
-
-from raven.contrib.tornado import AsyncSentryClient
+from raven import Client
 from stevedore import driver
 
 from waterbutler import settings
@@ -17,27 +16,10 @@ from waterbutler.core.signing import Signer
 
 logger = logging.getLogger(__name__)
 
-sentry_dns = settings.get('SENTRY_DSN', None)
 signer = Signer(server_settings.HMAC_SECRET, server_settings.HMAC_ALGORITHM)
 
-
-class AioSentryClient(AsyncSentryClient):
-
-    def send_remote(self, url, data, headers=None, callback=None):
-        headers = headers or {}
-        if not self.state.should_try():
-            message = self._get_log_message(data)
-            self.error_logger.error(message)
-            return
-
-        future = aiohttp.request('POST', url, data=data, headers=headers)
-        asyncio.async(future)
-
-
-if sentry_dns:
-    client = AioSentryClient(sentry_dns)
-else:
-    client = None
+sentry_dsn = settings.get('SENTRY_DSN', None)
+client = Client(sentry_dsn) if sentry_dsn else None
 
 
 def make_provider(name, auth, credentials, settings):
