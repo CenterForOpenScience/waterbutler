@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.16.2 (2016-02-14)
+===================
+- Fix: Patch to prevent certification verification failure w/ rackspace services.
+
 0.16.1 (2016-02-11)
 ===================
 - Fix: Properly freeze time in tests to avoid spurious test failures.
