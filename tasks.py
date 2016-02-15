@@ -24,9 +24,6 @@ def monkey_patch():
     ssl.create_default_context = create_default_context
 
 
-monkey_patch()
-
-
 @task
 def wheelhouse(develop=False):
     req_file = 'dev-requirements.txt' if develop else 'requirements.txt'
@@ -61,6 +58,8 @@ def test(verbose=False):
 
 @task
 def celery(loglevel='INFO', hostname='%h'):
+    monkey_patch()
+
     from waterbutler.tasks.app import app
     command = ['worker']
     if loglevel:
@@ -77,6 +76,8 @@ def rabbitmq():
 
 @task
 def server():
+    monkey_patch()
+
     from waterbutler.server.app import serve
     serve()
 
