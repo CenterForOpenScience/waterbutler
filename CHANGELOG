@@ -2,6 +2,60 @@
 ChangeLog
 *********
 
+0.16.2 (2016-02-14)
+===================
+- Fix: Patch to prevent certification verification failure w/ rackspace services.
+
+0.16.1 (2016-02-11)
+===================
+- Fix: Properly freeze time in tests to avoid spurious test failures.
+- Update Sentry Raven client now that it has core asyncio support.
+
+0.16.0 (2016-02-03)
+===================
+- Feature: Support S3 buckets with periods in their name for non-US East
+regions.
+- Feature: Started filling out and reorganizng the dev docs!  The v1 API is
+now documented, and waterbutler.core.metadata, waterbutler.core.path have
+a lot more docstrings.  A skeleton overview of WaterButler is available.  More
+to come...
+- Fix: Make the filesystem provider declare timezones for their modified date.
+- Fix: Update FigShare's web view URL for viewing unpublished files.
+
+0.15.1 (2016-01-21)
+===================
+- Fix incorrect logging of paths for move/copy task and v0 deletes
+- Fix incorrect path calculation for cross-resource move/copys via Dropbox
+- Properly encode googledrive path in log payloads
+
+0.15.0 (2016-01-15)
+===================
+- Enforce V1 path semantics. Folders must have trailing slash, files must NOT
+have trailing slash.  Failing to abide results in a 404
+- Allow creating a file or folder in a directory with an identically-named
+entity of the opposite type, but only for those providers that allow it.
+- Fix recursive delete via s3 when folder name has special characters
+- Fix multiple 500s on github provider
+- Fix many v1 logging issues
+- Clarify install instructions, (thanks @rafaeldelucena!)
+- Add `clean` task to remove old .pyc files
+
+0.14.0 (2015-11-05)
+===================
+- Update to a python3.5 compliant version of invoke
+- Raise proper exceptions for github repos with too many fields
+- Updates for OSFStorage file checkout
+- Clean up JSON API Responses
+
+0.13.0 (2015-10-08)
+===================
+- waterbutler API v1 now returns JSON API formatted data
+- DEBUG is now an option for waterbutler root settings
+- OSF auth handler now authenticates via JWTs
+- Moves and copies done via v1 will now return a 409 rather than implicitly overwriting
+- Failed log callbacks are now logged
+- Various smaller fixes
+
 0.12.0 (2015-09-17)
 ===================
 - waterbutler.server

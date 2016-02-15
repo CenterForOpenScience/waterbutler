@@ -48,6 +48,10 @@ class CloudFilesProvider(provider.BaseProvider):
         self.use_public = self.settings.get('use_public', True)
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
@@ -80,7 +84,7 @@ class CloudFilesProvider(provider.BaseProvider):
     def download(self, path, accept_url=False, range=None, **kwargs):
         """Returns a ResponseStreamReader (Stream) for the specified path
         :param str path: Path to the object you want to download
-        :param dict **kwargs: Additional arguments that are ignored
+        :param dict \*\*kwargs: Additional arguments that are ignored
         :rtype str:
         :rtype ResponseStreamReader:
         :raises: exceptions.DownloadError
@@ -190,6 +194,9 @@ class CloudFilesProvider(provider.BaseProvider):
         """
         endpoint = _endpoint or self.endpoint
         return provider.build_url(endpoint, self.container, *path.split('/'), **query)
+
+    def can_duplicate_names(self):
+        return False
 
     def can_intra_copy(self, dest_provider, path=None):
         return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)

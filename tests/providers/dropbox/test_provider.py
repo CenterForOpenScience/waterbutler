@@ -3,6 +3,7 @@ import pytest
 from tests.utils import async
 
 import io
+from http import client
 
 import aiohttpretty
 
@@ -111,7 +112,57 @@ def file_metadata():
     }
 
 
+def build_folder_metadata_params(path):
+    return {'root': 'auto', 'path': path.full_path}
+
+
 class TestValidatePath:
+
+    @async
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize('settings', [{'folder': '/'}])
+    def test_validate_v1_path_file(self, provider, file_metadata):
+        file_path = 'Photos/Getting_Started.pdf'
+
+        metadata_url = provider.build_url('metadata', 'auto', file_path)
+        aiohttpretty.register_json_uri('GET', metadata_url, body=file_metadata)
+
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/' + file_path)
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/' + file_path + '/')
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/' + file_path)
+
+        assert wb_path_v1 == wb_path_v0
+
+    @async
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize('settings', [{'folder': '/'}])
+    def test_validate_v1_path_folder(self, provider, folder_metadata):
+        folder_path = 'Photos'
+
+        metadata_url = provider.build_url('metadata', 'auto', folder_path)
+        aiohttpretty.register_json_uri('GET', metadata_url, body=folder_metadata)
+
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/' + folder_path + '/')
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/' + folder_path)
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/' + folder_path + '/')
+
+        assert wb_path_v1 == wb_path_v0
 
     @async
     def test_returns_path_obj(self, provider):
@@ -236,8 +287,9 @@ class TestCreateFolder:
     def test_already_exists(self, provider):
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
         url = provider.build_url('fileops', 'create_folder')
+        params = build_folder_metadata_params(path)
 
-        aiohttpretty.register_json_uri('POST', url, status=403, body={
+        aiohttpretty.register_json_uri('POST', url, params=params, status=403, body={
             'error': 'because a file or folder already exists at path'
         })
 
@@ -252,8 +304,9 @@ class TestCreateFolder:
     def test_forbidden(self, provider):
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
         url = provider.build_url('fileops', 'create_folder')
+        params = build_folder_metadata_params(path)
 
-        aiohttpretty.register_json_uri('POST', url, status=403, body={
+        aiohttpretty.register_json_uri('POST', url, params=params, status=403, body={
             'error': 'because I hate you'
         })
 
@@ -268,8 +321,9 @@ class TestCreateFolder:
     def test_raises_on_errors(self, provider):
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
         url = provider.build_url('fileops', 'create_folder')
+        params = build_folder_metadata_params(path)
 
-        aiohttpretty.register_json_uri('POST', url, status=418, body={})
+        aiohttpretty.register_json_uri('POST', url, params=params, status=418, body={})
 
         with pytest.raises(exceptions.CreateFolderError) as e:
             yield from provider.create_folder(path)
@@ -282,8 +336,9 @@ class TestCreateFolder:
         file_metadata['path'] = '/newfolder'
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
         url = provider.build_url('fileops', 'create_folder')
+        params = build_folder_metadata_params(path)
 
-        aiohttpretty.register_json_uri('POST', url, status=200, body=file_metadata)
+        aiohttpretty.register_json_uri('POST', url, params=params, status=200, body=file_metadata)
 
         resp = yield from provider.create_folder(path)
 

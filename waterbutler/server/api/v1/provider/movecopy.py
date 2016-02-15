@@ -24,7 +24,13 @@ class MoveCopyMixin:
                 raise exceptions.InvalidParameters('Invalid json body')
         return self._json
 
-    def validate_post(self):
+    def prevalidate_post(self):
+        """Validate body and query parameters before spending API calls on validating path.  We
+        don't trust path yet, so I don't wanna see it being used here.  Current validations:
+
+        1. Max body size is 1Mb.
+        2. Content-Length header must be provided.
+        """
         try:
             if int(self.request.headers['Content-Length']) > 1 * MBs:
                 # There should be no JSON body > 1 megs
@@ -104,6 +110,8 @@ class MoveCopyMixin:
                     conflict=self.json.get('conflict', DEFAULT_CONFLICT),
                 )
             )
+
+        self.dest_meta = metadata
 
         if created:
             self.set_status(201)

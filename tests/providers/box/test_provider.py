@@ -3,6 +3,7 @@ import pytest
 from tests.utils import async
 
 import io
+from http import client
 
 import aiohttpretty
 
@@ -269,6 +270,59 @@ def revisions_list_metadata():
     }
 
 
+class TestValidatePath:
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_validate_v1_path_file(self, provider, file_metadata):
+        file_id = '5000948880'
+
+        good_url = provider.build_url('files', file_id, fields='id,name,path_collection')
+        bad_url = provider.build_url('folders', file_id, fields='id,name,path_collection')
+
+        aiohttpretty.register_json_uri('get', good_url, body=file_metadata['entries'][0], status=200)
+        aiohttpretty.register_uri('get', bad_url, status=404)
+
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/' + file_id)
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/' + file_id + '/')
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/' + file_id)
+
+        assert wb_path_v1 == wb_path_v0
+
+    @async
+    @pytest.mark.aiohttpretty
+    def test_validate_v1_path_folder(self, provider, folder_object_metadata):
+        provider.folder = '0'
+        folder_id = '11446498'
+
+        good_url = provider.build_url('folders', folder_id, fields='id,name,path_collection')
+        bad_url = provider.build_url('files', folder_id, fields='id,name,path_collection')
+
+        aiohttpretty.register_json_uri('get', good_url, body=folder_object_metadata, status=200)
+        aiohttpretty.register_uri('get', bad_url, status=404)
+        try:
+            wb_path_v1 = yield from provider.validate_v1_path('/' + folder_id + '/')
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            yield from provider.validate_v1_path('/' + folder_id)
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = yield from provider.validate_path('/' + folder_id + '/')
+
+        assert wb_path_v1 == wb_path_v0
+
+
 class TestDownload:
 
     @async
@@ -409,7 +463,7 @@ class TestMetadata:
             if x['type'] == 'file':
                 expected.append(BoxFileMetadata(x, path.child(x['name'])))
             else:
-                expected.append(BoxFolderMetadata(x, path.child(x['name'])))
+                expected.append(BoxFolderMetadata(x, path.child(x['name'], folder=True)))
 
         assert result == expected
 
@@ -571,3 +625,4 @@ class TestCreateFolder:
         assert resp.name == '50 shades of nope'
         assert resp.path == '/{}/'.format(folder_object_metadata['id'])
         assert isinstance(resp, BoxFolderMetadata)
+        assert path.identifier_path == '/' + folder_object_metadata['id'] + '/'

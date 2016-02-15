@@ -1,4 +1,3 @@
-import os
 import asyncio
 
 from waterbutler.core import exceptions
@@ -6,30 +5,20 @@ from waterbutler.core import exceptions
 
 class CreateMixin:
 
-    def validate_put(self):
-        """Prevalidation for creation requests. Run BEFORE
-        the body of a request is accepted. Requests with bodies that are too large can be
-        rejected if we have not began to accept the body.
-        Validation is as follows:
+    def prevalidate_put(self):
+        """Prevalidation for creation requests. Runs BEFORE the body of a request is accepted and
+        before the path given in the url has been validated.  An early rejection here will save us
+        one or more API calls to the provider. Requests with bodies that are too large can be
+        rejected if we have not began to accept the body. Validation is as follows:
+
         1. Pull kind from query params. It must be file, folder, or not included (which defaults to file)
-        2. If path is a folder (ends with a slash) pull name from query parameters raise an exception if its not found
-            * If kind is folder a / is append to path
-        3. If path does not end with a / and kind is folder raise an exception
-        4. Ensure that content length is present for file uploads
-        5. Ensure that content length is either not present or 0 for folder creation requests
+        2. Ensure that content length is present for file uploads
+        3. Ensure that content length is either not present or 0 for folder creation requests
         """
         self.kind = self.get_query_argument('kind', default='file')
 
         if self.kind not in ('file', 'folder'):
             raise exceptions.InvalidParameters('Kind must be file, folder or unspecified (interpreted as file), not {}'.format(self.kind))
-
-        if self.path.endswith('/'):
-            name = self.get_query_argument('name')  # TODO What does this do?
-            self.path = os.path.join(self.path, name)
-            if self.kind == 'folder':
-                self.path += '/'
-        elif self.kind == 'folder':
-            raise exceptions.InvalidParameters('Path must end with a / if kind is folder')
 
         length = self.request.headers.get('Content-Length')
 
@@ -44,9 +33,35 @@ class CreateMixin:
         except ValueError:
                 raise exceptions.InvalidParameters('Invalid Content-Length')
 
+    def postvalidate_put(self):
+        """Postvalidation for creation requests. Runs BEFORE the body of a request is accepted, but
+        after the path has been validated.  Invalid path+params combinations can be rejected here.
+        Validation is as follows:
+
+        1. If path is a folder, the name parameter must be present.
+        2. If path is a file, the name parameter must be absent.
+        3. If the entity being created is a folder, then path must be a folder as well.
+        """
+
+        self.childs_name = self.get_query_argument('name', default=None)
+
+        if self.path.is_dir:
+            if self.childs_name is None:
+                raise exceptions.InvalidParameters('Missing required parameter \'name\'')
+            self.target_path = self.path.child(self.childs_name, folder=(self.kind == 'folder'))
+        else:
+            if self.childs_name is not None:
+                raise exceptions.InvalidParameters("'name' parameter doesn't apply to actions on files")
+            if self.kind == 'folder':
+                raise exceptions.InvalidParameters(
+                    'Path must be a folder (and end with a "/") if trying to create a subfolder',
+                    code=409
+                )
+            self.target_path = self.path
+
     @asyncio.coroutine
     def create_folder(self):
-        metadata = yield from self.provider.create_folder(self.path)
+        metadata = yield from self.provider.create_folder(self.target_path)
         self.set_status(201)
         self.write({'data': metadata.json_api_serialized(self.resource)})
 

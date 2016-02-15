@@ -63,12 +63,19 @@ class BaseFigshareProvider(provider.BaseProvider):
 
         return base.child(path, folder=False)
 
+    def can_duplicate_names(self):
+        return True
+
 
 class FigshareProjectProvider(BaseFigshareProvider):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.project_id = self.settings['project_id']
+
+    @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
 
     @asyncio.coroutine
     def validate_path(self, path, **kwargs):
@@ -219,6 +226,10 @@ class FigshareArticleProvider(BaseFigshareProvider):
         super().__init__(auth, credentials, settings)
         self.article_id = self.settings['article_id']
         self.child = child
+
+    @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        return self.validate_path(path, **kwargs)
 
     @asyncio.coroutine
     def validate_path(self, path, parent=None, **kwargs):

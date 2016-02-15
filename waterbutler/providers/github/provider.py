@@ -31,6 +31,11 @@ class GitHubPathPart(path.WaterButlerPathPart):
 class GitHubPath(path.WaterButlerPath):
     PART_CLASS = GitHubPathPart
 
+    def child(self, name, _id=None, folder=False):
+        if _id is None:
+            _id = (self.identifier[0], None)
+        return super().child(name, _id=_id, folder=folder)
+
 
 class GitHubProvider(provider.BaseProvider):
     NAME = 'github'
@@ -58,13 +63,47 @@ class GitHubProvider(provider.BaseProvider):
         self.repo = self.settings['repo']
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        if not getattr(self, '_repo', None):
+            self._repo = yield from self._fetch_repo()
+            self.default_branch = self._repo['default_branch']
+
+        branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
+
+        implicit_folder = path.endswith('/')
+
+        url = furl.furl(self.build_repo_url('contents', path))
+        url.args.update({'ref': branch_ref})
+        resp = yield from self.make_request(
+            'GET',
+            url.url,
+            expects=(200, ),
+            throws=exceptions.MetadataError
+        )
+
+        content = yield from resp.json()
+        explicit_folder = isinstance(content, list)
+
+        if implicit_folder != explicit_folder:
+            raise exceptions.NotFoundError(path)
+
+        path = GitHubPath(path)
+        for part in path.parts:
+            part._id = (branch_ref, None)
+
+        # TODO Validate that filesha is a valid sha
+        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
+
+        return path
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         if not getattr(self, '_repo', None):
             self._repo = yield from self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
         path = GitHubPath(path)
-        branch_ref = kwargs.get('branch') or kwargs.get('ref') or self.default_branch
+        branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
 
         for part in path.parts:
             part._id = (branch_ref, None)
@@ -77,6 +116,9 @@ class GitHubProvider(provider.BaseProvider):
     @asyncio.coroutine
     def revalidate_path(self, base, path, folder=False):
         return base.child(path, _id=((base.identifier[0], None)), folder=folder)
+
+    def can_duplicate_names(self):
+        return False
 
     @property
     def default_headers(self):
@@ -425,7 +467,17 @@ class GitHubProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError
         )
-        return (yield from resp.json())
+        tree = yield from resp.json()
+
+        if tree['truncated']:
+            raise exceptions.ProviderError(
+                ('Some folder operations on large GitHub repositories cannot be supported without'
+                 ' data loss.  To carry out this operation, please perform it in a local git'
+                 ' repository, then push to the target repository on GitHub.'),
+                code=501
+            )
+
+        return tree
 
     @asyncio.coroutine
     def _create_tree(self, tree):
@@ -500,6 +552,12 @@ class GitHubProvider(provider.BaseProvider):
                 else:
                     raise
 
+            if isinstance(data, dict):
+                raise exceptions.MetadataError(
+                    'Could not retrieve folder "{0}"'.format(str(path)),
+                    code=404,
+                )
+
             ret = []
             for item in data:
                 if item['type'] == 'dir':
@@ -567,35 +625,46 @@ class GitHubProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def _do_intra_move_or_copy(self, src_path, dest_path, is_copy):
-        target, branch = None, src_path.identifier[0]
+
+        # ON PATHS:
+        #   WB and GH use slightly different default conventions for their paths, so we often
+        #   have to munge our WB paths before comparison. Here is a quick overview:
+        #     WB (dirs):  wb_dir.path == 'foo/bar/'     str(wb_dir) == '/foo/bar/'
+        #     WB (file):  wb_file.path = 'foo/bar.txt'  str(wb_file) == '/foo/bar.txt'
+        #     GH (dir):   'foo/bar'
+        #     GH (file):  'foo/bar.txt'
+
+        branch = src_path.identifier[0]
         branch_data = yield from self._fetch_branch(branch)
 
         old_commit_sha = branch_data['commit']['sha']
         old_commit_tree_sha = branch_data['commit']['commit']['tree']['sha']
 
         tree = yield from self._fetch_tree(old_commit_tree_sha, recursive=True)
-        exists = any(x['path'] == dest_path.path for x in tree['tree'])
+        exists = any(x['path'] == dest_path.path.rstrip('/') for x in tree['tree'])
 
-        target, keep = None, []
+        blobs = [
+            item
+            for item in tree['tree']
+            if src_path.is_dir and item['path'].startswith(src_path.path) or
+            src_path.is_file and item['path'] == src_path.path
+        ]
 
-        for item in tree['tree']:
-            if item['path'] == str(src_path).strip('/'):
-                assert target is None, 'Found multiple targets'
-                target = item
-            elif item['path'].startswith(src_path.path):
-                keep.append(item)
-
-        if target is None or (src_path.is_dir and target['type'] != 'tree'):
+        if len(blobs) == 0:
             raise exceptions.NotFoundError(str(src_path))
 
+        if src_path.is_file:
+            assert len(blobs) == 1, 'Found multiple targets'
+
         if is_copy:
-            tree['tree'].append(copy.deepcopy(target))
-        elif src_path.is_dir:
-            for item in keep:
-                tree['tree'].remove(item)
+            tree['tree'].extend([copy.deepcopy(blob) for blob in blobs])
 
-        target['path'] = target['path'].replace(src_path.path.strip('/'), dest_path.path.strip('/'), 1)
+        for blob in blobs:
+            blob['path'] = blob['path'].replace(src_path.path, dest_path.path, 1)
 
+        # github infers tree contents from blob paths
+        # see: http://www.levibotelho.com/development/commit-a-file-with-the-github-api/
+        tree['tree'] = [item for item in tree['tree'] if item['type'] != 'tree']
         new_tree_data = yield from self._create_tree({'tree': tree['tree']})
         new_tree_sha = new_tree_data['sha']
 
@@ -628,7 +697,8 @@ class GitHubProvider(provider.BaseProvider):
         )
 
         if dest_path.is_file:
-            return GitHubFileTreeMetadata(target, commit=commit), not exists
+            assert len(blobs) == 1, 'Destination file should have exactly one candidate'
+            return GitHubFileTreeMetadata(blobs[0], commit=commit), not exists
 
         folder = GitHubFolderTreeMetadata({
             'path': dest_path.path.strip('/')
@@ -636,11 +706,12 @@ class GitHubProvider(provider.BaseProvider):
 
         folder.children = []
 
-        for item in keep:
-            item['path'] = item['path'].replace(src_path.path, dest_path.path, 1)
+        for item in blobs:
+            if item['path'] == src_path.path.rstrip('/'):
+                continue
             if item['type'] == 'tree':
                 folder.children.append(GitHubFolderTreeMetadata(item))
             else:
                 folder.children.append(GitHubFileTreeMetadata(item))
 
-        return folder, exists
+        return folder, not exists

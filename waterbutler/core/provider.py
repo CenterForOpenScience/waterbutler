@@ -29,9 +29,8 @@ def build_url(base, *segments, **query):
 
 
 class BaseProvider(metaclass=abc.ABCMeta):
-    """The base class for all providers.
-    Every provider must, at the least,
-    implement all abstract methods in this class
+    """The base class for all providers. Every provider must, at the least, implement all abstract
+    methods in this class.
 
     .. note::
         When adding a new provider you must add it to setup.py's
@@ -77,10 +76,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         }
 
     def build_url(self, *segments, **query):
-        """A nice wrapped around furl, builds urls based on self.BASE_URL
+        """A nice wrapper around furl, builds urls based on self.BASE_URL
 
-        :param (str, ...) segments: A tuple of string joined into /foo/bar/..
-        :param dict query: A dictionary that will be turned into query parameters ?foo=bar
+        :param tuple \*segments: A tuple of strings joined into /foo/bar/..
+        :param dict \*\*query: A dictionary that will be turned into query parameters ?foo=bar
         :rtype: str
         """
         return build_url(self.BASE_URL, *segments, **query)
@@ -113,7 +112,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :type expects: tuple of ints
         :param Exception throws: The exception to be raised from expects
         :param tuple \*args: args passed to :func:`aiohttp.request`
-        :param dict \*kwargs: kwargs passed to :func:`aiohttp.request`
+        :param dict \*\*kwargs: kwargs passed to :func:`aiohttp.request`
         :rtype: :class:`aiohttp.Response`
         :raises ProviderError: Raised if expects is defined
         """
@@ -242,10 +241,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def handle_naming(self, src_path, dest_path, rename=None, conflict='replace'):
-        """Given a WaterButlerPath and the desired name handle any potential
-        naming issues
+        """Given a WaterButlerPath and the desired name, handle any potential naming issues.
 
-        ie:
+        i.e.:
             cp /file.txt /folder/ -> /folder/file.txt
             cp /folder/ /folder/ -> /folder/folder/
             cp /file.txt /folder/file.txt -> /folder/file.txt
@@ -275,8 +273,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return dest_path
 
     def can_intra_copy(self, other, path=None):
-        """Indicates if a quick copy can be performed
-        between the current and `other`.
+        """Indicates if a quick copy can be performed between the current provider and `other`.
 
         .. note::
             Defaults to False
@@ -287,8 +284,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return False
 
     def can_intra_move(self, other, path=None):
-        """Indicates if a quick move can be performed
-        between the current and `other`.
+        """Indicates if a quick move can be performed between the current provider and `other`.
 
         .. note::
             Defaults to False
@@ -342,6 +338,14 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def revalidate_path(self, base, path, folder=False):
+        """Take a path and a base path and build a WaterButlerPath representing `/base/path`.  For
+        id-based providers, this will need to lookup the id of the new child object.
+
+        :param WaterButlerPath base: The base folder to look under
+        :param str path: the path of a child of `base`, relative to `base`
+        :param bool folder: whether the returned WaterButlerPath should represent a folder
+        :rtype: WaterButlerPath
+        """
         return base.child(path, folder=folder)
 
     @asyncio.coroutine
@@ -382,6 +386,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return lambda: self.download(path)
 
     @abc.abstractmethod
+    def can_duplicate_names(self):
+        """Returns True if a file and a folder in the same directory can have identical names."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def download(self, **kwargs):
         """Download a file from this provider.
 
@@ -413,13 +422,30 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def metadata(self, **kwargs):
-        """Get metdata about the specified resource from this provider.
-        Will be a :class:`list` if the resource is a directory otherwise an instance of :class:`waterbutler.core.metadata.BaseFileMetadata`
+        """Get metdata about the specified resource from this provider. Will be a :class:`list`
+        if the resource is a directory otherwise an instance of
+        :class:`waterbutler.core.metadata.BaseFileMetadata`
 
         :param dict \*\*kwargs: Arguments to be parsed by child classes
         :rtype: :class:`waterbutler.core.metadata.BaseMetadata`
         :rtype: :class:`list` of :class:`waterbutler.core.metadata.BaseMetadata`
         :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def validate_v1_path(self, path, **kwargs):
+        """API v1 requires that requests against folder endpoints always end with a slash, and
+        requests against files never end with a slash.  This method checks the provider's metadata
+        for the given id and throws a 404 Not Found if the implicit and explicit types don't
+        match.  This method duplicates the logic in the provider's validate_path method, but
+        validate_path must currently accomodate v0 AND v1 semantics.  After v0's retirement, this
+        method can replace validate_path.
+
+        :param str path: user-supplied path to validate
+        :rtype: :class:`waterbutler.core.path`
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+
         """
         raise NotImplementedError
 

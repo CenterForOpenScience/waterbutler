@@ -23,8 +23,23 @@ class FileSystemProvider(provider.BaseProvider):
         os.makedirs(self.folder, exist_ok=True)
 
     @asyncio.coroutine
+    def validate_v1_path(self, path, **kwargs):
+        if not os.path.exists(self.folder + path):
+            raise exceptions.NotFoundError(str(path))
+
+        implicit_folder = path.endswith('/')
+        explicit_folder = os.path.isdir(self.folder + path)
+        if implicit_folder != explicit_folder:
+            raise exceptions.NotFoundError(str(path))
+
+        return WaterButlerPath(path, prepend=self.folder)
+
+    @asyncio.coroutine
     def validate_path(self, path, **kwargs):
         return WaterButlerPath(path, prepend=self.folder)
+
+    def can_duplicate_names(self):
+        return False
 
     @asyncio.coroutine
     def intra_copy(self, dest_provider, src_path, dest_path):
@@ -104,7 +119,7 @@ class FileSystemProvider(provider.BaseProvider):
 
     def _metadata_file(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
-        modified = datetime.datetime.fromtimestamp(os.path.getmtime(full_path))
+        modified = datetime.datetime.utcfromtimestamp(os.path.getmtime(full_path)).replace(tzinfo=datetime.timezone.utc)
         return {
             'path': full_path,
             'size': os.path.getsize(full_path),
