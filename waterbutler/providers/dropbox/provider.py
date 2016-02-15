@@ -1,6 +1,5 @@
 import json
 import http
-import asyncio
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -22,28 +21,26 @@ class DropboxProvider(provider.BaseProvider):
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
 
-    @asyncio.coroutine
-    def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path, **kwargs):
         if path == '/':
             return WaterButlerPath(path, prepend=self.folder)
 
         implicit_folder = path.endswith('/')
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET', self.build_url('metadata', 'auto', self.folder + path),
             expects=(200,),
             throws=exceptions.MetadataError
         )
 
-        data = yield from resp.json()
+        data = await resp.json()
         explicit_folder = data['is_dir']
         if explicit_folder != implicit_folder:
             raise exceptions.NotFoundError(str(path))
 
         return WaterButlerPath(path, prepend=self.folder)
 
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path, prepend=self.folder)
 
     def can_duplicate_names(self):
@@ -55,13 +52,12 @@ class DropboxProvider(provider.BaseProvider):
             'Authorization': 'Bearer {}'.format(self.token),
         }
 
-    @asyncio.coroutine
-    def intra_copy(self, dest_provider, src_path, dest_path):
+    async def intra_copy(self, dest_provider, src_path, dest_path):
         dest_folder = dest_provider.folder
 
         try:
             if self == dest_provider:
-                resp = yield from self.make_request(
+                resp = await self.make_request(
                     'POST',
                     self.build_url('fileops', 'copy'),
                     data={
@@ -73,12 +69,12 @@ class DropboxProvider(provider.BaseProvider):
                     throws=exceptions.IntraCopyError,
                 )
             else:
-                from_ref_resp = yield from self.make_request(
+                from_ref_resp = await self.make_request(
                     'GET',
                     self.build_url('copy_ref', 'auto', src_path.full_path),
                 )
-                from_ref_data = yield from from_ref_resp.json()
-                resp = yield from self.make_request(
+                from_ref_data = await from_ref_resp.json()
+                resp = await self.make_request(
                     'POST',
                     self.build_url('fileops', 'copy'),
                     data={
@@ -94,12 +90,12 @@ class DropboxProvider(provider.BaseProvider):
             if e.code != 403:
                 raise
 
-            yield from dest_provider.delete(dest_path)
-            resp, _ = yield from self.intra_copy(dest_provider, src_path, dest_path)
+            await dest_provider.delete(dest_path)
+            resp, _ = await self.intra_copy(dest_provider, src_path, dest_path)
             return resp, False
 
         # TODO Refactor into a function
-        data = yield from resp.json()
+        data = await resp.json()
 
         if not data['is_dir']:
             return DropboxFileMetadata(data, dest_folder), True
@@ -115,8 +111,7 @@ class DropboxProvider(provider.BaseProvider):
 
         return folder, True
 
-    @asyncio.coroutine
-    def intra_move(self, dest_provider, src_path, dest_path):
+    async def intra_move(self, dest_provider, src_path, dest_path):
         if dest_path.full_path.lower() == src_path.full_path.lower():
             # Dropbox does not support changing the casing in a file name
             raise exceptions.InvalidPathError('In Dropbox to change case, add or subtract other characters.')
@@ -124,7 +119,7 @@ class DropboxProvider(provider.BaseProvider):
         dest_folder = dest_provider.folder
 
         try:
-            resp = yield from self.make_request(
+            resp = await self.make_request(
                 'POST',
                 self.build_url('fileops', 'move'),
                 data={
@@ -139,11 +134,11 @@ class DropboxProvider(provider.BaseProvider):
             if e.code != 403:
                 raise
 
-            yield from dest_provider.delete(dest_path)
-            resp, _ = yield from self.intra_move(dest_provider, src_path, dest_path)
+            await dest_provider.delete(dest_path)
+            resp, _ = await self.intra_move(dest_provider, src_path, dest_path)
             return resp, False
 
-        data = yield from resp.json()
+        data = await resp.json()
 
         if not data['is_dir']:
             return DropboxFileMetadata(data, dest_folder), True
@@ -159,15 +154,14 @@ class DropboxProvider(provider.BaseProvider):
 
         return folder, True
 
-    @asyncio.coroutine
-    def download(self, path, revision=None, range=None, **kwargs):
+    async def download(self, path, revision=None, range=None, **kwargs):
         if revision:
             url = self._build_content_url('files', 'auto', path.full_path, rev=revision)
         else:
             # Dont add unused query parameters
             url = self._build_content_url('files', 'auto', path.full_path)
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET',
             url,
             range=range,
@@ -182,11 +176,10 @@ class DropboxProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp, size=size)
 
-    @asyncio.coroutine
-    def upload(self, stream, path, conflict='replace', **kwargs):
-        path, exists = yield from self.handle_name_conflict(path, conflict=conflict)
+    async def upload(self, stream, path, conflict='replace', **kwargs):
+        path, exists = await self.handle_name_conflict(path, conflict=conflict)
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'PUT',
             self._build_content_url('files_put', 'auto', path.full_path),
             headers={'Content-Length': str(stream.size)},
@@ -195,37 +188,36 @@ class DropboxProvider(provider.BaseProvider):
             throws=exceptions.UploadError,
         )
 
-        data = yield from resp.json()
+        data = await resp.json()
         return DropboxFileMetadata(data, self.folder), not exists
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
-        yield from self.make_request(
+    async def delete(self, path, **kwargs):
+        resp = await self.make_request(
             'POST',
             self.build_url('fileops', 'delete'),
             data={'root': 'auto', 'path': path.full_path},
             expects=(200, ),
             throws=exceptions.DeleteError,
         )
+        await resp.release()
 
-    @asyncio.coroutine
-    def metadata(self, path, revision=None, **kwargs):
+    async def metadata(self, path, revision=None, **kwargs):
         if revision:
             url = self.build_url('revisions', 'auto', path.full_path, rev_limit=250)
 
         else:
             url = self.build_url('metadata', 'auto', path.full_path)
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET', url,
             expects=(200, ),
             throws=exceptions.MetadataError
         )
 
-        data = yield from resp.json()
+        data = await resp.json()
 
         if revision:
             try:
-                data = next(v for v in (yield from resp.json()) if v['rev'] == revision)
+                data = next(v for v in (await resp.json()) if v['rev'] == revision)
             except StopIteration:
                 raise exceptions.NotFoundError(str(path))
 
@@ -256,15 +248,14 @@ class DropboxProvider(provider.BaseProvider):
 
         return DropboxFileMetadata(data, self.folder)
 
-    @asyncio.coroutine
-    def revisions(self, path, **kwargs):
-        response = yield from self.make_request(
+    async def revisions(self, path, **kwargs):
+        response = await self.make_request(
             'GET',
             self.build_url('revisions', 'auto', path.full_path, rev_limit=250),
             expects=(200, ),
             throws=exceptions.RevisionsError
         )
-        data = yield from response.json()
+        data = await response.json()
 
         return [
             DropboxRevision(item)
@@ -272,14 +263,13 @@ class DropboxProvider(provider.BaseProvider):
             if not item.get('is_deleted')
         ]
 
-    @asyncio.coroutine
-    def create_folder(self, path, **kwargs):
+    async def create_folder(self, path, **kwargs):
         """
         :param str path: The path to create a folder at
         """
         WaterButlerPath.validate_folder(path)
 
-        response = yield from self.make_request(
+        response = await self.make_request(
             'POST',
             self.build_url('fileops', 'create_folder'),
             params={
@@ -290,7 +280,7 @@ class DropboxProvider(provider.BaseProvider):
             throws=exceptions.CreateFolderError
         )
 
-        data = yield from response.json()
+        data = await response.json()
 
         if response.status == 403:
             if 'because a file or folder already exists at path' in data.get('error'):

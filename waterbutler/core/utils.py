@@ -62,15 +62,15 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
 
         @as_task
         @functools.wraps(func)
-        def wrapped(*args, __retries=0, **kwargs):
+        async def wrapped(*args, __retries=0, **kwargs):
             try:
-                return (yield from asyncio.coroutine(func)(*args, **kwargs))
+                return (await asyncio.coroutine(func)(*args, **kwargs))
             except exceptions as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
                     logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting {4} seconds before retrying'.format(func, e, __retries, retries, wait_time))
 
-                    yield from asyncio.sleep(wait_time)
+                    await asyncio.sleep(wait_time)
                     return wrapped(*args, __retries=__retries + 1, **kwargs)
                 else:
                     # Logs before all things
@@ -90,10 +90,9 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
     return _async_retry
 
 
-@asyncio.coroutine
-def send_signed_request(method, url, payload):
+async def send_signed_request(method, url, payload):
     message, signature = signer.sign_payload(payload)
-    return (yield from aiohttp.request(
+    return (await aiohttp.request(
         method, url,
         data=json.dumps({
             'payload': message.decode(),
@@ -101,3 +100,63 @@ def send_signed_request(method, url, payload):
         }),
         headers={'Content-Type': 'application/json'},
     ))
+
+
+class ZipStreamGenerator:
+    def __init__(self, provider, parent_path, *metadata_objs):
+        self.provider = provider
+        self.parent_path = parent_path
+        self.remaining = [
+            (parent_path, metadata)
+            for metadata in metadata_objs
+        ]
+
+    async def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if not self.remaining:
+            raise StopAsyncIteration
+        path = self.provider.path_from_metadata(*self.remaining.pop(0))
+        if path.is_dir:
+            self.remaining.extend([
+                (path, item) for item in
+                await self.provider.metadata(path)
+            ])
+            return await self.__anext__()
+
+        return path.path.replace(self.parent_path.path, ''), await self.provider.download(path)
+
+
+class RequestHandlerContext:
+
+    def __init__(self, request_coro):
+        self.request = None
+        self.request_coro = request_coro
+
+    async def __aenter__(self):
+        self.request = await self.request_coro
+        return self.request
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.request.release()
+        if exc_type:
+            raise exc_val.with_traceback(exc_tb)
+
+
+class AsyncIterator:
+    """A wrapper class that makes normal iterators
+    look like async iterators
+    """
+
+    def __init__(self, iterable):
+        self.iterable = iter(iterable)
+
+    async def __aiter__(self):
+        return self.iterable
+
+    async def __anext__(self):
+        try:
+            return next(self.iterable)
+        except StopIteration:
+            raise StopAsyncIteration

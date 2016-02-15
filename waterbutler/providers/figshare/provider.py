@@ -38,20 +38,18 @@ class BaseFigshareProvider(provider.BaseProvider):
             resource_owner_secret=self.credentials['owner_secret'],
         )
 
-    @asyncio.coroutine
-    def make_request(self, method, uri, *args, **kwargs):
+    async def make_request(self, method, uri, *args, **kwargs):
         signed_uri, signed_headers, _ = self.client.sign(uri, method)
         signed_headers.update(kwargs.pop('headers', {}))
         kwargs['headers'] = signed_headers
-        return (yield from super().make_request(method, signed_uri, *args, **kwargs))
+        return (await super().make_request(method, signed_uri, *args, **kwargs))
 
-    @asyncio.coroutine
-    def revalidate_path(self, base, path, folder=False):
+    async def revalidate_path(self, base, path, folder=False):
         wbpath = base
         assert base.is_dir
         path = path.strip('/')
 
-        for entry in (yield from self.metadata(base)):
+        for entry in (await self.metadata(base)):
             if entry.name == path:
                 # base may when refering to a file will have a article id as well
                 # This handles that case so the resulting path is actually correct
@@ -73,19 +71,17 @@ class FigshareProjectProvider(BaseFigshareProvider):
         super().__init__(*args, **kwargs)
         self.project_id = self.settings['project_id']
 
-    @asyncio.coroutine
-    def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path, **kwargs):
         return self.validate_path(path, **kwargs)
 
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         split = path.rstrip('/').split('/')[1:]
         wbpath = WaterButlerPath('/', _ids=(self.settings['project_id'], ), folder=True)
 
         if split:
             name_or_id = split.pop(0)
             try:
-                article = yield from self._assert_contains_article(name_or_id)
+                article = await self._assert_contains_article(name_or_id)
             except ValueError:
                 return wbpath.child(name_or_id, folder=False)
             except exceptions.ProviderError as e:
@@ -96,9 +92,9 @@ class FigshareProjectProvider(BaseFigshareProvider):
             wbpath = wbpath.child(article['title'], article['id'], folder=True)
 
         if split:
-            provider = yield from self._make_article_provider(article['id'], check_parent=False)
+            provider = await self._make_article_provider(article['id'], check_parent=False)
             try:
-                return (yield from provider.validate_path('/'.join([''] + split), parent=wbpath))
+                return (await provider.validate_path('/'.join([''] + split), parent=wbpath))
             except exceptions.ProviderError as e:
                 if e.code not in (404, 401):
                     raise
@@ -106,9 +102,8 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         return wbpath
 
-    @asyncio.coroutine
-    def _assert_contains_article(self, article_id):
-        articles_json = yield from self._list_articles()
+    async def _assert_contains_article(self, article_id):
+        articles_json = await self._list_articles()
         try:
             return next(
                 each for each in articles_json
@@ -120,51 +115,45 @@ class FigshareProjectProvider(BaseFigshareProvider):
                 code=http.client.NOT_FOUND,
             )
 
-    @asyncio.coroutine
-    def _make_article_provider(self, article_id, check_parent=True):
+    async def _make_article_provider(self, article_id, check_parent=True):
         article_id = str(article_id)
         if check_parent:
-            yield from self._assert_contains_article(article_id)
+            await self._assert_contains_article(article_id)
         settings = {'article_id': article_id}
         return FigshareArticleProvider(self.auth, self.credentials, settings, child=True)
 
-    @asyncio.coroutine
-    def _get_project_metadata(self):
-        response = yield from self.make_request(
+    async def _get_project_metadata(self):
+        response = await self.make_request(
             'GET',
             self.build_url('projects', self.project_id),
             expects=(200, ),
         )
-        data = yield from response.json()
+        data = await response.json()
         return data
         return metadata.FigshareProjectMetadata(data)
 
-    @asyncio.coroutine
-    def _list_articles(self):
-        response = yield from self.make_request(
+    async def _list_articles(self):
+        response = await self.make_request(
             'GET',
             self.build_url('projects', self.project_id, 'articles'),
             expects=(200, ),
         )
-        return (yield from response.json())
+        return (await response.json())
 
-    @asyncio.coroutine
-    def _get_article_metadata(self, article_id):
-        provider = yield from self._make_article_provider(article_id, check_parent=False)
-        return (yield from provider.about())
+    async def _get_article_metadata(self, article_id):
+        provider = await self._make_article_provider(article_id, check_parent=False)
+        return (await provider.about())
 
-    @asyncio.coroutine
-    def _project_metadata_contents(self):
-        articles_json = yield from self._list_articles()
-        contents = yield from asyncio.gather(*[
+    async def _project_metadata_contents(self):
+        articles_json = await self._list_articles()
+        contents = await asyncio.gather(*[
             self._get_article_metadata(each['id'])
             for each in articles_json
         ])
         return [each for each in contents if each]
 
-    @asyncio.coroutine
-    def _create_article(self, name):
-        response = yield from self.make_request(
+    async def _create_article(self, name):
+        response = await self.make_request(
             'POST',
             self.build_url('articles'),
             data=json.dumps({
@@ -174,49 +163,44 @@ class FigshareProjectProvider(BaseFigshareProvider):
             headers={'Content-Type': 'application/json'},
             expects=(200, ),
         )
-        return (yield from response.json())
+        return (await response.json())
 
-    @asyncio.coroutine
-    def download(self, path, **kwargs):
+    async def download(self, path, **kwargs):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
-        provider = yield from self._make_article_provider(path.parts[1].identifier)
-        return (yield from provider.download(path, **kwargs))
+        provider = await self._make_article_provider(path.parts[1].identifier)
+        return (await provider.download(path, **kwargs))
 
-    @asyncio.coroutine
-    def upload(self, stream, path, **kwargs):
+    async def upload(self, stream, path, **kwargs):
         if not path.parent.is_root:
-            provider = yield from self._make_article_provider(path.parent.identifier)
+            provider = await self._make_article_provider(path.parent.identifier)
         else:
-            article_json = yield from self._create_article(path.name)
-            provider = yield from self._make_article_provider(article_json['article_id'], check_parent=False)
-            yield from provider._add_to_project(self.project_id)
+            article_json = await self._create_article(path.name)
+            provider = await self._make_article_provider(article_json['article_id'], check_parent=False)
+            await provider._add_to_project(self.project_id)
 
-        return (yield from provider.upload(stream, path, **kwargs))
+        return (await provider.upload(stream, path, **kwargs))
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
-        provider = yield from self._make_article_provider(path.parts[1].identifier)
+    async def delete(self, path, **kwargs):
+        provider = await self._make_article_provider(path.parts[1].identifier)
 
         if len(path.parts) == 3:
-            yield from provider.delete(path, **kwargs)
+            await provider.delete(path, **kwargs)
         else:
-            yield from provider._remove_from_project(self.project_id)
+            await provider._remove_from_project(self.project_id)
 
-    @asyncio.coroutine
-    def metadata(self, path, **kwargs):
+    async def metadata(self, path, **kwargs):
         if path.is_root:
-            return (yield from self._project_metadata_contents())
+            return (await self._project_metadata_contents())
 
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
-        provider = yield from self._make_article_provider(path.parts[1].identifier)
-        return (yield from provider.metadata(path, **kwargs))
+        provider = await self._make_article_provider(path.parts[1].identifier)
+        return (await provider.metadata(path, **kwargs))
 
-    @asyncio.coroutine
-    def revisions(self, path, **kwargs):
+    async def revisions(self, path, **kwargs):
         raise exceptions.ProviderError({'message': 'figshare does not support file revisions.'}, code=405)
 
 
@@ -227,12 +211,10 @@ class FigshareArticleProvider(BaseFigshareProvider):
         self.article_id = self.settings['article_id']
         self.child = child
 
-    @asyncio.coroutine
-    def validate_v1_path(self, path, **kwargs):
-        return self.validate_path(path, **kwargs)
+    async def validate_v1_path(self, path, **kwargs):
+        return await self.validate_path(path, **kwargs)
 
-    @asyncio.coroutine
-    def validate_path(self, path, parent=None, **kwargs):
+    async def validate_path(self, path, parent=None, **kwargs):
         split = path.rstrip('/').split('/')[1:]
         wbpath = parent or WaterButlerPath('/', _ids=(self.article_id, ), folder=True)
 
@@ -244,7 +226,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
             except ValueError:
                 fid = name
 
-            article_json = yield from self._get_article_json()
+            article_json = await self._get_article_json()
             try:
                 wbpath = wbpath.child(**next(
                     {
@@ -258,37 +240,34 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
         return wbpath
 
-    @asyncio.coroutine
-    def _get_article_json(self):
-        response = yield from self.make_request(
+    async def _get_article_json(self):
+        response = await self.make_request(
             'GET',
             self.build_url('articles', self.article_id),
             expects=(200, ),
         )
-        data = yield from response.json()
+        data = await response.json()
         return data['items'][0]
 
-    @asyncio.coroutine
-    def _add_to_project(self, project_id):
-        resp = yield from self.make_request(
+    async def _add_to_project(self, project_id):
+        resp = await self.make_request(
             'PUT',
             self.build_url('projects', project_id, 'articles'),
             data=json.dumps({'article_id': int(self.article_id)}),
             headers={'Content-Type': 'application/json'},
             expects=(200, ),
         )
-        return (yield from resp.json())
+        return (await resp.json())
 
-    @asyncio.coroutine
-    def _remove_from_project(self, project_id):
-        resp = yield from self.make_request(
+    async def _remove_from_project(self, project_id):
+        resp = await self.make_request(
             'DELETE',
             self.build_url('projects', project_id, 'articles'),
             data=json.dumps({'article_id': int(self.article_id)}),
             headers={'Content-Type': 'application/json'},
             expects=(200, ),
         )
-        return (yield from resp.json())
+        return (await resp.json())
 
     def _serialize_item(self, item, parent):
         defined_type = item.get('defined_type')
@@ -306,13 +285,11 @@ class FigshareArticleProvider(BaseFigshareProvider):
                 item = item['files'][0]
         return metadata_class(item, **metadata_kwargs)
 
-    @asyncio.coroutine
-    def about(self):
-        article_json = yield from self._get_article_json()
+    async def about(self):
+        article_json = await self._get_article_json()
         return self._serialize_item(article_json, article_json)
 
-    @asyncio.coroutine
-    def download(self, path, **kwargs):
+    async def download(self, path, **kwargs):
         """Download a file. Note: Although Figshare may return a download URL,
         the `accept_url` parameter is ignored here, since Figshare does not
         support HTTPS for downloads.
@@ -323,34 +300,33 @@ class FigshareArticleProvider(BaseFigshareProvider):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
-        file_metadata = yield from self.metadata(path)
+        file_metadata = await self.metadata(path)
         download_url = file_metadata.extra['downloadUrl']
         if download_url is None:
             raise exceptions.DownloadError(
                 'Cannot download private files',
                 code=http.client.FORBIDDEN,
             )
-        resp = yield from aiohttp.request('GET', download_url)
+        resp = await aiohttp.request('GET', download_url)
         return streams.ResponseStreamReader(resp)
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
-        yield from self.make_request(
+    async def delete(self, path, **kwargs):
+        resp = await self.make_request(
             'DELETE',
             self.build_url('articles', str(self.article_id), 'files', str(path.identifier)),
             expects=(200, ),
             throws=exceptions.DeleteError,
         )
+        await resp.release()
 
-    @asyncio.coroutine
-    def upload(self, stream, path, **kwargs):
-        article_json = yield from self._get_article_json()
+    async def upload(self, stream, path, **kwargs):
+        article_json = await self._get_article_json()
 
         stream = streams.FormDataStream(
             filedata=(stream, path.name)
         )
 
-        response = yield from self.make_request(
+        response = await self.make_request(
             'PUT',
             self.build_url('articles', self.article_id, 'files'),
             data=stream,
@@ -358,15 +334,14 @@ class FigshareArticleProvider(BaseFigshareProvider):
             headers=stream.headers,
         )
 
-        data = yield from response.json()
+        data = await response.json()
         return metadata.FigshareFileMetadata(data, parent=article_json, child=self.child), True
 
-    @asyncio.coroutine
-    def metadata(self, path, **kwargs):
+    async def metadata(self, path, **kwargs):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
-        article_json = yield from self._get_article_json()
+        article_json = await self._get_article_json()
 
         if path.is_root or str(path.identifier) == self.article_id:
             return [x for x in [
@@ -377,6 +352,5 @@ class FigshareArticleProvider(BaseFigshareProvider):
         file_json = figshare_utils.file_or_error(article_json, path.identifier)
         return self._serialize_item(file_json, parent=article_json)
 
-    @asyncio.coroutine
-    def revisions(self, path, **kwargs):
+    async def revisions(self, path, **kwargs):
         raise exceptions.ProviderError({'message': 'figshare does not support file revisions.'}, code=405)

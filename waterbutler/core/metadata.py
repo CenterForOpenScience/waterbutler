@@ -255,7 +255,6 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
 
     def json_api_serialized(self):
         """The JSON API serialization of revision metadata from WaterButler.
-
         .. note::
 
             This method determines the output of API v1

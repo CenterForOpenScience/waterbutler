@@ -168,14 +168,21 @@ class WaterButlerPath:
         return self._is_folder
 
     @property
+    def is_folder(self):
+        return self._is_folder
+
+    @property
     def kind(self):
-        """ Returns `folder` if the path represents a folder, otherwise returns `file`. """
         return 'folder' if self._is_folder else 'file'
 
     @property
     def is_file(self):
         """ Returns `True` if the path represents a file. """
         return not self._is_folder
+
+    def kind(self):
+        """ Returns `folder` if the path represents a folder, otherwise returns `file`. """
+        return 'folder' if self._is_folder else 'file'
 
     @property
     def parts(self):
