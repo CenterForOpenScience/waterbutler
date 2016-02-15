@@ -8,9 +8,9 @@ except ImportError:
 config = settings.get('SERVER_CONFIG', {})
 
 
-ADDRESS = config.get('ADDRESS', '127.0.0.1')
+ADDRESS = config.get('ADDRESS', 'localhost')
 PORT = config.get('PORT', 7777)
-DOMAIN = config.get('DOMAIN', "http://127.0.0.1:7777")
+DOMAIN = config.get('DOMAIN', "http://localhost:7777")
 
 DEBUG = config.get('DEBUG', True)
 

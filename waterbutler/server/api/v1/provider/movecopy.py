@@ -1,5 +1,4 @@
 import json
-import asyncio
 
 from waterbutler import tasks
 from waterbutler.sizes import MBs
@@ -24,7 +23,13 @@ class MoveCopyMixin:
                 raise exceptions.InvalidParameters('Invalid json body')
         return self._json
 
-    def validate_post(self):
+    def prevalidate_post(self):
+        """Validate body and query parameters before spending API calls on validating path.  We
+        don't trust path yet, so I don't wanna see it being used here.  Current validations:
+
+        1. Max body size is 1Mb.
+        2. Content-Length header must be provided.
+        """
         try:
             if int(self.request.headers['Content-Length']) > 1 * MBs:
                 # There should be no JSON body > 1 megs
@@ -43,10 +48,9 @@ class MoveCopyMixin:
             'provider': self.dest_provider.serialized()
         }, self.auth['callback_url'], self.auth)
 
-    @asyncio.coroutine
-    def move_or_copy(self):
+    async def move_or_copy(self):
         # Force the json body to load into memory
-        yield self.request.body
+        await self.request.body
 
         if self.json.get('action') not in ('copy', 'move', 'rename'):
             # Note: null is used as the default to avoid python specific error messages
@@ -70,7 +74,7 @@ class MoveCopyMixin:
             self.dest_resource = self.json.get('resource', self.resource)
 
             # TODO optimize for same provider and resource
-            self.dest_auth = yield from auth_handler.get(
+            self.dest_auth = await auth_handler.get(
                 self.dest_resource,
                 self.json.get('provider', self.provider.NAME),
                 self.request
@@ -83,19 +87,19 @@ class MoveCopyMixin:
                 self.dest_auth['settings']
             )
 
-            self.dest_path = yield from self.dest_provider.validate_path(self.json['path'])
+            self.dest_path = await self.dest_provider.validate_path(self.json['path'])
 
         if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
             # this weird signature syntax courtesy of py3.4 not liking trailing commas on kwargs
-            result = yield from getattr(tasks, action).adelay(
+            result = await getattr(tasks, action).adelay(
                 rename=self.json.get('rename'),
                 conflict=self.json.get('conflict', DEFAULT_CONFLICT),
                 *self.build_args()
             )
-            metadata, created = yield from tasks.wait_on_celery(result)
+            metadata, created = await tasks.wait_on_celery(result)
         else:
             metadata, created = (
-                yield from tasks.backgrounded(
+                await tasks.backgrounded(
                     getattr(self.provider, action),
                     self.dest_provider,
                     self.path,
@@ -104,6 +108,8 @@ class MoveCopyMixin:
                     conflict=self.json.get('conflict', DEFAULT_CONFLICT),
                 )
             )
+
+        self.dest_meta = metadata
 
         if created:
             self.set_status(201)

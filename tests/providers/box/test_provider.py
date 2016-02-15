@@ -1,8 +1,7 @@
 import pytest
 
-from tests.utils import async
-
 import io
+from http import client
 
 import aiohttpretty
 
@@ -269,11 +268,64 @@ def revisions_list_metadata():
     }
 
 
+class TestValidatePath:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v1_path_file(self, provider, file_metadata):
+        file_id = '5000948880'
+
+        good_url = provider.build_url('files', file_id, fields='id,name,path_collection')
+        bad_url = provider.build_url('folders', file_id, fields='id,name,path_collection')
+
+        aiohttpretty.register_json_uri('get', good_url, body=file_metadata['entries'][0], status=200)
+        aiohttpretty.register_uri('get', bad_url, status=404)
+
+        try:
+            wb_path_v1 = await provider.validate_v1_path('/' + file_id)
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.validate_v1_path('/' + file_id + '/')
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = await provider.validate_path('/' + file_id)
+
+        assert wb_path_v1 == wb_path_v0
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v1_path_folder(self, provider, folder_object_metadata):
+        provider.folder = '0'
+        folder_id = '11446498'
+
+        good_url = provider.build_url('folders', folder_id, fields='id,name,path_collection')
+        bad_url = provider.build_url('files', folder_id, fields='id,name,path_collection')
+
+        aiohttpretty.register_json_uri('get', good_url, body=folder_object_metadata, status=200)
+        aiohttpretty.register_uri('get', bad_url, status=404)
+        try:
+            wb_path_v1 = await provider.validate_v1_path('/' + folder_id + '/')
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.validate_v1_path('/' + folder_id)
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = await provider.validate_path('/' + folder_id + '/')
+
+        assert wb_path_v1 == wb_path_v0
+
+
 class TestDownload:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_download(self, provider, file_metadata):
+    async def test_download(self, provider, file_metadata):
         item = file_metadata['entries'][0]
         path = WaterButlerPath('/triangles.txt', _ids=(provider.folder, item['id']))
 
@@ -283,30 +335,30 @@ class TestDownload:
         aiohttpretty.register_json_uri('GET', metadata_url, body=item)
         aiohttpretty.register_uri('GET', content_url, body=b'better', auto_length=True)
 
-        result = yield from provider.download(path)
-        content = yield from result.read()
+        result = await provider.download(path)
+        content = await result.read()
 
         assert content == b'better'
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_download_not_found(self, provider, file_metadata):
+    async def test_download_not_found(self, provider, file_metadata):
         item = file_metadata['entries'][0]
         path = WaterButlerPath('/vectors.txt', _ids=(provider.folder, None))
         metadata_url = provider.build_url('files', item['id'])
         aiohttpretty.register_uri('GET', metadata_url, status=404)
 
         with pytest.raises(exceptions.DownloadError) as e:
-            yield from provider.download(path)
+            await provider.download(path)
 
         assert e.value.code == 404
 
 
 class TestUpload:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_upload_create(self, provider, folder_object_metadata, folder_list_metadata, file_metadata, file_stream, settings):
+    async def test_upload_create(self, provider, folder_object_metadata, folder_list_metadata, file_metadata, file_stream, settings):
         path = WaterButlerPath('/newfile', _ids=(provider.folder, None))
 
         upload_url = provider._build_upload_url('files', 'content')
@@ -315,7 +367,7 @@ class TestUpload:
 
         aiohttpretty.register_json_uri('POST', upload_url, status=201, body=file_metadata)
 
-        metadata, created = yield from provider.upload(file_stream, path)
+        metadata, created = await provider.upload(file_stream, path)
 
         expected = BoxFileMetadata(file_metadata['entries'][0], path).serialized()
 
@@ -324,15 +376,15 @@ class TestUpload:
         assert path.identifier_path == metadata.path
         assert aiohttpretty.has_call(method='POST', uri=upload_url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_upload_update(self, provider, folder_object_metadata, folder_list_metadata, file_metadata, file_stream, settings):
+    async def test_upload_update(self, provider, folder_object_metadata, folder_list_metadata, file_metadata, file_stream, settings):
         item = folder_list_metadata['entries'][0]
         path = WaterButlerPath('/newfile', _ids=(provider.folder, item['id']))
         upload_url = provider._build_upload_url('files', item['id'], 'content')
         aiohttpretty.register_json_uri('POST', upload_url, status=201, body=file_metadata)
 
-        metadata, created = yield from provider.upload(file_stream, path)
+        metadata, created = await provider.upload(file_stream, path)
 
         expected = BoxFileMetadata(file_metadata['entries'][0], path).serialized()
 
@@ -343,38 +395,38 @@ class TestUpload:
 
 class TestDelete:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_delete_file(self, provider, file_metadata):
+    async def test_delete_file(self, provider, file_metadata):
         item = file_metadata['entries'][0]
         path = WaterButlerPath('/{}'.format(item['name']), _ids=(provider.folder, item['id']))
         url = provider.build_url('files', path.identifier)
 
         aiohttpretty.register_uri('DELETE', url, status=204)
 
-        yield from provider.delete(path)
+        await provider.delete(path)
 
         assert aiohttpretty.has_call(method='DELETE', uri=url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_delete_folder(self, provider, folder_object_metadata):
+    async def test_delete_folder(self, provider, folder_object_metadata):
         item = folder_object_metadata
         path = WaterButlerPath('/{}/'.format(item['name']), _ids=(provider.folder, item['id']))
         url = provider.build_url('folders', path.identifier, recursive=True)
 
         aiohttpretty.register_uri('DELETE', url, status=204)
 
-        yield from provider.delete(path)
+        await provider.delete(path)
 
         assert aiohttpretty.has_call(method='DELETE', uri=url)
 
-    @async
-    def test_must_not_be_none(self, provider):
+    @pytest.mark.asyncio
+    async def test_must_not_be_none(self, provider):
         path = WaterButlerPath('/Goats', _ids=(provider.folder, None))
 
         with pytest.raises(exceptions.NotFoundError) as e:
-            yield from provider.delete(path)
+            await provider.delete(path)
 
         assert e.value.code == 404
         assert str(path) in e.value.message
@@ -382,26 +434,26 @@ class TestDelete:
 
 class TestMetadata:
 
-    @async
-    def test_must_not_be_none(self, provider):
+    @pytest.mark.asyncio
+    async def test_must_not_be_none(self, provider):
         path = WaterButlerPath('/Goats', _ids=(provider.folder, None))
 
         with pytest.raises(exceptions.NotFoundError) as e:
-            yield from provider.metadata(path)
+            await provider.metadata(path)
 
         assert e.value.code == 404
         assert str(path) in e.value.message
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata(self, provider, folder_object_metadata, folder_list_metadata):
+    async def test_metadata(self, provider, folder_object_metadata, folder_list_metadata):
         path = WaterButlerPath('/', _ids=(provider.folder, ))
 
         list_url = provider.build_url('folders', provider.folder, 'items', fields='id,name,size,modified_at,etag')
 
         aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
 
-        result = yield from provider.metadata(path)
+        result = await provider.metadata(path)
 
         expected = []
 
@@ -409,64 +461,66 @@ class TestMetadata:
             if x['type'] == 'file':
                 expected.append(BoxFileMetadata(x, path.child(x['name'])))
             else:
-                expected.append(BoxFolderMetadata(x, path.child(x['name'])))
+                expected.append(BoxFolderMetadata(x, path.child(x['name'], folder=True)))
 
         assert result == expected
 
-    # @async
+    # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
-    # def test_metadata_not_child(self, provider, folder_object_metadata):
+    # async def test_metadata_not_child(self, provider, folder_object_metadata):
     #     provider.folder += 'yourenotmydad'
     #     path = BoxPath('/' + provider.folder + '/')
     #     object_url = provider.build_url('folders', provider.folder)
     #     aiohttpretty.register_json_uri('GET', object_url, body=folder_object_metadata)
 
     #     with pytest.raises(exceptions.MetadataError) as exc_info:
-    #         yield from provider.metadata(str(path))
+    #         await provider.metadata(str(path))
     #     assert exc_info.value.code == 404
 
-    # @async
+    # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
-    # def test_metadata_root_file(self, provider, file_metadata):
+    # async def test_metadata_root_file(self, provider, file_metadata):
     #     path = BoxPath('/' + provider.folder + '/pfile')
     #     url = provider.build_url('files', path._id)
     #     aiohttpretty.register_json_uri('GET', url, body=file_metadata['entries'][0])
-    #     result = yield from provider.metadata(str(path))
+    #     result = await provider.metadata(str(path))
 
     #     assert isinstance(result, dict)
     #     assert result['kind'] == 'file'
     #     assert result['name'] == 'tigers.jpeg'
     #     assert result['path'] == '/5000948880/tigers.jpeg'
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_nested(self, provider, file_metadata):
+    async def test_metadata_nested(self, provider, file_metadata):
         item = file_metadata['entries'][0]
         path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
 
         file_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', file_url, body=item)
 
-        result = yield from provider.metadata(path)
+        result = await provider.metadata(path)
 
         expected = BoxFileMetadata(item, path)
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=file_url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_missing(self, provider):
+    async def test_metadata_missing(self, provider):
         path = WaterButlerPath('/Something', _ids=(provider.folder, None))
 
-        with pytest.raises(exceptions.NotFoundError):
-            yield from provider.metadata(path)
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.metadata(path)
+
+        assert exc.value.code == client.NOT_FOUND
 
 
 class TestRevisions:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_get_revisions(self, provider, file_metadata, revisions_list_metadata):
+    async def test_get_revisions(self, provider, file_metadata, revisions_list_metadata):
         item = file_metadata['entries'][0]
 
         path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
@@ -477,7 +531,7 @@ class TestRevisions:
         aiohttpretty.register_json_uri('GET', file_url, body=item)
         aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_list_metadata)
 
-        result = yield from provider.revisions(path)
+        result = await provider.revisions(path)
 
         expected = [
             BoxRevision(each)
@@ -488,9 +542,9 @@ class TestRevisions:
         assert aiohttpretty.has_call(method='GET', uri=file_url)
         assert aiohttpretty.has_call(method='GET', uri=revisions_url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_get_revisions_free_account(self, provider, file_metadata):
+    async def test_get_revisions_free_account(self, provider, file_metadata):
         item = file_metadata['entries'][0]
         path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
 
@@ -500,7 +554,7 @@ class TestRevisions:
         aiohttpretty.register_json_uri('GET', file_url, body=item)
         aiohttpretty.register_json_uri('GET', revisions_url, body={}, status=403)
 
-        result = yield from provider.revisions(path)
+        result = await provider.revisions(path)
         expected = [BoxRevision(item)]
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=file_url)
@@ -509,33 +563,33 @@ class TestRevisions:
 
 class TestCreateFolder:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_must_be_folder(self, provider):
+    async def test_must_be_folder(self, provider):
         path = WaterButlerPath('/Just a poor file from a poor folder', _ids=(provider.folder, None))
 
         with pytest.raises(exceptions.CreateFolderError) as e:
-            yield from provider.create_folder(path)
+            await provider.create_folder(path)
 
         assert e.value.code == 400
         assert e.value.message == 'Path must be a directory'
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_id_must_be_none(self, provider):
+    async def test_id_must_be_none(self, provider):
         path = WaterButlerPath('/Just a poor file from a poor folder/', _ids=(provider.folder, 'someid'))
 
         assert path.identifier is not None
 
         with pytest.raises(exceptions.FolderNamingConflict) as e:
-            yield from provider.create_folder(path)
+            await provider.create_folder(path)
 
         assert e.value.code == 409
         assert e.value.message == 'Cannot create folder "Just a poor file from a poor folder" because a file or folder already exists at path "/Just a poor file from a poor folder/"'
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_already_exists(self, provider):
+    async def test_already_exists(self, provider):
         url = provider.build_url('folders')
         data_url = provider.build_url('folders', provider.folder)
         path = WaterButlerPath('/50 shades of nope/', _ids=(provider.folder, None))
@@ -551,23 +605,24 @@ class TestCreateFolder:
         })
 
         with pytest.raises(exceptions.FolderNamingConflict) as e:
-            yield from provider.create_folder(path)
+            await provider.create_folder(path)
 
         assert e.value.code == 409
         assert e.value.message == 'Cannot create folder "50 shades of nope" because a file or folder already exists at path "/50 shades of nope/"'
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_returns_metadata(self, provider, folder_object_metadata):
+    async def test_returns_metadata(self, provider, folder_object_metadata):
         url = provider.build_url('folders')
         folder_object_metadata['name'] = '50 shades of nope'
         path = WaterButlerPath('/50 shades of nope/', _ids=(provider.folder, None))
 
         aiohttpretty.register_json_uri('POST', url, status=201, body=folder_object_metadata)
 
-        resp = yield from provider.create_folder(path)
+        resp = await provider.create_folder(path)
 
         assert resp.kind == 'folder'
         assert resp.name == '50 shades of nope'
         assert resp.path == '/{}/'.format(folder_object_metadata['id'])
         assert isinstance(resp, BoxFolderMetadata)
+        assert path.identifier_path == '/' + folder_object_metadata['id'] + '/'

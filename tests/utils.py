@@ -5,8 +5,6 @@ import shutil
 import tempfile
 from unittest import mock
 
-from decorator import decorator
-
 import pytest
 from tornado import testing
 from tornado.platform.asyncio import AsyncIOMainLoop
@@ -18,15 +16,8 @@ from waterbutler.core.path import WaterButlerPath
 
 
 class MockCoroutine(mock.Mock):
-    @asyncio.coroutine
-    def __call__(self, *args, **kwargs):
+    async def __call__(self, *args, **kwargs):
         return super().__call__(*args, **kwargs)
-
-
-@decorator
-def async(func, *args, **kwargs):
-    future = func(*args, **kwargs)
-    asyncio.get_event_loop().run_until_complete(future)
 
 
 class MockFileMetadata(metadata.BaseFileMetadata):
@@ -72,8 +63,10 @@ class MockProvider(provider.BaseProvider):
     upload = None
     download = None
     metadata = None
+    validate_v1_path = None
     validate_path = None
     revalidate_path = None
+    can_duplicate_names = True
 
     def __init__(self, auth=None, settings=None, creds=None):
         super().__init__(auth or {}, settings or {}, creds or {})
@@ -83,7 +76,7 @@ class MockProvider(provider.BaseProvider):
         self.upload = MockCoroutine()
         self.download = MockCoroutine()
         self.metadata = MockCoroutine()
-        self.validate_path = MockCoroutine()
+        self.validate_v1_path = MockCoroutine()
         self.revalidate_path = MockCoroutine()
 
 
@@ -91,27 +84,28 @@ class MockProvider1(provider.BaseProvider):
 
     NAME = 'MockProvider1'
 
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_v1_path(self, path, **kwargs):
+        return await self.validate_path(path, **kwargs)
+
+    async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
-    @asyncio.coroutine
-    def upload(self, stream, path, **kwargs):
+    async def upload(self, stream, path, **kwargs):
         return MockFileMetadata(), True
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    async def delete(self, path, **kwargs):
         pass
 
-    @asyncio.coroutine
-    def metadata(self, path, throw=None, **kwargs):
+    async def metadata(self, path, throw=None, **kwargs):
         if throw:
             raise throw
         return MockFolderMetadata()
 
-    @asyncio.coroutine
-    def download(self, path, **kwargs):
+    async def download(self, path, **kwargs):
         return b''
+
+    def can_duplicate_names(self):
+        return True
 
 
 class MockProvider2(MockProvider1):
@@ -128,6 +122,11 @@ class MockProvider2(MockProvider1):
 class HandlerTestCase(testing.AsyncHTTPTestCase):
 
     def setUp(self):
+        policy = asyncio.get_event_loop_policy()
+        policy.get_event_loop().close()
+        self.event_loop = policy.new_event_loop()
+        policy.set_event_loop(self.event_loop)
+
         super().setUp()
 
         def get_identity(*args, **kwargs):
@@ -154,6 +153,7 @@ class HandlerTestCase(testing.AsyncHTTPTestCase):
         super().tearDown()
         self.identity_patcher.stop()
         self.make_provider_patcher.stop()
+        self.event_loop.close()
 
     def get_app(self):
         return make_app(debug=False)

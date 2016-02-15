@@ -1,7 +1,6 @@
 import os
 import http
 import json
-import asyncio
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -23,8 +22,39 @@ class BoxProvider(provider.BaseProvider):
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
 
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_v1_path(self, path, **kwargs):
+        if path == '/':
+            return WaterButlerPath('/', _ids=[self.folder])
+
+        obj_id = path.strip('/')
+        files_or_folders = 'folders' if path.endswith('/') else 'files'
+
+        # Box file ids must be a valid base10 number
+        if not obj_id.isdecimal():
+            raise exceptions.NotFoundError(str(path))
+
+        response = await self.make_request(
+            'get',
+            self.build_url(files_or_folders, obj_id, fields='id,name,path_collection'),
+            expects=(200, 404,),
+            throws=exceptions.MetadataError,
+        )
+
+        if response.status == 404:
+            raise exceptions.NotFoundError(str(path))
+
+        data = await response.json()
+
+        names, ids = zip(*[
+            (x['name'], x['id'])
+            for x in
+            data['path_collection']['entries'] + [data]
+        ])
+        names, ids = ('',) + names[ids.index(self.folder) + 1:], ids[ids.index(self.folder):]
+
+        return WaterButlerPath('/'.join(names), _ids=ids, folder=path.endswith('/'))
+
+    async def validate_path(self, path, **kwargs):
         if path == '/':
             return WaterButlerPath('/', _ids=[self.folder])
 
@@ -40,7 +70,7 @@ class BoxProvider(provider.BaseProvider):
 
         # Box file ids must be a valid base10 number
         if obj_id.isdecimal():
-            response = yield from self.make_request(
+            response = await self.make_request(
                 'get',
                 self.build_url(files_or_folders, obj_id, fields='id,name,path_collection'),
                 expects=(200, 404, 405),
@@ -53,13 +83,13 @@ class BoxProvider(provider.BaseProvider):
             if new_name is not None:
                 raise exceptions.MetadataError('Could not find {}'.format(path), code=404)
 
-            return (yield from self.revalidate_path(
+            return await self.revalidate_path(
                 WaterButlerPath('/', _ids=[self.folder]),
                 obj_id,
                 folder=path.endswith('/')
-            ))
+            )
         else:
-            data = yield from response.json()
+            data = await response.json()  # .json releases the response
             names, ids = zip(*[
                 (x['name'], x['id'])
                 for x in
@@ -76,21 +106,19 @@ class BoxProvider(provider.BaseProvider):
         ret = WaterButlerPath('/'.join(names), _ids=ids, folder=is_folder)
 
         if new_name is not None:
-            return (yield from self.revalidate_path(ret, new_name, folder=is_folder))
+            return await self.revalidate_path(ret, new_name, folder=is_folder)
 
         return ret
 
-    @asyncio.coroutine
-    def revalidate_path(self, base, path, folder=None):
+    async def revalidate_path(self, base, path, folder=None):
         # TODO Research the search api endpoint
-        resp = yield from self.make_request(
+        async with self.request(
             'GET',
             self.build_url('folders', base.identifier, 'items', fields='id,name,type'),
             expects=(200,),
             throws=exceptions.ProviderError
-        )
-
-        data = yield from resp.json()
+        ) as resp:
+            data = await resp.json()
         lower_name = path.lower()
 
         try:
@@ -110,17 +138,20 @@ class BoxProvider(provider.BaseProvider):
 
         return base.child(name, _id=_id, folder=folder)
 
+    def can_duplicate_names(self):
+        return False
+
     def can_intra_move(self, other, path=None):
         return self == other
 
     def can_intra_copy(self, other, path=None):
         return self == other
 
-    def intra_copy(self, dest_provider, src_path, dest_path):
+    async def intra_copy(self, dest_provider, src_path, dest_path):
         if dest_path.identifier is not None:
-            yield from dest_provider.delete(dest_path)
+            await dest_provider.delete(dest_path)
 
-        resp = yield from self.make_request(
+        async with self.request(
             'POST',
             self.build_url(
                 'files' if src_path.is_file else 'folders',
@@ -136,17 +167,16 @@ class BoxProvider(provider.BaseProvider):
             headers={'Content-Type': 'application/json'},
             expects=(200, 201),
             throws=exceptions.IntraCopyError
-        )
-
-        data = yield from resp.json()
+        ) as resp:
+            data = await resp.json()
 
         return self._serialize_item(data, dest_path), dest_path.identifier is None
 
-    def intra_move(self, dest_provider, src_path, dest_path):
+    async def intra_move(self, dest_provider, src_path, dest_path):
         if dest_path.identifier is not None and str(dest_path).lower() != str(src_path).lower():
-            yield from dest_provider.delete(dest_path)
+            await dest_provider.delete(dest_path)
 
-        resp = yield from self.make_request(
+        async with self.request(
             'PUT',
             self.build_url(
                 'files' if src_path.is_file else 'folders',
@@ -161,9 +191,8 @@ class BoxProvider(provider.BaseProvider):
             headers={'Content-Type': 'application/json'},
             expects=(200, 201),
             throws=exceptions.IntraCopyError
-        )
-
-        data = yield from resp.json()
+        ) as resp:
+            data = await resp.json()
 
         return self._serialize_item(data, dest_path), dest_path.identifier is None
 
@@ -173,15 +202,13 @@ class BoxProvider(provider.BaseProvider):
             'Authorization': 'Bearer {}'.format(self.token),
         }
 
-    @asyncio.coroutine
-    def make_request(self, *args, **kwargs):
+    async def make_request(self, *args, **kwargs):
         if isinstance(kwargs.get('data'), dict):
             kwargs['data'] = json.dumps(kwargs['data'])
 
-        return super().make_request(*args, **kwargs)
+        return await super().make_request(*args, **kwargs)
 
-    @asyncio.coroutine
-    def download(self, path, revision=None, range=None, **kwargs):
+    async def download(self, path, revision=None, range=None, **kwargs):
         if path.identifier is None:
             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
 
@@ -189,7 +216,7 @@ class BoxProvider(provider.BaseProvider):
         if revision and revision != path.identifier:
             query['version'] = revision
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET',
             self.build_url('files', path.identifier, 'content', **query),
             range=range,
@@ -199,10 +226,9 @@ class BoxProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp)
 
-    @asyncio.coroutine
-    def upload(self, stream, path, conflict='replace', **kwargs):
+    async def upload(self, stream, path, conflict='replace', **kwargs):
         if path.identifier and conflict == 'keep':
-            path, _ = self.handle_name_conflict(path, conflict=conflict, kind='folder')
+            path, _ = await self.handle_name_conflict(path, conflict=conflict, kind='folder')
             path._parts[-1]._id = None
 
         data_stream = streams.FormDataStream(
@@ -215,23 +241,21 @@ class BoxProvider(provider.BaseProvider):
         )
         data_stream.add_file('file', stream, path.name, disposition='form-data')
 
-        resp = yield from self.make_request(
+        async with self.request(
             'POST',
             self._build_upload_url(*filter(lambda x: x is not None, ('files', path.identifier, 'content'))),
             data=data_stream,
             headers=data_stream.headers,
             expects=(201,),
             throws=exceptions.UploadError,
-        )
-
-        data = yield from resp.json()
+        ) as resp:
+            data = await resp.json()
 
         created = path.identifier is None
         path._parts[-1]._id = data['entries'][0]['id']
         return BoxFileMetadata(data['entries'][0], path), created
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    async def delete(self, path, **kwargs):
         if not path.identifier:  # TODO This should be abstracted
             raise exceptions.NotFoundError(str(path))
 
@@ -240,47 +264,45 @@ class BoxProvider(provider.BaseProvider):
         else:
             url = self.build_url('folders', path.identifier, recursive=True)
 
-        yield from self.make_request(
+        async with self.request(
             'DELETE', url,
             expects=(204, ),
             throws=exceptions.DeleteError,
-        )
+        ):
+            return  # Ensures the response is properly released
 
-    @asyncio.coroutine
-    def metadata(self, path, raw=False, folder=False, revision=None, **kwargs):
+    async def metadata(self, path, raw=False, folder=False, revision=None, **kwargs):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
         if path.is_file:
-            return (yield from self._get_file_meta(path, revision=revision, raw=raw))
-        return (yield from self._get_folder_meta(path, raw=raw, folder=folder))
+            return await self._get_file_meta(path, revision=revision, raw=raw)
+        return await self._get_folder_meta(path, raw=raw, folder=folder)
 
-    @asyncio.coroutine
-    def revisions(self, path, **kwargs):
+    async def revisions(self, path, **kwargs):
         # from https://developers.box.com/docs/#files-view-versions-of-a-file :
         # Alert: Versions are only tracked for Box users with premium accounts.
         # Few users will have a premium account, return only current if not
-        curr = yield from self.metadata(path, raw=True)
-        response = yield from self.make_request(
+        curr = await self.metadata(path, raw=True)
+        async with self.request(
             'GET',
             self.build_url('files', path.identifier, 'versions'),
             expects=(200, 403),
             throws=exceptions.RevisionsError,
-        )
-        data = yield from response.json()
+        ) as response:
+            data = await response.json()
 
-        revisions = data['entries'] if response.status == http.client.OK else []
+            revisions = data['entries'] if response.status == http.client.OK else []
 
         return [BoxRevision(each) for each in [curr] + revisions]
 
-    @asyncio.coroutine
-    def create_folder(self, path, **kwargs):
+    async def create_folder(self, path, **kwargs):
         WaterButlerPath.validate_folder(path)
 
         if path.identifier is not None:
             raise exceptions.FolderNamingConflict(str(path))
 
-        resp = yield from self.make_request(
+        async with self.request(
             'POST',
             self.build_url('folders'),
             data={
@@ -291,13 +313,14 @@ class BoxProvider(provider.BaseProvider):
             },
             expects=(201, 409),
             throws=exceptions.CreateFolderError,
-        )
-
-        # Catch 409s to avoid race conditions
-        if resp.status == 409:
-            raise exceptions.FolderNamingConflict(str(path))
-
-        return BoxFolderMetadata((yield from resp.json()), path)
+        ) as resp:
+            # Catch 409s to avoid race conditions
+            if resp.status == 409:
+                raise exceptions.FolderNamingConflict(str(path))
+            resp_json = await resp.json()
+        # save new folder's id into the WaterButlerPath object. logs will need it later.
+        path._parts[-1]._id = resp_json['id']
+        return BoxFolderMetadata(resp_json, path)
 
     def _assert_child(self, paths, target=None):
         if self.folder == 0:
@@ -310,30 +333,28 @@ class BoxProvider(provider.BaseProvider):
             return True
         return self._assert_child(paths[1:])
 
-    @asyncio.coroutine
-    def _assert_child_folder(self, path):
-        response = yield from self.make_request(
+    async def _assert_child_folder(self, path):
+        async with self.request(
             'GET',
             self.build_url('folders', path._id),
             expects=(200, ),
             throws=exceptions.MetadataError,
-        )
-        data = yield from response.json()
+        ) as response:
+            data = await response.json()
         self._assert_child(data['path_collection']['entries'], target=data['id'])
 
-    @asyncio.coroutine
-    def _get_file_meta(self, path, raw=False, revision=None):
+    async def _get_file_meta(self, path, raw=False, revision=None):
         if revision:
             url = self.build_url('files', path.identifier, 'versions')
         else:
             url = self.build_url('files', path.identifier)
 
-        resp = yield from self.make_request(
+        async with self.request(
             'GET', url,
             expects=(200, ),
             throws=exceptions.MetadataError,
-        )
-        data = yield from resp.json()
+        ) as resp:
+            data = await resp.json()
 
         if revision:
             try:
@@ -346,21 +367,19 @@ class BoxProvider(provider.BaseProvider):
 
         return data if raw else BoxFileMetadata(data, path)
 
-    @asyncio.coroutine
-    def _get_folder_meta(self, path, raw=False, folder=False):
+    async def _get_folder_meta(self, path, raw=False, folder=False):
         if folder:
             url = self.build_url('folders', path.identifier)
         else:
             url = self.build_url('folders', path.identifier, 'items', fields='id,name,size,modified_at,etag')
 
-        response = yield from self.make_request(
+        async with self.request(
             'GET',
             url,
             expects=(200, ),
             throws=exceptions.MetadataError,
-        )
-
-        data = yield from response.json()
+        ) as response:
+            data = await response.json()
 
         if raw:
             return data
@@ -369,7 +388,7 @@ class BoxProvider(provider.BaseProvider):
             return self._serialize_item(data)
 
         return [
-            self._serialize_item(each, path.child(each['name']))
+            self._serialize_item(each, path.child(each['name'], folder=(each['type'] == 'folder')))
             for each in data['entries']
         ]
 
