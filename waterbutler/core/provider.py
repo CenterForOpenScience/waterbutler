@@ -324,16 +324,26 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :rtype: (WaterButlerPath, dict or False)
         :raises: NamingConflict
         """
+        orig_name = path.parts[-1].original_value
         exists = yield from self.exists(path, **kwargs)
         if not exists or conflict == 'replace':
             return path, exists
         if conflict == 'warn':
             raise exceptions.NamingConflict(path)
 
-        while (yield from self.exists(path.increment_name(), **kwargs)):
-            pass
-        # path.increment_name()
-        # exists = self.exists(str(path))
+        while True:
+            path.increment_name()
+            my_count = path.parts[-1]._count
+            path = yield from self.revalidate_path(
+                path.parent,
+                path.name,
+                folder=path.is_dir
+            )
+            exist = yield from self.exists(path, **kwargs)
+            path.parts[-1]._name = orig_name
+            path.parts[-1]._count = my_count
+            if not exist:
+                break
         return path, False
 
     @asyncio.coroutine
