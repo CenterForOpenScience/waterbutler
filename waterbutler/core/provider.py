@@ -334,7 +334,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :rtype: (WaterButlerPath, provider.metadata() or False)
         :raises: NamingConflict
         """
-        orig_name = path.parts[-1].original_value
         exists = yield from self.exists(path, **kwargs)
         if not exists or conflict == 'replace':
             return path, exists
@@ -343,15 +342,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         while True:
             path.increment_name()
-            my_count = path.parts[-1]._count
-            path = yield from self.revalidate_path(
+            test_path = yield from self.revalidate_path(
                 path.parent,
                 path.name,
                 folder=path.is_dir
             )
-            exist = yield from self.exists(path, **kwargs)
-            path.parts[-1]._name = orig_name
-            path.parts[-1]._count = my_count
+            exist = yield from self.exists(test_path, **kwargs)
             if not exist:
                 break
         return path, False
