@@ -38,6 +38,7 @@ setup(
     entry_points={
         'waterbutler.auth': [
             'osf = waterbutler.auth.osf:OsfAuthHandler',
+            'fake = waterbutler.auth.fake:FakeAuthHandler'
         ],
         'waterbutler.providers': [
             'cloudfiles = waterbutler.providers.cloudfiles:CloudFilesProvider',

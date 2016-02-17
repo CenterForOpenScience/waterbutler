@@ -61,14 +61,33 @@ waterbutler-test.json, e.g.
     "HMAC_SECRET": "changeme"
   },
   "SERVER_CONFIG": {
-    "ADDRESS": "localhost",
+    "ADDRESS": "127.0.0.1",
     "PORT": 7777,
     "DOMAIN": "http://localhost:7777",
     "DEBUG": true,
-    "HMAC_SECRET": "changeme"
+    "HMAC_SECRET": "changeme",
+    "AUTH_HANDLERS": [ "fake" ]
   },
-  "OSF_AUTH_CONFIG": {
-      "API_URL": "http://localhost:5000/api/v1/files/auth/"
+  "FAKE_AUTH_CONFIG": {
+    "PROVIDERS": {
+      "github": {
+        "credentials": {
+            "token": "GITHUB_TOKEN"
+        },
+        "settings": {
+            "owner" : "GITHUB_USERNAME",
+            "repo": "GITHUB_REPO"
+        }
+      },
+      "dropbox": {
+        "credentials": {
+            "token": "DROPBOX_TOKEN"
+        },
+        "settings": {
+            "folder": "DROPBOX_FOLDER"
+        }
+      }
+    }
   }
 }
 ```
