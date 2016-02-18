@@ -209,12 +209,41 @@ class GoogleDriveProvider(provider.BaseProvider):
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
+        if path.is_root:
+            yield from self.empty_folder(path)
+            return
+
         yield from self.make_request(
             'DELETE',
             self.build_url('files', path.identifier),
             expects=(204, ),
             throws=exceptions.DeleteError,
         )
+
+    @asyncio.coroutine
+    def empty_folder(self, path):
+        fid = path.identifier
+        if not fid:
+            raise exceptions.NotFoundError(str(path))
+        resp = yield from self.make_request(
+            'GET',
+            self.build_url('files',
+                           q="'{}' in parents".format(fid),
+                           fields='items(id)'),
+            expects=(200, ),
+            throws=exceptions.MetadataError)
+
+        try:
+            child_ids = (yield from resp.json())['items']
+        except (KeyError, IndexError):
+            raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
+
+        for child in child_ids:
+            yield from self.make_request(
+                'DELETE',
+                self.build_url('files', child['id']),
+                expects=(204, ),
+                throws=exceptions.DeleteError)
 
     def _build_query(self, folder_id, title=None):
         queries = [
