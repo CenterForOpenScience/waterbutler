@@ -176,6 +176,7 @@ class WaterButlerPath:
         """ Returns `True` if the path represents a file. """
         return not self._is_folder
 
+    @property
     def kind(self):
         """ Returns `folder` if the path represents a folder, otherwise returns `file`. """
         return 'folder' if self._is_folder else 'file'
