@@ -194,4 +194,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if resp.status != 200:
             data = await resp.read()
             raise Exception('Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8')))
+        else:
+            resp.release()
+
         logger.info('Successfully sent callback for a {} request'.format(action))
