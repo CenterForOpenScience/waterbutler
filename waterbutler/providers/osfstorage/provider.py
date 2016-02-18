@@ -267,8 +267,8 @@ class OSFStorageProvider(provider.BaseProvider):
             metadata, _ = await provider.move(provider, remote_pending_path, remote_complete_path)
         else:
             await provider.delete(remote_pending_path)
-        finally:
-            metadata = metadata.serialized()
+
+        metadata = metadata.serialized()
 
         # Due to cross volume movement in unix we leverage shutil.move which properly handles this case.
         # http://bytes.com/topic/python/answers/41652-errno-18-invalid-cross-device-link-using-os-rename#post157964
