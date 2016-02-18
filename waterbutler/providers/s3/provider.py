@@ -194,6 +194,7 @@ class S3Provider(provider.BaseProvider):
             'PUT',
             upload_url,
             data=stream,
+            skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
             expects=(200, 201, ),
             throws=exceptions.UploadError,
