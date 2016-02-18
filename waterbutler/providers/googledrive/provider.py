@@ -206,6 +206,18 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
+        """Given a WaterButlerPath, delete that path
+
+        :param WaterButlerPath: Path to be deleted
+        :rtype: None
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+
+        Quirks:
+            If the WaterButlerPath given is for the provider root path, then
+            the contents of provider root path will be deleted. But not the
+            provider root itself.
+        """
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
@@ -222,6 +234,14 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def empty_folder(self, path):
+        """Given a WaterButlerPath, delete all contents of folder
+
+        :param WaterButlerPath: Folder to be emptied
+        :rtype: None
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        """
         fid = path.identifier
         if not fid:
             raise exceptions.NotFoundError(str(path))
