@@ -89,7 +89,7 @@ class DryadProvider(provider.BaseProvider):
         file_metadata = yield from file_metadata_resp.text()
 
         return DryadFileMetadata(metadata_text,
-            'doi:10.5061/dryad.'+path.strip('/'),
+            'doi:10.5061/dryad.' + path.strip('/'),
             file_metadata,
             file_name)
 
