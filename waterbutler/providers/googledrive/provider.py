@@ -389,7 +389,6 @@ class GoogleDriveProvider(provider.BaseProvider):
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
-            presp = yield from resp.json()
 
             try:
                 item_id = (yield from resp.json())['items'][0]['id']
@@ -467,7 +466,6 @@ class GoogleDriveProvider(provider.BaseProvider):
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
-            presp = yield from p_resp.json()
             parents.append((yield from p_resp.json()))
         return parents
 
