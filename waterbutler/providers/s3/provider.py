@@ -15,9 +15,9 @@ from boto.s3.connection import S3Connection
 from boto.s3.connection import OrdinaryCallingFormat
 
 from waterbutler.core import streams
-from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.provider import BaseProvider
 
 from waterbutler.providers.s3 import settings
 from waterbutler.providers.s3.metadata import S3Revision
@@ -27,7 +27,7 @@ from waterbutler.providers.s3.metadata import S3FolderKeyMetadata
 from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
 
 
-class S3Provider(provider.BaseProvider):
+class S3Provider(BaseProvider):
     """Provider for the Amazon's S3
     """
     NAME = 's3'
@@ -52,6 +52,10 @@ class S3Provider(provider.BaseProvider):
         self.region = None
 
     @asyncio.coroutine
+    def make_request(self, *args, **kwargs):
+        return (yield from super().make_request(*args, lock=False, **kwargs))
+
+    @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
         yield from self._check_region()
 
@@ -60,22 +64,25 @@ class S3Provider(provider.BaseProvider):
 
         implicit_folder = path.endswith('/')
 
-        if implicit_folder:
-            params = {'prefix': path, 'delimiter': '/'}
-            resp = yield from self.make_request(
-                'GET',
-                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=params),
-                params=params,
-                expects=(200, 404),
-                throws=exceptions.MetadataError,
-            )
-        else:
-            resp = yield from self.make_request(
-                'HEAD',
-                self.bucket.new_key(path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
-                expects=(200, 404),
-                throws=exceptions.MetadataError,
-            )
+        try:
+            if implicit_folder:
+                params = {'prefix': path, 'delimiter': '/'}
+                resp = yield from self.make_request(
+                    'GET',
+                    self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+                    params=params,
+                    expects=(200, 404),
+                    throws=exceptions.MetadataError,
+                )
+            else:
+                resp = yield from self.make_request(
+                    'HEAD',
+                    self.bucket.new_key(path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
+                    expects=(200, 404),
+                    throws=exceptions.MetadataError,
+                )
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
 
         if resp.status == 404:
             raise exceptions.NotFoundError(str(path))
@@ -146,24 +153,28 @@ class S3Provider(provider.BaseProvider):
         else:
             response_headers = {'response-content-disposition': 'attachment'}
 
-        url = self.bucket.new_key(
-            path.path
-        ).generate_url(
-            settings.TEMP_URL_SECS,
-            query_parameters=query_parameters,
-            response_headers=response_headers
-        )
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            url = self.bucket.new_key(
+                path.path
+            ).generate_url(
+                settings.TEMP_URL_SECS,
+                query_parameters=query_parameters,
+                response_headers=response_headers
+            )
 
-        if accept_url:
-            return url
+            if accept_url:
+                return url
 
-        resp = yield from self.make_request(
-            'GET',
-            url,
-            range=range,
-            expects=(200, 206),
-            throws=exceptions.DownloadError,
-        )
+            resp = yield from self.make_request(
+                'GET',
+                url,
+                range=range,
+                expects=(200, 206),
+                throws=exceptions.DownloadError,
+            )
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
 
         return streams.ResponseStreamReader(resp)
 
@@ -188,19 +199,24 @@ class S3Provider(provider.BaseProvider):
         if self.encrypt_uploads:
             headers['x-amz-server-side-encryption'] = 'AES256'
 
-        upload_url = self.bucket.new_key(path.path).generate_url(
-            settings.TEMP_URL_SECS,
-            'PUT',
-            headers=headers,
-        )
-        resp = yield from self.make_request(
-            'PUT',
-            upload_url,
-            data=stream,
-            headers=headers,
-            expects=(200, 201, ),
-            throws=exceptions.UploadError,
-        )
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            upload_url = self.bucket.new_key(path.path).generate_url(
+                settings.TEMP_URL_SECS,
+                'PUT',
+                headers=headers,
+            )
+            resp = yield from self.make_request(
+                'PUT',
+                upload_url,
+                data=stream,
+                headers=headers,
+                expects=(200, 201, ),
+                throws=exceptions.UploadError,
+            )
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
+
         # md5 is returned as ETag header as long as server side encryption is not used.
         # TODO: nice assertion error goes here
         assert resp.headers['ETag'].replace('"', '') == stream.writers['md5'].hexdigest
@@ -243,13 +259,17 @@ class S3Provider(provider.BaseProvider):
             if marker is not None:
                 query_params['marker'] = marker
 
-            resp = yield from self.make_request(
-                'GET',
-                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=query_params),
-                params=query_params,
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            )
+            yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+            try:
+                resp = yield from self.make_request(
+                    'GET',
+                    self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=query_params),
+                    params=query_params,
+                    expects=(200, ),
+                    throws=exceptions.MetadataError,
+                )
+            finally:
+                BaseProvider.REQUEST_SEMAPHORE.release()
 
             contents = yield from resp.read_and_close()
             parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
@@ -284,23 +304,27 @@ class S3Provider(provider.BaseProvider):
                 'Content-Type': 'text/xml',
             }
 
-            # We depend on a customized version of boto that can make query parameters part of
-            # the signature.
-            url = self.bucket.generate_url(
-                settings.TEMP_URL_SECS,
-                'POST',
-                query_parameters=query_params,
-                headers=headers,
-            )
-            yield from self.make_request(
-                'POST',
-                url,
-                params=query_params,
-                data=payload,
-                headers=headers,
-                expects=(200, 204, ),
-                throws=exceptions.DeleteError,
-            )
+            yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+            try:
+                # We depend on a customized version of boto that can make query parameters part of
+                # the signature.
+                url = self.bucket.generate_url(
+                    settings.TEMP_URL_SECS,
+                    'POST',
+                    query_parameters=query_params,
+                    headers=headers,
+                )
+                yield from self.make_request(
+                    'POST',
+                    url,
+                    params=query_params,
+                    data=payload,
+                    headers=headers,
+                    expects=(200, 204, ),
+                    throws=exceptions.DeleteError,
+                )
+            finally:
+                BaseProvider.REQUEST_SEMAPHORE.release()
 
     @asyncio.coroutine
     def revisions(self, path, **kwargs):
@@ -312,15 +336,19 @@ class S3Provider(provider.BaseProvider):
         yield from self._check_region()
 
         query_params = {'prefix': path.path, 'delimiter': '/', 'versions': ''}
-        url = self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
-        resp = yield from self.make_request(
-            'GET',
-            url,
-            params=query_params,
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
-        content = yield from resp.read_and_close()
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            url = self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
+            resp = yield from self.make_request(
+                'GET',
+                url,
+                params=query_params,
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+            content = yield from resp.read_and_close()
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
         versions = xmltodict.parse(content)['ListVersionsResult'].get('Version') or []
 
         if isinstance(versions, dict):
@@ -358,12 +386,16 @@ class S3Provider(provider.BaseProvider):
         if (yield from self.exists(path)):
             raise exceptions.FolderNamingConflict(str(path))
 
-        yield from self.make_request(
-            'PUT',
-            self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'PUT'),
-            expects=(200, 201),
-            throws=exceptions.CreateFolderError
-        )
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            yield from self.make_request(
+                'PUT',
+                self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'PUT'),
+                expects=(200, 201),
+                throws=exceptions.CreateFolderError
+            )
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
 
         return S3FolderMetadata({'Prefix': path.path})
 
@@ -373,18 +405,22 @@ class S3Provider(provider.BaseProvider):
 
         if revision == 'Latest':
             revision = None
-        resp = yield from self.make_request(
-            'HEAD',
-            self.bucket.new_key(
-                path.path
-            ).generate_url(
-                settings.TEMP_URL_SECS,
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            resp = yield from self.make_request(
                 'HEAD',
-                query_parameters={'versionId': revision} if revision else None
-            ),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
+                self.bucket.new_key(
+                    path.path
+                ).generate_url(
+                    settings.TEMP_URL_SECS,
+                    'HEAD',
+                    query_parameters={'versionId': revision} if revision else None
+                ),
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
         return S3FileMetadataHeaders(path.path, resp.headers)
 
     @asyncio.coroutine
@@ -392,15 +428,18 @@ class S3Provider(provider.BaseProvider):
         yield from self._check_region()
 
         params = {'prefix': path.path, 'delimiter': '/'}
-        resp = yield from self.make_request(
-            'GET',
-            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=params),
-            params=params,
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
+        try:
+            resp = yield from self.make_request(
+                'GET',
+                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+                params=params,
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
 
-        contents = yield from resp.read_and_close()
+            contents = yield from resp.read_and_close()
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
 
         parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
 
@@ -411,12 +450,16 @@ class S3Provider(provider.BaseProvider):
             # If contents and prefixes are empty then this "folder"
             # must exist as a key with a / at the end of the name
             # if the path is root there is no need to test if it exists
-            yield from self.make_request(
-                'HEAD',
-                self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            )
+            yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+            try:
+                yield from self.make_request(
+                    'HEAD',
+                    self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
+                    expects=(200, ),
+                    throws=exceptions.MetadataError,
+                )
+            finally:
+                BaseProvider.REQUEST_SEMAPHORE.release()
 
         if isinstance(contents, dict):
             contents = [contents]
@@ -468,13 +511,17 @@ class S3Provider(provider.BaseProvider):
 
         Endpoint doc: http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html
         """
-        resp = yield from self.make_request(
-            'GET',
-            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters={'location': ''}),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            resp = yield from self.make_request(
+                'GET',
+                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters={'location': ''}),
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
 
-        contents = yield from resp.read_and_close()
+            contents = yield from resp.read_and_close()
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
         parsed = xmltodict.parse(contents, strip_whitespace=False)
         return parsed['LocationConstraint'].get('#text', '')

@@ -12,6 +12,7 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.provider import BaseProvider
 
 from waterbutler.providers.cloudfiles import settings
 from waterbutler.providers.cloudfiles.metadata import CloudFilesFileMetadata
@@ -30,7 +31,7 @@ def ensure_connection(func):
     return wrapped
 
 
-class CloudFilesProvider(provider.BaseProvider):
+class CloudFilesProvider(BaseProvider):
     """Provider for Rackspace CloudFiles
     """
     NAME = 'cloudfiles'
@@ -46,6 +47,10 @@ class CloudFilesProvider(provider.BaseProvider):
         self.username = self.credentials['username']
         self.container = self.settings['container']
         self.use_public = self.settings.get('use_public', True)
+
+    @asyncio.coroutine
+    def make_request(self, *args, **kwargs):
+        return (yield from super().make_request(*args, lock=kwargs.pop('lock', False), **kwargs))
 
     @asyncio.coroutine
     def validate_v1_path(self, path, **kwargs):
@@ -68,15 +73,19 @@ class CloudFilesProvider(provider.BaseProvider):
         url = dest_provider.build_url(dest_path.path)
         exists = yield from dest_provider.exists(dest_path)
 
-        yield from self.make_request(
-            'PUT',
-            url,
-            headers={
-                'X-Copy-From': os.path.join(self.container, source_path.path)
-            },
-            expects=(201, ),
-            throws=exceptions.IntraCopyError,
-        )
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            yield from self.make_request(
+                'PUT',
+                url,
+                headers={
+                    'X-Copy-From': os.path.join(self.container, source_path.path)
+                },
+                expects=(201, ),
+                throws=exceptions.IntraCopyError,
+            )
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
         return (yield from dest_provider.metadata(dest_path)), not exists
 
     @ensure_connection
@@ -94,13 +103,17 @@ class CloudFilesProvider(provider.BaseProvider):
             parsed_url.args['filename'] = kwargs.get('displayName') or path.name
             return parsed_url.url
 
-        resp = yield from self.make_request(
-            'GET',
-            self.sign_url(path),
-            range=range,
-            expects=(200, 206),
-            throws=exceptions.DownloadError,
-        )
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            resp = yield from self.make_request(
+                'GET',
+                self.sign_url(path),
+                range=range,
+                expects=(200, 206),
+                throws=exceptions.DownloadError,
+            )
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
         return streams.ResponseStreamReader(resp)
 
     @ensure_connection
@@ -118,14 +131,18 @@ class CloudFilesProvider(provider.BaseProvider):
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         url = self.sign_url(path, 'PUT')
-        resp = yield from self.make_request(
-            'PUT',
-            url,
-            data=stream,
-            headers={'Content-Length': str(stream.size)},
-            expects=(200, 201),
-            throws=exceptions.UploadError,
-        )
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            resp = yield from self.make_request(
+                'PUT',
+                url,
+                data=stream,
+                headers={'Content-Length': str(stream.size)},
+                expects=(200, 201),
+                throws=exceptions.UploadError,
+            )
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
         # md5 is returned as ETag header as long as server side encryption is not used.
         # TODO: nice assertion error goes here
         assert resp.headers['ETag'].replace('"', '') == stream.writers['md5'].hexdigest
@@ -155,23 +172,31 @@ class CloudFilesProvider(provider.BaseProvider):
             delete_files.append(os.path.join('/', self.container, path.path))
 
             query = {'bulk-delete': ''}
-            yield from self.make_request(
-                'DELETE',
-                self.build_url(**query),
-                data='\n'.join(delete_files),
-                expects=(200, ),
-                throws=exceptions.DeleteError,
-                headers={
-                    'Content-Type': 'text/plain',
-                },
-            )
+            yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+            try:
+                yield from self.make_request(
+                    'DELETE',
+                    self.build_url(**query),
+                    data='\n'.join(delete_files),
+                    expects=(200, ),
+                    throws=exceptions.DeleteError,
+                    headers={
+                        'Content-Type': 'text/plain',
+                    },
+                )
+            finally:
+                BaseProvider.REQUEST_SEMAPHORE.release()
         else:
-            yield from self.make_request(
-                'DELETE',
-                self.build_url(path.path),
-                expects=(204, ),
-                throws=exceptions.DeleteError,
-            )
+            yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+            try:
+                yield from self.make_request(
+                    'DELETE',
+                    self.build_url(path.path),
+                    expects=(204, ),
+                    throws=exceptions.DeleteError,
+                )
+            finally:
+                BaseProvider.REQUEST_SEMAPHORE.release()
 
     @ensure_connection
     @asyncio.coroutine
@@ -241,7 +266,7 @@ class CloudFilesProvider(provider.BaseProvider):
             else:
                 self.public_endpoint, self.endpoint = self._extract_endpoints(data)
         if not self.temp_url_key:
-            resp = yield from self.make_request('HEAD', self.endpoint, expects=(204, ))
+            resp = yield from self.make_request('HEAD', self.endpoint, expects=(204, ), lock=True)
             try:
                 self.temp_url_key = resp.headers['X-Account-Meta-Temp-URL-Key'].encode()
             except KeyError:
@@ -267,23 +292,27 @@ class CloudFilesProvider(provider.BaseProvider):
         Notably containing our token and proper endpoint to send requests to
         :rtype dict:
         """
-        resp = yield from self.make_request(
-            'POST',
-            settings.AUTH_URL,
-            data=json.dumps({
-                'auth': {
-                    'RAX-KSKEY:apiKeyCredentials': {
-                        'username': self.username,
-                        'apiKey': self.og_token,
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            resp = yield from self.make_request(
+                'POST',
+                settings.AUTH_URL,
+                data=json.dumps({
+                    'auth': {
+                        'RAX-KSKEY:apiKeyCredentials': {
+                            'username': self.username,
+                            'apiKey': self.og_token,
+                        }
                     }
-                }
-            }),
-            headers={
-                'Content-Type': 'application/json',
-            },
-            expects=(200, ),
-        )
-        data = yield from resp.json()
+                }),
+                headers={
+                    'Content-Type': 'application/json',
+                },
+                expects=(200, ),
+            )
+            data = yield from resp.json()
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
         return data
 
     def _metadata_file(self, path, is_folder=False, **kwargs):
@@ -292,12 +321,16 @@ class CloudFilesProvider(provider.BaseProvider):
         :rtype dict:
         :rtype list:
         """
-        resp = yield from self.make_request(
-            'HEAD',
-            self.build_url(path.path),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            resp = yield from self.make_request(
+                'HEAD',
+                self.build_url(path.path),
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
 
         if (resp.headers['Content-Type'] == 'application/directory' and not is_folder):
             raise exceptions.MetadataError(
@@ -317,13 +350,18 @@ class CloudFilesProvider(provider.BaseProvider):
         query = {'prefix': path.path}
         if not recursive:
             query.update({'delimiter': '/'})
-        resp = yield from self.make_request(
-            'GET',
-            self.build_url('', **query),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
-        data = yield from resp.json()
+
+        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        try:
+            resp = yield from self.make_request(
+                'GET',
+                self.build_url('', **query),
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+            data = yield from resp.json()
+        finally:
+            BaseProvider.REQUEST_SEMAPHORE.release()
 
         # no data and the provider path is not root, we are left with either a file or a directory marker
         if not data and not path.is_root:
