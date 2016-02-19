@@ -88,7 +88,10 @@ class DryadProvider(provider.BaseProvider):
         metadata_text = yield from metadata_resp.text()
         file_metadata = yield from file_metadata_resp.text()
 
-        return DryadFileMetadata(metadata_text, path.strip('/'), file_metadata, file_name)
+        return DryadFileMetadata(metadata_text,
+            'doi:10.5061/dryad.'+path.strip('/'),
+            file_metadata,
+            file_name)
 
     @asyncio.coroutine
     def metadata(self, path, **kwargs):

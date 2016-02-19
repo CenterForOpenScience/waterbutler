@@ -117,7 +117,7 @@ class DryadPackageMetadata(BaseDryadMetadata, metadata.BaseFolderMetadata):
 
     @property
     def path(self):
-        return BaseDryadMetadata.path(self) + '/'
+        return "/" + self.dryad_doi.split('.')[-1] + '/'
 
     @property
     def file_parts(self):
