@@ -72,6 +72,7 @@ def get(key, default):
 
 
 DEBUG = get('DEBUG', True)
+REQUEST_LIMIT = get('REQUEST_LIMIT', 25)
 
 logging_config = get('LOGGING', DEFAULT_LOGGING_CONFIG)
 logging.config.dictConfig(logging_config)
