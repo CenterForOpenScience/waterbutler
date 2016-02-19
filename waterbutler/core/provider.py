@@ -6,8 +6,12 @@ from urllib import parse
 import furl
 import aiohttp
 
+from waterbutler import settings
 from waterbutler.core import streams
 from waterbutler.core import exceptions
+
+
+REQUEST_SEMAPHORE = asyncio.Semaphore(settings.REQUEST_LIMIT)
 
 
 def build_url(base, *segments, **query):
@@ -122,7 +126,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
         throws = kwargs.pop('throws', exceptions.ProviderError)
         if range:
             kwargs['headers']['Range'] = self._build_range_header(range)
-        response = yield from aiohttp.request(*args, **kwargs)
+        yield from REQUEST_SEMAPHORE.acquire()
+        try:
+            response = yield from aiohttp.request(*args, **kwargs)
+        finally:
+            REQUEST_SEMAPHORE.release()
         if expects and response.status not in expects:
             raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
         return response
