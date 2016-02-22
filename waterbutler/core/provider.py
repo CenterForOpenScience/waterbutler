@@ -11,6 +11,9 @@ from waterbutler.core import streams
 from waterbutler.core import exceptions
 
 
+REQUEST_SEMAPHORE = asyncio.Semaphore(settings.REQUEST_LIMIT)
+
+
 def build_url(base, *segments, **query):
     url = furl.furl(base)
     # Filters return generators
@@ -42,7 +45,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
     """
 
     BASE_URL = None
-    REQUEST_SEMAPHORE = asyncio.Semaphore(settings.REQUEST_LIMIT)
 
     def __init__(self, auth, credentials, settings):
         """
@@ -119,19 +121,16 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :raises ProviderError: Raised if expects is defined
         """
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
-        lock = kwargs.pop('lock', True)
         range = kwargs.pop('range', None)
         expects = kwargs.pop('expects', None)
         throws = kwargs.pop('throws', exceptions.ProviderError)
         if range:
             kwargs['headers']['Range'] = self._build_range_header(range)
-        if lock:
-            yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
+        yield from REQUEST_SEMAPHORE.acquire()
         try:
             response = yield from aiohttp.request(*args, **kwargs)
         finally:
-            if lock:
-                BaseProvider.REQUEST_SEMAPHORE.release()
+            REQUEST_SEMAPHORE.release()
         if expects and response.status not in expects:
             raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
         return response
