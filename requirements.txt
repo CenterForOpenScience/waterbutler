@@ -1,4 +1,4 @@
-PyJWE==0.1.6
+PyJWE==1.0.0
 PyJWT==1.4.0
 aiohttp==0.18.2
 git+https://github.com/felliott/boto.git@feature/gen-url-query-params-2#egg=boto
