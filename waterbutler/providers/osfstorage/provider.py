@@ -8,9 +8,9 @@ import hashlib
 from waterbutler.core import utils
 from waterbutler.core import signing
 from waterbutler.core import streams
+from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.core.provider import BaseProvider
 
 from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.tasks import backup
@@ -23,7 +23,7 @@ from waterbutler.providers.osfstorage.metadata import OsfStorageRevisionMetadata
 QUERY_METHODS = ('GET', 'DELETE')
 
 
-class OSFStorageProvider(BaseProvider):
+class OSFStorageProvider(provider.BaseProvider):
     __version__ = '0.0.1'
 
     NAME = 'osfstorage'
@@ -209,12 +209,8 @@ class OSFStorageProvider(BaseProvider):
 
     @asyncio.coroutine
     def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
-        yield from BaseProvider.REQUEST_SEMAPHORE.acquire()
-        try:
-            url, data, params = self.build_signed_url(method, url, data=data, params=params, ttl=ttl, **kwargs)
-            return (yield from self.make_request(method, url, data=data, params=params, lock=False, **kwargs))
-        finally:
-            BaseProvider.REQUEST_SEMAPHORE.release()
+        url, data, params = self.build_signed_url(method, url, data=data, params=params, ttl=ttl, **kwargs)
+        return (yield from self.make_request(method, url, data=data, params=params, **kwargs))
 
     @asyncio.coroutine
     def download(self, path, version=None, revision=None, mode=None, **kwargs):
