@@ -237,16 +237,20 @@ class BaseProvider(metaclass=abc.ABCMeta):
         items = yield from self.metadata(src_path)
 
         for i in range(0, len(items), settings.OP_CONCURRENCY):
-            done, _ = asyncio.wait([
-                asyncio.ensure_future(func(
+            fs = []
+            for item in items[i:i + settings.OP_CONCURRENCY]:
+                fs.append(asyncio.async(func(
                     dest_provider,
                     # TODO figure out a way to cut down on all the requests made here
                     (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
                     (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
                     handle_naming=False,
-                ))
-                for item in items[i:i + settings.OP_CONCURRENCY]
-            ], return_when=asyncio.FIRST_EXCEPTION)
+                )))
+
+            if not fs:
+                continue
+
+            done, _ = yield from asyncio.wait(fs, return_when=asyncio.FIRST_EXCEPTION)
 
             for fut in done:
                 folder.children.append(fut.result()[0])
