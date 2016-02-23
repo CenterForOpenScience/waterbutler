@@ -18,15 +18,14 @@ _SEMAPHORES = weakref.WeakKeyDictionary()
 
 
 def throttle(func):
-    @asyncio.coroutine
     @functools.wraps(func)
-    def wrapped(*args, **kwargs):
+    async def wrapped(*args, **kwargs):
         loop = asyncio.get_event_loop()
         if loop not in _SEMAPHORES:
             _SEMAPHORES[loop] = asyncio.Semaphore(settings.REQUEST_LIMIT, loop=loop)
-        yield from _SEMAPHORES[loop].acquire()
+        await _SEMAPHORES[loop].acquire()
         try:
-            return (yield from func(*args, **kwargs))
+            return await func(*args, **kwargs)
         finally:
             _SEMAPHORES[loop].release()
     return wrapped
