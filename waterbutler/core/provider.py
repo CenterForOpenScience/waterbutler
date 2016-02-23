@@ -245,6 +245,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         while items:
             futures = []
             for _ in range(50):
+                if not items:
+                    break
                 item = items.pop()
                 futures.append(
                     asyncio.async(func(
