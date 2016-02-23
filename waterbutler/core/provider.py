@@ -247,6 +247,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
                     handle_naming=False,
                 )))
 
+                if item.is_folder:
+                    yield from fs[-1]
+
             if not fs:
                 continue
 
