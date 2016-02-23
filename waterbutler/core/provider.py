@@ -1,5 +1,6 @@
 import abc
 import asyncio
+import logging
 import weakref
 import functools
 import itertools
@@ -12,6 +13,7 @@ from waterbutler import settings
 from waterbutler.core import streams
 from waterbutler.core import exceptions
 
+logger = logging.getLogger(__name__)
 _SEMAPHORES = weakref.WeakKeyDictionary()
 
 
@@ -188,6 +190,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def copy(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
+
+        logger.info('Copying {!r}, {!r} to {!r}, {!r}'.format(src_path, self, dest_path, dest_provider))
 
         if handle_naming:
             dest_path = yield from dest_provider.handle_naming(
