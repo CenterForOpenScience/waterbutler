@@ -239,13 +239,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
         for i in range(0, len(items), settings.OP_CONCURRENCY):
             fs = []
             for item in items[i:i + settings.OP_CONCURRENCY]:
-                fs.append(func(
+                fs.append(asyncio.async(func(
                     dest_provider,
                     # TODO figure out a way to cut down on all the requests made here
                     (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
                     (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
                     handle_naming=False,
-                ))
+                )))
 
             if not fs:
                 continue

@@ -216,6 +216,7 @@ class BoxProvider(provider.BaseProvider):
 
         return super().make_request(*args, **kwargs)
 
+    @provider.throttle
     @asyncio.coroutine
     def download(self, path, revision=None, range=None, **kwargs):
         if path.identifier is None:
@@ -282,6 +283,7 @@ class BoxProvider(provider.BaseProvider):
             throws=exceptions.DeleteError,
         )
 
+    @provider.throttle
     @asyncio.coroutine
     def metadata(self, path, raw=False, folder=False, revision=None, **kwargs):
         if path.identifier is None:
