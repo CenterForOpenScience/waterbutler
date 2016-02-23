@@ -53,7 +53,7 @@ invoke server
 vim ~/.cos/waterbutler-test.json
 ```
 
-waterbutler-test.json, e.g.
+Python 3.5's asyncio [currently has a bug](https://bugs.python.org/issue25394) that is triggered by turning on debugging. If you are upgrading from the 3.4-based WaterButler, make sure to set `SERVER_CONFIG.DEBUG` to false in your `waterbutler-test.json`, e.g.
 
 ```json
 {
@@ -64,7 +64,7 @@ waterbutler-test.json, e.g.
     "ADDRESS": "localhost",
     "PORT": 7777,
     "DOMAIN": "http://localhost:7777",
-    "DEBUG": true,
+    "DEBUG": false,
     "HMAC_SECRET": "changeme"
   },
   "OSF_AUTH_CONFIG": {
