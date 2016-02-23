@@ -103,7 +103,6 @@ class CloudFilesProvider(provider.BaseProvider):
         )
         return streams.ResponseStreamReader(resp)
 
-    @provider.throttle
     @ensure_connection
     @asyncio.coroutine
     def upload(self, stream, path, check_created=True, fetch_metadata=True, **kwargs):

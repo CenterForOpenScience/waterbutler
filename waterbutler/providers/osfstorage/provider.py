@@ -240,7 +240,6 @@ class OSFStorageProvider(provider.BaseProvider):
         download_kwargs['displayName'] = kwargs.get('displayName', name)
         return (yield from provider.download(**download_kwargs))
 
-    @provider.throttle
     @asyncio.coroutine
     def upload(self, stream, path, **kwargs):
         self._create_paths()

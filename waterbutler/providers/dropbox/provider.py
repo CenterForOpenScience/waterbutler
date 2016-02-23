@@ -159,7 +159,6 @@ class DropboxProvider(provider.BaseProvider):
 
         return folder, True
 
-    @provider.throttle
     @asyncio.coroutine
     def download(self, path, revision=None, range=None, **kwargs):
         if revision:
