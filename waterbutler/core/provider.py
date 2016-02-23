@@ -235,13 +235,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         folder.children = []
         for item in (yield from self.metadata(src_path)):
-            folder.children.append(func(
+            folder.children.append((yield from func(
                 dest_provider,
                 # TODO figure out a way to cut down on all the requests made here
                 (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
                 (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
                 handle_naming=False,
-            ))
+            )))
 
         return folder, created
 
