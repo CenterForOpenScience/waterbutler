@@ -491,3 +491,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             '' if start is None else start,
             '' if end is None else end
         )
+
+    def __repr__(self):
+        # Note: credentials are not included on purpose.
+        return ('<{}({}, {})>'.format(self.__class__.__name__, self.auth, self.settings))
