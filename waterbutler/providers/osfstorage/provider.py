@@ -239,6 +239,7 @@ class OSFStorageProvider(provider.BaseProvider):
         download_kwargs['displayName'] = kwargs.get('displayName', name)
         return await provider.download(**download_kwargs)
 
+    @provider.throttle
     async def upload(self, stream, path, **kwargs):
         self._create_paths()
 

@@ -208,6 +208,7 @@ class BoxProvider(provider.BaseProvider):
 
         return await super().make_request(*args, **kwargs)
 
+    @provider.throttle
     async def download(self, path, revision=None, range=None, **kwargs):
         if path.identifier is None:
             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
@@ -271,6 +272,7 @@ class BoxProvider(provider.BaseProvider):
         ):
             return  # Ensures the response is properly released
 
+    @provider.throttle
     async def metadata(self, path, raw=False, folder=False, revision=None, **kwargs):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))

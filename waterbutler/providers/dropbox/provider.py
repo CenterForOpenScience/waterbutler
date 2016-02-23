@@ -154,6 +154,7 @@ class DropboxProvider(provider.BaseProvider):
 
         return folder, True
 
+    @provider.throttle
     async def download(self, path, revision=None, range=None, **kwargs):
         if revision:
             url = self._build_content_url('files', 'auto', path.full_path, rev=revision)

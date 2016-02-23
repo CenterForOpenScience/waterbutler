@@ -1,5 +1,7 @@
 import abc
 import asyncio
+import weakref
+import functools
 import itertools
 from urllib import parse
 
@@ -12,8 +14,22 @@ from waterbutler.core import exceptions
 from waterbutler.core.utils import ZipStreamGenerator
 from waterbutler.core.utils import RequestHandlerContext
 
+_SEMAPHORES = weakref.WeakKeyDictionary()
 
-REQUEST_SEMAPHORE = asyncio.Semaphore(settings.REQUEST_LIMIT)
+
+def throttle(func):
+    @asyncio.coroutine
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+        loop = asyncio.get_event_loop()
+        if loop not in _SEMAPHORES:
+            _SEMAPHORES[loop] = asyncio.Semaphore(settings.REQUEST_LIMIT, loop=loop)
+        yield from _SEMAPHORES[loop].acquire()
+        try:
+            return (yield from func(*args, **kwargs))
+        finally:
+            _SEMAPHORES[loop].release()
+    return wrapped
 
 
 def build_url(base, *segments, **query):
@@ -127,8 +143,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         throws = kwargs.pop('throws', exceptions.ProviderError)
         if range:
             kwargs['headers']['Range'] = self._build_range_header(range)
-        async with REQUEST_SEMAPHORE:
-            response = await aiohttp.request(*args, **kwargs)
+        response = await aiohttp.request(*args, **kwargs)
         if expects and response.status not in expects:
             raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
         return response

@@ -98,6 +98,7 @@ class CloudFilesProvider(provider.BaseProvider):
         )
         return streams.ResponseStreamReader(resp)
 
+    @provider.throttle
     @ensure_connection
     async def upload(self, stream, path, check_created=True, fetch_metadata=True, **kwargs):
         """Uploads the given stream to CloudFiles
