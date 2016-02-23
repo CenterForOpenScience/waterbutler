@@ -234,14 +234,22 @@ class BaseProvider(metaclass=abc.ABCMeta):
         dest_path = yield from dest_provider.revalidate_path(dest_path.parent, dest_path.name, folder=dest_path.is_dir)
 
         folder.children = []
-        for item in (yield from self.metadata(src_path)):
-            folder.children.append((yield from func(
-                dest_provider,
-                # TODO figure out a way to cut down on all the requests made here
-                (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
-                (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
-                handle_naming=False,
-            )))
+        items = yield from self.metadata(src_path)
+
+        for i in range(0, len(items), settings.OP_CONCURRENCY):
+            done, _ = asyncio.wait([
+                asyncio.ensure_future(func(
+                    dest_provider,
+                    # TODO figure out a way to cut down on all the requests made here
+                    (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
+                    (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
+                    handle_naming=False,
+                ))
+                for item in items[i:i + settings.OP_CONCURRENCY]
+            ], return_when=asyncio.FIRST_EXCEPTION)
+
+            for fut in done:
+                folder.children.append(fut.result()[0])
 
         return folder, created
 
