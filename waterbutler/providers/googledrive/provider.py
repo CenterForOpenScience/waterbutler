@@ -192,6 +192,14 @@ class GoogleDriveProvider(provider.BaseProvider):
     @asyncio.coroutine
     def upload(self, stream, path, **kwargs):
         assert path.is_file
+        orig_path = path
+
+        # Check for duplicate file names
+        if not path.identifier:
+            try:
+                path = yield from self.validate_v1_path(path.raw_path)
+            except (exceptions.NotFoundError):
+                path = orig_path
 
         if path.identifier:
             segments = (path.identifier, )

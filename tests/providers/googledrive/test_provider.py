@@ -119,6 +119,45 @@ def search_for_pins_folder_response():
     }
 
 @pytest.fixture
+def search_for_ed_folder_response():
+    return {
+        'items': [
+            {'id': 'imaedfolder'}
+        ]
+    }
+
+@pytest.fixture
+def actual_ed_response():
+    return {
+        'id': 'imaedfolder',
+        'mimeType': 'application/vnd.google-apps.folder',
+        'title': 'ed',
+    }
+
+@pytest.fixture
+def search_for_sullivan_folder_response():
+    return {
+        'items': [
+            {'id': 'imasullivanfolder'}
+        ]
+    }
+
+@pytest.fixture
+def actual_sullivan_response():
+    return {
+        'id': 'imasullivanfolder',
+        'mimeType': 'application/vnd.google-apps.folder',
+        'title': 'sullivan',
+    }
+
+@pytest.fixture
+def search_for_showmp3_folder_response():
+    return {
+        'items': [
+        ]
+    }
+
+@pytest.fixture
 def actual_file_response():
     return {
         'id': '1234ideclarethumbwar',
@@ -275,14 +314,18 @@ class TestCRUD:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_upload_create(self, provider, file_stream):
+    def test_upload_create(self, provider, file_stream, search_for_absent_folder_response):
         upload_id = '7'
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
 
+        birdie_query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q="title = '{}'".format('birdie.jpg'), fields='items(id)')
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
         finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
 
+        aiohttpretty.register_json_uri('GET', birdie_query_url, body=search_for_absent_folder_response)
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         aiohttpretty.register_uri('POST', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
 
@@ -297,14 +340,18 @@ class TestCRUD:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_upload_doesnt_unquote(self, provider, file_stream):
+    def test_upload_doesnt_unquote(self, provider, file_stream, search_for_absent_folder_response):
         upload_id = '7'
         item = fixtures.list_file['items'][0]
         path = GoogleDrivePath('/birdie%2F %20".jpg', _ids=(provider.folder['id'], None))
 
+        birdie_query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q="title = '{}'".format(path.path), fields='items(id)')
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
         finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
 
+        aiohttpretty.register_json_uri('GET', birdie_query_url, body=search_for_absent_folder_response)
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         aiohttpretty.register_uri('POST', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
 
@@ -339,13 +386,41 @@ class TestCRUD:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_upload_create_nested(self, provider, file_stream):
+    def test_upload_create_nested(self, provider, file_stream,
+                                  search_for_ed_folder_response,
+                                  actual_ed_response,
+                                  search_for_sullivan_folder_response,
+                                  actual_sullivan_response,
+                                  search_for_showmp3_folder_response):
         upload_id = '7'
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath(
             '/ed/sullivan/show.mp3',
             _ids=[str(x) for x in range(3)]
         )
+
+        query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q="title = '{}'".format('ed'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_ed_folder_response)
+
+        query_url = provider.build_url(
+            'files', 'imaedfolder', fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', query_url, body=actual_ed_response)
+
+        query_url = provider.build_url(
+            'files', 'imaedfolder', 'children',
+            q="title = '{}'".format('sullivan'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_sullivan_folder_response)
+
+        query_url = provider.build_url(
+            'files', 'imasullivanfolder', fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', query_url, body=actual_sullivan_response)
+
+        query_url = provider.build_url(
+            'files', 'imasullivanfolder', 'children',
+            q="title = '{}'".format('show.mp3'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_showmp3_folder_response)
 
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
         finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
