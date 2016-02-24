@@ -73,6 +73,52 @@ def search_for_file_response():
     }
 
 @pytest.fixture
+def search_for_absent_folder_response():
+    return {
+        'items': [
+        ]
+    }
+
+@pytest.fixture
+def search_for_hugo_folder_response():
+    return {
+        'items': [
+            {'id': 'imahugofolder'}
+        ]
+    }
+
+@pytest.fixture
+def actual_hugo_response():
+    return {
+        'id': 'imahugofolder',
+        'mimeType': 'application/vnd.google-apps.folder',
+        'title': 'hugo',
+    }
+
+@pytest.fixture
+def search_for_kim_folder_response():
+    return {
+        'items': [
+            {'id': 'imakimfolder'}
+        ]
+    }
+
+@pytest.fixture
+def actual_kim_response():
+    return {
+        'id': 'imakimfolder',
+        'mimeType': 'application/vnd.google-apps.folder',
+        'title': 'kim',
+    }
+
+@pytest.fixture
+def search_for_pins_folder_response():
+    return {
+        'items': [
+        ]
+    }
+
+@pytest.fixture
 def actual_file_response():
     return {
         'id': '1234ideclarethumbwar',
@@ -529,9 +575,13 @@ class TestCreateFolder:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_returns_metadata(self, provider):
+    def test_returns_metadata(self, provider, search_for_absent_folder_response):
         path = WaterButlerPath('/osf%20test/', _ids=(provider.folder['id'], None))
+        query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q="title = '{}'".format('osf test'), fields='items(id)')
 
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_absent_folder_response)
         aiohttpretty.register_json_uri('POST', provider.build_url('files'), body=fixtures.folder_metadata)
 
         resp = yield from provider.create_folder(path)
@@ -542,8 +592,36 @@ class TestCreateFolder:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_raises_non_404(self, provider):
+    def test_raises_non_404(self, provider,
+                            search_for_hugo_folder_response,
+                            actual_hugo_response,
+                            search_for_kim_folder_response,
+                            actual_kim_response,
+                            search_for_pins_folder_response):
         path = WaterButlerPath('/hugo/kim/pins/', _ids=(provider.folder['id'], 'something', 'something', None))
+
+        query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q="title = '{}'".format('hugo'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_hugo_folder_response)
+
+        query_url = provider.build_url(
+            'files', 'imahugofolder', fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', query_url, body=actual_hugo_response)
+
+        query_url = provider.build_url(
+            'files', 'imahugofolder', 'children',
+            q="title = '{}'".format('kim'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_kim_folder_response)
+
+        query_url = provider.build_url(
+            'files', 'imakimfolder', fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', query_url, body=actual_kim_response)
+
+        query_url = provider.build_url(
+            'files', 'imakimfolder', 'children',
+            q="title = '{}'".format('pins'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_pins_folder_response)
 
         url = provider.build_url('files')
         aiohttpretty.register_json_uri('POST', url, status=418)

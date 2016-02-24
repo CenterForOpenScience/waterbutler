@@ -265,6 +265,14 @@ class GoogleDriveProvider(provider.BaseProvider):
     @asyncio.coroutine
     def create_folder(self, path, **kwargs):
         GoogleDrivePath.validate_folder(path)
+        orig_path = path
+
+        # Check for duplicate folder names
+        if not path.identifier:
+            try:
+                path = yield from self.validate_v1_path(path.path)
+            except (exceptions.NotFoundError):
+                path = orig_path
 
         if path.identifier:
             raise exceptions.FolderNamingConflict(str(path))
