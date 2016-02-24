@@ -240,7 +240,6 @@ class OSFStorageProvider(provider.BaseProvider):
         download_kwargs['displayName'] = kwargs.get('displayName', name)
         return (yield from provider.download(**download_kwargs))
 
-    @provider.throttle
     @asyncio.coroutine
     def upload(self, stream, path, **kwargs):
         self._create_paths()
@@ -270,8 +269,8 @@ class OSFStorageProvider(provider.BaseProvider):
             metadata, _ = yield from provider.move(provider, remote_pending_path, remote_complete_path)
         else:
             yield from provider.delete(remote_pending_path)
-        finally:
-            metadata = metadata.serialized()
+
+        metadata = metadata.serialized()
 
         # Due to cross volume movement in unix we leverage shutil.move which properly handles this case.
         # http://bytes.com/topic/python/answers/41652-errno-18-invalid-cross-device-link-using-os-rename#post157964

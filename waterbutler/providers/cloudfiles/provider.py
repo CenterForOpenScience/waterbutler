@@ -65,12 +65,11 @@ class CloudFilesProvider(provider.BaseProvider):
     @ensure_connection
     @asyncio.coroutine
     def intra_copy(self, dest_provider, source_path, dest_path):
-        url = dest_provider.build_url(dest_path.path)
         exists = yield from dest_provider.exists(dest_path)
 
         yield from self.make_request(
             'PUT',
-            url,
+            functools.partial(dest_provider.build_url, dest_path.path),
             headers={
                 'X-Copy-From': os.path.join(self.container, source_path.path)
             },
@@ -96,14 +95,13 @@ class CloudFilesProvider(provider.BaseProvider):
 
         resp = yield from self.make_request(
             'GET',
-            self.sign_url(path),
+            functools.partial(self.sign_url, path),
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
         )
         return streams.ResponseStreamReader(resp)
 
-    @provider.throttle
     @ensure_connection
     @asyncio.coroutine
     def upload(self, stream, path, check_created=True, fetch_metadata=True, **kwargs):
@@ -118,10 +116,9 @@ class CloudFilesProvider(provider.BaseProvider):
             created = None
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
-        url = self.sign_url(path, 'PUT')
         resp = yield from self.make_request(
             'PUT',
-            url,
+            functools.partial(self.sign_url, path, 'PUT'),
             data=stream,
             headers={'Content-Length': str(stream.size)},
             expects=(200, 201),
@@ -158,7 +155,7 @@ class CloudFilesProvider(provider.BaseProvider):
             query = {'bulk-delete': ''}
             yield from self.make_request(
                 'DELETE',
-                self.build_url(**query),
+                functools.partial(self.build_url, **query),
                 data='\n'.join(delete_files),
                 expects=(200, ),
                 throws=exceptions.DeleteError,
@@ -169,7 +166,7 @@ class CloudFilesProvider(provider.BaseProvider):
         else:
             yield from self.make_request(
                 'DELETE',
-                self.build_url(path.path),
+                functools.partial(self.build_url, path.path),
                 expects=(204, ),
                 throws=exceptions.DeleteError,
             )
@@ -295,7 +292,7 @@ class CloudFilesProvider(provider.BaseProvider):
         """
         resp = yield from self.make_request(
             'HEAD',
-            self.build_url(path.path),
+            functools.partial(self.build_url, path.path),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
@@ -320,7 +317,7 @@ class CloudFilesProvider(provider.BaseProvider):
             query.update({'delimiter': '/'})
         resp = yield from self.make_request(
             'GET',
-            self.build_url('', **query),
+            functools.partial(self.build_url, '', **query),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )

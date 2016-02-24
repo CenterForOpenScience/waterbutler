@@ -1,8 +1,8 @@
 import abc
+import time
 import asyncio
 import logging
 import weakref
-import functools
 import itertools
 from urllib import parse
 
@@ -17,19 +17,34 @@ logger = logging.getLogger(__name__)
 _SEMAPHORES = weakref.WeakKeyDictionary()
 
 
-def throttle(func):
-    @asyncio.coroutine
-    @functools.wraps(func)
-    def wrapped(*args, **kwargs):
-        loop = asyncio.get_event_loop()
-        if loop not in _SEMAPHORES:
-            _SEMAPHORES[loop] = asyncio.Semaphore(settings.REQUEST_LIMIT, loop=loop)
-        yield from _SEMAPHORES[loop].acquire()
-        try:
+def throttle(concurrency=10, interval=1):
+    def _throttle(func):
+        count = last_call = 0
+
+        @asyncio.coroutine
+        def wrapped(*args, **kwargs):
+            nonlocal count, last_call
+
+            if asyncio.get_event_loop() not in _SEMAPHORES:
+                event = asyncio.Event()
+                _SEMAPHORES[asyncio.get_event_loop()] = event
+                event.set()
+            else:
+                event = _SEMAPHORES[asyncio.get_event_loop()]
+
+            yield from event.wait()
+            count += 1
+            if count > concurrency:
+                count = 0
+                if (time.time() - last_call) < interval:
+                    event.clear()
+                    yield from asyncio.sleep(interval - (time.time() - last_call))
+                    event.set()
+
+            last_call = time.time()
             return (yield from func(*args, **kwargs))
-        finally:
-            _SEMAPHORES[loop].release()
-    return wrapped
+        return wrapped
+    return _throttle
 
 
 def build_url(base, *segments, **query):
@@ -122,8 +137,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
             if value is not None
         }
 
+    @throttle()
     @asyncio.coroutine
-    def make_request(self, *args, **kwargs):
+    def make_request(self, method, url, *args, **kwargs):
         """A wrapper around :func:`aiohttp.request`. Inserts default headers.
 
         :param str method: The HTTP method
@@ -144,7 +160,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         throws = kwargs.pop('throws', exceptions.ProviderError)
         if range:
             kwargs['headers']['Range'] = self._build_range_header(range)
-        response = yield from aiohttp.request(*args, **kwargs)
+        if callable(url):
+            url = url()
+        response = yield from aiohttp.request(method, url, *args, **kwargs)
         if expects and response.status not in expects:
             raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
         return response

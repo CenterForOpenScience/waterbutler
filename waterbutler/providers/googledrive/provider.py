@@ -288,7 +288,6 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         return GoogleDriveFolderMetadata((yield from resp.json()), path)
 
-    @provider.throttle
     @asyncio.coroutine
     def make_request(self, *args, **kwargs):
         return (yield from super().make_request(*args, **kwargs))
