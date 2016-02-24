@@ -275,6 +275,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param WaterButlerPath dest_path: The path that is being copied to or into
         :param str rename: The desired name of the resulting path, may be incremented
         :param str conflict: The conflict resolution strategy, replace or keep
+
+        Returns: WaterButlerPath dest_path: The path of the desired result.
         """
         if src_path.is_dir and dest_path.is_file:
             # Cant copy a directory to a file
@@ -346,7 +348,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :raises: NamingConflict
         """
         exists = yield from self.exists(path, **kwargs)
-        if not exists or conflict == 'replace':
+        if (not exists and not exists == []) or conflict == 'replace':
             return path, exists
         if conflict == 'warn':
             raise exceptions.NamingConflict(path)
