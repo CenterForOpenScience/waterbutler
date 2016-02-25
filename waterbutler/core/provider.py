@@ -1,13 +1,50 @@
 import abc
+import time
 import asyncio
+import logging
+import weakref
 import itertools
 from urllib import parse
 
 import furl
 import aiohttp
 
+from waterbutler import settings
 from waterbutler.core import streams
 from waterbutler.core import exceptions
+
+logger = logging.getLogger(__name__)
+_SEMAPHORES = weakref.WeakKeyDictionary()
+
+
+def throttle(concurrency=10, interval=1):
+    def _throttle(func):
+        count = last_call = 0
+
+        @asyncio.coroutine
+        def wrapped(*args, **kwargs):
+            nonlocal count, last_call
+
+            if asyncio.get_event_loop() not in _SEMAPHORES:
+                event = asyncio.Event()
+                _SEMAPHORES[asyncio.get_event_loop()] = event
+                event.set()
+            else:
+                event = _SEMAPHORES[asyncio.get_event_loop()]
+
+            yield from event.wait()
+            count += 1
+            if count > concurrency:
+                count = 0
+                if (time.time() - last_call) < interval:
+                    event.clear()
+                    yield from asyncio.sleep(interval - (time.time() - last_call))
+                    event.set()
+
+            last_call = time.time()
+            return (yield from func(*args, **kwargs))
+        return wrapped
+    return _throttle
 
 
 def build_url(base, *segments, **query):
@@ -100,8 +137,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
             if value is not None
         }
 
+    @throttle()
     @asyncio.coroutine
-    def make_request(self, *args, **kwargs):
+    def make_request(self, method, url, *args, **kwargs):
         """A wrapper around :func:`aiohttp.request`. Inserts default headers.
 
         :param str method: The HTTP method
@@ -122,7 +160,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         throws = kwargs.pop('throws', exceptions.ProviderError)
         if range:
             kwargs['headers']['Range'] = self._build_range_header(range)
-        response = yield from aiohttp.request(*args, **kwargs)
+        if callable(url):
+            url = url()
+        response = yield from aiohttp.request(method, url, *args, **kwargs)
         if expects and response.status not in expects:
             raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
         return response
@@ -169,6 +209,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
 
+        logger.info('Copying {!r}, {!r} to {!r}, {!r}'.format(src_path, self, dest_path, dest_provider))
+
         if handle_naming:
             dest_path = yield from dest_provider.handle_naming(
                 src_path,
@@ -209,33 +251,30 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         dest_path = yield from dest_provider.revalidate_path(dest_path.parent, dest_path.name, folder=dest_path.is_dir)
 
-        futures = []
-        for item in (yield from self.metadata(src_path)):
-            futures.append(
-                asyncio.async(
-                    func(
-                        dest_provider,
-                        # TODO figure out a way to cut down on all the requests made here
-                        (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
-                        (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
-                        handle_naming=False,
-                    )
-                )
-            )
+        folder.children = []
+        items = yield from self.metadata(src_path)
 
-        if not futures:
-            folder.children = []
-            return folder, created
+        for i in range(0, len(items), settings.OP_CONCURRENCY):
+            fs = []
+            for item in items[i:i + settings.OP_CONCURRENCY]:
+                fs.append(asyncio.async(func(
+                    dest_provider,
+                    # TODO figure out a way to cut down on all the requests made here
+                    (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
+                    (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
+                    handle_naming=False,
+                )))
 
-        finished, pending = yield from asyncio.wait(futures, return_when=asyncio.FIRST_EXCEPTION)
+                if item.is_folder:
+                    yield from fs[-1]
 
-        if len(pending) != 0:
-            finished.pop().result()
+            if not fs:
+                continue
 
-        folder.children = [
-            future.result()[0]  # result is a tuple of (metadata, created)
-            for future in finished
-        ]
+            done, _ = yield from asyncio.wait(fs, return_when=asyncio.FIRST_EXCEPTION)
+
+            for fut in done:
+                folder.children.append(fut.result()[0])
 
         return folder, created
 
@@ -471,3 +510,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             '' if start is None else start,
             '' if end is None else end
         )
+
+    def __repr__(self):
+        # Note: credentials are not included on purpose.
+        return ('<{}({}, {})>'.format(self.__class__.__name__, self.auth, self.settings))

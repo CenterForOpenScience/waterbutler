@@ -42,5 +42,6 @@ CELERY_IMPORTS.extend([
     'waterbutler.tasks.move'
 ])
 
+CELERY_ACKS_LATE = True
 CELERYD_HIJACK_ROOT_LOGGER = False
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = True

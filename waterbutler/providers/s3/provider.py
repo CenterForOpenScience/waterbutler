@@ -1,6 +1,7 @@
 import os
 import asyncio
 import hashlib
+import functools
 from urllib import parse
 
 import xmltodict
@@ -64,7 +65,7 @@ class S3Provider(provider.BaseProvider):
             params = {'prefix': path, 'delimiter': '/'}
             resp = yield from self.make_request(
                 'GET',
-                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+                functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
                 params=params,
                 expects=(200, 404),
                 throws=exceptions.MetadataError,
@@ -72,7 +73,7 @@ class S3Provider(provider.BaseProvider):
         else:
             resp = yield from self.make_request(
                 'HEAD',
-                self.bucket.new_key(path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
+                functools.partial(self.bucket.new_key(path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
                 expects=(200, 404),
                 throws=exceptions.MetadataError,
             )
@@ -108,7 +109,8 @@ class S3Provider(provider.BaseProvider):
         # ensure no left slash when joining paths
         source_path = '/' + os.path.join(self.settings['bucket'], source_path.path)
         headers = {'x-amz-copy-source': parse.quote(source_path)}
-        url = dest_key.generate_url(
+        url = functools.partial(
+            dest_key.generate_url,
             settings.TEMP_URL_SECS,
             'PUT',
             headers=headers,
@@ -146,16 +148,15 @@ class S3Provider(provider.BaseProvider):
         else:
             response_headers = {'response-content-disposition': 'attachment'}
 
-        url = self.bucket.new_key(
-            path.path
-        ).generate_url(
+        url = functools.partial(
+            self.bucket.new_key(path.path).generate_url,
             settings.TEMP_URL_SECS,
             query_parameters=query_parameters,
             response_headers=response_headers
         )
 
         if accept_url:
-            return url
+            return url()
 
         resp = yield from self.make_request(
             'GET',
@@ -188,7 +189,8 @@ class S3Provider(provider.BaseProvider):
         if self.encrypt_uploads:
             headers['x-amz-server-side-encryption'] = 'AES256'
 
-        upload_url = self.bucket.new_key(path.path).generate_url(
+        upload_url = functools.partial(
+            self.bucket.new_key(path.path).generate_url,
             settings.TEMP_URL_SECS,
             'PUT',
             headers=headers,
@@ -286,7 +288,8 @@ class S3Provider(provider.BaseProvider):
 
             # We depend on a customized version of boto that can make query parameters part of
             # the signature.
-            url = self.bucket.generate_url(
+            url = functools.partial(
+                self.bucket.generate_url,
                 settings.TEMP_URL_SECS,
                 'POST',
                 query_parameters=query_params,
@@ -312,7 +315,7 @@ class S3Provider(provider.BaseProvider):
         yield from self._check_region()
 
         query_params = {'prefix': path.path, 'delimiter': '/', 'versions': ''}
-        url = self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
+        url = functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
         resp = yield from self.make_request(
             'GET',
             url,
@@ -360,7 +363,7 @@ class S3Provider(provider.BaseProvider):
 
         yield from self.make_request(
             'PUT',
-            self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'PUT'),
+            functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
             expects=(200, 201),
             throws=exceptions.CreateFolderError
         )
@@ -375,9 +378,8 @@ class S3Provider(provider.BaseProvider):
             revision = None
         resp = yield from self.make_request(
             'HEAD',
-            self.bucket.new_key(
-                path.path
-            ).generate_url(
+            functools.partial(
+                self.bucket.new_key(path.path).generate_url,
                 settings.TEMP_URL_SECS,
                 'HEAD',
                 query_parameters={'versionId': revision} if revision else None
@@ -394,7 +396,7 @@ class S3Provider(provider.BaseProvider):
         params = {'prefix': path.path, 'delimiter': '/'}
         resp = yield from self.make_request(
             'GET',
-            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+            functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
             params=params,
             expects=(200, ),
             throws=exceptions.MetadataError,
@@ -413,7 +415,7 @@ class S3Provider(provider.BaseProvider):
             # if the path is root there is no need to test if it exists
             yield from self.make_request(
                 'HEAD',
-                self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
+                functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
@@ -470,7 +472,7 @@ class S3Provider(provider.BaseProvider):
         """
         resp = yield from self.make_request(
             'GET',
-            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters={'location': ''}),
+            functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters={'location': ''}),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
