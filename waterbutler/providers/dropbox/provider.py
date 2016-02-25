@@ -200,6 +200,14 @@ class DropboxProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
+        """Delete file, folder, or provider root contents
+
+        :param DropboxPath path: DropboxPath path object for folder
+        """
+        if path.is_root:
+            yield from self._delete_folder_contents(path)
+            return
+
         yield from self.make_request(
             'POST',
             self.build_url('fileops', 'delete'),
@@ -307,3 +315,14 @@ class DropboxProvider(provider.BaseProvider):
 
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
+
+    @asyncio.coroutine
+    def _delete_folder_contents(self, path, **kwargs):
+        """Delete the contents of a folder. For use against provider root.
+
+        :param DropboxPath path: DropboxPath path object for folder
+        """
+        meta = (yield from self.metadata(path))
+        for child in meta:
+            drop_box_path = yield from self.validate_v1_path(child.path)
+            yield from self.delete(drop_box_path)
