@@ -242,13 +242,13 @@ class GoogleDriveProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.MetadataError`
         :raises: :class:`waterbutler.core.exceptions.DeleteError`
         """
-        fid = path.identifier
-        if not fid:
+        file_id = path.identifier
+        if not file_id:
             raise exceptions.NotFoundError(str(path))
         resp = yield from self.make_request(
             'GET',
             self.build_url('files',
-                           q="'{}' in parents".format(fid),
+                           q="'{}' in parents".format(file_id),
                            fields='items(id)'),
             expects=(200, ),
             throws=exceptions.MetadataError)
