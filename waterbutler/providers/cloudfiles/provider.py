@@ -224,6 +224,16 @@ class CloudFilesProvider(provider.BaseProvider):
         return url.url
 
     @asyncio.coroutine
+    def make_request(self, *args, **kwargs):
+        try:
+            return (yield from super().make_request(*args, **kwargs))
+        except exceptions.ProviderError as e:
+            if e.code != 408:
+                raise
+            yield from asyncio.sleep(1)
+            return (yield from super().make_request(*args, **kwargs))
+
+    @asyncio.coroutine
     def _ensure_connection(self):
         """Defines token, endpoint and temp_url_key if they are not already defined
         :raises ProviderError: If no temp url key is available
