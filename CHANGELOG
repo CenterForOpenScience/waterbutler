@@ -2,6 +2,18 @@
 ChangeLog
 *********
 
+0.16.5 (2016-02-22)
+===================
+- No changes. Applied and reverted throttling patches.
+
+0.16.4 (2016-02-18)
+===================
+- Fix: Add semaphore to make_request to limit concurrent outgoing requests to 25.
+
+0.16.3 (2016-02-14)
+===================
+- Fix: Apply certificate fix in proper scope.
+
 0.16.2 (2016-02-14)
 ===================
 - Fix: Patch to prevent certification verification failure w/ rackspace services.
