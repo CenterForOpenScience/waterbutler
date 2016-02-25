@@ -14,23 +14,19 @@ from waterbutler.core import streams
 from waterbutler.core import exceptions
 
 logger = logging.getLogger(__name__)
-_SEMAPHORES = weakref.WeakKeyDictionary()
+_THROTTLES = weakref.WeakKeyDictionary()
 
 
 def throttle(concurrency=10, interval=1):
     def _throttle(func):
-        count = last_call = 0
-
         @asyncio.coroutine
         def wrapped(*args, **kwargs):
-            nonlocal count, last_call
-
-            if asyncio.get_event_loop() not in _SEMAPHORES:
-                event = asyncio.Event()
-                _SEMAPHORES[asyncio.get_event_loop()] = event
+            if asyncio.get_event_loop() not in _THROTTLES:
+                count, last_call, event = 0, time.time(), asyncio.Event()
+                _THROTTLES[asyncio.get_event_loop()] = (count, last_call, event)
                 event.set()
             else:
-                event = _SEMAPHORES[asyncio.get_event_loop()]
+                count, last_call, event = _THROTTLES[asyncio.get_event_loop()]
 
             yield from event.wait()
             count += 1
@@ -208,8 +204,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def copy(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
-
-        logger.info('Copying {!r}, {!r} to {!r}, {!r}'.format(src_path, self, dest_path, dest_provider))
 
         if handle_naming:
             dest_path = yield from dest_provider.handle_naming(
