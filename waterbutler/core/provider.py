@@ -162,18 +162,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
             kwargs['headers']['Range'] = self._build_range_header(range)
         if callable(url):
             url = url()
-        while retry and retry > 0:
+        while retry >= 0:
             try:
                 response = yield from aiohttp.request(method, url, *args, **kwargs)
                 if expects and response.status not in expects:
                     raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
-            except exceptions.ProviderError as e:
-                if not retry or retry < 1 or e.code not in self._retry_on:
+                return response
+            except throws as e:
+                if retry <= 0 or e.code not in self._retry_on:
                     raise
-                yield from asyncio.sleep((1 + _retry - retry) * 3)
+                yield from asyncio.sleep((1 + _retry - retry) * 2)
                 retry -= 1
-
-        return response
 
     @asyncio.coroutine
     def move(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
