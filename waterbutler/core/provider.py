@@ -3,6 +3,7 @@ import time
 import asyncio
 import logging
 import weakref
+import functools
 import itertools
 from urllib import parse
 
@@ -20,6 +21,7 @@ _THROTTLES = weakref.WeakKeyDictionary()
 def throttle(concurrency=10, interval=1):
     def _throttle(func):
         @asyncio.coroutine
+        @functools.wraps(func)
         def wrapped(*args, **kwargs):
             if asyncio.get_event_loop() not in _THROTTLES:
                 count, last_call, event = 0, time.time(), asyncio.Event()
@@ -75,7 +77,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     BASE_URL = None
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, retry_on={408, 502, 503, 504}):
         """
         :param dict auth: Information about the user this provider will act on the behalf of
         :param dict credentials: The credentials used to authenticate with the provider,
@@ -83,6 +85,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param dict settings: Configuration settings for this provider,
             often folder or repo
         """
+        self._retry_on = retry_on
         self.auth = auth
         self.credentials = credentials
         self.settings = settings
@@ -151,6 +154,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :raises ProviderError: Raised if expects is defined
         """
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
+        retry = _retry = kwargs.pop('retry', 2)
         range = kwargs.pop('range', None)
         expects = kwargs.pop('expects', None)
         throws = kwargs.pop('throws', exceptions.ProviderError)
@@ -158,9 +162,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
             kwargs['headers']['Range'] = self._build_range_header(range)
         if callable(url):
             url = url()
-        response = yield from aiohttp.request(method, url, *args, **kwargs)
-        if expects and response.status not in expects:
-            raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
+        while retry and retry > 0:
+            try:
+                response = yield from aiohttp.request(method, url, *args, **kwargs)
+                if expects and response.status not in expects:
+                    raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
+            except exceptions.ProviderError as e:
+                if not retry or retry < 1 or e.code not in self._retry_on:
+                    raise
+                yield from asyncio.sleep((1 + _retry - retry) * 3)
+                retry -= 1
+
         return response
 
     @asyncio.coroutine
