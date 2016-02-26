@@ -288,10 +288,6 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         return GoogleDriveFolderMetadata((yield from resp.json()), path)
 
-    @asyncio.coroutine
-    def make_request(self, *args, **kwargs):
-        return (yield from super().make_request(*args, **kwargs))
-
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
 
