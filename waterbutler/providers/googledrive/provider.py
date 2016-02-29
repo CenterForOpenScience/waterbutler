@@ -210,9 +210,12 @@ class GoogleDriveProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         yield from self.make_request(
-            'DELETE',
+            'PUT',
             self.build_url('files', path.identifier),
-            expects=(204, ),
+            data=json.dumps({'labels': {
+                'trashed': 'true'}}),
+            headers={'Content-Type': 'application/json'},
+            expects=(200, ),
             throws=exceptions.DeleteError,
         )
 
@@ -343,9 +346,13 @@ class GoogleDriveProvider(provider.BaseProvider):
         item_id = parent_id or self.folder['id']
 
         while parts:
+            query = self._build_query(path.identifier)
             resp = yield from self.make_request(
                 'GET',
-                self.build_url('files', item_id, 'children', q="title = '{}'".format(parts.pop(0))),
+                self.build_url('files',
+                               item_id,
+                               'children',
+                               q=query),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
@@ -368,10 +375,17 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         while parts:
             current_part = parts.pop(0)
+            query = "title = '{}' " \
+                    "and trashed = false " \
+                    "and mimeType != 'application/vnd.google-apps.form'".format(clean_query(current_part))
 
             resp = yield from self.make_request(
                 'GET',
-                self.build_url('files', item_id, 'children', q="title = '{}'".format(clean_query(current_part)), fields='items(id)'),
+                self.build_url('files',
+                               item_id,
+                               'children',
+                               q=query,
+                               fields='items(id)'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
@@ -446,7 +460,9 @@ class GoogleDriveProvider(provider.BaseProvider):
         for parent in (yield from resp.json())['items']:
             p_resp = yield from self.make_request(
                 'GET',
-                self.build_url('files', parent['id'], fields='id,title'),
+                self.build_url('files',
+                               parent['id'],
+                               fields='id,title,labels/trashed'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
