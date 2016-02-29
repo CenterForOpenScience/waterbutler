@@ -374,7 +374,7 @@ class S3Provider(provider.BaseProvider):
         return (yield from self._metadata_file(path, revision=revision))
 
     @asyncio.coroutine
-    def create_folder(self, path, **kwargs):
+    def create_folder(self, path, folder_precheck=True, **kwargs):
         """
         :param str path: The path to create a folder at
         """
@@ -382,8 +382,9 @@ class S3Provider(provider.BaseProvider):
 
         WaterButlerPath.validate_folder(path)
 
-        if (yield from self.exists(path)):
-            raise exceptions.FolderNamingConflict(str(path))
+        if folder_precheck:
+            if (yield from self.exists(path)):
+                raise exceptions.FolderNamingConflict(str(path))
 
         yield from self.make_request(
             'PUT',
