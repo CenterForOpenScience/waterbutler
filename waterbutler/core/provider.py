@@ -389,7 +389,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         Given a WaterButlerPath and a conflict resolution pattern determine
         the correct file path to upload to and indicate if that file exists or not
 
-        :param WaterbutlerPath: Desired path to check for conflict
+        :param WaterButlerPath path: Desired path to check for conflict
         :param str conflict: replace, keep, warn
         :rtype: (WaterButlerPath, provider.metadata() or False)
         :raises: NamingConflict
