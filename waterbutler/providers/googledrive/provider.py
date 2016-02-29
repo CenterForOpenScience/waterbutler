@@ -212,8 +212,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         yield from self.make_request(
             'PUT',
             self.build_url('files', path.identifier),
-            data=json.dumps({'labels': {
-                'trashed': 'true'}}),
+            data=json.dumps({'labels': {'trashed': 'true'}}),
             headers={'Content-Type': 'application/json'},
             expects=(200, ),
             throws=exceptions.DeleteError,
@@ -349,10 +348,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             query = self._build_query(path.identifier)
             resp = yield from self.make_request(
                 'GET',
-                self.build_url('files',
-                               item_id,
-                               'children',
-                               q=query),
+                self.build_url('files', item_id, 'children', q=query),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
@@ -381,11 +377,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
             resp = yield from self.make_request(
                 'GET',
-                self.build_url('files',
-                               item_id,
-                               'children',
-                               q=query,
-                               fields='items(id)'),
+                self.build_url('files', item_id, 'children', q=query, fields='items(id)'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
@@ -460,9 +452,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         for parent in (yield from resp.json())['items']:
             p_resp = yield from self.make_request(
                 'GET',
-                self.build_url('files',
-                               parent['id'],
-                               fields='id,title,labels/trashed'),
+                self.build_url('files', parent['id'], fields='id,title,labels/trashed'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
