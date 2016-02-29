@@ -2,6 +2,15 @@
 ChangeLog
 *********
 
+0.17.0 (2016-02-29)
+===================
+- LEAP DAY RELEASE!
+- Feature: Add throttling to make_request!   Some hosts don't like it when we fire off too many
+requests at once.  Now we limit it to 10 requests / second and a maximum of 5 concurrently.  To
+adjust the rates, update the REQUEST_LIMIT and OP_CONCURRENCY attributes in settings.py. (thanks
+@chrisseto!)
+- Fix: Update dropbox API urls.
+
 0.16.5 (2016-02-22)
 ===================
 - No changes. Applied and reverted throttling patches.
