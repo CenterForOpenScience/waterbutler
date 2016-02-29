@@ -1,5 +1,9 @@
 import abc
+import time
 import asyncio
+import logging
+import weakref
+import functools
 import itertools
 from urllib import parse
 
@@ -10,8 +14,35 @@ from waterbutler import settings
 from waterbutler.core import streams
 from waterbutler.core import exceptions
 
+logger = logging.getLogger(__name__)
+_THROTTLES = weakref.WeakKeyDictionary()
 
-REQUEST_SEMAPHORE = asyncio.Semaphore(settings.REQUEST_LIMIT)
+
+def throttle(concurrency=10, interval=1):
+    def _throttle(func):
+        @asyncio.coroutine
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            if asyncio.get_event_loop() not in _THROTTLES:
+                count, last_call, event = 0, time.time(), asyncio.Event()
+                _THROTTLES[asyncio.get_event_loop()] = (count, last_call, event)
+                event.set()
+            else:
+                count, last_call, event = _THROTTLES[asyncio.get_event_loop()]
+
+            yield from event.wait()
+            count += 1
+            if count > concurrency:
+                count = 0
+                if (time.time() - last_call) < interval:
+                    event.clear()
+                    yield from asyncio.sleep(interval - (time.time() - last_call))
+                    event.set()
+
+            last_call = time.time()
+            return (yield from func(*args, **kwargs))
+        return wrapped
+    return _throttle
 
 
 def build_url(base, *segments, **query):
@@ -46,7 +77,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     BASE_URL = None
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, retry_on={408, 502, 503, 504}):
         """
         :param dict auth: Information about the user this provider will act on the behalf of
         :param dict credentials: The credentials used to authenticate with the provider,
@@ -54,6 +85,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param dict settings: Configuration settings for this provider,
             often folder or repo
         """
+        self._retry_on = retry_on
         self.auth = auth
         self.credentials = credentials
         self.settings = settings
@@ -104,8 +136,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
             if value is not None
         }
 
+    @throttle()
     @asyncio.coroutine
-    def make_request(self, *args, **kwargs):
+    def make_request(self, method, url, *args, **kwargs):
         """A wrapper around :func:`aiohttp.request`. Inserts default headers.
 
         :param str method: The HTTP method
@@ -121,19 +154,25 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :raises ProviderError: Raised if expects is defined
         """
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
+        retry = _retry = kwargs.pop('retry', 2)
         range = kwargs.pop('range', None)
         expects = kwargs.pop('expects', None)
         throws = kwargs.pop('throws', exceptions.ProviderError)
         if range:
             kwargs['headers']['Range'] = self._build_range_header(range)
-        yield from REQUEST_SEMAPHORE.acquire()
-        try:
-            response = yield from aiohttp.request(*args, **kwargs)
-        finally:
-            REQUEST_SEMAPHORE.release()
-        if expects and response.status not in expects:
-            raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
-        return response
+        if callable(url):
+            url = url()
+        while retry >= 0:
+            try:
+                response = yield from aiohttp.request(method, url, *args, **kwargs)
+                if expects and response.status not in expects:
+                    raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
+                return response
+            except throws as e:
+                if retry <= 0 or e.code not in self._retry_on:
+                    raise
+                yield from asyncio.sleep((1 + _retry - retry) * 2)
+                retry -= 1
 
     @asyncio.coroutine
     def move(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
@@ -217,33 +256,30 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         dest_path = yield from dest_provider.revalidate_path(dest_path.parent, dest_path.name, folder=dest_path.is_dir)
 
-        futures = []
-        for item in (yield from self.metadata(src_path)):
-            futures.append(
-                asyncio.async(
-                    func(
-                        dest_provider,
-                        # TODO figure out a way to cut down on all the requests made here
-                        (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
-                        (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
-                        handle_naming=False,
-                    )
-                )
-            )
+        folder.children = []
+        items = yield from self.metadata(src_path)
 
-        if not futures:
-            folder.children = []
-            return folder, created
+        for i in range(0, len(items), settings.OP_CONCURRENCY):
+            fs = []
+            for item in items[i:i + settings.OP_CONCURRENCY]:
+                fs.append(asyncio.async(func(
+                    dest_provider,
+                    # TODO figure out a way to cut down on all the requests made here
+                    (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
+                    (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
+                    handle_naming=False,
+                )))
 
-        finished, pending = yield from asyncio.wait(futures, return_when=asyncio.FIRST_EXCEPTION)
+                if item.is_folder:
+                    yield from fs[-1]
 
-        if len(pending) != 0:
-            finished.pop().result()
+            if not fs:
+                continue
 
-        folder.children = [
-            future.result()[0]  # result is a tuple of (metadata, created)
-            for future in finished
-        ]
+            done, _ = yield from asyncio.wait(fs, return_when=asyncio.FIRST_EXCEPTION)
+
+            for fut in done:
+                folder.children.append(fut.result()[0])
 
         return folder, created
 
@@ -479,3 +515,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             '' if start is None else start,
             '' if end is None else end
         )
+
+    def __repr__(self):
+        # Note: credentials are not included on purpose.
+        return ('<{}({}, {})>'.format(self.__class__.__name__, self.auth, self.settings))
