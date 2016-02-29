@@ -365,6 +365,14 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def exists(self, path, **kwargs):
+        """Check for existance of WaterButlerPath
+
+        Attempt to retreive provide metadata to determine existance of
+        WaterButlerPath
+
+        :param WaterbutlerPath: path to check for
+        :rtype (provider.metadata() or False)
+        """
         try:
             return (yield from self.metadata(path, **kwargs))
         except exceptions.NotFoundError:
@@ -376,12 +384,14 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def handle_name_conflict(self, path, conflict='replace', **kwargs):
-        """Given a name and a conflict resolution pattern determine
+        """Check WaterButlerPath and resolve conflicts
+
+        Given a WaterButlerPath and a conflict resolution pattern determine
         the correct file path to upload to and indicate if that file exists or not
 
-        :param WaterbutlerPath path: An object supporting the waterbutler path API
+        :param WaterButlerPath path: Desired path to check for conflict
         :param str conflict: replace, keep, warn
-        :rtype: (WaterButlerPath, dict or False)
+        :rtype: (WaterButlerPath, provider.metadata() or False)
         :raises: NamingConflict
         """
         exists = yield from self.exists(path, **kwargs)
@@ -390,8 +400,16 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if conflict == 'warn':
             raise exceptions.NamingConflict(path)
 
-        while (yield from self.exists(path.increment_name(), **kwargs)):
-            pass
+        while True:
+            path.increment_name()
+            test_path = yield from self.revalidate_path(
+                path.parent,
+                path.name,
+                folder=path.is_dir
+            )
+            exist = yield from self.exists(test_path, **kwargs)
+            if not exist:
+                break
 
         return path, False
 
