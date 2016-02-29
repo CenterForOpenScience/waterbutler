@@ -310,11 +310,12 @@ class BoxProvider(provider.BaseProvider):
         return [BoxRevision(each) for each in [curr] + revisions]
 
     @asyncio.coroutine
-    def create_folder(self, path, **kwargs):
+    def create_folder(self, path, folder_precheck=True, **kwargs):
         WaterButlerPath.validate_folder(path)
 
-        if path.identifier is not None:
-            raise exceptions.FolderNamingConflict(str(path))
+        if folder_precheck:
+            if path.identifier is not None:
+                raise exceptions.FolderNamingConflict(str(path))
 
         resp = yield from self.make_request(
             'POST',

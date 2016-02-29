@@ -265,11 +265,12 @@ class GoogleDriveProvider(provider.BaseProvider):
         })]
 
     @asyncio.coroutine
-    def create_folder(self, path, **kwargs):
+    def create_folder(self, path, folder_precheck=True, **kwargs):
         GoogleDrivePath.validate_folder(path)
 
-        if path.identifier:
-            raise exceptions.FolderNamingConflict(str(path))
+        if folder_precheck:
+            if path.identifier:
+                raise exceptions.FolderNamingConflict(str(path))
 
         resp = yield from self.make_request(
             'POST',
