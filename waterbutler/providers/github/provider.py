@@ -230,10 +230,19 @@ class GitHubProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def delete(self, path, sha=None, message=None, branch=None, **kwargs):
+        """Delete file, folder, or provider root contents
+
+        :param GitHubPath path: GitHubPath path object for file, folder, or root
+        :param str sha: SHA-1 checksum of file/folder object
+        :param str message: Commit message
+        :param str branch: Repository branch
+        """
         assert self.name is not None
         assert self.email is not None
 
-        if path.is_dir:
+        if path.is_root:
+            yield from self._delete_folder_contents(path)
+        elif path.is_dir:
             yield from self._delete_folder(path, message, **kwargs)
         else:
             yield from self._delete_file(path, message, **kwargs)
@@ -424,6 +433,18 @@ class GitHubProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.DeleteError,
         )
+
+    @asyncio.coroutine
+    def _delete_folder_contents(self, path, message=None, **kwargs):
+        """Delete the contents of a folder. For use against provider root.
+
+        :param GitHubPath path: GitHubPath path object for folder
+        :param str message: Commit message
+        """
+        meta = (yield from self.metadata(path))
+        for child in meta:
+            github_path = yield from self.validate_v1_path(child.path)
+            yield from self.delete(github_path)
 
     @asyncio.coroutine
     def _fetch_branch(self, branch):
