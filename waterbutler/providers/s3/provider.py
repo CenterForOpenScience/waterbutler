@@ -1,6 +1,7 @@
 import os
 import asyncio
 import hashlib
+import functools
 from urllib import parse
 
 import xmltodict
@@ -29,6 +30,15 @@ from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
 
 class S3Provider(provider.BaseProvider):
     """Provider for the Amazon's S3
+
+    Quirks:
+        On S3, folders are not first-class objects, but are instead inferred
+        from the names of their children.  A regular DELETE request issued
+        against a folder will not work unless that folder is completely empty.
+        To fully delete an occupied folder, we must delete all of the comprising
+        objects.  Amazon provides a bulk delete operation to simplify this.
+
+        A GET prefix query against a non-existant path returns 200
     """
     NAME = 's3'
 
@@ -64,7 +74,7 @@ class S3Provider(provider.BaseProvider):
             params = {'prefix': path, 'delimiter': '/'}
             resp = yield from self.make_request(
                 'GET',
-                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+                functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
                 params=params,
                 expects=(200, 404),
                 throws=exceptions.MetadataError,
@@ -72,7 +82,7 @@ class S3Provider(provider.BaseProvider):
         else:
             resp = yield from self.make_request(
                 'HEAD',
-                self.bucket.new_key(path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
+                functools.partial(self.bucket.new_key(path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
                 expects=(200, 404),
                 throws=exceptions.MetadataError,
             )
@@ -108,7 +118,8 @@ class S3Provider(provider.BaseProvider):
         # ensure no left slash when joining paths
         source_path = '/' + os.path.join(self.settings['bucket'], source_path.path)
         headers = {'x-amz-copy-source': parse.quote(source_path)}
-        url = dest_key.generate_url(
+        url = functools.partial(
+            dest_key.generate_url,
             settings.TEMP_URL_SECS,
             'PUT',
             headers=headers,
@@ -146,16 +157,15 @@ class S3Provider(provider.BaseProvider):
         else:
             response_headers = {'response-content-disposition': 'attachment'}
 
-        url = self.bucket.new_key(
-            path.path
-        ).generate_url(
+        url = functools.partial(
+            self.bucket.new_key(path.path).generate_url,
             settings.TEMP_URL_SECS,
             query_parameters=query_parameters,
             response_headers=response_headers
         )
 
         if accept_url:
-            return url
+            return url()
 
         resp = yield from self.make_request(
             'GET',
@@ -188,7 +198,8 @@ class S3Provider(provider.BaseProvider):
         if self.encrypt_uploads:
             headers['x-amz-server-side-encryption'] = 'AES256'
 
-        upload_url = self.bucket.new_key(path.path).generate_url(
+        upload_url = functools.partial(
+            self.bucket.new_key(path.path).generate_url,
             settings.TEMP_URL_SECS,
             'PUT',
             headers=headers,
@@ -227,10 +238,21 @@ class S3Provider(provider.BaseProvider):
 
     @asyncio.coroutine
     def _delete_folder(self, path, **kwargs):
-        """On S3, folders are not first-class objects, but are instead inferred from the names
-        of their children.  A regular DELETE request issued against a folder will not work unless
-        that folder is completely empty.  To fully delete an occupied folder, we must delete all
-        of the comprising objects.  Amazon provides a bulk delete operation to simplify this.
+        """Query for recursive contents of folder and delete in batches of 1000
+
+        Called from: func: delete if not path.is_file
+
+        Calls: func: self._check_region
+               func: self.make_request
+               func: self.bucket.generate_url
+
+        :param *ProviderPath path: Path to be deleted
+
+        On S3, folders are not first-class objects, but are instead inferred
+        from the names of their children.  A regular DELETE request issued
+        against a folder will not work unless that folder is completely empty.
+        To fully delete an occupied folder, we must delete all of the comprising
+        objects.  Amazon provides a bulk delete operation to simplify this.
         """
         yield from self._check_region()
 
@@ -263,6 +285,10 @@ class S3Provider(provider.BaseProvider):
             if len(content_keys) > 0:
                 marker = content_keys[-1]
 
+        # Query against non-existant folder does not return 404
+        if len(content_keys) == 0:
+            raise exceptions.NotFoundError(str(path))
+
         while len(content_keys) > 0:
             key_batch = content_keys[:1000]
             del content_keys[:1000]
@@ -286,7 +312,8 @@ class S3Provider(provider.BaseProvider):
 
             # We depend on a customized version of boto that can make query parameters part of
             # the signature.
-            url = self.bucket.generate_url(
+            url = functools.partial(
+                self.bucket.generate_url,
                 settings.TEMP_URL_SECS,
                 'POST',
                 query_parameters=query_params,
@@ -312,7 +339,7 @@ class S3Provider(provider.BaseProvider):
         yield from self._check_region()
 
         query_params = {'prefix': path.path, 'delimiter': '/', 'versions': ''}
-        url = self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
+        url = functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
         resp = yield from self.make_request(
             'GET',
             url,
@@ -347,7 +374,7 @@ class S3Provider(provider.BaseProvider):
         return (yield from self._metadata_file(path, revision=revision))
 
     @asyncio.coroutine
-    def create_folder(self, path, **kwargs):
+    def create_folder(self, path, folder_precheck=True, **kwargs):
         """
         :param str path: The path to create a folder at
         """
@@ -355,12 +382,13 @@ class S3Provider(provider.BaseProvider):
 
         WaterButlerPath.validate_folder(path)
 
-        if (yield from self.exists(path)):
-            raise exceptions.FolderNamingConflict(str(path))
+        if folder_precheck:
+            if (yield from self.exists(path)):
+                raise exceptions.FolderNamingConflict(str(path))
 
         yield from self.make_request(
             'PUT',
-            self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'PUT'),
+            functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
             expects=(200, 201),
             throws=exceptions.CreateFolderError
         )
@@ -375,9 +403,8 @@ class S3Provider(provider.BaseProvider):
             revision = None
         resp = yield from self.make_request(
             'HEAD',
-            self.bucket.new_key(
-                path.path
-            ).generate_url(
+            functools.partial(
+                self.bucket.new_key(path.path).generate_url,
                 settings.TEMP_URL_SECS,
                 'HEAD',
                 query_parameters={'versionId': revision} if revision else None
@@ -394,7 +421,7 @@ class S3Provider(provider.BaseProvider):
         params = {'prefix': path.path, 'delimiter': '/'}
         resp = yield from self.make_request(
             'GET',
-            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+            functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
             params=params,
             expects=(200, ),
             throws=exceptions.MetadataError,
@@ -413,7 +440,7 @@ class S3Provider(provider.BaseProvider):
             # if the path is root there is no need to test if it exists
             yield from self.make_request(
                 'HEAD',
-                self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
+                functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
@@ -466,11 +493,12 @@ class S3Provider(provider.BaseProvider):
     def _get_bucket_region(self):
         """Bucket names are unique across all regions.
 
-        Endpoint doc: http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html
+       Endpoint doc:
+       http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html
         """
         resp = yield from self.make_request(
             'GET',
-            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters={'location': ''}),
+            functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters={'location': ''}),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )

@@ -216,7 +216,6 @@ class BoxProvider(provider.BaseProvider):
 
         return super().make_request(*args, **kwargs)
 
-    @provider.throttle
     @asyncio.coroutine
     def download(self, path, revision=None, range=None, **kwargs):
         if path.identifier is None:
@@ -283,7 +282,6 @@ class BoxProvider(provider.BaseProvider):
             throws=exceptions.DeleteError,
         )
 
-    @provider.throttle
     @asyncio.coroutine
     def metadata(self, path, raw=False, folder=False, revision=None, **kwargs):
         if path.identifier is None:
@@ -312,11 +310,12 @@ class BoxProvider(provider.BaseProvider):
         return [BoxRevision(each) for each in [curr] + revisions]
 
     @asyncio.coroutine
-    def create_folder(self, path, **kwargs):
+    def create_folder(self, path, folder_precheck=True, **kwargs):
         WaterButlerPath.validate_folder(path)
 
-        if path.identifier is not None:
-            raise exceptions.FolderNamingConflict(str(path))
+        if folder_precheck:
+            if path.identifier is not None:
+                raise exceptions.FolderNamingConflict(str(path))
 
         resp = yield from self.make_request(
             'POST',

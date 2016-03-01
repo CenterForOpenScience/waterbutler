@@ -165,6 +165,7 @@ class BaseCrossProviderHandler(BaseHandler):
                 'path': src_path,
                 'name': self.json['source']['path'].name,
                 'materialized': str(self.json['source']['path']),
+                'kind': self.json['source']['path'].kind,
             },
             'destination': dict(data, nid=self.json['destination']['nid']),
             'auth': self.auth['auth'],

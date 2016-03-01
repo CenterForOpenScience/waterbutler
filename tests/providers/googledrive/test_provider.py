@@ -6,6 +6,7 @@ import io
 from http import client
 
 import aiohttpretty
+from json import dumps
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
@@ -190,9 +191,12 @@ class TestValidatePath:
         file_name = 'file.txt'
         file_id = '1234ideclarethumbwar'
 
+        query = "title = '{}' " \
+                "and trashed = false " \
+                "and mimeType != 'application/vnd.google-apps.form'".format(file_name)
         query_url = provider.build_url(
             'files', provider.folder['id'], 'children',
-            q="title = '{}'".format(file_name), fields='items(id)'
+            q=query, fields='items(id)'
         )
         specific_url = provider.build_url('files', file_id, fields='id,title,mimeType')
 
@@ -220,9 +224,12 @@ class TestValidatePath:
         folder_name = 'foofolder'
         folder_id = 'whyis6afraidof7'
 
+        query = "title = '{}' " \
+                "and trashed = false " \
+                "and mimeType != 'application/vnd.google-apps.form'".format(folder_name)
         query_url = provider.build_url(
             'files', provider.folder['id'], 'children',
-            q="title = '{}'".format(folder_name), fields='items(id)'
+            q=query, fields='items(id)'
         )
         specific_url = provider.build_url('files', folder_id, fields='id,title,mimeType')
 
@@ -440,25 +447,34 @@ class TestCRUD:
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(None, item['id']))
         delete_url = provider.build_url('files', item['id'])
-        aiohttpretty.register_uri('DELETE', delete_url, status=204)
+        del_url_body = dumps({'labels': {'trashed': 'true'}})
+        aiohttpretty.register_uri('PUT',
+                                  delete_url,
+                                  body=del_url_body,
+                                  status=200)
 
         result = yield from provider.delete(path)
 
         assert result is None
-        assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
+        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
 
     @async
     @pytest.mark.aiohttpretty
     def test_delete_folder(self, provider):
         item = fixtures.folder_metadata
-        delete_url = provider.build_url('files', item['id'])
+        del_url = provider.build_url('files', item['id'])
+        del_url_body = dumps({'labels': {'trashed': 'true'}})
+
         path = WaterButlerPath('/foobar/', _ids=('doesntmatter', item['id']))
 
-        aiohttpretty.register_uri('DELETE', delete_url, status=204)
+        aiohttpretty.register_uri('PUT',
+                                  del_url,
+                                  body=del_url_body,
+                                  status=200)
 
         result = yield from provider.delete(path)
 
-        assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
+        assert aiohttpretty.has_call(method='PUT', uri=del_url)
 
     @async
     @pytest.mark.aiohttpretty
