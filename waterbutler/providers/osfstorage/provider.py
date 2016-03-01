@@ -444,5 +444,5 @@ class OSFStorageProvider(provider.BaseProvider):
         """
         meta = (yield from self.metadata(path))
         for child in meta:
-            osf_path = yield from self.validate_v1_path(child.path)
+            osf_path = yield from self.validate_path(child.path)
             yield from self.delete(osf_path)

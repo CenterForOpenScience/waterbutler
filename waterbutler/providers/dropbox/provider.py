@@ -324,5 +324,5 @@ class DropboxProvider(provider.BaseProvider):
         """
         meta = (yield from self.metadata(path))
         for child in meta:
-            drop_box_path = yield from self.validate_v1_path(child.path)
+            drop_box_path = yield from self.validate_path(child.path)
             yield from self.delete(drop_box_path)

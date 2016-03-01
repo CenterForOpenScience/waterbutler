@@ -449,5 +449,5 @@ class BoxProvider(provider.BaseProvider):
         """
         meta = (yield from self.metadata(path))
         for child in meta:
-            box_path = yield from self.validate_v1_path(child.path)
+            box_path = yield from self.validate_path(child.path)
             yield from self.delete(box_path)
