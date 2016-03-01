@@ -328,7 +328,9 @@ class TestCRUD:
 
         birdie_query_url = provider.build_url(
             'files', provider.folder['id'], 'children',
-            q="title = '{}'".format('birdie.jpg'), fields='items(id)')
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('birdie.jpg', 'application/vnd.google-apps.form'), fields='items(id)')
+
+
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
         finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
 
@@ -354,7 +356,7 @@ class TestCRUD:
 
         birdie_query_url = provider.build_url(
             'files', provider.folder['id'], 'children',
-            q="title = '{}'".format(path.path), fields='items(id)')
+            q="title = '{}' and trashed = false and mimeType != '{}'".format(path.path, 'application/vnd.google-apps.form'), fields='items(id)')
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
         finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
 
@@ -408,7 +410,7 @@ class TestCRUD:
 
         query_url = provider.build_url(
             'files', provider.folder['id'], 'children',
-            q="title = '{}'".format('ed'), fields='items(id)')
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('ed', 'application/vnd.google-apps.form'), fields='items(id)')
         aiohttpretty.register_json_uri('GET', query_url, body=search_for_ed_folder_response)
 
         query_url = provider.build_url(
@@ -417,7 +419,7 @@ class TestCRUD:
 
         query_url = provider.build_url(
             'files', 'imaedfolder', 'children',
-            q="title = '{}'".format('sullivan'), fields='items(id)')
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('sullivan', 'application/vnd.google-apps.form'), fields='items(id)')
         aiohttpretty.register_json_uri('GET', query_url, body=search_for_sullivan_folder_response)
 
         query_url = provider.build_url(
@@ -426,7 +428,7 @@ class TestCRUD:
 
         query_url = provider.build_url(
             'files', 'imasullivanfolder', 'children',
-            q="title = '{}'".format('show.mp3'), fields='items(id)')
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('show.mp3', 'application/vnd.google-apps.form'), fields='items(id)')
         aiohttpretty.register_json_uri('GET', query_url, body=search_for_showmp3_folder_response)
 
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
@@ -670,7 +672,7 @@ class TestCreateFolder:
         path = WaterButlerPath('/osf%20test/', _ids=(provider.folder['id'], None))
         query_url = provider.build_url(
             'files', provider.folder['id'], 'children',
-            q="title = '{}'".format('osf test'), fields='items(id)')
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('osf test', 'application/vnd.google-apps.form'), fields='items(id)')
 
         aiohttpretty.register_json_uri('GET', query_url, body=search_for_absent_folder_response)
         aiohttpretty.register_json_uri('POST', provider.build_url('files'), body=fixtures.folder_metadata)
@@ -693,7 +695,7 @@ class TestCreateFolder:
 
         query_url = provider.build_url(
             'files', provider.folder['id'], 'children',
-            q="title = '{}'".format('hugo'), fields='items(id)')
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('hugo', 'application/vnd.google-apps.form'), fields='items(id)')
         aiohttpretty.register_json_uri('GET', query_url, body=search_for_hugo_folder_response)
 
         query_url = provider.build_url(
@@ -702,7 +704,7 @@ class TestCreateFolder:
 
         query_url = provider.build_url(
             'files', 'imahugofolder', 'children',
-            q="title = '{}'".format('kim'), fields='items(id)')
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('kim', 'application/vnd.google-apps.form'), fields='items(id)')
         aiohttpretty.register_json_uri('GET', query_url, body=search_for_kim_folder_response)
 
         query_url = provider.build_url(
@@ -711,7 +713,7 @@ class TestCreateFolder:
 
         query_url = provider.build_url(
             'files', 'imakimfolder', 'children',
-            q="title = '{}'".format('pins'), fields='items(id)')
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('pins', 'application/vnd.google-apps.form'), fields='items(id)')
         aiohttpretty.register_json_uri('GET', query_url, body=search_for_pins_folder_response)
 
         url = provider.build_url('files')
