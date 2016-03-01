@@ -334,8 +334,16 @@ class OSFStorageProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
+        """Delete file, folder, or provider root contents
+
+        :param OsfStoragePath path: path to delete
+        """
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
+
+        if path.is_root:
+            yield from self._delete_folder_contents(path)
+            return
 
         yield from self.make_signed_request(
             'DELETE',
@@ -427,3 +435,14 @@ class OSFStorageProvider(provider.BaseProvider):
             pass
 
         return True
+
+    @asyncio.coroutine
+    def _delete_folder_contents(self, path, **kwargs):
+        """Delete the contents of a folder. For use against provider root.
+
+        :param OsfStoragePath path: OsfStoragePath path object for folder
+        """
+        meta = (yield from self.metadata(path))
+        for child in meta:
+            osf_path = yield from self.validate_v1_path(child.path)
+            yield from self.delete(osf_path)
