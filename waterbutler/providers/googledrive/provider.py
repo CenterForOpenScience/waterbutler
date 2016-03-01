@@ -197,7 +197,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         # Check for duplicate file names
         if not path.identifier:
             try:
-                path = yield from self.validate_v1_path(path.raw_path)
+                path = yield from self.validate_path(path.raw_path)
             except (exceptions.NotFoundError):
                 path = orig_path
 
@@ -280,7 +280,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         # Check for duplicate folder names
         if not path.identifier:
             try:
-                path = yield from self.validate_v1_path(path.path)
+                path = yield from self.validate_path(path.path)
             except (exceptions.NotFoundError):
                 path = orig_path
 
