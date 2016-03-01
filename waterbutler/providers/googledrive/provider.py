@@ -206,8 +206,24 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     @asyncio.coroutine
     def delete(self, path, **kwargs):
+        """Given a WaterButlerPath, delete that path
+
+        :param WaterButlerPath: Path to be deleted
+        :rtype: None
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+
+        Quirks:
+            If the WaterButlerPath given is for the provider root path, then
+            the contents of provider root path will be deleted. But not the
+            provider root itself.
+        """
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
+
+        if path.is_root:
+            yield from self.empty_folder(path)
+            return
 
         yield from self.make_request(
             'PUT',
@@ -217,6 +233,39 @@ class GoogleDriveProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.DeleteError,
         )
+
+    @asyncio.coroutine
+    def empty_folder(self, path):
+        """Given a WaterButlerPath, delete all contents of folder
+
+        :param WaterButlerPath: Folder to be emptied
+        :rtype: None
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        """
+        file_id = path.identifier
+        if not file_id:
+            raise exceptions.NotFoundError(str(path))
+        resp = yield from self.make_request(
+            'GET',
+            self.build_url('files',
+                           q="'{}' in parents".format(file_id),
+                           fields='items(id)'),
+            expects=(200, ),
+            throws=exceptions.MetadataError)
+
+        try:
+            child_ids = (yield from resp.json())['items']
+        except (KeyError, IndexError):
+            raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
+
+        for child in child_ids:
+            yield from self.make_request(
+                'DELETE',
+                self.build_url('files', child['id']),
+                expects=(204, ),
+                throws=exceptions.DeleteError)
 
     def _build_query(self, folder_id, title=None):
         queries = [
