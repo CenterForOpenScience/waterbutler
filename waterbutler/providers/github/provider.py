@@ -229,19 +229,24 @@ class GitHubProvider(provider.BaseProvider):
         }, commit=commit), not exists
 
     @asyncio.coroutine
-    def delete(self, path, sha=None, message=None, branch=None, **kwargs):
+    def delete(self, path, sha=None, message=None, branch=None,
+               confirm_delete=0, **kwargs):
         """Delete file, folder, or provider root contents
 
         :param GitHubPath path: GitHubPath path object for file, folder, or root
         :param str sha: SHA-1 checksum of file/folder object
         :param str message: Commit message
         :param str branch: Repository branch
+        :param int confirm_delete: Must be 1 to confirm root folder delete
         """
         assert self.name is not None
         assert self.email is not None
 
         if path.is_root:
-            yield from self._delete_folder_contents(path)
+            if confirm_delete == 1:
+                yield from self._delete_folder_contents(path)
+            else:
+                raise exceptions.DeleteError('confirm_delete=1 is required for deleting root provider folder')
         elif path.is_dir:
             yield from self._delete_folder(path, message, **kwargs)
         else:

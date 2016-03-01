@@ -205,10 +205,11 @@ class GoogleDriveProvider(provider.BaseProvider):
         return GoogleDriveFileMetadata(data, path), path.identifier is None
 
     @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    def delete(self, path, confirm_delete=0, **kwargs):
         """Given a WaterButlerPath, delete that path
 
         :param WaterButlerPath: Path to be deleted
+        :param int confirm_delete: Must be 1 to confirm root folder delete
         :rtype: None
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         :raises: :class:`waterbutler.core.exceptions.DeleteError`
@@ -222,8 +223,11 @@ class GoogleDriveProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         if path.is_root:
-            yield from self._delete_folder_contents(path)
-            return
+            if confirm_delete == 1:
+                yield from self._delete_folder_contents(path)
+                return
+            else:
+                raise exceptions.DeleteError('confirm_delete=1 is required for deleting root provider folder')
 
         yield from self.make_request(
             'PUT',

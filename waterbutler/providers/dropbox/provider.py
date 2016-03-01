@@ -199,14 +199,18 @@ class DropboxProvider(provider.BaseProvider):
         return DropboxFileMetadata(data, self.folder), not exists
 
     @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    def delete(self, path, confirm_delete=0, **kwargs):
         """Delete file, folder, or provider root contents
 
         :param DropboxPath path: DropboxPath path object for folder
+        :param int confirm_delete: Must be 1 to confirm root folder delete
         """
         if path.is_root:
-            yield from self._delete_folder_contents(path)
-            return
+            if confirm_delete == 1:
+                yield from self._delete_folder_contents(path)
+                return
+            else:
+                raise exceptions.DeleteError('confirm_delete=1 is required for deleting root provider folder')
 
         yield from self.make_request(
             'POST',
