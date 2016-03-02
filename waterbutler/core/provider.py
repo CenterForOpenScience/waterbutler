@@ -365,12 +365,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def exists(self, path, **kwargs):
-        """Check for existance of WaterButlerPath
+        """Check for existence of WaterButlerPath
 
-        Attempt to retreive provide metadata to determine existance of
-        WaterButlerPath
+        Attempt to retrieve provider metadata to determine existence
+        of WaterButlerPath.  If successful, will return the result of
+        `provider.metadata()` which may be `[]` for empty folders.
 
-        :param WaterbutlerPath: path to check for
+        :param WaterbutlerPath path: path to check for
         :rtype (provider.metadata() or False)
         """
         try:
@@ -407,8 +408,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
                 path.name,
                 folder=path.is_dir
             )
-            exist = yield from self.exists(test_path, **kwargs)
-            if not exist:
+
+            exists = yield from self.exists(test_path, **kwargs)
+            if not (exists or exists == []):
                 break
 
         return path, False
