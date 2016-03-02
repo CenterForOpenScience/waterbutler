@@ -141,7 +141,7 @@ If a moved/copied file is overwriting an existing file, a 200 OK response will b
 ::
 
     Method:        DELETE
-    Query Params:  <none>
+    Query Params:  ?confirm_delete=1 //required for root folder delete only
     Success:       204 No Content
 
-To delete a file or folder send a DELETE request to the delete link. Nothing will be returned in the response body.
+To delete a file or folder send a DELETE request to the delete link. Nothing will be returned in the response body. As a precaution against inadvertantly deleting the root folder, the query parameter confirm_delete must be set to 1 for root folder deletes. In adition, a root folder delete does not actually delete the root folder. Instead it deletes all contents of the folder, but not the folder itself.
