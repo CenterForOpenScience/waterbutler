@@ -186,6 +186,7 @@ class DropboxProvider(provider.BaseProvider):
     def upload(self, stream, path, conflict='replace', **kwargs):
         path, exists = yield from self.handle_name_conflict(path, conflict=conflict)
 
+        stream.add_writer('mime', streams.MimeStreamWriter())
         resp = yield from self.make_request(
             'PUT',
             self._build_content_url('files_put', 'auto', path.full_path),
@@ -195,7 +196,9 @@ class DropboxProvider(provider.BaseProvider):
             throws=exceptions.UploadError,
         )
 
+        content_type = stream.writers['mime'].mimetype.decode("utf-8")
         data = yield from resp.json()
+        data['mime_type'] = content_type
         return DropboxFileMetadata(data, self.folder), not exists
 
     @asyncio.coroutine
