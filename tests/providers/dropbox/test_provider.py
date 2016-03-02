@@ -38,21 +38,25 @@ def settings():
 def provider(auth, credentials, settings):
     return DropboxProvider(auth, credentials, settings)
 
-
 @pytest.fixture
 def file_content():
     return b'SLEEP IS FOR THE WEAK GO SERVE STREAMS'
-
 
 @pytest.fixture
 def file_like(file_content):
     return io.BytesIO(file_content)
 
-
 @pytest.fixture
 def file_stream(file_like):
     return streams.FileStreamReader(file_like)
 
+@pytest.fixture
+def pdf_file_content():
+    return open('tests/resources/mypdf.pdf', "rb")
+
+@pytest.fixture
+def pdf_file_stream(pdf_file_content):
+    return streams.FileStreamReader(pdf_file_content)
 
 @pytest.fixture
 def folder_metadata():
@@ -210,7 +214,7 @@ class TestCRUD:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_upload(self, provider, file_metadata, file_stream, settings):
+    def test_upload(self, provider, file_metadata, pdf_file_stream, settings):
         path = yield from provider.validate_path('/phile')
 
         metadata_url = provider.build_url('metadata', 'auto', path.full_path)
@@ -219,7 +223,7 @@ class TestCRUD:
         aiohttpretty.register_uri('GET', metadata_url, status=404)
         aiohttpretty.register_json_uri('PUT', url, status=200, body=file_metadata)
 
-        metadata, created = yield from provider.upload(file_stream, path)
+        metadata, created = yield from provider.upload(pdf_file_stream, path)
         expected = DropboxFileMetadata(file_metadata, provider.folder)
 
         assert created is True
