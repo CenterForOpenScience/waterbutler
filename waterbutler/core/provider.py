@@ -367,12 +367,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def exists(self, path, **kwargs):
         """Check for existence of WaterButlerPath
 
-        Attempt to retrieve provider metadata to determine existence
-        of WaterButlerPath.  If successful, will return the result of
-        `provider.metadata()` which may be `[]` for empty folders.
+        Attempt to retrieve provider metadata to determine existence of a WaterButlerPath.  If
+        successful, will return the result of `self.metadata()` which may be `[]` for empty
+        folders.
 
-        :param WaterbutlerPath path: path to check for
-        :rtype (provider.metadata() or False)
+        :param WaterButlerPath path: path to check for
+        :rtype: (`self.metadata()` or False)
         """
         try:
             return (yield from self.metadata(path, **kwargs))
