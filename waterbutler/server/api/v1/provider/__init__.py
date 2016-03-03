@@ -109,7 +109,10 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     @tornado.gen.coroutine
     def delete(self, **_):
-        yield from self.provider.delete(self.path)
+        self.confirm_delete = int(self.get_query_argument('confirm_delete',
+                                                          default=0))
+        yield from self.provider.delete(self.path,
+                                        confirm_delete=self.confirm_delete)
         self.set_status(http.client.NO_CONTENT)
 
     @tornado.gen.coroutine

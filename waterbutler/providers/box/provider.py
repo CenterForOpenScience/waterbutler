@@ -267,9 +267,24 @@ class BoxProvider(provider.BaseProvider):
         return BoxFileMetadata(data['entries'][0], path), created
 
     @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    def delete(self, path, confirm_delete=0, **kwargs):
+        """Delete file, folder, or provider root contents
+
+        :param BoxPath path: BoxPath path object for folder
+        :param int confirm_delete: Must be 1 to confirm root folder delete
+        """
         if not path.identifier:  # TODO This should be abstracted
             raise exceptions.NotFoundError(str(path))
+
+        if path.is_root:
+            if confirm_delete == 1:
+                yield from self._delete_folder_contents(path)
+                return
+            else:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400
+                )
 
         if path.is_file:
             url = self.build_url('files', path.identifier)
@@ -432,3 +447,14 @@ class BoxProvider(provider.BaseProvider):
 
         path = '/'.join(reversed(path))
         return '/' + os.path.join(path, filename)
+
+    @asyncio.coroutine
+    def _delete_folder_contents(self, path, **kwargs):
+        """Delete the contents of a folder. For use against provider root.
+
+        :param BoxPath path: BoxPath path object for folder
+        """
+        meta = (yield from self.metadata(path))
+        for child in meta:
+            box_path = yield from self.validate_path(child.path)
+            yield from self.delete(box_path)
