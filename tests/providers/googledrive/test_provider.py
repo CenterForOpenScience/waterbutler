@@ -74,6 +74,91 @@ def search_for_file_response():
     }
 
 @pytest.fixture
+def search_for_absent_folder_response():
+    return {
+        'items': [
+        ]
+    }
+
+@pytest.fixture
+def search_for_hugo_folder_response():
+    return {
+        'items': [
+            {'id': 'imahugofolder'}
+        ]
+    }
+
+@pytest.fixture
+def actual_hugo_response():
+    return {
+        'id': 'imahugofolder',
+        'mimeType': 'application/vnd.google-apps.folder',
+        'title': 'hugo',
+    }
+
+@pytest.fixture
+def search_for_kim_folder_response():
+    return {
+        'items': [
+            {'id': 'imakimfolder'}
+        ]
+    }
+
+@pytest.fixture
+def actual_kim_response():
+    return {
+        'id': 'imakimfolder',
+        'mimeType': 'application/vnd.google-apps.folder',
+        'title': 'kim',
+    }
+
+@pytest.fixture
+def search_for_pins_folder_response():
+    return {
+        'items': [
+        ]
+    }
+
+@pytest.fixture
+def search_for_ed_folder_response():
+    return {
+        'items': [
+            {'id': 'imaedfolder'}
+        ]
+    }
+
+@pytest.fixture
+def actual_ed_response():
+    return {
+        'id': 'imaedfolder',
+        'mimeType': 'application/vnd.google-apps.folder',
+        'title': 'ed',
+    }
+
+@pytest.fixture
+def search_for_sullivan_folder_response():
+    return {
+        'items': [
+            {'id': 'imasullivanfolder'}
+        ]
+    }
+
+@pytest.fixture
+def actual_sullivan_response():
+    return {
+        'id': 'imasullivanfolder',
+        'mimeType': 'application/vnd.google-apps.folder',
+        'title': 'sullivan',
+    }
+
+@pytest.fixture
+def search_for_showmp3_folder_response():
+    return {
+        'items': [
+        ]
+    }
+
+@pytest.fixture
 def actual_file_response():
     return {
         'id': '1234ideclarethumbwar',
@@ -236,14 +321,20 @@ class TestCRUD:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_upload_create(self, provider, file_stream):
+    def test_upload_create(self, provider, file_stream, search_for_absent_folder_response):
         upload_id = '7'
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
 
+        birdie_query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('birdie.jpg', 'application/vnd.google-apps.form'), fields='items(id)')
+
+
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
         finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
 
+        aiohttpretty.register_json_uri('GET', birdie_query_url, body=search_for_absent_folder_response)
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         aiohttpretty.register_uri('POST', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
 
@@ -258,14 +349,18 @@ class TestCRUD:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_upload_doesnt_unquote(self, provider, file_stream):
+    def test_upload_doesnt_unquote(self, provider, file_stream, search_for_absent_folder_response):
         upload_id = '7'
         item = fixtures.list_file['items'][0]
         path = GoogleDrivePath('/birdie%2F %20".jpg', _ids=(provider.folder['id'], None))
 
+        birdie_query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q="title = '{}' and trashed = false and mimeType != '{}'".format(path.path, 'application/vnd.google-apps.form'), fields='items(id)')
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
         finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
 
+        aiohttpretty.register_json_uri('GET', birdie_query_url, body=search_for_absent_folder_response)
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         aiohttpretty.register_uri('POST', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
 
@@ -300,13 +395,41 @@ class TestCRUD:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_upload_create_nested(self, provider, file_stream):
+    def test_upload_create_nested(self, provider, file_stream,
+                                  search_for_ed_folder_response,
+                                  actual_ed_response,
+                                  search_for_sullivan_folder_response,
+                                  actual_sullivan_response,
+                                  search_for_showmp3_folder_response):
         upload_id = '7'
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath(
             '/ed/sullivan/show.mp3',
             _ids=[str(x) for x in range(3)]
         )
+
+        query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('ed', 'application/vnd.google-apps.form'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_ed_folder_response)
+
+        query_url = provider.build_url(
+            'files', 'imaedfolder', fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', query_url, body=actual_ed_response)
+
+        query_url = provider.build_url(
+            'files', 'imaedfolder', 'children',
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('sullivan', 'application/vnd.google-apps.form'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_sullivan_folder_response)
+
+        query_url = provider.build_url(
+            'files', 'imasullivanfolder', fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', query_url, body=actual_sullivan_response)
+
+        query_url = provider.build_url(
+            'files', 'imasullivanfolder', 'children',
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('show.mp3', 'application/vnd.google-apps.form'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_showmp3_folder_response)
 
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
         finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
@@ -545,9 +668,13 @@ class TestCreateFolder:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_returns_metadata(self, provider):
+    def test_returns_metadata(self, provider, search_for_absent_folder_response):
         path = WaterButlerPath('/osf%20test/', _ids=(provider.folder['id'], None))
+        query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('osf test', 'application/vnd.google-apps.form'), fields='items(id)')
 
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_absent_folder_response)
         aiohttpretty.register_json_uri('POST', provider.build_url('files'), body=fixtures.folder_metadata)
 
         resp = yield from provider.create_folder(path)
@@ -558,8 +685,36 @@ class TestCreateFolder:
 
     @async
     @pytest.mark.aiohttpretty
-    def test_raises_non_404(self, provider):
+    def test_raises_non_404(self, provider,
+                            search_for_hugo_folder_response,
+                            actual_hugo_response,
+                            search_for_kim_folder_response,
+                            actual_kim_response,
+                            search_for_pins_folder_response):
         path = WaterButlerPath('/hugo/kim/pins/', _ids=(provider.folder['id'], 'something', 'something', None))
+
+        query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('hugo', 'application/vnd.google-apps.form'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_hugo_folder_response)
+
+        query_url = provider.build_url(
+            'files', 'imahugofolder', fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', query_url, body=actual_hugo_response)
+
+        query_url = provider.build_url(
+            'files', 'imahugofolder', 'children',
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('kim', 'application/vnd.google-apps.form'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_kim_folder_response)
+
+        query_url = provider.build_url(
+            'files', 'imakimfolder', fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', query_url, body=actual_kim_response)
+
+        query_url = provider.build_url(
+            'files', 'imakimfolder', 'children',
+            q="title = '{}' and trashed = false and mimeType != '{}'".format('pins', 'application/vnd.google-apps.form'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', query_url, body=search_for_pins_folder_response)
 
         url = provider.build_url('files')
         aiohttpretty.register_json_uri('POST', url, status=418)
