@@ -219,12 +219,20 @@ class S3Provider(provider.BaseProvider):
         return (yield from self.metadata(path, **kwargs)), not exists
 
     @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    def delete(self, path, confirm_delete=0, **kwargs):
         """Deletes the key at the specified path
 
         :param str path: The path of the key to delete
+        :param int confirm_delete: Must be 1 to confirm root folder delete
         """
         yield from self._check_region()
+
+        if path.is_root:
+            if not confirm_delete == 1:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400
+                )
 
         if path.is_file:
             yield from self.make_request(
