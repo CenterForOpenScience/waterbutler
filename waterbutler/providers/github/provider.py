@@ -1,6 +1,7 @@
 import copy
 import json
 import asyncio
+import io
 
 import furl
 
@@ -450,7 +451,17 @@ class GitHubProvider(provider.BaseProvider):
         :param str message: Commit message
         """
         meta = (yield from self.metadata(path))
+
+        # Create .gitkeep file before emptying folder
+        stream = streams.FileStreamReader(io.BytesIO(b''))
+        gitkeep_path = yield from self.validate_path('/.gitkeep')
+        yield from self.upload(stream,
+                               gitkeep_path,
+                               message)
+
         for child in meta:
+            if child.path == '/.gitkeep':
+                continue
             github_path = yield from self.validate_path(child.path)
             yield from self.delete(github_path)
 
