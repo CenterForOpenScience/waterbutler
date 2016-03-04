@@ -42,6 +42,7 @@ The links property of the response provides endpoints for common file operations
     Method:   GET
     Params:   ?meta=
     Success:  200 OK + file representation
+    Example:  GET /resource/mst3k/provider/osfstorage/?meta=
 
 The contents of a folder or details of a particular file can be retrieved by performing a GET request against the entity's URL with the ``meta=`` query parameter appended.  The response will be a JSON-API formatted response.
 
@@ -52,6 +53,7 @@ The contents of a folder or details of a particular file can be retrieved by per
     Method:   GET
     Params:   <none>
     Success:  200 OK + file body
+    Example:  GET /resource/mst3k/provider/osfstorage/2348825492342?meta=
 
 To download a file, issue a GET request against its URL. The response will have the Content-Disposition header set, which will will trigger a download in a browser.
 
@@ -62,6 +64,7 @@ To download a file, issue a GET request against its URL. The response will have 
     Method:   GET
     Params:   <none>
     Success:  200 OK + folder body
+    Example:  GET /resource/mst3k/provider/osfstorage/23488254123123/?zip=
 
 To download a zip archive of a folder, issue a GET request against its URL. The response will have the Content-Disposition header set, which will will trigger a download in a browser.
 
@@ -73,8 +76,9 @@ To download a zip archive of a folder, issue a GET request against its URL. The 
     Query Params: ?kind=folder&name={new_folder_name}
     Body:         <empty>
     Success:      201 Created + new folder representation
+    Example:      PUT /resource/mst3k/provider/osfstorage/?kind=folder&name=foo-folder
 
-You can create a subfolder of an existing folder by issuing a PUT request against the new_folder link. The ?kind=folder portion of the query parameter is already included in the new_folder link. The name of the new subfolder should be provided in the name query parameter. The response will contain a WaterButler folder entity. If a folder with that name already exists in the parent directory, the server will return a 409 Conflict error response.
+You can create a subfolder of an existing folder by issuing a PUT request against the new_folder link. The `?kind=folder` portion of the query parameter is already included in the new_folder link. The name of the new subfolder should be provided in the name query parameter. The response will contain a WaterButler folder entity. If a folder with that name already exists in the parent directory, the server will return a 409 Conflict error response.
 
 **Upload New File (folders)**
 
@@ -83,9 +87,10 @@ You can create a subfolder of an existing folder by issuing a PUT request agains
     Method:       PUT
     Query Params: ?kind=file&name={new_file_name}
     Body (Raw):   <file data (not form-encoded)>
-    Success:      201 Created or 200 OK + new file representation
+    Success:      201 Created + new file representation
+    Example:      PUT /resource/mst3k/provider/osfstorage/?kind=file&name=foo-file
 
-To upload a file to a folder, issue a PUT request to the folder's upload link with the raw file data in the request body, and the kind and name query parameters set to 'file' and the desired name of the file. The response will contain a WaterButler file entity that describes the new file. If a file with the same name already exists in the folder, it will be considered a new version. In this case, the response will be a 200 OK.
+To upload a file to a folder, issue a PUT request to the folder's upload link with the raw file data in the request body, and the kind and name query parameters set to 'file' and the desired name of the file. The response will contain a WaterButler file entity that describes the new file. If a file with the same name already exists in the folder, the server will return a 409 Conflict error response.  The file may be updated via the url in the create response's `/links/upload` attribute.
 
 **Update Existing File (file)**
 
@@ -95,6 +100,7 @@ To upload a file to a folder, issue a PUT request to the folder's upload link wi
     Query Params: ?kind=file
     Body (Raw):   <file data (not form-encoded)>
     Success:      200 OK + updated file representation
+    Example:      PUT /resource/mst3k/provider/osfstorage/2348825492342?kind=file
 
 To update an existing file, issue a PUT request to the file's upload link with the raw file data in the request body and the kind query parameter set to "file". The update action will create a new version of the file. The response will contain a WaterButler file entity that describes the updated file.
 

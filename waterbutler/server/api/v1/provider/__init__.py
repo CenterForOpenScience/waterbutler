@@ -88,8 +88,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         """Defined in CreateMixin"""
         # handle newfile vs. newfolder naming conflicts
         if self.path.is_dir:
-            my_type_exists = yield from self.provider.exists(self.target_path)
-            if my_type_exists:
+
+            validated_target_path = yield from self.provider.revalidate_path(
+                self.path, self.target_path.raw_path.rstrip('/'), self.target_path.is_dir
+            )
+
+            my_type_exists = yield from self.provider.exists(validated_target_path)
+            if not isinstance(my_type_exists, bool) or my_type_exists:
                 raise exceptions.NamingConflict(self.target_path)
 
             if not self.provider.can_duplicate_names():
@@ -101,7 +106,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
         if self.target_path.is_file:
             return (yield from self.upload_file())
-        return(yield from self.create_folder())
+        return (yield from self.create_folder())
 
     @tornado.gen.coroutine
     def post(self, **_):
