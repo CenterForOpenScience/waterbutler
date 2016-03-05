@@ -7,7 +7,6 @@ import logging
 import tornado.gen
 
 from waterbutler.core import utils
-from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
 from waterbutler.server.auth import AuthHandler
@@ -56,7 +55,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         # post-validator methods perform validations that expect that the path given in the url has
         # been verified for existence and type.
         if method in self.POST_VALIDATORS:
-            getattr(self, self.POST_VALIDATORS[method])()
+            yield from getattr(self, self.POST_VALIDATORS[method])()
 
         # The one special case
         if method == 'put' and self.target_path.is_file:
@@ -86,24 +85,6 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     @tornado.gen.coroutine
     def put(self, **_):
         """Defined in CreateMixin"""
-        # handle newfile vs. newfolder naming conflicts
-        if self.path.is_dir:
-
-            validated_target_path = yield from self.provider.revalidate_path(
-                self.path, self.target_path.raw_path.rstrip('/'), self.target_path.is_dir
-            )
-
-            my_type_exists = yield from self.provider.exists(validated_target_path)
-            if not isinstance(my_type_exists, bool) or my_type_exists:
-                raise exceptions.NamingConflict(self.target_path)
-
-            if not self.provider.can_duplicate_names():
-                target_flipped = self.path.child(self.childs_name, folder=(self.kind != 'folder'))
-                other_exists = yield from self.provider.exists(target_flipped)
-                # the dropbox provider's metadata() method returns a [] here instead of True
-                if not isinstance(other_exists, bool) or other_exists:
-                    raise exceptions.NamingConflict(self.target_path)
-
         if self.target_path.is_file:
             return (yield from self.upload_file())
         return (yield from self.create_folder())
