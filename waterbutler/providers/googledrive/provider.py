@@ -53,7 +53,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         implicit_folder = path.endswith('/')
         parts = yield from self._resolve_path_to_ids(path)
         explicit_folder = parts[-1]['mimeType'] == self.FOLDER_MIME_TYPE
-        if implicit_folder != explicit_folder:
+        if parts[-1]['id'] is None or implicit_folder != explicit_folder:
             raise exceptions.NotFoundError(str(path))
 
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
@@ -391,14 +391,21 @@ class GoogleDriveProvider(provider.BaseProvider):
             'id': self.folder['id'],
         }]
         item_id = ret[0]['id']
-        parts = [parse.unquote(x) for x in path.strip('/').split('/')]
+        # parts is list of [path_part_name, is_folder]
+        parts = [[parse.unquote(x), True] for x in path.strip('/').split('/')]
 
+        if not path.endswith('/'):
+            parts[-1][1] = False
         while parts:
             current_part = parts.pop(0)
             query = "title = '{}' " \
                     "and trashed = false " \
-                    "and mimeType != 'application/vnd.google-apps.form'".format(clean_query(current_part))
-
+                    "and mimeType != 'application/vnd.google-apps.form' " \
+                    "and mimeType {} '{}'".format(
+                        clean_query(current_part[0]),
+                        '=' if current_part[1] else '!=',
+                        self.FOLDER_MIME_TYPE
+                    )
             resp = yield from self.make_request(
                 'GET',
                 self.build_url('files', item_id, 'children', q=query, fields='items(id)'),
@@ -411,11 +418,11 @@ class GoogleDriveProvider(provider.BaseProvider):
             except (KeyError, IndexError):
                 if parts:
                     raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
-                name, ext = os.path.splitext(current_part)
+                name, ext = os.path.splitext(current_part[0])
                 if ext not in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
                     return ret + [{
                         'id': None,
-                        'title': current_part,
+                        'title': current_part[0],
                         'mimeType': 'folder' if path.endswith('/') else '',
                     }]
                 parts.append(name)
