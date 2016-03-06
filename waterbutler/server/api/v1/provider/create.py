@@ -60,7 +60,7 @@ class CreateMixin:
 
             # osfstorage, box, and googledrive need ids before calling exists()
             validated_target_path = yield from self.provider.revalidate_path(
-                self.path, self.target_path.raw_path.rstrip('/'), self.target_path.is_dir
+                self.path, self.target_path.name, self.target_path.is_dir
             )
 
             my_type_exists = yield from self.provider.exists(validated_target_path)
@@ -73,7 +73,7 @@ class CreateMixin:
                 # osfstorage, box, and googledrive need ids before calling exists(), but only box
                 # disallows can_duplicate_names and needs this.
                 validated_target_flipped = yield from self.provider.revalidate_path(
-                    self.path, target_flipped.raw_path.rstrip('/'), target_flipped.is_dir
+                    self.path, target_flipped.name, target_flipped.is_dir
                 )
 
                 other_exists = yield from self.provider.exists(validated_target_flipped)
