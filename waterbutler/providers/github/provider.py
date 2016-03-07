@@ -244,7 +244,7 @@ class GitHubProvider(provider.BaseProvider):
 
         if path.is_root:
             if confirm_delete == 1:
-                yield from self._delete_folder_contents(path)
+                yield from self._delete_root_folder_contents(path)
             else:
                 raise exceptions.DeleteError(
                     'confirm_delete=1 is required for deleting root provider folder',
@@ -443,16 +443,44 @@ class GitHubProvider(provider.BaseProvider):
         )
 
     @asyncio.coroutine
-    def _delete_folder_contents(self, path, message=None, **kwargs):
-        """Delete the contents of a folder. For use against provider root.
+    def _delete_root_folder_contents(self, path, message=None, **kwargs):
+        """Delete the contents of the root folder.
 
         :param GitHubPath path: GitHubPath path object for folder
         :param str message: Commit message
         """
-        meta = (yield from self.metadata(path))
-        for child in meta:
-            github_path = yield from self.validate_path(child.path)
-            yield from self.delete(github_path)
+        branch_data = yield from self._fetch_branch(path.identifier[0])
+        old_commit_sha = branch_data['commit']['sha']
+        tree_sha = GIT_EMPTY_SHA
+        message = message or settings.DELETE_FOLDER_MESSAGE
+        commit_resp = yield from self.make_request(
+            'POST',
+            self.build_repo_url('git', 'commits'),
+            headers={'Content-Type': 'application/json'},
+            data=json.dumps({
+                'message': message,
+                'committer': self.committer,
+                'tree': tree_sha,
+                'parents': [
+                    old_commit_sha,
+                ],
+            }),
+            expects=(201, ),
+            throws=exceptions.DeleteError,
+        )
+        commit_data = yield from commit_resp.json()
+        commit_sha = commit_data['sha']
+
+        # Update repository reference, point to the newly created commit.
+        # No need to store data, rely on expects to raise exceptions
+        yield from self.make_request(
+            'PATCH',
+            self.build_repo_url('git', 'refs', 'heads', path.identifier[0]),
+            headers={'Content-Type': 'application/json'},
+            data=json.dumps({'sha': commit_sha}),
+            expects=(200, ),
+            throws=exceptions.DeleteError,
+        )
 
     @asyncio.coroutine
     def _fetch_branch(self, branch):
