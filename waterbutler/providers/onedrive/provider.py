@@ -1,6 +1,5 @@
 import json
 import http
-import asyncio
 
 import logging
 
@@ -32,14 +31,13 @@ class OneDriveProvider(provider.BaseProvider):
         self.folder = self.settings['folder']
         logger.debug("__init__ credentials:{} settings:{}".format(repr(credentials), repr(settings)))
 
-    @asyncio.coroutine
-    def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path, **kwargs):
         if path == '/':
             return WaterButlerPath(path, prepend=self.folder)
 
         logger.info('validate_v1_path self::{} path::{}  url:{}'.format(repr(self), repr(path), self.build_url(path)))
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET', self.build_url(path),
             expects=(200, 400),
             throws=exceptions.MetadataError
@@ -48,7 +46,7 @@ class OneDriveProvider(provider.BaseProvider):
         if resp.status == 400:
             return WaterButlerPath(path, prepend=self.folder)
 
-        data = yield from resp.json()
+        data = await resp.json()
 
         names = self._get_names(data)
         ids = self._get_ids(data)
@@ -57,25 +55,23 @@ class OneDriveProvider(provider.BaseProvider):
         logger.info('wb_path::{}  IDs:{}'.format(repr(wb_path._parts), repr(ids)))
         return wb_path
 
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         logger.info('validate_path self::{} path::{}'.format(repr(self), path))
-        return self.validate_v1_path(path, **kwargs)
+        return await self.validate_v1_path(path, **kwargs)
 
-    @asyncio.coroutine
-    def revalidate_path(self, base, path, folder=None):
+    async def revalidate_path(self, base, path, folder=None):
         logger.info('revalidate_path base::{} path::{}  base.id::{}'.format(base._prepend, path, base.identifier))
         logger.info('revalidate_path self::{} base::{} path::{}'.format(str(self), repr(base), repr(path)))
         logger.info('revalidate_path base::{} path::{}'.format(repr(base.full_path), repr(path)))
 
         if (base.identifier is not None):
             url = self.build_url(base.identifier)
-            resp = yield from self.make_request(
+            resp = await self.make_request(
                 'GET', url,
                 expects=(200, ),
                 throws=exceptions.MetadataError
             )
-            data = yield from resp.json()
+            data = await resp.json()
             folder_path = self._get_names(data)
             url = self._build_root_url("drive/root:", folder_path, str(path))
         elif (base._prepend is None):
@@ -84,15 +80,15 @@ class OneDriveProvider(provider.BaseProvider):
         else:
             #  root: get folder name and build path from it
             url = self.build_url(base._prepend)
-            resp = yield from self.make_request(
+            resp = await self.make_request(
                 'GET', url,
                 expects=(200, ),
                 throws=exceptions.MetadataError
             )
-            data = yield from resp.json()
+            data = await resp.json()
             url = self._build_root_url("drive/root:", self._get_names(data), str(path))
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET',
             url,
             expects=(200, 404, ),
@@ -103,7 +99,7 @@ class OneDriveProvider(provider.BaseProvider):
             ids = None
             folder = False
         else:
-            data = yield from resp.json()
+            data = await resp.json()
             ids = self._get_ids(data)[-1]
             folder = ('folder' in data.keys())
 
@@ -115,8 +111,7 @@ class OneDriveProvider(provider.BaseProvider):
             'Authorization': 'Bearer {}'.format(self.token),
         }
 
-    @asyncio.coroutine
-    def intra_copy(self, dest_provider, src_path, dest_path):
+    async def intra_copy(self, dest_provider, src_path, dest_path):
         #  https://dev.onedrive.com/items/copy.htm
 
         url = self.build_url(src_path.identifier, 'action.copy')
@@ -124,7 +119,7 @@ class OneDriveProvider(provider.BaseProvider):
                               'parentReference': {'id': dest_path.parent.full_path.strip('/') if dest_path.parent.identifier is None else dest_path.parent.identifier}})  # TODO: this feels like a hack.  parent.identifier is None in some cases.
 
         logger.info('intra_copy dest_provider::{} src_path::{} dest_path::{}  url::{} payload::{}'.format(repr(dest_provider), repr(src_path), repr(dest_path), repr(url), payload))
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'POST',
             url,
             data=payload,
@@ -141,31 +136,29 @@ class OneDriveProvider(provider.BaseProvider):
         status = False
         while (i < 100):
             logger.info('status::{}  i:{}'.format(repr(status), i))
-            status = yield from self._copy_status(status_url)
+            status = await self._copy_status(status_url)
             #  status = backgroundify(self._copy_status(status_url))  #  TODO: determine how best to call status check without blocking and without returning to OSF
             if (status):
                 break
             i += 1
 
-        data = yield from self.metadata(src_path, None)  # TODO: validate_v1_path to get destination ID/Name pair and then return self.metadata so OSF has new Destination path IDs.
+        data = await self.metadata(src_path, None)  # TODO: validate_v1_path to get destination ID/Name pair and then return self.metadata so OSF has new Destination path IDs.
         return data, True
 
-    @asyncio.coroutine
-    def _copy_status(self, status_url):
+    async def _copy_status(self, status_url):
         #  docs: https://dev.onedrive.com/resources/asyncJobStatus.htm
         status = 'notStarted'
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET', status_url,
             expects=(200, 202),
             throws=exceptions.IntraCopyError,
         )
-        data = yield from resp.json()
+        data = await resp.json()
         status = data.get('status')
         logger.info('_copy_status  status::{} resp:{} data::{}'.format(repr(status), repr(resp), repr(data)))
         return True if resp.status == 200 else False
 
-    @asyncio.coroutine
-    def intra_move(self, dest_provider, src_path, dest_path):
+    async def intra_move(self, dest_provider, src_path, dest_path):
         #  https://dev.onedrive.com/items/move.htm
 
         #  PATCH /drive/items/{item-id}
@@ -178,7 +171,7 @@ class OneDriveProvider(provider.BaseProvider):
         logger.info('intra_move dest_path::{} src_path::{} url::{} payload:{}'.format(str(dest_path.parent.identifier), repr(src_path), url, payload))
 
         try:
-            resp = yield from self.make_request(
+            resp = await self.make_request(
                 'PATCH',
                 url,
                 data=payload,
@@ -190,7 +183,7 @@ class OneDriveProvider(provider.BaseProvider):
             if e.code != 403:
                 raise
 
-        data = yield from resp.json()
+        data = await resp.json()
 
         logger.info('intra_move data:{}'.format(data))
 
@@ -201,8 +194,7 @@ class OneDriveProvider(provider.BaseProvider):
 
         return folder, True
 
-    @asyncio.coroutine
-    def download(self, path, revision=None, range=None, **kwargs):
+    async def download(self, path, revision=None, range=None, **kwargs):
 
         logger.info('folder:: {} revision::{} path.identifier:{} path:{} path.parts:{}'.format(self.folder, revision, path.identifier, repr(path), repr(path._parts)))
 
@@ -210,7 +202,7 @@ class OneDriveProvider(provider.BaseProvider):
             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
         downloadUrl = None
         if revision:
-            items = yield from self._revisions_json(path)
+            items = await self._revisions_json(path)
             for item in items['value']:
                 if item['eTag'] == revision:
                     downloadUrl = item['@content.downloadUrl']
@@ -218,18 +210,17 @@ class OneDriveProvider(provider.BaseProvider):
         else:
             url = self._build_content_url(path.identifier)
             logger.info('url::{}'.format(url))
-            metaData = yield from self.make_request('GET',
+            metaData = await self.make_request('GET',
                                                     url,
                                                     expects=(200, ),
-                                                    throws=exceptions.MetadataError
-                                                    )
-            data = yield from metaData.json()
+                                                    throws=exceptions.MetadataError)
+            data = await metaData.json()
             logger.debug('data::{} downloadUrl::{}'.format(data, downloadUrl))
             downloadUrl = data['@content.downloadUrl']
         if downloadUrl is None:
             raise exceptions.NotFoundError(str(path))
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET',
             downloadUrl,
             range=range,
@@ -239,9 +230,8 @@ class OneDriveProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp)
 
-    @asyncio.coroutine
-    def upload(self, stream, path, conflict='replace', **kwargs):
-        path, exists = yield from self.handle_name_conflict(path, conflict=conflict)
+    async def upload(self, stream, path, conflict='replace', **kwargs):
+        path, exists = await self.handle_name_conflict(path, conflict=conflict)
         #  PUT /drive/items/{parent-id}/children/{filename}/content
 
         fileName = self._get_one_drive_id(path)
@@ -250,7 +240,7 @@ class OneDriveProvider(provider.BaseProvider):
 
         logger.info("upload url:{} path:{} str(path):{} str(full_path):{} self:{}".format(upload_url, repr(path), str(path), str(path), repr(self.folder)))
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'PUT',
             upload_url,
             headers={'Content-Length': str(stream.size)},
@@ -259,13 +249,12 @@ class OneDriveProvider(provider.BaseProvider):
             throws=exceptions.UploadError,
         )
 
-        data = yield from resp.json()
+        data = await resp.json()
         logger.info('upload:: data:{}'.format(data))
         return OneDriveFileMetadata(data, self.folder), not exists
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
-        yield from self.make_request(
+    async def delete(self, path, **kwargs):
+        await self.make_request(
             'DELETE',
             self.build_url(path.identifier),
             data={},
@@ -273,8 +262,7 @@ class OneDriveProvider(provider.BaseProvider):
             throws=exceptions.DeleteError,
         )
 
-    @asyncio.coroutine
-    def metadata(self, path, revision=None, **kwargs):
+    async def metadata(self, path, revision=None, **kwargs):
         logger.info('metadata identifier::{} path::{} revision::{}'.format(repr(path.identifier), repr(path), repr(revision)))
 
         if (path.full_path == '0/'):
@@ -290,14 +278,14 @@ class OneDriveProvider(provider.BaseProvider):
             url = self.build_url(path.identifier, expand='children')
 
         logger.info("metadata url::{}".format(repr(url)))
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET', url,
             expects=(200, ),
             throws=exceptions.MetadataError
         )
         logger.debug("metadata resp::{}".format(repr(resp)))
 
-        data = yield from resp.json()
+        data = await resp.json()
         #  logger.info("metadata data::{}".format(repr(data)))
 
         if data.get('deleted'):
@@ -321,10 +309,9 @@ class OneDriveProvider(provider.BaseProvider):
 
         return OneDriveFileMetadata(data, self.folder)
 
-    @asyncio.coroutine
-    def revisions(self, path, **kwargs):
+    async def revisions(self, path, **kwargs):
         #  https://dev.onedrive.com/items/view_delta.htm
-        data = yield from self._revisions_json(path, **kwargs)
+        data = await self._revisions_json(path, **kwargs)
         logger.info('revisions: data::{}'.format(data['value']))
 
         return [
@@ -333,8 +320,7 @@ class OneDriveProvider(provider.BaseProvider):
             if not item.get('deleted')
         ]
 
-    @asyncio.coroutine
-    def create_folder(self, path, **kwargs):
+    async def create_folder(self, path, **kwargs):
         """
         :param str path: The path to create a folder at
         """
@@ -352,7 +338,7 @@ class OneDriveProvider(provider.BaseProvider):
                    'folder': {},
                     "@name.conflictBehavior": "rename"}
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'POST',
             upload_url,
             data=json.dumps(payload),
@@ -361,23 +347,22 @@ class OneDriveProvider(provider.BaseProvider):
             throws=exceptions.CreateFolderError,
         )
 
-        data = yield from resp.json()
+        data = await resp.json()
         logger.info('upload:: data:{}'.format(data))
         return OneDriveFolderMetadata(data, self.folder)
 
-    @asyncio.coroutine
-    def _revisions_json(self, path, **kwargs):
+    async def _revisions_json(self, path, **kwargs):
         #  https://dev.onedrive.com/items/view_delta.htm
         #  TODO: 2015-11-29 - onedrive only appears to return the last delta for a token, period.  Not sure if there is a work around, from the docs: "The delta feed shows the latest state for each item, not each change. If an item were renamed twice, it would only show up once, with its latest name."
         if path.identifier is None:
                 raise exceptions.NotFoundError(str(path))
-        response = yield from self.make_request(
+        response = await self.make_request(
             'GET',
             self.build_url(path.identifier, 'view.delta', top=250),
             expects=(200, ),
             throws=exceptions.RevisionsError
         )
-        data = yield from response.json()
+        data = await response.json()
         logger.info('revisions: data::{}'.format(data['value']))
 
         return data
