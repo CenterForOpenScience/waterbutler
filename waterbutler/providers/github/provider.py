@@ -700,6 +700,7 @@ class GitHubProvider(provider.BaseProvider):
         tree = yield from self._fetch_tree(old_commit_tree_sha, recursive=True)
         exists = any(x['path'] == dest_path.path.rstrip('/') for x in tree['tree'])
 
+        # these are the blobs to copy/move
         blobs = [
             item
             for item in tree['tree']
@@ -707,15 +708,26 @@ class GitHubProvider(provider.BaseProvider):
             src_path.is_file and item['path'] == src_path.path
         ]
 
+        # if we're overwriting an existing dir, we must remove its blobs from the tree
+        if dest_path.is_dir:
+            tree['tree'] = [
+                item
+                for item in tree['tree']
+                if not item['path'].startswith(dest_path.path)
+            ]
+
         if len(blobs) == 0:
             raise exceptions.NotFoundError(str(src_path))
 
         if src_path.is_file:
             assert len(blobs) == 1, 'Found multiple targets'
 
+        # if this is a copy, duplicate and append our source blobs. The originals will be updated
+        # with the new destination path.
         if is_copy:
             tree['tree'].extend([copy.deepcopy(blob) for blob in blobs])
 
+        # see, I told you they'd be overwritten
         for blob in blobs:
             blob['path'] = blob['path'].replace(src_path.path, dest_path.path, 1)
 
