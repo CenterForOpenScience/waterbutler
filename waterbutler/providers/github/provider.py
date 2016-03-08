@@ -397,7 +397,10 @@ class GitHubProvider(provider.BaseProvider):
             tree_sha = GIT_EMPTY_SHA
         else:
             # Delete the folder from the tree cast to list iterator over all values
+            current_tree = tree['tree']
             tree['tree'] = list(filter(lambda x: x['path'] != tree['target'], tree['tree']))
+            if current_tree == tree['tree']:
+                raise exceptions.NotFoundError(str(path))
 
             tree_data = yield from self._create_tree({'tree': tree['tree']})
             tree_sha = tree_data['sha']
