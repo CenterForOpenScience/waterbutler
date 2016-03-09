@@ -2,6 +2,36 @@
 ChangeLog
 *********
 
+0.18.0 (2016-03-09)
+===================
+- BREAKING v1 API CHANGE (sortof):  Updating a file by issuing a PUT to its parent folder and
+passing its name as a query parameter is no longer supported and will now throw a 409 Conflict.
+This is still the correct way to create a file, but updating must be done by issuing the PUT to
+the file's own endpoint.  This was supposed to be fixed back in December, but I (@felliott) did
+a **very** poor job of it, meaning some providers still allowed it.  The API documentation has
+been updated to match.  If you use the `/links/upload` action from the JSON-API response, you
+**DO NOT** need to update your code,  That link is already correct.
+- Feature: DELETEing a file or folder in the GDrive provider now sends it to the trash instead
+or hard-deleting it.
+- Feature: Issuing a DELETE to the storage root of a provider will now clear out its content,
+but not delete the storage root itself.  This was undefined behavior before.  Some providers
+would disallow it, some would crash, others would do the right thing.  This is now officially
+supported.  To make sure the file contents are not wiped out on accident, the query parameter
+`confirm_delete=1` must be passed when clearing the contents.  Otherwise, WB will return a 400.
+- Fix: GoogleDrive provider now returns 201 Created when creating and 200 OK when overwriting
+during copy operations.
+- Fix: Copying / moving empty folders into a directory with a similarly named folder with 'keep
+both' semantics no longer overwrites old folder and properly increments the new file name.
+- Fix: Always set `kind` parameter for files and folders in v1 logging callback to avoid crashing
+the OSF waterbutler logging endpoint.
+- Fix: For 'keep both' conflict semantics when more than one incremented version already exists.
+- Fix: Github move/copy folder requests with 'replace' semantics now correctly overwrites the
+target folder, rather than merging the contents.
+- Docs: @TomBaxter++ has added more docstrings to the base provider and has started documenting
+the quirks of our existing providers.
+- Docs: v0.18.0 WaterButler DO NOT work with python 3.5.  3.4 is required.  Mention this.
+- Docs: The Center for Open Science is hiring! (thanks, @andrewsallans!)
+
 0.17.0 (2016-02-29)
 ===================
 - LEAP DAY RELEASE!
