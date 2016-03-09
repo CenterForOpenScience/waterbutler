@@ -159,6 +159,7 @@ class TestMoveTask:
                     'name': src_path.name,
                     'materialized': str(src_path),
                     'provider': src.NAME,
+                    'kind': 'file',
                 },
                 'destination': metadata.serialized(),
                 'auth': {'user': 'name'},

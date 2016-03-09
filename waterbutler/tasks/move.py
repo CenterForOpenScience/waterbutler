@@ -23,12 +23,14 @@ async def move(src_bundle, dest_bundle, callback_url, auth, start_time=None, **k
             'name': src_path.name,
             'materialized': str(src_path),
             'provider': src_provider.NAME,
+            'kind': src_path.kind,
         }),
         'destination': dict(dest_bundle, **{
             'path': dest_path.identifier_path if dest_provider.NAME in IDENTIFIER_PATHS else '/' + dest_path.raw_path,
             'name': dest_path.name,
             'materialized': str(dest_path),
             'provider': dest_provider.NAME,
+            'kind': dest_path.kind,
         }),
         'auth': auth['auth'],
     }
