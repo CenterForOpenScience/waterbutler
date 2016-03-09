@@ -30,6 +30,15 @@ from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
 
 class S3Provider(provider.BaseProvider):
     """Provider for the Amazon's S3
+
+    Quirks:
+        On S3, folders are not first-class objects, but are instead inferred
+        from the names of their children.  A regular DELETE request issued
+        against a folder will not work unless that folder is completely empty.
+        To fully delete an occupied folder, we must delete all of the comprising
+        objects.  Amazon provides a bulk delete operation to simplify this.
+
+        A GET prefix query against a non-existant path returns 200
     """
     NAME = 's3'
 
@@ -210,12 +219,20 @@ class S3Provider(provider.BaseProvider):
         return (yield from self.metadata(path, **kwargs)), not exists
 
     @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    def delete(self, path, confirm_delete=0, **kwargs):
         """Deletes the key at the specified path
 
         :param str path: The path of the key to delete
+        :param int confirm_delete: Must be 1 to confirm root folder delete
         """
         yield from self._check_region()
+
+        if path.is_root:
+            if not confirm_delete == 1:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400
+                )
 
         if path.is_file:
             yield from self.make_request(
@@ -229,10 +246,21 @@ class S3Provider(provider.BaseProvider):
 
     @asyncio.coroutine
     def _delete_folder(self, path, **kwargs):
-        """On S3, folders are not first-class objects, but are instead inferred from the names
-        of their children.  A regular DELETE request issued against a folder will not work unless
-        that folder is completely empty.  To fully delete an occupied folder, we must delete all
-        of the comprising objects.  Amazon provides a bulk delete operation to simplify this.
+        """Query for recursive contents of folder and delete in batches of 1000
+
+        Called from: func: delete if not path.is_file
+
+        Calls: func: self._check_region
+               func: self.make_request
+               func: self.bucket.generate_url
+
+        :param *ProviderPath path: Path to be deleted
+
+        On S3, folders are not first-class objects, but are instead inferred
+        from the names of their children.  A regular DELETE request issued
+        against a folder will not work unless that folder is completely empty.
+        To fully delete an occupied folder, we must delete all of the comprising
+        objects.  Amazon provides a bulk delete operation to simplify this.
         """
         yield from self._check_region()
 
@@ -264,6 +292,10 @@ class S3Provider(provider.BaseProvider):
             content_keys.extend([content['Key'] for content in contents])
             if len(content_keys) > 0:
                 marker = content_keys[-1]
+
+        # Query against non-existant folder does not return 404
+        if len(content_keys) == 0:
+            raise exceptions.NotFoundError(str(path))
 
         while len(content_keys) > 0:
             key_batch = content_keys[:1000]
@@ -350,7 +382,7 @@ class S3Provider(provider.BaseProvider):
         return (yield from self._metadata_file(path, revision=revision))
 
     @asyncio.coroutine
-    def create_folder(self, path, **kwargs):
+    def create_folder(self, path, folder_precheck=True, **kwargs):
         """
         :param str path: The path to create a folder at
         """
@@ -358,8 +390,9 @@ class S3Provider(provider.BaseProvider):
 
         WaterButlerPath.validate_folder(path)
 
-        if (yield from self.exists(path)):
-            raise exceptions.FolderNamingConflict(str(path))
+        if folder_precheck:
+            if (yield from self.exists(path)):
+                raise exceptions.FolderNamingConflict(str(path))
 
         yield from self.make_request(
             'PUT',
@@ -468,7 +501,8 @@ class S3Provider(provider.BaseProvider):
     def _get_bucket_region(self):
         """Bucket names are unique across all regions.
 
-        Endpoint doc: http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html
+       Endpoint doc:
+       http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html
         """
         resp = yield from self.make_request(
             'GET',

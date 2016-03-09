@@ -241,18 +241,32 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def _folder_file_op(self, func, dest_provider, src_path, dest_path, **kwargs):
+        """Recursively apply func to src/dest path.
+
+        Called from: func: copy and move if src_path.is_dir.
+
+        Calls: func: dest_provider.delete and notes result for bool: created
+               func: dest_provider.create_folder
+               func: dest_provider.revalidate_path
+               func: self.metadata
+
+        :param coroutine func: to be applied to src/dest path
+        :param *Provider dest_provider: Destination provider
+        :param *ProviderPath src_path: Source path
+        :param *ProviderPath dest_path: Destination path
+        """
         assert src_path.is_dir, 'src_path must be a directory'
         assert asyncio.iscoroutinefunction(func), 'func must be a coroutine'
 
         try:
             yield from dest_provider.delete(dest_path)
-            created = True
+            created = False
         except exceptions.ProviderError as e:
             if e.code != 404:
                 raise
-            created = False
+            created = True
 
-        folder = yield from dest_provider.create_folder(dest_path)
+        folder = yield from dest_provider.create_folder(dest_path, folder_precheck=False)
 
         dest_path = yield from dest_provider.revalidate_path(dest_path.parent, dest_path.name, folder=dest_path.is_dir)
 
@@ -298,6 +312,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param WaterButlerPath dest_path: The path that is being copied to or into
         :param str rename: The desired name of the resulting path, may be incremented
         :param str conflict: The conflict resolution strategy, replace or keep
+
+        Returns: WaterButlerPath dest_path: The path of the desired result.
         """
         if src_path.is_dir and dest_path.is_file:
             # Cant copy a directory to a file
@@ -349,6 +365,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def exists(self, path, **kwargs):
+        """Check for existence of WaterButlerPath
+
+        Attempt to retrieve provider metadata to determine existence of a WaterButlerPath.  If
+        successful, will return the result of `self.metadata()` which may be `[]` for empty
+        folders.
+
+        :param WaterButlerPath path: path to check for
+        :rtype: (`self.metadata()` or False)
+        """
         try:
             return (yield from self.metadata(path, **kwargs))
         except exceptions.NotFoundError:
@@ -360,24 +385,34 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @asyncio.coroutine
     def handle_name_conflict(self, path, conflict='replace', **kwargs):
-        """Given a name and a conflict resolution pattern determine
+        """Check WaterButlerPath and resolve conflicts
+
+        Given a WaterButlerPath and a conflict resolution pattern determine
         the correct file path to upload to and indicate if that file exists or not
 
-        :param WaterbutlerPath path: An object supporting the waterbutler path API
+        :param WaterButlerPath path: Desired path to check for conflict
         :param str conflict: replace, keep, warn
-        :rtype: (WaterButlerPath, dict or False)
+        :rtype: (WaterButlerPath, provider.metadata() or False)
         :raises: NamingConflict
         """
         exists = yield from self.exists(path, **kwargs)
-        if not exists or conflict == 'replace':
+        if (not exists and not exists == []) or conflict == 'replace':
             return path, exists
         if conflict == 'warn':
             raise exceptions.NamingConflict(path)
 
-        while (yield from self.exists(path.increment_name(), **kwargs)):
-            pass
-        # path.increment_name()
-        # exists = self.exists(str(path))
+        while True:
+            path.increment_name()
+            test_path = yield from self.revalidate_path(
+                path.parent,
+                path.name,
+                folder=path.is_dir
+            )
+
+            exists = yield from self.exists(test_path, **kwargs)
+            if not (exists or exists == []):
+                break
+
         return path, False
 
     @asyncio.coroutine
@@ -500,10 +535,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def revisions(self, **kwargs):
         return []  # TODO Raise 405 by default h/t @rliebz
 
-    def create_folder(self, *args, **kwargs):
-        """Create a folder in the current provider
-        returns True if the folder was created; False if it already existed
+    def create_folder(self, path, **kwargs):
+        """Create a folder in the current provider at `path`. Returns a `BaseFolderMetadata` object
+        if successful.  May throw a 409 Conflict if a directory with the same name already exists.
 
+        :param str path: user-supplied path to create. must be a directory.
+        :param boolean precheck_folder: flag to check for folder before attempting create
         :rtype: :class:`waterbutler.core.metadata.BaseFolderMetadata`
         :raises: :class:`waterbutler.core.exceptions.FolderCreationError`
         """

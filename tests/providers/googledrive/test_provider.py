@@ -6,6 +6,7 @@ import io
 from http import client
 
 import aiohttpretty
+from json import dumps
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
@@ -73,6 +74,12 @@ def search_for_file_response():
     }
 
 @pytest.fixture
+def no_file_response():
+    return {
+        'items': []
+    }
+
+@pytest.fixture
 def actual_file_response():
     return {
         'id': '1234ideclarethumbwar',
@@ -89,6 +96,12 @@ def search_for_folder_response():
     }
 
 @pytest.fixture
+def no_folder_response():
+    return {
+        'items': []
+    }
+
+@pytest.fixture
 def actual_folder_response():
     return {
         'id': 'whyis6afraidof7',
@@ -96,22 +109,39 @@ def actual_folder_response():
         'title': 'A',
     }
 
+def _build_title_search_query(provider, entity_name, is_folder=True):
+        return "title = '{}' " \
+            "and trashed = false " \
+            "and mimeType != 'application/vnd.google-apps.form' " \
+            "and mimeType {} '{}'".format(
+                entity_name,
+                '=' if is_folder else '!=',
+                provider.FOLDER_MIME_TYPE
+            )
+
 class TestValidatePath:
 
     @async
     @pytest.mark.aiohttpretty
     def test_validate_v1_path_file(self, provider, search_for_file_response,
-                                           actual_file_response):
+                                   actual_file_response, no_folder_response):
         file_name = 'file.txt'
         file_id = '1234ideclarethumbwar'
 
         query_url = provider.build_url(
             'files', provider.folder['id'], 'children',
-            q="title = '{}'".format(file_name), fields='items(id)'
+            q=_build_title_search_query(provider, file_name, False),
+            fields='items(id)'
+        )
+        wrong_query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q=_build_title_search_query(provider, file_name, True),
+            fields='items(id)'
         )
         specific_url = provider.build_url('files', file_id, fields='id,title,mimeType')
 
         aiohttpretty.register_json_uri('GET', query_url, body=search_for_file_response)
+        aiohttpretty.register_json_uri('GET', wrong_query_url, body=no_folder_response)
         aiohttpretty.register_json_uri('GET', specific_url, body=actual_file_response)
 
         try:
@@ -131,17 +161,24 @@ class TestValidatePath:
     @async
     @pytest.mark.aiohttpretty
     def test_validate_v1_path_folder(self, provider, search_for_folder_response,
-                                             actual_folder_response):
+                                     actual_folder_response, no_file_response):
         folder_name = 'foofolder'
         folder_id = 'whyis6afraidof7'
 
         query_url = provider.build_url(
             'files', provider.folder['id'], 'children',
-            q="title = '{}'".format(folder_name), fields='items(id)'
+            q=_build_title_search_query(provider, folder_name, True),
+            fields='items(id)'
+        )
+        wrong_query_url = provider.build_url(
+            'files', provider.folder['id'], 'children',
+            q=_build_title_search_query(provider, folder_name, False),
+            fields='items(id)'
         )
         specific_url = provider.build_url('files', folder_id, fields='id,title,mimeType')
 
         aiohttpretty.register_json_uri('GET', query_url, body=search_for_folder_response)
+        aiohttpretty.register_json_uri('GET', wrong_query_url, body=no_file_response)
         aiohttpretty.register_json_uri('GET', specific_url, body=actual_folder_response)
 
         try:
@@ -319,25 +356,34 @@ class TestCRUD:
         item = fixtures.list_file['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(None, item['id']))
         delete_url = provider.build_url('files', item['id'])
-        aiohttpretty.register_uri('DELETE', delete_url, status=204)
+        del_url_body = dumps({'labels': {'trashed': 'true'}})
+        aiohttpretty.register_uri('PUT',
+                                  delete_url,
+                                  body=del_url_body,
+                                  status=200)
 
         result = yield from provider.delete(path)
 
         assert result is None
-        assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
+        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
 
     @async
     @pytest.mark.aiohttpretty
     def test_delete_folder(self, provider):
         item = fixtures.folder_metadata
-        delete_url = provider.build_url('files', item['id'])
+        del_url = provider.build_url('files', item['id'])
+        del_url_body = dumps({'labels': {'trashed': 'true'}})
+
         path = WaterButlerPath('/foobar/', _ids=('doesntmatter', item['id']))
 
-        aiohttpretty.register_uri('DELETE', delete_url, status=204)
+        aiohttpretty.register_uri('PUT',
+                                  del_url,
+                                  body=del_url_body,
+                                  status=200)
 
         result = yield from provider.delete(path)
 
-        assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
+        assert aiohttpretty.has_call(method='PUT', uri=del_url)
 
     @async
     @pytest.mark.aiohttpretty
