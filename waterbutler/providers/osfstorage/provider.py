@@ -389,12 +389,10 @@ class OSFStorageProvider(provider.BaseProvider):
             headers={'Content-Type': 'application/json'},
             expects=(201, )
         ) as resp:
-            return OsfStorageFolderMetadata((await resp.json())['data'], str(path))
-
-        resp_json = await resp.json()
-        # save new folder's id into the WaterButlerPath object. logs will need it later.
-        path._parts[-1]._id = resp_json['data']['path'].strip('/')
-        return OsfStorageFolderMetadata(resp_json['data'], str(path))
+            resp_json = await resp.json()
+            # save new folder's id into the WaterButlerPath object. logs will need it later.
+            path._parts[-1]._id = resp_json['data']['path'].strip('/')
+            return OsfStorageFolderMetadata(resp_json['data'], str(path))
 
     async def _item_metadata(self, path, revision=None):
         async with self.signed_request(
