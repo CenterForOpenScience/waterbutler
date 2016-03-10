@@ -301,6 +301,9 @@ class GoogleDriveProvider(provider.BaseProvider):
         ) as resp:
             return GoogleDriveFolderMetadata(await resp.json(), path)
 
+    def path_from_metadata(self, parent_path, metadata):
+        return parent_path.child(metadata.name, _id=metadata.id, folder=metadata.is_folder)
+
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
 
