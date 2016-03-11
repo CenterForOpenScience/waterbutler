@@ -124,6 +124,7 @@ class S3Provider(provider.BaseProvider):
         )
         resp = await self.make_request(
             'PUT', url,
+            skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
             expects=(200, ),
             throws=exceptions.IntraCopyError,
