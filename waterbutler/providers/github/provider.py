@@ -14,6 +14,7 @@ from waterbutler.providers.github.metadata import GitHubFileContentMetadata
 from waterbutler.providers.github.metadata import GitHubFolderContentMetadata
 from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
 from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
+from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
 
 
 GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -37,6 +38,25 @@ class GitHubPath(path.WaterButlerPath):
 
 
 class GitHubProvider(provider.BaseProvider):
+    """Provider for GitHub repositories.
+
+    **On paths:**  WB and GH use slightly different default conventions for their paths, so we
+    often have to munge our WB paths before comparison. Here is a quick overview::
+
+        WB (dirs):  wb_dir.path == 'foo/bar/'     str(wb_dir) == '/foo/bar/'
+        WB (file):  wb_file.path = 'foo/bar.txt'  str(wb_file) == '/foo/bar.txt'
+        GH (dir):   'foo/bar'
+        GH (file):  'foo/bar.txt'
+
+    Quirks:
+
+    * git doesn't have a concept of empty folders, so this provider creates 0-byte ``.gitkeep``
+      files in the requested folder.
+
+    * The ``contents`` endpoint cannot be used to fetch metadata reliably for all files. Requesting
+      a file that is larger than 1Mb will result in a error response directing you to the ``blob``
+      endpoint.  A recursive tree fetch may be used instead.
+    """
     NAME = 'github'
     BASE_URL = settings.BASE_URL
     VIEW_URL = settings.VIEW_URL
@@ -67,23 +87,8 @@ class GitHubProvider(provider.BaseProvider):
             self.default_branch = self._repo['default_branch']
 
         branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
-
-        implicit_folder = path.endswith('/')
-
-        url = furl.furl(self.build_repo_url('contents', path))
-        url.args.update({'ref': branch_ref})
-        resp = await self.make_request(
-            'GET',
-            url.url,
-            expects=(200, ),
-            throws=exceptions.MetadataError
-        )
-
-        content = await resp.json()
-        explicit_folder = isinstance(content, list)
-
-        if implicit_folder != explicit_folder:
-            raise exceptions.NotFoundError(path)
+        branch_data = await self._fetch_branch(branch_ref)
+        await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
 
         path = GitHubPath(path)
         for part in path.parts:
@@ -516,14 +521,25 @@ class GitHubProvider(provider.BaseProvider):
         tree = await resp.json()
 
         if tree['truncated']:
-            raise exceptions.ProviderError(
-                ('Some folder operations on large GitHub repositories cannot be supported without'
-                 ' data loss.  To carry out this operation, please perform it in a local git'
-                 ' repository, then push to the target repository on GitHub.'),
-                code=501
-            )
+            raise GitHubUnsupportedRepoError
 
         return tree
+
+    async def _search_tree_for_path(self, path, tree_sha, recursive=True):
+        """Search through the given tree for an entity matching the name and type of `path`.
+        """
+        tree = await self._fetch_tree(tree_sha, recursive=True)
+
+        if tree['truncated']:
+            raise GitHubUnsupportedRepoError
+
+        implicit_type = 'tree' if path.endswith('/') else 'blob'
+
+        for entity in tree['tree']:
+            if entity['path'] == path.strip('/') and entity['type'] == implicit_type:
+                return entity
+
+        raise exceptions.NotFoundError(str(path))
 
     async def _create_tree(self, tree):
         resp = await self.make_request(

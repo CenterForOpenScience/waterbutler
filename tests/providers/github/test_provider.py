@@ -479,15 +479,16 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, content_repo_metadata_root_file_txt):
-        blob_path = 'file.txt'
-        blob_url = provider.build_repo_url('contents', blob_path)
-        blob_query = '?ref=' + provider.default_branch
-        blob_good_url = blob_url + blob_query
-        blob_bad_url  = blob_url + '/' + blob_query
+    async def test_validate_v1_path_file(self, provider, branch_metadata, repo_tree_metadata_root):
+        branch_url = provider.build_repo_url('branches', provider.default_branch)
+        tree_url = provider.build_repo_url('git', 'trees',
+                                           branch_metadata['commit']['commit']['tree']['sha'],
+                                           recursive=1)
 
-        aiohttpretty.register_json_uri('GET', blob_good_url, body=content_repo_metadata_root_file_txt)
-        aiohttpretty.register_json_uri('GET', blob_bad_url, body=content_repo_metadata_root_file_txt)
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+        aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
+
+        blob_path = 'file.txt'
 
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + blob_path)
@@ -505,15 +506,17 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider, content_repo_metadata_root):
-        tree_path = 'folder'
-        tree_url = provider.build_repo_url('contents', tree_path)
-        tree_query = '?ref=' + provider.default_branch
-        tree_good_url = tree_url + tree_query
-        tree_bad_url  = tree_url + '/' + tree_query
+    async def test_validate_v1_path_folder(self, provider, branch_metadata, repo_tree_metadata_root):
+        branch_url = provider.build_repo_url('branches', provider.default_branch)
+        tree_url = provider.build_repo_url('git', 'trees',
+                                           branch_metadata['commit']['commit']['tree']['sha'],
+                                           recursive=1)
 
-        aiohttpretty.register_json_uri('GET', tree_good_url, body=content_repo_metadata_root)
-        aiohttpretty.register_json_uri('GET', tree_bad_url, body=content_repo_metadata_root)
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+        aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
+
+        tree_path = 'level1'
+
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + tree_path + '/')
         except Exception as exc:
