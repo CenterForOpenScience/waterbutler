@@ -27,7 +27,7 @@ class CreateMixin:
             raise exceptions.InvalidParameters('Content-Length is required for file uploads', code=411)
 
         try:
-            if int(length) > 0 and self.kind == 'folder':
+            if length is not None and int(length) > 0 and self.kind == 'folder':
                 # Payload Too Large
                 raise exceptions.InvalidParameters('Folder creation requests may not have a body', code=413)
         except ValueError:
