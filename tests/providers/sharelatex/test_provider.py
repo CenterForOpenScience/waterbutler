@@ -107,41 +107,41 @@ class TestMetadata:
 
     @pytest.mark.aiohttpretty
     async def test_no_root_folder(self, empty_project_provider, empty_metadata):
-        root_folder_path = yield from empty_project_provider.validate_path('/')
+        root_folder_path = await empty_project_provider.validate_path('/')
         root_folder_url = empty_project_provider.build_url('project', empty_project_provider.project_id, 'docs')
         aiohttpretty.register_json_uri('GET', root_folder_url, body=empty_metadata)
 
         with pytest.raises(exceptions.NotFoundError) as e:
-            yield from empty_project_provider.metadata(root_folder_path)
+            await empty_project_provider.metadata(root_folder_path)
 
     @pytest.mark.aiohttpretty
     async def test_file_not_found(self, empty_project_provider, default_project_metadata):
-        path = yield from empty_project_provider.validate_path('/a.txt')
+        path = await empty_project_provider.validate_path('/a.txt')
         url = empty_project_provider.build_url('project', empty_project_provider.project_id, 'docs')
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
         with pytest.raises(exceptions.NotFoundError) as e:
-            yield from empty_project_provider.metadata(path)
+            await empty_project_provider.metadata(path)
 
     @pytest.mark.aiohttpretty
     async def test_metadata_not_found(self, default_project_provider, empty_metadata):
-        path = yield from default_project_provider.validate_path('/')
+        path = await default_project_provider.validate_path('/')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
         aiohttpretty.register_json_uri('GET', url, status=404)
 
         with pytest.raises(exceptions.MetadataError) as e:
-            yield from default_project_provider.metadata(path)
+            await default_project_provider.metadata(path)
 
         assert e.value.code == 404
 
     @pytest.mark.aiohttpretty
     async def test_root_folder_without_folders(self, default_project_provider, only_files_metadata):
-        root_folder_path = yield from default_project_provider.validate_path('/')
+        root_folder_path = await default_project_provider.validate_path('/')
         root_folder_url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
         aiohttpretty.register_json_uri('GET', root_folder_url, body=only_files_metadata)
 
-        result = yield from default_project_provider.metadata(root_folder_path)
+        result = await default_project_provider.metadata(root_folder_path)
 
         assert result
         for f in result:
@@ -149,12 +149,12 @@ class TestMetadata:
 
     @pytest.mark.aiohttpretty
     async def test_root_folder_without_files(self, default_project_provider, only_folders_metadata):
-        root_folder_path = yield from default_project_provider.validate_path('/')
+        root_folder_path = await default_project_provider.validate_path('/')
         root_folder_url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
         aiohttpretty.register_json_uri('GET', root_folder_url, body=only_folders_metadata)
 
-        result = yield from default_project_provider.metadata(root_folder_path)
+        result = await default_project_provider.metadata(root_folder_path)
 
         assert result
         for f in result:
@@ -162,12 +162,12 @@ class TestMetadata:
 
     @pytest.mark.aiohttpretty
     async def test_tex_on_root_folder(self, default_project_provider, only_docs_metadata):
-        path = yield from default_project_provider.validate_path('/')
+        path = await default_project_provider.validate_path('/')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
         aiohttpretty.register_json_uri('GET', url, body=only_docs_metadata)
 
-        result = yield from default_project_provider.metadata(path)
+        result = await default_project_provider.metadata(path)
         assert result
 
         for f in result:
@@ -175,12 +175,12 @@ class TestMetadata:
 
     @pytest.mark.aiohttpretty
     async def test_other_files_on_root_folder(self, default_project_provider, default_project_metadata):
-        path = yield from default_project_provider.validate_path('/')
+        path = await default_project_provider.validate_path('/')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
-        result = yield from default_project_provider.metadata(path)
+        result = await default_project_provider.metadata(path)
 
         fonts = self.contains_file_with_type(result, 'otf')
         images = self.contains_file_with_type(result, 'jpg')
@@ -203,12 +203,12 @@ class TestMetadata:
 
     @pytest.mark.aiohttpretty
     async def test_file_on_root_folder(self, default_project_provider, default_project_metadata):
-        path = yield from default_project_provider.validate_path('/raw.txt')
+        path = await default_project_provider.validate_path('/raw.txt')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
-        result = yield from default_project_provider.metadata(path)
+        result = await default_project_provider.metadata(path)
 
         assert result.name == 'raw.txt'
         assert result.kind == 'file'
@@ -217,12 +217,12 @@ class TestMetadata:
     @pytest.mark.aiohttpretty
     async def test_file_in_one_level_dir(self, default_project_provider, default_project_metadata):
         raw_path = '/UmDiretorioNaRaiz/pngImage.png'
-        path = yield from default_project_provider.validate_path(raw_path)
+        path = await default_project_provider.validate_path(raw_path)
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
-        result = yield from default_project_provider.metadata(path)
+        result = await default_project_provider.metadata(path)
 
         assert result.name == 'pngImage.png'
         assert result.kind == 'file'
@@ -230,23 +230,23 @@ class TestMetadata:
 
     @pytest.mark.aiohttpretty
     async def test_folder_in_one_level_dir(self, default_project_provider, default_project_metadata):
-        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/')
+        path = await default_project_provider.validate_path('/UmDiretorioNaRaiz/')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
-        result = yield from default_project_provider.metadata(path)
+        result = await default_project_provider.metadata(path)
 
         assert result
 
     @pytest.mark.aiohttpretty
     async def test_file_in_two_level_dir(self, default_project_provider, default_project_metadata):
-        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/more.txt')
+        path = await default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/more.txt')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
-        result = yield from default_project_provider.metadata(path)
+        result = await default_project_provider.metadata(path)
 
         assert result.name == 'more.txt'
         assert result.kind == 'file'
@@ -254,22 +254,22 @@ class TestMetadata:
 
     @pytest.mark.aiohttpretty
     async def test_folder_in_two_level_dir(self, default_project_provider, default_project_metadata):
-        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/')
+        path = await default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
-        result = yield from default_project_provider.metadata(path)
+        result = await default_project_provider.metadata(path)
 
         assert result
 
     @pytest.mark.aiohttpretty
     async def test_tex_in_one_level_dir(self, default_project_provider, default_project_metadata):
-        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/example.tex')
+        path = await default_project_provider.validate_path('/UmDiretorioNaRaiz/example.tex')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
-        result = yield from default_project_provider.metadata(path)
+        result = await default_project_provider.metadata(path)
 
         assert result.name == 'example.tex'
         assert result.kind == 'file'
@@ -277,12 +277,12 @@ class TestMetadata:
 
     @pytest.mark.aiohttpretty
     async def test_tex_in_two_level_dir(self, default_project_provider, default_project_metadata):
-        path = yield from default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/document.tex')
+        path = await default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/document.tex')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'docs')
 
         aiohttpretty.register_json_uri('GET', url, body=default_project_metadata)
 
-        result = yield from default_project_provider.metadata(path)
+        result = await default_project_provider.metadata(path)
 
         assert path.is_file
         assert result.name == 'document.tex'
@@ -331,34 +331,34 @@ class TestCRUD:
 
     @pytest.mark.aiohttpretty
     async def test_download_error(self, empty_project_provider):
-        path = yield from empty_project_provider.validate_path('/')
+        path = await empty_project_provider.validate_path('/')
         url = empty_project_provider.build_url('project', empty_project_provider.project_id, 'file', path.path)
         aiohttpretty.register_uri('GET', url, status=404)
 
         with pytest.raises(exceptions.DownloadError) as e:
-            yield from empty_project_provider.download(path)
+            await empty_project_provider.download(path)
 
         assert e.value.code == 404
 
     @pytest.mark.aiohttpretty
     async def test_download_any_content(self, default_project_provider):
         body = b'castle on a cloud'
-        path = yield from default_project_provider.validate_path('/raw.txt')
+        path = await default_project_provider.validate_path('/raw.txt')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'file', path.path)
         aiohttpretty.register_uri('GET', url, body=body)
 
-        result = yield from default_project_provider.download(path)
-        content = yield from result.read()
+        result = await default_project_provider.download(path)
+        content = await result.read()
 
         assert content == body
 
     @pytest.mark.aiohttpretty
     async def test_download_when_accept_url(self, default_project_provider):
-        path = yield from default_project_provider.validate_path('/raw.txt')
+        path = await default_project_provider.validate_path('/raw.txt')
         url = default_project_provider.build_url('project', default_project_provider.project_id, 'file', path.path)
         aiohttpretty.register_uri('GET', url)
 
-        result = yield from default_project_provider.download(path, accept_url=True)
+        result = await default_project_provider.download(path, accept_url=True)
         assert result == url
 
 
@@ -384,9 +384,9 @@ class TestValidatePath:
         file_path = '/one/two/three/four.abc'
         folder_path = '/one/two/three/'
 
-        r_path = yield from default_project_provider.validate_path(root_path)
-        fil_path = yield from default_project_provider.validate_path(file_path)
-        fol_path = yield from default_project_provider.validate_path(folder_path)
+        r_path = await default_project_provider.validate_path(root_path)
+        fil_path = await default_project_provider.validate_path(file_path)
+        fol_path = await default_project_provider.validate_path(folder_path)
 
         assert r_path.is_root
         assert fil_path.is_file
@@ -400,9 +400,9 @@ class TestValidatePath:
         file_path = '/one/two/three/four.abc'
         folder_path = '/one/two/three/'
 
-        r_path = yield from default_project_provider.validate_v1_path(root_path)
-        fil_path = yield from default_project_provider.validate_v1_path(file_path)
-        fol_path = yield from default_project_provider.validate_v1_path(folder_path)
+        r_path = await default_project_provider.validate_v1_path(root_path)
+        fil_path = await default_project_provider.validate_v1_path(file_path)
+        fol_path = await default_project_provider.validate_v1_path(folder_path)
 
         assert r_path.is_root
         assert fil_path.is_file
