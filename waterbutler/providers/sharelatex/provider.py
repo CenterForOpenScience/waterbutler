@@ -25,12 +25,10 @@ class ShareLatexProvider(provider.BaseProvider):
         self.auth_token = credentials.get('auth_token')
         self.sharelatex_url = credentials.get('sharelatex_url')
 
-    @asyncio.coroutine
-    def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path, **kwargs):
         return self.validate_path(path, **kwargs)
 
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path, prepend='/')
 
     def can_duplicate_names(self):
@@ -48,20 +46,17 @@ class ShareLatexProvider(provider.BaseProvider):
         query['auth_token'] = self.auth_token
         return provider.build_url(self.sharelatex_url, 'api', 'v1', *segments, **query)
 
-    @asyncio.coroutine
-    def upload(self, stream, path, conflict='replace', **kwargs):
+    async def upload(self, stream, path, conflict='replace', **kwargs):
         """Not implemented on ShareLaTeX
         """
         pass
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    async def delete(self, path, **kwargs):
         """Not implemented on ShareLaTeX
         """
         pass
 
-    @asyncio.coroutine
-    def download(self, path, accept_url=False, range=None, **kwargs):
+    async def download(self, path, accept_url=False, range=None, **kwargs):
         """Returns the url when `accept_url` otherwise returns a ResponseWrapper
         (Stream) for the specified path and raises exception if the status from
         ShareLaTeX is not 200
@@ -80,7 +75,7 @@ class ShareLatexProvider(provider.BaseProvider):
         if accept_url:
             return url
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET',
             url,
             range=range,
@@ -90,8 +85,7 @@ class ShareLatexProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp, None, None, True)
 
-    @asyncio.coroutine
-    def metadata(self, path, **kwargs):
+    async def metadata(self, path, **kwargs):
         """Get metdata about the specified resource from this provider.
         Will be a :class:`list` if the resource is a directory otherwise an instance of :class:`waterbutler.providers.sharelatex.metadata.ShareLatexFileMetadata`
 
@@ -105,7 +99,7 @@ class ShareLatexProvider(provider.BaseProvider):
         segments = ('project', self.project_id, 'docs')
         url = self.build_url(*segments)
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET', url,
             expects=(200, ),
             headers={
@@ -114,7 +108,7 @@ class ShareLatexProvider(provider.BaseProvider):
             throws=exceptions.MetadataError
         )
 
-        data = yield from resp.json()
+        data = await resp.json()
 
         if not data:
             raise exceptions.NotFoundError(str(path))
