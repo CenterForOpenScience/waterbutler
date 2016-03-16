@@ -1,5 +1,3 @@
-import asyncio
-
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
