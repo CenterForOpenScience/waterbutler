@@ -105,6 +105,7 @@ class TestMetadata:
         path_has_extension = metadata.path.find(extension) != -1
         assert path_has_extension
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_no_root_folder(self, empty_project_provider, empty_metadata):
         root_folder_path = await empty_project_provider.validate_path('/')
@@ -114,6 +115,7 @@ class TestMetadata:
         with pytest.raises(exceptions.NotFoundError) as e:
             await empty_project_provider.metadata(root_folder_path)
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_file_not_found(self, empty_project_provider, default_project_metadata):
         path = await empty_project_provider.validate_path('/a.txt')
@@ -123,6 +125,7 @@ class TestMetadata:
         with pytest.raises(exceptions.NotFoundError) as e:
             await empty_project_provider.metadata(path)
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_metadata_not_found(self, default_project_provider, empty_metadata):
         path = await default_project_provider.validate_path('/')
@@ -134,6 +137,7 @@ class TestMetadata:
 
         assert e.value.code == 404
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_root_folder_without_folders(self, default_project_provider, only_files_metadata):
         root_folder_path = await default_project_provider.validate_path('/')
@@ -147,6 +151,7 @@ class TestMetadata:
         for f in result:
             self.check_kind_is_file(f)
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_root_folder_without_files(self, default_project_provider, only_folders_metadata):
         root_folder_path = await default_project_provider.validate_path('/')
@@ -160,6 +165,7 @@ class TestMetadata:
         for f in result:
             self.check_kind_is_folder(f)
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_tex_on_root_folder(self, default_project_provider, only_docs_metadata):
         path = await default_project_provider.validate_path('/')
@@ -173,6 +179,7 @@ class TestMetadata:
         for f in result:
             self.check_metadata_file(f, '.tex')
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_other_files_on_root_folder(self, default_project_provider, default_project_metadata):
         path = await default_project_provider.validate_path('/')
@@ -201,6 +208,7 @@ class TestMetadata:
         for f in files:
             self.check_kind_is_file(f)
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_file_on_root_folder(self, default_project_provider, default_project_metadata):
         path = await default_project_provider.validate_path('/raw.txt')
@@ -214,6 +222,7 @@ class TestMetadata:
         assert result.kind == 'file'
         assert result.content_type == 'text/plain'
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_file_in_one_level_dir(self, default_project_provider, default_project_metadata):
         raw_path = '/UmDiretorioNaRaiz/pngImage.png'
@@ -228,6 +237,7 @@ class TestMetadata:
         assert result.kind == 'file'
         assert result.content_type == 'image/png'
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_folder_in_one_level_dir(self, default_project_provider, default_project_metadata):
         path = await default_project_provider.validate_path('/UmDiretorioNaRaiz/')
@@ -239,6 +249,7 @@ class TestMetadata:
 
         assert result
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_file_in_two_level_dir(self, default_project_provider, default_project_metadata):
         path = await default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/more.txt')
@@ -252,6 +263,7 @@ class TestMetadata:
         assert result.kind == 'file'
         assert result.content_type == 'text/plain'
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_folder_in_two_level_dir(self, default_project_provider, default_project_metadata):
         path = await default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/')
@@ -263,6 +275,7 @@ class TestMetadata:
 
         assert result
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_tex_in_one_level_dir(self, default_project_provider, default_project_metadata):
         path = await default_project_provider.validate_path('/UmDiretorioNaRaiz/example.tex')
@@ -275,6 +288,7 @@ class TestMetadata:
         assert result.kind == 'file'
         assert result.content_type == 'application/x-tex'
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_tex_in_two_level_dir(self, default_project_provider, default_project_metadata):
         path = await default_project_provider.validate_path('/UmDiretorioNaRaiz/secondLevel/document.tex')
@@ -329,6 +343,7 @@ class TestMetadata:
 class TestCRUD:
 
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_download_error(self, empty_project_provider):
         path = await empty_project_provider.validate_path('/')
@@ -340,6 +355,7 @@ class TestCRUD:
 
         assert e.value.code == 404
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_download_any_content(self, default_project_provider):
         body = b'castle on a cloud'
@@ -352,6 +368,7 @@ class TestCRUD:
 
         assert content == body
 
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_download_when_accept_url(self, default_project_provider):
         path = await default_project_provider.validate_path('/raw.txt')
@@ -379,6 +396,7 @@ class TestOperations:
 
 class TestValidatePath:
 
+    @pytest.mark.asyncio
     async def test_path_generation(self, default_project_provider):
         root_path = '/'
         file_path = '/one/two/three/four.abc'
@@ -395,6 +413,7 @@ class TestValidatePath:
         assert fil_path.full_path == file_path
         assert fol_path.full_path == folder_path
 
+    @pytest.mark.asyncio
     async def test_validate_v1_path_generation(self, default_project_provider):
         root_path = '/'
         file_path = '/one/two/three/four.abc'
