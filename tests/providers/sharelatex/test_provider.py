@@ -423,9 +423,9 @@ class TestValidatePath:
         fil_path = await default_project_provider.validate_v1_path(file_path)
         fol_path = await default_project_provider.validate_v1_path(folder_path)
 
-        assert r_path.is_root
-        assert fil_path.is_file
-        assert fol_path.is_dir
-        assert r_path.full_path == root_path 
-        assert fil_path.full_path == file_path
-        assert fol_path.full_path == folder_path
+        assert await r_path.is_root
+        assert await fil_path.is_file
+        assert await fol_path.is_dir
+        assert await r_path.full_path == root_path 
+        assert await fil_path.full_path == file_path
+        assert await fol_path.full_path == folder_path
