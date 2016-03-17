@@ -77,11 +77,12 @@ class GitHubProvider(provider.BaseProvider):
         resp = yield from self.make_request(
             'GET',
             url.url,
-            expects=(200, ),
+            expects=(200, 403),
             throws=exceptions.MetadataError
         )
 
         content = yield from resp.json()
+
         explicit_folder = isinstance(content, list)
 
         if implicit_folder != explicit_folder:
