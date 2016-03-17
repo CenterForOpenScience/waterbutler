@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.18.1 (2016-03-15)
+===================
+- Fix: Stop crashing if the `Content-Length` header is not set on a v1 folder create request.
+A missing `Content-Length` is fine for folder create requests.
+
 0.18.0 (2016-03-09)
 ===================
 - BREAKING v1 API CHANGE (sortof):  Updating a file by issuing a PUT to its parent folder and
