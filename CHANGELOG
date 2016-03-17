@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+0.18.2 (2016-03-17)
+===================
+- The "Leprechauns Ate My Blob" emergency release!
+- Fix: Don't throw an error if the github file being requested is larger than 1Mb.  There will
+be a more correct fix in the next minor release.
+
 0.18.1 (2016-03-15)
 ===================
 - Fix: Stop crashing if the `Content-Length` header is not set on a v1 folder create request.
