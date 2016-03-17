@@ -11,6 +11,7 @@ stevedore==1.2.0
 tornado==4.2.1
 xmltodict==0.9.0
 pyjwe==0.1.6
+python-magic==0.4.10
 
 # Issue: certifi-2015.9.6.1 and 2015.9.6.2 fail verification (https://github.com/certifi/python-certifi/issues/26)
 certifi==2015.4.28
