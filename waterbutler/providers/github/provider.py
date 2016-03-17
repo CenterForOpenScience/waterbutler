@@ -83,11 +83,7 @@ class GitHubProvider(provider.BaseProvider):
 
         content = yield from resp.json()
 
-        if content.get('errors'):
-            if content['errors'][0]['resource'] == 'Blob':
-                explicit_folder = False
-        else:
-            explicit_folder = isinstance(content, list)
+        explicit_folder = isinstance(content, list)
 
         if implicit_folder != explicit_folder:
             raise exceptions.NotFoundError(path)
