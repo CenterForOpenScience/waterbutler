@@ -23,7 +23,10 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
 
     @property
     def web_view(self):
-        segments = ('articles', self.parent['title'], str(self.article_id))
+        if self.parent['status'].lower() == 'public':
+            segments = ('articles', self.parent['title'], str(self.article_id))
+        else:
+            segments = ('account', 'articles', str(self.article_id))
         return build_url(settings.VIEW_URL, *segments)
 
     @property

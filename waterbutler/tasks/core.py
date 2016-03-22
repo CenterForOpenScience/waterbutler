@@ -35,8 +35,7 @@ def __coroutine_unwrapper(func):
     return wrapped
 
 
-@asyncio.coroutine
-def backgrounded(func, *args, **kwargs):
+async def backgrounded(func, *args, **kwargs):
     """Runs the given function with the given arguments in
     a background thread
     """
@@ -44,17 +43,16 @@ def backgrounded(func, *args, **kwargs):
     if asyncio.iscoroutinefunction(func):
         func = __coroutine_unwrapper(func)
 
-    return (yield from loop.run_in_executor(
+    return (await loop.run_in_executor(
         None,  # None uses the default executer, ThreadPoolExecuter
         functools.partial(func, *args, **kwargs)
     ))
 
 
 def backgroundify(func):
-    @asyncio.coroutine
     @functools.wraps(func)
-    def wrapped(*args, **kwargs):
-        return (yield from backgrounded(func, *args, **kwargs))
+    async def wrapped(*args, **kwargs):
+        return (await backgrounded(func, *args, **kwargs))
     return wrapped
 
 
@@ -101,8 +99,7 @@ def celery_task(func, *args, **kwargs):
 
 
 @backgroundify
-@asyncio.coroutine
-def wait_on_celery(result, interval=None, timeout=None, basepath=None):
+async def wait_on_celery(result, interval=None, timeout=None, basepath=None):
     timeout = timeout or settings.WAIT_TIMEOUT
     interval = interval or settings.WAIT_INTERVAL
     basepath = basepath or settings.ADHOC_BACKEND_PATH
@@ -127,5 +124,5 @@ def wait_on_celery(result, interval=None, timeout=None, basepath=None):
 
         if waited > timeout:
             raise exceptions.WaitTimeOutError
-        yield from asyncio.sleep(interval)
+        await asyncio.sleep(interval)
         waited += interval

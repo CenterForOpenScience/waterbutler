@@ -15,3 +15,4 @@ src/
 env/
 dist/
 build/
+.cache

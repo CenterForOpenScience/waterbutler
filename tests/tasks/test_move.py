@@ -1,11 +1,11 @@
 import sys
 import copy
+import time
 import asyncio
-import datetime
+from unittest import mock
 
 import celery
 import pytest
-import freezegun
 
 from waterbutler import tasks  # noqa
 from waterbutler.core.path import WaterButlerPath
@@ -15,6 +15,7 @@ import tests.utils as test_utils
 # Hack to get the module, not the function
 move = sys.modules['waterbutler.tasks.move']
 
+FAKE_TIME = 1454684930.0
 
 @pytest.fixture(autouse=True)
 def patch_backend(monkeypatch):
@@ -26,6 +27,12 @@ def callback(monkeypatch):
     mock_request = test_utils.MockCoroutine()
     monkeypatch.setattr(move.utils, 'send_signed_request', mock_request)
     return mock_request
+
+
+@pytest.fixture
+def mock_time(monkeypatch):
+    mock_time = mock.Mock(return_value=FAKE_TIME)
+    monkeypatch.setattr(time, 'time', mock_time)
 
 
 @pytest.fixture
@@ -97,7 +104,7 @@ def bundles(src_bundle, dest_bundle):
 
 class TestMoveTask:
 
-    def test_move_calls_move(self, providers, bundles):
+    def test_move_calls_move(self, event_loop, providers, bundles):
         src, dest = providers
         src_bundle, dest_bundle = bundles
 
@@ -112,7 +119,7 @@ class TestMoveTask:
         assert not asyncio.iscoroutine(move.move)
         assert asyncio.iscoroutinefunction(move.move.adelay)
 
-    def test_imputes_exceptions(self, providers, bundles, callback):
+    def test_imputes_exceptions(self, event_loop, providers, bundles, callback):
         src, dest = providers
         src_bundle, dest_bundle = bundles
 
@@ -130,16 +137,14 @@ class TestMoveTask:
         assert method == 'PUT'
         assert data['errors'] == ["Exception('This is a string',)"]
 
-    def test__return_values(self, providers, bundles, callback, src_path, dest_path):
+    def test_return_values(self, event_loop, providers, bundles, callback, src_path, dest_path, mock_time):
         src, dest = providers
         src_bundle, dest_bundle = bundles
 
         metadata = test_utils.MockFileMetadata()
         src.move.return_value = (metadata, False)
 
-        dt = datetime.datetime.utcfromtimestamp(60)
-        with freezegun.freeze_time(dt):
-            ret1, ret2 = move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), 'Test.com', {'auth': {'user': 'name'}})
+        ret1, ret2 = move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), 'Test.com', {'auth': {'user': 'name'}})
 
         assert (ret1, ret2) == (metadata, False)
 
@@ -150,27 +155,26 @@ class TestMoveTask:
                 'errors': [],
                 'action': 'move',
                 'source': {
-                    'path': src_path.path,
+                    'path': '/' + src_path.raw_path,
                     'name': src_path.name,
                     'materialized': str(src_path),
                     'provider': src.NAME,
+                    'kind': 'file',
                 },
                 'destination': metadata.serialized(),
                 'auth': {'user': 'name'},
-                'time': 120,
+                'time': FAKE_TIME + 60,
                 'email': False
             }
         )
 
-    def test_starttime_override(self, providers, bundles, callback):
+    def test_starttime_override(self, event_loop, providers, bundles, callback, mock_time):
         src, dest = providers
         src_bundle, dest_bundle = bundles
 
-        dt = datetime.datetime.utcnow()
-        stamp = dt.replace(tzinfo=datetime.timezone.utc).timestamp()
-        with freezegun.freeze_time(dt, tz_offset=0):
-            move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), '', {'auth': {}}, start_time=stamp-100)
-            move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), '', {'auth': {}}, start_time=stamp+100)
+        stamp = FAKE_TIME
+        move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), '', {'auth': {}}, start_time=stamp-100)
+        move.move(copy.deepcopy(src_bundle), copy.deepcopy(dest_bundle), '', {'auth': {}}, start_time=stamp+100)
 
         (_, _, data), _ = callback.call_args_list[0]
 

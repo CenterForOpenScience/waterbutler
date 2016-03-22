@@ -1,13 +1,17 @@
-aiohttp==0.14.1
-git+https://github.com/chrisseto/boto.git#egg=boto
-git+https://github.com/jmcarp/raven-python
+PyJWE==1.0.0
+PyJWT==1.4.0
+aiohttp==0.18.2
+git+https://github.com/felliott/boto.git@feature/gen-url-query-params-2#egg=boto
 celery==3.1.17
 furl==0.4.2
 humanfriendly==1.31
 invoke==0.11.1
 oauthlib==0.7.2
-PyJWT==1.4.0
+raven==5.10.2
 stevedore==1.2.0
-tornado==4.2.1
+tornado==4.3
 xmltodict==0.9.0
-PyJWE==0.1.5
+agent
+
+# Issue: certifi-2015.9.6.1 and 2015.9.6.2 fail verification (https://github.com/certifi/python-certifi/issues/26)
+certifi==2015.4.28

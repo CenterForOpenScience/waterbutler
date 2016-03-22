@@ -1,17 +1,18 @@
 import os
-import asyncio
 import hashlib
+import functools
 from urllib import parse
 
 import xmltodict
 
 import xml.sax.saxutils
 
+from boto import config as boto_config
 from boto.compat import BytesIO
 from boto.utils import compute_md5
+from boto.auth import get_auth_handler
 from boto.s3.connection import S3Connection
 from boto.s3.connection import OrdinaryCallingFormat
-from boto.s3.connection import SubdomainCallingFormat
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -28,6 +29,15 @@ from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
 
 class S3Provider(provider.BaseProvider):
     """Provider for the Amazon's S3
+
+    Quirks:
+        On S3, folders are not first-class objects, but are instead inferred
+        from the names of their children.  A regular DELETE request issued
+        against a folder will not work unless that folder is completely empty.
+        To fully delete an occupied folder, we must delete all of the comprising
+        objects.  Amazon provides a bulk delete operation to simplify this.
+
+        A GET prefix query against a non-existant path returns 200
     """
     NAME = 's3'
 
@@ -44,49 +54,45 @@ class S3Provider(provider.BaseProvider):
         """
         super().__init__(auth, credentials, settings)
 
-        # If a bucket has capital letters in the name ordinary calling format MUST be used
-        # If a bucket has multiple dots (sub.domain.bucket) ordinary calling format MUST be used
-        if settings['bucket'] != settings['bucket'].lower() or settings['bucket'].count('.') > 0:
-            calling_format = OrdinaryCallingFormat()
-        else:
-            # if a bucket is out of the us Subdomain calling format MUST be used
-            calling_format = SubdomainCallingFormat()
-
         self.connection = S3Connection(credentials['access_key'],
-                credentials['secret_key'], calling_format=calling_format)
+                credentials['secret_key'], calling_format=OrdinaryCallingFormat())
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
+        self.region = None
 
-    @asyncio.coroutine
-    def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path, **kwargs):
+        await self._check_region()
+
         if path == '/':
             return WaterButlerPath(path)
 
         implicit_folder = path.endswith('/')
 
         if implicit_folder:
-            resp = yield from self.make_request(
+            params = {'prefix': path, 'delimiter': '/'}
+            resp = await self.make_request(
                 'GET',
-                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
-                params={'prefix': path, 'delimiter': '/'},
+                functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+                params=params,
                 expects=(200, 404),
                 throws=exceptions.MetadataError,
             )
         else:
-            resp = yield from self.make_request(
+            resp = await self.make_request(
                 'HEAD',
-                self.bucket.new_key(path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
+                functools.partial(self.bucket.new_key(path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
                 expects=(200, 404),
                 throws=exceptions.MetadataError,
             )
+
+        await resp.release()
 
         if resp.status == 404:
             raise exceptions.NotFoundError(str(path))
 
         return WaterButlerPath(path)
 
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
     def can_duplicate_names(self):
@@ -98,32 +104,35 @@ class S3Provider(provider.BaseProvider):
     def can_intra_move(self, dest_provider, path=None):
         return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
 
-    @asyncio.coroutine
-    def intra_copy(self, dest_provider, source_path, dest_path):
+    async def intra_copy(self, dest_provider, source_path, dest_path):
         """Copy key from one S3 bucket to another. The credentials specified in
         `dest_provider` must have read access to `source.bucket`.
         """
-        exists = yield from dest_provider.exists(dest_path)
+        await self._check_region()
+        exists = await dest_provider.exists(dest_path)
+
         dest_key = dest_provider.bucket.new_key(dest_path.path)
 
         # ensure no left slash when joining paths
         source_path = '/' + os.path.join(self.settings['bucket'], source_path.path)
         headers = {'x-amz-copy-source': parse.quote(source_path)}
-        url = dest_key.generate_url(
+        url = functools.partial(
+            dest_key.generate_url,
             settings.TEMP_URL_SECS,
             'PUT',
             headers=headers,
         )
-        yield from self.make_request(
+        resp = await self.make_request(
             'PUT', url,
+            skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
             expects=(200, ),
             throws=exceptions.IntraCopyError,
         )
-        return (yield from dest_provider.metadata(dest_path)), not exists
+        await resp.release()
+        return (await dest_provider.metadata(dest_path)), not exists
 
-    @asyncio.coroutine
-    def download(self, path, accept_url=False, version=None, range=None, **kwargs):
+    async def download(self, path, accept_url=False, version=None, range=None, **kwargs):
         """Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from S3 is not 200
 
@@ -132,6 +141,8 @@ class S3Provider(provider.BaseProvider):
         :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
+        await self._check_region()
+
         if not path.is_file:
             raise exceptions.DownloadError('No file specified for download', code=400)
 
@@ -145,18 +156,17 @@ class S3Provider(provider.BaseProvider):
         else:
             response_headers = {'response-content-disposition': 'attachment'}
 
-        url = self.bucket.new_key(
-            path.path
-        ).generate_url(
+        url = functools.partial(
+            self.bucket.new_key(path.path).generate_url,
             settings.TEMP_URL_SECS,
             query_parameters=query_parameters,
             response_headers=response_headers
         )
 
         if accept_url:
-            return url
+            return url()
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET',
             url,
             range=range,
@@ -166,8 +176,7 @@ class S3Provider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp)
 
-    @asyncio.coroutine
-    def upload(self, stream, path, conflict='replace', **kwargs):
+    async def upload(self, stream, path, conflict='replace', **kwargs):
         """Uploads the given stream to S3
 
         :param waterbutler.core.streams.RequestWrapper stream: The stream to put to S3
@@ -175,18 +184,30 @@ class S3Provider(provider.BaseProvider):
 
         :rtype: dict, bool
         """
-        path, exists = yield from self.handle_name_conflict(path, conflict=conflict)
+        await self._check_region()
+
+        path, exists = await self.handle_name_conflict(path, conflict=conflict)
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
 
-        resp = yield from self.make_request(
+        headers = {'Content-Length': str(stream.size)}
+
+        # this is usually set in boto.s3.key.generate_url, but do it here
+        # do be explicit about our header payloads for signing purposes
+        if self.encrypt_uploads:
+            headers['x-amz-server-side-encryption'] = 'AES256'
+
+        upload_url = functools.partial(
+            self.bucket.new_key(path.path).generate_url,
+            settings.TEMP_URL_SECS,
             'PUT',
-            self.bucket.new_key(path.path).generate_url(
-                settings.TEMP_URL_SECS,
-                'PUT',
-                encrypt_key=self.encrypt_uploads
-            ),
+            headers=headers,
+        )
+        resp = await self.make_request(
+            'PUT',
+            upload_url,
             data=stream,
-            headers={'Content-Length': str(stream.size)},
+            skip_auto_headers={'CONTENT-TYPE'},
+            headers=headers,
             expects=(200, 201, ),
             throws=exceptions.UploadError,
         )
@@ -194,32 +215,53 @@ class S3Provider(provider.BaseProvider):
         # TODO: nice assertion error goes here
         assert resp.headers['ETag'].replace('"', '') == stream.writers['md5'].hexdigest
 
-        return (yield from self.metadata(path, **kwargs)), not exists
+        await resp.release()
+        return (await self.metadata(path, **kwargs)), not exists
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    async def delete(self, path, confirm_delete=0, **kwargs):
         """Deletes the key at the specified path
 
         :param str path: The path of the key to delete
+        :param int confirm_delete: Must be 1 to confirm root folder delete
         """
+        await self._check_region()
+
+        if path.is_root:
+            if not confirm_delete == 1:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400
+                )
 
         if path.is_file:
-            yield from self.make_request(
+            resp = await self.make_request(
                 'DELETE',
                 self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
                 expects=(200, 204, ),
                 throws=exceptions.DeleteError,
             )
+            await resp.release()
         else:
-            yield from self._delete_folder(path, **kwargs)
+            await self._delete_folder(path, **kwargs)
 
-    @asyncio.coroutine
-    def _delete_folder(self, path, **kwargs):
-        """On S3, folders are not first-class objects, but are instead inferred from the names
-        of their children.  A regular DELETE request issued against a folder will not work unless
-        that folder is completely empty.  To fully delete an occupied folder, we must delete all
-        of the comprising objects.  Amazon provides a bulk delete operation to simplify this.
+    async def _delete_folder(self, path, **kwargs):
+        """Query for recursive contents of folder and delete in batches of 1000
+
+        Called from: func: delete if not path.is_file
+
+        Calls: func: self._check_region
+               func: self.make_request
+               func: self.bucket.generate_url
+
+        :param *ProviderPath path: Path to be deleted
+
+        On S3, folders are not first-class objects, but are instead inferred
+        from the names of their children.  A regular DELETE request issued
+        against a folder will not work unless that folder is completely empty.
+        To fully delete an occupied folder, we must delete all of the comprising
+        objects.  Amazon provides a bulk delete operation to simplify this.
         """
+        await self._check_region()
 
         more_to_come = True
         content_keys = []
@@ -230,15 +272,15 @@ class S3Provider(provider.BaseProvider):
             if marker is not None:
                 query_params['marker'] = marker
 
-            resp = yield from self.make_request(
+            resp = await self.make_request(
                 'GET',
-                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
+                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=query_params),
                 params=query_params,
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
 
-            contents = yield from resp.read_and_close()
+            contents = await resp.read()
             parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
             more_to_come = parsed.get('IsTruncated') == 'true'
             contents = parsed.get('Contents', [])
@@ -249,6 +291,10 @@ class S3Provider(provider.BaseProvider):
             content_keys.extend([content['Key'] for content in contents])
             if len(content_keys) > 0:
                 marker = content_keys[-1]
+
+        # Query against non-existant folder does not return 404
+        if len(content_keys) == 0:
+            raise exceptions.NotFoundError(str(path))
 
         while len(content_keys) > 0:
             key_batch = content_keys[:1000]
@@ -273,13 +319,14 @@ class S3Provider(provider.BaseProvider):
 
             # We depend on a customized version of boto that can make query parameters part of
             # the signature.
-            url = self.bucket.generate_url(
+            url = functools.partial(
+                self.bucket.generate_url,
                 settings.TEMP_URL_SECS,
                 'POST',
                 query_parameters=query_params,
                 headers=headers,
             )
-            yield from self.make_request(
+            resp = await self.make_request(
                 'POST',
                 url,
                 params=query_params,
@@ -288,23 +335,26 @@ class S3Provider(provider.BaseProvider):
                 expects=(200, 204, ),
                 throws=exceptions.DeleteError,
             )
+            await resp.release()
 
-    @asyncio.coroutine
-    def revisions(self, path, **kwargs):
+    async def revisions(self, path, **kwargs):
         """Get past versions of the requested key
 
         :param str path: The path to a key
         :rtype list:
         """
-        url = self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters={'versions': ''})
-        resp = yield from self.make_request(
+        await self._check_region()
+
+        query_params = {'prefix': path.path, 'delimiter': '/', 'versions': ''}
+        url = functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
+        resp = await self.make_request(
             'GET',
             url,
-            params={'prefix': path.path, 'delimiter': '/'},
+            params=query_params,
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
-        content = yield from resp.read_and_close()
+        content = await resp.read()
         versions = xmltodict.parse(content)['ListVersionsResult'].get('Version') or []
 
         if isinstance(versions, dict):
@@ -316,46 +366,49 @@ class S3Provider(provider.BaseProvider):
             if item['Key'] == path.path
         ]
 
-    @asyncio.coroutine
-    def metadata(self, path, revision=None, **kwargs):
+    async def metadata(self, path, revision=None, **kwargs):
         """Get Metadata about the requested file or folder
 
         :param WaterButlerPath path: The path to a key or folder
         :rtype: dict or list
         """
+        await self._check_region()
+
         if path.is_dir:
-            return (yield from self._metadata_folder(path))
+            return (await self._metadata_folder(path))
 
-        return (yield from self._metadata_file(path, revision=revision))
+        return (await self._metadata_file(path, revision=revision))
 
-    @asyncio.coroutine
-    def create_folder(self, path, **kwargs):
+    async def create_folder(self, path, folder_precheck=True, **kwargs):
         """
         :param str path: The path to create a folder at
         """
+        await self._check_region()
+
         WaterButlerPath.validate_folder(path)
 
-        if (yield from self.exists(path)):
-            raise exceptions.FolderNamingConflict(str(path))
+        if folder_precheck:
+            if (await self.exists(path)):
+                raise exceptions.FolderNamingConflict(str(path))
 
-        yield from self.make_request(
+        async with self.request(
             'PUT',
-            self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'PUT'),
+            functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
+            skip_auto_headers={'CONTENT-TYPE'},
             expects=(200, 201),
             throws=exceptions.CreateFolderError
-        )
+        ):
+            return S3FolderMetadata({'Prefix': path.path})
 
-        return S3FolderMetadata({'Prefix': path.path})
+    async def _metadata_file(self, path, revision=None):
+        await self._check_region()
 
-    @asyncio.coroutine
-    def _metadata_file(self, path, revision=None):
         if revision == 'Latest':
             revision = None
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'HEAD',
-            self.bucket.new_key(
-                path.path
-            ).generate_url(
+            functools.partial(
+                self.bucket.new_key(path.path).generate_url,
                 settings.TEMP_URL_SECS,
                 'HEAD',
                 query_parameters={'versionId': revision} if revision else None
@@ -363,19 +416,22 @@ class S3Provider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
+        await resp.release()
         return S3FileMetadataHeaders(path.path, resp.headers)
 
-    @asyncio.coroutine
-    def _metadata_folder(self, path):
-        resp = yield from self.make_request(
+    async def _metadata_folder(self, path):
+        await self._check_region()
+
+        params = {'prefix': path.path, 'delimiter': '/'}
+        resp = await self.make_request(
             'GET',
-            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
-            params={'prefix': path.path, 'delimiter': '/'},
+            functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+            params=params,
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
 
-        contents = yield from resp.read_and_close()
+        contents = await resp.read()
 
         parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
 
@@ -386,12 +442,13 @@ class S3Provider(provider.BaseProvider):
             # If contents and prefixes are empty then this "folder"
             # must exist as a key with a / at the end of the name
             # if the path is root there is no need to test if it exists
-            yield from self.make_request(
+            resp = await self.make_request(
                 'HEAD',
-                self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'HEAD'),
+                functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
+            await resp.release()
 
         if isinstance(contents, dict):
             contents = [contents]
@@ -414,3 +471,41 @@ class S3Provider(provider.BaseProvider):
                 items.append(S3FileMetadata(content))
 
         return items
+
+    async def _check_region(self):
+        """Lookup the region via bucket name, then update the host to match.
+
+        Manually constructing the connection hostname allows us to use OrdinaryCallingFormat
+        instead of SubdomainCallingFormat, which can break on buckets with periods in their name.
+        The default region, US East (N. Virginia), is represented by the empty string and does not
+        require changing the host.  Ireland is represented by the string 'EU', with the host
+        parameter 'eu-west-1'.  All other regions return the host parameter as the region name.
+
+        Region Naming: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
+        """
+        if self.region is None:
+            self.region = await self._get_bucket_region()
+            if self.region == 'EU':
+                self.region = 'eu-west-1'
+
+            if self.region != '':
+                self.connection.host = self.connection.host.replace('s3.', 's3-' + self.region + '.', 1)
+                self.connection._auth_handler = get_auth_handler(
+                    self.connection.host, boto_config, self.connection.provider, self.connection._required_auth_capability())
+
+    async def _get_bucket_region(self):
+        """Bucket names are unique across all regions.
+
+       Endpoint doc:
+       http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html
+        """
+        resp = await self.make_request(
+            'GET',
+            functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters={'location': ''}),
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
+
+        contents = await resp.read()
+        parsed = xmltodict.parse(contents, strip_whitespace=False)
+        return parsed['LocationConstraint'].get('#text', '')
