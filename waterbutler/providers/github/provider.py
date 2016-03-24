@@ -87,6 +87,10 @@ class GitHubProvider(provider.BaseProvider):
             self.default_branch = self._repo['default_branch']
 
         branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
+
+        if path == '/':
+            return GitHubPath(path, _ids=[(branch_ref, '')])
+
         branch_data = await self._fetch_branch(branch_ref)
         await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
 
