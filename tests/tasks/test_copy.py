@@ -24,7 +24,7 @@ def patch_backend(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def callback(monkeypatch):
-    mock_request = test_utils.MockCoroutine(return_value=mock.Mock(status=200))
+    mock_request = test_utils.MockCoroutine(return_value=test_utils.MockCoroutine(status=200))
     monkeypatch.setattr(copy.utils, 'send_signed_request', mock_request)
     return mock_request
 

@@ -53,6 +53,7 @@ async def copy(src_bundle, dest_bundle, callback_url, auth, start_time=None, **k
             'email': time.time() - start_time > settings.WAIT_TIMEOUT
         }))
         logger.info('Callback returned {!r}'.format(resp))
+        await resp.release()
         if resp.status // 100 != 2:
             raise Exception('Callback failed with {!r}'.format(resp)) from sys.exc_info()[1]
 
