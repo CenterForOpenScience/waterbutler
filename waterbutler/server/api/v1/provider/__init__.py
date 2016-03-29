@@ -179,11 +179,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             callback_url = self.auth['callback_url']
 
         resp = (await utils.send_signed_request('PUT', callback_url, payload))
+        data = await resp.read()
 
         if resp.status != 200:
-            data = await resp.read()
-            raise Exception('Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8')))
-        else:
-            resp.release()
+            raise Exception(
+                'Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8'))
+            )
 
         logger.info('Successfully sent callback for a {} request'.format(action))
+        logger.info('Callback succeeded with {}'.format(data.decode('utf-8')))

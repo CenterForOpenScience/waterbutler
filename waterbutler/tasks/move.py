@@ -53,8 +53,13 @@ async def move(src_bundle, dest_bundle, callback_url, auth, start_time=None, **k
             'email': time.time() - start_time > settings.WAIT_TIMEOUT
         }))
         logger.info('Callback returned {!r}'.format(resp))
-        await resp.release()
+
+        resp_data = await resp.read()
         if resp.status // 100 != 2:
-            raise Exception('Callback failed with {!r}'.format(resp)) from sys.exc_info()[1]
+            raise Exception(
+                'Callback failed with {!r}, got {}'.format(resp, resp_data.decode('utf-8'))
+            ) from sys.exc_info()[1]
+
+        logger.info('Callback succeeded with {}'.format(resp_data.decode('utf-8')))
 
     return metadata, created

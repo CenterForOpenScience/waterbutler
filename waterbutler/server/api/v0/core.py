@@ -101,10 +101,13 @@ class BaseProviderHandler(BaseHandler):
             'provider': self.arguments['provider'],
             'time': time.time() + 60
         })
+        data = await resp.read()
+
         if resp.status != 200:
-            raise Exception('Callback was unsuccessful, got {}'.format(resp))
+            raise Exception('Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8')))
+
         logger.info('Successfully sent callback for a {} request'.format(action))
-        await resp.release()
+        logger.info('Callback succeeded with {}'.format(data.decode('utf-8')))
 
 
 class BaseCrossProviderHandler(BaseHandler):
@@ -168,8 +171,12 @@ class BaseCrossProviderHandler(BaseHandler):
             'auth': self.auth['auth'],
             'time': time.time() + 60
         })
+        resp_data = await resp.read()
 
         if resp.status != 200:
-            raise Exception('Callback was unsuccessful, got {}'.format(resp))
+            raise Exception(
+                'Callback was unsuccessful, got {}, {}'.format(resp, resp_data.decode('utf-8'))
+            )
+
         logger.info('Successfully sent callback for a {} request'.format(action))
-        await resp.release()
+        logger.info('Callback succeeded with {}'.format(resp_data.decode('utf-8')))
