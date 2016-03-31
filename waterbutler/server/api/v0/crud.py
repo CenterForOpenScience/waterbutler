@@ -86,8 +86,14 @@ class CRUDHandler(core.BaseProviderHandler):
         if result.content_type is not None:
             self.set_header('Content-Type', result.content_type)
 
+        # set http header 'Content-Length'
         if result.size is not None:
-            self.set_header('Content-Length', str(result.size))
+            # if file is encrypted, use the original size
+            if hasattr(result, 'original_size'):
+                size = result.original_size
+            else:
+                size = result.size
+            self.set_header('Content-Length', str(size))
 
         # Build `Content-Disposition` header from `displayName` override,
         # headers of provider response, or file path, whichever is truthy first
