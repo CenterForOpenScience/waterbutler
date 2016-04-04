@@ -1,7 +1,5 @@
 import pytest
 
-from tests.utils import async
-
 import io
 import json
 
@@ -138,29 +136,29 @@ def upload_metadata():
 
 class TestPolymorphism:
 
-    def test_project_provider(self, project_settings, project_provider):
+    async def test_project_provider(self, project_settings, project_provider):
         assert isinstance(project_provider, provider.FigshareProjectProvider)
         assert project_provider.project_id == project_settings['container_id']
 
-    def test_article_provider(self, article_settings, article_provider):
+    async def test_article_provider(self, article_settings, article_provider):
         assert isinstance(article_provider, provider.FigshareArticleProvider)
         assert article_provider.article_id == article_settings['container_id']
 
 
 class TestMetadata:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_project_contents(self, project_provider, list_project_articles, article_metadata):
+    async def test_project_contents(self, project_provider, list_project_articles, article_metadata):
         list_articles_url = project_provider.build_url('projects', project_provider.project_id, 'articles')
         article_metadata_url = project_provider.build_url('articles', str(list_project_articles[0]['id']))
         aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
-        path = yield from project_provider.validate_path('/')
-        result = yield from project_provider.metadata(path)
+        path = await project_provider.validate_path('/')
+        result = await project_provider.metadata(path)
         assert aiohttpretty.has_call(method='GET', uri=list_articles_url)
         assert aiohttpretty.has_call(method='GET', uri=article_metadata_url)
-        article_provider = yield from project_provider._make_article_provider(list_project_articles[0]['id'], check_parent=False)
+        article_provider = await project_provider._make_article_provider(list_project_articles[0]['id'], check_parent=False)
         expected = [
             article_provider._serialize_item(
                 article_metadata['items'][0],
@@ -169,19 +167,19 @@ class TestMetadata:
         ]
         assert result == expected
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_project_article_contents(self, project_provider, list_project_articles, article_metadata):
+    async def test_project_article_contents(self, project_provider, list_project_articles, article_metadata):
         list_articles_url = project_provider.build_url('projects', project_provider.project_id, 'articles')
         article_metadata_url = project_provider.build_url('articles', str(list_project_articles[0]['id']))
         aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
         article_id = list_project_articles[0]['id']
-        path = yield from project_provider.validate_path('/{}/'.format(article_id))
-        result = yield from project_provider.metadata(path)
+        path = await project_provider.validate_path('/{}/'.format(article_id))
+        result = await project_provider.metadata(path)
         assert aiohttpretty.has_call(method='GET', uri=list_articles_url)
         assert aiohttpretty.has_call(method='GET', uri=article_metadata_url)
-        article_provider = yield from project_provider._make_article_provider(list_project_articles[0]['id'], check_parent=False)
+        article_provider = await project_provider._make_article_provider(list_project_articles[0]['id'], check_parent=False)
         expected = [
             article_provider._serialize_item(
                 article_metadata['items'][0]['files'][0],
@@ -190,24 +188,24 @@ class TestMetadata:
         ]
         assert result == expected
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_project_article_contents_not_in_project(self, project_provider, list_project_articles, article_metadata):
+    async def test_project_article_contents_not_in_project(self, project_provider, list_project_articles, article_metadata):
         list_articles_url = project_provider.build_url('projects', project_provider.project_id, 'articles')
         article_metadata_url = project_provider.build_url('articles', str(list_project_articles[0]['id']))
         aiohttpretty.register_json_uri('GET', list_articles_url, body=[])
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
         article_id = list_project_articles[0]['id']
-        path = yield from project_provider.validate_path('/{}/'.format(article_id))
+        path = await project_provider.validate_path('/{}/'.format(article_id))
         with pytest.raises(exceptions.ProviderError) as exc:
-            yield from project_provider.metadata(path)
+            await project_provider.metadata(path)
         assert exc.value.code == 404
         assert aiohttpretty.has_call(method='GET', uri=list_articles_url)
         assert not aiohttpretty.has_call(method='GET', uri=article_metadata_url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_project_article_file(self, project_provider, list_project_articles, article_metadata, file_metadata):
+    async def test_project_article_file(self, project_provider, list_project_articles, article_metadata, file_metadata):
         file_id = file_metadata['id']
         article_id = str(list_project_articles[0]['id'])
 
@@ -217,8 +215,8 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
 
-        path = yield from project_provider.validate_path('/{}/{}'.format(article_id, file_id))
-        result = yield from project_provider.metadata(path)
+        path = await project_provider.validate_path('/{}/{}'.format(article_id, file_id))
+        result = await project_provider.metadata(path)
 
         expected = metadata.FigshareFileMetadata(file_metadata, parent=article_metadata['items'][0], child=True)
         assert result == expected
@@ -226,9 +224,9 @@ class TestMetadata:
 
 class TestCRUD:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_project_upload(self, project_provider, list_project_articles, base_article_metadata, article_metadata, upload_metadata, file_content, file_stream):
+    async def test_project_upload(self, project_provider, list_project_articles, base_article_metadata, article_metadata, upload_metadata, file_content, file_stream):
         article_id = str(list_project_articles[0]['id'])
         list_articles_url = project_provider.build_url('projects', project_provider.project_id, 'articles')
         article_metadata_url = project_provider.build_url('articles', article_id)
@@ -241,8 +239,8 @@ class TestCRUD:
         aiohttpretty.register_json_uri('POST', create_article_url, body=base_article_metadata)
         aiohttpretty.register_json_uri('PUT', add_article_url)
         file_name = 'barricade.gif'
-        path = yield from project_provider.validate_path('/' + file_name)
-        result, created = yield from project_provider.upload(file_stream, path)
+        path = await project_provider.validate_path('/' + file_name)
+        result, created = await project_provider.upload(file_stream, path)
         expected = metadata.FigshareFileMetadata(
             upload_metadata,
             parent=base_article_metadata,
@@ -264,9 +262,9 @@ class TestCRUD:
         )
         assert result == expected
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_project_article_upload(self, project_provider, list_project_articles, article_metadata, upload_metadata, file_content, file_stream):
+    async def test_project_article_upload(self, project_provider, list_project_articles, article_metadata, upload_metadata, file_content, file_stream):
         article_id = str(list_project_articles[0]['id'])
         list_articles_url = project_provider.build_url('projects', project_provider.project_id, 'articles')
         article_metadata_url = project_provider.build_url('articles', article_id)
@@ -275,15 +273,15 @@ class TestCRUD:
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
         aiohttpretty.register_json_uri('PUT', article_upload_url, body=upload_metadata)
         file_name = 'barricade.gif'
-        path = yield from project_provider.validate_path('/{}/{}'.format(article_id, file_name))
-        result, created = yield from project_provider.upload(file_stream, path)
+        path = await project_provider.validate_path('/{}/{}'.format(article_id, file_name))
+        result, created = await project_provider.upload(file_stream, path)
         expected = metadata.FigshareFileMetadata(upload_metadata, parent=article_metadata['items'][0], child=True)
         assert aiohttpretty.has_call(method='PUT', uri=article_upload_url)
         assert result == expected
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_project_article_download(self, project_provider, list_project_articles, article_metadata, file_metadata):
+    async def test_project_article_download(self, project_provider, list_project_articles, article_metadata, file_metadata):
         body = b'castle on a cloud'
         file_id = file_metadata['id']
         article_id = str(list_project_articles[0]['id'])
@@ -296,15 +294,15 @@ class TestCRUD:
         aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
 
-        path = yield from project_provider.validate_path('/{}/{}'.format(article_id, file_id))
-        result = yield from project_provider.download(path)
-        content = yield from result.read()
+        path = await project_provider.validate_path('/{}/{}'.format(article_id, file_id))
+        result = await project_provider.download(path)
+        content = await result.read()
 
         assert content == body
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_project_article_download_not_found(self, project_provider, list_project_articles, article_metadata, file_metadata):
+    async def test_project_article_download_not_found(self, project_provider, list_project_articles, article_metadata, file_metadata):
         file_id = str(file_metadata['id'])[::-1]
         article_id = str(list_project_articles[0]['id'])
 
@@ -314,14 +312,14 @@ class TestCRUD:
         aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
 
-        path = yield from project_provider.validate_path('/{}/{}'.format(article_id, file_id))
+        path = await project_provider.validate_path('/{}/{}'.format(article_id, file_id))
         with pytest.raises(exceptions.NotFoundError) as exc:
-            yield from project_provider.download(path)
+            await project_provider.download(path)
         assert exc.value.code == 404
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_article_download(self, article_provider, article_metadata, file_metadata):
+    async def test_article_download(self, article_provider, article_metadata, file_metadata):
         body = b'castle on a cloud'
         file_id = file_metadata['id']
         article_id = article_provider.article_id
@@ -331,14 +329,14 @@ class TestCRUD:
         aiohttpretty.register_uri('GET', download_url, body=body, auto_length=True)
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
 
-        path = yield from article_provider.validate_path('/{}'.format(file_id))
-        result = yield from article_provider.download(path)
-        content = yield from result.read()
+        path = await article_provider.validate_path('/{}'.format(file_id))
+        result = await article_provider.download(path)
+        content = await result.read()
         assert content == body
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_project_article_delete(self, project_provider, list_project_articles, article_metadata, file_metadata):
+    async def test_project_article_delete(self, project_provider, list_project_articles, article_metadata, file_metadata):
         file_id = str(file_metadata['id'])
         article_id = str(list_project_articles[0]['id'])
 
@@ -350,15 +348,15 @@ class TestCRUD:
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
         aiohttpretty.register_uri('DELETE', article_delete_url)
 
-        path = yield from project_provider.validate_path('/{}/{}'.format(article_id, file_id))
-        result = yield from project_provider.delete(path)
+        path = await project_provider.validate_path('/{}/{}'.format(article_id, file_id))
+        result = await project_provider.delete(path)
 
         assert result is None
         assert aiohttpretty.has_call(method='DELETE', uri=article_delete_url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_project_delete(self, project_provider, list_project_articles, article_metadata):
+    async def test_project_delete(self, project_provider, list_project_articles, article_metadata):
         article_id = str(list_project_articles[0]['id'])
 
         list_articles_url = project_provider.build_url('projects', project_provider.project_id, 'articles')
@@ -368,15 +366,15 @@ class TestCRUD:
         aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
         aiohttpretty.register_json_uri('DELETE', list_articles_url, body={'article_id': article_id})
 
-        path = yield from project_provider.validate_path('/{}'.format(article_id))
-        result = yield from project_provider.delete(path)
+        path = await project_provider.validate_path('/{}'.format(article_id))
+        result = await project_provider.delete(path)
 
         assert result is None
         assert aiohttpretty.has_call(method='DELETE', uri=list_articles_url)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_article_delete(self, article_provider, article_metadata, file_metadata):
+    async def test_article_delete(self, article_provider, article_metadata, file_metadata):
         file_id = str(file_metadata['id'])
         article_id = article_provider.article_id
         article_metadata_url = article_provider.build_url('articles', article_id)
@@ -385,8 +383,8 @@ class TestCRUD:
         aiohttpretty.register_uri('DELETE', article_delete_url)
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
 
-        path = yield from article_provider.validate_path('/{}'.format(file_id))
-        result = yield from article_provider.delete(path)
+        path = await article_provider.validate_path('/{}'.format(file_id))
+        result = await article_provider.delete(path)
 
         assert result is None
         assert aiohttpretty.has_call(method='DELETE', uri=article_delete_url)
@@ -394,9 +392,9 @@ class TestCRUD:
 
 class TestRevalidatePath:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_revalidate_path(self, project_provider, list_project_articles, article_metadata, file_metadata):
+    async def test_revalidate_path(self, project_provider, list_project_articles, article_metadata, file_metadata):
         article_id = str(list_project_articles[0]['id'])
         list_project_articles[0]['title'] = 'fantine.mp3'
 
@@ -406,9 +404,9 @@ class TestRevalidatePath:
         aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=article_metadata)
 
-        path = yield from project_provider.validate_path('/')
+        path = await project_provider.validate_path('/')
 
-        result = yield from project_provider.revalidate_path(path, '/{}'.format(list_project_articles[0]['title']), folder=False)
+        result = await project_provider.revalidate_path(path, '/{}'.format(list_project_articles[0]['title']), folder=False)
 
         assert result.is_dir is False
         assert result.name == 'fantine.mp3'

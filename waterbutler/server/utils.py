@@ -1,4 +1,4 @@
-import tornado.gen
+import tornado.iostream
 from waterbutler.server import settings
 
 
@@ -62,16 +62,18 @@ class UtilMixin:
     def set_status(self, code, reason=None):
         return super().set_status(code, reason or HTTP_REASONS.get(code))
 
-    @tornado.gen.coroutine
-    def write_stream(self, stream):
+    async def write_stream(self, stream):
         try:
             while True:
-                chunk = yield from stream.read(settings.CHUNK_SIZE)
+                chunk = await stream.read(settings.CHUNK_SIZE)
                 if not chunk:
                     break
+                # Temp fix, write does not accept bytearrays currently
+                if isinstance(chunk, bytearray):
+                    chunk = bytes(chunk)
                 self.write(chunk)
                 del chunk
-                yield self.flush()
+                await self.flush()
         except tornado.iostream.StreamClosedError:
             # Client has disconnected early.
             # No need for any exception to be raised
