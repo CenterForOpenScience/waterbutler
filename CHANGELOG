@@ -2,10 +2,20 @@
 ChangeLog
 *********
 
+0.19.0 (2016-04-04)
+===================
+- Feature: WaterButler now runs on Python 3.5!  A major speed boost should be
+noticeable, especially for zipped folder downloads.  All hail @chrisseto and
+@TomBaxter for seeing this through!
+- Feature: Zipped folder downloads now use the folder name as the zip filename.  If the folder
+is the storage root, the name is `$provider.zip` (e.g. `googledrive.zip`).
+- Code: WaterButlerPath has a new `is_folder` method. It's the same as `is_dir`.
+- Code: waterbutler.core.BaseProvider learned `path_from_metadata`.
+
 0.18.4 (2016-04-01)
 ===================
 - Fix: Bump PyJWE dependency to 1.0.0 to match with OSF v0.66.0
-	
+
 0.18.3 (2016-03-28)
 ===================
 - Fix: Renaming a Google doc (.gdoc, .gsheet) file should not and no longer truncates the new

@@ -1,13 +1,7 @@
 import pytest
-import asyncio
-from http import client
 from unittest import mock
 
-from waterbutler.core import exceptions
 from waterbutler.server.api.v1.provider.metadata import MetadataMixin
-
-from tests.utils import async
-from tests.utils import MockCoroutine
 
 
 class BaseMetadataMixinTest:

@@ -1,5 +1,3 @@
-import asyncio
-
 from waterbutler.core import exceptions
 
 
@@ -33,8 +31,7 @@ class CreateMixin:
         except ValueError:
                 raise exceptions.InvalidParameters('Invalid Content-Length')
 
-    @asyncio.coroutine
-    def postvalidate_put(self):
+    async def postvalidate_put(self):
         """Postvalidation for creation requests. Runs BEFORE the body of a request is accepted, but
         after the path has been validated.  Invalid path+params combinations can be rejected here.
         Validation is as follows:
@@ -59,11 +56,11 @@ class CreateMixin:
             self.target_path = self.path.child(self.childs_name, folder=(self.kind == 'folder'))
 
             # osfstorage, box, and googledrive need ids before calling exists()
-            validated_target_path = yield from self.provider.revalidate_path(
+            validated_target_path = await self.provider.revalidate_path(
                 self.path, self.target_path.name, self.target_path.is_dir
             )
 
-            my_type_exists = yield from self.provider.exists(validated_target_path)
+            my_type_exists = await self.provider.exists(validated_target_path)
             if not isinstance(my_type_exists, bool) or my_type_exists:
                 raise exceptions.NamingConflict(self.target_path)
 
@@ -72,11 +69,11 @@ class CreateMixin:
 
                 # osfstorage, box, and googledrive need ids before calling exists(), but only box
                 # disallows can_duplicate_names and needs this.
-                validated_target_flipped = yield from self.provider.revalidate_path(
+                validated_target_flipped = await self.provider.revalidate_path(
                     self.path, target_flipped.name, target_flipped.is_dir
                 )
 
-                other_exists = yield from self.provider.exists(validated_target_flipped)
+                other_exists = await self.provider.exists(validated_target_flipped)
                 # the dropbox provider's metadata() method returns a [] here instead of True
                 if not isinstance(other_exists, bool) or other_exists:
                     raise exceptions.NamingConflict(self.target_path)
@@ -91,17 +88,15 @@ class CreateMixin:
                 )
             self.target_path = self.path
 
-    @asyncio.coroutine
-    def create_folder(self):
-        metadata = yield from self.provider.create_folder(self.target_path)
+    async def create_folder(self):
+        metadata = await self.provider.create_folder(self.target_path)
         self.set_status(201)
         self.write({'data': metadata.json_api_serialized(self.resource)})
 
-    @asyncio.coroutine
-    def upload_file(self):
+    async def upload_file(self):
         self.writer.write_eof()
 
-        metadata, created = yield from self.uploader
+        metadata, created = await self.uploader
         self.writer.close()
         self.wsock.close()
         if created:

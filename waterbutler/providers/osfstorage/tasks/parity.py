@@ -31,16 +31,15 @@ def _parity_create_files(self, name, credentials, settings):
                 raise error
 
 
-@asyncio.coroutine
-def _upload_parity(path, credentials, settings):
+async def _upload_parity(path, credentials, settings):
     _, name = os.path.split(path)
     provider_name = settings.get('provider')
     provider = make_provider(provider_name, {}, credentials, settings)
     with open(path, 'rb') as file_pointer:
         stream = streams.FileStreamReader(file_pointer)
-        yield from provider.upload(
+        await provider.upload(
             stream,
-            (yield from provider.validate_path('/' + name))
+            (await provider.validate_path('/' + name))
         )
 
 

@@ -4,7 +4,7 @@ Getting Started
 Setting Up
 ----------
 
-Make sure that you are using python3.4 and install invoke for your current python3 version.
+Make sure that you are using >= python3.5 and install invoke for your current python3 version.
 
 .. code-block:: bash
 

@@ -24,7 +24,7 @@ def patch_backend(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def callback(monkeypatch):
-    mock_request = test_utils.MockCoroutine(return_value=mock.Mock(status=200))
+    mock_request = test_utils.MockCoroutine(return_value=test_utils.MockCoroutine(status=200))
     monkeypatch.setattr(copy.utils, 'send_signed_request', mock_request)
     return mock_request
 
@@ -104,7 +104,7 @@ def bundles(src_bundle, dest_bundle):
 
 class TestCopyTask:
 
-    def test_copy_calls_copy(self, providers, bundles):
+    def test_copy_calls_copy(self, event_loop, providers, bundles):
         src, dest = providers
         src_bundle, dest_bundle = bundles
 
@@ -119,7 +119,7 @@ class TestCopyTask:
         assert not asyncio.iscoroutine(copy.copy)
         assert asyncio.iscoroutinefunction(copy.copy.adelay)
 
-    def test_imputes_exceptions(self, providers, bundles, callback):
+    def test_imputes_exceptions(self, event_loop, providers, bundles, callback):
         src, dest = providers
         src_bundle, dest_bundle = bundles
 
@@ -137,7 +137,7 @@ class TestCopyTask:
         assert method == 'PUT'
         assert data['errors'] == ["Exception('This is a string',)"]
 
-    def test_return_values(self, providers, bundles, callback, src_path, dest_path, mock_time):
+    def test_return_values(self, event_loop, providers, bundles, callback, src_path, dest_path, mock_time):
         src, dest = providers
         src_bundle, dest_bundle = bundles
 
@@ -168,7 +168,7 @@ class TestCopyTask:
             }
         )
 
-    def test_starttime_override(self, providers, bundles, callback, mock_time):
+    def test_starttime_override(self, event_loop, providers, bundles, callback, mock_time):
         src, dest = providers
         src_bundle, dest_bundle = bundles
 
