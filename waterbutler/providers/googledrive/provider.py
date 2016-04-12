@@ -500,7 +500,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         async with self.request(
             'GET',
-            self.build_url('files', q=query, alt='json'),
+            self.build_url('files', q=query, alt='json', maxResults=1000),
             expects=(200, ),
             throws=exceptions.MetadataError,
         ) as resp:
