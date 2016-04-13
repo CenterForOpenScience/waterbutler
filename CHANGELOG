@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+0.19.1 (2016-04-13)
+===================
+- Update boto dependency to get fixes for large file uploads to Amazon Glacier. (thanks,
+@caileyfitz, for your patient testing!)
+- Increase number of files returned from a GDrive directory listing from 100 to 1000.
+
 0.19.0 (2016-04-04)
 ===================
 - Feature: WaterButler now runs on Python 3.5!  A major speed boost should be

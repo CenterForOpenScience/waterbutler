@@ -445,7 +445,7 @@ class TestMetadata:
     async def test_metadata_root_folder(self, provider):
         path = await provider.validate_path('/')
         query = provider._build_query(provider.folder['id'])
-        list_file_url = provider.build_url('files', q=query, alt='json')
+        list_file_url = provider.build_url('files', q=query, alt='json', maxResults=1000)
         aiohttpretty.register_json_uri('GET', list_file_url, body=fixtures.list_file)
 
         result = await provider.metadata(path)
@@ -468,7 +468,7 @@ class TestMetadata:
         item = body['items'][0]
 
         query = provider._build_query(path.identifier)
-        url = provider.build_url('files', q=query, alt='json')
+        url = provider.build_url('files', q=query, alt='json', maxResults=1000)
 
         aiohttpretty.register_json_uri('GET', url, body=body)
 
@@ -491,7 +491,7 @@ class TestMetadata:
         item = body['items'][0]
 
         query = provider._build_query(path.identifier)
-        url = provider.build_url('files', q=query, alt='json')
+        url = provider.build_url('files', q=query, alt='json', maxResults=1000)
 
         aiohttpretty.register_json_uri('GET', url, body=body)
 
