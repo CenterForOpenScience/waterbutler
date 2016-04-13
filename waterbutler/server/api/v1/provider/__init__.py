@@ -155,13 +155,9 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                 },
                 'destination': {
                     'nid': self.dest_resource,
-                    'kind': self.dest_meta.kind,
-                    'name': self.dest_meta.name,
-                    'path': self.dest_meta.path,
-                    'provider': self.dest_provider.NAME,
-                    'materialized': self.dest_meta.materialized_path,
                 }
             })
+            payload['destination'].update(self.dest_meta.serialized())
             callback_url = self.dest_auth['callback_url']
         else:
             # This is adequate for everything but github
