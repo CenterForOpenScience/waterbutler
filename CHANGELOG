@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.19.2 (2016-04-14)
+===================
+- Make v1 move/copy return file metadata in its logging payload, so the OSF can track files
+across providers.
+
 0.19.1 (2016-04-13)
 ===================
 - Update boto dependency to get fixes for large file uploads to Amazon Glacier. (thanks,
