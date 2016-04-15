@@ -237,6 +237,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             "'{}' in parents".format(folder_id),
             'trashed = false',
             "mimeType != 'application/vnd.google-apps.form'",
+            "mimeType != 'application/vnd.google-apps.map'",
         ]
         if title:
             queries.append("title = '{}'".format(clean_query(title)))
@@ -387,6 +388,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             query = "title = '{}' " \
                     "and trashed = false " \
                     "and mimeType != 'application/vnd.google-apps.form' " \
+                    "and mimeType != 'application/vnd.google-apps.map' " \
                     "and mimeType {} '{}'".format(
                         clean_query(current_part[0]),
                         '=' if current_part[1] else '!=',
