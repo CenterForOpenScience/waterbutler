@@ -114,7 +114,8 @@ class BoxProvider(provider.BaseProvider):
         # TODO Research the search api endpoint
         async with self.request(
             'GET',
-            self.build_url('folders', base.identifier, 'items', fields='id,name,type'),
+            self.build_url('folders', base.identifier, 'items',
+                           fields='id,name,type', limit=1000),
             expects=(200,),
             throws=exceptions.ProviderError
         ) as resp:
@@ -387,7 +388,9 @@ class BoxProvider(provider.BaseProvider):
         if folder:
             url = self.build_url('folders', path.identifier)
         else:
-            url = self.build_url('folders', path.identifier, 'items', fields='id,name,size,modified_at,etag')
+            url = self.build_url('folders', path.identifier, 'items',
+                                 fields='id,name,size,modified_at,etag',
+                                 limit=1000)
 
         async with self.request(
             'GET',
