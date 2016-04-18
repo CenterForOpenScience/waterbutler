@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.19.4 (2016-04-18)
+===================
+- Fix syntax error in Github's Unsupported Repo exception.
+
 0.19.3 (2016-04-15)
 ===================
 - Increase number of files returned from a Box directory from 50 to 1000. (thanks, @TomBaxter!)
