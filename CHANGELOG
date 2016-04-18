@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+0.19.3 (2016-04-15)
+===================
+- Increase number of files returned from a Box directory from 50 to 1000. (thanks, @TomBaxter!)
+- Exclude Google Maps from Google Drive listing.  Google doesn't provide a way to export maps,
+so exclude them from listing / downloading for now.  This is the same behavior as Google Forms.
+
 0.19.2 (2016-04-14)
 ===================
 - Make v1 move/copy return file metadata in its logging payload, so the OSF can track files
