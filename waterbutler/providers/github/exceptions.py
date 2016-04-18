@@ -6,4 +6,4 @@ class GitHubUnsupportedRepoError(ProviderError):
         message = ('Some folder operations on large GitHub repositories cannot be supported without'
                    ' data loss.  To carry out this operation, please perform it in a local git'
                    ' repository, then push to the target repository on GitHub.')
-        super()._init(message, code=501)
+        super()._init_(message, code=501)
