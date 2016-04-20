@@ -449,7 +449,9 @@ class TestMetadata:
     async def test_metadata(self, provider, folder_object_metadata, folder_list_metadata):
         path = WaterButlerPath('/', _ids=(provider.folder, ))
 
-        list_url = provider.build_url('folders', provider.folder, 'items', fields='id,name,size,modified_at,etag')
+        list_url = provider.build_url('folders', provider.folder, 'items',
+                                      fields='id,name,size,modified_at,etag',
+                                      limit=1000)
 
         aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
 

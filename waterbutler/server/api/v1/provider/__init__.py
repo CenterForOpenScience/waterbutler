@@ -7,7 +7,6 @@ import logging
 import tornado.gen
 
 from waterbutler.core import utils
-from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
 from waterbutler.server.auth import AuthHandler
@@ -55,7 +54,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         # post-validator methods perform validations that expect that the path given in the url has
         # been verified for existence and type.
         if method in self.POST_VALIDATORS:
-            getattr(self, self.POST_VALIDATORS[method])()
+            await getattr(self, self.POST_VALIDATORS[method])()
 
         # The one special case
         if method == 'put' and self.target_path.is_file:
@@ -82,28 +81,18 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     async def put(self, **_):
         """Defined in CreateMixin"""
-        # handle newfile vs. newfolder naming conflicts
-        if self.path.is_dir:
-            my_type_exists = await self.provider.exists(self.target_path)
-            if my_type_exists:
-                raise exceptions.NamingConflict(self.target_path)
-
-            if not self.provider.can_duplicate_names():
-                target_flipped = self.path.child(self.childs_name, folder=(self.kind != 'folder'))
-                other_exists = await self.provider.exists(target_flipped)
-                # the dropbox provider's metadata() method returns a [] here instead of True
-                if not isinstance(other_exists, bool) or other_exists:
-                    raise exceptions.NamingConflict(self.target_path)
-
         if self.target_path.is_file:
             return (await self.upload_file())
-        return(await self.create_folder())
+        return (await self.create_folder())
 
     async def post(self, **_):
         return (await self.move_or_copy())
 
     async def delete(self, **_):
-        await self.provider.delete(self.path)
+        self.confirm_delete = int(self.get_query_argument('confirm_delete',
+                                                          default=0))
+        await self.provider.delete(self.path,
+                                        confirm_delete=self.confirm_delete)
         self.set_status(int(http.client.NO_CONTENT))
 
     async def data_received(self, chunk):
@@ -166,13 +155,9 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                 },
                 'destination': {
                     'nid': self.dest_resource,
-                    'kind': self.dest_meta.kind,
-                    'name': self.dest_meta.name,
-                    'path': self.dest_meta.path,
-                    'provider': self.dest_provider.NAME,
-                    'materialized': self.dest_meta.materialized_path,
                 }
             })
+            payload['destination'].update(self.dest_meta.serialized())
             callback_url = self.dest_auth['callback_url']
         else:
             # This is adequate for everything but github
@@ -190,11 +175,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             callback_url = self.auth['callback_url']
 
         resp = (await utils.send_signed_request('PUT', callback_url, payload))
+        data = await resp.read()
 
         if resp.status != 200:
-            data = await resp.read()
-            raise Exception('Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8')))
-        else:
-            resp.release()
+            raise Exception(
+                'Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8'))
+            )
 
         logger.info('Successfully sent callback for a {} request'.format(action))
+        logger.info('Callback succeeded with {}'.format(data.decode('utf-8')))

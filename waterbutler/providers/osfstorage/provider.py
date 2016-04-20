@@ -239,7 +239,6 @@ class OSFStorageProvider(provider.BaseProvider):
         download_kwargs['displayName'] = kwargs.get('displayName', name)
         return await provider.download(**download_kwargs)
 
-    @provider.throttle
     async def upload(self, stream, path, **kwargs):
         self._create_paths()
 
@@ -330,9 +329,24 @@ class OSFStorageProvider(provider.BaseProvider):
         path._parts[-1]._id = metadata['path'].strip('/')
         return OsfStorageFileMetadata(metadata, str(path)), created
 
-    async def delete(self, path, **kwargs):
+    async def delete(self, path, confirm_delete=0, **kwargs):
+        """Delete file, folder, or provider root contents
+
+        :param OsfStoragePath path: path to delete
+        :param int confirm_delete: Must be 1 to confirm root folder delete
+        """
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
+
+        if path.is_root:
+            if confirm_delete == 1:
+                await self._delete_folder_contents(path)
+                return
+            else:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400,
+                )
 
         await (await self.make_signed_request(
             'DELETE',
@@ -375,12 +389,10 @@ class OSFStorageProvider(provider.BaseProvider):
             headers={'Content-Type': 'application/json'},
             expects=(201, )
         ) as resp:
-            return OsfStorageFolderMetadata((await resp.json())['data'], str(path))
-
-        resp_json = await resp.json()
-        # save new folder's id into the WaterButlerPath object. logs will need it later.
-        path._parts[-1]._id = resp_json['data']['path'].strip('/')
-        return OsfStorageFolderMetadata(resp_json['data'], str(path))
+            resp_json = await resp.json()
+            # save new folder's id into the WaterButlerPath object. logs will need it later.
+            path._parts[-1]._id = resp_json['data']['path'].strip('/')
+            return OsfStorageFolderMetadata(resp_json['data'], str(path))
 
     async def _item_metadata(self, path, revision=None):
         async with self.signed_request(
@@ -418,3 +430,13 @@ class OSFStorageProvider(provider.BaseProvider):
             pass
 
         return True
+
+    async def _delete_folder_contents(self, path, **kwargs):
+        """Delete the contents of a folder. For use against provider root.
+
+        :param OsfStoragePath path: OsfStoragePath path object for folder
+        """
+        meta = (await self.metadata(path))
+        for child in meta:
+            osf_path = await self.validate_path(child.path)
+            await self.delete(osf_path)

@@ -24,7 +24,7 @@ def patch_backend(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def callback(monkeypatch):
-    mock_request = test_utils.MockCoroutine()
+    mock_request = test_utils.MockCoroutine(return_value=test_utils.MockCoroutine(status=200))
     monkeypatch.setattr(move.utils, 'send_signed_request', mock_request)
     return mock_request
 
@@ -159,6 +159,7 @@ class TestMoveTask:
                     'name': src_path.name,
                     'materialized': str(src_path),
                     'provider': src.NAME,
+                    'kind': 'file',
                 },
                 'destination': metadata.serialized(),
                 'auth': {'user': 'name'},

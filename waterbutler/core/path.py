@@ -198,7 +198,11 @@ class WaterButlerPath:
 
     @property
     def identifier_path(self):
-        """ Returns the ID formatted as a path for providers that use unique ids """
+        """ Returns the ID formatted as a path for providers that use unique ids
+
+        Quirk:
+            If identifier is not set raises TypeError
+        """
         return '/' + self._parts[-1].identifier + ('/' if self.is_dir else '')
 
     @property

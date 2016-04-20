@@ -154,7 +154,6 @@ class DropboxProvider(provider.BaseProvider):
 
         return folder, True
 
-    @provider.throttle
     async def download(self, path, revision=None, range=None, **kwargs):
         if revision:
             url = self._build_content_url('files', 'auto', path.full_path, rev=revision)
@@ -192,15 +191,30 @@ class DropboxProvider(provider.BaseProvider):
         data = await resp.json()
         return DropboxFileMetadata(data, self.folder), not exists
 
-    async def delete(self, path, **kwargs):
-        resp = await self.make_request(
+    async def delete(self, path, confirm_delete=0, **kwargs):
+        """Delete file, folder, or provider root contents
+
+        :param DropboxPath path: DropboxPath path object for folder
+        :param int confirm_delete: Must be 1 to confirm root folder delete
+        """
+        if path.is_root:
+            if confirm_delete == 1:
+                await self._delete_folder_contents(path)
+                return
+            else:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400
+                )
+
+        async with self.request(
             'POST',
             self.build_url('fileops', 'delete'),
             data={'root': 'auto', 'path': path.full_path},
             expects=(200, ),
             throws=exceptions.DeleteError,
-        )
-        await resp.release()
+        ):
+            return  # release resp
 
     async def metadata(self, path, revision=None, **kwargs):
         if revision:
@@ -298,3 +312,13 @@ class DropboxProvider(provider.BaseProvider):
 
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
+
+    async def _delete_folder_contents(self, path, **kwargs):
+        """Delete the contents of a folder. For use against provider root.
+
+        :param DropboxPath path: DropboxPath path object for folder
+        """
+        meta = (await self.metadata(path))
+        for child in meta:
+            drop_box_path = await self.validate_path(child.path)
+            await self.delete(drop_box_path)

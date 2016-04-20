@@ -72,7 +72,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         self.project_id = self.settings['project_id']
 
     async def validate_v1_path(self, path, **kwargs):
-        return self.validate_path(path, **kwargs)
+        return await self.validate_path(path, **kwargs)
 
     async def validate_path(self, path, **kwargs):
         split = path.rstrip('/').split('/')[1:]

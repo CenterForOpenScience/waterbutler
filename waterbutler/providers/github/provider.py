@@ -14,6 +14,7 @@ from waterbutler.providers.github.metadata import GitHubFileContentMetadata
 from waterbutler.providers.github.metadata import GitHubFolderContentMetadata
 from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
 from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
+from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
 
 
 GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -37,6 +38,25 @@ class GitHubPath(path.WaterButlerPath):
 
 
 class GitHubProvider(provider.BaseProvider):
+    """Provider for GitHub repositories.
+
+    **On paths:**  WB and GH use slightly different default conventions for their paths, so we
+    often have to munge our WB paths before comparison. Here is a quick overview::
+
+        WB (dirs):  wb_dir.path == 'foo/bar/'     str(wb_dir) == '/foo/bar/'
+        WB (file):  wb_file.path = 'foo/bar.txt'  str(wb_file) == '/foo/bar.txt'
+        GH (dir):   'foo/bar'
+        GH (file):  'foo/bar.txt'
+
+    Quirks:
+
+    * git doesn't have a concept of empty folders, so this provider creates 0-byte ``.gitkeep``
+      files in the requested folder.
+
+    * The ``contents`` endpoint cannot be used to fetch metadata reliably for all files. Requesting
+      a file that is larger than 1Mb will result in a error response directing you to the ``blob``
+      endpoint.  A recursive tree fetch may be used instead.
+    """
     NAME = 'github'
     BASE_URL = settings.BASE_URL
     VIEW_URL = settings.VIEW_URL
@@ -68,22 +88,11 @@ class GitHubProvider(provider.BaseProvider):
 
         branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
 
-        implicit_folder = path.endswith('/')
+        if path == '/':
+            return GitHubPath(path, _ids=[(branch_ref, '')])
 
-        url = furl.furl(self.build_repo_url('contents', path))
-        url.args.update({'ref': branch_ref})
-        resp = await self.make_request(
-            'GET',
-            url.url,
-            expects=(200, ),
-            throws=exceptions.MetadataError
-        )
-
-        content = await resp.json()
-        explicit_folder = isinstance(content, list)
-
-        if implicit_folder != explicit_folder:
-            raise exceptions.NotFoundError(path)
+        branch_data = await self._fetch_branch(branch_ref)
+        await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
 
         path = GitHubPath(path)
         for part in path.parts:
@@ -223,11 +232,28 @@ class GitHubProvider(provider.BaseProvider):
             'size': stream.size,
         }, commit=commit), not exists
 
-    async def delete(self, path, sha=None, message=None, branch=None, **kwargs):
+    async def delete(self, path, sha=None, message=None, branch=None,
+               confirm_delete=0, **kwargs):
+        """Delete file, folder, or provider root contents
+
+        :param GitHubPath path: GitHubPath path object for file, folder, or root
+        :param str sha: SHA-1 checksum of file/folder object
+        :param str message: Commit message
+        :param str branch: Repository branch
+        :param int confirm_delete: Must be 1 to confirm root folder delete
+        """
         assert self.name is not None
         assert self.email is not None
 
-        if path.is_dir:
+        if path.is_root:
+            if confirm_delete == 1:
+                await self._delete_root_folder_contents(path)
+            else:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400,
+                )
+        elif path.is_dir:
             await self._delete_folder(path, message, **kwargs)
         else:
             await self._delete_file(path, message, **kwargs)
@@ -370,7 +396,10 @@ class GitHubProvider(provider.BaseProvider):
             tree_sha = GIT_EMPTY_SHA
         else:
             # Delete the folder from the tree cast to list iterator over all values
+            current_tree = tree['tree']
             tree['tree'] = list(filter(lambda x: x['path'] != tree['target'], tree['tree']))
+            if current_tree == tree['tree']:
+                raise exceptions.NotFoundError(str(path))
 
             tree_data = await self._create_tree({'tree': tree['tree']})
             tree_sha = tree_data['sha']
@@ -416,6 +445,45 @@ class GitHubProvider(provider.BaseProvider):
         )
         await resp.release()
 
+    async def _delete_root_folder_contents(self, path, message=None, **kwargs):
+        """Delete the contents of the root folder.
+
+        :param GitHubPath path: GitHubPath path object for folder
+        :param str message: Commit message
+        """
+        branch_data = await self._fetch_branch(path.identifier[0])
+        old_commit_sha = branch_data['commit']['sha']
+        tree_sha = GIT_EMPTY_SHA
+        message = message or settings.DELETE_FOLDER_MESSAGE
+        commit_resp = await self.make_request(
+            'POST',
+            self.build_repo_url('git', 'commits'),
+            headers={'Content-Type': 'application/json'},
+            data=json.dumps({
+                'message': message,
+                'committer': self.committer,
+                'tree': tree_sha,
+                'parents': [
+                    old_commit_sha,
+                ],
+            }),
+            expects=(201, ),
+            throws=exceptions.DeleteError,
+        )
+        commit_data = await commit_resp.json()
+        commit_sha = commit_data['sha']
+
+        # Update repository reference, point to the newly created commit.
+        # No need to store data, rely on expects to raise exceptions
+        await self.make_request(
+            'PATCH',
+            self.build_repo_url('git', 'refs', 'heads', path.identifier[0]),
+            headers={'Content-Type': 'application/json'},
+            data=json.dumps({'sha': commit_sha}),
+            expects=(200, ),
+            throws=exceptions.DeleteError,
+        )
+
     async def _fetch_branch(self, branch):
         resp = await self.make_request(
             'GET',
@@ -457,14 +525,25 @@ class GitHubProvider(provider.BaseProvider):
         tree = await resp.json()
 
         if tree['truncated']:
-            raise exceptions.ProviderError(
-                ('Some folder operations on large GitHub repositories cannot be supported without'
-                 ' data loss.  To carry out this operation, please perform it in a local git'
-                 ' repository, then push to the target repository on GitHub.'),
-                code=501
-            )
+            raise GitHubUnsupportedRepoError
 
         return tree
+
+    async def _search_tree_for_path(self, path, tree_sha, recursive=True):
+        """Search through the given tree for an entity matching the name and type of `path`.
+        """
+        tree = await self._fetch_tree(tree_sha, recursive=True)
+
+        if tree['truncated']:
+            raise GitHubUnsupportedRepoError
+
+        implicit_type = 'tree' if path.endswith('/') else 'blob'
+
+        for entity in tree['tree']:
+            if entity['path'] == path.strip('/') and entity['type'] == implicit_type:
+                return entity
+
+        raise exceptions.NotFoundError(str(path))
 
     async def _create_tree(self, tree):
         resp = await self.make_request(
@@ -622,6 +701,7 @@ class GitHubProvider(provider.BaseProvider):
         tree = await self._fetch_tree(old_commit_tree_sha, recursive=True)
         exists = any(x['path'] == dest_path.path.rstrip('/') for x in tree['tree'])
 
+        # these are the blobs to copy/move
         blobs = [
             item
             for item in tree['tree']
@@ -629,15 +709,26 @@ class GitHubProvider(provider.BaseProvider):
             src_path.is_file and item['path'] == src_path.path
         ]
 
+        # if we're overwriting an existing dir, we must remove its blobs from the tree
+        if dest_path.is_dir:
+            tree['tree'] = [
+                item
+                for item in tree['tree']
+                if not item['path'].startswith(dest_path.path)
+            ]
+
         if len(blobs) == 0:
             raise exceptions.NotFoundError(str(src_path))
 
         if src_path.is_file:
             assert len(blobs) == 1, 'Found multiple targets'
 
+        # if this is a copy, duplicate and append our source blobs. The originals will be updated
+        # with the new destination path.
         if is_copy:
             tree['tree'].extend([copy.deepcopy(blob) for blob in blobs])
 
+        # see, I told you they'd be overwritten
         for blob in blobs:
             blob['path'] = blob['path'].replace(src_path.path, dest_path.path, 1)
 

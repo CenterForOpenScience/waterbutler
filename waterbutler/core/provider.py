@@ -1,5 +1,7 @@
 import abc
+import time
 import asyncio
+import logging
 import weakref
 import functools
 import itertools
@@ -14,21 +16,34 @@ from waterbutler.core import exceptions
 from waterbutler.core.utils import ZipStreamGenerator
 from waterbutler.core.utils import RequestHandlerContext
 
-_SEMAPHORES = weakref.WeakKeyDictionary()
+logger = logging.getLogger(__name__)
+_THROTTLES = weakref.WeakKeyDictionary()
 
 
-def throttle(func):
-    @functools.wraps(func)
-    async def wrapped(*args, **kwargs):
-        loop = asyncio.get_event_loop()
-        if loop not in _SEMAPHORES:
-            _SEMAPHORES[loop] = asyncio.Semaphore(settings.REQUEST_LIMIT, loop=loop)
-        await _SEMAPHORES[loop].acquire()
-        try:
-            return await func(*args, **kwargs)
-        finally:
-            _SEMAPHORES[loop].release()
-    return wrapped
+def throttle(concurrency=10, interval=1):
+    def _throttle(func):
+        @functools.wraps(func)
+        async def wrapped(*args, **kwargs):
+            if asyncio.get_event_loop() not in _THROTTLES:
+                count, last_call, event = 0, time.time(), asyncio.Event()
+                _THROTTLES[asyncio.get_event_loop()] = (count, last_call, event)
+                event.set()
+            else:
+                count, last_call, event = _THROTTLES[asyncio.get_event_loop()]
+
+            await event.wait()
+            count += 1
+            if count > concurrency:
+                count = 0
+                if (time.time() - last_call) < interval:
+                    event.clear()
+                    await asyncio.sleep(interval - (time.time() - last_call))
+                    event.set()
+
+            last_call = time.time()
+            return (await func(*args, **kwargs))
+        return wrapped
+    return _throttle
 
 
 def build_url(base, *segments, **query):
@@ -63,7 +78,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     BASE_URL = None
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, retry_on={408, 502, 503, 504}):
         """
         :param dict auth: Information about the user this provider will act on the behalf of
         :param dict credentials: The credentials used to authenticate with the provider,
@@ -71,6 +86,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param dict settings: Configuration settings for this provider,
             often folder or repo
         """
+        self._retry_on = retry_on
         self.auth = auth
         self.credentials = credentials
         self.settings = settings
@@ -121,7 +137,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
             if value is not None
         }
 
-    async def make_request(self, *args, **kwargs):
+    @throttle()
+    async def make_request(self, method, url, *args, **kwargs):
         """A wrapper around :func:`aiohttp.request`. Inserts default headers.
 
         :param str method: The HTTP method
@@ -137,15 +154,26 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :raises ProviderError: Raised if expects is defined
         """
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
+        retry = _retry = kwargs.pop('retry', 2)
         range = kwargs.pop('range', None)
         expects = kwargs.pop('expects', None)
         throws = kwargs.pop('throws', exceptions.ProviderError)
         if range:
             kwargs['headers']['Range'] = self._build_range_header(range)
-        response = await aiohttp.request(*args, **kwargs)
-        if expects and response.status not in expects:
-            raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
-        return response
+
+        if callable(url):
+            url = url()
+        while retry >= 0:
+            try:
+                response = await aiohttp.request(method, url, *args, **kwargs)
+                if expects and response.status not in expects:
+                    raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
+                return response
+            except throws as e:
+                if retry <= 0 or e.code not in self._retry_on:
+                    raise
+                await asyncio.sleep((1 + _retry - retry) * 2)
+                retry -= 1
 
     def request(self, *args, **kwargs):
         return RequestHandlerContext(self.make_request(*args, **kwargs))
@@ -214,25 +242,42 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return (await dest_provider.upload(download_stream, dest_path))
 
     async def _folder_file_op(self, func, dest_provider, src_path, dest_path, **kwargs):
+        """Recursively apply func to src/dest path.
+
+        Called from: func: copy and move if src_path.is_dir.
+
+        Calls: func: dest_provider.delete and notes result for bool: created
+               func: dest_provider.create_folder
+               func: dest_provider.revalidate_path
+               func: self.metadata
+
+        :param coroutine func: to be applied to src/dest path
+        :param *Provider dest_provider: Destination provider
+        :param *ProviderPath src_path: Source path
+        :param *ProviderPath dest_path: Destination path
+        """
         assert src_path.is_dir, 'src_path must be a directory'
         assert asyncio.iscoroutinefunction(func), 'func must be a coroutine'
 
         try:
             await dest_provider.delete(dest_path)
-            created = True
+            created = False
         except exceptions.ProviderError as e:
             if e.code != 404:
                 raise
-            created = False
+            created = True
 
-        folder = await dest_provider.create_folder(dest_path)
+        folder = await dest_provider.create_folder(dest_path, folder_precheck=False)
 
         dest_path = await dest_provider.revalidate_path(dest_path.parent, dest_path.name, folder=dest_path.is_dir)
 
-        futures = []
-        for item in (await self.metadata(src_path)):
-            futures.append(
-                asyncio.ensure_future(
+        folder.children = []
+        items = await self.metadata(src_path)
+
+        for i in range(0, len(items), settings.OP_CONCURRENCY):
+            futures = []
+            for item in items[i:i + settings.OP_CONCURRENCY]:
+                futures.append(asyncio.ensure_future(
                     func(
                         dest_provider,
                         # TODO figure out a way to cut down on all the requests made here
@@ -240,22 +285,18 @@ class BaseProvider(metaclass=abc.ABCMeta):
                         (await dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
                         handle_naming=False,
                     )
-                )
-            )
+                ))
 
-        if not futures:
-            folder.children = []
-            return folder, created
+                if item.is_folder:
+                    await futures[-1]
 
-        finished, pending = await asyncio.wait(futures, return_when=asyncio.FIRST_EXCEPTION)
+            if not futures:
+                continue
 
-        if len(pending) != 0:
-            finished.pop().result()
+            done, _ = await asyncio.wait(futures, return_when=asyncio.FIRST_EXCEPTION)
 
-        folder.children = [
-            future.result()[0]  # result is a tuple of (metadata, created)
-            for future in finished
-        ]
+            for fut in done:
+                folder.children.append(fut.result()[0])
 
         return folder, created
 
@@ -273,6 +314,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param WaterButlerPath dest_path: The path that is being copied to or into
         :param str rename: The desired name of the resulting path, may be incremented
         :param str conflict: The conflict resolution strategy, replace or keep
+
+        Returns: WaterButlerPath dest_path: The path of the desired result.
         """
         if src_path.is_dir and dest_path.is_file:
             # Cant copy a directory to a file
@@ -322,6 +365,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return data, created
 
     async def exists(self, path, **kwargs):
+        """Check for existence of WaterButlerPath
+
+        Attempt to retrieve provider metadata to determine existence of a WaterButlerPath.  If
+        successful, will return the result of `self.metadata()` which may be `[]` for empty
+        folders.
+
+        :param WaterButlerPath path: path to check for
+        :rtype: (`self.metadata()` or False)
+        """
         try:
             return (await self.metadata(path, **kwargs))
         except exceptions.NotFoundError:
@@ -332,24 +384,34 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return False
 
     async def handle_name_conflict(self, path, conflict='replace', **kwargs):
-        """Given a name and a conflict resolution pattern determine
+        """Check WaterButlerPath and resolve conflicts
+
+        Given a WaterButlerPath and a conflict resolution pattern determine
         the correct file path to upload to and indicate if that file exists or not
 
-        :param WaterbutlerPath path: An object supporting the waterbutler path API
+        :param WaterButlerPath path: Desired path to check for conflict
         :param str conflict: replace, keep, warn
-        :rtype: (WaterButlerPath, dict or False)
+        :rtype: (WaterButlerPath, provider.metadata() or False)
         :raises: NamingConflict
         """
         exists = await self.exists(path, **kwargs)
-        if not exists or conflict == 'replace':
+        if (not exists and not exists == []) or conflict == 'replace':
             return path, exists
         if conflict == 'warn':
             raise exceptions.NamingConflict(path)
 
-        while (await self.exists(path.increment_name(), **kwargs)):
-            pass
-        # path.increment_name()
-        # exists = self.exists(str(path))
+        while True:
+            path.increment_name()
+            test_path = await self.revalidate_path(
+                path.parent,
+                path.name,
+                folder=path.is_dir
+            )
+
+            exists = await self.exists(test_path, **kwargs)
+            if not (exists or exists == []):
+                break
+
         return path, False
 
     async def revalidate_path(self, base, path, folder=False):
@@ -450,10 +512,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def revisions(self, **kwargs):
         return []  # TODO Raise 405 by default h/t @rliebz
 
-    def create_folder(self, *args, **kwargs):
-        """Create a folder in the current provider
-        returns True if the folder was created; False if it already existed
+    def create_folder(self, path, **kwargs):
+        """Create a folder in the current provider at `path`. Returns a `BaseFolderMetadata` object
+        if successful.  May throw a 409 Conflict if a directory with the same name already exists.
 
+        :param str path: user-supplied path to create. must be a directory.
+        :param boolean precheck_folder: flag to check for folder before attempting create
         :rtype: :class:`waterbutler.core.metadata.BaseFolderMetadata`
         :raises: :class:`waterbutler.core.exceptions.FolderCreationError`
         """
@@ -465,3 +529,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             '' if start is None else start,
             '' if end is None else end
         )
+
+    def __repr__(self):
+        # Note: credentials are not included on purpose.
+        return ('<{}({}, {})>'.format(self.__class__.__name__, self.auth, self.settings))

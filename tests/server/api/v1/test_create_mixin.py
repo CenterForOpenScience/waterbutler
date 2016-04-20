@@ -73,31 +73,34 @@ class TestValidatePut(BaseCreateMixinTest):
         assert e.value.code == client.BAD_REQUEST
         assert e.value.message == 'Invalid Content-Length'
 
-    def test_name_required_for_dir(self):
-        self.mixin.path = WaterButlerPath('/')
+    @pytest.mark.asyncio
+    async def test_name_required_for_dir(self):
+        self.mixin.path = WaterButlerPath('/', folder=True)
         self.mixin.get_query_argument.return_value = None
 
         with pytest.raises(exceptions.InvalidParameters) as e:
-            self.mixin.postvalidate_put()
+            await self.mixin.postvalidate_put()
 
         assert e.value.message == 'Missing required parameter \'name\''
 
-    def test_name_refused_for_file(self):
-        self.mixin.path = WaterButlerPath('/foo.txt')
+    @pytest.mark.asyncio
+    async def test_name_refused_for_file(self):
+        self.mixin.path = WaterButlerPath('/foo.txt', folder=False)
         self.mixin.get_query_argument.return_value = 'bar.txt'
 
         with pytest.raises(exceptions.InvalidParameters) as e:
-            self.mixin.postvalidate_put()
+            await self.mixin.postvalidate_put()
 
         assert e.value.message == "'name' parameter doesn't apply to actions on files"
 
-    def test_kind_must_be_folder(self):
+    @pytest.mark.asyncio
+    async def test_kind_must_be_folder(self):
         self.mixin.path = WaterButlerPath('/adlkjf')
         self.mixin.get_query_argument.return_value = None
         self.mixin.kind = 'folder'
 
         with pytest.raises(exceptions.InvalidParameters) as e:
-            self.mixin.postvalidate_put()
+            await self.mixin.postvalidate_put()
 
         assert e.value.message == 'Path must be a folder (and end with a "/") if trying to create a subfolder'
         assert e.value.code == client.CONFLICT

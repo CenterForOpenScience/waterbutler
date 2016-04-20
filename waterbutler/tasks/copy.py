@@ -1,3 +1,4 @@
+import sys
 import time
 import logging
 
@@ -23,12 +24,14 @@ async def copy(src_bundle, dest_bundle, callback_url, auth, start_time=None, **k
             'name': src_path.name,
             'materialized': str(src_path),
             'provider': src_provider.NAME,
+            'kind': src_path.kind,
         }),
         'destination': dict(dest_bundle, **{
             'path': dest_path.identifier_path if dest_provider.NAME in IDENTIFIER_PATHS else '/' + dest_path.raw_path,
             'name': dest_path.name,
             'materialized': str(dest_path),
             'provider': dest_provider.NAME,
+            'kind': dest_path.kind,
         }),
         'auth': auth['auth'],
     }
@@ -50,5 +53,13 @@ async def copy(src_bundle, dest_bundle, callback_url, auth, start_time=None, **k
             'email': time.time() - start_time > settings.WAIT_TIMEOUT
         }))
         logger.info('Callback returned {!r}'.format(resp))
+
+        resp_data = await resp.read()
+        if resp.status // 100 != 2:
+            raise Exception(
+                'Callback failed with {!r}, got {}'.format(resp, resp_data.decode('utf-8'))
+            ) from sys.exc_info()[1]
+
+        logger.info('Callback succeeded with {}'.format(resp_data.decode('utf-8')))
 
     return metadata, created

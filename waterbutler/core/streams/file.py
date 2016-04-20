@@ -43,6 +43,6 @@ class FileStreamReader(BaseStream):
         self.read_size = size
         # add sleep of 0 so read will yield and continue in next io loop iteration
         # asyncio.sleep(0) yields None by default, which displeases tornado
-        await asyncio.sleep(0, b'')
+        await asyncio.sleep(0.001)
         async for chunk in self.file_gen:
             return chunk

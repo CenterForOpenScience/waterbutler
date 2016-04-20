@@ -51,7 +51,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         implicit_folder = path.endswith('/')
         parts = await self._resolve_path_to_ids(path)
         explicit_folder = parts[-1]['mimeType'] == self.FOLDER_MIME_TYPE
-        if implicit_folder != explicit_folder:
+        if parts[-1]['id'] is None or implicit_folder != explicit_folder:
             raise exceptions.NotFoundError(str(path))
 
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
@@ -195,14 +195,39 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         return GoogleDriveFileMetadata(data, path), path.identifier is None
 
-    async def delete(self, path, **kwargs):
+    async def delete(self, path, confirm_delete=0, **kwargs):
+        """Given a WaterButlerPath, delete that path
+
+        :param WaterButlerPath: Path to be deleted
+        :param int confirm_delete: Must be 1 to confirm root folder delete
+        :rtype: None
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+
+        Quirks:
+            If the WaterButlerPath given is for the provider root path, then
+            the contents of provider root path will be deleted. But not the
+            provider root itself.
+        """
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
+        if path.is_root:
+            if confirm_delete == 1:
+                await self._delete_folder_contents(path)
+                return
+            else:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400
+                )
+
         async with self.request(
-            'DELETE',
+            'PUT',
             self.build_url('files', path.identifier),
-            expects=(204, ),
+            data=json.dumps({'labels': {'trashed': 'true'}}),
+            headers={'Content-Type': 'application/json'},
+            expects=(200, ),
             throws=exceptions.DeleteError,
         ):
             return
@@ -212,6 +237,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             "'{}' in parents".format(folder_id),
             'trashed = false',
             "mimeType != 'application/vnd.google-apps.form'",
+            "mimeType != 'application/vnd.google-apps.map'",
         ]
         if title:
             queries.append("title = '{}'".format(clean_query(title)))
@@ -251,11 +277,12 @@ class GoogleDriveProvider(provider.BaseProvider):
             'id': data['etag'] + settings.DRIVE_IGNORE_VERSION,
         })]
 
-    async def create_folder(self, path, **kwargs):
+    async def create_folder(self, path, folder_precheck=True, **kwargs):
         GoogleDrivePath.validate_folder(path)
 
-        if path.identifier:
-            raise exceptions.FolderNamingConflict(str(path))
+        if folder_precheck:
+            if path.identifier:
+                raise exceptions.FolderNamingConflict(str(path))
 
         async with self.request(
             'POST',
@@ -274,6 +301,9 @@ class GoogleDriveProvider(provider.BaseProvider):
             throws=exceptions.CreateFolderError,
         ) as resp:
             return GoogleDriveFolderMetadata(await resp.json(), path)
+
+    def path_from_metadata(self, parent_path, metadata):
+        return parent_path.child(metadata.name, _id=metadata.id, folder=metadata.is_folder)
 
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
@@ -327,9 +357,10 @@ class GoogleDriveProvider(provider.BaseProvider):
         item_id = parent_id or self.folder['id']
 
         while parts:
+            query = self._build_query(path.identifier)
             async with self.request(
                 'GET',
-                self.build_url('files', item_id, 'children', q="title = '{}'".format(parts.pop(0))),
+                self.build_url('files', item_id, 'children', q=query),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             ) as resp:
@@ -347,14 +378,25 @@ class GoogleDriveProvider(provider.BaseProvider):
             'id': self.folder['id'],
         }]
         item_id = ret[0]['id']
-        parts = [parse.unquote(x) for x in path.strip('/').split('/')]
+        # parts is list of [path_part_name, is_folder]
+        parts = [[parse.unquote(x), True] for x in path.strip('/').split('/')]
 
+        if not path.endswith('/'):
+            parts[-1][1] = False
         while parts:
             current_part = parts.pop(0)
-
+            query = "title = '{}' " \
+                    "and trashed = false " \
+                    "and mimeType != 'application/vnd.google-apps.form' " \
+                    "and mimeType != 'application/vnd.google-apps.map' " \
+                    "and mimeType {} '{}'".format(
+                        clean_query(current_part[0]),
+                        '=' if current_part[1] else '!=',
+                        self.FOLDER_MIME_TYPE
+                    )
             async with self.request(
                 'GET',
-                self.build_url('files', item_id, 'children', q="title = '{}'".format(clean_query(current_part)), fields='items(id)'),
+                self.build_url('files', item_id, 'children', q=query, fields='items(id)'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             ) as resp:
@@ -365,14 +407,14 @@ class GoogleDriveProvider(provider.BaseProvider):
             except (KeyError, IndexError):
                 if parts:
                     raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
-                name, ext = os.path.splitext(current_part)
+                name, ext = os.path.splitext(current_part[0])
                 if ext not in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
                     return ret + [{
                         'id': None,
-                        'title': current_part,
+                        'title': current_part[0],
                         'mimeType': 'folder' if path.endswith('/') else '',
                     }]
-                parts.append(name)
+                parts.append([name, current_part[1]])
 
             async with self.request(
                 'GET',
@@ -428,7 +470,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         for parent in parents_data['items']:
             async with self.request(
                 'GET',
-                self.build_url('files', parent['id'], fields='id,title'),
+                self.build_url('files', parent['id'], fields='id,title,labels/trashed'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             ) as p_resp:
@@ -460,7 +502,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         async with self.request(
             'GET',
-            self.build_url('files', q=query, alt='json'),
+            self.build_url('files', q=query, alt='json', maxResults=1000),
             expects=(200, ),
             throws=exceptions.MetadataError,
         ) as resp:
@@ -489,3 +531,37 @@ class GoogleDriveProvider(provider.BaseProvider):
             return await self._handle_docs_versioning(path, data, raw=raw)
 
         return self._serialize_item(path, data, raw=raw)
+
+    async def _delete_folder_contents(self, path):
+        """Given a WaterButlerPath, delete all contents of folder
+
+        :param WaterButlerPath: Folder to be emptied
+        :rtype: None
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        """
+        file_id = path.identifier
+        if not file_id:
+            raise exceptions.NotFoundError(str(path))
+        resp = await self.make_request(
+            'GET',
+            self.build_url('files',
+                           q="'{}' in parents".format(file_id),
+                           fields='items(id)'),
+            expects=(200, ),
+            throws=exceptions.MetadataError)
+
+        try:
+            child_ids = (await resp.json())['items']
+        except (KeyError, IndexError):
+            raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
+
+        for child in child_ids:
+            await self.make_request(
+                'PUT',
+                self.build_url('files', child['id']),
+                data=json.dumps({'labels': {'trashed': 'true'}}),
+                headers={'Content-Type': 'application/json'},
+                expects=(200, ),
+                throws=exceptions.DeleteError)

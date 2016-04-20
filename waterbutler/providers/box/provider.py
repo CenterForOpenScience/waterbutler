@@ -114,7 +114,8 @@ class BoxProvider(provider.BaseProvider):
         # TODO Research the search api endpoint
         async with self.request(
             'GET',
-            self.build_url('folders', base.identifier, 'items', fields='id,name,type'),
+            self.build_url('folders', base.identifier, 'items',
+                           fields='id,name,type', limit=1000),
             expects=(200,),
             throws=exceptions.ProviderError
         ) as resp:
@@ -208,7 +209,6 @@ class BoxProvider(provider.BaseProvider):
 
         return await super().make_request(*args, **kwargs)
 
-    @provider.throttle
     async def download(self, path, revision=None, range=None, **kwargs):
         if path.identifier is None:
             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
@@ -256,9 +256,24 @@ class BoxProvider(provider.BaseProvider):
         path._parts[-1]._id = data['entries'][0]['id']
         return BoxFileMetadata(data['entries'][0], path), created
 
-    async def delete(self, path, **kwargs):
+    async def delete(self, path, confirm_delete=0, **kwargs):
+        """Delete file, folder, or provider root contents
+
+        :param BoxPath path: BoxPath path object for folder
+        :param int confirm_delete: Must be 1 to confirm root folder delete
+        """
         if not path.identifier:  # TODO This should be abstracted
             raise exceptions.NotFoundError(str(path))
+
+        if path.is_root:
+            if confirm_delete == 1:
+                await self._delete_folder_contents(path)
+                return
+            else:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400
+                )
 
         if path.is_file:
             url = self.build_url('files', path.identifier)
@@ -272,7 +287,6 @@ class BoxProvider(provider.BaseProvider):
         ):
             return  # Ensures the response is properly released
 
-    @provider.throttle
     async def metadata(self, path, raw=False, folder=False, revision=None, **kwargs):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
@@ -298,11 +312,12 @@ class BoxProvider(provider.BaseProvider):
 
         return [BoxRevision(each) for each in [curr] + revisions]
 
-    async def create_folder(self, path, **kwargs):
+    async def create_folder(self, path, folder_precheck=True, **kwargs):
         WaterButlerPath.validate_folder(path)
 
-        if path.identifier is not None:
-            raise exceptions.FolderNamingConflict(str(path))
+        if folder_precheck:
+            if path.identifier is not None:
+                raise exceptions.FolderNamingConflict(str(path))
 
         async with self.request(
             'POST',
@@ -373,7 +388,9 @@ class BoxProvider(provider.BaseProvider):
         if folder:
             url = self.build_url('folders', path.identifier)
         else:
-            url = self.build_url('folders', path.identifier, 'items', fields='id,name,size,modified_at,etag')
+            url = self.build_url('folders', path.identifier, 'items',
+                                 fields='id,name,size,modified_at,etag',
+                                 limit=1000)
 
         async with self.request(
             'GET',
@@ -413,3 +430,13 @@ class BoxProvider(provider.BaseProvider):
 
         path = '/'.join(reversed(path))
         return '/' + os.path.join(path, filename)
+
+    async def _delete_folder_contents(self, path, **kwargs):
+        """Delete the contents of a folder. For use against provider root.
+
+        :param BoxPath path: BoxPath path object for folder
+        """
+        meta = (await self.metadata(path))
+        for child in meta:
+            box_path = await self.validate_path(child.path)
+            await self.delete(box_path)
