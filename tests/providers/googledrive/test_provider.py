@@ -225,7 +225,7 @@ class TestCRUD:
 
         download_file_url = item['downloadUrl']
         metadata_url = provider.build_url('files', path.identifier)
-        revision_url = provider.build_url('files', item['id'], 'revisions', revision, alt='json')
+        revision_url = provider.build_url('files', item['id'], 'revisions', revision)
 
         aiohttpretty.register_json_uri('GET', revision_url, body=item)
         aiohttpretty.register_json_uri('GET', metadata_url, body=item)
