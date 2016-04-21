@@ -32,6 +32,7 @@ def test_file_metadata_drive(basepath):
     assert parsed.extra == {'revisionId': item['version'], 'webView': item['alternateLink']}
     assert parsed.path == '/' + os.path.join(*[x.raw for x in path.parts])
     assert parsed.materialized_path == str(path)
+    assert parsed.is_google_doc == False
 
 
 def test_file_metadata_drive_slashes(basepath):
@@ -49,6 +50,7 @@ def test_file_metadata_drive_slashes(basepath):
     assert parsed.extra == {'revisionId': item['version'], 'webView': item['alternateLink']}
     assert parsed.path == '/' + os.path.join(*[x.raw for x in path.parts])
     assert parsed.materialized_path == str(path)
+    assert parsed.is_google_doc == False
 
 
 def test_file_metadata_docs(basepath):
@@ -58,6 +60,7 @@ def test_file_metadata_docs(basepath):
 
     assert parsed.name == item['title'] + '.gdoc'
     assert parsed.extra == {'revisionId': item['version'], 'downloadExt': '.docx', 'webView': item['alternateLink']}
+    assert parsed.is_google_doc == True
 
 
 def test_folder_metadata():
