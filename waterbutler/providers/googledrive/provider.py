@@ -150,35 +150,27 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def download(self, path, revision=None, range=None, **kwargs):
         if revision and not revision.endswith(settings.DRIVE_IGNORE_VERSION):
-            # Must make additional request to look up download URL for revision
-            async with self.request(
-                'GET',
-                self.build_url('files', path.identifier, 'revisions', revision, alt='json'),
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            ) as response:
-                data = await response.json()
+            metadata = await self.metadata(path, revision=revision)
         else:
-            data = await self.metadata(path, raw=True)
+            metadata = await self.metadata(path)
 
         download_resp = await self.make_request(
             'GET',
-            data.get('downloadUrl') or drive_utils.get_export_link(data),
+            metadata.raw.get('downloadUrl') or drive_utils.get_export_link(metadata.raw),
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 
-        if 'fileSize' in data:
-            return streams.ResponseStreamReader(download_resp, size=data['fileSize'])
+        if metadata.size is not None:
+            return streams.ResponseStreamReader(download_resp, size=metadata.size)
 
         # google docs, not drive files, have no way to get the file size
         # must buffer the entire file into memory
         stream = streams.StringStream(await download_resp.read())
         if download_resp.headers.get('Content-Type'):
             stream.content_type = download_resp.headers['Content-Type']
-        if drive_utils.is_docs_file(data):
-            stream.name = path.name + drive_utils.get_download_extension(data)
+        stream.name = metadata.export_name
         return stream
 
     async def upload(self, stream, path, **kwargs):
@@ -303,7 +295,8 @@ class GoogleDriveProvider(provider.BaseProvider):
             return GoogleDriveFolderMetadata(await resp.json(), path)
 
     def path_from_metadata(self, parent_path, metadata):
-        return parent_path.child(metadata.name, _id=metadata.id, folder=metadata.is_folder)
+        """ Unfortunately-named method, currently only used to get path name for zip archives. """
+        return parent_path.child(metadata.export_name, _id=metadata.id, folder=metadata.is_folder)
 
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
