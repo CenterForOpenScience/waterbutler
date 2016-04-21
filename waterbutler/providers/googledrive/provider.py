@@ -170,8 +170,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         stream = streams.StringStream(await download_resp.read())
         if download_resp.headers.get('Content-Type'):
             stream.content_type = download_resp.headers['Content-Type']
-        if drive_utils.is_docs_file(metadata.raw):
-            stream.name = path.name + drive_utils.get_download_extension(metadata.raw)
+        stream.name = metadata.export_name
         return stream
 
     async def upload(self, stream, path, **kwargs):
@@ -296,7 +295,8 @@ class GoogleDriveProvider(provider.BaseProvider):
             return GoogleDriveFolderMetadata(await resp.json(), path)
 
     def path_from_metadata(self, parent_path, metadata):
-        return parent_path.child(metadata.name, _id=metadata.id, folder=metadata.is_folder)
+        """ Unfortunately-named method, currently only used to get path name for zip archives. """
+        return parent_path.child(metadata.export_name, _id=metadata.id, folder=metadata.is_folder)
 
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)

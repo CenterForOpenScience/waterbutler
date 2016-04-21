@@ -84,6 +84,14 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     def is_google_doc(self):
         return utils.is_docs_file(self.raw) is not None
 
+    @property
+    def export_name(self):
+        title = self.raw['title']
+        if self.is_google_doc:
+            ext = utils.get_download_extension(self.raw)
+            title += ext
+        return title
+
 
 class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
     @property
@@ -120,6 +128,14 @@ class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
         if self.is_google_doc:
             return {'downloadExt': utils.get_download_extension(self.raw)}
         return {'md5': self.raw['md5Checksum']}
+
+    @property
+    def export_name(self):
+        title = self.raw.get('originalFilename', self._path.name)
+        if self.is_google_doc:
+            ext = utils.get_download_extension(self.raw)
+            title += ext
+        return title
 
 
 class GoogleDriveRevision(metadata.BaseFileRevisionMetadata):
