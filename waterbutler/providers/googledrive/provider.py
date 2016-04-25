@@ -228,8 +228,6 @@ class GoogleDriveProvider(provider.BaseProvider):
         queries = [
             "'{}' in parents".format(folder_id),
             'trashed = false',
-            "mimeType != 'application/vnd.google-apps.form'",
-            "mimeType != 'application/vnd.google-apps.map'",
         ]
         if title:
             queries.append("title = '{}'".format(clean_query(title)))
@@ -380,8 +378,6 @@ class GoogleDriveProvider(provider.BaseProvider):
             current_part = parts.pop(0)
             query = "title = '{}' " \
                     "and trashed = false " \
-                    "and mimeType != 'application/vnd.google-apps.form' " \
-                    "and mimeType != 'application/vnd.google-apps.map' " \
                     "and mimeType {} '{}'".format(
                         clean_query(current_part[0]),
                         '=' if current_part[1] else '!=',
@@ -401,7 +397,8 @@ class GoogleDriveProvider(provider.BaseProvider):
                 if parts:
                     raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
                 name, ext = os.path.splitext(current_part[0])
-                if ext not in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
+                if ext not in ('.gdoc', '.gdraw', '.gslides', '.gsheet',
+                               '.gmap', '.gform'):
                     return ret + [{
                         'id': None,
                         'title': current_part[0],

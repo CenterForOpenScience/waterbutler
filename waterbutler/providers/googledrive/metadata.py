@@ -86,7 +86,7 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
 
     @property
     def is_google_doc(self):
-        return utils.is_docs_file(self.raw) is not None
+        return utils.is_docs_file(self.raw)
 
     @property
     def export_name(self):

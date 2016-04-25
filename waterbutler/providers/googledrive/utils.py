@@ -12,6 +12,18 @@ DOCS_FORMATS = [
         'type': 'image/jpeg',
     },
     {
+        'mime_type': 'application/vnd.google-apps.form',
+        'ext': '.gform',
+        'download_ext': '.jpg',
+        'type': 'image/jpeg',
+    },
+    {
+        'mime_type': 'application/vnd.google-apps.map',
+        'ext': '.gmap',
+        'download_ext': '.kmz',
+        'type': 'application/vnd.google-earth.kmz',
+    },
+    {
         'mime_type': 'application/vnd.google-apps.spreadsheet',
         'ext': '.gsheet',
         'download_ext': '.xlsx',
@@ -29,11 +41,16 @@ DOCS_DEFAULT_FORMAT = {
     'download_ext': '.pdf',
     'type': 'application/pdf',
 }
+DOCS_UNEXPORTABLE_MIMES = ['application/vnd.google-apps.map',
+                           'application/vnd.google-apps.form']
 
 
 def is_docs_file(metadata):
-    """Only Docs files have the "exportLinks" key."""
-    return metadata.get('exportLinks')
+    """Check for unexportable file types. (e.g. Maps, Forms)
+    Only Docs files have the "exportLinks" key."""
+    if metadata.get('mimeType') in DOCS_UNEXPORTABLE_MIMES or metadata.get('exportLinks'):
+        return True
+    return False
 
 
 def get_format(metadata):
