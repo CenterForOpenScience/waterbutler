@@ -40,6 +40,10 @@ class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMeta
     def name(self):
         return self.raw['title']
 
+    @property
+    def export_name(self):
+        return self.name
+
 
 class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata):
 
