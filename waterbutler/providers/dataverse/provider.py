@@ -24,7 +24,7 @@ class DataverseProvider(provider.BaseProvider):
         :param dict settings: Contains `host`, `doi`, `id`, and `name` of a dataset. Hosts:
 
             - 'apitest.dataverse.org': Api Test Server
-            - 'dataverse-demo.iq.harvard.edu': Harvard Demo Server
+            - 'demo.dataverse.org': Harvard Demo Server
             - 'dataverse.harvard.edu': Dataverse Production Server **(NO TEST DATA)**
             - Other
         """
