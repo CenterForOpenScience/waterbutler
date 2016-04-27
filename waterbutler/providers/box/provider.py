@@ -407,7 +407,7 @@ class BoxProvider(provider.BaseProvider):
             full_resp = []
         while page_count < page_total:
             url = self.build_url('folders', path.identifier, 'items',
-                                 fields='id,name,size,modified_at, etag,total_count',
+                                 fields='id,name,size,modified_at,etag,total_count',
                                  offset=(page_count * limit),
                                  limit=limit)
             async with self.request(
