@@ -386,30 +386,51 @@ class BoxProvider(provider.BaseProvider):
 
     async def _get_folder_meta(self, path, raw=False, folder=False):
         if folder:
-            url = self.build_url('folders', path.identifier)
-        else:
-            url = self.build_url('folders', path.identifier, 'items',
-                                 fields='id,name,size,modified_at,etag',
-                                 limit=1000)
-
-        async with self.request(
-            'GET',
-            url,
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        ) as response:
-            data = await response.json()
-
-        if raw:
-            return data
-
-        if folder:
+            async with self.request(
+                'GET',
+                self.build_url('folders', path.identifier),
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            ) as resp:
+                data = await resp.json()
+            if raw:
+                return data
             return self._serialize_item(data)
 
-        return [
-            self._serialize_item(each, path.child(each['name'], folder=(each['type'] == 'folder')))
-            for each in data['entries']
-        ]
+        # Box maximum limit is 1000
+        limit = 1000
+        page_total = 1
+        page_count = 0
+        if raw:
+            full_resp = {}
+        else:
+            full_resp = []
+        while page_count < page_total:
+            url = self.build_url('folders', path.identifier, 'items',
+                                 fields='id,name,size,modified_at, etag,total_count',
+                                 offset=(page_count * limit),
+                                 limit=limit)
+            async with self.request(
+                'GET',
+                url,
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            ) as response:
+                resp_json = await response.json()
+                if raw:
+                    full_resp.update(resp_json)
+                else:
+                    this_resp = [
+                        self._serialize_item(each, path.child(each['name'],
+                                             folder=(each['type'] == 'folder')))
+                        for each in resp_json['entries']
+                    ]
+                    full_resp.extend(this_resp)
+                page_count += 1
+                if page_total == 1:
+                    total_count = int(resp_json['total_count'])
+                    page_total = (total_count + (limit * 2 - 1) // 2) // limit
+        return full_resp
 
     def _serialize_item(self, item, path):
         if item['type'] == 'folder':
