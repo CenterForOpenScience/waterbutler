@@ -35,6 +35,25 @@ class GoogleDrivePath(path.WaterButlerPath):
 
 
 class GoogleDriveProvider(provider.BaseProvider):
+    """Provider for Google's Drive cloud storage service.
+
+    This provider uses the v2 Drive API.  A v3 API is available, but this provider has not yet
+    been updated.
+
+    API docs: https://developers.google.com/drive/v2/reference/
+
+    Quirks:
+
+    * Google doc files (``.gdoc``, ``.gsheet``, ``.gsheet``, ``.gdraw``) cannot be downloaded in
+      their native format and must be exported to another format.  e.g. ``.gdoc`` to ``.docx``
+
+    * Some Google doc files (currently ``.gform`` and ``.gmap``) do not have an available export
+      format and cannot be downloaded at all.
+
+    * Google Drive is not really a filesystem.  Folders are actually labels, meaning a file ``foo``
+      could be in two folders (ex. ``A``, ``B``) at the same time.  Deleting ``/A/foo`` will
+      cause ``/B/foo`` to be deleted as well.
+    """
     NAME = 'googledrive'
     BASE_URL = settings.BASE_URL
     FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'

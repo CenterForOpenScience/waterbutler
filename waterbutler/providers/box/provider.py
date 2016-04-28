@@ -14,6 +14,11 @@ from waterbutler.providers.box.metadata import BoxFolderMetadata
 
 
 class BoxProvider(provider.BaseProvider):
+    """Provider for the Box.com cloud storage service.
+
+    API docs: https://box-content.readme.io/reference
+    """
+
     NAME = 'box'
     BASE_URL = settings.BASE_URL
 
