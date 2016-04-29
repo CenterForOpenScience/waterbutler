@@ -2,6 +2,13 @@
 ChangeLog
 *********
 
+0.20.0 (2016-04-29)
+===================
+- Fix Download-As-Zip for Google Drive to set the correct extensions for exported Google Doc
+files.
+- Add 'resource' to V1 response.
+- Minor doc updates: Add urls to external API documentation and note provider quirks.
+
 0.19.5 (2016-04-18)
 ===================
 - Brown Paper Bag release: **REALLY** fix syntax error in Github's Unsupported Repo exception.
