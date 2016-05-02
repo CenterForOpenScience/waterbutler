@@ -1,11 +1,14 @@
 import os
 import json
+import furl
 import asyncio
 
 import tornado.httputil
 
 from waterbutler.core import mime_types
+
 from waterbutler.server import utils
+from waterbutler.server import settings
 
 
 # TODO split this into metadata.py and data.py
@@ -36,9 +39,18 @@ class MetadataMixin:
             self.get_query_argument('version', default=None) or
             self.get_query_argument('revision', default=None)
         )
-
         data = await self.provider.metadata(self.path, version=version, revision=version)
-        return self.write({'data': [x.json_api_serialized(self.resource) for x in data]})
+
+        url = furl.furl(settings.DOMAIN)
+        segments = ['v1', 'resources', self.resource, 'providers',
+                    self.provider.NAME]
+        segments += str(self.path).split('/')[1:]
+        url.path.segments.extend(segments)
+        links = utils.base_api_links(url.url)
+        links['new_folder'] = url.url + '?kind=folder'
+
+        return self.write({'data': [x.json_api_serialized(self.resource) for x in data],
+                           'links': links})
 
     async def get_file(self):
         if 'meta' in self.request.query_arguments:
