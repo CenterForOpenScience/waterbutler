@@ -87,7 +87,7 @@ class MoveCopyMixin:
                 self.dest_auth['settings']
             )
 
-            self.dest_path = await self.dest_provider.validate_path(self.json['path'])
+            self.dest_path = await self.dest_provider.validate_path(**self.json)
 
         if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
             # this weird signature syntax courtesy of py3.4 not liking trailing commas on kwargs

@@ -19,6 +19,16 @@ logger = logging.getLogger(__name__)
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
 
 
+def list_or_value(value):
+    assert isinstance(value, list)
+    if len(value) == 0:
+        return None
+    if len(value) == 1:
+        # Remove leading slashes as they break things
+        return value[0].decode('utf-8')
+    return [item.decode('utf-8') for item in value]
+
+
 @tornado.web.stream_request_body
 class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixin):
     PRE_VALIDATORS = {'put': 'prevalidate_put', 'post': 'prevalidate_post'}
@@ -31,6 +41,11 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         # TODO Find a nicer way to handle this
         if method == 'options':
             return
+
+        self.arguments = {
+            key: list_or_value(value)
+            for key, value in self.request.query_arguments.items()
+        }
 
         self.path = self.path_kwargs['path'] or '/'
         provider = self.path_kwargs['provider']
@@ -46,7 +61,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
         self.auth = await auth_handler.get(self.resource, provider, self.request)
         self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
-        self.path = await self.provider.validate_v1_path(self.path)
+        self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
 
         self.target_path = None
 
