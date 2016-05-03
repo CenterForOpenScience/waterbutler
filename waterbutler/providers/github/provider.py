@@ -239,7 +239,7 @@ class GitHubProvider(provider.BaseProvider):
             'path': path.path,
             'sha': blob['sha'],
             'size': stream.size,
-        }, commit=commit), not exists
+        }, commit=commit, ref=path.identifier[0]), not exists
 
     async def delete(self, path, sha=None, message=None, branch=None,
                confirm_delete=0, **kwargs):
@@ -267,17 +267,16 @@ class GitHubProvider(provider.BaseProvider):
         else:
             await self._delete_file(path, message, **kwargs)
 
-    async def metadata(self, path, ref=None, recursive=False, **kwargs):
+    async def metadata(self, path, **kwargs):
         """Get Metadata about the requested file or folder
         :param str path: The path to a file or folder
-        :param str ref: A branch or a commit SHA
-        :rtype dict:
-        :rtype list:
+        :rtype dict: if file, metadata object describing the file
+        :rtype list: if folder, array of metadata objects describing contents
         """
         if path.is_dir:
-            return (await self._metadata_folder(path, ref=ref, recursive=recursive, **kwargs))
+            return (await self._metadata_folder(path, **kwargs))
         else:
-            return (await self._metadata_file(path, ref=ref, **kwargs))
+            return (await self._metadata_file(path, **kwargs))
 
     async def revisions(self, path, sha=None, **kwargs):
         resp = await self.make_request(
@@ -327,7 +326,7 @@ class GitHubProvider(provider.BaseProvider):
         data['content']['name'] = path.name
         data['content']['path'] = data['content']['path'].replace('.gitkeep', '')
 
-        return GitHubFolderContentMetadata(data['content'], commit=data['commit'])
+        return GitHubFolderContentMetadata(data['content'], commit=data['commit'], ref=path.identifier[0])
 
     async def _delete_file(self, path, message=None, **kwargs):
         if path.identifier[1]:
@@ -610,37 +609,38 @@ class GitHubProvider(provider.BaseProvider):
         segments = (self.owner, self.repo, 'blob', path.identifier[0], path.path)
         return provider.build_url(settings.VIEW_URL, *segments)
 
-    async def _metadata_folder(self, path, recursive=False, **kwargs):
-        # if we have a sha or recursive lookup specified we'll need to perform
-        # the operation using the git/trees api which requires a sha.
+    async def _metadata_folder(self, path, **kwargs):
+        ref = path.identifier[0]
 
-        if not (self._is_sha(path.identifier[0]) or recursive):
-            try:
-                data = await self._fetch_contents(path, ref=path.identifier[0])
-            except exceptions.MetadataError as e:
-                if e.data.get('message') == 'This repository is empty.':
-                    data = []
-                else:
-                    raise
+        try:
+            # it's cool to use the contents API here because we know path is a dir and won't hit
+            # the 1mb size limit
+            data = await self._fetch_contents(path, ref=ref)
+        except exceptions.MetadataError as e:
+            if e.data.get('message') == 'This repository is empty.':
+                data = []
+            else:
+                raise
 
-            if isinstance(data, dict):
-                raise exceptions.MetadataError(
-                    'Could not retrieve folder "{0}"'.format(str(path)),
-                    code=404,
-                )
+        if isinstance(data, dict):
+            raise exceptions.MetadataError(
+                'Could not retrieve folder "{0}"'.format(str(path)),
+                code=404,
+            )
 
-            ret = []
-            for item in data:
-                if item['type'] == 'dir':
-                    ret.append(GitHubFolderContentMetadata(item))
-                else:
-                    ret.append(GitHubFileContentMetadata(item, web_view=item['html_url']))
-            return ret
+        ret = []
+        for item in data:
+            if item['type'] == 'dir':
+                ret.append(GitHubFolderContentMetadata(item, ref=ref))
+            else:
+                ret.append(GitHubFileContentMetadata(item, ref=ref, web_view=item['html_url']))
 
-    async def _metadata_file(self, path, revision=None, ref=None, **kwargs):
+        return ret
+
+    async def _metadata_file(self, path, revision=None, **kwargs):
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=revision or ref or path.identifier[0]),
+            self.build_repo_url('commits', path=path.path, sha=revision or path.identifier[0]),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
@@ -667,7 +667,10 @@ class GitHubProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return GitHubFileTreeMetadata(data, commit=latest['commit'], web_view=self._web_view(path))
+        return GitHubFileTreeMetadata(
+            data, commit=latest['commit'], web_view=self._web_view(path),
+            ref=path.identifier[0]
+        )
 
     async def _get_latest_sha(self, ref='master'):
         resp = await self.make_request(
@@ -778,11 +781,13 @@ class GitHubProvider(provider.BaseProvider):
 
         if dest_path.is_file:
             assert len(blobs) == 1, 'Destination file should have exactly one candidate'
-            return GitHubFileTreeMetadata(blobs[0], commit=commit), not exists
+            return GitHubFileTreeMetadata(
+                blobs[0], commit=commit, ref=dest_path.identifier[0]
+            ), not exists
 
         folder = GitHubFolderTreeMetadata({
             'path': dest_path.path.strip('/')
-        }, commit=commit)
+        }, commit=commit, ref=dest_path.identifier[0])
 
         folder.children = []
 
@@ -790,8 +795,8 @@ class GitHubProvider(provider.BaseProvider):
             if item['path'] == src_path.path.rstrip('/'):
                 continue
             if item['type'] == 'tree':
-                folder.children.append(GitHubFolderTreeMetadata(item))
+                folder.children.append(GitHubFolderTreeMetadata(item, ref=dest_path.identifier[0]))
             else:
-                folder.children.append(GitHubFileTreeMetadata(item))
+                folder.children.append(GitHubFileTreeMetadata(item, ref=dest_path.identifier[0]))
 
         return folder, not exists
