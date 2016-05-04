@@ -97,5 +97,5 @@ class TestCopyHandler(utils.MultiProviderHandlerTestCase):
 
         self.mock_send_hook.assert_called_once_with(
             'copy',
-            utils.MockFileMetadata().serialized()
+            utils.MockFileMetadata()
         )

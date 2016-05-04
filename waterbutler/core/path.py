@@ -139,6 +139,11 @@ class WaterButlerPath:
 
         return cls(path, _ids=_ids, folder=folder, **kwargs)
 
+    @classmethod
+    def from_metadata(cls, metadata, **kwargs):
+        _ids = metadata.path.rstrip('/').split('/') or []
+        return cls(metadata.materialized_path, _ids=_ids, folder=metadata.is_folder, **kwargs)
+
     def __init__(self, path, _ids=(), prepend=None, folder=None):
         self.__class__.generic_path_validation(path)
 
