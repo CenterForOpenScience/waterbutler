@@ -22,13 +22,14 @@ sentry_dsn = settings.get('SENTRY_DSN', None)
 client = Client(sentry_dsn) if sentry_dsn else None
 
 
-def make_provider(name, auth, credentials, settings):
+def make_provider(name, auth, credentials, settings, **kwargs):
     """Returns an instance of :class:`waterbutler.core.provider.BaseProvider`
 
     :param str name: The name of the provider to instantiate. (s3, box, etc)
     :param dict auth:
     :param dict credentials:
     :param dict settings:
+    :param dict \*\*kwargs: currently there to absorb ``callback_url``
 
     :rtype: :class:`waterbutler.core.provider.BaseProvider`
     """
