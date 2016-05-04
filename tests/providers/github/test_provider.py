@@ -532,6 +532,19 @@ class TestValidatePath:
         assert wb_path_v1 == wb_path_v0
 
     @pytest.mark.asyncio
+    async def test_reject_multiargs(self, provider):
+
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            await provider.validate_v1_path('/foo', ref=['bar','baz'])
+
+        assert exc.value.code == client.BAD_REQUEST
+
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            await provider.validate_path('/foo', ref=['bar','baz'])
+
+        assert exc.value.code == client.BAD_REQUEST
+
+    @pytest.mark.asyncio
     async def test_validate_path(self, provider):
         path = await provider.validate_path('/this/is/my/path')
 

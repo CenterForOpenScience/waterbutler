@@ -94,6 +94,8 @@ class GitHubProvider(provider.BaseProvider):
             self.default_branch = self._repo['default_branch']
 
         branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
+        if isinstance(branch_ref, list):
+            raise exceptions.InvalidParameters('Only one ref or branch may be given.')
 
         if path == '/':
             return GitHubPath(path, _ids=[(branch_ref, '')])
@@ -119,6 +121,8 @@ class GitHubProvider(provider.BaseProvider):
 
         path = GitHubPath(path)
         branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
+        if isinstance(branch_ref, list):
+            raise exceptions.InvalidParameters('Only one ref or branch may be given.')
 
         for part in path.parts:
             part._id = (branch_ref, None)
