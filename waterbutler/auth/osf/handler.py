@@ -82,11 +82,14 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         if view_only:
             view_only = view_only[0].decode()
 
-        return (await self.make_request(
+        payload = (await self.make_request(
             self.build_payload(bundle, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)
         ))
+
+        payload['auth']['callback_url'] = payload['callback_url']
+        return payload
 
     async def get(self, resource, provider, request):
         """Used for v1"""
@@ -104,7 +107,7 @@ class OsfAuthHandler(auth.BaseAuthHandler):
             # View only must go outside of the jwt
             view_only = view_only[0].decode()
 
-        return (await self.make_request(
+        payload = (await self.make_request(
             self.build_payload({
                 'nid': resource,
                 'provider': provider,
@@ -113,3 +116,6 @@ class OsfAuthHandler(auth.BaseAuthHandler):
             headers,
             dict(request.cookies)
         ))
+
+        payload['auth']['callback_url'] = payload['callback_url']
+        return payload
