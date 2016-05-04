@@ -3,12 +3,12 @@ import json
 
 import furl
 
-from waterbutler.core import path
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 
 from waterbutler.providers.github import settings
+from waterbutler.providers.github.path import GitHubPath
 from waterbutler.providers.github.metadata import GitHubRevision
 from waterbutler.providers.github.metadata import GitHubFileContentMetadata
 from waterbutler.providers.github.metadata import GitHubFolderContentMetadata
@@ -18,23 +18,6 @@ from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
 
 
 GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
-
-
-class GitHubPathPart(path.WaterButlerPathPart):
-    def increment_name(self, _id=None):
-        """Overridden to preserve branch from _id upon incrementing"""
-        self._id = _id or (self._id[0], None)
-        self._count += 1
-        return self
-
-
-class GitHubPath(path.WaterButlerPath):
-    PART_CLASS = GitHubPathPart
-
-    def child(self, name, _id=None, folder=False):
-        if _id is None:
-            _id = (self.identifier[0], None)
-        return super().child(name, _id=_id, folder=folder)
 
 
 class GitHubProvider(provider.BaseProvider):
@@ -133,7 +116,7 @@ class GitHubProvider(provider.BaseProvider):
         return path
 
     async def revalidate_path(self, base, path, folder=False):
-        return base.child(path, _id=((base.identifier[0], None)), folder=folder)
+        return base.child(path, _id=((base.branch_ref, None)), folder=folder)
 
     def can_duplicate_names(self):
         return False
@@ -178,7 +161,7 @@ class GitHubProvider(provider.BaseProvider):
         :param dict kwargs: Ignored
         '''
         data = await self.metadata(path, revision=revision)
-        file_sha = path.identifier[1] or data.extra['fileSha']
+        file_sha = path.file_sha or data.extra['fileSha']
 
         resp = await self.make_request(
             'GET',
@@ -206,7 +189,7 @@ class GitHubProvider(provider.BaseProvider):
                         'content': '',
                         'path': '.gitkeep',
                         'committer': self.committer,
-                        'branch': path.identifier[0],
+                        'branch': path.branch_ref,
                         'message': 'Initial commit'
                     }),
                     expects=(201,),
@@ -215,7 +198,7 @@ class GitHubProvider(provider.BaseProvider):
                 data = await resp.json()
                 latest_sha = data['commit']['sha']
         else:
-            latest_sha = await self._get_latest_sha(ref=path.identifier[0])
+            latest_sha = await self._get_latest_sha(ref=path.branch_ref)
 
         blob = await self._create_blob(stream)
         tree = await self._create_tree({
@@ -236,14 +219,14 @@ class GitHubProvider(provider.BaseProvider):
         })
 
         # Doesn't return anything useful
-        await self._update_ref(commit['sha'], ref=path.identifier[0])
+        await self._update_ref(commit['sha'], ref=path.branch_ref)
 
         # You're hacky
         return GitHubFileTreeMetadata({
             'path': path.path,
             'sha': blob['sha'],
             'size': stream.size,
-        }, commit=commit, ref=path.identifier[0]), not exists
+        }, commit=commit, ref=path.branch_ref), not exists
 
     async def delete(self, path, sha=None, message=None, branch=None,
                confirm_delete=0, **kwargs):
@@ -285,7 +268,7 @@ class GitHubProvider(provider.BaseProvider):
     async def revisions(self, path, sha=None, **kwargs):
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=sha or path.identifier),
+            self.build_repo_url('commits', path=path.path, sha=sha or path.file_sha),
             expects=(200, ),
             throws=exceptions.RevisionsError
         )
@@ -308,7 +291,7 @@ class GitHubProvider(provider.BaseProvider):
             'content': '',
             'path': keep_path.path,
             'committer': self.committer,
-            'branch': path.identifier[0],
+            'branch': path.branch_ref,
             'message': message or settings.UPLOAD_FILE_MESSAGE
         }
 
@@ -330,11 +313,11 @@ class GitHubProvider(provider.BaseProvider):
         data['content']['name'] = path.name
         data['content']['path'] = data['content']['path'].replace('.gitkeep', '')
 
-        return GitHubFolderContentMetadata(data['content'], commit=data['commit'], ref=path.identifier[0])
+        return GitHubFolderContentMetadata(data['content'], commit=data['commit'], ref=path.branch_ref)
 
     async def _delete_file(self, path, message=None, **kwargs):
-        if path.identifier[1]:
-            sha = path.identifier
+        if path.file_sha:
+            sha = path.file_sha
         else:
             sha = (await self.metadata(path)).extra['fileSha']
 
@@ -343,7 +326,7 @@ class GitHubProvider(provider.BaseProvider):
 
         data = {
             'sha': sha,
-            'branch': path.identifier[0],
+            'branch': path.branch_ref,
             'committer': self.committer,
             'message': message or settings.DELETE_FILE_MESSAGE,
         }
@@ -359,7 +342,7 @@ class GitHubProvider(provider.BaseProvider):
         await resp.release()
 
     async def _delete_folder(self, path, message=None, **kwargs):
-        branch_data = await self._fetch_branch(path.identifier[0])
+        branch_data = await self._fetch_branch(path.branch_ref)
 
         old_commit_sha = branch_data['commit']['sha']
         old_commit_tree_sha = branch_data['commit']['commit']['tree']['sha']
@@ -449,7 +432,7 @@ class GitHubProvider(provider.BaseProvider):
         # No need to store data, rely on expects to raise exceptions
         resp = await self.make_request(
             'PATCH',
-            self.build_repo_url('git', 'refs', 'heads', path.identifier[0]),
+            self.build_repo_url('git', 'refs', 'heads', path.branch_ref),
             headers={'Content-Type': 'application/json'},
             data=json.dumps({'sha': commit_sha}),
             expects=(200, ),
@@ -463,7 +446,7 @@ class GitHubProvider(provider.BaseProvider):
         :param GitHubPath path: GitHubPath path object for folder
         :param str message: Commit message
         """
-        branch_data = await self._fetch_branch(path.identifier[0])
+        branch_data = await self._fetch_branch(path.branch_ref)
         old_commit_sha = branch_data['commit']['sha']
         tree_sha = GIT_EMPTY_SHA
         message = message or settings.DELETE_FOLDER_MESSAGE
@@ -489,7 +472,7 @@ class GitHubProvider(provider.BaseProvider):
         # No need to store data, rely on expects to raise exceptions
         await self.make_request(
             'PATCH',
-            self.build_repo_url('git', 'refs', 'heads', path.identifier[0]),
+            self.build_repo_url('git', 'refs', 'heads', path.branch_ref),
             headers={'Content-Type': 'application/json'},
             data=json.dumps({'sha': commit_sha}),
             expects=(200, ),
@@ -610,11 +593,11 @@ class GitHubProvider(provider.BaseProvider):
         return True
 
     def _web_view(self, path):
-        segments = (self.owner, self.repo, 'blob', path.identifier[0], path.path)
+        segments = (self.owner, self.repo, 'blob', path.branch_ref, path.path)
         return provider.build_url(settings.VIEW_URL, *segments)
 
     async def _metadata_folder(self, path, **kwargs):
-        ref = path.identifier[0]
+        ref = path.branch_ref
 
         try:
             # it's cool to use the contents API here because we know path is a dir and won't hit
@@ -644,7 +627,7 @@ class GitHubProvider(provider.BaseProvider):
     async def _metadata_file(self, path, revision=None, **kwargs):
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=revision or path.identifier[0]),
+            self.build_repo_url('commits', path=path.path, sha=revision or path.branch_ref),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
@@ -673,7 +656,7 @@ class GitHubProvider(provider.BaseProvider):
 
         return GitHubFileTreeMetadata(
             data, commit=latest['commit'], web_view=self._web_view(path),
-            ref=path.identifier[0]
+            ref=path.branch_ref
         )
 
     async def _get_latest_sha(self, ref='master'):
@@ -708,7 +691,7 @@ class GitHubProvider(provider.BaseProvider):
         #     GH (dir):   'foo/bar'
         #     GH (file):  'foo/bar.txt'
 
-        branch = src_path.identifier[0]
+        branch = src_path.branch_ref
         branch_data = await self._fetch_branch(branch)
 
         old_commit_sha = branch_data['commit']['sha']
@@ -786,12 +769,12 @@ class GitHubProvider(provider.BaseProvider):
         if dest_path.is_file:
             assert len(blobs) == 1, 'Destination file should have exactly one candidate'
             return GitHubFileTreeMetadata(
-                blobs[0], commit=commit, ref=dest_path.identifier[0]
+                blobs[0], commit=commit, ref=dest_path.branch_ref
             ), not exists
 
         folder = GitHubFolderTreeMetadata({
             'path': dest_path.path.strip('/')
-        }, commit=commit, ref=dest_path.identifier[0])
+        }, commit=commit, ref=dest_path.branch_ref)
 
         folder.children = []
 
@@ -799,8 +782,8 @@ class GitHubProvider(provider.BaseProvider):
             if item['path'] == src_path.path.rstrip('/'):
                 continue
             if item['type'] == 'tree':
-                folder.children.append(GitHubFolderTreeMetadata(item, ref=dest_path.identifier[0]))
+                folder.children.append(GitHubFolderTreeMetadata(item, ref=dest_path.branch_ref))
             else:
-                folder.children.append(GitHubFileTreeMetadata(item, ref=dest_path.identifier[0]))
+                folder.children.append(GitHubFileTreeMetadata(item, ref=dest_path.branch_ref))
 
         return folder, not exists
