@@ -88,6 +88,14 @@ class WaterButlerPath:
     is available through the `.raw_path()` method.
 
     To get a human-readable materialized path, call `str()` on the WaterButlerPath.
+
+    Representations::
+
+        path.path()
+        path.raw_path()
+        path.full_path()
+        path.materialized_path()
+
     """
 
     PART_CLASS = WaterButlerPathPart
@@ -234,6 +242,11 @@ class WaterButlerPath:
         return '/'.join([x.value for x in self._prepend_parts + self.parts[1:]]) + ('/' if self.is_dir else '')
 
     @property
+    def materialized_path(self):
+        """ Returns the user-readable unix-style path without the storage root prepended. """
+        return '/'.join([x.value for x in self.parts]) + ('/' if self.is_dir else '')
+
+    @property
     def parent(self):
         """ Returns a new WaterButlerPath that represents the parent of the current path.
 
@@ -250,7 +263,10 @@ class WaterButlerPath:
         :param _id: the id of the child entity (defaults to None)
         :param bool folder: whether or not the child is a folder (defaults to False)
         """
-        return self.__class__.from_parts(self.parts + [self.PART_CLASS(name, _id=_id)], folder=folder, prepend=self._prepend)
+        return self.__class__.from_parts(
+            self.parts + [self.PART_CLASS(name, _id=_id)],
+            folder=folder, prepend=self._prepend
+        )
 
     def increment_name(self):
         self._parts[-1].increment_name()
@@ -264,8 +280,7 @@ class WaterButlerPath:
         return isinstance(other, self.__class__) and str(self) == str(other)
 
     def __str__(self):
-        """ Returns the materialized path """
-        return '/'.join([x.value for x in self.parts]) + ('/' if self.is_dir else '')
+        return self.materialized_path
 
     def __repr__(self):
         return '{}({!r}, prepend={!r})'.format(self.__class__.__name__, self._orig_path, self._prepend)
