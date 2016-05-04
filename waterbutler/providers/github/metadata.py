@@ -1,5 +1,7 @@
 import os
 
+from furl import furl
+
 from waterbutler.core import metadata
 
 
@@ -32,6 +34,16 @@ class BaseGitHubMetadata(metadata.BaseMetadata):
 
     def build_path(self, path):
         return super().build_path(path)
+
+    def _json_api_links(self, resource):
+        """Update JSON-API links to add ref, if available"""
+        links = super()._json_api_links(resource)
+
+        if self.ref is not None:
+            for action, link in links.items():
+                links[action] = furl(link).add({'ref': self.ref}).url
+
+        return links
 
 
 class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
