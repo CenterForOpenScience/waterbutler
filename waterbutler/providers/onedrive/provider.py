@@ -142,8 +142,8 @@ class OneDriveProvider(provider.BaseProvider):
                 break
             i += 1
 
-        data = await self.metadata(src_path, None)  # TODO: validate_v1_path to get destination ID/Name pair and then return self.metadata so OSF has new Destination path IDs.
-        return data, True
+        data = await self.metadata(dest_path, None)
+        return data, True  # dest_path.identifier is None
 
     async def _copy_status(self, status_url):
         #  docs: https://dev.onedrive.com/resources/asyncJobStatus.htm
