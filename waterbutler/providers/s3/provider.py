@@ -28,16 +28,19 @@ from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
 
 
 class S3Provider(provider.BaseProvider):
-    """Provider for the Amazon's S3
+    """Provider for Amazon's S3 cloud storage service.
+
+    API docs: http://docs.aws.amazon.com/AmazonS3/latest/API/Welcome.html
 
     Quirks:
-        On S3, folders are not first-class objects, but are instead inferred
-        from the names of their children.  A regular DELETE request issued
-        against a folder will not work unless that folder is completely empty.
-        To fully delete an occupied folder, we must delete all of the comprising
-        objects.  Amazon provides a bulk delete operation to simplify this.
 
-        A GET prefix query against a non-existant path returns 200
+    * On S3, folders are not first-class objects, but are instead inferred
+      from the names of their children.  A regular DELETE request issued
+      against a folder will not work unless that folder is completely empty.
+      To fully delete an occupied folder, we must delete all of the comprising
+      objects.  Amazon provides a bulk delete operation to simplify this.
+
+    * A GET prefix query against a non-existent path returns 200
     """
     NAME = 's3'
 

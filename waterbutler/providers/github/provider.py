@@ -48,6 +48,8 @@ class GitHubProvider(provider.BaseProvider):
         GH (dir):   'foo/bar'
         GH (file):  'foo/bar.txt'
 
+    API docs: https://developer.github.com/v3/
+
     Quirks:
 
     * git doesn't have a concept of empty folders, so this provider creates 0-byte ``.gitkeep``
@@ -56,6 +58,11 @@ class GitHubProvider(provider.BaseProvider):
     * The ``contents`` endpoint cannot be used to fetch metadata reliably for all files. Requesting
       a file that is larger than 1Mb will result in a error response directing you to the ``blob``
       endpoint.  A recursive tree fetch may be used instead.
+
+    * The tree endpoint truncates results after a large number of files.  It does not provide a way
+      to page through the tree.  Since move, copy, and folder delete operations rely on whole-tree
+      replacement, they cannot be reliably supported for large repos.  Attempting to use them will
+      throw a 501 Not Implemented error.
     """
     NAME = 'github'
     BASE_URL = settings.BASE_URL

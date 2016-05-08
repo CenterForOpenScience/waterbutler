@@ -152,9 +152,11 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                     'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + self.path.raw_path,
                     'provider': self.provider.NAME,  # TODO rename to name
                     'materialized': str(self.path),
+                    'resource': self.resource,
                 },
                 'destination': {
                     'nid': self.dest_resource,
+                    'resource': self.dest_resource,
                 }
             })
             payload['destination'].update(self.dest_meta.serialized())
@@ -170,6 +172,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                     'name': payload_path.name,
                     'materialized': str(payload_path),
                     'provider': self.provider.NAME,
+                    'resource': self.resource,
                 }
             })
             callback_url = self.auth['callback_url']

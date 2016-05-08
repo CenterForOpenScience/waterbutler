@@ -36,6 +36,7 @@ class TestBaseMetadata:
             'contentType': 'application/octet-stream',
             'modified': 'never',
             'size': 1337,
+            'resource': 'n0d3z',
         }
         assert 'new_folder' not in serialized['links']
         assert serialized['links']['move'].endswith(link_suffix)
@@ -60,6 +61,7 @@ class TestBaseMetadata:
             'materialized': '/Bar/',
             'etag': etag,
             'size': None,
+            'resource': 'n0d3z',
         }
         assert serialized['links']['new_folder'].endswith(link_suffix + '?kind=folder')
         assert serialized['links']['move'].endswith(link_suffix)

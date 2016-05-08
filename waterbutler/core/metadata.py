@@ -58,12 +58,14 @@ class BaseMetadata(metaclass=abc.ABCMeta):
 
         :rtype: dict
         """
-        return {
+        json_api = {
             'id': self.provider + self.path,
             'type': 'files',
             'attributes': self.serialized(),
             'links': self._json_api_links(resource),
         }
+        json_api['attributes']['resource'] = resource
+        return json_api
 
     def _json_api_links(self, resource):
         """ Returns a dict of action names and the endpoints where those actions are performed.
