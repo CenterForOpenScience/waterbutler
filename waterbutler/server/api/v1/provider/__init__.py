@@ -138,6 +138,10 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         destination = None
 
         if action in ('move', 'copy'):
+            # if provider can't intra_move or copy, then the celery task will take care of logging
+            if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
+                return
+
             destination = LogPayload(
                 self.dest_resource,
                 self.dest_provider,
