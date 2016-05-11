@@ -50,5 +50,5 @@ class CopyHandler(core.BaseCrossProviderHandler):
 
         self.write(metadata)
 
-        if self.source_provider.can_intra_move(self.destination_provider, self.json['source']['path']):
+        if self.source_provider.can_intra_copy(self.destination_provider, self.json['source']['path']):
             self._send_hook('copy', metadata)
