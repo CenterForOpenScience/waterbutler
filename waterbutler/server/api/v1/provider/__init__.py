@@ -134,7 +134,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     @utils.async_retry(retries=5, backoff=5)
     async def _send_hook(self, action):
-        source = LogPayload(self.resource, self.provider, path=self.path)
+        source = None
         destination = None
 
         if action in ('move', 'copy'):
@@ -142,10 +142,17 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
                 return
 
+            source = LogPayload(self.resource, self.provider, path=self.path)
             destination = LogPayload(
                 self.dest_resource,
                 self.dest_provider,
                 metadata=self.dest_meta,
             )
+        elif action in ('create', 'create_folder', 'update'):
+            source = LogPayload(self.resource, self.provider, metadata=self.metadata)
+        elif action in ('delete',):
+            source = LogPayload(self.resource, self.provider, path=self.path)
+        else:
+            return
 
         await utils.log_to_callback(action, source=source, destination=destination)
