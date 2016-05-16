@@ -30,8 +30,17 @@ def make_disposition(filename):
 
 class CORsMixin:
 
+    def _cross_origin_is_allowed(self):
+        if self.request.method == 'OPTIONS':
+            return True
+        elif not self.request.cookies and self.request.headers.get('Authorization'):
+            return True
+        return False
+
     def set_default_headers(self):
-        if isinstance(settings.CORS_ALLOW_ORIGIN, str):
+        if self._cross_origin_is_allowed():
+            self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin', settings.CORS_ALLOW_ORIGIN))
+        elif isinstance(settings.CORS_ALLOW_ORIGIN, str):
             if settings.CORS_ALLOW_ORIGIN == '*':
                 # Wild cards cannot be used with allowCredentials.
                 # Match Origin if its specified, makes pdfs and pdbs render properly
