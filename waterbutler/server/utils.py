@@ -38,18 +38,25 @@ class CORsMixin:
         return False
 
     def set_default_headers(self):
+        if not self.request.headers.get('Origin'):
+            return
+
+        allowed_origin = None
         if self._cross_origin_is_allowed():
-            self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin', settings.CORS_ALLOW_ORIGIN))
+            allowed_origin = self.request.headers['Origin']
         elif isinstance(settings.CORS_ALLOW_ORIGIN, str):
             if settings.CORS_ALLOW_ORIGIN == '*':
                 # Wild cards cannot be used with allowCredentials.
                 # Match Origin if its specified, makes pdfs and pdbs render properly
-                self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin', '*'))
+                allowed_origin = self.request.headers['Origin']
             else:
-                self.set_header('Access-Control-Allow-Origin', settings.CORS_ALLOW_ORIGIN)
+                allowed_origin = settings.CORS_ALLOW_ORIGIN
         else:
-            if self.request.headers.get('Origin') in settings.CORS_ALLOW_ORIGIN:
-                self.set_header('Access-Control-Allow-Origin', self.request.headers['Origin'])
+            if self.request.headers['Origin'] in settings.CORS_ALLOW_ORIGIN:
+                allowed_origin = self.request.headers['Origin']
+
+        if allowed_origin is not None:
+            self.set_header('Access-Control-Allow-Origin', allowed_origin)
 
         self.set_header('Access-Control-Allow-Credentials', 'true')
         self.set_header('Access-Control-Allow-Headers', ', '.join(CORS_ACCEPT_HEADERS))
@@ -58,7 +65,8 @@ class CORsMixin:
 
     def options(self, *args, **kwargs):
         self.set_status(204)
-        self.set_header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE'),
+        if self.request.headers.get('Origin'):
+            self.set_header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE'),
 
 
 class UtilMixin:
