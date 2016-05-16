@@ -28,16 +28,17 @@ class MockRequest(object):
             self,
             origin=None,
             method='GET',
-            cookies=None,
+            cookies=False,
             headers=None
     ):
         self.origin = origin or ''
         self.method = method
-        self.cookies = cookies or True
+        self.cookies = cookies
         self.headers = headers or {
             'Origin': origin
         }
 
+@mock.patch('waterbutler.server.settings.CORS_ALLOW_ORIGIN', '')
 class TestCORsMixin(ServerTestCase):
 
     def setUp(self, *args, **kwargs):
@@ -62,7 +63,7 @@ class TestCORsMixin(ServerTestCase):
         for method in ('GET', 'POST', 'PUT', 'PATCH', 'DELETE'):
             self.handler.request = MockRequest(
                 origin=origin,
-                method='GET',
+                method=method,
                 cookies=True
             )
             self.handler.set_default_headers()
@@ -75,7 +76,7 @@ class TestCORsMixin(ServerTestCase):
         for method in ('GET', 'POST', 'PUT', 'PATCH', 'DELETE'):
             self.handler.request = MockRequest(
                 origin=origin,
-                method='GET',
+                method=method,
                 cookies=False,
                 headers=None
             )
@@ -88,12 +89,12 @@ class TestCORsMixin(ServerTestCase):
 
         for method in ('GET', 'POST', 'PUT', 'PATCH', 'DELETE'):
             self.handler.request = MockRequest(
-                origin=origin,
-                method='GET',
+                method=method,
                 cookies=False,
                 headers={
+                    'Origin': origin,
                     'Authorization': 'asdlisdfgluiwgqruf'
                 }
             )
             self.handler.set_default_headers()
-            assert origin not in self.handler.headers['Access-Control-Allow-Origin']
+            assert origin in self.handler.headers['Access-Control-Allow-Origin']
