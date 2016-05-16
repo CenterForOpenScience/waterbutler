@@ -39,7 +39,7 @@ class CORsMixin:
 
     def set_default_headers(self):
         if self._cross_origin_is_allowed():
-            self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin'))
+            self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin', settings.CORS_ALLOW_ORIGIN))
         elif isinstance(settings.CORS_ALLOW_ORIGIN, str):
             if settings.CORS_ALLOW_ORIGIN == '*':
                 # Wild cards cannot be used with allowCredentials.
