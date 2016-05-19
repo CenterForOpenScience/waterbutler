@@ -1,6 +1,5 @@
 import json
 import time
-import asyncio
 import logging
 
 import tornado.web
@@ -50,7 +49,7 @@ class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.Re
         etype, exc, _ = exc_info
 
         if issubclass(etype, exceptions.PluginError):
-            self.set_status(exc.code)
+            self.set_status(int(exc.code))
             if exc.data:
                 self.finish(exc.data)
             else:
@@ -71,8 +70,7 @@ class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.Re
 
 class BaseProviderHandler(BaseHandler):
 
-    @tornado.gen.coroutine
-    def prepare(self):
+    async def prepare(self):
         self.arguments = {
             key: list_or_value(value)
             for key, value in self.request.query_arguments.items()
@@ -82,7 +80,7 @@ class BaseProviderHandler(BaseHandler):
         except KeyError:
             return
 
-        self.payload = yield from auth_handler.fetch(self.request, self.arguments)
+        self.payload = await auth_handler.fetch(self.request, self.arguments)
 
         self.provider = utils.make_provider(
             self.arguments['provider'],
@@ -91,42 +89,44 @@ class BaseProviderHandler(BaseHandler):
             self.payload['settings'],
         )
 
-        self.path = yield from self.provider.validate_path(**self.arguments)
+        self.path = await self.provider.validate_path(**self.arguments)
         self.arguments['path'] = self.path  # TODO Not this
 
     @utils.async_retry(retries=5, backoff=5)
-    def _send_hook(self, action, metadata):
-        resp = yield from utils.send_signed_request('PUT', self.payload['callback_url'], {
+    async def _send_hook(self, action, metadata):
+        resp = await utils.send_signed_request('PUT', self.payload['callback_url'], {
             'action': action,
             'metadata': metadata,
             'auth': self.payload['auth'],
             'provider': self.arguments['provider'],
             'time': time.time() + 60
         })
+        data = await resp.read()
+
         if resp.status != 200:
-            raise Exception('Callback was unsuccessful, got {}'.format(resp))
+            raise Exception('Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8')))
+
         logger.info('Successfully sent callback for a {} request'.format(action))
+        logger.info('Callback succeeded with {}'.format(data.decode('utf-8')))
 
 
 class BaseCrossProviderHandler(BaseHandler):
     JSON_REQUIRED = False
 
-    @tornado.gen.coroutine
-    def prepare(self):
+    async def prepare(self):
         try:
             self.action = self.ACTION_MAP[self.request.method]
         except KeyError:
             return
 
-        self.source_provider = yield from self.make_provider(prefix='from', **self.json['source'])
-        self.destination_provider = yield from self.make_provider(prefix='to', **self.json['destination'])
+        self.source_provider = await self.make_provider(prefix='from', **self.json['source'])
+        self.destination_provider = await self.make_provider(prefix='to', **self.json['destination'])
 
-        self.json['source']['path'] = yield from self.source_provider.validate_path(**self.json['source'])
-        self.json['destination']['path'] = yield from self.destination_provider.validate_path(**self.json['destination'])
+        self.json['source']['path'] = await self.source_provider.validate_path(**self.json['source'])
+        self.json['destination']['path'] = await self.destination_provider.validate_path(**self.json['destination'])
 
-    @asyncio.coroutine
-    def make_provider(self, provider, prefix='', **kwargs):
-        payload = yield from auth_handler.fetch(
+    async def make_provider(self, provider, prefix='', **kwargs):
+        payload = await auth_handler.fetch(
             self.request,
             dict(kwargs, provider=provider, action=self.action + prefix)
         )
@@ -150,14 +150,14 @@ class BaseCrossProviderHandler(BaseHandler):
         return self._json
 
     @utils.async_retry(retries=0, backoff=5)
-    def _send_hook(self, action, data):
+    async def _send_hook(self, action, data):
         src_path = None
         if self.source_provider.NAME in IDENTIFIER_PATHS:
             src_path = self.json['source']['path'].identifier_path
         else:
             src_path = '/' + self.json['source']['path'].raw_path
 
-        resp = yield from utils.send_signed_request('PUT', self.callback_url, {
+        resp = await utils.send_signed_request('PUT', self.callback_url, {
             'action': action,
             'source': {
                 'nid': self.json['source']['nid'],
@@ -171,7 +171,12 @@ class BaseCrossProviderHandler(BaseHandler):
             'auth': self.auth['auth'],
             'time': time.time() + 60
         })
+        resp_data = await resp.read()
 
         if resp.status != 200:
-            raise Exception('Callback was unsuccessful, got {}'.format(resp))
+            raise Exception(
+                'Callback was unsuccessful, got {}, {}'.format(resp, resp_data.decode('utf-8'))
+            )
+
         logger.info('Successfully sent callback for a {} request'.format(action))
+        logger.info('Callback succeeded with {}'.format(resp_data.decode('utf-8')))

@@ -13,6 +13,8 @@ import aiohttp
 from waterbutler import settings
 from waterbutler.core import streams
 from waterbutler.core import exceptions
+from waterbutler.core.utils import ZipStreamGenerator
+from waterbutler.core.utils import RequestHandlerContext
 
 logger = logging.getLogger(__name__)
 _THROTTLES = weakref.WeakKeyDictionary()
@@ -20,9 +22,8 @@ _THROTTLES = weakref.WeakKeyDictionary()
 
 def throttle(concurrency=10, interval=1):
     def _throttle(func):
-        @asyncio.coroutine
         @functools.wraps(func)
-        def wrapped(*args, **kwargs):
+        async def wrapped(*args, **kwargs):
             if asyncio.get_event_loop() not in _THROTTLES:
                 count, last_call, event = 0, time.time(), asyncio.Event()
                 _THROTTLES[asyncio.get_event_loop()] = (count, last_call, event)
@@ -30,17 +31,17 @@ def throttle(concurrency=10, interval=1):
             else:
                 count, last_call, event = _THROTTLES[asyncio.get_event_loop()]
 
-            yield from event.wait()
+            await event.wait()
             count += 1
             if count > concurrency:
                 count = 0
                 if (time.time() - last_call) < interval:
                     event.clear()
-                    yield from asyncio.sleep(interval - (time.time() - last_call))
+                    await asyncio.sleep(interval - (time.time() - last_call))
                     event.set()
 
             last_call = time.time()
-            return (yield from func(*args, **kwargs))
+            return (await func(*args, **kwargs))
         return wrapped
     return _throttle
 
@@ -137,8 +138,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         }
 
     @throttle()
-    @asyncio.coroutine
-    def make_request(self, method, url, *args, **kwargs):
+    async def make_request(self, method, url, *args, **kwargs):
         """A wrapper around :func:`aiohttp.request`. Inserts default headers.
 
         :param str method: The HTTP method
@@ -160,22 +160,25 @@ class BaseProvider(metaclass=abc.ABCMeta):
         throws = kwargs.pop('throws', exceptions.ProviderError)
         if range:
             kwargs['headers']['Range'] = self._build_range_header(range)
+
         if callable(url):
             url = url()
         while retry >= 0:
             try:
-                response = yield from aiohttp.request(method, url, *args, **kwargs)
+                response = await aiohttp.request(method, url, *args, **kwargs)
                 if expects and response.status not in expects:
-                    raise (yield from exceptions.exception_from_response(response, error=throws, **kwargs))
+                    raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
                 return response
             except throws as e:
                 if retry <= 0 or e.code not in self._retry_on:
                     raise
-                yield from asyncio.sleep((1 + _retry - retry) * 2)
+                await asyncio.sleep((1 + _retry - retry) * 2)
                 retry -= 1
 
-    @asyncio.coroutine
-    def move(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
+    def request(self, *args, **kwargs):
+        return RequestHandlerContext(self.make_request(*args, **kwargs))
+
+    async def move(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
         """Moves a file or folder from the current provider to the specified one
         Performs a copy and then a delete.
         Calls :func:`BaseProvider.intra_move` if possible.
@@ -190,7 +193,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         kwargs = {'rename': rename, 'conflict': conflict}
 
         if handle_naming:
-            dest_path = yield from dest_provider.handle_naming(
+            dest_path = await dest_provider.handle_naming(
                 src_path,
                 dest_path,
                 rename=rename,
@@ -200,24 +203,23 @@ class BaseProvider(metaclass=abc.ABCMeta):
             kwargs = {}
 
         if self.can_intra_move(dest_provider, src_path):
-            return (yield from self.intra_move(*args))
+            return (await self.intra_move(*args))
 
         if src_path.is_dir:
-            metadata, created = yield from self._folder_file_op(self.move, *args, **kwargs)
+            metadata, created = await self._folder_file_op(self.move, *args, **kwargs)
         else:
-            metadata, created = yield from self.copy(*args, handle_naming=False, **kwargs)
+            metadata, created = await self.copy(*args, handle_naming=False, **kwargs)
 
-        yield from self.delete(src_path)
+        await self.delete(src_path)
 
         return metadata, created
 
-    @asyncio.coroutine
-    def copy(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
+    async def copy(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
 
         if handle_naming:
-            dest_path = yield from dest_provider.handle_naming(
+            dest_path = await dest_provider.handle_naming(
                 src_path,
                 dest_path,
                 rename=rename,
@@ -227,20 +229,19 @@ class BaseProvider(metaclass=abc.ABCMeta):
             kwargs = {}
 
         if self.can_intra_copy(dest_provider, src_path):
-                return (yield from self.intra_copy(*args))
+                return (await self.intra_copy(*args))
 
         if src_path.is_dir:
-            return (yield from self._folder_file_op(self.copy, *args, **kwargs))
+            return (await self._folder_file_op(self.copy, *args, **kwargs))
 
-        download_stream = yield from self.download(src_path)
+        download_stream = await self.download(src_path)
 
         if getattr(download_stream, 'name', None):
             dest_path.rename(download_stream.name)
 
-        return (yield from dest_provider.upload(download_stream, dest_path))
+        return (await dest_provider.upload(download_stream, dest_path))
 
-    @asyncio.coroutine
-    def _folder_file_op(self, func, dest_provider, src_path, dest_path, **kwargs):
+    async def _folder_file_op(self, func, dest_provider, src_path, dest_path, **kwargs):
         """Recursively apply func to src/dest path.
 
         Called from: func: copy and move if src_path.is_dir.
@@ -259,46 +260,47 @@ class BaseProvider(metaclass=abc.ABCMeta):
         assert asyncio.iscoroutinefunction(func), 'func must be a coroutine'
 
         try:
-            yield from dest_provider.delete(dest_path)
+            await dest_provider.delete(dest_path)
             created = False
         except exceptions.ProviderError as e:
             if e.code != 404:
                 raise
             created = True
 
-        folder = yield from dest_provider.create_folder(dest_path, folder_precheck=False)
+        folder = await dest_provider.create_folder(dest_path, folder_precheck=False)
 
-        dest_path = yield from dest_provider.revalidate_path(dest_path.parent, dest_path.name, folder=dest_path.is_dir)
+        dest_path = await dest_provider.revalidate_path(dest_path.parent, dest_path.name, folder=dest_path.is_dir)
 
         folder.children = []
-        items = yield from self.metadata(src_path)
+        items = await self.metadata(src_path)
 
         for i in range(0, len(items), settings.OP_CONCURRENCY):
-            fs = []
+            futures = []
             for item in items[i:i + settings.OP_CONCURRENCY]:
-                fs.append(asyncio.async(func(
-                    dest_provider,
-                    # TODO figure out a way to cut down on all the requests made here
-                    (yield from self.revalidate_path(src_path, item.name, folder=item.is_folder)),
-                    (yield from dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
-                    handle_naming=False,
-                )))
+                futures.append(asyncio.ensure_future(
+                    func(
+                        dest_provider,
+                        # TODO figure out a way to cut down on all the requests made here
+                        (await self.revalidate_path(src_path, item.name, folder=item.is_folder)),
+                        (await dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
+                        handle_naming=False,
+                    )
+                ))
 
                 if item.is_folder:
-                    yield from fs[-1]
+                    await futures[-1]
 
-            if not fs:
+            if not futures:
                 continue
 
-            done, _ = yield from asyncio.wait(fs, return_when=asyncio.FIRST_EXCEPTION)
+            done, _ = await asyncio.wait(futures, return_when=asyncio.FIRST_EXCEPTION)
 
             for fut in done:
                 folder.children.append(fut.result()[0])
 
         return folder, created
 
-    @asyncio.coroutine
-    def handle_naming(self, src_path, dest_path, rename=None, conflict='replace'):
+    async def handle_naming(self, src_path, dest_path, rename=None, conflict='replace'):
         """Given a WaterButlerPath and the desired name, handle any potential naming issues.
 
         i.e.:
@@ -322,13 +324,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if not dest_path.is_file:
             # Directories always are going to be copied into
             # cp /folder1/ /folder2/ -> /folder1/folder2/
-            dest_path = yield from self.revalidate_path(
+            dest_path = await self.revalidate_path(
                 dest_path,
                 rename or src_path.name,
                 folder=src_path.is_dir
             )
 
-        dest_path, _ = yield from self.handle_name_conflict(dest_path, conflict=conflict)
+        dest_path, _ = await self.handle_name_conflict(dest_path, conflict=conflict)
 
         return dest_path
 
@@ -357,14 +359,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def intra_copy(self, dest_provider, source_options, dest_options):
         raise NotImplementedError
 
-    @asyncio.coroutine
-    def intra_move(self, dest_provider, src_path, dest_path):
-        data, created = yield from self.intra_copy(dest_provider, src_path, dest_path)
-        yield from self.delete(src_path)
+    async def intra_move(self, dest_provider, src_path, dest_path):
+        data, created = await self.intra_copy(dest_provider, src_path, dest_path)
+        await self.delete(src_path)
         return data, created
 
-    @asyncio.coroutine
-    def exists(self, path, **kwargs):
+    async def exists(self, path, **kwargs):
         """Check for existence of WaterButlerPath
 
         Attempt to retrieve provider metadata to determine existence of a WaterButlerPath.  If
@@ -375,7 +375,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :rtype: (`self.metadata()` or False)
         """
         try:
-            return (yield from self.metadata(path, **kwargs))
+            return (await self.metadata(path, **kwargs))
         except exceptions.NotFoundError:
             return False
         except exceptions.MetadataError as e:
@@ -383,8 +383,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                 raise
         return False
 
-    @asyncio.coroutine
-    def handle_name_conflict(self, path, conflict='replace', **kwargs):
+    async def handle_name_conflict(self, path, conflict='replace', **kwargs):
         """Check WaterButlerPath and resolve conflicts
 
         Given a WaterButlerPath and a conflict resolution pattern determine
@@ -395,7 +394,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :rtype: (WaterButlerPath, provider.metadata() or False)
         :raises: NamingConflict
         """
-        exists = yield from self.exists(path, **kwargs)
+        exists = await self.exists(path, **kwargs)
         if (not exists and not exists == []) or conflict == 'replace':
             return path, exists
         if conflict == 'warn':
@@ -403,20 +402,19 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         while True:
             path.increment_name()
-            test_path = yield from self.revalidate_path(
+            test_path = await self.revalidate_path(
                 path.parent,
                 path.name,
                 folder=path.is_dir
             )
 
-            exists = yield from self.exists(test_path, **kwargs)
+            exists = await self.exists(test_path, **kwargs)
             if not (exists or exists == []):
                 break
 
         return path, False
 
-    @asyncio.coroutine
-    def revalidate_path(self, base, path, folder=False):
+    async def revalidate_path(self, base, path, folder=False):
         """Take a path and a base path and build a WaterButlerPath representing `/base/path`.  For
         id-based providers, this will need to lookup the id of the new child object.
 
@@ -427,42 +425,18 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         return base.child(path, folder=folder)
 
-    @asyncio.coroutine
-    def zip(self, path, **kwargs):
+    async def zip(self, path, **kwargs):
         """Streams a Zip archive of the given folder
 
         :param str path: The folder to compress
         """
+
+        metadata = await self.metadata(path)
         if path.is_file:
-            base_path = path.parent.path
-        else:
-            base_path = path.path
+            metadata = [metadata]
+            path = path.parent
 
-        names, coros, remaining = [], [], [path]
-
-        while remaining:
-            path = remaining.pop()
-            metadata = yield from self.metadata(path)
-
-            for item in metadata:
-                current_path = yield from self.revalidate_path(
-                    path,
-                    item.name,
-                    folder=item.is_folder
-                )
-                if current_path.is_file:
-                    names.append(current_path.path.replace(base_path, '', 1))
-                    coros.append(self.__zip_defered_download(current_path))
-                else:
-                    remaining.append(current_path)
-
-        return streams.ZipStreamReader(*zip(names, coros))
-
-    def __zip_defered_download(self, path):
-        """Returns a scoped lambda to defer the execution
-        of the download coroutine
-        """
-        return lambda: self.download(path)
+        return streams.ZipStreamReader(ZipStreamGenerator(self, path, *metadata))
 
     @abc.abstractmethod
     def can_duplicate_names(self):
@@ -531,6 +505,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def validate_path(self, path, **kwargs):
         raise NotImplementedError
+
+    def path_from_metadata(self, parent_path, metadata):
+        return parent_path.child(metadata.name, _id=metadata.path.strip('/'), folder=metadata.is_folder)
 
     def revisions(self, **kwargs):
         return []  # TODO Raise 405 by default h/t @rliebz

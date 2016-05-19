@@ -12,7 +12,7 @@ Docs can be found [here](https://waterbutler.readthedocs.org/en/latest/)
 
 ### Requirements
 
-In order to run waterbutler, you must have a virtualenv created for waterbutler running python3.4.
+In order to run waterbutler, you must have a virtualenv created for waterbutler running python 3.5.
 
 For MacOSX, you can install the latest version of python3 using:
 
@@ -23,18 +23,18 @@ brew install python3
 For Ubuntu users:
 
 ```bash
-apt-get install python3
+apt-get install python3.5
 
 ```
 
 ### startup commands
 
-After completing the installation of Python 3, you must create the virtual environment, this can be done with the following commands:
+After completing the installation of Python 3.5, you must create the virtual environment, this can be done with the following commands:
 
 ```bash
 pip install virtualenv
 pip install virtualenvwrapper
-mkvirtualenv --python=python3 waterbutler
+mkvirtualenv --python=python3.5 waterbutler
 pip install invoke
 invoke install
 invoke server
@@ -53,7 +53,7 @@ invoke server
 vim ~/.cos/waterbutler-test.json
 ```
 
-waterbutler-test.json, e.g.
+Python 3.5's asyncio [currently has a bug](https://bugs.python.org/issue25394) that is triggered by turning on debugging. If you are upgrading from the 3.4-based WaterButler, make sure to set `SERVER_CONFIG.DEBUG` to false in your `waterbutler-test.json`, e.g.
 
 ```json
 {
@@ -64,7 +64,7 @@ waterbutler-test.json, e.g.
     "ADDRESS": "localhost",
     "PORT": 7777,
     "DOMAIN": "http://localhost:7777",
-    "DEBUG": true,
+    "DEBUG": false,
     "HMAC_SECRET": "changeme"
   },
   "OSF_AUTH_CONFIG": {

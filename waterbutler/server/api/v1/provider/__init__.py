@@ -26,8 +26,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     POST_VALIDATORS = {'put': 'postvalidate_put'}
     PATTERN = r'/resources/(?P<resource>(?:\w|\d)+)/providers/(?P<provider>(?:\w|\d)+)(?P<path>/.*/?)'
 
-    @tornado.gen.coroutine
-    def prepare(self, *args, **kwargs):
+    async def prepare(self, *args, **kwargs):
         method = self.request.method.lower()
 
         # TODO Find a nicer way to handle this
@@ -46,82 +45,75 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if method in self.PRE_VALIDATORS:
             getattr(self, self.PRE_VALIDATORS[method])()
 
-        self.auth = yield from auth_handler.get(self.resource, provider, self.request)
+        self.auth = await auth_handler.get(self.resource, provider, self.request)
         self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
-        self.path = yield from self.provider.validate_v1_path(self.path)
+        self.path = await self.provider.validate_v1_path(self.path)
 
         self.target_path = None
 
         # post-validator methods perform validations that expect that the path given in the url has
         # been verified for existence and type.
         if method in self.POST_VALIDATORS:
-            yield from getattr(self, self.POST_VALIDATORS[method])()
+            await getattr(self, self.POST_VALIDATORS[method])()
 
         # The one special case
         if method == 'put' and self.target_path.is_file:
-            yield from self.prepare_stream()
+            await self.prepare_stream()
         else:
             self.stream = None
         self.body = b''
 
-    @tornado.gen.coroutine
-    def head(self, **_):
+    async def head(self, **_):
         """Get metadata for a folder or file
         """
         if self.path.is_dir:
-            return self.set_status(http.client.NOT_IMPLEMENTED)  # Metadata on the folder itself TODO
-        return (yield from self.header_file_metadata())
+            return self.set_status(int(http.client.NOT_IMPLEMENTED))  # Metadata on the folder itself TODO
+        return (await self.header_file_metadata())
 
-    @tornado.gen.coroutine
-    def get(self, **_):
+    async def get(self, **_):
         """Download a file
         Will redirect to a signed URL if possible and accept_url is not False
         :raises: MustBeFileError if path is not a file
         """
         if self.path.is_dir:
-            return (yield from self.get_folder())
-        return (yield from self.get_file())
+            return (await self.get_folder())
+        return (await self.get_file())
 
-    @tornado.gen.coroutine
-    def put(self, **_):
+    async def put(self, **_):
         """Defined in CreateMixin"""
         if self.target_path.is_file:
-            return (yield from self.upload_file())
-        return (yield from self.create_folder())
+            return (await self.upload_file())
+        return (await self.create_folder())
 
-    @tornado.gen.coroutine
-    def post(self, **_):
-        return (yield from self.move_or_copy())
+    async def post(self, **_):
+        return (await self.move_or_copy())
 
-    @tornado.gen.coroutine
-    def delete(self, **_):
+    async def delete(self, **_):
         self.confirm_delete = int(self.get_query_argument('confirm_delete',
                                                           default=0))
-        yield from self.provider.delete(self.path,
+        await self.provider.delete(self.path,
                                         confirm_delete=self.confirm_delete)
-        self.set_status(http.client.NO_CONTENT)
+        self.set_status(int(http.client.NO_CONTENT))
 
-    @tornado.gen.coroutine
-    def data_received(self, chunk):
+    async def data_received(self, chunk):
         """Note: Only called during uploads."""
         if self.stream:
             self.writer.write(chunk)
-            yield from self.writer.drain()
+            await self.writer.drain()
         else:
             self.body += chunk
 
-    @asyncio.coroutine
-    def prepare_stream(self):
+    async def prepare_stream(self):
         """Sets up an asyncio pipe from client to server
         Only called on PUT when path is to a file
         """
         self.rsock, self.wsock = socket.socketpair()
 
-        self.reader, _ = yield from asyncio.open_unix_connection(sock=self.rsock)
-        _, self.writer = yield from asyncio.open_unix_connection(sock=self.wsock)
+        self.reader, _ = await asyncio.open_unix_connection(sock=self.rsock)
+        _, self.writer = await asyncio.open_unix_connection(sock=self.wsock)
 
         self.stream = RequestStreamReader(self.request, self.reader)
-        self.uploader = asyncio.async(self.provider.upload(self.stream, self.target_path))
+        self.uploader = asyncio.ensure_future(self.provider.upload(self.stream, self.target_path))
 
     def on_finish(self):
         status, method = self.get_status(), self.request.method.upper()
@@ -142,7 +134,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         self._send_hook(action)
 
     @utils.async_retry(retries=5, backoff=5)
-    def _send_hook(self, action):
+    async def _send_hook(self, action):
         payload = {
             'action': action,
             'time': time.time() + 60,
@@ -163,13 +155,9 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                 },
                 'destination': {
                     'nid': self.dest_resource,
-                    'kind': self.dest_meta.kind,
-                    'name': self.dest_meta.name,
-                    'path': self.dest_meta.path,
-                    'provider': self.dest_provider.NAME,
-                    'materialized': self.dest_meta.materialized_path,
                 }
             })
+            payload['destination'].update(self.dest_meta.serialized())
             callback_url = self.dest_auth['callback_url']
         else:
             # This is adequate for everything but github
@@ -186,9 +174,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             })
             callback_url = self.auth['callback_url']
 
-        resp = (yield from utils.send_signed_request('PUT', callback_url, payload))
+        resp = (await utils.send_signed_request('PUT', callback_url, payload))
+        data = await resp.read()
 
         if resp.status != 200:
-            data = yield from resp.read()
-            raise Exception('Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8')))
+            raise Exception(
+                'Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8'))
+            )
+
         logger.info('Successfully sent callback for a {} request'.format(action))
+        logger.info('Callback succeeded with {}'.format(data.decode('utf-8')))

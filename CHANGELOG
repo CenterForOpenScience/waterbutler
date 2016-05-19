@@ -2,10 +2,46 @@
 ChangeLog
 *********
 
+0.19.5 (2016-04-18)
+===================
+- Brown Paper Bag release: **REALLY** fix syntax error in Github's Unsupported Repo exception.
+The 0.19.4 release fixed nothing.  I (@felliott) am an idiot.
+
+0.19.4 (2016-04-18)
+===================
+- Fix syntax error in Github's Unsupported Repo exception.
+
+0.19.3 (2016-04-15)
+===================
+- Increase number of files returned from a Box directory from 50 to 1000. (thanks, @TomBaxter!)
+- Exclude Google Maps from Google Drive listing.  Google doesn't provide a way to export maps,
+so exclude them from listing / downloading for now.  This is the same behavior as Google Forms.
+
+0.19.2 (2016-04-14)
+===================
+- Make v1 move/copy return file metadata in its logging payload, so the OSF can track files
+across providers.
+
+0.19.1 (2016-04-13)
+===================
+- Update boto dependency to get fixes for large file uploads to Amazon Glacier. (thanks,
+@caileyfitz, for your patient testing!)
+- Increase number of files returned from a GDrive directory listing from 100 to 1000.
+
+0.19.0 (2016-04-04)
+===================
+- Feature: WaterButler now runs on Python 3.5!  A major speed boost should be
+noticeable, especially for zipped folder downloads.  All hail @chrisseto and
+@TomBaxter for seeing this through!
+- Feature: Zipped folder downloads now use the folder name as the zip filename.  If the folder
+is the storage root, the name is `$provider.zip` (e.g. `googledrive.zip`).
+- Code: WaterButlerPath has a new `is_folder` method. It's the same as `is_dir`.
+- Code: waterbutler.core.BaseProvider learned `path_from_metadata`.
+
 0.18.4 (2016-04-01)
 ===================
 - Fix: Bump PyJWE dependency to 1.0.0 to match with OSF v0.66.0
-	
+
 0.18.3 (2016-03-28)
 ===================
 - Fix: Renaming a Google doc (.gdoc, .gsheet) file should not and no longer truncates the new

@@ -1,26 +1,24 @@
 import asyncio
 import os
-import copy
-import shutil
-import tempfile
-from unittest import mock
 
-from decorator import decorator
-
-import pytest
 from tornado import testing
 from tornado.platform.asyncio import AsyncIOMainLoop
 
-from waterbutler.core import metadata
-from waterbutler.core import provider
 from waterbutler.server.app import make_app
-from waterbutler.core.path import WaterButlerPath
-
-from tests.utils import MockCoroutine
-from tests.utils import MockProvider1
 
 
 class ServerTestCase(testing.AsyncHTTPTestCase):
+
+    def setUp(self):
+        policy = asyncio.get_event_loop_policy()
+        policy.get_event_loop().close()
+        self.event_loop = policy.new_event_loop()
+        policy.set_event_loop(self.event_loop)
+        super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+        self.event_loop.close()
 
     def get_url(self, path):
         return super().get_url(os.path.join('/v1', path.lstrip('/')))

@@ -1,7 +1,6 @@
 import os
 import http
 import json
-import asyncio
 
 
 DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request to {response.url}'
@@ -137,8 +136,7 @@ class InvalidPathError(ProviderError):
         super().__init__(message, code=http.client.BAD_REQUEST)
 
 
-@asyncio.coroutine
-def exception_from_response(resp, error=ProviderError, **kwargs):
+async def exception_from_response(resp, error=ProviderError, **kwargs):
     """Build and return, not raise, an exception from a response object
 
     :param Response resp: An aiohttp.Response stream with a non 200 range status
@@ -149,13 +147,13 @@ def exception_from_response(resp, error=ProviderError, **kwargs):
     """
     try:
         # Try to make an exception from our received json
-        data = yield from resp.json()
+        data = await resp.json()
         return error(data, code=resp.status)
     except Exception:
         pass
 
     try:
-        data = yield from resp.read()
+        data = await resp.read()
         return error({'response': data.decode('utf-8')}, code=resp.status)
     except TypeError:
         pass

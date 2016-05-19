@@ -19,7 +19,7 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler, 
         etype, exc, _ = exc_info
 
         if issubclass(etype, exceptions.WaterButlerError):
-            self.set_status(exc.code)
+            self.set_status(int(exc.code))
             if exc.data:
                 self.finish(exc.data)
             else:
