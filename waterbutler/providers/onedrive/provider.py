@@ -1,5 +1,6 @@
 import json
 import http
+import asyncio
 
 import logging
 
@@ -98,6 +99,7 @@ class OneDriveProvider(provider.BaseProvider):
         if (resp.status == 404):
             ids = None
             folder = False
+            await resp.release()
         else:
             data = await resp.json()
             ids = self._get_ids(data)[-1]
@@ -131,19 +133,20 @@ class OneDriveProvider(provider.BaseProvider):
             raise exceptions.IntraCopyError
         logger.info('resp::{}'.format(repr(resp)))
         status_url = resp.headers['LOCATION']
+        await resp.release()
         logger.info('status_url::{}'.format(repr(status_url)))
         i = 0
         status = False
-        while (i < 100):
+        while (i < 15):
             logger.info('status::{}  i:{}'.format(repr(status), i))
             status = await self._copy_status(status_url)
-            #  status = backgroundify(self._copy_status(status_url))  #  TODO: determine how best to call status check without blocking and without returning to OSF
             if (status):
                 break
+            await asyncio.sleep(4)
             i += 1
 
         data = await self.metadata(dest_path, None)
-        return data, True  # dest_path.identifier is None
+        return data, dest_path.identifier is None
 
     async def _copy_status(self, status_url):
         #  docs: https://dev.onedrive.com/resources/asyncJobStatus.htm
@@ -254,13 +257,14 @@ class OneDriveProvider(provider.BaseProvider):
         return OneDriveFileMetadata(data, self.folder), not exists
 
     async def delete(self, path, **kwargs):
-        await self.make_request(
+        resp = await self.make_request(
             'DELETE',
             self.build_url(path.identifier),
             data={},
             expects=(204, ),
             throws=exceptions.DeleteError,
         )
+        resp.release()
 
     async def metadata(self, path, revision=None, **kwargs):
         logger.info('metadata identifier::{} path::{} revision::{}'.format(repr(path.identifier), repr(path), repr(revision)))
