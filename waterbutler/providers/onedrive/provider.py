@@ -141,12 +141,12 @@ class OneDriveProvider(provider.BaseProvider):
         logger.info('status_url::{}'.format(repr(status_url)))
         i = 0
         status = False
-        while (i < 15):
+        while (i < 18):
             logger.info('status::{}  i:{}'.format(repr(status), i))
             status = await self._copy_status(status_url)
             if (status):
                 break
-            await asyncio.sleep(4)
+            await asyncio.sleep(5)
             i += 1
 
         data = await self.metadata(dest_path, None)
