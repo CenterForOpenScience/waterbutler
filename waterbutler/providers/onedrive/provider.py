@@ -23,6 +23,10 @@ logger = logging.getLogger(__name__)
 
 
 class OneDriveProvider(provider.BaseProvider):
+    """Provider for the OneDrive cloud storage service.
+
+    API docs: https://dev.onedrive.com/README.htm
+    """
     NAME = 'onedrive'
     BASE_URL = settings.BASE_URL
 
@@ -114,7 +118,7 @@ class OneDriveProvider(provider.BaseProvider):
         }
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
-        #  https://dev.onedrive.com/items/copy.htm
+        """ OneDrive API Reference: https://dev.onedrive.com/items/copy.htm """
 
         url = self.build_url(src_path.identifier, 'action.copy')
         payload = json.dumps({'name': dest_path.name,
@@ -149,7 +153,7 @@ class OneDriveProvider(provider.BaseProvider):
         return data, dest_path.identifier is None
 
     async def _copy_status(self, status_url):
-        #  docs: https://dev.onedrive.com/resources/asyncJobStatus.htm
+        """ OneDrive API Reference: https://dev.onedrive.com/resources/asyncJobStatus.htm """
         status = 'notStarted'
         resp = await self.make_request(
             'GET', status_url,
@@ -162,10 +166,9 @@ class OneDriveProvider(provider.BaseProvider):
         return True if resp.status == 200 else False
 
     async def intra_move(self, dest_provider, src_path, dest_path):
-        #  https://dev.onedrive.com/items/move.htm
-
-        #  PATCH /drive/items/{item-id}
-        #  use cases: file rename or file move or folder rename or folder move
+        """ OneDrive API Reference: https://dev.onedrive.com/items/move.htm
+            Use Cases: file rename or file move or folder rename or folder move
+        """
 
         url = self.build_url(src_path.identifier)
         payload = json.dumps({'name': dest_path.name,
@@ -198,7 +201,7 @@ class OneDriveProvider(provider.BaseProvider):
         return folder, True
 
     async def download(self, path, revision=None, range=None, **kwargs):
-
+        """ OneDrive API Reference: https://dev.onedrive.com/items/download.htm """
         logger.info('folder:: {} revision::{} path.identifier:{} path:{} path.parts:{}'.format(self.folder, revision, path.identifier, repr(path), repr(path._parts)))
 
         if path.identifier is None:
@@ -234,6 +237,8 @@ class OneDriveProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(resp)
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
+        """ OneDrive API Reference: https://dev.onedrive.com/items/upload_put.htm
+            Limited to 100MB file upload. """
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         #  PUT /drive/items/{parent-id}/children/{filename}/content
 
@@ -257,6 +262,7 @@ class OneDriveProvider(provider.BaseProvider):
         return OneDriveFileMetadata(data, self.folder), not exists
 
     async def delete(self, path, **kwargs):
+        """ OneDrive API Reference: https://dev.onedrive.com/items/delete.htm """
         resp = await self.make_request(
             'DELETE',
             self.build_url(path.identifier),
@@ -267,6 +273,7 @@ class OneDriveProvider(provider.BaseProvider):
         resp.release()
 
     async def metadata(self, path, revision=None, **kwargs):
+        """ OneDrive API Reference: https://dev.onedrive.com/items/get.htm """
         logger.info('metadata identifier::{} path::{} revision::{}'.format(repr(path.identifier), repr(path), repr(revision)))
 
         if (path.full_path == '0/'):
@@ -314,7 +321,9 @@ class OneDriveProvider(provider.BaseProvider):
         return OneDriveFileMetadata(data, self.folder)
 
     async def revisions(self, path, **kwargs):
-        #  https://dev.onedrive.com/items/view_delta.htm
+        """ OneDrive API Reference: https://dev.onedrive.com/items/view_delta.htm
+            As of May 20, 2016: for files, the latest state is returned.  There is not a list of changes for the file.
+        """
         data = await self._revisions_json(path, **kwargs)
         logger.info('revisions: data::{}'.format(data['value']))
 
@@ -326,11 +335,9 @@ class OneDriveProvider(provider.BaseProvider):
 
     async def create_folder(self, path, **kwargs):
         """
+        OneDrive API Reference: https://dev.onedrive.com/items/create.htm
         :param str path: The path to create a folder at
         """
-        #  https://dev.onedrive.com/items/create.htm
-        #  PUT /drive/items/{parent-id}:/{name}
-        #  In the request body, supply a JSON representation of a Folder Item, as shown below.
         WaterButlerPath.validate_folder(path)
 
         folderName = path.full_path.split('/')[-2]
@@ -356,8 +363,9 @@ class OneDriveProvider(provider.BaseProvider):
         return OneDriveFolderMetadata(data, self.folder)
 
     async def _revisions_json(self, path, **kwargs):
-        #  https://dev.onedrive.com/items/view_delta.htm
-        #  TODO: 2015-11-29 - onedrive only appears to return the last delta for a token, period.  Not sure if there is a work around, from the docs: "The delta feed shows the latest state for each item, not each change. If an item were renamed twice, it would only show up once, with its latest name."
+        """ OneDrive API Reference: https://dev.onedrive.com/items/view_delta.htm
+            As of May 20, 2016: for files, the latest state is returned.  There is not a list of changes for the file.
+        """
         if path.identifier is None:
                 raise exceptions.NotFoundError(str(path))
         response = await self.make_request(
@@ -385,9 +393,6 @@ class OneDriveProvider(provider.BaseProvider):
 
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
-
-#      def _is_folder(self, path):
-#          return True if str(path).endswith('/') else False
 
     def _get_one_drive_id(self, path):
         return path.full_path[path.full_path.rindex('/') + 1:]
