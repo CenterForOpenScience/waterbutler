@@ -46,7 +46,7 @@ class MoveCopyMixin:
             'nid': self.dest_resource,
             'path': self.dest_path,
             'provider': self.dest_provider.serialized()
-        }, self.auth['callback_url'], self.auth)
+        })
 
     async def move_or_copy(self):
         # Force the json body to load into memory
