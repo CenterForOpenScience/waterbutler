@@ -106,9 +106,11 @@ async def send_signed_request(method, url, payload):
 
 
 async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[]):
+    auth = getattr(destination, 'auth', source.auth)
+
     log_payload = {
         'action': action,
-        'auth': source.auth,
+        'auth': auth,
         'time': time.time() + 60,
         'errors': errors,
     }
@@ -123,7 +125,7 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         log_payload['metadata'] = source.serialize()
         log_payload['provider'] = log_payload['metadata']['provider']
 
-    resp = await send_signed_request('PUT', source.provider.auth['callback_url'], log_payload)
+    resp = await send_signed_request('PUT', auth['callback_url'], log_payload)
     resp_data = await resp.read()
 
     if resp.status // 100 != 2:

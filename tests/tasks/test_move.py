@@ -152,7 +152,7 @@ class TestMoveTask:
 
         assert method == 'PUT'
         assert data['errors'] == ["Exception('This is a string',)"]
-        assert url == 'src_callback'
+        assert url == 'dest_callback'
 
     def test_return_values(self, event_loop, providers, bundles, callback, src_path, dest_path, mock_time):
         src, dest = providers
@@ -167,9 +167,9 @@ class TestMoveTask:
 
         (method, url, data), _ = callback.call_args_list[0]
         assert method == 'PUT'
-        assert url == 'src_callback'
+        assert url == 'dest_callback'
         assert data['action'] == 'move'
-        assert data['auth'] == {'callback_url': 'src_callback'}
+        assert data['auth'] == {'callback_url': 'dest_callback'}
         assert data['email'] == False
         assert data['errors'] == []
         assert data['time'] == FAKE_TIME + 60

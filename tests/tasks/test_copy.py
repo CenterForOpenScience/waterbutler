@@ -150,7 +150,7 @@ class TestCopyTask:
         assert src.copy.called
         src.copy.assert_called_once_with(dest, src_bundle['path'], dest_bundle['path'])
 
-        assert url == 'src_callback'
+        assert url == 'dest_callback'
         assert method == 'PUT'
         assert data['errors'] == ["Exception('This is a string',)"]
 
@@ -167,9 +167,9 @@ class TestCopyTask:
 
         (method, url, data), _ = callback.call_args_list[0]
         assert method == 'PUT'
-        assert url == 'src_callback'
+        assert url == 'dest_callback'
         assert data['action'] == 'copy'
-        assert data['auth'] == {'callback_url': 'src_callback'}
+        assert data['auth'] == {'callback_url': 'dest_callback'}
         assert data['email'] == False
         assert data['errors'] == []
         assert data['time'] == FAKE_TIME + 60
