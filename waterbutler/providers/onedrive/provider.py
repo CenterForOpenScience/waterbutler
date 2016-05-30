@@ -140,17 +140,16 @@ class OneDriveProvider(provider.BaseProvider):
         await resp.release()
         logger.info('status_url::{}'.format(repr(status_url)))
         i = 0
-        status = False
-        while (i < 18):
+        status = None
+        while (i < 30):
             logger.info('status::{}  i:{}'.format(repr(status), i))
             status = await self._copy_status(status_url)
-            if (status):
+            if (status is not None):
                 break
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
             i += 1
-
-        data = await self.metadata(dest_path, None)
-        return data, dest_path.identifier is None
+        metadata = self._construct_metadata(status)
+        return metadata, True
 
     async def _copy_status(self, status_url):
         """ OneDrive API Reference: https://dev.onedrive.com/resources/asyncJobStatus.htm """
@@ -163,7 +162,7 @@ class OneDriveProvider(provider.BaseProvider):
         data = await resp.json()
         status = data.get('status')
         logger.info('_copy_status  status::{} resp:{} data::{}'.format(repr(status), repr(resp), repr(data)))
-        return True if resp.status == 200 else False
+        return data if resp.status == 200 else None
 
     async def intra_move(self, dest_provider, src_path, dest_path):
         """ OneDrive API Reference: https://dev.onedrive.com/items/move.htm
@@ -308,17 +307,7 @@ class OneDriveProvider(provider.BaseProvider):
                 code=http.client.NOT_FOUND,
             )
 
-        if 'folder' in data.keys():
-            ret = []
-            if 'children' in data.keys():
-                for item in data['children']:
-                    if 'folder' in item.keys():
-                        ret.append(OneDriveFolderMetadata(item, self.folder))
-                    else:
-                        ret.append(OneDriveFileMetadata(item, self.folder))
-            return ret
-
-        return OneDriveFileMetadata(data, self.folder)
+        return self._construct_metadata(data)
 
     async def revisions(self, path, **kwargs):
         """ OneDrive API Reference: https://dev.onedrive.com/items/view_delta.htm
@@ -387,6 +376,19 @@ class OneDriveProvider(provider.BaseProvider):
 
     def can_intra_move(self, dest_provider, path=None):
         return self == dest_provider
+
+    def _construct_metadata(self, data):
+        if 'folder' in data.keys():
+            ret = []
+            if 'children' in data.keys():
+                for item in data['children']:
+                    if 'folder' in item.keys():
+                        ret.append(OneDriveFolderMetadata(item, self.folder))
+                    else:
+                        ret.append(OneDriveFileMetadata(item, self.folder))
+            return ret
+
+        return OneDriveFileMetadata(data, self.folder)
 
     def _build_root_url(self, *segments, **query):
         return provider.build_url(settings.BASE_ROOT_URL, *segments, **query)

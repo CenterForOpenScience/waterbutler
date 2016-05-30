@@ -360,7 +360,6 @@ def file_root_parent_metadata():
            "lastModifiedDateTime": "2015-12-08T21:51:15.593Z"
     }
 
-
 @pytest.fixture
 def file_metadata():
     return {
@@ -452,6 +451,27 @@ class TestValidatePath:
 
         assert actual_path == expected_path
 
+    @pytest.mark.aiohttpretty
+    @pytest.mark.asyncio
+    async def test_revalidate_path_does_not_exist(self, provider, file_root_parent_metadata):
+        file_id = '1234'
+        file_name = 'elect-a.jpg'
+        parent_id = '75BFE374EBEB1211!107'
+        expected_path = WaterButlerPath('/' + file_name, [None, file_id])
+        base_path = WaterButlerPath('/', [file_id])
+
+        good_url = "https://api.onedrive.com/v1.0/drive/root%3A/{}/{}".format(file_name, file_name)
+        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
+
+        good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(parent_id)
+        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
+
+        good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(file_id)
+        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
+
+        actual_path = await provider.revalidate_path(base_path, file_name, False)
+
+        assert actual_path == expected_path
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
