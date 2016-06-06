@@ -1,7 +1,5 @@
 import pytest
 
-from tests.utils import async
-
 import io
 from http import client
 
@@ -197,7 +195,7 @@ test_folder_json_ld = '''
 
 class TestProvider:
     # Test building a URL to a resource in the respository
-    def test_build_repo_url(self, provider, credentials):
+    async def test_build_repo_url(self, provider, credentials):
         repo = credentials['repo']
         path_str = '/path/to/file'
         path = WaterButlerPath(path_str)
@@ -208,9 +206,9 @@ class TestProvider:
 
 
     # Ensure that a missing folder results in a NotFoundError exception
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_missing_folder(self, provider):
+    async def test_metadata_missing_folder(self, provider):
         path = WaterButlerPath('/missing/')
 
         url = provider.build_repo_url(path)
@@ -218,12 +216,12 @@ class TestProvider:
         aiohttpretty.register_uri('HEAD', url, status=404)
 
         with pytest.raises(exceptions.NotFoundError):
-            yield from provider.metadata(path)
+            await provider.metadata(path)
 
     # Ensure that a missing file results in a NotFoundError exception
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_missing_file(self, provider):
+    async def test_metadata_missing_file(self, provider):
         path = WaterButlerPath('/missing/file')
 
         url = provider.build_repo_url(path)
@@ -231,35 +229,35 @@ class TestProvider:
         aiohttpretty.register_uri('HEAD', url, status=404)
 
         with pytest.raises(exceptions.NotFoundError):
-            yield from provider.metadata(path)
+            await provider.metadata(path)
 
     # Ensure that metadata can be returned for a file
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_file(self, provider):
+    async def test_metadata_file(self, provider):
         path = WaterButlerPath(test_file_path)
 
         url = provider.build_repo_url(path)
         aiohttpretty.register_uri('HEAD', url, status=200)
         aiohttpretty.register_uri('GET', url + '/fcr:metadata', status=200, body=test_file_json_ld, headers={'Content-Type': 'application/json'})
 
-        result = yield from provider.metadata(path)
+        result = await provider.metadata(path)
 
         expected = FedoraFileMetadata(json.loads(test_file_json_ld), url, path)
 
         assert expected == result
 
     # Ensure that metadata can be returned for a folder
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_folder(self, provider):
+    async def test_metadata_folder(self, provider):
         path = WaterButlerPath(test_folder_path)
 
         url = provider.build_repo_url(path)
         aiohttpretty.register_uri('HEAD', url, status=200, headers={'Link': '<http://www.w3.org/ns/ldp#Container>;rel="type"'})
         aiohttpretty.register_uri('GET', url, status=200, body=test_folder_json_ld, headers={'Content-Type': 'application/json'})
 
-        result = yield from provider.metadata(path)
+        result = await provider.metadata(path)
 
         assert 2 == len(result)
         folder_md = None
@@ -292,38 +290,38 @@ class TestProvider:
 
 
     # Test downloading a file
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_download_file(self, provider):
+    async def test_download_file(self, provider):
         path = WaterButlerPath(test_file_path)
         url = provider.build_repo_url(path)
 
         aiohttpretty.register_uri('GET', url, body=test_file_content, auto_length=True, status=200)
 
-        result = yield from provider.download(path)
-        content = yield from result.response.read()
+        result = await provider.download(path)
+        content = await result.response.read()
 
         assert test_file_content == content
 
     # Test downloading a file that does not exist
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_download_non_existent_file(self, provider):
+    async def test_download_non_existent_file(self, provider):
         path = WaterButlerPath(test_file_path)
 
         url = provider.build_repo_url(path)
         aiohttpretty.register_uri('GET', url, status=404)
 
         with pytest.raises(exceptions.DownloadError) as e:
-            yield from provider.download(path)
+            await provider.download(path)
 
         assert e.value.code == 404
 
 
     # Test uploading a file
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_upload_file(self, provider):
+    async def test_upload_file(self, provider):
         path = WaterButlerPath(test_file_path)
         url = provider.build_repo_url(path)
         file_stream = streams.FileStreamReader(io.BytesIO(test_file_content))
@@ -334,7 +332,7 @@ class TestProvider:
         aiohttpretty.register_uri('GET', url + '/fcr:metadata', status=200, body=test_file_json_ld, headers={'Content-Type': 'application/json'})
         aiohttpretty.register_json_uri('PUT', url, status=201, headers={'Location': url})
 
-        metadata, created = yield from provider.upload(file_stream, path)
+        metadata, created = await provider.upload(file_stream, path)
 
         expected = FedoraFileMetadata(file_metadata, fedora_id, path)
 
@@ -343,21 +341,21 @@ class TestProvider:
 
 
     # Test deleting a folder
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_delete_file(self, provider):
+    async def test_delete_file(self, provider):
         path = WaterButlerPath(test_file_path)
         url = provider.build_repo_url(path)
 
         aiohttpretty.register_uri('DELETE', url, status=204)
         aiohttpretty.register_uri('DELETE', url + '/fcr:tombstone', status=204)
 
-        yield from provider.delete(path)
+        await provider.delete(path)
 
     # Test creating a folder and returning metadata for it
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_create_folder(self, provider):
+    async def test_create_folder(self, provider):
         path = WaterButlerPath(test_folder_path)
         url = provider.build_repo_url(path)
 
@@ -365,16 +363,16 @@ class TestProvider:
         aiohttpretty.register_uri('GET', url, status=200, body=test_folder_json_ld, headers={'Content-Type': 'application/json'})
         aiohttpretty.register_uri('HEAD', url, status=200, headers={'Link': '<http://www.w3.org/ns/ldp#Container>;rel="type"'})
 
-        result = yield from provider.create_folder(path)
+        result = await provider.create_folder(path)
 
         assert result.name == 'barn'
         assert result.kind == 'folder'
         assert result.path == '/farm/barn/'
 
     # Test copying a file, /farm/gorilla, to a folder /farm/barn
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_intra_copy(self, provider):
+    async def test_intra_copy(self, provider):
         test_file = WaterButlerPath(test_file_path)
         dest_file = WaterButlerPath('/farm/barn/gorilla')
         src_file_url = provider.build_repo_url(test_file)
@@ -389,7 +387,7 @@ class TestProvider:
         aiohttpretty.register_uri('HEAD', dest_file_url, status=200)
         aiohttpretty.register_json_uri('COPY', src_file_url, status=201, headers={'Location': dest_file_url})
 
-        metadata, created = yield from provider.intra_copy(provider, test_file, test_folder)
+        metadata, created = await provider.intra_copy(provider, test_file, test_folder)
 
         expected = FedoraFileMetadata(json.loads(dest_file_json_ld), dest_file_url, dest_file)
 
@@ -398,9 +396,9 @@ class TestProvider:
 
 
     # Test moving a file, /farm/gorilla, to a folder /farm/barn
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_intra_move(self, provider):
+    async def test_intra_move(self, provider):
         test_file = WaterButlerPath(test_file_path)
         dest_file = WaterButlerPath('/farm/barn/gorilla')
         src_file_url = provider.build_repo_url(test_file)
@@ -416,7 +414,7 @@ class TestProvider:
         aiohttpretty.register_json_uri('MOVE', src_file_url, status=201, headers={'Location': dest_file_url})
         aiohttpretty.register_json_uri('DELETE', src_file_url + '/fcr:tombstone', status=204)
 
-        metadata, created = yield from provider.intra_move(provider, test_file, test_folder)
+        metadata, created = await provider.intra_move(provider, test_file, test_folder)
 
         expected = FedoraFileMetadata(json.loads(dest_file_json_ld), dest_file_url, dest_file)
 
@@ -425,47 +423,47 @@ class TestProvider:
 
 
     # Ensure that validate_path works.
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_path(self, provider):
-        result = yield from provider.validate_path(test_file_path)
+    async def test_validate_path(self, provider):
+        result = await provider.validate_path(test_file_path)
         assert result == WaterButlerPath(test_file_path)
 
-        result = yield from provider.validate_path(test_folder_path)
+        result = await provider.validate_path(test_folder_path)
         assert result == WaterButlerPath(test_folder_path)
 
     # Ensure that validate_v1_path works on existing file
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_existing_file(self, provider):
+    async def test_validate_v1_path_existing_file(self, provider):
         expected = WaterButlerPath(test_file_path)
         url = provider.build_repo_url(expected)
 
         aiohttpretty.register_uri('HEAD', url, status=200)
 
-        result = yield from provider.validate_v1_path(test_file_path)
+        result = await provider.validate_v1_path(test_file_path)
 
         assert result == expected
 
     # Ensure that validate_v1_path works on missing file
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_missing_file(self, provider):
+    async def test_validate_v1_path_missing_file(self, provider):
         url = provider.build_repo_url(WaterButlerPath(test_file_path))
 
         aiohttpretty.register_uri('HEAD', url, status=404)
 
         with pytest.raises(exceptions.NotFoundError):
-            yield from provider.validate_v1_path(test_file_path)
+            await provider.validate_v1_path(test_file_path)
 
 
     # Ensure that validate_v1_path throws NotFoundError when types do not match
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_validate_v1_path_fails_treating_file_as_folder(self, provider):
+    async def test_validate_v1_path_fails_treating_file_as_folder(self, provider):
         url = provider.build_repo_url(WaterButlerPath(test_file_path))
 
         aiohttpretty.register_uri('HEAD', url, status=200, headers={'Link': '<http://www.w3.org/ns/ldp#Container>;rel="type"'})
 
         with pytest.raises(exceptions.NotFoundError):
-            result = yield from provider.validate_v1_path(test_file_path)
+            result = await provider.validate_v1_path(test_file_path)

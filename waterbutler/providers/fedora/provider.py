@@ -1,4 +1,3 @@
-import asyncio
 import aiohttp
 import mimetypes
 
@@ -40,12 +39,11 @@ class FedoraProvider(provider.BaseProvider):
     # and otherwise corresponds to a Fedora binary.
     # Fedora resource must also exist.
     # Throw NotFoundError if resource does not exist or types do not match
-    @asyncio.coroutine
-    def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path, **kwargs):
         wb_path = WaterButlerPath(path)
         url = self.build_repo_url(wb_path)
 
-        is_container = yield from self.is_fedora_container(url)
+        is_container = await self.is_fedora_container(url)
 
         if is_container == wb_path.is_dir:
             return wb_path
@@ -54,8 +52,7 @@ class FedoraProvider(provider.BaseProvider):
 
     # Return WaterButlerPath for a path string.
     # Any path understood by WaterButlerPath is fine
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
     def can_duplicate_names(self):
@@ -75,11 +72,11 @@ class FedoraProvider(provider.BaseProvider):
 
     # Copies src_path to dest_path.
     # Returns BaseMetadata, Success tuple.
-    def intra_copy(self, dest_provider, src_path, dest_path):
+    async def intra_copy(self, dest_provider, src_path, dest_path):
         src_url = self.build_repo_url(src_path)
         dest_url = self.build_repo_url(dest_path)
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'COPY', src_url,
             headers={'Destination': dest_url},
             expects=(201,),
@@ -89,17 +86,17 @@ class FedoraProvider(provider.BaseProvider):
         # Recalcuate destination path based on Location header
         dest_path = self.fedora_url_to_path(resp.headers.get('Location'))
 
-        md = yield from self.lookup_fedora_metadata(dest_path)
+        md = await self.lookup_fedora_metadata(dest_path)
 
         return md, True
 
     # Moves src_path to dest_path.
     # Returns BaseMetadata, Success tuple.
-    def intra_move(self, dest_provider, src_path, dest_path):
+    async def intra_move(self, dest_provider, src_path, dest_path):
         src_url = self.build_repo_url(src_path)
         dest_url = self.build_repo_url(dest_path)
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'MOVE', src_url,
             headers={'Destination': dest_url},
             expects=(201,),
@@ -107,7 +104,7 @@ class FedoraProvider(provider.BaseProvider):
         )
 
         # Delete tombstone of original file
-        yield from self.make_request(
+        await self.make_request(
             'DELETE', src_url + '/fcr:tombstone',
             expects=(204, ),
             throws=exceptions.DeleteError,
@@ -116,7 +113,7 @@ class FedoraProvider(provider.BaseProvider):
         # Recalcuate destination path based on Location header
         dest_path = self.fedora_url_to_path(resp.headers.get('Location'))
 
-        md = yield from self.lookup_fedora_metadata(dest_path)
+        md = await self.lookup_fedora_metadata(dest_path)
 
         return md, True
 
@@ -127,11 +124,10 @@ class FedoraProvider(provider.BaseProvider):
         }
 
     # Download a Fedora binary
-    @asyncio.coroutine
-    def download(self, path, revision=None, range=None, **kwargs):
+    async def download(self, path, revision=None, range=None, **kwargs):
         url = self.build_repo_url(path)
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET',
             url,
             range=range,
@@ -142,9 +138,8 @@ class FedoraProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(resp)
 
     # Create a Fedora binary corrsponding to the path and return FedoraFileMetadata for it
-    @asyncio.coroutine
-    def upload(self, stream, path, conflict='replace', **kwargs):
-        path, exists = yield from self.handle_name_conflict(path, conflict=conflict)
+    async def upload(self, stream, path, conflict='replace', **kwargs):
+        path, exists = await self.handle_name_conflict(path, conflict=conflict)
         url = self.build_repo_url(path)
 
         # Must provide a Content-Type. Otherwise a container is created.
@@ -158,7 +153,7 @@ class FedoraProvider(provider.BaseProvider):
                             'application/rdf+xml' 'application/n-triples' 'application/ld+json']:
             mime_type = 'application/octet-stream'
 
-        yield from self.make_request(
+        await self.make_request(
             'PUT',
             url,
             headers={'Content-Length': str(stream.size), 'Content-Type': mime_type},
@@ -167,22 +162,21 @@ class FedoraProvider(provider.BaseProvider):
             throws=exceptions.UploadError,
         )
 
-        md = yield from self.metadata(path)
+        md = await self.metadata(path)
         return md, True
 
     # Delete the Fedora resource corrsponding to the path
     # Must also delete the tombstone so the resource can be recreated.
-    @asyncio.coroutine
-    def delete(self, path, confirm_delete=0, **kwargs):
+    async def delete(self, path, confirm_delete=0, **kwargs):
         url = self.build_repo_url(path)
 
-        yield from self.make_request(
+        await self.make_request(
             'DELETE', url,
             expects=(204, ),
             throws=exceptions.DeleteError,
         )
 
-        yield from self.make_request(
+        await self.make_request(
             'DELETE', url + '/fcr:tombstone',
             expects=(204, ),
             throws=exceptions.DeleteError,
@@ -191,9 +185,8 @@ class FedoraProvider(provider.BaseProvider):
     # Given a WaterBulterPath, return metadata about the specified resource.
     # The JSON-LD representations of Fedora resources are parsed as simple JSON.
     # This is a little brittle and may cause issues in the future.
-    @asyncio.coroutine
-    def metadata(self, path, revision=None, **kwargs):
-        result = yield from self.lookup_fedora_metadata(path)
+    async def metadata(self, path, revision=None, **kwargs):
+        result = await self.lookup_fedora_metadata(path)
 
         # If fedora resource is container, return list of metadata about child resources.
 
@@ -206,17 +199,16 @@ class FedoraProvider(provider.BaseProvider):
     # Must do a HEAD request to figure out how to retrieve metadata because the url to a Fedora binary
     # resource must have /fcr:metadata appended to it.
     # The Prefer header tells fedora to include triples for child resources.
-    @asyncio.coroutine
-    def lookup_fedora_metadata(self, path):
+    async def lookup_fedora_metadata(self, path):
         fedora_id = self.build_repo_url(path)
-        is_container = yield from self.is_fedora_container(fedora_id)
+        is_container = await self.is_fedora_container(fedora_id)
 
         if is_container:
             url = fedora_id
         else:
             url = fedora_id + '/fcr:metadata'
 
-        resp = yield from self.make_request(
+        resp = await self.make_request(
             'GET', url,
             headers={'Accept': 'application/ld+json',
                      'Prefer': 'return=representation; include="http://fedora.info/definitions/v4/repository#EmbedResources"'},
@@ -227,7 +219,7 @@ class FedoraProvider(provider.BaseProvider):
         if resp.status == 404:
             raise exceptions.NotFoundError(str(path))
 
-        raw = yield from resp.json()
+        raw = await resp.json()
 
         if is_container:
             return FedoraFolderMetadata(raw, fedora_id, path)
@@ -235,9 +227,8 @@ class FedoraProvider(provider.BaseProvider):
             return FedoraFileMetadata(raw, fedora_id, path)
 
     # Do a head request on a url to check if it is a fedora container
-    @asyncio.coroutine
-    def is_fedora_container(self, url):
-        resp = yield from self.make_request(
+    async def is_fedora_container(self, url):
+        resp = await self.make_request(
             'HEAD', url,
             expects=(200, 404),
             throws=exceptions.MetadataError
@@ -249,18 +240,17 @@ class FedoraProvider(provider.BaseProvider):
         return '<http://www.w3.org/ns/ldp#Container>;rel="type"' in resp.headers.getall('Link', [])
 
     # Create the specified folder as a Fedora container and return FedoraFolderMetadata for it
-    @asyncio.coroutine
-    def create_folder(self, path, folder_precheck=True, **kwargs):
+    async def create_folder(self, path, folder_precheck=True, **kwargs):
         WaterButlerPath.validate_folder(path)
 
         url = self.build_repo_url(path)
 
-        yield from self.make_request(
+        await self.make_request(
             'PUT',
             url,
             expects=(201,),
             throws=exceptions.CreateFolderError
         )
 
-        md = yield from self.lookup_fedora_metadata(path)
+        md = await self.lookup_fedora_metadata(path)
         return md
