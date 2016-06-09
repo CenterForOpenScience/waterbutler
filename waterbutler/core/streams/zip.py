@@ -9,6 +9,8 @@ from waterbutler.core.streams import BaseStream
 from waterbutler.core.streams import MultiStream
 from waterbutler.core.streams import StringStream
 
+ZIP64_LIMIT = (1 << 31) - 1
+
 
 class ZipLocalFileDescriptor(BaseStream):
     """The descriptor (footer) for a local file in a zip archive
@@ -134,15 +136,36 @@ class ZipLocalFile(MultiStream):
         dosdate = (dt[0] - 1980) << 9 | dt[1] << 5 | dt[2]
         dostime = dt[3] << 11 | dt[4] << 5 | (dt[5] // 2)
 
+        extra_64 = []
+
+        if self.original_size > ZIP64_LIMIT:
+            extra_64.append(self.original_size)
+            self.original_size = 0xFFFFFFFF
+
+        if self.compressed_size > ZIP64_LIMIT:
+            extra_64.append(self.compressed_size)
+            self.compressed_size = 0xFFFFFFFF
+
+        if self.zinfo.header_offset > ZIP64_LIMIT:
+            extra_64.append(self.zinfo.header_offset)
+            self.zinfo.header_offset = 0xFFFFFFFF
+
         extra_data = self.zinfo.extra
+        if len(extra_64):
+            extra_data = struct.pack(
+                '<HH' + 'Q' * len(extra_64),
+                1,
+                8 * len(extra_64),
+                *extra_64
+            ) + self.zinfo.extra
 
         filename, flag_bits = self.zinfo._encodeFilenameFlags()
         centdir = struct.pack(
             zipfile.structCentralDir,
             zipfile.stringCentralDir,
-            self.zinfo.create_version,
+            45,  # self.zinfo.create_version,
             self.zinfo.create_system,
-            self.zinfo.extract_version,
+            45,  # self.zinfo.extract_version,
             self.zinfo.reserved,
             flag_bits,
             self.zinfo.compress_type,
@@ -165,7 +188,12 @@ class ZipLocalFile(MultiStream):
     @property
     def descriptor(self):
         """Local file data descriptor"""
-        fmt = '<4sLLL'
+
+        if (self.original_size > ZIP64_LIMIT) or (self.compressed_size > ZIP64_LIMIT):
+            fmt = '<4sLQQ'
+        else:
+            fmt = '<4sLLL'
+
         signature = b'PK\x07\x08'  # magic number for data descriptor
 
         return struct.pack(
