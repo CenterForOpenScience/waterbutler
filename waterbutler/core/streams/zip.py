@@ -163,9 +163,9 @@ class ZipLocalFile(MultiStream):
         centdir = struct.pack(
             zipfile.structCentralDir,
             zipfile.stringCentralDir,
-            self.zinfo.create_version,
+            45,  # self.zinfo.create_version,
             self.zinfo.create_system,
-            self.zinfo.extract_version,
+            45,  # self.zinfo.extract_version,
             self.zinfo.reserved,
             flag_bits,
             self.zinfo.compress_type,
@@ -188,7 +188,12 @@ class ZipLocalFile(MultiStream):
     @property
     def descriptor(self):
         """Local file data descriptor"""
-        fmt = '<4sLQQ'
+
+        if (self.original_size > ZIP64_LIMIT) or (self.compressed_size > ZIP64_LIMIT):
+            fmt = '<4sLQQ'
+        else:
+            fmt = '<4sLLL'
+
         signature = b'PK\x07\x08'  # magic number for data descriptor
 
         return struct.pack(
