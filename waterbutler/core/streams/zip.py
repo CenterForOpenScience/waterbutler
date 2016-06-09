@@ -115,6 +115,8 @@ class ZipLocalFile(MultiStream):
         self.original_size = 0
         self.compressed_size = 0
 
+        self.is_zip64 = False
+
         super().__init__(
             StringStream(self.local_header),
             ZipLocalFileData(self, stream),
@@ -138,20 +140,24 @@ class ZipLocalFile(MultiStream):
 
         extra_64 = []
 
+        reported_original_size = self.original_size
         if self.original_size > ZIP64_LIMIT:
             extra_64.append(self.original_size)
-            self.original_size = 0xFFFFFFFF
+            reported_original_size = 0xFFFFFFFF
 
+        reported_compressed_size = self.compressed_size
         if self.compressed_size > ZIP64_LIMIT:
             extra_64.append(self.compressed_size)
-            self.compressed_size = 0xFFFFFFFF
+            reported_compressed_size = 0xFFFFFFFF
 
+        reported_header_offset = self.zinfo.header_offset
         if self.zinfo.header_offset > ZIP64_LIMIT:
             extra_64.append(self.zinfo.header_offset)
-            self.zinfo.header_offset = 0xFFFFFFFF
+            reported_header_offset = 0xFFFFFFFF
 
         extra_data = self.zinfo.extra
         if len(extra_64):
+            self.is_zip64 = True
             extra_data = struct.pack(
                 '<HH' + 'Q' * len(extra_64),
                 1,
@@ -172,15 +178,15 @@ class ZipLocalFile(MultiStream):
             dostime,  # modification time
             dosdate,
             self.zinfo.CRC,
-            self.compressed_size,
-            self.original_size,
+            reported_compressed_size,
+            reported_original_size,
             len(self.zinfo.filename.encode('utf-8')),
             len(extra_data),
             len(self.zinfo.comment),
             0,
             self.zinfo.internal_attr,
             self.zinfo.external_attr,
-            self.zinfo.header_offset,
+            reported_header_offset,
         )
 
         return centdir + filename + extra_data + self.zinfo.comment
@@ -189,13 +195,8 @@ class ZipLocalFile(MultiStream):
     def descriptor(self):
         """Local file data descriptor"""
 
-        if (self.original_size > ZIP64_LIMIT) or (self.compressed_size > ZIP64_LIMIT):
-            fmt = '<4sLQQ'
-        else:
-            fmt = '<4sLLL'
-
+        fmt = '<4sLQQ' if self.is_zip64 else '<4sLLL'
         signature = b'PK\x07\x08'  # magic number for data descriptor
-
         return struct.pack(
             fmt,
             signature,
