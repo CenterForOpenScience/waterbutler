@@ -39,7 +39,7 @@ RUN apt-get update \
 RUN mkdir -p /code
 WORKDIR /code
 
-RUN pip install -U pip invoke
+RUN pip install -U pip
 
 COPY ./requirements.txt /code/
 
