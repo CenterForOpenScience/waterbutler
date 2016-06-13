@@ -9,6 +9,8 @@ from waterbutler.core.streams import BaseStream
 from waterbutler.core.streams import MultiStream
 from waterbutler.core.streams import StringStream
 
+ZIP64_LIMIT = (1 << 31) - 1
+
 
 class ZipLocalFileDescriptor(BaseStream):
     """The descriptor (footer) for a local file in a zip archive
@@ -113,6 +115,8 @@ class ZipLocalFile(MultiStream):
         self.original_size = 0
         self.compressed_size = 0
 
+        self.is_zip64 = False
+
         super().__init__(
             StringStream(self.local_header),
             ZipLocalFileData(self, stream),
@@ -134,30 +138,55 @@ class ZipLocalFile(MultiStream):
         dosdate = (dt[0] - 1980) << 9 | dt[1] << 5 | dt[2]
         dostime = dt[3] << 11 | dt[4] << 5 | (dt[5] // 2)
 
+        extra_64 = []
+
+        reported_original_size = self.original_size
+        if self.original_size > ZIP64_LIMIT:
+            extra_64.append(self.original_size)
+            reported_original_size = 0xFFFFFFFF
+
+        reported_compressed_size = self.compressed_size
+        if self.compressed_size > ZIP64_LIMIT:
+            extra_64.append(self.compressed_size)
+            reported_compressed_size = 0xFFFFFFFF
+
+        reported_header_offset = self.zinfo.header_offset
+        if self.zinfo.header_offset > ZIP64_LIMIT:
+            extra_64.append(self.zinfo.header_offset)
+            reported_header_offset = 0xFFFFFFFF
+
         extra_data = self.zinfo.extra
+        if len(extra_64):
+            self.is_zip64 = True
+            extra_data = struct.pack(
+                '<HH' + 'Q' * len(extra_64),
+                1,
+                8 * len(extra_64),
+                *extra_64
+            ) + self.zinfo.extra
 
         filename, flag_bits = self.zinfo._encodeFilenameFlags()
         centdir = struct.pack(
             zipfile.structCentralDir,
             zipfile.stringCentralDir,
-            self.zinfo.create_version,
+            45,  # self.zinfo.create_version,
             self.zinfo.create_system,
-            self.zinfo.extract_version,
+            45,  # self.zinfo.extract_version,
             self.zinfo.reserved,
             flag_bits,
             self.zinfo.compress_type,
             dostime,  # modification time
             dosdate,
             self.zinfo.CRC,
-            self.compressed_size,
-            self.original_size,
+            reported_compressed_size,
+            reported_original_size,
             len(self.zinfo.filename.encode('utf-8')),
             len(extra_data),
             len(self.zinfo.comment),
             0,
             self.zinfo.internal_attr,
             self.zinfo.external_attr,
-            self.zinfo.header_offset,
+            reported_header_offset,
         )
 
         return centdir + filename + extra_data + self.zinfo.comment
@@ -165,9 +194,9 @@ class ZipLocalFile(MultiStream):
     @property
     def descriptor(self):
         """Local file data descriptor"""
-        fmt = '<4sLLL'
-        signature = b'PK\x07\x08'  # magic number for data descriptor
 
+        fmt = '<4sLQQ' if self.is_zip64 else '<4sLLL'
+        signature = b'PK\x07\x08'  # magic number for data descriptor
         return struct.pack(
             fmt,
             signature,
@@ -211,19 +240,47 @@ class ZipArchiveCentralDirectory(StringStream):
 
         count = len(self.files)
 
+        # see PK-ZIP spec: https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT
+        # section 4.3.14
+        zip64_endrec = struct.pack(
+            zipfile.structEndArchive64,
+            zipfile.stringEndArchive64,
+            44,  # size of remaining zip64_endrec in bytes
+            45,  # version created with
+            45,  # version need to extract
+            0,  # number of this disk
+            0,  # number of disk with central directory
+            count,  # number of entries in cent. dir on this disk
+            count,  # total number of cent. dir entries
+            len(file_headers),  # size of the central directory
+            cumulative_offset,  # offset of central directory
+        )
+
+        zip64_locator = struct.pack(
+            zipfile.structEndArchive64Locator,
+            zipfile.stringEndArchive64Locator,
+            0,  # disk number with zip64 EOCD
+            cumulative_offset + len(file_headers),  # offset to beginning of zip64 EOCD
+            1,  # total number of disks
+        )
+
+        centdir_count = min(count, 0xFFFF)
+        centdir_size = min(len(file_headers), 0xFFFFFFFF)
+        centdir_offset = min(cumulative_offset, 0xFFFFFFFF)
+
         endrec = struct.pack(
             zipfile.structEndArchive,
             zipfile.stringEndArchive,
             0,
             0,
-            count,
-            count,
-            len(file_headers),
-            cumulative_offset,
+            centdir_count,
+            centdir_count,
+            centdir_size,
+            centdir_offset,
             0,
         )
 
-        return b''.join((file_headers, endrec))
+        return b''.join((file_headers, zip64_endrec, zip64_locator, endrec))
 
 
 class ZipStreamReader(asyncio.StreamReader):
