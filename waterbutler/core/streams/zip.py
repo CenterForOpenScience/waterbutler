@@ -9,7 +9,7 @@ from waterbutler.core.streams import BaseStream
 from waterbutler.core.streams import MultiStream
 from waterbutler.core.streams import StringStream
 
-ZIP64_LIMIT = (1 << 31) - 1
+ZIP64_LIMIT = 0xffffffff - 1
 
 
 class ZipLocalFileDescriptor(BaseStream):
@@ -27,8 +27,11 @@ class ZipLocalFileDescriptor(BaseStream):
         return 0
 
     async def _read(self, *args, **kwargs):
-        """Create 16 byte descriptor of file CRC, file size, and compress size"""
+        """Create 16 or 24 byte descriptor of file CRC, file size, and compress size"""
         self._eof = True
+
+        if (self.file.original_size > ZIP64_LIMIT) or (self.file.compressed_size > ZIP64_LIMIT):
+            self.file.need_zip64_data_descriptor = True
         return self.file.descriptor
 
 
@@ -115,7 +118,7 @@ class ZipLocalFile(MultiStream):
         self.original_size = 0
         self.compressed_size = 0
 
-        self.is_zip64 = False
+        self.need_zip64_data_descriptor = False
 
         super().__init__(
             StringStream(self.local_header),
@@ -126,7 +129,7 @@ class ZipLocalFile(MultiStream):
     @property
     def local_header(self):
         """The file's header, for inclusion just before the content stream"""
-        return self.zinfo.FileHeader(zip64=False)
+        return self.zinfo.FileHeader(zip64=True)
 
     @property
     def directory_header(self):
@@ -142,11 +145,13 @@ class ZipLocalFile(MultiStream):
 
         reported_original_size = self.original_size
         if self.original_size > ZIP64_LIMIT:
+            self.need_zip64_data_descriptor = True
             extra_64.append(self.original_size)
             reported_original_size = 0xFFFFFFFF
 
         reported_compressed_size = self.compressed_size
         if self.compressed_size > ZIP64_LIMIT:
+            self.need_zip64_data_descriptor = True
             extra_64.append(self.compressed_size)
             reported_compressed_size = 0xFFFFFFFF
 
@@ -157,7 +162,6 @@ class ZipLocalFile(MultiStream):
 
         extra_data = self.zinfo.extra
         if len(extra_64):
-            self.is_zip64 = True
             extra_data = struct.pack(
                 '<HH' + 'Q' * len(extra_64),
                 1,
@@ -195,7 +199,7 @@ class ZipLocalFile(MultiStream):
     def descriptor(self):
         """Local file data descriptor"""
 
-        fmt = '<4sLQQ' if self.is_zip64 else '<4sLLL'
+        fmt = '<4sLQQ' if self.need_zip64_data_descriptor else '<4sLLL'
         signature = b'PK\x07\x08'  # magic number for data descriptor
         return struct.pack(
             fmt,
