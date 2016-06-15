@@ -9,7 +9,7 @@ from waterbutler.core.streams import BaseStream
 from waterbutler.core.streams import MultiStream
 from waterbutler.core.streams import StringStream
 
-ZIP64_LIMIT = (1 << 31) - 1
+ZIP64_LIMIT = 0xffffffff - 1
 
 
 class ZipLocalFileDescriptor(BaseStream):
@@ -129,7 +129,7 @@ class ZipLocalFile(MultiStream):
     @property
     def local_header(self):
         """The file's header, for inclusion just before the content stream"""
-        return self.zinfo.FileHeader(zip64=False)
+        return self.zinfo.FileHeader(zip64=True)
 
     @property
     def directory_header(self):
