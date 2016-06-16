@@ -76,19 +76,11 @@ class GoogleDriveProvider(provider.BaseProvider):
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 
-    async def validate_path(self, path, file_id=None, **kwargs):
+    async def validate_path(self, path, **kwargs):
         if path == '/':
             return GoogleDrivePath('/', _ids=[self.folder['id']], folder=True)
 
         parts = await self._resolve_path_to_ids(path)
-
-        # TODO Allow for just passing file_id
-        # if file_id:
-        #     parts = await self._resolve_id_to_parts(file_id)
-        # elif path:
-        # else:
-        #     raise Exception  # TODO
-
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 

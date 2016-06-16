@@ -1,4 +1,5 @@
 import json
+import time
 import asyncio
 import logging
 import functools
@@ -10,6 +11,7 @@ from stevedore import driver
 
 from waterbutler import settings
 from waterbutler.core import exceptions
+from waterbutler.tasks import settings as task_settings
 from waterbutler.server import settings as server_settings
 from waterbutler.core.signing import Signer
 
@@ -22,13 +24,14 @@ sentry_dsn = settings.get('SENTRY_DSN', None)
 client = Client(sentry_dsn) if sentry_dsn else None
 
 
-def make_provider(name, auth, credentials, settings):
+def make_provider(name, auth, credentials, settings, **kwargs):
     """Returns an instance of :class:`waterbutler.core.provider.BaseProvider`
 
     :param str name: The name of the provider to instantiate. (s3, box, etc)
     :param dict auth:
     :param dict credentials:
     :param dict settings:
+    :param dict \*\*kwargs: currently there to absorb ``callback_url``
 
     :rtype: :class:`waterbutler.core.provider.BaseProvider`
     """
@@ -100,6 +103,39 @@ async def send_signed_request(method, url, payload):
         }),
         headers={'Content-Type': 'application/json'},
     ))
+
+
+async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[]):
+    auth = getattr(destination, 'auth', source.auth)
+
+    log_payload = {
+        'action': action,
+        'auth': auth,
+        'time': time.time() + 60,
+        'errors': errors,
+    }
+
+    if start_time:
+        log_payload['email'] = time.time() - start_time > task_settings.WAIT_TIMEOUT
+
+    if action in ('move', 'copy'):
+        log_payload['source'] = source.serialize()
+        log_payload['destination'] = destination.serialize()
+    else:
+        log_payload['metadata'] = source.serialize()
+        log_payload['provider'] = log_payload['metadata']['provider']
+
+    resp = await send_signed_request('PUT', auth['callback_url'], log_payload)
+    resp_data = await resp.read()
+
+    if resp.status // 100 != 2:
+        raise Exception(
+            'Callback for {} request failed with {!r}, got {}'.format(
+                action, resp, resp_data.decode('utf-8')
+            )
+        )
+
+    logger.info('Callback for {} request succeeded with {}'.format(action, resp_data.decode('utf-8')))
 
 
 class ZipStreamGenerator:

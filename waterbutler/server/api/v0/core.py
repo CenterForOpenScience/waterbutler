@@ -1,5 +1,4 @@
 import json
-import time
 import logging
 
 import tornado.web
@@ -13,7 +12,7 @@ from waterbutler.core import signing
 from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.auth import AuthHandler
-from waterbutler.constants import IDENTIFIER_PATHS
+from waterbutler.core.log_payload import LogPayload
 from waterbutler.server import utils as server_utils
 
 
@@ -93,21 +92,16 @@ class BaseProviderHandler(BaseHandler):
         self.arguments['path'] = self.path  # TODO Not this
 
     @utils.async_retry(retries=5, backoff=5)
-    async def _send_hook(self, action, metadata):
-        resp = await utils.send_signed_request('PUT', self.payload['callback_url'], {
-            'action': action,
-            'metadata': metadata,
-            'auth': self.payload['auth'],
-            'provider': self.arguments['provider'],
-            'time': time.time() + 60
-        })
-        data = await resp.read()
-
-        if resp.status != 200:
-            raise Exception('Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8')))
-
-        logger.info('Successfully sent callback for a {} request'.format(action))
-        logger.info('Callback succeeded with {}'.format(data.decode('utf-8')))
+    async def _send_hook(self, action, metadata=None, path=None):
+        await utils.log_to_callback(
+            action,
+            source=LogPayload(
+                self.arguments['nid'],
+                self.provider,
+                metadata=metadata,
+                path=path
+            ),
+        )
 
 
 class BaseCrossProviderHandler(BaseHandler):
@@ -131,7 +125,6 @@ class BaseCrossProviderHandler(BaseHandler):
             dict(kwargs, provider=provider, action=self.action + prefix)
         )
         self.auth = payload
-        self.callback_url = payload.pop('callback_url')
         return utils.make_provider(provider, **payload)
 
     @property
@@ -150,33 +143,9 @@ class BaseCrossProviderHandler(BaseHandler):
         return self._json
 
     @utils.async_retry(retries=0, backoff=5)
-    async def _send_hook(self, action, data):
-        src_path = None
-        if self.source_provider.NAME in IDENTIFIER_PATHS:
-            src_path = self.json['source']['path'].identifier_path
-        else:
-            src_path = '/' + self.json['source']['path'].raw_path
-
-        resp = await utils.send_signed_request('PUT', self.callback_url, {
-            'action': action,
-            'source': {
-                'nid': self.json['source']['nid'],
-                'provider': self.source_provider.NAME,
-                'path': src_path,
-                'name': self.json['source']['path'].name,
-                'materialized': str(self.json['source']['path']),
-                'kind': self.json['source']['path'].kind,
-            },
-            'destination': dict(data, nid=self.json['destination']['nid']),
-            'auth': self.auth['auth'],
-            'time': time.time() + 60
-        })
-        resp_data = await resp.read()
-
-        if resp.status != 200:
-            raise Exception(
-                'Callback was unsuccessful, got {}, {}'.format(resp, resp_data.decode('utf-8'))
-            )
-
-        logger.info('Successfully sent callback for a {} request'.format(action))
-        logger.info('Callback succeeded with {}'.format(resp_data.decode('utf-8')))
+    async def _send_hook(self, action, metadata):
+        source = LogPayload(self.json['source']['nid'], self.source_provider,
+                            path=self.json['source']['path'])
+        destination = LogPayload(self.json['destination']['nid'], self.destination_provider,
+                                 metadata=metadata)
+        await utils.log_to_callback(action, source=source, destination=destination)

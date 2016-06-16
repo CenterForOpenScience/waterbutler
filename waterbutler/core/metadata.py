@@ -21,6 +21,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
           "materialized": "",
           "provider": "",
           "etag": "",
+          "extra": {}
         }
     """
 
