@@ -2,6 +2,31 @@
 ChangeLog
 *********
 
+0.20.4 (2016-06-16)
+===================
+- Finish support for zipfiles > 4Gb.  Large zipfiles should now be uncompressible by
+double-clicking on the zipfiles in OS X, Windows, and Linux.  On OS X, /usr/bin/ditto and
+The Unarchiver have been confirmed to work. /usr/bin/unzip will *not* work, as the version
+they include does not have Zip64 support.
+- Update the install docs to pin invoke to 0.11.1.
+
+0.20.3 (2016-06-13)
+===================
+- Release fixes for deployment and intermediate DAZ > 4Gb fixes.
+
+0.20.2 (2016-06-13)
+===================
+- Pin invoke to v0.11.1.  Our tasks.py is incompatible with v0.13.
+
+0.20.1 (2016-06-13)
+===================
+- Try fixing Download-As-Zip for resulting zipfiles > 4Gb.  The default zip format only supports
+up to 4Gb files, but the zip64 extension can handle much larger sizes.  WB hand-rolls its zips,
+so the zip64 format has to be constructed manually.  Unfortunately, the fixes applied in 0.20.1
+were not enough.  The remaining updates were added in 0.20.4.
+- Add a Dockerfile to simplify running WaterButler in dev environments.
+- Pin some dependencies and update our travis config to avoid spurious build failures.
+
 0.20.0 (2016-04-29)
 ===================
 - Fix Download-As-Zip for Google Drive to set the correct extensions for exported Google Doc
