@@ -2,6 +2,22 @@
 ChangeLog
 *********
 
+0.21.0 (2016-06-16)
+===================
+- Feature: Allow cross origin requests when an Authorization header is provided without
+cookies.  (thanks, @samchrisinger!)
+- Feature: Don't set any CORS headers if Origin is not provided (e.g. non-browser client)
+- Fix: v0's copy action now checks can_intra_copy instead of can_intra_move.
+- Fix: Stop sending requests to GitHub with the `application/vnd.github.VERSION.raw` media-type.
+Start sending them `application/vnd.github.v3.raw`.
+- Fix: Our API docs had typos in the example URLs.  For shame.
+- Code: Refactor logging callback into one location.  Previously, v0 creates, v0 move/copies, v1
+actions, and the move/copy celery tasks each had their own bespoke code for logging actions to the
+authorizer-provided callback.  All of that has been merged into one method with a common interface.
+This shouldn't have any user-visible changes, but it will make the developers' lives much easier.
+- Code: Remove unused code from googledrive provider
+- Code: WaterButlerPath learned `materialized_path()` (a.k.a its __str__ representation).
+
 0.20.4 (2016-06-16)
 ===================
 - Finish support for zipfiles > 4Gb.  Large zipfiles should now be uncompressible by
