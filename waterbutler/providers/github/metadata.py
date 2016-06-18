@@ -41,7 +41,7 @@ class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
     def modified(self):
         if not self.commit:
             return None
-        return self.commit['commit']['author']['date']
+        return self.commit['author']['date']
 
     @property
     def content_type(self):

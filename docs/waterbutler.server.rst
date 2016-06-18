@@ -1,13 +1,6 @@
 waterbutler.server package
 ==========================
 
-Subpackages
------------
-
-.. toctree::
-
-    waterbutler.server.handlers
-
 Submodules
 ----------
 

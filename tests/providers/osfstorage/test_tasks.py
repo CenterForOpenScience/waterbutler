@@ -5,7 +5,6 @@ from unittest import mock
 
 import pytest
 
-from tests.utils import async
 from tests import utils as test_utils
 
 from boto.glacier.exceptions import UnexpectedHTTPResponseError
@@ -52,16 +51,16 @@ def mock_provider(monkeypatch):
 
 class TestParityTask:
 
-    def test_main_delays(self, monkeypatch, credentials, settings):
+    def test_main_delays(self, monkeypatch, event_loop, credentials, settings):
         task = mock.Mock()
         monkeypatch.setattr(parity, '_parity_create_files', task)
 
         fut = parity.main('The Best', credentials, settings)
-        asyncio.get_event_loop().run_until_complete(fut)
+        event_loop.run_until_complete(fut)
 
         task.delay.assert_called_once_with('The Best', credentials, settings)
 
-    def test_creates_upload_futures(self, monkeypatch, credentials, settings):
+    def test_creates_upload_futures(self, monkeypatch, event_loop, credentials, settings):
         paths = range(10)
         future = asyncio.Future()
         future.set_result(None)
@@ -80,8 +79,8 @@ class TestParityTask:
         for num in reversed(range(10)):
             mock_upload_parity.assert_any_call(num, credentials, settings)
 
-    @async
-    def test_uploads(self, monkeypatch, tmpdir, mock_provider):
+    @pytest.mark.asyncio
+    async def test_uploads(self, monkeypatch, tmpdir, mock_provider):
         tempfile = tmpdir.join('test.file')
         stream = parity.streams.FileStreamReader(tempfile)
         monkeypatch.setattr(parity.streams, 'FileStreamReader', lambda x: stream)
@@ -89,7 +88,7 @@ class TestParityTask:
         tempfile.write('foo')
         path = tempfile.strpath
 
-        yield from parity._upload_parity(path, {}, {})
+        await parity._upload_parity(path, {}, {})
 
         assert mock_provider.upload.called
 
@@ -126,12 +125,12 @@ class TestParityTask:
 
 class TestBackUpTask:
 
-    def test_main_delays(self, monkeypatch):
+    def test_main_delays(self, monkeypatch, event_loop):
         task = mock.Mock()
         monkeypatch.setattr(backup, '_push_file_archive', task)
 
         fut = backup.main('The Best', 0, None, {}, {})
-        asyncio.get_event_loop().run_until_complete(fut)
+        event_loop.run_until_complete(fut)
 
         task.delay.assert_called_once_with('The Best', 0, None, {}, {})
 

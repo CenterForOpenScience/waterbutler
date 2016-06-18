@@ -1,4 +1,4 @@
-import tornado.gen
+import tornado.iostream
 from waterbutler.server import settings
 
 
@@ -30,17 +30,33 @@ def make_disposition(filename):
 
 class CORsMixin:
 
+    def _cross_origin_is_allowed(self):
+        if self.request.method == 'OPTIONS':
+            return True
+        elif not self.request.cookies and self.request.headers.get('Authorization'):
+            return True
+        return False
+
     def set_default_headers(self):
-        if isinstance(settings.CORS_ALLOW_ORIGIN, str):
+        if not self.request.headers.get('Origin'):
+            return
+
+        allowed_origin = None
+        if self._cross_origin_is_allowed():
+            allowed_origin = self.request.headers['Origin']
+        elif isinstance(settings.CORS_ALLOW_ORIGIN, str):
             if settings.CORS_ALLOW_ORIGIN == '*':
                 # Wild cards cannot be used with allowCredentials.
                 # Match Origin if its specified, makes pdfs and pdbs render properly
-                self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin', '*'))
+                allowed_origin = self.request.headers['Origin']
             else:
-                self.set_header('Access-Control-Allow-Origin', settings.CORS_ALLOW_ORIGIN)
+                allowed_origin = settings.CORS_ALLOW_ORIGIN
         else:
-            if self.request.headers.get('Origin') in settings.CORS_ALLOW_ORIGIN:
-                self.set_header('Access-Control-Allow-Origin', self.request.headers['Origin'])
+            if self.request.headers['Origin'] in settings.CORS_ALLOW_ORIGIN:
+                allowed_origin = self.request.headers['Origin']
+
+        if allowed_origin is not None:
+            self.set_header('Access-Control-Allow-Origin', allowed_origin)
 
         self.set_header('Access-Control-Allow-Credentials', 'true')
         self.set_header('Access-Control-Allow-Headers', ', '.join(CORS_ACCEPT_HEADERS))
@@ -49,7 +65,8 @@ class CORsMixin:
 
     def options(self, *args, **kwargs):
         self.set_status(204)
-        self.set_header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE'),
+        if self.request.headers.get('Origin'):
+            self.set_header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE'),
 
 
 class UtilMixin:
@@ -62,16 +79,18 @@ class UtilMixin:
     def set_status(self, code, reason=None):
         return super().set_status(code, reason or HTTP_REASONS.get(code))
 
-    @tornado.gen.coroutine
-    def write_stream(self, stream):
+    async def write_stream(self, stream):
         try:
             while True:
-                chunk = yield from stream.read(settings.CHUNK_SIZE)
+                chunk = await stream.read(settings.CHUNK_SIZE)
                 if not chunk:
                     break
+                # Temp fix, write does not accept bytearrays currently
+                if isinstance(chunk, bytearray):
+                    chunk = bytes(chunk)
                 self.write(chunk)
                 del chunk
-                yield self.flush()
+                await self.flush()
         except tornado.iostream.StreamClosedError:
             # Client has disconnected early.
             # No need for any exception to be raised

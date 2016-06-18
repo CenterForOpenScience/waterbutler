@@ -49,6 +49,7 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
         return {
             'version': self.raw['version'],
             'downloads': self.raw['downloads'],
+            'checkout': self.raw['checkout'],
             'hashes': {
                 'md5': self.raw['md5'],
                 'sha256': self.raw['sha256']

@@ -1,7 +1,5 @@
 import time
 
-import tornado.gen
-
 from waterbutler import tasks
 from waterbutler.server.api.v0 import core
 
@@ -12,10 +10,9 @@ class MoveHandler(core.BaseCrossProviderHandler):
         'POST': 'move'
     }
 
-    @tornado.gen.coroutine
-    def post(self):
+    async def post(self):
         if not self.source_provider.can_intra_move(self.destination_provider, self.json['source']['path']):
-            resp = yield from tasks.move.adelay({
+            resp = await tasks.move.adelay({
                 'nid': self.json['source']['nid'],
                 'path': self.json['source']['path'],
                 'provider': self.source_provider.serialized()
@@ -24,18 +21,16 @@ class MoveHandler(core.BaseCrossProviderHandler):
                 'path': self.json['destination']['path'],
                 'provider': self.destination_provider.serialized()
             },
-                self.callback_url,
-                self.auth,
                 rename=self.json.get('rename'),
                 conflict=self.json.get('conflict', 'replace'),
                 start_time=time.time()
             )
 
-            metadata, created = yield from tasks.wait_on_celery(resp)
+            metadata, created = await tasks.wait_on_celery(resp)
 
         else:
             metadata, created = (
-                yield from tasks.backgrounded(
+                await tasks.backgrounded(
                     self.source_provider.move,
                     self.destination_provider,
                     self.json['source']['path'],
@@ -45,14 +40,12 @@ class MoveHandler(core.BaseCrossProviderHandler):
                 )
             )
 
-        metadata = metadata.serialized()
-
         if created:
             self.set_status(201)
         else:
             self.set_status(200)
 
-        self.write(metadata)
+        self.write(metadata.serialized())
 
         if self.source_provider.can_intra_move(self.destination_provider, self.json['source']['path']):
             self._send_hook('move', metadata)

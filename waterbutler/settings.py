@@ -71,5 +71,11 @@ def get(key, default):
     return config.get(key, default)
 
 
+DEBUG = get('DEBUG', True)
+REQUEST_LIMIT = get('REQUEST_LIMIT', 10)
+OP_CONCURRENCY = config.get('OP_CONCURRENCY', 5)
+
 logging_config = get('LOGGING', DEFAULT_LOGGING_CONFIG)
 logging.config.dictConfig(logging_config)
+
+SENTRY_DSN = get('SENTRY_DSN', None)
