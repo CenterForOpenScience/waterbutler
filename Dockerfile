@@ -52,4 +52,4 @@ RUN python setup.py develop
 
 EXPOSE 7777
 
-CMD ["gosu", "nobody", "invoke", "server"]
+CMD ["gosu", "www-data", "invoke", "server"]
