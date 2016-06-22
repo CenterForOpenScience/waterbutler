@@ -29,13 +29,14 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
 
 class BaseGitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
-    def __init__(self, raw, folder=None, commit=None, web_view=None):
+    def __init__(self, raw, folder=None, commit=None, web_view=None, thepath=None):
         super().__init__(raw, folder, commit)
         self.web_view = web_view
+        self.givenpath = thepath
 
     @property
     def path(self):
-        return self.build_path(self.raw['path'])
+        return self.build_path(self.givenpath.path)
 
     @property
     def modified(self):
@@ -49,24 +50,32 @@ class BaseGitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return '{}::{}'.format(self.path, self.raw['sha'])
+        return '{}::{}'.format(self.path, self.raw['id'])
 
     @property
     def extra(self):
         return dict(super().extra, **{
-            'fileSha': self.raw['sha'],
+            'fileSha': self.raw['id'],
             'webView': self.web_view
         })
 
 
 class BaseGitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
 
+    def __init__(self, raw, folder=None, commit=None, thepath=None):
+        super().__init__(raw, folder, commit)
+        self.givenpath = thepath
+
     @property
     def path(self):
-        return self.build_path(self.raw['path'])
+        return self.build_path(self.givenpath.path)
 
 
 class GitLabFileContentMetadata(BaseGitLabFileMetadata):
+
+    def __init__(self, raw, folder=None, commit=None, web_view=None, thepath=None):
+        super().__init__(raw, folder, commit, web_view)
+        self.givenpath = thepath
 
     @property
     def name(self):
@@ -74,7 +83,7 @@ class GitLabFileContentMetadata(BaseGitLabFileMetadata):
 
     @property
     def size(self):
-        return self.raw['size']
+        return None
 
 
 class GitLabFolderContentMetadata(BaseGitLabFolderMetadata):
@@ -115,7 +124,7 @@ class GitLabRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def version(self):
-        return self.raw['sha']
+        return self.raw['id']
 
     @property
     def extra(self):

@@ -88,6 +88,7 @@ class GitLabProvider(provider.BaseProvider):
         self.token = self.credentials['token']
         self.owner = self.settings['owner']
         self.repo = self.settings['repo']
+        self.repo_id = self.settings['repo_id']
 
     async def validate_v1_path(self, path, **kwargs):
         if not getattr(self, '_repo', None):
@@ -145,8 +146,7 @@ class GitLabProvider(provider.BaseProvider):
         }
 
     def build_repo_url(self, *segments, **query):
-        segments = ('projects', '1316205') + segments
-
+        segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
 
     def can_intra_move(self, other, path=None):
@@ -501,9 +501,10 @@ class GitLabProvider(provider.BaseProvider):
         return (await resp.json())
 
     async def _fetch_contents(self, path, ref=None):
-        url = furl.furl(self.build_repo_url('contents', path.path))
+        url = furl.furl(self.build_repo_url('repository', 'tree', path.path))
         if ref:
             url.args.update({'ref': ref})
+
         resp = await self.make_request(
             'GET',
             url.url,
@@ -631,10 +632,10 @@ class GitLabProvider(provider.BaseProvider):
 
             ret = []
             for item in data:
-                if item['type'] == 'dir':
-                    ret.append(GitLabFolderContentMetadata(item))
+                if item['type'] == 'tree':
+                    ret.append(GitLabFolderContentMetadata(item, thepath=path))
                 else:
-                    ret.append(GitLabFileContentMetadata(item, web_view=item['html_url']))
+                    ret.append(GitLabFileContentMetadata(item, web_view=item['name'], thepath=path))
             return ret
 
     async def _metadata_file(self, path, revision=None, ref=None, **kwargs):
