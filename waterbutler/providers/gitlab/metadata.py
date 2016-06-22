@@ -83,7 +83,6 @@ class GitLabFileContentMetadata(BaseGitLabFileMetadata):
     def size(self):
         return None
 
-
 class GitLabFolderContentMetadata(BaseGitLabFolderMetadata):
 
     @property
