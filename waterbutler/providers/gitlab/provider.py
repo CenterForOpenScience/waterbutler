@@ -501,9 +501,13 @@ class GitLabProvider(provider.BaseProvider):
         return (await resp.json())
 
     async def _fetch_contents(self, path, ref=None):
-        url = furl.furl(self.build_repo_url('repository', 'tree', path.path))
+        url = furl.furl(self.build_repo_url('repository', 'tree'))
+
+        if path.full_path:
+            url.add({'path': path.full_path})
+
         if ref:
-            url.args.update({'ref': ref})
+            url.args.update({'ref_name': ref})
 
         resp = await self.make_request(
             'GET',
