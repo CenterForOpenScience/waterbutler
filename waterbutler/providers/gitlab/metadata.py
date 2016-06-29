@@ -33,10 +33,11 @@ class BaseGitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
         super().__init__(raw, folder, commit)
         self.web_view = web_view
         self.givenpath = thepath
+        self.file_name = raw['name']
 
     @property
     def path(self):
-        return self.build_path(self.givenpath.path)
+        return '/' + self.givenpath.path + self.file_name
 
     @property
     def modified(self):
@@ -73,10 +74,6 @@ class BaseGitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
 
 
 class GitLabFileContentMetadata(BaseGitLabFileMetadata):
-
-    def __init__(self, raw, folder=None, commit=None, web_view=None, thepath=None):
-        super().__init__(raw, folder, commit, web_view)
-        self.givenpath = thepath
 
     @property
     def name(self):
