@@ -65,10 +65,11 @@ class BaseGitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
     def __init__(self, raw, folder=None, commit=None, thepath=None):
         super().__init__(raw, folder, commit)
         self.givenpath = thepath
+        self.current_path = raw['name']
 
     @property
     def path(self):
-        return self.build_path(self.givenpath.path)
+        return '/' + self.givenpath.path + self.current_path + '/'
 
 
 class GitLabFileContentMetadata(BaseGitLabFileMetadata):
