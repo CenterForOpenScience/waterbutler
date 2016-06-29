@@ -74,10 +74,6 @@ class BaseGitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
 
 class GitLabFileContentMetadata(BaseGitLabFileMetadata):
 
-    def __init__(self, raw, folder=None, commit=None, web_view=None, thepath=None):
-        super().__init__(raw, folder, commit, web_view)
-        self.givenpath = thepath
-
     @property
     def name(self):
         return self.raw['name']
