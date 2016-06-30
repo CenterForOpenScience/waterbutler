@@ -50,6 +50,10 @@ class FileSystemFileMetadata(BaseFileSystemMetadata, metadata.BaseFileMetadata):
         return self.raw['modified']
 
     @property
+    def modified_utc(self):
+        return self.raw['modified_utc']
+
+    @property
     def content_type(self):
         return self.raw['mime_type']
 

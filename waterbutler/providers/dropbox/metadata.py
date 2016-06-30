@@ -1,6 +1,6 @@
 import os
 
-from waterbutler.core import metadata
+from waterbutler.core import metadata, utils
 
 
 class BaseDropboxMetadata(metadata.BaseMetadata):
@@ -56,6 +56,10 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
         return self.raw['modified']
 
     @property
+    def modified_utc(self):
+        return utils.normalize_datetime(self.raw['modified'])
+
+    @property
     def content_type(self):
         return self.raw['mime_type']
 
@@ -78,3 +82,7 @@ class DropboxRevision(metadata.BaseFileRevisionMetadata):
     @property
     def modified(self):
         return self.raw['modified']
+
+    @property
+    def modified_utc(self):
+        return utils.normalize_datetime(self.raw['modified'])

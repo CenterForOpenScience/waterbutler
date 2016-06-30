@@ -1,6 +1,6 @@
 import os
 
-from waterbutler.core import metadata
+from waterbutler.core import metadata, utils
 
 
 class BaseGitHubMetadata(metadata.BaseMetadata):
@@ -42,6 +42,12 @@ class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
         if not self.commit:
             return None
         return self.commit['author']['date']
+
+    @property
+    def modified_utc(self):
+        if not self.commit:
+            return None
+        return utils.normalize_datetime(self.commit['author']['date'])
 
     @property
     def content_type(self):
@@ -112,6 +118,10 @@ class GitHubRevision(metadata.BaseFileRevisionMetadata):
     @property
     def modified(self):
         return self.raw['commit']['author']['date']
+
+    @property
+    def modified_utc(self):
+        return utils.normalize_datetime(self.raw['commit']['author']['date'])
 
     @property
     def version(self):

@@ -1,5 +1,7 @@
 import json
 import time
+import dateutil.parser
+import pytz
 import asyncio
 import logging
 import functools
@@ -136,6 +138,14 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         )
 
     logger.info('Callback for {} request succeeded with {}'.format(action, resp_data.decode('utf-8')))
+
+
+def normalize_datetime(date_string):
+    parsed_datetime = dateutil.parser.parse(date_string)
+    assert parsed_datetime.tzinfo, "Parsed_datetime has no timezone info: " + date_string
+    parsed_datetime = parsed_datetime.astimezone(tz=pytz.UTC)
+    parsed_datetime = parsed_datetime.replace(microsecond=0)
+    return parsed_datetime.isoformat()
 
 
 class ZipStreamGenerator:

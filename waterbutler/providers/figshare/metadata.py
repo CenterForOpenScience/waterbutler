@@ -65,6 +65,10 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
         return None
 
     @property
+    def modified_utc(self):
+        return None
+
+    @property
     def can_delete(self):
         """Files can be deleted if private or if containing fileset contains
         two or more files.
@@ -114,6 +118,10 @@ class FigshareArticleMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
 
     @property
     def modified(self):
+        return None
+
+    @property
+    def modified_utc(self):
         return None
 
     @property
