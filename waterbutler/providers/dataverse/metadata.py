@@ -47,6 +47,10 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
         return None
 
     @property
+    def modified_utc(self):
+        return None
+
+    @property
     def etag(self):
         return '{}::{}'.format(self.dataset_version, self.file_id)
 
@@ -90,4 +94,8 @@ class DataverseRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def modified(self):
+        return None
+
+    @property
+    def modified_utc(self):
         return None

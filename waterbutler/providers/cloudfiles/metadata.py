@@ -1,6 +1,6 @@
 import os
 
-from waterbutler.core import metadata
+from waterbutler.core import metadata, utils
 
 
 class BaseCloudFilesMetadata(metadata.BaseMetadata):
@@ -27,6 +27,10 @@ class CloudFilesFileMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata):
     @property
     def modified(self):
         return self.raw['last_modified']
+
+    @property
+    def modified_utc(self):
+        return utils.normalize_datetime(self.raw['last_modified'])
 
     @property
     def content_type(self):
@@ -58,6 +62,10 @@ class CloudFilesHeaderMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata
     @property
     def modified(self):
         return self.raw['Last-Modified']
+
+    @property
+    def modified_utc(self):
+        return utils.normalize_datetime(self.raw['Last-Modified'])
 
     @property
     def content_type(self):

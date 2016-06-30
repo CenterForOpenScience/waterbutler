@@ -204,6 +204,7 @@ class BaseFileMetadata(BaseMetadata):
         return dict(super().serialized(), **{
             'contentType': self.content_type,
             'modified': self.modified,
+            'modified_utc': self.modified_utc,
             'size': self.size,
         })
 
@@ -228,8 +229,13 @@ class BaseFileMetadata(BaseMetadata):
 
     @abc.abstractproperty
     def modified(self):
-        """ Date the file was last modified, as reported by the provider.  Should be in UTC
-        timezone and ISO-8601 format (YYYY-MM-DDTHH:MM:SSZ). """
+        """ Date the file was last modified, as reported by the provider. """
+        raise NotImplementedError
+
+    @abc.abstractproperty
+    def modified_utc(self):
+        """ Date the file was last modified, as reported by the provider,
+        in format (YYYY-MM-DDTHH:MM:SS+HH:MM). """
         raise NotImplementedError
 
     @abc.abstractproperty
@@ -253,6 +259,7 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
             'extra': self.extra,
             'version': self.version,
             'modified': self.modified,
+            'modified_utc': self.modified_utc,
             'versionIdentifier': self.version_identifier,
         }
 
@@ -271,6 +278,10 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
 
     @abc.abstractproperty
     def modified(self):
+        raise NotImplementedError
+
+    @abc.abstractproperty
+    def modified_utc(self):
         raise NotImplementedError
 
     @abc.abstractproperty
