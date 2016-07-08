@@ -76,19 +76,18 @@ class FedoraProvider(provider.BaseProvider):
         src_url = self.build_repo_url(src_path)
         dest_url = self.build_repo_url(dest_path)
 
-        resp = await self.make_request(
+        async with self.request(
             'COPY', src_url,
             headers={'Destination': dest_url},
             expects=(201,),
             throws=exceptions.IntraCopyError
-        )
+        ) as resp:
+            # Recalcuate destination path based on Location header
+            dest_path = self.fedora_url_to_path(resp.headers.get('Location'))
 
-        # Recalcuate destination path based on Location header
-        dest_path = self.fedora_url_to_path(resp.headers.get('Location'))
+            md = await self.lookup_fedora_metadata(dest_path)
 
-        md = await self.lookup_fedora_metadata(dest_path)
-
-        return md, True
+            return md, True
 
     # Moves src_path to dest_path.
     # Returns BaseMetadata, Success tuple.
@@ -96,26 +95,25 @@ class FedoraProvider(provider.BaseProvider):
         src_url = self.build_repo_url(src_path)
         dest_url = self.build_repo_url(dest_path)
 
-        resp = await self.make_request(
+        async with self.request(
             'MOVE', src_url,
             headers={'Destination': dest_url},
             expects=(201,),
             throws=exceptions.IntraMoveError
-        )
+        ) as move_resp:
+            # Delete tombstone of original file
+            async with self.request(
+                 'DELETE', src_url + '/fcr:tombstone',
+                 expects=(204, ),
+                 throws=exceptions.DeleteError,
+            ):
+                pass
 
-        # Delete tombstone of original file
-        await self.make_request(
-            'DELETE', src_url + '/fcr:tombstone',
-            expects=(204, ),
-            throws=exceptions.DeleteError,
-        )
+            # Recalcuate destination path based on Location header
+            dest_path = self.fedora_url_to_path(move_resp.headers.get('Location'))
 
-        # Recalcuate destination path based on Location header
-        dest_path = self.fedora_url_to_path(resp.headers.get('Location'))
-
-        md = await self.lookup_fedora_metadata(dest_path)
-
-        return md, True
+            md = await self.lookup_fedora_metadata(dest_path)
+            return md, True
 
     @property
     def default_headers(self):
@@ -153,34 +151,35 @@ class FedoraProvider(provider.BaseProvider):
                             'application/rdf+xml' 'application/n-triples' 'application/ld+json']:
             mime_type = 'application/octet-stream'
 
-        await self.make_request(
+        async with self.request(
             'PUT',
             url,
             headers={'Content-Length': str(stream.size), 'Content-Type': mime_type},
             data=stream,
             expects=(201, ),
             throws=exceptions.UploadError,
-        )
-
-        md = await self.metadata(path)
-        return md, True
+        ):
+            md = await self.metadata(path)
+            return md, True
 
     # Delete the Fedora resource corrsponding to the path
     # Must also delete the tombstone so the resource can be recreated.
     async def delete(self, path, confirm_delete=0, **kwargs):
         url = self.build_repo_url(path)
 
-        await self.make_request(
+        async with self.request(
             'DELETE', url,
             expects=(204, ),
             throws=exceptions.DeleteError,
-        )
+        ):
+            pass
 
-        await self.make_request(
+        async with self.request(
             'DELETE', url + '/fcr:tombstone',
             expects=(204, ),
             throws=exceptions.DeleteError,
-        )
+        ):
+            pass
 
     # Given a WaterBulterPath, return metadata about the specified resource.
     # The JSON-LD representations of Fedora resources are parsed as simple JSON.
@@ -208,36 +207,35 @@ class FedoraProvider(provider.BaseProvider):
         else:
             url = fedora_id + '/fcr:metadata'
 
-        resp = await self.make_request(
+        async with self.request(
             'GET', url,
             headers={'Accept': 'application/ld+json',
                      'Prefer': 'return=representation; include="http://fedora.info/definitions/v4/repository#EmbedResources"'},
             expects=(200, 404),
             throws=exceptions.MetadataError
-        )
+        ) as resp:
 
-        if resp.status == 404:
-            raise exceptions.NotFoundError(str(path))
+            if resp.status == 404:
+                raise exceptions.NotFoundError(str(path))
 
-        raw = await resp.json()
+            raw = await resp.json()
 
-        if is_container:
-            return FedoraFolderMetadata(raw, fedora_id, path)
-        else:
-            return FedoraFileMetadata(raw, fedora_id, path)
+            if is_container:
+                return FedoraFolderMetadata(raw, fedora_id, path)
+            else:
+                return FedoraFileMetadata(raw, fedora_id, path)
 
     # Do a head request on a url to check if it is a fedora container
     async def is_fedora_container(self, url):
-        resp = await self.make_request(
+        async with self.request(
             'HEAD', url,
             expects=(200, 404),
             throws=exceptions.MetadataError
-        )
+        ) as resp:
+            if resp.status == 404:
+                raise exceptions.NotFoundError(str(url))
 
-        if resp.status == 404:
-            raise exceptions.NotFoundError(str(url))
-
-        return '<http://www.w3.org/ns/ldp#Container>;rel="type"' in resp.headers.getall('Link', [])
+            return '<http://www.w3.org/ns/ldp#Container>;rel="type"' in resp.headers.getall('Link', [])
 
     # Create the specified folder as a Fedora container and return FedoraFolderMetadata for it
     async def create_folder(self, path, folder_precheck=True, **kwargs):
@@ -245,12 +243,13 @@ class FedoraProvider(provider.BaseProvider):
 
         url = self.build_repo_url(path)
 
-        await self.make_request(
+        async with self.request(
             'PUT',
             url,
             expects=(201,),
             throws=exceptions.CreateFolderError
-        )
+        ):
+            pass
 
         md = await self.lookup_fedora_metadata(path)
         return md
