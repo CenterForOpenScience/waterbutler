@@ -419,6 +419,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                         'mimeType': 'folder' if path.endswith('/') else '',
                     }]
                 parts.append([name, current_part[1]])
+                continue
 
             async with self.request(
                 'GET',
