@@ -64,6 +64,11 @@ class ProviderNotFound(ProviderError):
         super().__init__('Provider "{}" not found'.format(provider), code=404)
 
 
+class ReadOnlyProviderError(ProviderError):
+    def __init__(self, provider):
+        super().__init__('Provider "{}" is read-only'.format(provider), code=501)
+
+
 class CopyError(ProviderError):
     pass
 

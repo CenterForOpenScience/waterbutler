@@ -9,6 +9,7 @@ Subpackages
     provider.box
     provider.cloudfiles
     provider.dropbox
+    provider.evernote
     provider.figshare
     provider.filesystem
     provider.github
