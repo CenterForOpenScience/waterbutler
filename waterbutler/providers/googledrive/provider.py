@@ -391,7 +391,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             current_part = parts.pop(0)
             name, ext = os.path.splitext(current_part[0])
             if ext in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
-                gd_ext = drive_utils.get_mimeType_from_ext(ext)
+                gd_ext = drive_utils.get_mimetype_from_ext(ext)
                 query = "title = '{}' " \
                         "and trashed = false " \
                         "and mimeType = '{}'".format(clean_query(name), gd_ext)
