@@ -389,15 +389,22 @@ class GoogleDriveProvider(provider.BaseProvider):
             parts[-1][1] = False
         while parts:
             current_part = parts.pop(0)
-            query = "title = '{}' " \
-                    "and trashed = false " \
-                    "and mimeType != 'application/vnd.google-apps.form' " \
-                    "and mimeType != 'application/vnd.google-apps.map' " \
-                    "and mimeType {} '{}'".format(
-                        clean_query(current_part[0]),
-                        '=' if current_part[1] else '!=',
-                        self.FOLDER_MIME_TYPE
-                    )
+            name, ext = os.path.splitext(current_part[0])
+            if ext in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
+                gd_ext = drive_utils.get_mimeType_from_ext(ext)
+                query = "title = '{}' " \
+                        "and trashed = false " \
+                        "and mimeType = '{}'".format(clean_query(name), gd_ext)
+            else:
+                query = "title = '{}' " \
+                        "and trashed = false " \
+                        "and mimeType != 'application/vnd.google-apps.form' " \
+                        "and mimeType != 'application/vnd.google-apps.map' " \
+                        "and mimeType {} '{}'".format(
+                            clean_query(current_part[0]),
+                            '=' if current_part[1] else '!=',
+                            self.FOLDER_MIME_TYPE
+                        )
             async with self.request(
                 'GET',
                 self.build_url('files', item_id, 'children', q=query, fields='items(id)'),
@@ -411,14 +418,11 @@ class GoogleDriveProvider(provider.BaseProvider):
             except (KeyError, IndexError):
                 if parts:
                     raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
-                name, ext = os.path.splitext(current_part[0])
-                if ext not in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
-                    return ret + [{
-                        'id': None,
-                        'title': current_part[0],
-                        'mimeType': 'folder' if path.endswith('/') else '',
-                    }]
-                parts.append([name, current_part[1]])
+                return ret + [{
+                    'id': None,
+                    'title': current_part[0],
+                    'mimeType': 'folder' if path.endswith('/') else '',
+                }]
 
             async with self.request(
                 'GET',
