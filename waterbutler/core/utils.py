@@ -144,7 +144,8 @@ def normalize_datetime(date_string):
     if date_string is None:
         return None
     parsed_datetime = dateutil.parser.parse(date_string)
-    assert parsed_datetime.tzinfo, 'Parsed_datetime has no timezone info: {}'.format(date_string)
+    if not parsed_datetime.tzinfo:
+        parsed_datetime = parsed_datetime.replace(tzinfo=pytz.UTC)
     parsed_datetime = parsed_datetime.astimezone(tz=pytz.UTC)
     parsed_datetime = parsed_datetime.replace(microsecond=0)
     return parsed_datetime.isoformat()
