@@ -1,4 +1,4 @@
-from waterbutler.core import metadata, utils
+from waterbutler.core import metadata
 
 
 class BaseBoxMetadata(metadata.BaseMetadata):
@@ -46,10 +46,6 @@ class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
         return self.raw.get('modified_at')
 
     @property
-    def modified_utc(self):
-        return utils.normalize_datetime(self.raw.get('modified_at'))
-
-    @property
     def content_type(self):
         return None
 
@@ -90,10 +86,3 @@ class BoxRevision(metadata.BaseFileRevisionMetadata):
             return self.raw['modified_at']
         except KeyError:
             return self.raw.get('modified')
-
-    @property
-    def modified_utc(self):
-        try:
-            return utils.normalize_datetime(self.raw['modified_at'])
-        except KeyError:
-            return utils.normalize_datetime(self.raw.get('modified'))

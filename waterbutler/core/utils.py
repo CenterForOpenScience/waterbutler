@@ -1,10 +1,10 @@
 import json
 import time
-import dateutil.parser
 import pytz
 import asyncio
 import logging
 import functools
+import dateutil.parser
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
@@ -141,6 +141,8 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
 
 
 def normalize_datetime(date_string):
+    if date_string is None:
+        return None
     parsed_datetime = dateutil.parser.parse(date_string)
     assert parsed_datetime.tzinfo, "Parsed_datetime has no timezone info: " + date_string
     parsed_datetime = parsed_datetime.astimezone(tz=pytz.UTC)

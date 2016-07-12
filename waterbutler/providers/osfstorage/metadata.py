@@ -1,6 +1,6 @@
-from waterbutler.core import metadata
-import dateutil.parser
 import pytz
+import dateutil.parser
+from waterbutler.core import metadata
 
 
 class BaseOsfStorageMetadata:
