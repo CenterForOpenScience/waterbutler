@@ -1,5 +1,6 @@
 import pytz
 import dateutil.parser
+
 from waterbutler.core import metadata
 
 
@@ -39,7 +40,7 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
         try:
             return self.raw['modified_utc']
         except KeyError:
-            # Kludge for OSF, who's modified attribute does not include
+            # Kludge for OSF, whose modified attribute does not include
             # tzinfo but is assumed to be UTC.
             parsed_datetime = dateutil.parser.parse(self.raw['modified'])
             if not parsed_datetime.tzinfo:

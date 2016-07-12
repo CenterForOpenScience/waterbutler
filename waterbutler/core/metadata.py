@@ -3,8 +3,8 @@ import hashlib
 
 import furl
 
-from waterbutler.server import settings
 from waterbutler.core import utils
+from waterbutler.server import settings
 
 
 class BaseMetadata(metaclass=abc.ABCMeta):
