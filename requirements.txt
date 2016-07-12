@@ -8,6 +8,7 @@ invoke==0.11.1
 oauthlib==0.7.2
 pyjwe==1.0.0
 pyjwt==1.4.0
+python-dateutil==2.5.3
 raven==5.10.2
 stevedore==1.2.0
 tornado==4.3
