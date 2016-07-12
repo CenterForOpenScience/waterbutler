@@ -1,6 +1,6 @@
 import os
 
-from waterbutler.core import metadata, utils
+from waterbutler.core import metadata
 
 
 class S3Metadata(metadata.BaseMetadata):
@@ -39,10 +39,6 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
         return self.raw['LAST-MODIFIED']
 
     @property
-    def modified_utc(self):
-        return utils.normalize_datetime(self.raw['LAST-MODIFIED'])
-
-    @property
     def etag(self):
         return self.raw['ETAG'].replace('"', '')
 
@@ -67,10 +63,6 @@ class S3FileMetadata(S3Metadata, metadata.BaseFileMetadata):
     @property
     def modified(self):
         return self.raw['LastModified']
-
-    @property
-    def modified_utc(self):
-        return utils.normalize_datetime(self.raw['LastModified'])
 
     @property
     def content_type(self):
@@ -125,10 +117,6 @@ class S3Revision(metadata.BaseFileRevisionMetadata):
     @property
     def modified(self):
         return self.raw['LastModified']
-
-    @property
-    def modified_utc(self):
-        return utils.normalize_datetime(self.raw['LastModified'])
 
     @property
     def extra(self):

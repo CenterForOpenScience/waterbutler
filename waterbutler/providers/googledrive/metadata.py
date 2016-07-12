@@ -1,5 +1,4 @@
 from waterbutler.core import metadata
-import waterbutler.core.utils as wb_utils
 
 from waterbutler.providers.googledrive import utils
 
@@ -70,10 +69,6 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
         return self.raw['modifiedDate']
 
     @property
-    def modified_utc(self):
-        return wb_utils.normalize_datetime(self.raw['modifiedDate'])
-
-    @property
     def content_type(self):
         return self.raw['mimeType']
 
@@ -125,10 +120,6 @@ class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
         return self.raw['modifiedDate']
 
     @property
-    def modified_utc(self):
-        return wb_utils.normalize_datetime(self.raw['modifiedDate'])
-
-    @property
     def content_type(self):
         return self.raw['mimeType']
 
@@ -164,7 +155,3 @@ class GoogleDriveRevision(metadata.BaseFileRevisionMetadata):
     @property
     def modified(self):
         return self.raw['modifiedDate']
-
-    @property
-    def modified_utc(self):
-        return wb_utils.normalize_datetime(self.raw['modifiedDate'])
