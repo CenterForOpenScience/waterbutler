@@ -157,6 +157,7 @@ def folder_list_metadata():
             {
                 "type": "file",
                 "id": "818853862",
+                "modified_at": "2012-12-12T11:04:26-08:00",
                 "sequence_id": "0",
                 "etag": "0",
                 "name": "Warriors.jpg"

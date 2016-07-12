@@ -35,6 +35,7 @@ class TestBaseMetadata:
             'etag': etag,
             'contentType': 'application/octet-stream',
             'modified': 'never',
+            'modified_utc': 'never',
             'size': 1337,
             'resource': 'n0d3z',
         }
@@ -87,6 +88,7 @@ class TestBaseMetadata:
             'etag': etag,
             'contentType': 'application/octet-stream',
             'modified': 'never',
+            'modified_utc': 'never',
             'size': 1337,
         }
 
@@ -100,5 +102,6 @@ class TestBaseMetadata:
             'extra': {},
             'version': 1,
             'modified': 'never',
+            'modified_utc': 'never',
             'versionIdentifier': 'versions',
         }
