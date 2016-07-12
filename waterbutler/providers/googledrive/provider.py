@@ -376,6 +376,10 @@ class GoogleDriveProvider(provider.BaseProvider):
         return item_id
 
     async def _resolve_path_to_ids(self, path, start_at=None):
+        """Takes a path and traverses the file tree (ha!) beginning at ``start_at``, looking for
+        something that matches ``path``.  Returns a list of dicts for each part of the path, with
+        ``title``, ``mimeType``, and ``id`` keys.
+        """
         ret = start_at or [{
             'title': '',
             'mimeType': 'folder',
@@ -410,7 +414,12 @@ class GoogleDriveProvider(provider.BaseProvider):
                 item_id = data['items'][0]['id']
             except (KeyError, IndexError):
                 if parts:
+                    # if we can't find an intermediate path part, that's an error
                     raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
+
+                # Couldn't find id for last part of path. If path includes Google Doc extension,
+                # search again without extension (gdrive won't find it if included). Otherwise,
+                # assume file or folder doesn't yet exist (i.e. id = None)
                 name, ext = os.path.splitext(current_part[0])
                 if ext not in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
                     return ret + [{
@@ -418,6 +427,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                         'title': current_part[0],
                         'mimeType': 'folder' if path.endswith('/') else '',
                     }]
+                # strip google docs extension and try again
                 parts.append([name, current_part[1]])
                 continue
 
