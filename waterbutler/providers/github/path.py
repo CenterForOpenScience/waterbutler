@@ -26,6 +26,13 @@ class GitHubPath(path.WaterButlerPath):
         """SHA-1 of this file"""
         return self.identifier[1]
 
+    @property
+    def extra(self):
+        return dict(super().extra, **{
+            'ref': self.branch_ref,
+            'fileSha': self.file_sha,
+        })
+
     def child(self, name, _id=None, folder=False):
         """Pass current branch down to children"""
         if _id is None:

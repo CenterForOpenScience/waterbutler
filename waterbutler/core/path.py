@@ -261,6 +261,11 @@ class WaterButlerPath:
             return None
         return self.__class__.from_parts(self.parts[:-1], folder=True, prepend=self._prepend)
 
+    @property
+    def extra(self):
+        """ Any extra provider-specific properties of the path. """
+        return {}
+
     def child(self, name, _id=None, folder=False):
         """ Create a child of the current WaterButlerPath, propagating prepend and id information to it.
 
