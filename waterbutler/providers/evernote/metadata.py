@@ -7,15 +7,25 @@ class BaseEvernoteMetadata(metadata.BaseMetadata):
     """ Translation from Evernote Metadata format to Waterbutler Metadata
     """
 
-    def __init__(self, raw, doi):
+    def __init__(self, raw):
         """
-        :param raw: Source metadata generated from Evernote API. Must be parseable by xml.dom.minidom
+        :param raw: Source metadata generated from Evernote API. 
         :type raw: str
         :param doi: Evernote DOI. Format: doi:10.5061/evernote.XXXX
         :type doi: str.
+
+        {
+          "path": "",
+          "name": "",
+          "kind": "",
+          "provider": "",
+          "materialized": "",
+          "provider": "",
+          "etag": "",
+          "extra": {}
+        }
         """
-        super().__init__(xml.dom.minidom.parseString(raw))
-        self.evernote_doi = doi
+        super().__init__(raw)
 
     def _get_element_(self, name):
         """
@@ -45,15 +55,32 @@ class BaseEvernoteMetadata(metadata.BaseMetadata):
 
     @property
     def name(self):
-        return self._get_element_("dcterms:title")
+
+        # TO DO: implement
+        return "[NAME]"
 
     @property
     def content_type(self):
-        return self._get_element_("dcterms:type")
+
+        # TO DO: implement
+        return "[CONTENT_TYPE]"
+        # return self._get_element_("dcterms:type")
+
+    @property
+    def kind(self):
+        """
+        TO DO: figure whether to implement
+        https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/core/metadata.py#L127-L130
+
+        `file` or `folder`
+        """
+        return "[KIND]"
+    
 
     @property
     def modified(self):
-        return self._get_element_("dcterms:dateSubmitted")
+        # TO DO: implement
+        return "[DATE]"
 
     @property
     def provider(self):
@@ -61,24 +88,18 @@ class BaseEvernoteMetadata(metadata.BaseMetadata):
 
     @property
     def path(self):
-        return "/" + self.evernote_doi.split('evernote.')[1]
-
+        # TO DO: implement
+        return "[UNIQUEID]"
+    
     @property
     def extra(self):
-        return {'doi': self.evernote_doi,
-                'temporal': self._get_element_("dcterms:temporal"),
-                'spatial': self._get_element_("dcterms:spatial"),
-                'available': self._get_element_("dcterms:available"),
-                'scientificName': self._get_element_list_("dwc:scientificName"),
-                'subject': self._get_element_list_("dcterms:subject"),
-                'description': self._get_element_("dcterms:description"),
-                'rights': self._get_element_("dcterms:rights"),
-                'id': self._get_element_("dcterms:identifier"),
-                'creators': self._get_element_list_("dcterms:creator")}
+        return {}
 
     @property
     def etag(self):
-        return '{}::{}'.format(self.name, self.evernote_doi)
+        # TO DO: implement
+        return "[ETAG]"
+
 
     @property
     def size(self):
@@ -134,13 +155,10 @@ class EvernotePackageMetadata(BaseEvernoteMetadata, metadata.BaseFolderMetadata)
     def path(self):
         return super().path + '/'
 
-    @property
-    def file_parts(self):
-        return self._get_element_list_("dcterms:hasPart")
 
     @property
     def extra(self):
         return super(BaseEvernoteMetadata, self).extra.update({
-            'references': self._get_element_("dcterms:references"),
-            'file_parts': self.file_parts
+     
+        
         })

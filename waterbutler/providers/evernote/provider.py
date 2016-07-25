@@ -5,8 +5,33 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
+from waterbutler.tasks.core import backgroundify
+
 from .metadata import EvernotePackageMetadata, EvernoteFileMetadata
 from .settings import EVERNOTE_META_URL, EVERNOTE_FILE_URL
+from .utils import get_evernote_client, get_notebooks, notes_metadata, timestamp_iso
+
+@backgroundify
+def _evernote_notes(notebook_guid, token):
+
+    client = get_evernote_client(token)
+
+    # will want to pick up notes for the notebook
+    # start with calculating the number of notes in nb
+
+    notes = notes_metadata(client,
+                    notebookGuid=notebook_guid,
+                    includeTitle=True,
+                    includeUpdated=True,
+                    includeCreated=True)
+
+    results = [{'title': note.title,
+              'guid': note.guid,
+              'created': timestamp_iso(note.created),
+              'updated': timestamp_iso(note.updated)}
+              for note in notes]
+
+    return results
 
 
 class EvernoteProvider(provider.BaseProvider):
@@ -36,8 +61,8 @@ class EvernoteProvider(provider.BaseProvider):
     NAME = 'evernote'
 
     def __init__(self, auth, credentials, evernote_settings):
+
         super().__init__(auth, credentials, evernote_settings)
-        self.doi = evernote_settings['doi']
 
     async def _package_metadata(self):
         """ Interface to file and package metadata from Evernote
@@ -48,13 +73,19 @@ class EvernoteProvider(provider.BaseProvider):
         :raises: `urllib.error.HTTPError`
 
         """
-        resp = await self.make_request(
-            'GET',
-            EVERNOTE_META_URL + self.doi.split('.')[-1],
-            expects=(200, 206),
-            throws=exceptions.MetadataError)
-        body_text = await resp.text()
-        return EvernotePackageMetadata(body_text, self.doi)
+
+        # TO DO: 
+
+
+        token = self.credentials['token']
+        notebook_guid = self.settings['folder']
+
+        notes = await _evernote_notes(notebook_guid, token)
+        print (notes)
+
+        #body_text = await _body_text('')
+        return EvernotePackageMetadata(notes)
+        # return []
 
     async def _file_metadata(self, path):
         """ Interface to file and package metadata from Evernote
@@ -101,6 +132,17 @@ class EvernoteProvider(provider.BaseProvider):
         :returns:  `list` A list of metadata
         :raises: `urllib.error.HTTPError`
         """
+
+        # TO DO: IMPORTANT
+        """
+        responds to a GET request for the url you posted.  
+        If the `path` query arg refers to a particular file/note, it should return the metadata for that file/note.
+        If `path` is just `/`, it should return a list of metadata objects for all file/notes in the root directory.  
+         IIRC, Evernote doesn’t have a hierarchy, so the root directory is just a collection of all available notes.
+        """
+
+        print ("metadata: path: {}".format(path), type(path), path.is_dir)
+
         package = await self._package_metadata()
 
         if str(path) == u'/':
@@ -126,6 +168,8 @@ class EvernoteProvider(provider.BaseProvider):
         :raises:   `waterbutler.core.exceptions.DownloadError`
         """
 
+       # TO DO: IMPORTANT
+
         resp = await self.make_request(
             'GET',
             EVERNOTE_META_URL + path.path + '/bitstream',
@@ -150,6 +194,9 @@ class EvernoteProvider(provider.BaseProvider):
         :param path: Path to either a package or file.
         :type path: `str`
         """
+
+       # TO DO: IMPORTANT
+
         wbpath = WaterButlerPath(path)
         if wbpath.is_root:
             return wbpath
@@ -164,6 +211,9 @@ class EvernoteProvider(provider.BaseProvider):
             See :func:`waterbutler.providers.evernote.provider.EvernoteProvider.validate_path`.
             Additionally queries the Evernote API to check if the package exists.
         """
+
+        # TO DO: IMPORTANT
+
         wbpath = await self.validate_path(path, **kwargs)
         if wbpath.is_root:
             return wbpath

@@ -1,0 +1,3 @@
+git+https://github.com/rdhyee/evernote-sdk-python3
+git+https://github.com/rdhyee/ENML_PY
+beautifulsoup4
