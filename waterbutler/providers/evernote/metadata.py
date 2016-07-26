@@ -1,164 +1,56 @@
 from waterbutler.core import metadata
 
-import xml.dom.minidom
-
-
-class BaseEvernoteMetadata(metadata.BaseMetadata):
-    """ Translation from Evernote Metadata format to Waterbutler Metadata
-    """
-
+class EvernoteFileMetadata(metadata.BaseFileMetadata):
+  
     def __init__(self, raw):
-        """
-        :param raw: Source metadata generated from Evernote API. 
-        :type raw: str
-        :param doi: Evernote DOI. Format: doi:10.5061/evernote.XXXX
-        :type doi: str.
-
-        {
-          "path": "",
-          "name": "",
-          "kind": "",
-          "provider": "",
-          "materialized": "",
-          "provider": "",
-          "etag": "",
-          "extra": {}
-        }
-        """
-        super().__init__(raw)
-
-    def _get_element_(self, name):
-        """
-            Helper function for retrieving metadata fields from source document
-            by name. Returns first element found
-
-            :param name: Element tag.
-            :type name: string or unicode
-            :returns String contents of element
-        """
-        el = self.raw.getElementsByTagName(name)
-        if len(el) > 0:
-            return el[0].firstChild.wholeText
-        else:
-            return ''
-
-    def _get_element_list_(self, name):
-        """
-            Helper function for retrieving metadata fields from source document
-            by name.
-
-            :param name: Element tag.
-            :type name: string or unicode
-            :returns String contents of element
-        """
-        return [i.firstChild.wholeText for i in self.raw.getElementsByTagName(name)]
-
-    @property
-    def name(self):
-
-        # TO DO: implement
-        return "[NAME]"
+        metadata.BaseFileMetadata.__init__(self, raw)
 
     @property
     def content_type(self):
-
-        # TO DO: implement
-        return "[CONTENT_TYPE]"
-        # return self._get_element_("dcterms:type")
-
-    @property
-    def kind(self):
-        """
-        TO DO: figure whether to implement
-        https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/core/metadata.py#L127-L130
-
-        `file` or `folder`
-        """
-        return "[KIND]"
-    
+        # TO DO: Implement
+        return 'text/enml'
 
     @property
     def modified(self):
-        # TO DO: implement
-        return "[DATE]"
+        """ Date the file was last modified, as reported by the provider, in
+        the format used by the provider. """
+
+        return self.raw['updated']
+
+    @property
+    def name(self):
+        
+        return self.raw['title']
 
     @property
     def provider(self):
         return 'evernote'
 
     @property
-    def path(self):
-        # TO DO: implement
-        return "[UNIQUEID]"
-    
+    def size(self):
+        # TO DO
+
+        return self.raw['length']
+
     @property
     def extra(self):
-        return {}
+        return super(EvernoteFileMetadata, self).extra.update({
 
+        })
+
+    @property
+    def path(self):
+        return "/" + self.raw["guid"]
+
+    @property
+    def _json_api_links(self, resource):
+        return {}
+    
     @property
     def etag(self):
         # TO DO: implement
         return "[ETAG]"
 
 
-    @property
-    def size(self):
-        return 0
-
-    def _json_api_links(self, resource):
-        return {}
 
 
-class EvernoteFileMetadata(BaseEvernoteMetadata, metadata.BaseFileMetadata):
-    """
-        EvernoteFileMetadata needs to be instantiated with the same metadata from
-        the raw API call that normal packages do, AND with metadata from the file
-        metadata API and information that is only found in the bit stream.
-    """
-    def __init__(self, raw, doi, raw_file, file_name):
-        BaseEvernoteMetadata.__init__(self, raw, "doi:10.5061/evernote." + doi)
-        self.raw_file = xml.dom.minidom.parseString(raw_file)
-        self.file_name = file_name
-
-    def _get_file_element_(self, name):
-        el = self.raw_file.getElementsByTagName(name)
-        if len(el) > 0:
-            return el[0].firstChild.wholeText
-        else:
-            return ''
-
-    def _get_file_element_list_(self, name):
-        return [i.firstChild.wholeText for i in self.raw_file.getElementsByTagName(name)]
-
-    @property
-    def content_type(self):
-        return self._get_file_element_('formatId')
-
-    @property
-    def name(self):
-        return self.file_name.strip('\"')
-
-    @property
-    def size(self):
-        return self._get_file_element_('size')
-
-    @property
-    def extra(self):
-        return super(BaseEvernoteMetadata, self).extra.update({
-            'part_of': self._get_element_("dcterms:isPartOf")
-        })
-
-
-class EvernotePackageMetadata(BaseEvernoteMetadata, metadata.BaseFolderMetadata):
-
-    @property
-    def path(self):
-        return super().path + '/'
-
-
-    @property
-    def extra(self):
-        return super(BaseEvernoteMetadata, self).extra.update({
-     
-        
-        })

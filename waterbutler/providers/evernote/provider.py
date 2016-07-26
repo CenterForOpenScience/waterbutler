@@ -7,7 +7,7 @@ from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.tasks.core import backgroundify
 
-from .metadata import EvernotePackageMetadata, EvernoteFileMetadata
+from .metadata import EvernoteFileMetadata
 from .settings import EVERNOTE_META_URL, EVERNOTE_FILE_URL
 from .utils import get_evernote_client, get_notebooks, notes_metadata, timestamp_iso
 
@@ -23,40 +23,20 @@ def _evernote_notes(notebook_guid, token):
                     notebookGuid=notebook_guid,
                     includeTitle=True,
                     includeUpdated=True,
-                    includeCreated=True)
+                    includeCreated=True,
+                    includeContentLength=True)
 
     results = [{'title': note.title,
               'guid': note.guid,
               'created': timestamp_iso(note.created),
-              'updated': timestamp_iso(note.updated)}
+              'updated': timestamp_iso(note.updated),
+              'length':note.contentLength}
               for note in notes]
 
     return results
 
 
 class EvernoteProvider(provider.BaseProvider):
-    """
-        Read_only provider for Evernote packages.
-        Within the Evernote API, packages are accessed via the following format:
-            `<API ACCESS POINT>/doi:10.5061/evernote.XXXX`
-        Where `XXXX` denotes the packages-specific DOI suffix.
-        Similarly, files are accessed with the following format:
-            `<API ACCESS POINT>/doi:10.5061/evernote.XXXX/Y`
-        Where `Y` is an index number assigned to each file.
-
-        In Waterbutler, this is translated to the following table:
-
-        ========== ================================
-        WB Path    Object
-        ========== ================================
-        `/`        Evernote repository (unimplemented)
-        `/XXXX/`   Evernote Package
-        `/XXXX/YY` Package File
-        ========== ================================
-
-        Paths need to follow this scheme or will :class:`waterbutler.core.exceptions.NotFoundError`
-        when validated through :func:`waterbutler.providers.evernote.provider.EvernoteProvider.validate_path`
-    """
 
     NAME = 'evernote'
 
@@ -74,18 +54,13 @@ class EvernoteProvider(provider.BaseProvider):
 
         """
 
-        # TO DO: 
-
-
         token = self.credentials['token']
         notebook_guid = self.settings['folder']
 
         notes = await _evernote_notes(notebook_guid, token)
-        print (notes)
 
-        #body_text = await _body_text('')
-        return EvernotePackageMetadata(notes)
-        # return []
+        return [EvernoteFileMetadata(note) for note in notes]
+
 
     async def _file_metadata(self, path):
         """ Interface to file and package metadata from Evernote
@@ -143,21 +118,13 @@ class EvernoteProvider(provider.BaseProvider):
 
         print ("metadata: path: {}".format(path), type(path), path.is_dir)
 
-        package = await self._package_metadata()
-
         if str(path) == u'/':
-            return [package]
+            package = await self._package_metadata()
+            return package
 
         if not path.is_dir:
             return (await self._file_metadata(path.path))
 
-        children = []
-        for child in package.file_parts:
-            # convert from the identifier format listed in the metadata to a path
-            child_doi = child
-            child_doi = child_doi.split(".")[-1]
-            children.append((await self._file_metadata(child_doi)))
-        return children
 
     async def download(self, path, **kwargs):
         """ Interface to downloading files from Evernote
@@ -170,40 +137,22 @@ class EvernoteProvider(provider.BaseProvider):
 
        # TO DO: IMPORTANT
 
-        resp = await self.make_request(
-            'GET',
-            EVERNOTE_META_URL + path.path + '/bitstream',
-            expects=(200, 206),
-            throws=exceptions.DownloadError,
-        )
-
-        file_metadata = await self._file_metadata(path.path)
-        # This is a kludge in place to fix a bug in the Evernote API.
-        ret = streams.ResponseStreamReader(resp,
-            size=file_metadata.size,
-            name=file_metadata.name)
-        ret._size = file_metadata.size
-        return ret
+        return None
 
     async def validate_path(self, path, **kwargs):
         """
-        Returns WaterButlerPath if the string `path` is valid, else raises
-        not found error. See :class:`waterbutler.providers.evernote.provider.EvernoteProvider`
-        for details on path formatting.
-
         :param path: Path to either a package or file.
         :type path: `str`
         """
 
-       # TO DO: IMPORTANT
-
         wbpath = WaterButlerPath(path)
         if wbpath.is_root:
             return wbpath
-        if len(wbpath.parts) == 2 and not wbpath.is_dir:
+        if len(wbpath.parts) == 1 and wbpath.is_dir:
                 raise exceptions.NotFoundError(path)
-        elif len(wbpath.parts) == 3 and not wbpath.is_file:
+        if len(wbpath.parts) > 1:
             raise exceptions.NotFoundError(path)
+  
         return wbpath
 
     async def validate_v1_path(self, path, **kwargs):
@@ -215,6 +164,7 @@ class EvernoteProvider(provider.BaseProvider):
         # TO DO: IMPORTANT
 
         wbpath = await self.validate_path(path, **kwargs)
+        
         if wbpath.is_root:
             return wbpath
         full_url = EVERNOTE_META_URL + wbpath.parts[1].value
