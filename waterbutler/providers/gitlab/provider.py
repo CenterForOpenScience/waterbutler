@@ -1,6 +1,8 @@
 import copy
 import json
 import pdb
+import base64
+import aiohttp
 
 import furl
 
@@ -170,21 +172,34 @@ class GitLabProvider(provider.BaseProvider):
         '''Get the stream to the specified file on github
         :param str path: The path to the file on github
         :param str ref: The git 'ref' a branch or commit sha at which to get the file from
-        :param str fileSha: The sha of file to be downloaded if specifed path will be ignored
         :param dict kwargs: Ignored
         '''
-        data = await self.metadata(path, revision=revision)
-        file_sha = path.identifier[1] or data.extra['fileSha']
+
+        url = self.build_repo_url('repository', 'files', file_path=path.full_path, ref='master')
+        
+        headers = {"Authorization": 'Bearer {}'.format(self.token)}
 
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('git', 'blobs', file_sha),
-            headers={'Accept': 'application/vnd.github.v3.raw'}, #TODO
+            url,
+            headers=headers,
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
 
-        return streams.ResponseStreamReader(resp, size=data.size)
+        data = await resp.json()
+        raw = base64.b64decode(data['content'])
+        ss = streams.StringStream(raw)
+
+        mdict = aiohttp.multidict.MultiDict(resp.headers)
+        mdict_options = {'Content-Length': len(raw)}
+        mdict.update(mdict_options)
+
+        resp.headers = mdict
+        resp.content = streams.StringStream(raw)
+
+        pdb.set_trace()
+        return streams.ResponseStreamReader(resp)
 
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
         assert self.name is not None
