@@ -35,7 +35,7 @@ After completing the installation of Python 3.5, you must create the virtual env
 pip install virtualenv
 pip install virtualenvwrapper
 mkvirtualenv --python=python3.5 waterbutler
-pip install invoke
+pip install invoke==0.11.1
 invoke install
 invoke server
 ```

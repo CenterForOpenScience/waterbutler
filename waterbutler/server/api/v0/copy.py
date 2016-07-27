@@ -21,8 +21,6 @@ class CopyHandler(core.BaseCrossProviderHandler):
                 'path': self.json['destination']['path'],
                 'provider': self.destination_provider.serialized()
             },
-                self.callback_url,
-                self.auth,
                 rename=self.json.get('rename'),
                 conflict=self.json.get('conflict', 'replace'),
                 start_time=time.time()
@@ -41,14 +39,12 @@ class CopyHandler(core.BaseCrossProviderHandler):
                 )
             )
 
-        metadata = metadata.serialized()
-
         if created:
             self.set_status(201)
         else:
             self.set_status(200)
 
-        self.write(metadata)
+        self.write(metadata.serialized())
 
         if self.source_provider.can_intra_copy(self.destination_provider, self.json['source']['path']):
             self._send_hook('copy', metadata)

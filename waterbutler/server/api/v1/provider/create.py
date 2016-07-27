@@ -89,17 +89,17 @@ class CreateMixin:
             self.target_path = self.path
 
     async def create_folder(self):
-        metadata = await self.provider.create_folder(self.target_path)
+        self.metadata = await self.provider.create_folder(self.target_path)
         self.set_status(201)
-        self.write({'data': metadata.json_api_serialized(self.resource)})
+        self.write({'data': self.metadata.json_api_serialized(self.resource)})
 
     async def upload_file(self):
         self.writer.write_eof()
 
-        metadata, created = await self.uploader
+        self.metadata, created = await self.uploader
         self.writer.close()
         self.wsock.close()
         if created:
             self.set_status(201)
 
-        self.write({'data': metadata.json_api_serialized(self.resource)})
+        self.write({'data': self.metadata.json_api_serialized(self.resource)})

@@ -177,7 +177,7 @@ class GitHubProvider(provider.BaseProvider):
         resp = await self.make_request(
             'GET',
             self.build_repo_url('git', 'blobs', file_sha),
-            headers={'Accept': 'application/vnd.github.VERSION.raw'},
+            headers={'Accept': 'application/vnd.github.v3.raw'},
             expects=(200, ),
             throws=exceptions.DownloadError,
         )

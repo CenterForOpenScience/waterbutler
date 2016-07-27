@@ -21,12 +21,13 @@ class MockCoroutine(mock.Mock):
 
 
 class MockFileMetadata(metadata.BaseFileMetadata):
-    provider = 'mock'
+    provider = 'MockProvider'
     name = 'Foo.name'
     size = 1337
     etag = 'etag'
     path = '/Foo.name'
     modified = 'never'
+    modified_utc = 'never'
     content_type = 'application/octet-stream'
 
     def __init__(self):
@@ -34,7 +35,7 @@ class MockFileMetadata(metadata.BaseFileMetadata):
 
 
 class MockFolderMetadata(metadata.BaseFolderMetadata):
-    provider = 'mock'
+    provider = 'MockProvider'
     name = 'Bar'
     size = 1337
     etag = 'etag'
@@ -50,6 +51,7 @@ class MockFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
     version = 1
     version_identifier = 'versions'
     modified = 'never'
+    modified_utc = 'never'
 
     def __init__(self):
         super().__init__({})

@@ -1,13 +1,13 @@
 -r requirements.txt
 
--e git+https://github.com/centerforopenscience/aiohttpretty.git#egg=aiohttpretty
-colorlog
-flake8
+-e git+https://github.com/centerforopenscience/aiohttpretty.git@0.0.2#egg=aiohttpretty
+colorlog==2.5.0
+flake8==2.3.0
 ipdb
 ipython
 pep8
 pyflakes
-pytest
-pytest-asyncio
-pytest-cov
+pytest==2.8.2
+pytest-asyncio==0.3.0
+pytest-cov==2.2.0
 redis

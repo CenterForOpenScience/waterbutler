@@ -13,7 +13,9 @@ before_install:
     - export WHEELHOUSE=$HOME/wheelhouse
 
 install:
-    - travis_retry pip install invoke
+    - travis_retry pip install --upgrade pip
+    - travis_retry pip install wheel==0.25.0
+    - travis_retry pip install invoke==0.11.1
     - travis_retry invoke wheelhouse --develop
     - travis_retry invoke install --develop
 
@@ -24,9 +26,10 @@ script:
   - invoke test
 
 before_cache:
-  # exclude python requirements from github repo's
+  # force reinstall for reqs pulled from github repos
   - rm -f $HOME/wheelhouse/boto-*.whl
-  - rm -f $HOME/wheelhouse/raven-*.whl
+  - rm -f $HOME/wheelhouse/aiohttpretty-*.whl
+
 
 notifications:
   flowdock: 9f8a6baf3feafdb62e515718698d06d0
