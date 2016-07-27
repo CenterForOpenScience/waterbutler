@@ -51,8 +51,7 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
 
     @property
     def content_type(self):
-        # return self.raw['mime_type']
-        return 'dropbox/whatarewegonnadowithyou'
+        return None
 
     @property
     def etag(self):
