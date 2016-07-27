@@ -175,6 +175,7 @@ class GitLabProvider(provider.BaseProvider):
         :param dict kwargs: Ignored
         '''
 
+        #TODO: make ref dynamic
         url = self.build_repo_url('repository', 'files', file_path=path.full_path, ref='master')
         
         headers = {"Authorization": 'Bearer {}'.format(self.token)}
@@ -189,7 +190,6 @@ class GitLabProvider(provider.BaseProvider):
 
         data = await resp.json()
         raw = base64.b64decode(data['content'])
-        ss = streams.StringStream(raw)
 
         mdict = aiohttp.multidict.MultiDict(resp.headers)
         mdict_options = {'Content-Length': len(raw)}
@@ -198,7 +198,6 @@ class GitLabProvider(provider.BaseProvider):
         resp.headers = mdict
         resp.content = streams.StringStream(raw)
 
-        pdb.set_trace()
         return streams.ResponseStreamReader(resp)
 
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
