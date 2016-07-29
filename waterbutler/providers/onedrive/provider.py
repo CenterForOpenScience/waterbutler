@@ -49,6 +49,7 @@ class OneDriveProvider(provider.BaseProvider):
         )
 
         if resp.status == 400:
+            await resp.release()
             return WaterButlerPath(path, prepend=self.folder)
 
         data = await resp.json()
@@ -134,6 +135,7 @@ class OneDriveProvider(provider.BaseProvider):
             throws=exceptions.IntraCopyError,
         )
         if resp is None:
+            await resp.release()
             raise exceptions.IntraCopyError
         logger.info('resp::{}'.format(repr(resp)))
         status_url = resp.headers['LOCATION']
@@ -269,7 +271,7 @@ class OneDriveProvider(provider.BaseProvider):
             expects=(204, ),
             throws=exceptions.DeleteError,
         )
-        resp.release()
+        await resp.release()
 
     async def metadata(self, path, revision=None, **kwargs):
         """ OneDrive API Reference: https://dev.onedrive.com/items/get.htm """
