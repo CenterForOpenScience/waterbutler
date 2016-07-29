@@ -188,9 +188,8 @@ class OneDriveProvider(provider.BaseProvider):
                 expects=(200, ),
                 throws=exceptions.IntraMoveError,
             )
-        except exceptions.IntraMoveError as e:
-            if e.code != 403:
-                raise
+        except exceptions.IntraMoveError:
+            raise
 
         data = await resp.json()
 
