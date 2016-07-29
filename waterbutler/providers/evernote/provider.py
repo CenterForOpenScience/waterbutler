@@ -135,9 +135,33 @@ class EvernoteProvider(provider.BaseProvider):
         :raises:   `waterbutler.core.exceptions.DownloadError`
         """
 
-       # TO DO: IMPORTANT
+        # TO DO: IMPORTANT
+        # what needs to be returned?
+        # looking at Google docs code for example
+        # https://github.com/CenterForOpenScience/waterbutler/blob/63b7d469e5545de9f2183b964fb6264fd9a423a5/waterbutler/providers/box/provider.py#L211-L227
 
-        return None
+        # if path.identifier is None:
+        #     raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
+
+        # query = {}
+        # if revision and revision != path.identifier:
+        #     query['version'] = revision
+
+        # resp = await self.make_request(
+        #     'GET',
+        #     self.build_url('files', path.identifier, 'content', **query),
+        #     range=range,
+        #     expects=(200, 206),
+        #     throws=exceptions.DownloadError,
+        # )
+
+        # ResponseStreamReader:
+        # https://github.com/CenterForOpenScience/waterbutler/blob/63b7d469e5545de9f2183b964fb6264fd9a423a5/waterbutler/core/streams/http.py#L141-L183
+
+
+        return streams.StringStream("hello")
+        # return streams.ResponseStreamReader(resp)
+
 
     async def validate_path(self, path, **kwargs):
         """
@@ -164,7 +188,7 @@ class EvernoteProvider(provider.BaseProvider):
         # TO DO: IMPORTANT
 
         wbpath = await self.validate_path(path, **kwargs)
-        
+
         if wbpath.is_root:
             return wbpath
         full_url = EVERNOTE_META_URL + wbpath.parts[1].value
@@ -178,6 +202,7 @@ class EvernoteProvider(provider.BaseProvider):
             throws=exceptions.MetadataError,
         )
         await resp.release()
+
         if resp.status == 404:
             raise exceptions.NotFoundError(str(path))
 
