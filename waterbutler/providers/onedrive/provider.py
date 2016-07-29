@@ -152,7 +152,7 @@ class OneDriveProvider(provider.BaseProvider):
             await asyncio.sleep(settings.ONEDRIVE_COPY_SLEEP_INTERVAL)
             i += 1
         metadata = self._construct_metadata(status)
-        return metadata, True
+        return metadata, dest_path.identifier is None
 
     async def _copy_status(self, status_url):
         """ OneDrive API Reference: https://dev.onedrive.com/resources/asyncJobStatus.htm """
@@ -200,7 +200,7 @@ class OneDriveProvider(provider.BaseProvider):
 
         folder = OneDriveFolderMetadata(data, self.folder)
 
-        return folder, True
+        return folder, dest_path.identifier is None
 
     async def download(self, path, revision=None, range=None, **kwargs):
         """ OneDrive API Reference: https://dev.onedrive.com/items/download.htm """
