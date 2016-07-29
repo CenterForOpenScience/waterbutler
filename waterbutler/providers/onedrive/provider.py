@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from itertools import repeat
 
 from waterbutler.core import streams
+from waterbutler.core import path
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 #  from waterbutler.tasks.core import backgroundify
@@ -20,6 +21,18 @@ from waterbutler.providers.onedrive.metadata import OneDriveFileMetadata
 from waterbutler.providers.onedrive.metadata import OneDriveFolderMetadata
 
 logger = logging.getLogger(__name__)
+
+
+class OneDrivePath(path.WaterButlerPath):
+    """OneDrive specific WaterButlerPath class to handle some of the idiosyncrasies of
+    file paths in OneDrive."""
+    def file_path(self, data):
+        parent_path = data['parentReference']['path'].replace('/drive/root:', '')
+        if (len(parent_path) == 0):
+            names = '/{}'.format(data['name'])
+        else:
+            names = '{}/{}'.format(parent_path, data['name'])
+        return names
 
 
 class OneDriveProvider(provider.BaseProvider):
@@ -54,7 +67,8 @@ class OneDriveProvider(provider.BaseProvider):
 
         data = await resp.json()
 
-        names = self._get_names(data)
+        od_path = OneDrivePath(path)
+        names = od_path.file_path(data)
         ids = self._get_ids(data)
 
         wb_path = WaterButlerPath(names, _ids=ids, folder=path.endswith('/'))
