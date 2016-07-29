@@ -553,6 +553,13 @@ class TestMetadata:
         assert result == '/elect-a.jpg'
 
     @pytest.mark.aiohttpretty
+    @pytest.mark.asyncio
+    async def test_metadata_material_path_has_slash(self, provider, file_root_parent_metadata):
+        path = WaterButlerPath("/elect-a.jpg")
+
+        assert "/elect-a.jpg" == path.materialized_path
+
+    @pytest.mark.aiohttpretty
     def test_metadata_ids_padding(self, provider, folder_object_metadata, file_sub_folder_metadata):
         result = provider._get_ids(file_sub_folder_metadata)
         assert result == [None, None, None, file_sub_folder_metadata['parentReference']['id'], file_sub_folder_metadata['id']]
