@@ -143,12 +143,13 @@ class OneDriveProvider(provider.BaseProvider):
         logger.info('status_url::{}'.format(repr(status_url)))
         i = 0
         status = None
-        while (i < 30):
+
+        while (i < settings.ONEDRIVE_COPY_INTERATION_COUNT):
             logger.info('status::{}  i:{}'.format(repr(status), i))
             status = await self._copy_status(status_url)
             if (status is not None):
                 break
-            await asyncio.sleep(3)
+            await asyncio.sleep(settings.ONEDRIVE_COPY_SLEEP_INTERVAL)
             i += 1
         metadata = self._construct_metadata(status)
         return metadata, True
@@ -171,9 +172,10 @@ class OneDriveProvider(provider.BaseProvider):
             Use Cases: file rename or file move or folder rename or folder move
         """
 
+        parentReference = {'id': dest_path.parent.full_path.strip('/') if dest_path.parent.identifier is None else dest_path.parent.identifier}
         url = self.build_url(src_path.identifier)
         payload = json.dumps({'name': dest_path.name,
-                              'parentReference': {'id': dest_path.parent.full_path.strip('/') if dest_path.parent.identifier is None else dest_path.parent.identifier}})  # TODO: this feels like a hack.  parent.identifier is None
+                              'parentReference': parentReference})
 
         logger.info('intra_move dest_path::{} src_path::{} url::{} payload:{}'.format(str(dest_path.parent.identifier), repr(src_path), url, payload))
 
