@@ -83,7 +83,7 @@ class OneDriveProvider(provider.BaseProvider):
 
         od_path = OneDrivePath(path)
         names = od_path.file_path(data)
-        ids = self._get_ids(data)
+        ids = od_path.ids(data)
 
         wb_path = WaterButlerPath(names, _ids=ids, folder=path.endswith('/'))
         logger.info('wb_path::{}  IDs:{}'.format(repr(wb_path._parts), repr(ids)))
