@@ -12,6 +12,7 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.onedrive import OneDriveProvider
+from waterbutler.providers.onedrive.provider import OneDrivePath
 from waterbutler.providers.onedrive.settings import settings
 from waterbutler.providers.onedrive.metadata import OneDriveRevision
 from waterbutler.providers.onedrive.metadata import OneDriveFileMetadata
@@ -548,7 +549,8 @@ class TestMetadata:
 
     @pytest.mark.aiohttpretty
     def test_metadata_file_root_parent_names(self, provider, folder_object_metadata, file_root_parent_metadata):
-        result = provider._get_names(file_root_parent_metadata)
+        path = OneDrivePath('/elect-b.jpg')
+        result = path.file_path(file_root_parent_metadata)
 
         assert result == '/elect-a.jpg'
 
@@ -557,20 +559,23 @@ class TestMetadata:
     async def test_metadata_material_path_has_slash(self, provider, file_root_parent_metadata):
         path = WaterButlerPath("/elect-a.jpg")
 
-        assert "/elect-a.jpg" == path.materialized_path
+        assert path.materialized_path.startswith('/')
 
     @pytest.mark.aiohttpretty
     def test_metadata_ids_padding(self, provider, folder_object_metadata, file_sub_folder_metadata):
-        result = provider._get_ids(file_sub_folder_metadata)
+        od_path = OneDrivePath("/test.foo")
+        result = od_path.ids(file_sub_folder_metadata)
         assert result == [None, None, None, file_sub_folder_metadata['parentReference']['id'], file_sub_folder_metadata['id']]
 
     @pytest.mark.aiohttpretty
     def test_metadata_ids_no_padding(self, provider, folder_object_metadata, file_root_folder_metadata):
-        result = provider._get_ids(file_root_folder_metadata)
+        od_path = OneDrivePath("/test.foo")
+        result = od_path.ids(file_root_folder_metadata)
         assert result == [None, file_root_folder_metadata['parentReference']['id'], file_root_folder_metadata['id']]
 
     @pytest.mark.aiohttpretty
     def test_metadata_folder_ids_padding(self, provider, folder_sub_folder_metadata):
-        result = provider._get_ids(folder_sub_folder_metadata)
+        od_path = OneDrivePath("/test.foo")
+        result = od_path.ids(folder_sub_folder_metadata)
         assert result == [None, None, None, folder_sub_folder_metadata['parentReference']['id'], folder_sub_folder_metadata['id']]
 

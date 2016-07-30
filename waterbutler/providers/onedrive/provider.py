@@ -34,6 +34,20 @@ class OneDrivePath(path.WaterButlerPath):
             names = '{}/{}'.format(parent_path, data['name'])
         return names
 
+    def one_drive_id(self, path):
+        return path.full_path[path.full_path.rindex('/') + 1:]
+
+    def ids(self, data):
+        ids = [data['parentReference']['id'], data['id']]
+        url_segment_count = len(urlparse(self.file_path(data)).path.split('/'))
+        if (len(ids) < url_segment_count):
+            for x in repeat(None, url_segment_count - len(ids)):
+                ids.insert(0, x)
+        return ids
+
+    def sub_folder_path(self, path, fileName):
+        return urlparse(path.full_path.replace(fileName, '')).path.split('/')[-2]
+
 
 class OneDriveProvider(provider.BaseProvider):
     """Provider for the OneDrive cloud storage service.
