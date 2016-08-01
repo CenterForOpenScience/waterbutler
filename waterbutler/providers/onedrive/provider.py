@@ -286,7 +286,7 @@ class OneDriveProvider(provider.BaseProvider):
         if path._prepend == '0':
             upload_url = self._build_root_url('drive/root:/', '{}:/content'.format(path.name))
         else:
-            upload_url = ''
+            upload_url = self.build_url(path._prepend, 'children', path.name, "content")
 
 #          fileName = self._get_one_drive_id(path)
 #          path = self._get_sub_folder_path(path, fileName)
