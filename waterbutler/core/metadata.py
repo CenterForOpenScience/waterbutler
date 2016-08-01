@@ -3,6 +3,7 @@ import hashlib
 
 import furl
 
+from waterbutler.core import utils
 from waterbutler.server import settings
 
 
@@ -204,6 +205,7 @@ class BaseFileMetadata(BaseMetadata):
         return dict(super().serialized(), **{
             'contentType': self.content_type,
             'modified': self.modified,
+            'modified_utc': self.modified_utc,
             'size': self.size,
         })
 
@@ -228,9 +230,15 @@ class BaseFileMetadata(BaseMetadata):
 
     @abc.abstractproperty
     def modified(self):
-        """ Date the file was last modified, as reported by the provider.  Should be in UTC
-        timezone and ISO-8601 format (YYYY-MM-DDTHH:MM:SSZ). """
+        """ Date the file was last modified, as reported by the provider, in
+        the format used by the provider. """
         raise NotImplementedError
+
+    @property
+    def modified_utc(self):
+        """ Date the file was last modified, as reported by the provider,
+        converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
+        return utils.normalize_datetime(self.modified)
 
     @abc.abstractproperty
     def size(self):
@@ -253,6 +261,7 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
             'extra': self.extra,
             'version': self.version,
             'modified': self.modified,
+            'modified_utc': self.modified_utc,
             'versionIdentifier': self.version_identifier,
         }
 
@@ -272,6 +281,10 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
     @abc.abstractproperty
     def modified(self):
         raise NotImplementedError
+
+    @property
+    def modified_utc(self):
+        return utils.normalize_datetime(self.modified)
 
     @abc.abstractproperty
     def version(self):

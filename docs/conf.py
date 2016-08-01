@@ -55,9 +55,9 @@ latex_documents = [
 extlinks = {}
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.4', None),
+    'python': ('https://docs.python.org/3.5', None),
     'tornado': ('http://www.tornadoweb.org/en/stable/', None),
-    'aiohttp': ('https://aiohttp.readthedocs.org/en/v0.14.1/', None),
+    'aiohttp': ('https://aiohttp.readthedocs.org/en/v0.18.2/', None),
 }
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'

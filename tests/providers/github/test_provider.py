@@ -758,7 +758,7 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', commit_url, body=[{
             'commit': {
                 'tree': {'sha': ref},
-                'author': {'date': 'this is totally  date'}
+                'author': {'date': '1970-01-02T03:04:05Z'}
             },
         }])
 
@@ -767,7 +767,7 @@ class TestMetadata:
         web_view = provider._web_view(path=path)
 
         assert result == GitHubFileTreeMetadata(item, web_view=web_view, commit={
-            'tree': {'sha': ref}, 'author': {'date': 'this is totally  date'}
+            'tree': {'sha': ref}, 'author': {'date': '1970-01-02T03:04:05Z'}
         })
 
     @pytest.mark.asyncio
