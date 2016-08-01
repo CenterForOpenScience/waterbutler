@@ -34,15 +34,6 @@ class OneDrivePath(path.WaterButlerPath):
             names = '{}/{}'.format(parent_path, data['name'])
         return names
 
-    def one_drive_path(self, path):
-        logger.info('path:{} identifier:{} _prepend:{}'.format(repr(path), path.identifier, path._prepend))
-        parent_path = '' if path.identifier == 0 or path.identifier is None else path._prepend
-        file_path = '' if path.identifier == 0 or path.identifier is None else path._prepend
-        return '{}{}'.format(parent_path, file_path)
-
-    def one_drive_id(self, path):
-        return path.full_path[path.full_path.rindex('/') + 1:]
-
     def ids(self, data):
         ids = [data['parentReference']['id'], data['id']]
         url_segment_count = len(urlparse(self.file_path(data)).path.split('/'))
@@ -50,12 +41,6 @@ class OneDrivePath(path.WaterButlerPath):
             for x in repeat(None, url_segment_count - len(ids)):
                 ids.insert(0, x)
         return ids
-
-    def folder_path(self, path):
-        return path.full_path.replace(path.name, '')
-
-    def sub_folder_path(self, path, fileName):
-        return urlparse(path.full_path.replace(fileName, '')).path.split('/')[-2]
 
 
 class OneDriveProvider(provider.BaseProvider):
@@ -280,8 +265,6 @@ class OneDriveProvider(provider.BaseProvider):
             Limited to 100MB file upload. """
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
 
-        #  PUT /drive/items/{parent-id}/children/{filename}/content
-
         logger.info("upload path:{} path.parent:{} path.path:{} self:{}".format(repr(path), path.parent, path.full_path, repr(self)))
 
         if path._prepend == '0':  # TODO: swap for parent is None
@@ -290,10 +273,6 @@ class OneDriveProvider(provider.BaseProvider):
             upload_url = self.build_url(path._prepend, 'children', path.name, "content")
         else:
             upload_url = self.build_url(path.path.replace(path.name, ''), 'children', path.name, "content")
-
-#          fileName = self._get_one_drive_id(path)
-#          path = self._get_sub_folder_path(path, fileName)
-#          upload_url = self.build_url(path, 'children', fileName, "content")
 
         logger.info("upload url:{} path:{} str(path):{} str(full_path):{} self:{}".format(upload_url, repr(path), str(path), str(path), repr(self.folder)))
 
@@ -445,25 +424,3 @@ class OneDriveProvider(provider.BaseProvider):
 
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
-
-    def _get_one_drive_id(self, path):
-        return path.full_path[path.full_path.rindex('/') + 1:]
-
-    def _get_names(self, data):
-        parent_path = data['parentReference']['path'].replace('/drive/root:', '')
-        if (len(parent_path) == 0):
-            names = '/{}'.format(data['name'])
-        else:
-            names = '{}/{}'.format(parent_path, data['name'])
-        return names
-
-    def _get_ids(self, data):
-        ids = [data['parentReference']['id'], data['id']]
-        url_segment_count = len(urlparse(self._get_names(data)).path.split('/'))
-        if (len(ids) < url_segment_count):
-            for x in repeat(None, url_segment_count - len(ids)):
-                ids.insert(0, x)
-        return ids
-
-    def _get_sub_folder_path(self, path, fileName):
-        return urlparse(path.full_path.replace(fileName, '')).path.split('/')[-2]
