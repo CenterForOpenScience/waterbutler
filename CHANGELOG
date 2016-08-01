@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.21.2 (2016-08-01)
+===================
+- Fix: Pin cryptography to v1.3.4 to avoid v1,4 incompatibilities with OS X's vendor openssl.
+(thanks, @erinspace!)
+
 0.21.1 (2016-07-12)
 ===================
 - Fix: Stop duplicating parent folder when searching Google Drive for Google docs.  (thanks,
