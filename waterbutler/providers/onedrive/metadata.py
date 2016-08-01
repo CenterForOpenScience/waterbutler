@@ -74,7 +74,7 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
     def extra(self):
         return {
             'id': self.raw.get('id'),
-            'etag': self.raw.get('etag'),
+            'etag': self.raw.get('eTag'),
         }
 
     @property
