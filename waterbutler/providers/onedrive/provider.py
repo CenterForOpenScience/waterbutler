@@ -51,6 +51,9 @@ class OneDrivePath(path.WaterButlerPath):
                 ids.insert(0, x)
         return ids
 
+    def folder_path(self, path):
+        return path.full_path.replace(path.name, '')
+
     def sub_folder_path(self, path, fileName):
         return urlparse(path.full_path.replace(fileName, '')).path.split('/')[-2]
 
@@ -279,14 +282,14 @@ class OneDriveProvider(provider.BaseProvider):
 
         #  PUT /drive/items/{parent-id}/children/{filename}/content
 
-#          od_path = OneDrivePath(path)
+        logger.info("upload path:{} path.parent:{} path.path:{} self:{}".format(repr(path), path.parent, path.full_path, repr(self)))
 
-        logger.info("upload path:{} path.identifier:{} self:{}".format(repr(path), path.identifier, repr(self)))
-
-        if path._prepend == '0':
+        if path._prepend == '0':  # TODO: swap for parent is None
             upload_url = self._build_root_url('drive/root:/', '{}:/content'.format(path.name))
-        else:
+        elif str(path.parent) == '/':
             upload_url = self.build_url(path._prepend, 'children', path.name, "content")
+        else:
+            upload_url = self.build_url(path.path.replace(path.name, ''), 'children', path.name, "content")
 
 #          fileName = self._get_one_drive_id(path)
 #          path = self._get_sub_folder_path(path, fileName)
