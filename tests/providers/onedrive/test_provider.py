@@ -531,6 +531,32 @@ class TestMoveOperations:
 
         assert result is not None
 
+class TestUpload:
+
+    @pytest.mark.aiohttpretty
+    @pytest.mark.asyncio
+    async def test_upload_to_one_drive_path_root (self, provider, folder_object_metadata, file_root_parent_metadata, file_stream):
+        # root: upload path:
+        #    WaterButlerPath('/screenshot_0000.png', prepend='0') str(path):/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'aa', }, {'folder': '0'})>
+        # project linked to sub folder, upload project root folder (sub folder):
+        #    upload path:WaterButlerPath('/screenshot_0000.png', prepend='75BFE374EBEB1211!128') str(path):/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'ryan casey', 'callback_url': 'http://localhost:5000/api/v1/project/f5qnw/waterbutler/logs/'}, {'folder': '75BFE374EBEB1211!128'})>
+        # project linked to sub folder, upload project sub folder (sub, sub folder):
+        #    upload path:WaterButlerPath('/75BFE374EBEB1211!129/screenshot_0000.png', prepend='75BFE374EBEB1211!128') str(path):/75BFE374EBEB1211!129/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'ryan casey', 'callback_url': 'http://localhost:5000/api/v1/project/f5qnw/waterbutler/logs/'}, {'folder': '75BFE374EBEB1211!128'})>
+        # https://api.onedrive.com/v1.0/drive/items/75BFE374EBEB1211%21128/children/screenshot_0000.png/content
+
+        path = WaterButlerPath('/elect-a.jpg', prepend='0')
+        upload_url = provider._build_root_url('drive/root:/elect-a.jpg:/content')
+        #  upload_url = self.build_url(path, 'children', fileName, "content")
+        aiohttpretty.register_json_uri('PUT', upload_url, body=file_root_parent_metadata, status=201)
+
+#          result = await provider.metadata(path)
+        metadata, created = await provider.upload(file_stream, path)
+#
+        assert metadata is not None
+        assert created == True
+        assert metadata.name == 'elect-a.jpg'
+
+
 class TestMetadata:
 
     @pytest.mark.aiohttpretty

@@ -34,6 +34,12 @@ class OneDrivePath(path.WaterButlerPath):
             names = '{}/{}'.format(parent_path, data['name'])
         return names
 
+    def one_drive_path(self, path):
+        logger.info('path:{} identifier:{} _prepend:{}'.format(repr(path), path.identifier, path._prepend))
+        parent_path = '' if path.identifier == 0 or path.identifier is None else path._prepend
+        file_path = '' if path.identifier == 0 or path.identifier is None else path._prepend
+        return '{}{}'.format(parent_path, file_path)
+
     def one_drive_id(self, path):
         return path.full_path[path.full_path.rindex('/') + 1:]
 
@@ -97,7 +103,7 @@ class OneDriveProvider(provider.BaseProvider):
         logger.info('revalidate_path base::{} path::{}  base.id::{}'.format(base._prepend, path, base.identifier))
         logger.info('revalidate_path self::{} base::{} path::{}'.format(str(self), repr(base), repr(path)))
         logger.info('revalidate_path base::{} path::{}'.format(repr(base.full_path), repr(path)))
-
+        od_path = OneDrivePath('/{}'.format(path))
         if (base.identifier is not None):
             url = self.build_url(base.identifier)
             resp = await self.make_request(
@@ -106,7 +112,7 @@ class OneDriveProvider(provider.BaseProvider):
                 throws=exceptions.MetadataError
             )
             data = await resp.json()
-            folder_path = self._get_names(data)
+            folder_path = od_path.file_path(data)
             url = self._build_root_url("drive/root:", folder_path, str(path))
         elif (base._prepend is None):
             #  in a sub-folder, no need to get the root id
@@ -120,7 +126,7 @@ class OneDriveProvider(provider.BaseProvider):
                 throws=exceptions.MetadataError
             )
             data = await resp.json()
-            url = self._build_root_url("drive/root:", self._get_names(data), str(path))
+            url = self._build_root_url("drive/root:", od_path.file_path(data), str(path))
 
         resp = await self.make_request(
             'GET',
@@ -135,7 +141,7 @@ class OneDriveProvider(provider.BaseProvider):
             await resp.release()
         else:
             data = await resp.json()
-            ids = self._get_ids(data)[-1]
+            ids = od_path.ids(data)[-1]
             folder = ('folder' in data.keys())
 
         return base.child(path, _id=ids, folder=folder)
@@ -172,7 +178,7 @@ class OneDriveProvider(provider.BaseProvider):
         i = 0
         status = None
 
-        while (i < settings.ONEDRIVE_COPY_INTERATION_COUNT):
+        while (i < settings.ONEDRIVE_COPY_ITERATION_COUNT):
             logger.info('status::{}  i:{}'.format(repr(status), i))
             status = await self._copy_status(status_url)
             if (status is not None):
@@ -270,11 +276,21 @@ class OneDriveProvider(provider.BaseProvider):
         """ OneDrive API Reference: https://dev.onedrive.com/items/upload_put.htm
             Limited to 100MB file upload. """
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
+
         #  PUT /drive/items/{parent-id}/children/{filename}/content
 
-        fileName = self._get_one_drive_id(path)
-        path = self._get_sub_folder_path(path, fileName)
-        upload_url = self.build_url(path, 'children', fileName, "content")
+#          od_path = OneDrivePath(path)
+
+        logger.info("upload path:{} path.identifier:{} self:{}".format(repr(path), path.identifier, repr(self)))
+
+        if path._prepend == '0':
+            upload_url = self._build_root_url('drive/root:/', '{}:/content'.format(path.name))
+        else:
+            upload_url= ''
+
+#          fileName = self._get_one_drive_id(path)
+#          path = self._get_sub_folder_path(path, fileName)
+#          upload_url = self.build_url(path, 'children', fileName, "content")
 
         logger.info("upload url:{} path:{} str(path):{} str(full_path):{} self:{}".format(upload_url, repr(path), str(path), str(path), repr(self.folder)))
 
