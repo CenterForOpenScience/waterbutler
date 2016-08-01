@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.21.3 (2016-08-01)
+===================
+- Fix: Bump wheel dep to 0.26.0 to fix travis build.
+
 0.21.2 (2016-08-01)
 ===================
 - Fix: Pin cryptography to v1.3.4 to avoid v1,4 incompatibilities with OS X's vendor openssl.
