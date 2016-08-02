@@ -275,13 +275,16 @@ class OneDriveProvider(provider.BaseProvider):
         :param str path: The path to create a folder at
         """
         WaterButlerPath.validate_folder(path)
+        od_path = OneDrivePath(str(path))
 
-        folderName = path.full_path.split('/')[-2]
-        parentFolder = path.full_path.split('/')[-3]
-        upload_url = self.build_url(parentFolder, 'children')
+        if path._prepend == '0':
+            #  OneDrive's root folder has a different alias between create folder and at least upload; need to strip out :
+            upload_url = self._build_root_url(od_path.one_drive_parent_folder(path).replace(':', ''), 'children')
+        else:
+            upload_url = self.build_url(od_path.one_drive_parent_folder(path), 'children')
 
-        logger.info("upload url:{} path:{} parentFolder:{} folderName:{}".format(upload_url, repr(path), str(parentFolder), repr(folderName)))
-        payload = {'name': folderName,
+        logger.info("upload url:{} path:{} folderName:{}".format(upload_url, repr(path), repr(path.name)))
+        payload = {'name': path.name,
                    'folder': {},
                     "@name.conflictBehavior": "rename"}
 
