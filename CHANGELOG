@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.21.4 (2016-08-02)
+===================
+- Fix: Ask Box not to zip our download requests. (thanks, @caseyrygt!)
+
 0.21.3 (2016-08-01)
 ===================
 - Fix: Bump wheel dep to 0.26.0 to fix travis build.
