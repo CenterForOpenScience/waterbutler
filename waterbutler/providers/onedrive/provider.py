@@ -264,7 +264,7 @@ class OneDriveProvider(provider.BaseProvider):
             downloadUrl,
             range=range,
             expects=(200, 206),
-            headers = {'accept-encoding': ''},
+            headers={'accept-encoding': ''},
             throws=exceptions.DownloadError,
         )
 
