@@ -42,6 +42,15 @@ class OneDrivePath(path.WaterButlerPath):
                 ids.insert(0, x)
         return ids
 
+    def one_drive_parent_folder(self, path):
+        if path._prepend == '0':  # TODO: swap for parent is None
+            folder = 'drive/root:/'
+        elif str(path.parent) == '/':
+            folder = path._prepend
+        else:
+            folder = path.path.replace(path.name, '')
+        return folder
+
 
 class OneDriveProvider(provider.BaseProvider):
     """Provider for the OneDrive cloud storage service.
@@ -260,6 +269,35 @@ class OneDriveProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp)
 
+    async def create_folder(self, path, **kwargs):
+        """
+        OneDrive API Reference: https://dev.onedrive.com/items/create.htm
+        :param str path: The path to create a folder at
+        """
+        WaterButlerPath.validate_folder(path)
+
+        folderName = path.full_path.split('/')[-2]
+        parentFolder = path.full_path.split('/')[-3]
+        upload_url = self.build_url(parentFolder, 'children')
+
+        logger.info("upload url:{} path:{} parentFolder:{} folderName:{}".format(upload_url, repr(path), str(parentFolder), repr(folderName)))
+        payload = {'name': folderName,
+                   'folder': {},
+                    "@name.conflictBehavior": "rename"}
+
+        resp = await self.make_request(
+            'POST',
+            upload_url,
+            data=json.dumps(payload),
+            headers={'content-type': 'application/json'},
+            expects=(201, ),
+            throws=exceptions.CreateFolderError,
+        )
+
+        data = await resp.json()
+        logger.info('upload:: data:{}'.format(data))
+        return OneDriveFolderMetadata(data, self.folder)
+
     async def upload(self, stream, path, conflict='replace', **kwargs):
         """ OneDrive API Reference: https://dev.onedrive.com/items/upload_put.htm
             Limited to 100MB file upload. """
@@ -267,12 +305,11 @@ class OneDriveProvider(provider.BaseProvider):
 
         logger.info("upload path:{} path.parent:{} path.path:{} self:{}".format(repr(path), path.parent, path.full_path, repr(self)))
 
-        if path._prepend == '0':  # TODO: swap for parent is None
-            upload_url = self._build_root_url('drive/root:/', '{}:/content'.format(path.name))
-        elif str(path.parent) == '/':
-            upload_url = self.build_url(path._prepend, 'children', path.name, "content")
+        od_path = OneDrivePath(str(path))
+        if path._prepend == '0':
+            upload_url = self._build_root_url(od_path.one_drive_parent_folder(path), '{}:/content'.format(path.name))
         else:
-            upload_url = self.build_url(path.path.replace(path.name, ''), 'children', path.name, "content")
+            upload_url = self.build_url(od_path.one_drive_parent_folder(path), 'children', path.name, "content")
 
         logger.info("upload url:{} path:{} str(path):{} str(full_path):{} self:{}".format(upload_url, repr(path), str(path), str(path), repr(self.folder)))
 
@@ -350,35 +387,6 @@ class OneDriveProvider(provider.BaseProvider):
             for item in data['value']
             if not item.get('deleted')
         ]
-
-    async def create_folder(self, path, **kwargs):
-        """
-        OneDrive API Reference: https://dev.onedrive.com/items/create.htm
-        :param str path: The path to create a folder at
-        """
-        WaterButlerPath.validate_folder(path)
-
-        folderName = path.full_path.split('/')[-2]
-        parentFolder = path.full_path.split('/')[-3]
-        upload_url = self.build_url(parentFolder, 'children')
-
-        logger.info("upload url:{} path:{} parentFolder:{} folderName:{}".format(upload_url, repr(path), str(parentFolder), repr(folderName)))
-        payload = {'name': folderName,
-                   'folder': {},
-                    "@name.conflictBehavior": "rename"}
-
-        resp = await self.make_request(
-            'POST',
-            upload_url,
-            data=json.dumps(payload),
-            headers={'content-type': 'application/json'},
-            expects=(201, ),
-            throws=exceptions.CreateFolderError,
-        )
-
-        data = await resp.json()
-        logger.info('upload:: data:{}'.format(data))
-        return OneDriveFolderMetadata(data, self.folder)
 
     async def _revisions_json(self, path, **kwargs):
         """ OneDrive API Reference: https://dev.onedrive.com/items/view_delta.htm
