@@ -43,7 +43,7 @@ class OneDrivePath(path.WaterButlerPath):
         return ids
 
     def one_drive_parent_folder(self, path):
-        if path._prepend == '0':  # TODO: swap for parent is None
+        if path._prepend == '0':
             folder = 'drive/root:/'
         elif str(path.parent) == '/':
             folder = path._prepend
