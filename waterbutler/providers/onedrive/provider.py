@@ -182,12 +182,15 @@ class OneDriveProvider(provider.BaseProvider):
                 break
             await asyncio.sleep(settings.ONEDRIVE_COPY_SLEEP_INTERVAL)
             i += 1
+
+        if i >= settings.ONEDRIVE_COPY_ITERATION_COUNT:
+            raise exceptions.CopyError('OneDrive API file copy has not responded in a timely manner.  Please wait for 1-2 minutes, then query for the file to see if the copy has completed',
+                    code=202)
         metadata = self._construct_metadata(status)
         return metadata, dest_path.identifier is None
 
     async def _copy_status(self, status_url):
         """ OneDrive API Reference: https://dev.onedrive.com/resources/asyncJobStatus.htm """
-        status = 'notStarted'
         resp = await self.make_request(
             'GET', status_url,
             expects=(200, 202),
