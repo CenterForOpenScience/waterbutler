@@ -365,8 +365,6 @@ class GitLabProvider(provider.BaseProvider):
 
         headers = {"Authorization": 'Bearer {}'.format(self.token)}
 
-        pdb.set_trace()
-
         resp = await self.make_request(
             'DELETE',
             url,
