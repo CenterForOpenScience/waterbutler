@@ -176,9 +176,8 @@ class GitLabProvider(provider.BaseProvider):
         '''
 
         url = self.build_repo_url('repository', 'files', file_path=path.full_path, ref=kwargs['ref'])
-        
+
         headers = {"Authorization": 'Bearer {}'.format(self.token)}
-        pdb.set_trace()
 
         resp = await self.make_request(
             'GET',
