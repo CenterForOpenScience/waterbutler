@@ -175,7 +175,14 @@ class GitLabProvider(provider.BaseProvider):
         :param dict kwargs: Ignored
         '''
 
-        url = self.build_repo_url('repository', 'files', file_path=path.full_path, ref=kwargs['ref'])
+        if not 'branch' in kwargs:
+            raise exceptions.DownloadError(
+                'you must specify the branch to download the file',
+                code=400,
+            )
+
+        url = self.build_repo_url('repository', 'files', file_path=path.full_path, ref=kwargs['branch'])
+
 
         headers = {"Authorization": 'Bearer {}'.format(self.token)}
 
@@ -258,7 +265,7 @@ class GitLabProvider(provider.BaseProvider):
                confirm_delete=0, **kwargs):
         """Delete file, folder, or provider root contents
 
-        :param GitHubPath path: GitHubPath path object for file, folder, or root
+        :param GitLabPath path: GitLabPath path object for file, folder, or root
         :param str sha: SHA-1 checksum of file/folder object
         :param str message: Commit message
         :param str branch: Repository branch
@@ -278,7 +285,7 @@ class GitLabProvider(provider.BaseProvider):
         elif path.is_dir:
             await self._delete_folder(path, message, **kwargs)
         else:
-            await self._delete_file(path, message, **kwargs)
+            await self._delete_file(path, message, branch, **kwargs)
 
     async def metadata(self, path, ref=None, recursive=False, **kwargs):
         """Get Metadata about the requested file or folder
@@ -342,27 +349,28 @@ class GitLabProvider(provider.BaseProvider):
 
         return GitLabFolderContentMetadata(data['content'], commit=data['commit'])
 
-    async def _delete_file(self, path, message=None, **kwargs):
-        if path.identifier[1]:
-            sha = path.identifier
-        else:
-            sha = (await self.metadata(path)).extra['fileSha']
+    async def _delete_file(self, path, message=None, branch=None, **kwargs):
 
-        if not sha:
-            raise exceptions.MetadataError('A sha is required for deleting')
+        if branch == None:
+            raise exceptions.DeleteError(
+                'you must specify the branch to delete the file',
+                code=400,
+            )
 
-        data = {
-            'sha': sha,
-            'branch': path.identifier[0],
-            'committer': self.committer,
-            'message': message or settings.DELETE_FILE_MESSAGE,
-        }
+
+        if message == None:
+            message = 'File {} deleted'.format(path.full_path)
+
+        url = self.build_repo_url('repository', 'files', file_path=path.full_path, branch_name=branch, commit_message=message)
+
+        headers = {"Authorization": 'Bearer {}'.format(self.token)}
+
+        pdb.set_trace()
 
         resp = await self.make_request(
             'DELETE',
-            self.build_repo_url('contents', path.path),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps(data),
+            url,
+            headers=headers,
             expects=(200, ),
             throws=exceptions.DeleteError,
         )
@@ -470,7 +478,7 @@ class GitLabProvider(provider.BaseProvider):
     async def _delete_root_folder_contents(self, path, message=None, **kwargs):
         """Delete the contents of the root folder.
 
-        :param GitHubPath path: GitHubPath path object for folder
+        :param GitLabPath path: GitLabPath path object for folder
         :param str message: Commit message
         """
         branch_data = await self._fetch_branch(path.identifier[0])
