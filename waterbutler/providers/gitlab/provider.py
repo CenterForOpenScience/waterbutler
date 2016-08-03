@@ -175,10 +175,10 @@ class GitLabProvider(provider.BaseProvider):
         :param dict kwargs: Ignored
         '''
 
-        #TODO: make ref dynamic
-        url = self.build_repo_url('repository', 'files', file_path=path.full_path, ref='master')
+        url = self.build_repo_url('repository', 'files', file_path=path.full_path, ref=kwargs['ref'])
         
         headers = {"Authorization": 'Bearer {}'.format(self.token)}
+        pdb.set_trace()
 
         resp = await self.make_request(
             'GET',
