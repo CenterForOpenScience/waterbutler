@@ -184,7 +184,6 @@ class GitLabProvider(provider.BaseProvider):
 
         url = self.build_repo_url('repository', 'files', file_path=path.full_path, ref=kwargs['branch'])
 
-
         headers = {"Authorization": 'Bearer {}'.format(self.token)}
 
         resp = await self.make_request(
@@ -219,56 +218,17 @@ class GitLabProvider(provider.BaseProvider):
         assert self.name is not None
         assert self.email is not None
 
+        insert = False
         try:
-            exists = await self.exists(path)
-        except exceptions.ProviderError as e:
-            if e.data.get('message') == 'Git Repository is empty.':
-                exists = False
-                resp = await self.make_request(
-                    'PUT',
-                    self.build_repo_url('contents', '.gitkeep'),
-                    data=json.dumps({
-                        'content': '',
-                        'path': '.gitkeep',
-                        'committer': self.committer,
-                        'branch': path.identifier[0],
-                        'message': 'Initial commit'
-                    }),
-                    expects=(201,),
-                    throws=exceptions.CreateFolderError
-                )
-                data = await resp.json()
-                latest_sha = data['commit']['sha']
-        else:
-            latest_sha = await self._get_latest_sha(ref=path.identifier[0])
+            metadata = await self.metadata(path, ref=branch)
+        except:
+            insert = True
 
-        blob = await self._create_blob(stream)
-        tree = await self._create_tree({
-            'base_tree': latest_sha,
-            'tree': [{
-                'path': path.path,
-                'mode': '100644',
-                'type': 'blob',
-                'sha': blob['sha']
-            }]
-        })
+        blob = await self._upsert_blob(stream, path.path, path.identifier[0], insert)
 
-        commit = await self._create_commit({
-            'tree': tree['sha'],
-            'parents': [latest_sha],
-            'committer': self.committer,
-            'message': message or (settings.UPDATE_FILE_MESSAGE if exists else settings.UPLOAD_FILE_MESSAGE),
-        })
+        metadata = await self.metadata(path, ref=branch)
 
-        # Doesn't return anything useful
-        await self._update_ref(commit['sha'], ref=path.identifier[0])
-
-        # You're hacky
-        return GitLabFileTreeMetadata({
-            'path': path.path,
-            'sha': blob['sha'],
-            'size': stream.size,
-        }, commit=commit), not exists
+        return metadata, insert
 
     async def delete(self, path, sha=None, message=None, branch=None,
                confirm_delete=0, **kwargs):
@@ -587,43 +547,31 @@ class GitLabProvider(provider.BaseProvider):
 
         raise exceptions.NotFoundError(str(path))
 
-    async def _create_tree(self, tree):
-        resp = await self.make_request(
-            'POST',
-            self.build_repo_url('git', 'trees'),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps(tree),
-            expects=(201, ),
-            throws=exceptions.ProviderError,
-        )
-        return (await resp.json())
+    async def _upsert_blob(self, stream, filepath, branchname, insert=True):
 
-    async def _create_commit(self, commit):
-        resp = await self.make_request(
-            'POST',
-            self.build_repo_url('git', 'commits'),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps(commit),
-            expects=(201, ),
-            throws=exceptions.ProviderError,
-        )
-        return (await resp.json())
+        if insert:
+            message = 'File {0} created'.format(filepath)
+            method = 'POST'
+        else:
+            message = 'File {0} updated'.format(filepath)
+            method = 'PUT'
 
-    async def _create_blob(self, stream):
         blob_stream = streams.JSONStream({
+            'file_path': filepath,
+            'branch_name': branchname,
+            'commit_message': message,
             'encoding': 'base64',
             'content': streams.Base64EncodeStream(stream),
         })
 
         resp = await self.make_request(
-            'POST',
-            self.build_repo_url('git', 'blobs'),
+            method,
+            self.build_repo_url('repository', 'files'),
             data=blob_stream,
             headers={
                 'Content-Type': 'application/json',
                 'Content-Length': str(blob_stream.size),
             },
-            expects=(201, ),
             throws=exceptions.UploadError,
         )
         return (await resp.json())
@@ -671,9 +619,13 @@ class GitLabProvider(provider.BaseProvider):
             return ret
 
     async def _metadata_file(self, path, revision=None, ref=None, **kwargs):
+
+        if ref == None:
+            ref = 'master'
+
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=revision or ref or path.identifier[0]),
+            self.build_repo_url('repository', 'files', file_path=path.full_path, ref=ref),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
@@ -683,24 +635,8 @@ class GitLabProvider(provider.BaseProvider):
         if not commits:
             raise exceptions.NotFoundError(str(path))
 
-        latest = commits[0]
-        tree = await self._fetch_tree(latest['commit']['tree']['sha'], recursive=True)
-
-        try:
-            data = next(
-                x for x in tree['tree']
-                if x['path'] == path.path
-            )
-        except StopIteration:
-            raise exceptions.NotFoundError(str(path))
-
-        if isinstance(data, list):
-            raise exceptions.MetadataError(
-                'Could not retrieve file "{0}"'.format(str(path)),
-                code=404,
-            )
-
-        return GitLabFileTreeMetadata(data, commit=latest['commit'], web_view=self._web_view(path))
+        data = {'name': commits['file_path'], 'id': commits['blob_id'], 'path': commits['file_path'], 'size': commits['size']}
+        return GitLabFileTreeMetadata(data, commit=commits['commit_id'], thepath=commits['file_path'])
 
     async def _get_latest_sha(self, ref='master'):
         resp = await self.make_request(
@@ -711,18 +647,6 @@ class GitLabProvider(provider.BaseProvider):
         )
         data = await resp.json()
         return data['object']['sha']
-
-    async def _update_ref(self, sha, ref='master'):
-        resp = await self.make_request(
-            'POST',
-            self.build_repo_url('git', 'refs', 'heads', ref),
-            data=json.dumps({
-                'sha': sha,
-            }),
-            expects=(200, ),
-            throws=exceptions.ProviderError
-        )
-        return (await resp.json())
 
     async def _do_intra_move_or_copy(self, src_path, dest_path, is_copy):
 
