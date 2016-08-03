@@ -3,6 +3,7 @@ import json
 import pdb
 import base64
 import aiohttp
+import mimetypes
 
 import furl
 
@@ -198,13 +199,21 @@ class GitLabProvider(provider.BaseProvider):
         raw = base64.b64decode(data['content'])
 
         mdict = aiohttp.multidict.MultiDict(resp.headers)
-        mdict_options = {'Content-Length': len(raw)}
+
+        mimetype = mimetypes.guess_type(path.full_path)[0]
+
+        mdict_options = {}
+
+        if mimetype != None:
+            mdict_options['CONTENT-TYPE'] = mimetype
+
         mdict.update(mdict_options)
+
 
         resp.headers = mdict
         resp.content = streams.StringStream(raw)
 
-        return streams.ResponseStreamReader(resp)
+        return streams.ResponseStreamReader(resp, len(raw))
 
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
         assert self.name is not None
