@@ -188,6 +188,7 @@ class GitLabProvider(provider.BaseProvider):
 
         mdict.update(mdict_options)
 
+
         resp.headers = mdict
         resp.content = streams.StringStream(raw)
 
