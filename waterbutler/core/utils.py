@@ -213,3 +213,28 @@ class AsyncIterator:
             return next(self.iterable)
         except StopIteration:
             raise StopAsyncIteration
+
+
+def _serialize_request(request):
+    if request is None:
+        return {}
+
+    # temporary for development
+    headers_dict = {}
+    for (k, v) in sorted(request.headers.get_all()):
+        if k not in ('Authorization', 'Cookie', 'User-Agent', ):
+            headers_dict[k] = v
+
+    serialized = {
+        'ip': request.remote_ip,
+        'method': request.method,
+        'url': request.full_url(),
+        'ua': request.headers['User-Agent'],
+        'time': request.request_time(),
+        'headers': headers_dict,
+    }
+
+    if 'Referer' in request.headers:
+        serialized['referrer'] = request.headers['Referer']
+
+    return serialized

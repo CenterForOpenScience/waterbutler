@@ -6,6 +6,7 @@ import logging
 import tornado.gen
 
 from waterbutler.core import utils
+from waterbutler.core import analytics
 from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
 from waterbutler.server.auth import AuthHandler
@@ -135,6 +136,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         }[method]()
 
         self._send_hook(action)
+        self._log_downloads(action)
 
     @utils.async_retry(retries=5, backoff=5)
     async def _send_hook(self, action):
@@ -160,3 +162,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             return
 
         await utils.log_to_callback(action, source=source, destination=destination)
+
+    @utils.async_retry(retries=5, backoff=5)
+    async def _log_downloads(self, action):
+        if action not in ('download_file', 'download_zip'):
+            return
+        downloadee = LogPayload(self.resource, self.provider, path=self.path)
+        await analytics.log_download(action, payload=downloadee, api_version='v1',
+                                     request=utils._serialize_request(self.request),
+                                     size=self.bytes_written)
