@@ -79,3 +79,8 @@ logging_config = get('LOGGING', DEFAULT_LOGGING_CONFIG)
 logging.config.dictConfig(logging_config)
 
 SENTRY_DSN = get('SENTRY_DSN', None)
+
+KEEN_API_BASE_URL = get('KEEN_API_BASE_URL', 'https://api.keen.io')
+KEEN_API_VERSION = get('KEEN_API_VERSION', '3.0')
+KEEN_PROJECT_ID = get('KEEN_PROJECT_ID', None)
+KEEN_WRITE_KEY = get('KEEN_WRITE_KEY', None)

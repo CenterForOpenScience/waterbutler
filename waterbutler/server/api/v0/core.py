@@ -9,6 +9,7 @@ from raven.contrib.tornado import SentryMixin
 from waterbutler import tasks
 from waterbutler.core import utils
 from waterbutler.core import signing
+from waterbutler.core import analytics
 from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.auth import AuthHandler
@@ -93,15 +94,17 @@ class BaseProviderHandler(BaseHandler):
 
     @utils.async_retry(retries=5, backoff=5)
     async def _send_hook(self, action, metadata=None, path=None):
-        await utils.log_to_callback(
-            action,
-            source=LogPayload(
-                self.arguments['nid'],
-                self.provider,
-                metadata=metadata,
-                path=path
-            ),
-        )
+        source = LogPayload(self.arguments['nid'], self.provider, metadata=metadata, path=path)
+        await utils.log_to_callback(action, source=source,)
+
+    @utils.async_retry(retries=5, backoff=5)
+    async def _log_download(self, action, metadata=None, path=None):
+        if action not in ('download_file', 'download_zip'):
+            return
+        downloadee = LogPayload(self.arguments['nid'], self.provider, metadata=metadata, path=path)
+        await analytics.log_download(action, payload=downloadee, api_version='v0',
+                                     request=utils._serialize_request(self.request),
+                                     size=self.bytes_written)
 
 
 class BaseCrossProviderHandler(BaseHandler):
