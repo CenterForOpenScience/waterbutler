@@ -106,9 +106,9 @@ def timestamp_iso(ts):
     return datetime.datetime.utcfromtimestamp(ts / 1000.).isoformat()
 
 
-class MyMediaStore(MediaStore):
+class OSFMediaStore(MediaStore):
     def __init__(self, note_store, note_guid):
-        super(MyMediaStore, self).__init__(note_store, note_guid)
+        super(OSFMediaStore, self).__init__(note_store, note_guid)
 
     def save(self, hash_str, mime_type):
         # hash_str is the hash digest string of the resource file

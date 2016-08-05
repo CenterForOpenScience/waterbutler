@@ -8,7 +8,7 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
     @property
     def content_type(self):
         # TO DO: Implement
-        return 'text/enml'
+        return 'text/html'
 
     @property
     def modified(self):
@@ -41,10 +41,6 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
     @property
     def path(self):
         return "/" + self.raw["guid"]
-
-    @property
-    def _json_api_links(self, resource):
-        return {}
     
     @property
     def etag(self):

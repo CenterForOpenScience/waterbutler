@@ -9,7 +9,8 @@ from waterbutler.tasks.core import backgroundify
 
 from .metadata import EvernoteFileMetadata
 from .settings import EVERNOTE_META_URL, EVERNOTE_FILE_URL
-from .utils import get_evernote_client, get_notebooks, notes_metadata, timestamp_iso
+from .utils import get_evernote_client, get_notebooks, get_note, notes_metadata, timestamp_iso, OSFMediaStore
+import ENML2HTML
 
 @backgroundify
 def _evernote_notes(notebook_guid, token):
@@ -34,6 +35,27 @@ def _evernote_notes(notebook_guid, token):
               for note in notes]
 
     return results
+
+@backgroundify
+def _evernote_note(note_guid, token, withContent=False):
+
+    client = get_evernote_client(token)
+
+    try:
+        note = get_note(client, note_guid,
+                withContent=withContent,
+                withResourcesData=withContent)
+    except Exception as e:
+        return e
+    else:
+        result = {'title': note.title,
+            'guid': note.guid,
+            'created': timestamp_iso(note.created),
+            'updated': timestamp_iso(note.updated),
+            'length':note.contentLength,
+            'notebook_guid':note.notebookGuid,
+            'content': note.content}
+        return result
 
 
 class EvernoteProvider(provider.BaseProvider):
@@ -63,50 +85,15 @@ class EvernoteProvider(provider.BaseProvider):
 
 
     async def _file_metadata(self, path):
-        """ Interface to file and package metadata from Evernote
 
-        :param path: Path mapping to waterbutler interpretation of Evernote file
-        :type path: `waterbutler.core.path.WaterButlerPath`
-        :returns:  `list` A list of metadata
-        :raises: `urllib.error.HTTPError`
+        print ("_file_metadata -> path: ", path)
 
-        """
+        token = self.credentials['token']
+        note_md = await _evernote_note(path, token, withContent=False)
 
-        metadata_resp = await self.make_request(
-            'GET',
-            EVERNOTE_META_URL + path.strip('/'),
-            expects=(200, 206),
-            throws=exceptions.MetadataError)
-
-        file_metadata_resp = await self.make_request(
-            'GET',
-            EVERNOTE_FILE_URL + path.strip('/') + "/bitstream",
-            expects=(200, 206),
-            throws=exceptions.MetadataError)
-
-        file_stream = await self.make_request(
-            'GET',
-            EVERNOTE_META_URL + path.strip('/') + '/bitstream',
-            expects=(200, 206),
-            throws=exceptions.DownloadError,
-        )
-        content = file_stream.headers.get('Content-Disposition', '')
-        _, params = cgi.parse_header(content)
-        file_stream.close()
-        file_name = params['filename']
-        metadata_text = await metadata_resp.text()
-        file_metadata = await file_metadata_resp.text()
-
-        return EvernoteFileMetadata(metadata_text, path.strip('/'), file_metadata, file_name)
+        return EvernoteFileMetadata(note_md)
 
     async def metadata(self, path, **kwargs):
-        """ Interface to file and package metadata from Evernote
-
-        :param path: Path mapping to waterbutler interpretation of Evernote file
-        :type path: `waterbutler.core.path.WaterButlerPath`
-        :returns:  `list` A list of metadata
-        :raises: `urllib.error.HTTPError`
-        """
 
         # TO DO: IMPORTANT
         """
@@ -123,6 +110,7 @@ class EvernoteProvider(provider.BaseProvider):
             return package
 
         if not path.is_dir:
+            print ("metdata path.path:", path.path)
             return (await self._file_metadata(path.path))
 
 
@@ -158,10 +146,25 @@ class EvernoteProvider(provider.BaseProvider):
         # ResponseStreamReader:
         # https://github.com/CenterForOpenScience/waterbutler/blob/63b7d469e5545de9f2183b964fb6264fd9a423a5/waterbutler/core/streams/http.py#L141-L183
 
+        token = self.credentials['token']
+        client = get_evernote_client(token)
 
-        return streams.StringStream("hello")
-        # return streams.ResponseStreamReader(resp)
+        note_guid = path.parts[1].raw
+        note_md = await _evernote_note(note_guid, token, withContent=True)
 
+        # convert to HTML
+        mediaStore = OSFMediaStore(client.get_note_store(), note_guid)
+        html = ENML2HTML.ENMLToHTML(note_md["content"], pretty=True, header=False,
+              media_store=mediaStore)
+
+        stream = streams.StringStream(html)
+        stream.content_type = "text/html"
+        stream.name = "{}.html".format(note_guid)
+
+        # modeling after gdoc provider
+        # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
+
+        return stream
 
     async def validate_path(self, path, **kwargs):
         """
@@ -169,12 +172,19 @@ class EvernoteProvider(provider.BaseProvider):
         :type path: `str`
         """
 
+        print ("in Evernote.validate_path. path: {}".format(path))
+
         wbpath = WaterButlerPath(path)
+
+        print ("wbpath.is_root: {}".format(wbpath.is_root))
+        print ("wbpath.is_dir: {}".format(wbpath.is_dir))
+        print ("len(wbpath.parts): {}".format(len(wbpath.parts)))
+
         if wbpath.is_root:
             return wbpath
-        if len(wbpath.parts) == 1 and wbpath.is_dir:
+        if len(wbpath.parts) == 2 and wbpath.is_dir:
                 raise exceptions.NotFoundError(path)
-        if len(wbpath.parts) > 1:
+        if len(wbpath.parts) > 2:
             raise exceptions.NotFoundError(path)
   
         return wbpath
@@ -185,28 +195,27 @@ class EvernoteProvider(provider.BaseProvider):
             Additionally queries the Evernote API to check if the package exists.
         """
 
-        # TO DO: IMPORTANT
+        print ("in Evernote.validate_v1_path. path: {}".format(path),
+               "kwargs: ", kwargs)
 
         wbpath = await self.validate_path(path, **kwargs)
 
         if wbpath.is_root:
             return wbpath
-        full_url = EVERNOTE_META_URL + wbpath.parts[1].value
-        if wbpath.is_file:
-            full_url += '/' + wbpath.parts[2].value
 
-        resp = await self.make_request(
-            'GET',
-            full_url,
-            expects=(200, 404),
-            throws=exceptions.MetadataError,
-        )
-        await resp.release()
-
-        if resp.status == 404:
+        token = self.credentials['token']
+        print ("wbpath.parts[1].raw", wbpath.parts[1].raw)
+        note = await _evernote_note(wbpath.parts[1].raw, token, withContent=False)
+        if isinstance(note, Exception) :
+            print ("validate_v1_path. could not get Note", note)
             raise exceptions.NotFoundError(str(path))
-
-        return wbpath
+        else:
+            print ("validate_v1_path. note is not None")
+            if note['notebook_guid'] == self.settings['folder']:
+                return wbpath
+            else:
+                print ('notebook_guid {} does not match folder {}'.format(note['notebook_guid'], self.settings['folder'] ))
+                raise exceptions.NotFoundError(str(path))
 
     def can_intra_move(self, other, path=None):
         """
@@ -215,7 +224,7 @@ class EvernoteProvider(provider.BaseProvider):
             Raises:
                 `waterbutler.core.exceptions.ReadOnlyProviderError` Always
         """
-        raise exceptions.ReadOnlyProviderError(self)
+        return False
 
     def can_intra_copy(self, other, path=None):
         """
@@ -223,7 +232,7 @@ class EvernoteProvider(provider.BaseProvider):
 
             :returns: `True` Always
         """
-        return True
+        return False
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
         """
@@ -233,9 +242,8 @@ class EvernoteProvider(provider.BaseProvider):
 
             :returns: `coroutine` File stream generated by :func:`waterbutler.providers.evernote.provider.EvernoteProvider.download`
         """
-        return await self._do_intra_move_or_copy(dest_provider,
-                                                src_path,
-                                                dest_path)
+        raise exceptions.ReadOnlyProviderError(self)
+
 
     async def _do_intra_move_or_copy(self, dest_provider, src_path, dest_path):
         """
@@ -245,21 +253,9 @@ class EvernoteProvider(provider.BaseProvider):
 
             :returns: `coroutine`
         """
-        resp = await self.make_request(
-            'GET',
-            EVERNOTE_META_URL + src_path.path.strip('/') + '/bitstream',
-            expects=(200, 206),
-            throws=exceptions.DownloadError,
-        )
-        file_metadata = await self._file_metadata(src_path.path)
-        name = file_metadata.name
-        size = file_metadata.size
 
-        download_stream = streams.ResponseStreamReader(resp,
-                            size=size,
-                            name=name)
-        dest_path.rename(file_metadata.name)
-        return await dest_provider.upload(download_stream, dest_path)
+        raise exceptions.ReadOnlyProviderError(self)
+
 
     async def upload(self, stream, **kwargs):
         """
