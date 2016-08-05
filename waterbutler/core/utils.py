@@ -108,6 +108,10 @@ async def send_signed_request(method, url, payload):
 
 
 async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[]):
+    if action in ('download_file', 'download_zip'):
+        logger.debug('Not logging for {} action'.format(action))
+        return
+
     auth = getattr(destination, 'auth', source.auth)
 
     log_payload = {

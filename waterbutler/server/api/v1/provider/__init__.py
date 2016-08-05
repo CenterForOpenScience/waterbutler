@@ -117,14 +117,18 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     def on_finish(self):
         status, method = self.get_status(), self.request.method.upper()
         # If the response code is not within the 200 range,
-        # the request was a GET, HEAD, or OPTIONS,
+        # the request was a HEAD or OPTIONS,
         # or the response code is 202, celery will send its own callback
         # no callbacks should be sent.
-        if any((method in ('GET', 'HEAD', 'OPTIONS'), status == 202, status // 100 != 2)):
+        if any((method in ('HEAD', 'OPTIONS'), status == 202, status // 100 != 2)):
+            return
+
+        if method == 'GET' and 'meta' in self.request.query_arguments:
             return
 
         # Done here just because method is defined
         action = {
+            'GET': lambda: 'download_file' if self.path.is_file else 'download_zip',
             'PUT': lambda: ('create' if self.target_path.is_file else 'create_folder') if status == 201 else 'update',
             'POST': lambda: 'move' if self.json['action'] == 'rename' else self.json['action'],
             'DELETE': lambda: 'delete'
