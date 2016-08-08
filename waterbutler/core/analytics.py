@@ -21,6 +21,7 @@ async def log_download(action, payload, request, api_version, size=0):
 
     referrer = request.pop('referrer', '')
     is_mfr_render = request.pop('is_mfr_render')
+    file_meta = payload.serialize()
     keen_payload = {
         'meta': {
             'wb_version': waterbutler.__version__,
@@ -37,7 +38,7 @@ async def log_download(action, payload, request, api_version, size=0):
             'bytes': size,
             'is_mfr_render': is_mfr_render,
         },
-        'file': payload.serialize(),
+        'file': file_meta,
         'keen': {
             'addons': [
                 {
@@ -72,6 +73,10 @@ async def log_download(action, payload, request, api_version, size=0):
             ],
         },
     }
+
+    keen_payload['file']['full_path'] = '/'.join([
+        '', file_meta['resource'], file_meta['provider'], file_meta['path'].lstrip('/')
+    ])
 
     serialized = json.dumps(keen_payload).encode('UTF-8')
     headers = {
