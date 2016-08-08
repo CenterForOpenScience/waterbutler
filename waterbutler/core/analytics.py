@@ -20,6 +20,7 @@ async def log_download(action, payload, request, api_version, size=0):
                                                    'file_access')
 
     referrer = request.pop('referrer', '')
+    is_mfr_render = request.pop('is_mfr_render')
     keen_payload = {
         'meta': {
             'wb_version': waterbutler.__version__,
@@ -34,6 +35,7 @@ async def log_download(action, payload, request, api_version, size=0):
         'action': {
             'type': action,
             'bytes': size,
+            'is_mfr_render': is_mfr_render,
         },
         'file': payload.serialize(),
         'keen': {

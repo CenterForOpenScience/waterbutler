@@ -232,9 +232,13 @@ def _serialize_request(request):
         'ua': request.headers['User-Agent'],
         'time': request.request_time(),
         'headers': headers_dict,
+        'is_mfr_render': settings.MFR_IDENTIFYING_HEADER in request.headers,
     }
 
     if 'Referer' in request.headers:
-        serialized['referrer'] = request.headers['Referer']
+        referrer = request.headers['Referer']
+        serialized['referrer'] = referrer
+        if referrer.startswith('{}/render'.format(settings.MFR_DOMAIN)):
+            serialized['is_mfr_render'] = True
 
     return serialized
