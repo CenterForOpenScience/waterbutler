@@ -1,9 +1,9 @@
-import re
+# import re
 import json
 import logging
 
 import aiohttp
-from geoip import geolite2
+# from geoip import geolite2
 
 import waterbutler
 from waterbutler import settings
@@ -18,8 +18,8 @@ async def log_download(action, payload, request, api_version, size=0):
 
     logger.info('Request IP is: {}'.format(request['ip']))
     location = None
-    if request['ip'] and re.match('\d+\.\d+\.\d+\.\d+', request['ip']):  # needs IPv4 format
-        location = geolite2.lookup(request['ip'])
+    # if request['ip'] and re.match('\d+\.\d+\.\d+\.\d+', request['ip']):  # needs IPv4 format
+    #     location = geolite2.lookup(request['ip'])
 
     referrer = request.pop('referrer', '')
     is_mfr_render = request.pop('is_mfr_render')
