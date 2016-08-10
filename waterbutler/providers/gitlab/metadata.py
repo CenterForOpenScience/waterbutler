@@ -29,21 +29,22 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
 
 class BaseGitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
-    def __init__(self, raw, folder=None, commit=None, web_view=None, thepath=None):
-        super().__init__(raw, folder, commit)
+    def __init__(self, raw, commit=None, web_view=None, thepath=None):
+        super().__init__(raw, commit=commit)
         self.web_view = web_view
         self.givenpath = thepath
         self.file_name = raw['name']
 
     @property
     def path(self):
-        return '/' + self.givenpath.path + self.file_name
+        if (isinstance(self.givenpath, str)):
+            return '/' + self.givenpath + self.file_name
+        else:
+            return '/' + self.givenpath.path + self.file_name
 
     @property
     def modified(self):
-        if not self.commit:
-            return None
-        return self.commit['author']['date']
+        return None
 
     @property
     def content_type(self):

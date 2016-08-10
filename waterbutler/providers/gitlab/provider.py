@@ -223,7 +223,7 @@ class GitLabProvider(provider.BaseProvider):
         exists = False
         blob = await self._create_blob(stream, path.path, path.identifier[0])
 
-        metadata = await self.metadata(path.path, ref=branch)
+        metadata = await self.metadata(path, ref=branch)
 
         return metadata, not exists
 
@@ -557,7 +557,6 @@ class GitLabProvider(provider.BaseProvider):
             'POST',
             self.build_repo_url('repository', 'files'),
             data=blob_stream,
-            expects=(201, ),
             headers={
                 'Content-Type': 'application/json',
                 'Content-Length': str(blob_stream.size),
@@ -609,9 +608,13 @@ class GitLabProvider(provider.BaseProvider):
             return ret
 
     async def _metadata_file(self, path, revision=None, ref=None, **kwargs):
+
+        if ref == None:
+            ref = 'master'
+
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=revision or ref or path.identifier[0]),
+            self.build_repo_url('repository', 'files', file_path=path.full_path, ref=ref),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
@@ -621,24 +624,8 @@ class GitLabProvider(provider.BaseProvider):
         if not commits:
             raise exceptions.NotFoundError(str(path))
 
-        latest = commits[0]
-        tree = await self._fetch_tree(latest['commit']['tree']['sha'], recursive=True)
-
-        try:
-            data = next(
-                x for x in tree['tree']
-                if x['path'] == path.path
-            )
-        except StopIteration:
-            raise exceptions.NotFoundError(str(path))
-
-        if isinstance(data, list):
-            raise exceptions.MetadataError(
-                'Could not retrieve file "{0}"'.format(str(path)),
-                code=404,
-            )
-
-        return GitLabFileTreeMetadata(data, commit=latest['commit'], web_view=self._web_view(path))
+        data = {'name': commits['file_path'], 'id': commits['blob_id'], 'path': commits['file_path'], 'size': commits['size']}
+        return GitLabFileTreeMetadata(data, commit=commits['commit_id'], thepath=commits['file_path'])
 
     async def _get_latest_sha(self, ref='master'):
         resp = await self.make_request(
