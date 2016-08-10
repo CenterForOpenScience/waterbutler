@@ -224,7 +224,7 @@ class GitLabProvider(provider.BaseProvider):
         except:
             insert = True
 
-        blob = await self._upsert_blob(stream, path.path, path.identifier[0], insert)
+        blob = await self._upsert_blob(stream, path.path, branch, insert)
 
         metadata = await self.metadata(path, ref=branch)
 
@@ -243,17 +243,7 @@ class GitLabProvider(provider.BaseProvider):
         assert self.name is not None
         assert self.email is not None
 
-        if path.is_root:
-            if confirm_delete == 1:
-                await self._delete_root_folder_contents(path)
-            else:
-                raise exceptions.DeleteError(
-                    'confirm_delete=1 is required for deleting root provider folder',
-                    code=400,
-                )
-        elif path.is_dir:
-            await self._delete_folder(path, message, **kwargs)
-        else:
+        if not path.is_dir:
             await self._delete_file(path, message, branch, **kwargs)
 
     async def metadata(self, path, ref=None, recursive=False, **kwargs):
@@ -284,39 +274,25 @@ class GitLabProvider(provider.BaseProvider):
     async def create_folder(self, path, branch=None, message=None, **kwargs):
         GitLabPath.validate_folder(path)
 
-        assert self.name is not None
-        assert self.email is not None
         message = message or settings.UPLOAD_FILE_MESSAGE
 
         keep_path = path.child('.gitkeep')
 
-        data = {
-            'content': '',
-            'path': keep_path.path,
-            'committer': self.committer,
-            'branch': path.identifier[0],
-            'message': message or settings.UPLOAD_FILE_MESSAGE
-        }
+        content = '\n'
+        stream = streams.StringStream(content)
+        branch = path.identifier[0]
+        commit_msg = message or settings.UPLOAD_FILE_MESSAGE
 
-        resp = await self.make_request(
-            'PUT',
-            self.build_repo_url('contents', keep_path.path),
-            data=json.dumps(data),
-            expects=(201, 422, 409),
-            throws=exceptions.CreateFolderError
-        )
+        resp, insert = await self.upload(stream, keep_path, message, branch, **kwargs)
 
-        data = await resp.json()
+        metadata = await self.metadata(path, ref=branch, **kwargs)
 
-        if resp.status in (422, 409):
-            if resp.status == 409 or data.get('message') == 'Invalid request.\n\n"sha" wasn\'t supplied.':
-                raise exceptions.FolderNamingConflict(str(path))
-            raise exceptions.CreateFolderError(data, code=resp.status)
+        pdb.set_trace()
 
-        data['content']['name'] = path.name
-        data['content']['path'] = data['content']['path'].replace('.gitkeep', '')
+        if not metadata:
+            raise exceptions.NotFoundError(path.full_path)
 
-        return GitLabFolderContentMetadata(data['content'], commit=data['commit'])
+        return metadata[0]
 
     async def _delete_file(self, path, message=None, branch=None, **kwargs):
 
@@ -343,100 +319,26 @@ class GitLabProvider(provider.BaseProvider):
         )
         await resp.release()
 
-    async def _delete_folder(self, path, message=None, **kwargs):
-        branch_data = await self._fetch_branch(path.identifier[0])
+    async def _delete_folder(self, path, message=None, branch=None, **kwargs):
 
-        old_commit_sha = branch_data['commit']['sha']
-        old_commit_tree_sha = branch_data['commit']['commit']['tree']['sha']
+        if branch == None:
+            raise exceptions.DeleteError(
+                'you must specify the branch to delete the file',
+                code=400,
+            )
 
-        # e.g. 'level1', 'level2', or ''
-        tree_paths = path.parts[1:]
-        trees = [{
-            'target': tree_paths[0].value,
-            'tree': [
-                {
-                    'path': item['path'],
-                    'mode': item['mode'],
-                    'type': item['type'],
-                    'sha': item['sha'],
-                }
-                for item in (await self._fetch_tree(old_commit_tree_sha))['tree']
-            ]
-        }]
 
-        for idx, tree_path in enumerate(tree_paths[:-1]):
-            try:
-                tree_sha = next(x for x in trees[-1]['tree'] if x['path'] == tree_path.value)['sha']
-            except StopIteration:
-                raise exceptions.MetadataError(
-                    'Could not delete folder \'{0}\''.format(path),
-                    code=404,
-                )
-            trees.append({
-                'target': tree_paths[idx + 1].value,
-                'tree': [
-                    {
-                        'path': item['path'],
-                        'mode': item['mode'],
-                        'type': item['type'],
-                        'sha': item['sha'],
-                    }
-                    for item in (await self._fetch_tree(tree_sha))['tree']
-                ]
-            })
+        if message == None:
+            message = 'Folder {} deleted'.format(path.full_path)
 
-        # The last tree's structure is rewritten w/o the target folder, all others
-        # in the hierarchy are simply updated to reflect this change.
-        tree = trees.pop()
-        if tree['target'] == '':
-            # Git Empty SHA
-            tree_sha = GIT_EMPTY_SHA
-        else:
-            # Delete the folder from the tree cast to list iterator over all values
-            current_tree = tree['tree']
-            tree['tree'] = list(filter(lambda x: x['path'] != tree['target'], tree['tree']))
-            if current_tree == tree['tree']:
-                raise exceptions.NotFoundError(str(path))
+        url = self.build_repo_url('repository', 'files', file_path=path.full_path, branch_name=branch, commit_message=message)
 
-            tree_data = await self._create_tree({'tree': tree['tree']})
-            tree_sha = tree_data['sha']
+        headers = {"Authorization": 'Bearer {}'.format(self.token)}
 
-            # Update parent tree(s)
-            for tree in reversed(trees):
-                for item in tree['tree']:
-                    if item['path'] == tree['target']:
-                        item['sha'] = tree_sha
-                        break
-                tree_data = await self._create_tree({'tree': tree['tree']})
-                tree_sha = tree_data['sha']
-
-        # Create a new commit which references our top most tree change.
-        message = message or settings.DELETE_FOLDER_MESSAGE
-        commit_resp = await self.make_request(
-            'POST',
-            self.build_repo_url('git', 'commits'),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({
-                'message': message,
-                'committer': self.committer,
-                'tree': tree_sha,
-                'parents': [
-                    old_commit_sha,
-                ],
-            }),
-            expects=(201, ),
-            throws=exceptions.DeleteError,
-        )
-        commit_data = await commit_resp.json()
-        commit_sha = commit_data['sha']
-
-        # Update repository reference, point to the newly created commit.
-        # No need to store data, rely on expects to raise exceptions
         resp = await self.make_request(
-            'PATCH',
-            self.build_repo_url('git', 'refs', 'heads', path.identifier[0]),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({'sha': commit_sha}),
+            'DELETE',
+            url,
+            headers=headers,
             expects=(200, ),
             throws=exceptions.DeleteError,
         )
@@ -591,13 +493,13 @@ class GitLabProvider(provider.BaseProvider):
         segments = (self.owner, self.repo, 'blob', path.identifier[0], path.path)
         return provider.build_url(settings.VIEW_URL, *segments)
 
-    async def _metadata_folder(self, path, recursive=False, **kwargs):
+    async def _metadata_folder(self, path, recursive=False, ref=None, **kwargs):
         # if we have a sha or recursive lookup specified we'll need to perform
         # the operation using the git/trees api which requires a sha.
 
-        if not (self._is_sha(path.identifier[0]) or recursive):
+        if not (self._is_sha(ref) or recursive):
             try:
-                data = await self._fetch_contents(path, ref=path.identifier[0])
+                data = await self._fetch_contents(path, ref=ref)
             except exceptions.MetadataError as e:
                 if e.data.get('message') == 'This repository is empty.':
                     data = []
@@ -612,10 +514,11 @@ class GitLabProvider(provider.BaseProvider):
 
             ret = []
             for item in data:
+                commit = ref or item['id']
                 if item['type'] == 'tree':
-                    ret.append(GitLabFolderContentMetadata(item, thepath=path))
+                    ret.append(GitLabFolderContentMetadata(item, thepath=path, commit=commit))
                 else:
-                    ret.append(GitLabFileContentMetadata(item, web_view=item['name'], thepath=path))
+                    ret.append(GitLabFileContentMetadata(item, web_view=item['name'], thepath=path, commit=commit))
             return ret
 
     async def _metadata_file(self, path, revision=None, ref=None, **kwargs):
@@ -635,7 +538,8 @@ class GitLabProvider(provider.BaseProvider):
         if not commits:
             raise exceptions.NotFoundError(str(path))
 
-        data = {'name': commits['file_path'], 'id': commits['blob_id'], 'path': commits['file_path'], 'size': commits['size']}
+        data = {'name': commits['file_name'], 'id': commits['blob_id'], 'path': commits['file_path'], 'size': commits['size']}
+
         return GitLabFileTreeMetadata(data, commit=commits['commit_id'], thepath=commits['file_path'])
 
     async def _get_latest_sha(self, ref='master'):
