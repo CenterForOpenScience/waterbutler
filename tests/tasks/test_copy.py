@@ -199,6 +199,7 @@ class TestCopyTask:
             ).hexdigest(),
             'extra': metadata.extra,
             'modified': metadata.modified,
+            'modified_utc': metadata.modified_utc,
             'size': metadata.size,
         }
 

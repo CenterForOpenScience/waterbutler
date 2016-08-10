@@ -225,6 +225,7 @@ class BoxProvider(provider.BaseProvider):
         resp = await self.make_request(
             'GET',
             self.build_url('files', path.identifier, 'content', **query),
+            headers={'Accept-Encoding': ''},
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,

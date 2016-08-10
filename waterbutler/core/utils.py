@@ -1,8 +1,10 @@
 import json
+import pytz
 import time
 import asyncio
 import logging
 import functools
+import dateutil.parser
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
@@ -106,6 +108,10 @@ async def send_signed_request(method, url, payload):
 
 
 async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[]):
+    if action in ('download_file', 'download_zip'):
+        logger.debug('Not logging for {} action'.format(action))
+        return
+
     auth = getattr(destination, 'auth', source.auth)
 
     log_payload = {
@@ -136,6 +142,17 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         )
 
     logger.info('Callback for {} request succeeded with {}'.format(action, resp_data.decode('utf-8')))
+
+
+def normalize_datetime(date_string):
+    if date_string is None:
+        return None
+    parsed_datetime = dateutil.parser.parse(date_string)
+    if not parsed_datetime.tzinfo:
+        parsed_datetime = parsed_datetime.replace(tzinfo=pytz.UTC)
+    parsed_datetime = parsed_datetime.astimezone(tz=pytz.UTC)
+    parsed_datetime = parsed_datetime.replace(microsecond=0)
+    return parsed_datetime.isoformat()
 
 
 class ZipStreamGenerator:
@@ -196,3 +213,32 @@ class AsyncIterator:
             return next(self.iterable)
         except StopIteration:
             raise StopAsyncIteration
+
+
+def _serialize_request(request):
+    if request is None:
+        return {}
+
+    # temporary for development
+    headers_dict = {}
+    for (k, v) in sorted(request.headers.get_all()):
+        if k not in ('Authorization', 'Cookie', 'User-Agent', ):
+            headers_dict[k] = v
+
+    serialized = {
+        'ip': request.remote_ip,
+        'method': request.method,
+        'url': request.full_url(),
+        'ua': request.headers['User-Agent'],
+        'time': request.request_time(),
+        'headers': headers_dict,
+        'is_mfr_render': settings.MFR_IDENTIFYING_HEADER in request.headers,
+    }
+
+    if 'Referer' in request.headers:
+        referrer = request.headers['Referer']
+        serialized['referrer'] = referrer
+        if referrer.startswith('{}/render'.format(settings.MFR_DOMAIN)):
+            serialized['is_mfr_render'] = True
+
+    return serialized

@@ -2,6 +2,24 @@
 ChangeLog
 *********
 
+0.21.4 (2016-08-02)
+===================
+- Fix: Ask Box not to zip our download requests. (thanks, @caseyrygt!)
+
+0.21.3 (2016-08-01)
+===================
+- Fix: Bump wheel dep to 0.26.0 to fix travis build.
+
+0.21.2 (2016-08-01)
+===================
+- Fix: Pin cryptography to v1.3.4 to avoid v1,4 incompatibilities with OS X's vendor openssl.
+(thanks, @erinspace!)
+
+0.21.1 (2016-07-12)
+===================
+- Fix: Stop duplicating parent folder when searching Google Drive for Google docs.  (thanks,
+@TomBaxter!)
+
 0.21.0 (2016-06-16)
 ===================
 - Feature: Allow cross origin requests when an Authorization header is provided without

@@ -96,6 +96,8 @@ class CRUDHandler(core.BaseProviderHandler):
 
         await self.write_stream(result)
 
+        self._log_download('download_file', path=self.path)
+
     async def post(self):
         """Create a folder"""
         metadata = await self.provider.create_folder(**self.arguments)
