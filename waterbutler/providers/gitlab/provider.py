@@ -184,7 +184,6 @@ class GitLabProvider(provider.BaseProvider):
 
         url = self.build_repo_url('repository', 'files', file_path=path.full_path, ref=kwargs['branch'])
 
-
         headers = {"Authorization": 'Bearer {}'.format(self.token)}
 
         resp = await self.make_request(
@@ -219,13 +218,17 @@ class GitLabProvider(provider.BaseProvider):
         assert self.name is not None
         assert self.email is not None
 
-        # TODO: handle file exists
-        exists = False
-        blob = await self._create_blob(stream, path.path, path.identifier[0])
+        insert = False
+        try:
+            metadata = await self.metadata(path, ref=branch)
+        except:
+            insert = True
+
+        blob = await self._upsert_blob(stream, path.path, path.identifier[0], insert)
 
         metadata = await self.metadata(path, ref=branch)
 
-        return metadata, not exists
+        return metadata, insert
 
     async def delete(self, path, sha=None, message=None, branch=None,
                confirm_delete=0, **kwargs):
@@ -544,17 +547,25 @@ class GitLabProvider(provider.BaseProvider):
 
         raise exceptions.NotFoundError(str(path))
 
-    async def _create_blob(self, stream, filepath, branchname):
+    async def _upsert_blob(self, stream, filepath, branchname, insert=True):
+
+        if insert:
+            message = 'File {0} created'.format(filepath)
+            method = 'POST'
+        else:
+            message = 'File {0} updated'.format(filepath)
+            method = 'PUT'
+
         blob_stream = streams.JSONStream({
             'file_path': filepath,
             'branch_name': branchname,
-            'commit_message': 'File {0} uploaded'.format(filepath),
+            'commit_message': message,
             'encoding': 'base64',
             'content': streams.Base64EncodeStream(stream),
         })
 
         resp = await self.make_request(
-            'POST',
+            method,
             self.build_repo_url('repository', 'files'),
             data=blob_stream,
             headers={
