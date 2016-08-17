@@ -69,14 +69,13 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
         @functools.wraps(func)
         async def wrapped(*args, __retries=0, **kwargs):
             try:
-                return (await asyncio.coroutine(func)(*args, **kwargs))
+                return await asyncio.coroutine(func)(*args, **kwargs)
             except exceptions as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
                     logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting {4} seconds before retrying'.format(func, e, __retries, retries, wait_time))
-
                     await asyncio.sleep(wait_time)
-                    return wrapped(*args, __retries=__retries + 1, **kwargs)
+                    return await wrapped(*args, __retries=__retries + 1, **kwargs)
                 else:
                     # Logs before all things
                     logger.error('Task {0} failed with exception {1}'.format(func, e))
