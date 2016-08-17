@@ -6,9 +6,9 @@ import logging
 import tornado.gen
 
 from waterbutler.core import utils
-from waterbutler.core import analytics
 from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
+from waterbutler.core import remote_logging
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.log_payload import LogPayload
 from waterbutler.core.streams import RequestStreamReader
@@ -97,6 +97,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     async def data_received(self, chunk):
         """Note: Only called during uploads."""
+        self.bytes_uploaded += len(chunk)
         if self.stream:
             self.writer.write(chunk)
             await self.writer.drain()
@@ -136,10 +137,8 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         }[method]()
 
         self._send_hook(action)
-        self._log_downloads(action)
 
-    @utils.async_retry(retries=5, backoff=5)
-    async def _send_hook(self, action):
+    def _send_hook(self, action):
         source = None
         destination = None
 
@@ -156,18 +155,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             )
         elif action in ('create', 'create_folder', 'update'):
             source = LogPayload(self.resource, self.provider, metadata=self.metadata)
-        elif action in ('delete',):
+        elif action in ('delete', 'download_file', 'download_zip'):
             source = LogPayload(self.resource, self.provider, path=self.path)
         else:
             return
 
-        await utils.log_to_callback(action, source=source, destination=destination)
-
-    @utils.async_retry(retries=5, backoff=5)
-    async def _log_downloads(self, action):
-        if action not in ('download_file', 'download_zip'):
-            return
-        downloadee = LogPayload(self.resource, self.provider, path=self.path)
-        await analytics.log_download(action, payload=downloadee, api_version='v1',
-                                     request=utils._serialize_request(self.request),
-                                     size=self.bytes_written)
+        remote_logging.log_file_action(action, source=source, destination=destination, api_version='v1',
+                                       request=utils._serialize_request(self.request),
+                                       bytes_downloaded=self.bytes_downloaded,
+                                       bytes_uploaded=self.bytes_uploaded,)

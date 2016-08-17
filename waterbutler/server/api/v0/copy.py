@@ -1,6 +1,7 @@
 import time
 
 from waterbutler import tasks
+from waterbutler.core import utils
 from waterbutler.server.api.v0 import core
 
 
@@ -23,7 +24,8 @@ class CopyHandler(core.BaseCrossProviderHandler):
             },
                 rename=self.json.get('rename'),
                 conflict=self.json.get('conflict', 'replace'),
-                start_time=time.time()
+                start_time=time.time(),
+                request=utils._serialize_request(self.request),
             )
 
             metadata, created = await tasks.wait_on_celery(result)
