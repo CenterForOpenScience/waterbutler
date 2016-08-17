@@ -5,7 +5,7 @@ from waterbutler.sizes import MBs
 from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.server.auth import AuthHandler
-from waterbutler.core.utils import make_provider
+from waterbutler.core.utils import make_provider, _serialize_request
 from waterbutler.constants import DEFAULT_CONFLICT
 
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
@@ -94,6 +94,7 @@ class MoveCopyMixin:
             result = await getattr(tasks, action).adelay(
                 rename=self.json.get('rename'),
                 conflict=self.json.get('conflict', DEFAULT_CONFLICT),
+                request=_serialize_request(self.request),
                 *self.build_args()
             )
             metadata, created = await tasks.wait_on_celery(result)

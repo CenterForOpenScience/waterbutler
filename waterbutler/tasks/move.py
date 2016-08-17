@@ -3,6 +3,7 @@ import logging
 
 from waterbutler.core import utils
 from waterbutler.tasks import core
+from waterbutler.core import remote_logging
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.log_payload import LogPayload
 
@@ -11,13 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 @core.celery_task
-async def move(src_bundle, dest_bundle, start_time=None, **kwargs):
+async def move(src_bundle, dest_bundle, request={}, start_time=None, **kwargs):
     start_time = start_time or time.time()
 
     src_path, src_provider = src_bundle.pop('path'), utils.make_provider(**src_bundle.pop('provider'))
     dest_path, dest_provider = dest_bundle.pop('path'), utils.make_provider(**dest_bundle.pop('provider'))
 
-    logger.info('Starting moving {!r}, {!r} to {!r}, {!r}'.format(src_path, src_provider, dest_path, dest_provider))
+    logger.info('Starting moving {!r}, {!r} to {!r}, {!r}'
+                .format(src_path, src_provider, dest_path, dest_provider))
 
     metadata, errors = None, []
     try:
@@ -35,12 +37,9 @@ async def move(src_bundle, dest_bundle, start_time=None, **kwargs):
             dest_bundle['nid'], dest_provider, path=dest_path, metadata=metadata
         )
 
-        await utils.log_to_callback(
-            'move',
-            source=source,
-            destination=destination,
-            start_time=start_time,
-            errors=errors
+        await remote_logging.wait_for_log_futures(
+            'move', source=source, destination=destination, start_time=start_time,
+            errors=errors, request=request, api_version='celery',
         )
 
     return metadata, created
