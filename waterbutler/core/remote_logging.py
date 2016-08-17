@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 @utils.async_retry(retries=5, backoff=5)
 async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[]):
+    """PUT a logging payload back to the callback given by the auth provider."""
     if action in ('download_file', 'download_zip'):
         logger.debug('Not logging for {} action'.format(action))
         return
@@ -59,6 +60,8 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
 
 async def log_to_keen(action, api_version, request, source, destination=None, errors=None,
                       bytes_downloaded=0, bytes_uploaded=0):
+    """Send events to Keen describing the action that occurred.  A scrubbed version of the payload
+    suitable for public display is also sent."""
     if settings.KEEN_PRIVATE_PROJECT_ID is None:
         return
 
@@ -184,6 +187,9 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
 
 @utils.async_retry(retries=5, backoff=5)
 async def _send_to_keen(payload, collection, project_id, write_key, domain='private'):
+    """Serialize and send an event to Keen.  If an error occurs, try up to five more times.
+    Will raise an excpetion if the event cannot be sent."""
+
     serialized = json.dumps(payload).encode('UTF-8')
     headers = {
         'Content-Type': 'application/json',
@@ -207,6 +213,7 @@ async def _send_to_keen(payload, collection, project_id, write_key, domain='priv
 
 def log_file_action(action, source, api_version, destination=None, request={},
                     start_time=None, errors=None, bytes_downloaded=None, bytes_uploaded=None):
+    """Kick off logging actions in the background. Returns array of asyncio.Tasks."""
     return [
         log_to_callback(action, source=source, destination=destination,
                         start_time=start_time, errors=errors,),
@@ -219,6 +226,8 @@ def log_file_action(action, source, api_version, destination=None, request={},
 
 
 async def wait_for_log_futures(*args, **kwargs):
+    """Background actions that are still running when a celery task returns may not complete.
+    This method allows the celery task to wait for logging to finish before returning."""
     return await asyncio.wait(
         log_file_action(*args, **kwargs),
         return_when=asyncio.ALL_COMPLETED
