@@ -1,7 +1,14 @@
+import copy
+import json
 import time
 import asyncio
 import logging
 
+import aiohttp
+# from geoip import geolite2
+
+import waterbutler
+from waterbutler import settings
 from waterbutler.core import utils
 from waterbutler.tasks import settings as task_settings
 
@@ -50,11 +57,133 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
     logger.info('Callback for {} request succeeded with {}'.format(action, resp_data.decode('utf-8')))
 
 
+async def log_to_keen(action, api_version, request, source, destination=None, errors=None, size=0):
+    if settings.KEEN_PRIVATE_PROJECT_ID is None:
+        return
+
+    location = None
+    # if request['ip'] and re.match('\d+\.\d+\.\d+\.\d+', request['ip']):  # needs IPv4 format
+    #     location = geolite2.lookup(request['ip'])
+
+    referrer = request.pop('referrer', '')
+    is_mfr_render = request.pop('is_mfr_render')
+    keen_payload = {
+        'meta': {
+            'wb_version': waterbutler.__version__,
+            'api_version': api_version,
+            'epoch': 1,
+        },
+        'request': request,  # .info, .geo added via keen addons
+        'referrer': {
+            'url': referrer,
+            'info': {},  # .info added via keen addons
+        },
+        'anon': {
+            'continent': getattr(location, 'continent', None),
+            'country': getattr(location, 'country', None),
+        },
+        'action': {
+            'type': action,
+            'bytes': size,
+            'is_mfr_render': is_mfr_render,
+            'errors': errors,
+        },
+        'files': {
+            'source': _munge_file_metadata(source),
+            'destination': _munge_file_metadata(destination),
+        },
+        'keen': {
+            'addons': [
+                {
+                    'name': 'keen:url_parser',
+                    'input': {
+                        'url': 'request.url'
+                    },
+                    'output': 'request.info'
+                },
+                {  # private
+                    'name': 'keen:ip_to_geo',
+                    'input': {
+                        'ip': 'request.ip'
+                    },
+                    'output': 'request.geo',
+                },
+                {
+                    'name': 'keen:referrer_parser',
+                    'input': {
+                        'referrer_url': 'referrer.url',
+                        'page_url': 'request.url'
+                    },
+                    'output': 'referrer.info'
+                },
+                {
+                    'name': 'keen:url_parser',
+                    'input': {
+                        'url': 'referrer.url'
+                    },
+                    'output': 'referrer.info'
+                },
+            ],
+        },
+    }
+
+    # synthetic fields to make Keen queries easier/prettier
+    keen_payload['action']['subtype'] = 'view_file' if action == 'download_file' and is_mfr_render else action
+
+    collection = 'file_access'
+
+    # send the private payload
+    await _send_to_keen(keen_payload, collection, settings.KEEN_PRIVATE_PROJECT_ID,
+                        settings.KEEN_PRIVATE_WRITE_KEY, 'private')
+
+    if action not in ('download_file', 'download_zip'):
+        return
+
+    public_payload = copy.deepcopy(keen_payload)
+    # sanitize then send the public payload
+    for field in ('ip', 'headers', 'ua', ):
+        del public_payload['request'][field]
+    for addon in public_payload['keen']['addons']:
+        if addon['name'] in ('keen:ip_to_geo',):
+            public_payload['keen']['addons'].remove(addon)
+    await _send_to_keen(public_payload, collection, settings.KEEN_PUBLIC_PROJECT_ID,
+                        settings.KEEN_PUBLIC_WRITE_KEY, 'public')
+
+    return
+
+
+@utils.async_retry(retries=5, backoff=5)
+async def _send_to_keen(payload, collection, project_id, write_key, domain='private'):
+    serialized = json.dumps(payload).encode('UTF-8')
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': write_key,
+    }
+    url = '{0}/{1}/projects/{2}/events/{3}'.format(settings.KEEN_API_BASE_URL,
+                                                   settings.KEEN_API_VERSION,
+                                                   project_id, collection)
+
+    async with await aiohttp.request('POST', url, headers=headers, data=serialized) as resp:
+        if resp.status == 201:
+            logger.info('Successfully logged {} to {} collection in {} Keen'.format(
+                payload['action']['type'], collection, domain
+            ))
+        else:
+            raise Exception('Failed to log {} to {} collection in {} Keen. Status: {} Error: {}'.format(
+                payload['action']['type'], collection, domain, str(int(resp.status)), await resp.read()
+            ))
+        return
+
+
 def log_file_action(action, source, api_version, destination=None, request={},
                     start_time=None, errors=None, size=None):
     return [
         log_to_callback(action, source=source, destination=destination,
                         start_time=start_time, errors=errors,),
+        asyncio.ensure_future(
+            log_to_keen(action, source=source, destination=destination, size=size,
+                        errors=errors, request=request, api_version=api_version,),
+        ),
     ]
 
 
@@ -63,3 +192,29 @@ async def wait_for_log_futures(*args, **kwargs):
         log_file_action(*args, **kwargs),
         return_when=asyncio.ALL_COMPLETED
     )
+
+
+def _munge_file_metadata(log_payload):
+    if log_payload is None:
+        return None
+
+    metadata = log_payload.serialize()
+    try:
+        file_extra = metadata.pop('extra')
+    except KeyError:
+        pass
+    else:
+        metadata['extra'] = {
+            'common': {},
+            metadata['provider']: file_extra,
+        }
+
+    # synthetic fields to make Keen queries easier/prettier
+    metadata['full_path'] = '/'.join([
+        '', metadata['resource'], metadata['provider'], metadata['path'].lstrip('/')
+    ])
+    metadata['full_materialized'] = '/'.join([
+        '', metadata['resource'], metadata['provider'], metadata['materialized'].lstrip('/')
+    ])
+
+    return metadata
