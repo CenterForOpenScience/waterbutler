@@ -173,6 +173,7 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
 
     del public_payload['tech']
     del public_payload['geo']
+    del public_payload['auth']
 
     filtered = []
     for addon in public_payload['keen']['addons']:
