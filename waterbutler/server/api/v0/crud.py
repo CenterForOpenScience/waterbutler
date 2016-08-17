@@ -50,6 +50,7 @@ class CRUDHandler(core.BaseProviderHandler):
 
     async def data_received(self, chunk):
         """Note: Only called during uploads."""
+        self.bytes_uploaded += len(chunk)
         if self.stream:
             self.writer.write(chunk)
             await self.writer.drain()

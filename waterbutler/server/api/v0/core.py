@@ -96,7 +96,8 @@ class BaseProviderHandler(BaseHandler):
         source = LogPayload(self.arguments['nid'], self.provider, metadata=metadata, path=path)
         remote_logging.log_file_action(action, source=source, api_version='v0',
                                        request=utils._serialize_request(self.request),
-                                       size=self.bytes_written,)
+                                       bytes_downloaded=self.bytes_downloaded,
+                                       bytes_uploaded=self.bytes_uploaded)
 
 
 class BaseCrossProviderHandler(BaseHandler):
@@ -144,4 +145,5 @@ class BaseCrossProviderHandler(BaseHandler):
                                  metadata=metadata)
         remote_logging.log_file_action(action, source=source, destination=destination, api_version='v0',
                                        request=utils._serialize_request(self.request),
-                                       size=self.bytes_written,)
+                                       bytes_downloaded=self.bytes_downloaded,
+                                       bytes_uploaded=self.bytes_uploaded)

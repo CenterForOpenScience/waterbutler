@@ -57,7 +57,8 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
     logger.info('Callback for {} request succeeded with {}'.format(action, resp_data.decode('utf-8')))
 
 
-async def log_to_keen(action, api_version, request, source, destination=None, errors=None, size=0):
+async def log_to_keen(action, api_version, request, source, destination=None, errors=None,
+                      bytes_downloaded=0, bytes_uploaded=0):
     if settings.KEEN_PRIVATE_PROJECT_ID is None:
         return
 
@@ -65,33 +66,34 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
     # if request['ip'] and re.match('\d+\.\d+\.\d+\.\d+', request['ip']):  # needs IPv4 format
     #     location = geolite2.lookup(request['ip'])
 
-    referrer = request.pop('referrer', '')
-    is_mfr_render = request.pop('is_mfr_render')
     keen_payload = {
         'meta': {
             'wb_version': waterbutler.__version__,
             'api_version': api_version,
             'epoch': 1,
         },
-        'request': request,  # .info, .geo added via keen addons
-        'referrer': {
-            'url': referrer,
-            'info': {},  # .info added via keen addons
-        },
+        'request': request['request'],  # .info added via keen addons
+        'tech': request['tech'],  # .info added via keen addons
         'anon': {
             'continent': getattr(location, 'continent', None),
             'country': getattr(location, 'country', None),
         },
         'action': {
             'type': action,
-            'bytes': size,
-            'is_mfr_render': is_mfr_render,
+            'bytes_downloaded': bytes_downloaded,
+            'bytes_uploaded': bytes_uploaded,
+            'is_mfr_render': request['action']['is_mfr_render'],
             'errors': errors,
         },
         'files': {
             'source': _munge_file_metadata(source),
             'destination': _munge_file_metadata(destination),
         },
+        'auth': {
+            'source': source.auth,
+            'destination': {} if destination is None else destination.auth,
+        },
+        'geo': {},  # added via keen addons
         'keen': {
             'addons': [
                 {
@@ -99,36 +101,49 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
                     'input': {
                         'url': 'request.url'
                     },
-                    'output': 'request.info'
+                    'output': 'request.info',
                 },
                 {  # private
                     'name': 'keen:ip_to_geo',
                     'input': {
-                        'ip': 'request.ip'
+                        'ip': 'tech.ip'
                     },
-                    'output': 'request.geo',
+                    'output': 'geo',
                 },
-                {
-                    'name': 'keen:referrer_parser',
+                {  # private
+                    'name': 'keen:ua_parser',
                     'input': {
-                        'referrer_url': 'referrer.url',
-                        'page_url': 'request.url'
+                        'ua_string': 'tech.ua',
                     },
-                    'output': 'referrer.info'
-                },
-                {
-                    'name': 'keen:url_parser',
-                    'input': {
-                        'url': 'referrer.url'
-                    },
-                    'output': 'referrer.info'
+                    'output': 'tech.info',
                 },
             ],
         },
     }
 
+    if request['referrer']['url'] is not None:
+        keen_payload['referrer'] = request['referrer']  # .info added via keen addons
+        keen_payload['keen']['addons'].append({
+            'name': 'keen:referrer_parser',
+            'input': {
+                'referrer_url': 'referrer.url',
+                'page_url': 'request.url'
+            },
+            'output': 'referrer.info'
+        })
+        keen_payload['keen']['addons'].append({
+            'name': 'keen:url_parser',
+            'input': {
+                'url': 'referrer.url'
+            },
+            'output': 'referrer.info',
+        })
+
     # synthetic fields to make Keen queries easier/prettier
-    keen_payload['action']['subtype'] = 'view_file' if action == 'download_file' and is_mfr_render else action
+    if action == 'download_file' and request['action']['is_mfr_render']:
+        keen_payload['action']['subtype'] = 'view_file'
+    else:
+        keen_payload['action']['subtype'] = action
 
     collection = 'file_access'
 
@@ -136,20 +151,35 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
     await _send_to_keen(keen_payload, collection, settings.KEEN_PRIVATE_PROJECT_ID,
                         settings.KEEN_PRIVATE_WRITE_KEY, 'private')
 
-    if action not in ('download_file', 'download_zip'):
+    if errors is not None or action not in ('download_file', 'download_zip'):
         return
 
     public_payload = copy.deepcopy(keen_payload)
-    # sanitize then send the public payload
-    for field in ('ip', 'headers', 'ua', ):
+
+    # downloads only have one file
+    public_payload['file'] = public_payload['files'].pop('source')
+    del public_payload['files']
+
+    # sanitize the public payload
+    for field in ('wb_version', 'api_version',):
+        del public_payload['meta'][field]
+    for field in ('is_mfr_render', 'errors',):
+        del public_payload['action'][field]
+    for field in ('headers', 'method', 'time',):
         del public_payload['request'][field]
+
+    del public_payload['tech']
+    del public_payload['geo']
+
+    filtered = []
     for addon in public_payload['keen']['addons']:
-        if addon['name'] in ('keen:ip_to_geo',):
-            public_payload['keen']['addons'].remove(addon)
+        if addon['name'] not in ('keen:ua_parser', 'keen:ip_to_geo',):
+            filtered.append(addon)
+    public_payload['keen']['addons'] = filtered
+
+    # ship it
     await _send_to_keen(public_payload, collection, settings.KEEN_PUBLIC_PROJECT_ID,
                         settings.KEEN_PUBLIC_WRITE_KEY, 'public')
-
-    return
 
 
 @utils.async_retry(retries=5, backoff=5)
@@ -176,13 +206,14 @@ async def _send_to_keen(payload, collection, project_id, write_key, domain='priv
 
 
 def log_file_action(action, source, api_version, destination=None, request={},
-                    start_time=None, errors=None, size=None):
+                    start_time=None, errors=None, bytes_downloaded=None, bytes_uploaded=None):
     return [
         log_to_callback(action, source=source, destination=destination,
                         start_time=start_time, errors=errors,),
         asyncio.ensure_future(
-            log_to_keen(action, source=source, destination=destination, size=size,
-                        errors=errors, request=request, api_version=api_version,),
+            log_to_keen(action, source=source, destination=destination,
+                        errors=errors, request=request, api_version=api_version,
+                        bytes_downloaded=bytes_downloaded, bytes_uploaded=bytes_uploaded,),
         ),
     ]
 

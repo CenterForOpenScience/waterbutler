@@ -126,20 +126,29 @@ def _serialize_request(request):
             headers_dict[k] = v
 
     serialized = {
-        'ip': request.remote_ip,
-        'method': request.method,
-        'url': request.full_url(),
-        'ua': request.headers['User-Agent'],
-        'time': request.request_time(),
-        'headers': headers_dict,
-        'is_mfr_render': settings.MFR_IDENTIFYING_HEADER in request.headers,
+        'tech': {
+            'ip': request.remote_ip,
+            'ua': request.headers['User-Agent'],
+        },
+        'request': {
+            'method': request.method,
+            'url': request.full_url(),
+            'time': request.request_time(),
+            'headers': headers_dict,
+        },
+        'action': {
+            'is_mfr_render': settings.MFR_IDENTIFYING_HEADER in request.headers,
+        },
+        'referrer': {
+            'url': None,
+        },
     }
 
     if 'Referer' in request.headers:
         referrer = request.headers['Referer']
-        serialized['referrer'] = referrer
+        serialized['referrer']['url'] = referrer
         if referrer.startswith('{}/render'.format(settings.MFR_DOMAIN)):
-            serialized['is_mfr_render'] = True
+            serialized['action']['is_mfr_render'] = True
 
     return serialized
 
