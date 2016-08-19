@@ -285,12 +285,8 @@ class GitLabProvider(provider.BaseProvider):
 
         resp, insert = await self.upload(stream, keep_path, message, branch, **kwargs)
 
-        metadata = await self.metadata(path, ref=branch, **kwargs)
-
-        if not metadata:
-            raise exceptions.NotFoundError(path.full_path)
-
-        return metadata[0]
+        raw = {'name': path.path.strip('/').split('/')[-1]}
+        return GitLabFolderContentMetadata(raw, thepath=path.parent)
 
     async def _delete_file(self, path, message=None, branch=None, **kwargs):
 
@@ -448,7 +444,7 @@ class GitLabProvider(provider.BaseProvider):
         raise exceptions.NotFoundError(str(path))
 
     async def _upsert_blob(self, stream, filepath, branchname, insert=True):
-        if type(stream) is not Base64EncodeStream:
+        if type(stream) is not streams.Base64EncodeStream:
             stream = streams.Base64EncodeStream(stream)
 
         if insert:
