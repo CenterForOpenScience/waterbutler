@@ -69,8 +69,6 @@ class GitLabProvider(provider.BaseProvider):
       throw a 501 Not Implemented error.
     """
     NAME = 'gitlab'
-    BASE_URL = settings.BASE_URL
-    VIEW_URL = settings.VIEW_URL
 
     @staticmethod
     def is_sha(ref):
@@ -92,6 +90,8 @@ class GitLabProvider(provider.BaseProvider):
         self.owner = self.settings['owner']
         self.repo = self.settings['repo']
         self.repo_id = self.settings['repo_id']
+        self.BASE_URL = self.settings['base_url']
+        self.VIEW_URL = self.settings['view_url']
 
     async def validate_v1_path(self, path, **kwargs):
         if not getattr(self, '_repo', None):
@@ -275,19 +275,17 @@ class GitLabProvider(provider.BaseProvider):
         GitLabPath.validate_folder(path)
 
         message = message or settings.UPLOAD_FILE_MESSAGE
+        branch = branch or path.identifier[0]
 
         keep_path = path.child('.gitkeep')
 
         content = '\n'
         stream = streams.StringStream(content)
-        branch = path.identifier[0]
         commit_msg = message or settings.UPLOAD_FILE_MESSAGE
 
         resp, insert = await self.upload(stream, keep_path, message, branch, **kwargs)
 
         metadata = await self.metadata(path, ref=branch, **kwargs)
-
-        pdb.set_trace()
 
         if not metadata:
             raise exceptions.NotFoundError(path.full_path)
@@ -450,6 +448,8 @@ class GitLabProvider(provider.BaseProvider):
         raise exceptions.NotFoundError(str(path))
 
     async def _upsert_blob(self, stream, filepath, branchname, insert=True):
+        if type(stream) is not Base64EncodeStream:
+            stream = streams.Base64EncodeStream(stream)
 
         if insert:
             message = 'File {0} created'.format(filepath)
@@ -463,7 +463,7 @@ class GitLabProvider(provider.BaseProvider):
             'branch_name': branchname,
             'commit_message': message,
             'encoding': 'base64',
-            'content': streams.Base64EncodeStream(stream),
+            'content': stream
         })
 
         resp = await self.make_request(
