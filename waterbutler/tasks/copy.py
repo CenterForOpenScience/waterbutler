@@ -3,6 +3,7 @@ import logging
 
 from waterbutler.core import utils
 from waterbutler.tasks import core
+from waterbutler.core import remote_logging
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.log_payload import LogPayload
 
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @core.celery_task
-async def copy(src_bundle, dest_bundle, start_time=None, **kwargs):
+async def copy(src_bundle, dest_bundle, request={}, start_time=None, **kwargs):
     start_time = start_time or time.time()
 
     src_path, src_provider = src_bundle.pop('path'), utils.make_provider(**src_bundle.pop('provider'))
@@ -36,12 +37,9 @@ async def copy(src_bundle, dest_bundle, start_time=None, **kwargs):
             dest_bundle['nid'], dest_provider, path=dest_path, metadata=metadata
         )
 
-        await utils.log_to_callback(
-            'copy',
-            source=source,
-            destination=destination,
-            start_time=start_time,
-            errors=errors,
+        await remote_logging.wait_for_log_futures(
+            'copy', source=source, destination=destination, start_time=start_time,
+            errors=errors, request=request, api_version='celery',
         )
 
     return metadata, created

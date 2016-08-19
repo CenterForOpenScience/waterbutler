@@ -1,8 +1,9 @@
 import json
-import time
+import pytz
 import asyncio
 import logging
 import functools
+import dateutil.parser
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
@@ -11,7 +12,6 @@ from stevedore import driver
 
 from waterbutler import settings
 from waterbutler.core import exceptions
-from waterbutler.tasks import settings as task_settings
 from waterbutler.server import settings as server_settings
 from waterbutler.core.signing import Signer
 
@@ -67,14 +67,13 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
         @functools.wraps(func)
         async def wrapped(*args, __retries=0, **kwargs):
             try:
-                return (await asyncio.coroutine(func)(*args, **kwargs))
+                return await asyncio.coroutine(func)(*args, **kwargs)
             except exceptions as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
                     logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting {4} seconds before retrying'.format(func, e, __retries, retries, wait_time))
-
                     await asyncio.sleep(wait_time)
-                    return wrapped(*args, __retries=__retries + 1, **kwargs)
+                    return await wrapped(*args, __retries=__retries + 1, **kwargs)
                 else:
                     # Logs before all things
                     logger.error('Task {0} failed with exception {1}'.format(func, e))
@@ -105,37 +104,53 @@ async def send_signed_request(method, url, payload):
     ))
 
 
-async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[]):
-    auth = getattr(destination, 'auth', source.auth)
+def normalize_datetime(date_string):
+    if date_string is None:
+        return None
+    parsed_datetime = dateutil.parser.parse(date_string)
+    if not parsed_datetime.tzinfo:
+        parsed_datetime = parsed_datetime.replace(tzinfo=pytz.UTC)
+    parsed_datetime = parsed_datetime.astimezone(tz=pytz.UTC)
+    parsed_datetime = parsed_datetime.replace(microsecond=0)
+    return parsed_datetime.isoformat()
 
-    log_payload = {
-        'action': action,
-        'auth': auth,
-        'time': time.time() + 60,
-        'errors': errors,
+
+def _serialize_request(request):
+    """Serialize the original request so we can log it across celery."""
+    if request is None:
+        return {}
+
+    headers_dict = {}
+    for (k, v) in sorted(request.headers.get_all()):
+        if k not in ('Authorization', 'Cookie', 'User-Agent',):
+            headers_dict[k] = v
+
+    serialized = {
+        'tech': {
+            'ip': request.remote_ip,
+            'ua': request.headers['User-Agent'],
+        },
+        'request': {
+            'method': request.method,
+            'url': request.full_url(),
+            'time': request.request_time(),
+            'headers': headers_dict,
+        },
+        'action': {
+            'is_mfr_render': settings.MFR_IDENTIFYING_HEADER in request.headers,
+        },
+        'referrer': {
+            'url': None,
+        },
     }
 
-    if start_time:
-        log_payload['email'] = time.time() - start_time > task_settings.WAIT_TIMEOUT
+    if 'Referer' in request.headers:
+        referrer = request.headers['Referer']
+        serialized['referrer']['url'] = referrer
+        if referrer.startswith('{}/render'.format(settings.MFR_DOMAIN)):
+            serialized['action']['is_mfr_render'] = True
 
-    if action in ('move', 'copy'):
-        log_payload['source'] = source.serialize()
-        log_payload['destination'] = destination.serialize()
-    else:
-        log_payload['metadata'] = source.serialize()
-        log_payload['provider'] = log_payload['metadata']['provider']
-
-    resp = await send_signed_request('PUT', auth['callback_url'], log_payload)
-    resp_data = await resp.read()
-
-    if resp.status // 100 != 2:
-        raise Exception(
-            'Callback for {} request failed with {!r}, got {}'.format(
-                action, resp, resp_data.decode('utf-8')
-            )
-        )
-
-    logger.info('Callback for {} request succeeded with {}'.format(action, resp_data.decode('utf-8')))
+    return serialized
 
 
 class ZipStreamGenerator:

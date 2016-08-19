@@ -2,6 +2,22 @@
 ChangeLog
 *********
 
+0.22.0 (2016-08-19)
+===================
+- Feature: File metadata now includes a modified_utc field that is the modified timestamp in
+standard ISO-8601 format (YYYY-MM-DDTHH:MM::SS+00:00). (thanks, @TomBaxter!)
+- Feature: Metadata for osfstorage files will contain the file GUID, once the OSF is updated to
+return that information. (thanks, @Johnetordoff!)
+- Feature: WaterButler can now log file actions to Keen.io.
+- Fix: core.utils.async_retry was always intended to be fire-and-forget, but wasn't when await()-ed.
+It will now run until done, instead of executing one retry per await.  The tests have been updated
+to match this behavior.
+- Fix: Update copy and move celery tasks so that a failed logging callback will not make them return
+a 500.  Now they always return the result and metadata of the move/copy action.
+- Fix: Logging callbacks are now retried five times, no matter where they are called from.
+- Fix: Update Dockerfile to register plugins.
+- Fix: Correct minor typos and links to Python and aiohttp in the docs.
+
 0.21.4 (2016-08-02)
 ===================
 - Fix: Ask Box not to zip our download requests. (thanks, @caseyrygt!)

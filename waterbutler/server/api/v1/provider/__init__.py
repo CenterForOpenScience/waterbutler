@@ -8,6 +8,7 @@ import tornado.gen
 from waterbutler.core import utils
 from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
+from waterbutler.core import remote_logging
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.log_payload import LogPayload
 from waterbutler.core.streams import RequestStreamReader
@@ -96,6 +97,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     async def data_received(self, chunk):
         """Note: Only called during uploads."""
+        self.bytes_uploaded += len(chunk)
         if self.stream:
             self.writer.write(chunk)
             await self.writer.drain()
@@ -117,14 +119,18 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     def on_finish(self):
         status, method = self.get_status(), self.request.method.upper()
         # If the response code is not within the 200 range,
-        # the request was a GET, HEAD, or OPTIONS,
+        # the request was a HEAD or OPTIONS,
         # or the response code is 202, celery will send its own callback
         # no callbacks should be sent.
-        if any((method in ('GET', 'HEAD', 'OPTIONS'), status == 202, status // 100 != 2)):
+        if any((method in ('HEAD', 'OPTIONS'), status == 202, status // 100 != 2)):
+            return
+
+        if method == 'GET' and 'meta' in self.request.query_arguments:
             return
 
         # Done here just because method is defined
         action = {
+            'GET': lambda: 'download_file' if self.path.is_file else 'download_zip',
             'PUT': lambda: ('create' if self.target_path.is_file else 'create_folder') if status == 201 else 'update',
             'POST': lambda: 'move' if self.json['action'] == 'rename' else self.json['action'],
             'DELETE': lambda: 'delete'
@@ -132,8 +138,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
         self._send_hook(action)
 
-    @utils.async_retry(retries=5, backoff=5)
-    async def _send_hook(self, action):
+    def _send_hook(self, action):
         source = None
         destination = None
 
@@ -150,9 +155,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             )
         elif action in ('create', 'create_folder', 'update'):
             source = LogPayload(self.resource, self.provider, metadata=self.metadata)
-        elif action in ('delete',):
+        elif action in ('delete', 'download_file', 'download_zip'):
             source = LogPayload(self.resource, self.provider, path=self.path)
         else:
             return
 
-        await utils.log_to_callback(action, source=source, destination=destination)
+        remote_logging.log_file_action(action, source=source, destination=destination, api_version='v1',
+                                       request=utils._serialize_request(self.request),
+                                       bytes_downloaded=self.bytes_downloaded,
+                                       bytes_uploaded=self.bytes_uploaded,)

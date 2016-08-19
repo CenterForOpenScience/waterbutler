@@ -53,7 +53,7 @@ The contents of a folder or details of a particular file can be retrieved by per
     Method:   GET
     Params:   <none>
     Success:  200 OK + file body
-    Example:  GET /resources/mst3k/providers/osfstorage/2348825492342?meta=
+    Example:  GET /resources/mst3k/providers/osfstorage/2348825492342
 
 To download a file, issue a GET request against its URL. The response will have the Content-Disposition header set, which will will trigger a download in a browser.
 

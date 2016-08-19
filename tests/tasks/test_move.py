@@ -9,6 +9,7 @@ import celery
 import pytest
 
 from waterbutler import tasks  # noqa
+from waterbutler.core import remote_logging
 from waterbutler.core import utils as core_utils
 from waterbutler.core.path import WaterButlerPath
 
@@ -80,6 +81,13 @@ def providers(monkeypatch, src_provider, dest_provider):
         raise ValueError('Unexpected provider')
     monkeypatch.setattr(move.utils, 'make_provider', make_provider)
     return src_provider, dest_provider
+
+
+@pytest.fixture(autouse=True)
+def log_to_keen(monkeypatch):
+    mock_log_to_keen = test_utils.MockCoroutine()
+    monkeypatch.setattr(remote_logging, 'log_to_keen', mock_log_to_keen)
+    return mock_log_to_keen
 
 
 @pytest.fixture
@@ -199,6 +207,7 @@ class TestMoveTask:
             ).hexdigest(),
             'extra': metadata.extra,
             'modified': metadata.modified,
+            'modified_utc': metadata.modified_utc,
             'size': metadata.size,
         }
 
