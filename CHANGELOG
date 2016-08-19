@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.22.1 (2016-08-19)
+===================
+- Fix: Don't try to derive modified_utc for osfstorage files that lack a modified date.
+
 0.22.0 (2016-08-19)
 ===================
 - Feature: File metadata now includes a modified_utc field that is the modified timestamp in
