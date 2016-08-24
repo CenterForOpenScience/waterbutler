@@ -89,12 +89,12 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
             'is_mfr_render': False,
         },
         'files': {
-            'source': _munge_file_metadata(source),
-            'destination': _munge_file_metadata(destination),
+            'source': _munge_file_metadata(source.serialize()),
+            'destination': None if destination is None else _munge_file_metadata(destination.serialize())
         },
         'auth': {
             'source': source.auth,
-            'destination': {} if destination is None else destination.auth,
+            'destination': None if destination is None else destination.auth,
         },
         'geo': {},  # added via keen addons
         'keen': {
@@ -154,11 +154,9 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
     else:
         keen_payload['action']['subtype'] = action
 
-    collection = 'file_access'
-
     # send the private payload
-    await _send_to_keen(keen_payload, collection, settings.KEEN_PRIVATE_PROJECT_ID,
-                        settings.KEEN_PRIVATE_WRITE_KEY, 'private')
+    await _send_to_keen(keen_payload, 'file_access', settings.KEEN_PRIVATE_PROJECT_ID,
+                        settings.KEEN_PRIVATE_WRITE_KEY, action, domain='private')
 
     if errors is not None or action not in ('download_file', 'download_zip'):
         return
@@ -193,11 +191,12 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
 
 
 @utils.async_retry(retries=5, backoff=5)
-async def _send_to_keen(payload, collection, project_id, write_key, domain='private'):
+async def _send_to_keen(payload, collection, project_id, write_key, action, domain='private'):
     """Serialize and send an event to Keen.  If an error occurs, try up to five more times.
     Will raise an excpetion if the event cannot be sent."""
 
     serialized = json.dumps(payload).encode('UTF-8')
+    logger.debug("Serialized payload: {}".format(serialized))
     headers = {
         'Content-Type': 'application/json',
         'Authorization': write_key,
@@ -208,12 +207,10 @@ async def _send_to_keen(payload, collection, project_id, write_key, domain='priv
 
     async with await aiohttp.request('POST', url, headers=headers, data=serialized) as resp:
         if resp.status == 201:
-            logger.info('Successfully logged {} to {} collection in {} Keen'.format(
-                payload['action']['type'], collection, domain
-            ))
+            logger.info('Successfully logged {} to {} collection in {} Keen'.format(action, collection, domain))
         else:
             raise Exception('Failed to log {} to {} collection in {} Keen. Status: {} Error: {}'.format(
-                payload['action']['type'], collection, domain, str(int(resp.status)), await resp.read()
+                action, collection, domain, str(int(resp.status)), await resp.read()
             ))
         return
 
@@ -241,11 +238,10 @@ async def wait_for_log_futures(*args, **kwargs):
     )
 
 
-def _munge_file_metadata(log_payload):
-    if log_payload is None:
+def _munge_file_metadata(metadata):
+    if metadata is None:
         return None
 
-    metadata = log_payload.serialize()
     try:
         file_extra = metadata.pop('extra')
     except KeyError:
