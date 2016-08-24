@@ -1,4 +1,3 @@
-import copy
 import json
 import time
 import asyncio
@@ -148,46 +147,18 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
             'output': 'referrer.info',
         })
 
-    # synthetic fields to make Keen queries easier/prettier
-    if action == 'download_file' and request['action']['is_mfr_render']:
-        keen_payload['action']['subtype'] = 'view_file'
-    else:
-        keen_payload['action']['subtype'] = action
-
     # send the private payload
     await _send_to_keen(keen_payload, 'file_access', settings.KEEN_PRIVATE_PROJECT_ID,
                         settings.KEEN_PRIVATE_WRITE_KEY, action, domain='private')
 
-    if errors is not None or action not in ('download_file', 'download_zip'):
+    if errors is not None or action not in ('download_file', 'download_zip') or keen_payload['action']['is_mfr_render']:
         return
 
-    public_payload = copy.deepcopy(keen_payload)
-
-    # downloads only have one file
-    public_payload['file'] = public_payload['files'].pop('source')
-    del public_payload['files']
-
-    # sanitize the public payload
-    for field in ('wb_version', 'api_version',):
-        del public_payload['meta'][field]
-    for field in ('is_mfr_render', 'errors',):
-        del public_payload['action'][field]
-    for field in ('headers', 'method', 'time',):
-        del public_payload['request'][field]
-
-    del public_payload['tech']
-    del public_payload['geo']
-    del public_payload['auth']
-
-    filtered = []
-    for addon in public_payload['keen']['addons']:
-        if addon['name'] not in ('keen:ua_parser', 'keen:ip_to_geo',):
-            filtered.append(addon)
-    public_payload['keen']['addons'] = filtered
-
-    # ship it
-    await _send_to_keen(public_payload, collection, settings.KEEN_PUBLIC_PROJECT_ID,
-                        settings.KEEN_PUBLIC_WRITE_KEY, 'public')
+    # build and ship the public file stats payload
+    file_metadata = keen_payload['files']['source']
+    public_payload = _build_public_file_payload(action, request, file_metadata)
+    await _send_to_keen(public_payload, 'file_stats', settings.KEEN_PUBLIC_PROJECT_ID,
+                        settings.KEEN_PUBLIC_WRITE_KEY, action, domain='public')
 
 
 @utils.async_retry(retries=5, backoff=5)
@@ -261,6 +232,56 @@ def _munge_file_metadata(metadata):
     ])
 
     return metadata
+
+
+def _build_public_file_payload(action, request, file_metadata):
+    public_payload = {
+        'meta': {
+            'epoch': 1,
+        },
+        'request': {
+            'url': request['request']['url']
+        },
+        'anon': {
+            'country': None,
+            'continent': None,
+        },
+        'action': {
+            'type': action,
+        },
+        'file': file_metadata,
+        'keen': {
+            'addons': [
+                {
+                    'name': 'keen:url_parser',
+                    'input': {
+                        'url': 'request.url'
+                    },
+                    'output': 'request.info',
+                },
+            ],
+        },
+    }
+
+    if request['referrer']['url'] is not None:
+        public_payload['referrer'] = request['referrer']  # .info added via keen addons
+        public_payload['keen']['addons'].append({
+            'name': 'keen:referrer_parser',
+            'input': {
+                'referrer_url': 'referrer.url',
+                'page_url': 'request.url'
+            },
+            'output': 'referrer.info'
+        })
+        public_payload['keen']['addons'].append({
+            'name': 'keen:url_parser',
+            'input': {
+                'url': 'referrer.url'
+            },
+            'output': 'referrer.info',
+        })
+
+    return public_payload
 
 
 def _serialize_request(request):
