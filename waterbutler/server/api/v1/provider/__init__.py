@@ -161,6 +161,6 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             return
 
         remote_logging.log_file_action(action, source=source, destination=destination, api_version='v1',
-                                       request=utils._serialize_request(self.request),
+                                       request=remote_logging._serialize_request(self.request),
                                        bytes_downloaded=self.bytes_downloaded,
                                        bytes_uploaded=self.bytes_uploaded,)
