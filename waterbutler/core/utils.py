@@ -115,44 +115,6 @@ def normalize_datetime(date_string):
     return parsed_datetime.isoformat()
 
 
-def _serialize_request(request):
-    """Serialize the original request so we can log it across celery."""
-    if request is None:
-        return {}
-
-    headers_dict = {}
-    for (k, v) in sorted(request.headers.get_all()):
-        if k not in ('Authorization', 'Cookie', 'User-Agent',):
-            headers_dict[k] = v
-
-    serialized = {
-        'tech': {
-            'ip': request.remote_ip,
-            'ua': request.headers['User-Agent'],
-        },
-        'request': {
-            'method': request.method,
-            'url': request.full_url(),
-            'time': request.request_time(),
-            'headers': headers_dict,
-        },
-        'action': {
-            'is_mfr_render': settings.MFR_IDENTIFYING_HEADER in request.headers,
-        },
-        'referrer': {
-            'url': None,
-        },
-    }
-
-    if 'Referer' in request.headers:
-        referrer = request.headers['Referer']
-        serialized['referrer']['url'] = referrer
-        if referrer.startswith('{}/render'.format(settings.MFR_DOMAIN)):
-            serialized['action']['is_mfr_render'] = True
-
-    return serialized
-
-
 class ZipStreamGenerator:
     def __init__(self, provider, parent_path, *metadata_objs):
         self.provider = provider

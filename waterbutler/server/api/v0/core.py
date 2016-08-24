@@ -95,7 +95,7 @@ class BaseProviderHandler(BaseHandler):
     def _send_hook(self, action, metadata=None, path=None):
         source = LogPayload(self.arguments['nid'], self.provider, metadata=metadata, path=path)
         remote_logging.log_file_action(action, source=source, api_version='v0',
-                                       request=utils._serialize_request(self.request),
+                                       request=remote_logging._serialize_request(self.request),
                                        bytes_downloaded=self.bytes_downloaded,
                                        bytes_uploaded=self.bytes_uploaded)
 
@@ -144,6 +144,6 @@ class BaseCrossProviderHandler(BaseHandler):
         destination = LogPayload(self.json['destination']['nid'], self.destination_provider,
                                  metadata=metadata)
         remote_logging.log_file_action(action, source=source, destination=destination, api_version='v0',
-                                       request=utils._serialize_request(self.request),
+                                       request=remote_logging._serialize_request(self.request),
                                        bytes_downloaded=self.bytes_downloaded,
                                        bytes_uploaded=self.bytes_uploaded)

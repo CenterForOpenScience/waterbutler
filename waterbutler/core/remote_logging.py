@@ -85,8 +85,8 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
             'type': action,
             'bytes_downloaded': bytes_downloaded,
             'bytes_uploaded': bytes_uploaded,
-            'is_mfr_render': request['action']['is_mfr_render'],
             'errors': errors,
+            'is_mfr_render': False,
         },
         'files': {
             'source': _munge_file_metadata(source),
@@ -124,7 +124,13 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
         },
     }
 
+    if settings.MFR_IDENTIFYING_HEADER in request['request']['headers']:
+        keen_payload['action']['is_mfr_render'] = True
+
     if request['referrer']['url'] is not None:
+        if request['referrer']['url'].startswith('{}'.format(settings.MFR_DOMAIN)):
+            keen_payload['action']['is_mfr_render'] = True
+
         keen_payload['referrer'] = request['referrer']  # .info added via keen addons
         keen_payload['keen']['addons'].append({
             'name': 'keen:referrer_parser',
@@ -259,3 +265,35 @@ def _munge_file_metadata(log_payload):
     ])
 
     return metadata
+
+
+def _serialize_request(request):
+    """Serialize the original request so we can log it across celery."""
+    if request is None:
+        return {}
+
+    headers_dict = {}
+    for (k, v) in sorted(request.headers.get_all()):
+        if k not in ('Authorization', 'Cookie', 'User-Agent',):
+            headers_dict[k] = v
+
+    serialized = {
+        'tech': {
+            'ip': request.remote_ip,
+            'ua': request.headers['User-Agent'],
+        },
+        'request': {
+            'method': request.method,
+            'url': request.full_url(),
+            'time': request.request_time(),
+            'headers': headers_dict,
+        },
+        'referrer': {
+            'url': None,
+        },
+    }
+
+    if 'Referer' in request.headers:
+        serialized['referrer']['url'] = request.headers['Referer']
+
+    return serialized
