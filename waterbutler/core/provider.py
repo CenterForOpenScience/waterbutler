@@ -356,10 +356,34 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         return False
 
-    def intra_copy(self, dest_provider, source_options, dest_options):
+    def intra_copy(self, dest_provider, source_path, dest_path):
+        """If the provider supports copying files and/or folders within itself by some means other
+        than download/upload, then ``can_intra_copy`` should return ``True``.  This method will
+        implement the copy.  It accepts the destination provider, a source path, and the
+        destination path.  Returns the metadata for the newly created file and a boolean indicating
+        whether the copied entity is completely new (``True``) or overwrote a previously-existing
+        file (``False``).
+
+        :param BaseProvider dest_provider: a provider instance for the destination
+        :param WaterButlerPath source_path: the Path of the entity being copied
+        :param WaterButlerPath dest_path: the Path of the destination being copied to
+        :rtype: (:class:`waterbutler.core.metadata.BaseFileMetadata`, :class:`bool`)
+        """
         raise NotImplementedError
 
     async def intra_move(self, dest_provider, src_path, dest_path):
+        """If the provider supports moving files and/or folders within itself by some means other
+        than download/upload/delete, then ``can_intra_move`` should return ``True``.  This method
+        will implement the move.  It accepts the destination provider, a source path, and the
+        destination path.  Returns the metadata for the newly created file and a boolean indicating
+        whether the moved entity is completely new (``True``) or overwrote a previously-existing
+        file (``False``).
+
+        :param BaseProvider dest_provider: a provider instance for the destination
+        :param WaterButlerPath source_path: the Path of the entity being moved
+        :param WaterButlerPath dest_path: the Path of the destination being moved to
+        :rtype: (:class:`waterbutler.core.metadata.BaseFileMetadata`, :class:`bool`)
+        """
         data, created = await self.intra_copy(dest_provider, src_path, dest_path)
         await self.delete(src_path)
         return data, created
@@ -455,7 +479,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def upload(self, stream, **kwargs):
-        """
+        """Uploads the given stream to the provider.  Returns the metadata for the newly created
+        file and a boolean indicating whether the file is completely new (``True``) or overwrote
+        a previously-existing file (``False``)
 
         :param dict \*\*kwargs: Arguments to be parsed by child classes
         :rtype: (:class:`waterbutler.core.metadata.BaseFileMetadata`, :class:`bool`)

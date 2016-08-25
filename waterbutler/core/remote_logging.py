@@ -1,4 +1,3 @@
-import copy
 import json
 import time
 import asyncio
@@ -85,16 +84,16 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
             'type': action,
             'bytes_downloaded': bytes_downloaded,
             'bytes_uploaded': bytes_uploaded,
-            'is_mfr_render': request['action']['is_mfr_render'],
             'errors': errors,
+            'is_mfr_render': False,
         },
         'files': {
-            'source': _munge_file_metadata(source),
-            'destination': _munge_file_metadata(destination),
+            'source': _munge_file_metadata(source.serialize()),
+            'destination': None if destination is None else _munge_file_metadata(destination.serialize())
         },
         'auth': {
             'source': source.auth,
-            'destination': {} if destination is None else destination.auth,
+            'destination': None if destination is None else destination.auth,
         },
         'geo': {},  # added via keen addons
         'keen': {
@@ -124,7 +123,13 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
         },
     }
 
+    if settings.MFR_IDENTIFYING_HEADER in request['request']['headers']:
+        keen_payload['action']['is_mfr_render'] = True
+
     if request['referrer']['url'] is not None:
+        if request['referrer']['url'].startswith('{}'.format(settings.MFR_DOMAIN)):
+            keen_payload['action']['is_mfr_render'] = True
+
         keen_payload['referrer'] = request['referrer']  # .info added via keen addons
         keen_payload['keen']['addons'].append({
             'name': 'keen:referrer_parser',
@@ -142,56 +147,27 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
             'output': 'referrer.info',
         })
 
-    # synthetic fields to make Keen queries easier/prettier
-    if action == 'download_file' and request['action']['is_mfr_render']:
-        keen_payload['action']['subtype'] = 'view_file'
-    else:
-        keen_payload['action']['subtype'] = action
-
-    collection = 'file_access'
-
     # send the private payload
-    await _send_to_keen(keen_payload, collection, settings.KEEN_PRIVATE_PROJECT_ID,
-                        settings.KEEN_PRIVATE_WRITE_KEY, 'private')
+    await _send_to_keen(keen_payload, 'file_access', settings.KEEN_PRIVATE_PROJECT_ID,
+                        settings.KEEN_PRIVATE_WRITE_KEY, action, domain='private')
 
-    if errors is not None or action not in ('download_file', 'download_zip'):
+    if errors is not None or action not in ('download_file', 'download_zip') or keen_payload['action']['is_mfr_render']:
         return
 
-    public_payload = copy.deepcopy(keen_payload)
-
-    # downloads only have one file
-    public_payload['file'] = public_payload['files'].pop('source')
-    del public_payload['files']
-
-    # sanitize the public payload
-    for field in ('wb_version', 'api_version',):
-        del public_payload['meta'][field]
-    for field in ('is_mfr_render', 'errors',):
-        del public_payload['action'][field]
-    for field in ('headers', 'method', 'time',):
-        del public_payload['request'][field]
-
-    del public_payload['tech']
-    del public_payload['geo']
-    del public_payload['auth']
-
-    filtered = []
-    for addon in public_payload['keen']['addons']:
-        if addon['name'] not in ('keen:ua_parser', 'keen:ip_to_geo',):
-            filtered.append(addon)
-    public_payload['keen']['addons'] = filtered
-
-    # ship it
-    await _send_to_keen(public_payload, collection, settings.KEEN_PUBLIC_PROJECT_ID,
-                        settings.KEEN_PUBLIC_WRITE_KEY, 'public')
+    # build and ship the public file stats payload
+    file_metadata = keen_payload['files']['source']
+    public_payload = _build_public_file_payload(action, request, file_metadata)
+    await _send_to_keen(public_payload, 'file_stats', settings.KEEN_PUBLIC_PROJECT_ID,
+                        settings.KEEN_PUBLIC_WRITE_KEY, action, domain='public')
 
 
 @utils.async_retry(retries=5, backoff=5)
-async def _send_to_keen(payload, collection, project_id, write_key, domain='private'):
+async def _send_to_keen(payload, collection, project_id, write_key, action, domain='private'):
     """Serialize and send an event to Keen.  If an error occurs, try up to five more times.
     Will raise an excpetion if the event cannot be sent."""
 
     serialized = json.dumps(payload).encode('UTF-8')
+    logger.debug("Serialized payload: {}".format(serialized))
     headers = {
         'Content-Type': 'application/json',
         'Authorization': write_key,
@@ -202,12 +178,10 @@ async def _send_to_keen(payload, collection, project_id, write_key, domain='priv
 
     async with await aiohttp.request('POST', url, headers=headers, data=serialized) as resp:
         if resp.status == 201:
-            logger.info('Successfully logged {} to {} collection in {} Keen'.format(
-                payload['action']['type'], collection, domain
-            ))
+            logger.info('Successfully logged {} to {} collection in {} Keen'.format(action, collection, domain))
         else:
             raise Exception('Failed to log {} to {} collection in {} Keen. Status: {} Error: {}'.format(
-                payload['action']['type'], collection, domain, str(int(resp.status)), await resp.read()
+                action, collection, domain, str(int(resp.status)), await resp.read()
             ))
         return
 
@@ -235,11 +209,10 @@ async def wait_for_log_futures(*args, **kwargs):
     )
 
 
-def _munge_file_metadata(log_payload):
-    if log_payload is None:
+def _munge_file_metadata(metadata):
+    if metadata is None:
         return None
 
-    metadata = log_payload.serialize()
     try:
         file_extra = metadata.pop('extra')
     except KeyError:
@@ -259,3 +232,90 @@ def _munge_file_metadata(log_payload):
     ])
 
     return metadata
+
+
+def _build_public_file_payload(action, request, file_metadata):
+    public_payload = {
+        'meta': {
+            'epoch': 1,
+        },
+        'request': {
+            'url': request['request']['url']
+        },
+        'anon': {
+            'country': None,
+            'continent': None,
+        },
+        'action': {
+            'type': action,
+        },
+        'file': file_metadata,
+        'keen': {
+            'addons': [
+                {
+                    'name': 'keen:url_parser',
+                    'input': {
+                        'url': 'request.url'
+                    },
+                    'output': 'request.info',
+                },
+            ],
+        },
+    }
+
+    try:
+        public_payload['node'] = {'id': file_metadata['resource']}
+    except KeyError:
+        pass
+
+    if request['referrer']['url'] is not None:
+        public_payload['referrer'] = request['referrer']  # .info added via keen addons
+        public_payload['keen']['addons'].append({
+            'name': 'keen:referrer_parser',
+            'input': {
+                'referrer_url': 'referrer.url',
+                'page_url': 'request.url'
+            },
+            'output': 'referrer.info'
+        })
+        public_payload['keen']['addons'].append({
+            'name': 'keen:url_parser',
+            'input': {
+                'url': 'referrer.url'
+            },
+            'output': 'referrer.info',
+        })
+
+    return public_payload
+
+
+def _serialize_request(request):
+    """Serialize the original request so we can log it across celery."""
+    if request is None:
+        return {}
+
+    headers_dict = {}
+    for (k, v) in sorted(request.headers.get_all()):
+        if k not in ('Authorization', 'Cookie', 'User-Agent',):
+            headers_dict[k] = v
+
+    serialized = {
+        'tech': {
+            'ip': request.remote_ip,
+            'ua': request.headers['User-Agent'],
+        },
+        'request': {
+            'method': request.method,
+            'url': request.full_url(),
+            'time': request.request_time(),
+            'headers': headers_dict,
+        },
+        'referrer': {
+            'url': None,
+        },
+    }
+
+    if 'Referer' in request.headers:
+        serialized['referrer']['url'] = request.headers['Referer']
+
+    return serialized
