@@ -263,6 +263,11 @@ def _build_public_file_payload(action, request, file_metadata):
         },
     }
 
+    try:
+        public_payload['node'] = {'id': file_metadata['resource']}
+    except KeyError:
+        pass
+
     if request['referrer']['url'] is not None:
         public_payload['referrer'] = request['referrer']  # .info added via keen addons
         public_payload['keen']['addons'].append({
