@@ -123,5 +123,5 @@ class OSFMediaStore(MediaStore):
         # convert content to data:uri
         # https://gist.github.com/jsocol/1089733
 
-        data64 = u''.join(base64.encodestring(data).splitlines())
+        data64 = u''.join([row.decode('utf-8') for row in base64.encodestring(data).splitlines()])
         return u'data:{};base64,{}'.format(mime_type, data64)

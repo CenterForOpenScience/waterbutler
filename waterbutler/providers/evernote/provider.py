@@ -146,24 +146,29 @@ class EvernoteProvider(provider.BaseProvider):
         # ResponseStreamReader:
         # https://github.com/CenterForOpenScience/waterbutler/blob/63b7d469e5545de9f2183b964fb6264fd9a423a5/waterbutler/core/streams/http.py#L141-L183
 
+        print ("evernote provider download: starting")
         token = self.credentials['token']
         client = get_evernote_client(token)
 
         note_guid = path.parts[1].raw
-        note_md = await _evernote_note(note_guid, token, withContent=True)
+        note_metadata = await _evernote_note(note_guid, token, withContent=True)
 
         # convert to HTML
         mediaStore = OSFMediaStore(client.get_note_store(), note_guid)
-        html = ENML2HTML.ENMLToHTML(note_md["content"], pretty=True, header=False,
+        html = ENML2HTML.ENMLToHTML(note_metadata["content"], pretty=True, header=False,
               media_store=mediaStore)
 
+        # HACK -- let me write markdown
+        html = "**hello there**"
+
         stream = streams.StringStream(html)
-        stream.content_type = "text/html"
-        stream.name = "{}.html".format(note_guid)
+        stream.content_type = "text/markdown"
+        stream.name = "{}.md".format(note_guid)
 
         # modeling after gdoc provider
         # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
 
+        print ("evernote provider download: finishing")
         return stream
 
     async def validate_path(self, path, **kwargs):
