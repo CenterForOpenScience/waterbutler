@@ -6,9 +6,9 @@ import logging
 import tornado.gen
 
 from waterbutler.core import utils
-from waterbutler.core import analytics
 from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
+from waterbutler.core import remote_logging
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.log_payload import LogPayload
 from waterbutler.core.streams import RequestStreamReader
@@ -18,6 +18,16 @@ from waterbutler.server.api.v1.provider.movecopy import MoveCopyMixin
 
 logger = logging.getLogger(__name__)
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
+
+
+def list_or_value(value):
+    assert isinstance(value, list)
+    if len(value) == 0:
+        return None
+    if len(value) == 1:
+        # Remove leading slashes as they break things
+        return value[0].decode('utf-8')
+    return [item.decode('utf-8') for item in value]
 
 
 @tornado.web.stream_request_body
@@ -33,6 +43,11 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if method == 'options':
             return
 
+        self.arguments = {
+            key: list_or_value(value)
+            for key, value in self.request.query_arguments.items()
+        }
+
         self.path = self.path_kwargs['path'] or '/'
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
@@ -47,7 +62,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
         self.auth = await auth_handler.get(self.resource, provider, self.request)
         self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
-        self.path = await self.provider.validate_v1_path(self.path)
+        self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
 
         self.target_path = None
 
@@ -97,6 +112,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     async def data_received(self, chunk):
         """Note: Only called during uploads."""
+        self.bytes_uploaded += len(chunk)
         if self.stream:
             self.writer.write(chunk)
             await self.writer.drain()
@@ -136,10 +152,8 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         }[method]()
 
         self._send_hook(action)
-        self._log_downloads(action)
 
-    @utils.async_retry(retries=5, backoff=5)
-    async def _send_hook(self, action):
+    def _send_hook(self, action):
         source = None
         destination = None
 
@@ -156,18 +170,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             )
         elif action in ('create', 'create_folder', 'update'):
             source = LogPayload(self.resource, self.provider, metadata=self.metadata)
-        elif action in ('delete',):
+        elif action in ('delete', 'download_file', 'download_zip'):
             source = LogPayload(self.resource, self.provider, path=self.path)
         else:
             return
 
-        await utils.log_to_callback(action, source=source, destination=destination)
-
-    @utils.async_retry(retries=5, backoff=5)
-    async def _log_downloads(self, action):
-        if action not in ('download_file', 'download_zip'):
-            return
-        downloadee = LogPayload(self.resource, self.provider, path=self.path)
-        await analytics.log_download(action, payload=downloadee, api_version='v1',
-                                     request=utils._serialize_request(self.request),
-                                     size=self.bytes_written)
+        remote_logging.log_file_action(action, source=source, destination=destination, api_version='v1',
+                                       request=remote_logging._serialize_request(self.request),
+                                       bytes_downloaded=self.bytes_downloaded,
+                                       bytes_uploaded=self.bytes_uploaded,)

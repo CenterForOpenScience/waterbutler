@@ -2,6 +2,7 @@ import pytest
 
 import io
 import os
+import copy
 import json
 import base64
 import hashlib
@@ -445,6 +446,22 @@ def content_repo_metadata_root_file_txt():
 
 
 @pytest.fixture
+def nested_tree_metadata():
+    return {
+        'tree': [
+            {'path': 'alpha.txt', 'type': 'blob', 'mode': '100644', 'size': 11, 'url': 'https://api.github.com/repos/felliott/wb-testing/git/blobs/3e72bca321b45548d7a7cfd1e8570afec6e5f2f1', 'sha': '3e72bca321b45548d7a7cfd1e8570afec6e5f2f1'},
+            {'path': 'beta', 'type': 'tree', 'mode': '040000', 'url': 'https://api.github.com/repos/felliott/wb-testing/git/trees/48cf869b1f09e4b0cfa765ce3c0812fb719973e9', 'sha': '48cf869b1f09e4b0cfa765ce3c0812fb719973e9'},
+            {'path': 'beta/gamma.txt', 'type': 'blob', 'mode': '100644', 'size': 11, 'url': 'https://api.github.com/repos/felliott/wb-testing/git/blobs/f59573b4169cee7da926e6508961438952ba0aaf', 'sha': 'f59573b4169cee7da926e6508961438952ba0aaf'},
+            {'path': 'beta/delta', 'type': 'tree', 'mode': '040000', 'url': 'https://api.github.com/repos/felliott/wb-testing/git/trees/bb0c11bb86d7fc4807f6c8dc2a2bb9513802bf33','sha': 'bb0c11bb86d7fc4807f6c8dc2a2bb9513802bf33'},
+            {'path': 'beta/delta/epsilon.txt', 'type': 'blob', 'mode': '100644', 'size': 13, 'url': 'https://api.github.com/repos/felliott/wb-testing/git/blobs/44b20789279ae90266791ba07f87a3ab42264690', 'sha': '44b20789279ae90266791ba07f87a3ab42264690'},
+        ],
+        'truncated': False,
+        'url': 'https://api.github.com/repos/felliott/wb-testing/git/trees/076cc413680157d4dea4c17831687873998a4928',
+        'sha': '076cc413680157d4dea4c17831687873998a4928'
+    }
+
+
+@pytest.fixture
 def provider(auth, credentials, settings, repo_metadata):
     provider = GitHubProvider(auth, credentials, settings)
     provider._repo = repo_metadata
@@ -530,6 +547,19 @@ class TestValidatePath:
         wb_path_v0 = await provider.validate_path('/' + tree_path + '/')
 
         assert wb_path_v1 == wb_path_v0
+
+    @pytest.mark.asyncio
+    async def test_reject_multiargs(self, provider):
+
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            await provider.validate_v1_path('/foo', ref=['bar','baz'])
+
+        assert exc.value.code == client.BAD_REQUEST
+
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            await provider.validate_path('/foo', ref=['bar','baz'])
+
+        assert exc.value.code == client.BAD_REQUEST
 
     @pytest.mark.asyncio
     async def test_validate_path(self, provider):
@@ -768,7 +798,7 @@ class TestMetadata:
 
         assert result == GitHubFileTreeMetadata(item, web_view=web_view, commit={
             'tree': {'sha': ref}, 'author': {'date': '1970-01-02T03:04:05Z'}
-        })
+        }, ref=path.identifier[0])
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -802,9 +832,9 @@ class TestMetadata:
         ret = []
         for item in content_repo_metadata_root:
             if item['type'] == 'dir':
-                ret.append(GitHubFolderContentMetadata(item))
+                ret.append(GitHubFolderContentMetadata(item, ref=provider.default_branch))
             else:
-                ret.append(GitHubFileContentMetadata(item, web_view=item['html_url']))
+                ret.append(GitHubFileContentMetadata(item, web_view=item['html_url'], ref=provider.default_branch))
 
         assert result == ret
 
@@ -882,3 +912,59 @@ class TestCreateFolder:
         assert metadata.kind == 'folder'
         assert metadata.name == 'trains'
         assert metadata.path == '/i/like/trains/'
+
+
+class TestUtilities:
+
+    def test__path_exists_in_tree(self, provider, nested_tree_metadata):
+        _ids = [('master', '')]
+
+        assert provider._path_exists_in_tree(nested_tree_metadata['tree'], GitHubPath('/alpha.txt', _ids=_ids))
+        assert provider._path_exists_in_tree(nested_tree_metadata['tree'], GitHubPath('/beta/', _ids=_ids))
+        assert not provider._path_exists_in_tree(nested_tree_metadata['tree'], GitHubPath('/gaw-gai.txt', _ids=_ids))
+        assert not provider._path_exists_in_tree(nested_tree_metadata['tree'], GitHubPath('/kaw-kai/', _ids=_ids))
+
+    def test__remove_path_from_tree(self, provider, nested_tree_metadata):
+        _ids = [('master', '')]
+
+        simple_file_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/alpha.txt', _ids=_ids))
+        assert len(simple_file_tree) == (len(nested_tree_metadata['tree']) - 1)
+        assert 'alpha.txt' not in [x['path'] for x in simple_file_tree]
+
+        simple_folder_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/beta/', _ids=_ids))
+        assert len(simple_folder_tree) == 1
+        assert simple_folder_tree[0]['path'] == 'alpha.txt'
+
+        nested_file_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/beta/gamma.txt', _ids=_ids))
+        assert len(nested_file_tree) == (len(nested_tree_metadata['tree']) - 1)
+        assert 'beta/gamma.txt' not in [x['path'] for x in nested_file_tree]
+
+        nested_folder_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/beta/delta/', _ids=_ids))
+        assert len(nested_folder_tree) == 3
+        assert len([x for x in nested_folder_tree if x['path'].startswith('beta/delta')]) == 0
+
+        missing_file_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/bet', _ids=_ids))
+        assert missing_file_tree == nested_tree_metadata['tree']
+
+        missing_folder_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/beta/gam/', _ids=_ids))
+        assert missing_file_tree == nested_tree_metadata['tree']
+
+    def test__reparent_blobs(self, provider, nested_tree_metadata):
+        _ids = [('master', '')]
+
+        file_rename_blobs = copy.deepcopy([x for x in nested_tree_metadata['tree'] if x['path'] == 'alpha.txt'])
+        provider._reparent_blobs(file_rename_blobs, GitHubPath('/alpha.txt', _ids=_ids), GitHubPath('/zeta.txt', _ids=_ids))
+        assert len(file_rename_blobs) == 1
+        assert file_rename_blobs[0]['path'] == 'zeta.txt'
+
+        folder_rename_blobs = copy.deepcopy([x for x in nested_tree_metadata['tree'] if x['path'].startswith('beta')])
+        provider._reparent_blobs(folder_rename_blobs, GitHubPath('/beta/', _ids=_ids), GitHubPath('/theta/', _ids=_ids))
+        assert len(folder_rename_blobs) == 4  # beta/, gamma.txt, delta/, epsilon.txt
+        assert len([x for x in folder_rename_blobs if x['path'].startswith('theta/')]) == 3  # gamma.txt, delta/, epsilon.txt
+        assert len([x for x in folder_rename_blobs if x['path'] == 'theta']) == 1  # theta/
+
+
+    def test__prune_subtrees(self, provider, nested_tree_metadata):
+        pruned_tree = provider._prune_subtrees(nested_tree_metadata['tree'])
+        assert len(pruned_tree) == 3  # alpha.txt, gamma.txt, epsilon.txt
+        assert len([x for x in pruned_tree if x['type'] == 'tree']) == 0

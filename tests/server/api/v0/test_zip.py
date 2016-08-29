@@ -11,6 +11,8 @@ from tests import utils
 
 class TestZipHandler(utils.HandlerTestCase):
 
+    HOOK_PATH = 'waterbutler.server.api.v0.zip.ZipHandler._send_hook'
+
     @testing.gen_test
     def test_download_stream(self):
         data = b'freddie brian john roger'

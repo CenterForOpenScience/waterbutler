@@ -2,6 +2,54 @@
 ChangeLog
 *********
 
+0.24.0 (2016-09-14)
+===================
+- Feature: Update the v1 API to passthrough unrecognized query params to the provider.
+- Feature: Teach the GitHub provider to accept branch identifiers in the URL and body of v1
+operations.  You can now do cross-branch move/copies with the v1 API!
+- Feature: The GitHub provider now includes the branch operated on in its callback logs.
+- Fix: Add `--pty` arguments to invoke install and invoke wheelhouse, to support building WB Docker
+images without pseudoterminals. (thanks, @emetsger!)
+
+0.23.3 (2016-08-31)
+===================
+- Fix: Fix flake error in remote_logging. Not at all embarrassing.
+
+0.23.2 (2016-08-31)
+===================
+- Fix: For analytics, convert byte sizes into more convenient units.
+- Code: in sizes.py, call kilobytes "KBs", not "Bs"
+
+0.23.1 (2016-08-31)
+===================
+- Fix: Dataverse changed their API file metadata repsonse format. Update provider to handle both
+formats.
+
+0.23.0 (2016-08-25)
+===================
+- Code: Rewrite public file action logging to sync with MFR.
+- Docs: Document intra_move and intra_copy in core provider.
+
+0.22.1 (2016-08-19)
+===================
+- Fix: Don't try to derive modified_utc for osfstorage files that lack a modified date.
+
+0.22.0 (2016-08-19)
+===================
+- Feature: File metadata now includes a modified_utc field that is the modified timestamp in
+standard ISO-8601 format (YYYY-MM-DDTHH:MM::SS+00:00). (thanks, @TomBaxter!)
+- Feature: Metadata for osfstorage files will contain the file GUID, once the OSF is updated to
+return that information. (thanks, @Johnetordoff!)
+- Feature: WaterButler can now log file actions to Keen.io.
+- Fix: core.utils.async_retry was always intended to be fire-and-forget, but wasn't when await()-ed.
+It will now run until done, instead of executing one retry per await.  The tests have been updated
+to match this behavior.
+- Fix: Update copy and move celery tasks so that a failed logging callback will not make them return
+a 500.  Now they always return the result and metadata of the move/copy action.
+- Fix: Logging callbacks are now retried five times, no matter where they are called from.
+- Fix: Update Dockerfile to register plugins.
+- Fix: Correct minor typos and links to Python and aiohttp in the docs.
+
 0.21.4 (2016-08-02)
 ===================
 - Fix: Ask Box not to zip our download requests. (thanks, @caseyrygt!)

@@ -71,7 +71,8 @@ class CORsMixin:
 
 class UtilMixin:
 
-    bytes_written = 0
+    bytes_downloaded = 0
+    bytes_uploaded = 0
 
     def initialize(self):
         method = self.get_query_argument('method', None)
@@ -91,7 +92,7 @@ class UtilMixin:
                 if isinstance(chunk, bytearray):
                     chunk = bytes(chunk)
                 self.write(chunk)
-                self.bytes_written += len(chunk)
+                self.bytes_downloaded += len(chunk)
                 del chunk
                 await self.flush()
         except tornado.iostream.StreamClosedError:
