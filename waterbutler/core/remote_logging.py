@@ -323,6 +323,7 @@ def _serialize_request(request):
 
     return serialized
 
+
 def _format_bytes(nbr_bytes):
     if nbr_bytes is None:
         return {}
