@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.23.1 (2016-08-31)
+===================
+- Fix: Dataverse changed their API file metadata repsonse format. Update provider to handle both
+formats.
+
 0.23.0 (2016-08-25)
 ===================
 - Code: Rewrite public file action logging to sync with MFR.
