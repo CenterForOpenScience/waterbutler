@@ -9,6 +9,7 @@ import aiohttp
 import waterbutler
 from waterbutler import settings
 from waterbutler.core import utils
+from waterbutler.sizes import KBs, MBs, GBs
 from waterbutler.tasks import settings as task_settings
 
 
@@ -84,6 +85,8 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
             'type': action,
             'bytes_downloaded': bytes_downloaded,
             'bytes_uploaded': bytes_uploaded,
+            'bytes_dl': _format_bytes(bytes_downloaded),
+            'bytes_up': _format_bytes(bytes_uploaded),
             'errors': errors,
             'is_mfr_render': False,
         },
@@ -319,3 +322,14 @@ def _serialize_request(request):
         serialized['referrer']['url'] = request.headers['Referer']
 
     return serialized
+
+def _format_bytes(nbr_bytes):
+    if nbr_bytes is None:
+        return {}
+
+    return {
+        'b': nbr_bytes,
+        'kb': nbr_bytes / KBs,
+        'mb': nbr_bytes / MBs,
+        'gb': nbr_bytes / GBs,
+    }
