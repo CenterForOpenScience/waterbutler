@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.23.3 (2016-08-31)
+===================
+- Fix: Fix flake error in remote_logging. Not at all embarrassing.
+
 0.23.2 (2016-08-31)
 ===================
 - Fix: For analytics, convert byte sizes into more convenient units.
