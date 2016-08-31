@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.23.2 (2016-08-31)
+===================
+- Fix: For analytics, convert byte sizes into more convenient units.
+- Code: in sizes.py, call kilobytes "KBs", not "Bs"
+
 0.23.1 (2016-08-31)
 ===================
 - Fix: Dataverse changed their API file metadata repsonse format. Update provider to handle both
