@@ -191,6 +191,7 @@ class TestCopyTask:
             'materialized': str(src_path),
             'provider': src.NAME,
             'kind': 'file',
+            'extra': {},
         }
 
         assert data['destination'] == {
