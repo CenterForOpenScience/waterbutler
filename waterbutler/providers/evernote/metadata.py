@@ -20,7 +20,8 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
     @property
     def name(self):
         
-        return self.raw['title']
+        print ("EvernoteFileMetadata.name: self.raw['title']", self.raw['title'])
+        return self.raw['title'] + ".md"
 
     @property
     def provider(self):
