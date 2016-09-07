@@ -15,6 +15,7 @@ Subpackages
     provider.googledrive
     provider.osfstorage
     provider.s3
+    provider.sharelatex
 
 Module contents
 ---------------
