@@ -186,9 +186,9 @@ def file_lineage():
 @pytest.mark.aiohttpretty
 async def test_download(monkeypatch, provider_and_mock, osf_response, mock_path, mock_time):
     provider, inner_provider = provider_and_mock
-
+    params = {'user': 'cat'}
     base_url = provider.build_url(mock_path.identifier, 'download', version=None, mode=None)
-    url, _, params = provider.build_signed_url('GET', base_url)
+    url, _, params = provider.build_signed_url('GET', base_url, params=params)
 
     aiohttpretty.register_json_uri('GET', url, params=params, body=osf_response)
 
