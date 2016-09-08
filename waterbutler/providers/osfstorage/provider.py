@@ -226,6 +226,7 @@ class OSFStorageProvider(provider.BaseProvider):
             'GET',
             self.build_url(path.identifier, 'download', version=version, mode=mode),
             expects=(200, ),
+            params={'user': self.auth['id']},
             throws=exceptions.DownloadError,
         ) as resp:
             data = await resp.json()
