@@ -155,11 +155,11 @@ class EvernoteProvider(provider.BaseProvider):
 
         # convert to HTML
         mediaStore = OSFMediaStore(client.get_note_store(), note_guid)
-        html = ENML2HTML.ENMLToHTML(note_metadata["content"], pretty=True, header=False,
-              media_store=mediaStore)
+        #html = ENML2HTML.ENMLToHTML(note_metadata["content"], pretty=True, header=False,
+        #      media_store=mediaStore)
 
         # HACK -- let me write markdown
-        html = "**hello there**"
+        html = "**Hello World**"
 
         stream = streams.StringStream(html)
         stream.content_type = "text/markdown"
