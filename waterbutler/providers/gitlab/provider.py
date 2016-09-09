@@ -1,6 +1,5 @@
 import copy
 import json
-import pdb
 import base64
 import aiohttp
 import mimetypes
@@ -176,7 +175,7 @@ class GitLabProvider(provider.BaseProvider):
         :param dict kwargs: Ignored
         '''
 
-        if not 'branch' in kwargs:
+        if 'branch' not in kwargs:
             raise exceptions.DownloadError(
                 'you must specify the branch to download the file',
                 code=400,
@@ -203,11 +202,10 @@ class GitLabProvider(provider.BaseProvider):
 
         mdict_options = {}
 
-        if mimetype != None:
+        if mimetype is not None:
             mdict_options['CONTENT-TYPE'] = mimetype
 
         mdict.update(mdict_options)
-
 
         resp.headers = mdict
         resp.content = streams.StringStream(raw)
@@ -223,8 +221,6 @@ class GitLabProvider(provider.BaseProvider):
             metadata = await self.metadata(path, ref=branch)
         except:
             insert = True
-
-        blob = await self._upsert_blob(stream, path.path, branch, insert)
 
         metadata = await self.metadata(path, ref=branch)
 
@@ -281,7 +277,6 @@ class GitLabProvider(provider.BaseProvider):
 
         content = '\n'
         stream = streams.StringStream(content)
-        commit_msg = message or settings.UPLOAD_FILE_MESSAGE
 
         resp, insert = await self.upload(stream, keep_path, message, branch, **kwargs)
 
@@ -290,14 +285,13 @@ class GitLabProvider(provider.BaseProvider):
 
     async def _delete_file(self, path, message=None, branch=None, **kwargs):
 
-        if branch == None:
+        if branch is None:
             raise exceptions.DeleteError(
                 'you must specify the branch to delete the file',
                 code=400,
             )
 
-
-        if message == None:
+        if message is None:
             message = 'File {} deleted'.format(path.full_path)
 
         url = self.build_repo_url('repository', 'files', file_path=path.full_path, branch_name=branch, commit_message=message)
@@ -315,14 +309,13 @@ class GitLabProvider(provider.BaseProvider):
 
     async def _delete_folder(self, path, message=None, branch=None, **kwargs):
 
-        if branch == None:
+        if branch is None:
             raise exceptions.DeleteError(
                 'you must specify the branch to delete the file',
                 code=400,
             )
 
-
-        if message == None:
+        if message is None:
             message = 'Folder {} deleted'.format(path.full_path)
 
         url = self.build_repo_url('repository', 'files', file_path=path.full_path, branch_name=branch, commit_message=message)
@@ -519,7 +512,7 @@ class GitLabProvider(provider.BaseProvider):
 
     async def _metadata_file(self, path, revision=None, ref=None, **kwargs):
 
-        if ref == None:
+        if ref is None:
             ref = 'master'
 
         resp = await self.make_request(
