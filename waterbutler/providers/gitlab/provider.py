@@ -222,6 +222,8 @@ class GitLabProvider(provider.BaseProvider):
         except:
             insert = True
 
+        await self._upsert_blob(stream, path.path, branch, insert)
+
         metadata = await self.metadata(path, ref=branch)
 
         return metadata, insert
