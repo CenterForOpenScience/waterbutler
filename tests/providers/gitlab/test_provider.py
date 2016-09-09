@@ -5,6 +5,7 @@ import os
 import json
 import base64
 import hashlib
+
 from http import client
 
 import aiohttpretty
@@ -180,3 +181,97 @@ class TestMetadata:
 
         with pytest.raises(exceptions.MetadataError) as exc:
             await provider.metadata(waterbutler_path)
+
+class TestDelete:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete(self, provider):
+        path = '/folder1/file.py'
+
+        waterbutler_path = GitLabPath(path)
+
+        url = 'http://base.url/projects/123/repository/files?commit_message=File+folder1/file.py+deleted&branch_name=master&file_path=folder1/file.py'
+
+        aiohttpretty.register_json_uri('DELETE', url)
+
+        result = await provider.delete(waterbutler_path, branch='master')
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_with_custom_message(self, provider):
+        path = '/folder1/file.py'
+
+        waterbutler_path = GitLabPath(path)
+
+        url = 'http://base.url/projects/123/repository/files?commit_message=custom&branch_name=master&file_path=folder1/file.py'
+
+        aiohttpretty.register_json_uri('DELETE', url)
+
+        result = await provider.delete(waterbutler_path, message='custom', branch='master')
+
+
+class TestDownload:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_with_wrong_http_response(self, provider):
+        path = '/folder1/file.py'
+
+        waterbutler_path = GitLabPath(path)
+
+        url = 'http://base.url/projects/2123/repository/files?commit_message=File+folder1/file.py+deleted&branch_name=master&file_path=folder1/file.py'
+
+        aiohttpretty.register_json_uri('GET', url)
+
+        with pytest.raises(exceptions.DownloadError) as exc:
+            result = await provider.download(waterbutler_path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download(self, provider):
+        path = '/folder1/file.py'
+
+        waterbutler_path = GitLabPath(path)
+
+        url = 'http://base.url/projects/123/repository/files?ref=master&file_path=folder1/file.py'
+
+        aiohttpretty.register_json_uri('GET', url, body={
+            'content': 'aGVsbG8='
+        })
+
+        result = await provider.download(waterbutler_path, branch='master')
+
+        assert await result.read() == b'hello'
+
+
+class TestUpload:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete(self, provider):
+        path = '/folder1/file.py'
+
+        waterbutler_path = GitLabPath(path)
+
+        url = 'http://base.url/projects/123/repository/files'
+        aiohttpretty.register_json_uri('POST', url)
+
+        url_put = 'http://base.url/projects/123/repository/files'
+        aiohttpretty.register_json_uri('PUT', url)
+
+        url_metadata = 'http://base.url/projects/123/repository/files?file_path=folder1/file.py&ref=master'
+        aiohttpretty.register_json_uri('GET', url_metadata, body={
+            'file_name': 'file.py',
+            'file_path': path,
+            'blob_id': '123',
+            'size': '5',
+            'commit_id': '1442422sss',
+        })
+
+        data = b'file content'
+        stream = streams.StringStream(data)
+        stream.name = 'foo'
+        stream.content_type = 'application/octet-stream'
+
+        result = await provider.upload(stream, waterbutler_path, 'my message', 'master')
