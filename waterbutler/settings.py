@@ -79,3 +79,19 @@ logging_config = get('LOGGING', DEFAULT_LOGGING_CONFIG)
 logging.config.dictConfig(logging_config)
 
 SENTRY_DSN = get('SENTRY_DSN', None)
+
+analytics_config = get('ANALYTICS', {})
+MFR_IDENTIFYING_HEADER = analytics_config.get('MFR_IDENTIFYING_HEADER', 'X-Cos-Mfr-Render-Request')
+MFR_DOMAIN = analytics_config.get('MFR_DOMAIN', 'http://localhost:7778').rstrip('/')
+
+keen_config = analytics_config.get('KEEN', {})
+KEEN_API_BASE_URL = keen_config.get('API_BASE_URL', 'https://api.keen.io')
+KEEN_API_VERSION = keen_config.get('API_VERSION', '3.0')
+
+keen_private_config = keen_config.get('PRIVATE', {})
+KEEN_PRIVATE_PROJECT_ID = keen_private_config.get('PROJECT_ID', None)
+KEEN_PRIVATE_WRITE_KEY = keen_private_config.get('WRITE_KEY', None)
+
+keen_public_config = keen_config.get('PUBLIC', {})
+KEEN_PUBLIC_PROJECT_ID = keen_public_config.get('PROJECT_ID', None)
+KEEN_PUBLIC_WRITE_KEY = keen_public_config.get('WRITE_KEY', None)

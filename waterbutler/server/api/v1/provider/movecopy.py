@@ -4,6 +4,7 @@ from waterbutler import tasks
 from waterbutler.sizes import MBs
 from waterbutler.core import exceptions
 from waterbutler.server import settings
+from waterbutler.core import remote_logging
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.utils import make_provider
 from waterbutler.constants import DEFAULT_CONFLICT
@@ -87,13 +88,14 @@ class MoveCopyMixin:
                 self.dest_auth['settings']
             )
 
-            self.dest_path = await self.dest_provider.validate_path(self.json['path'])
+            self.dest_path = await self.dest_provider.validate_path(**self.json)
 
         if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
             # this weird signature syntax courtesy of py3.4 not liking trailing commas on kwargs
             result = await getattr(tasks, action).adelay(
                 rename=self.json.get('rename'),
                 conflict=self.json.get('conflict', DEFAULT_CONFLICT),
+                request=remote_logging._serialize_request(self.request),
                 *self.build_args()
             )
             metadata, created = await tasks.wait_on_celery(result)

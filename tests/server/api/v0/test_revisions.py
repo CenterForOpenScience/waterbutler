@@ -8,6 +8,8 @@ from tests import utils
 
 class TestRevisionHandler(utils.HandlerTestCase):
 
+    HOOK_PATH = 'waterbutler.server.api.v0.revisions.RevisionHandler._send_hook'
+
     @testing.gen_test
     def test_get_coro(self):
         expected = [

@@ -532,6 +532,19 @@ class TestValidatePath:
         assert wb_path_v1 == wb_path_v0
 
     @pytest.mark.asyncio
+    async def test_reject_multiargs(self, provider):
+
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            await provider.validate_v1_path('/foo', ref=['bar','baz'])
+
+        assert exc.value.code == client.BAD_REQUEST
+
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            await provider.validate_path('/foo', ref=['bar','baz'])
+
+        assert exc.value.code == client.BAD_REQUEST
+
+    @pytest.mark.asyncio
     async def test_validate_path(self, provider):
         path = await provider.validate_path('/this/is/my/path')
 
@@ -768,7 +781,7 @@ class TestMetadata:
 
         assert result == GitHubFileTreeMetadata(item, web_view=web_view, commit={
             'tree': {'sha': ref}, 'author': {'date': '1970-01-02T03:04:05Z'}
-        })
+        }, ref=path.identifier[0])
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -802,9 +815,9 @@ class TestMetadata:
         ret = []
         for item in content_repo_metadata_root:
             if item['type'] == 'dir':
-                ret.append(GitHubFolderContentMetadata(item))
+                ret.append(GitHubFolderContentMetadata(item, ref=provider.default_branch))
             else:
-                ret.append(GitHubFileContentMetadata(item, web_view=item['html_url']))
+                ret.append(GitHubFileContentMetadata(item, web_view=item['html_url'], ref=provider.default_branch))
 
         assert result == ret
 
