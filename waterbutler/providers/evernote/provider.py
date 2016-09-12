@@ -155,15 +155,16 @@ class EvernoteProvider(provider.BaseProvider):
 
         # convert to HTML
         mediaStore = OSFMediaStore(client.get_note_store(), note_guid)
-        #html = ENML2HTML.ENMLToHTML(note_metadata["content"], pretty=True, header=False,
-        #      media_store=mediaStore)
+        html = ENML2HTML.ENMLToHTML(note_metadata["content"], pretty=True, header=False,
+              media_store=mediaStore)
 
         # HACK -- let me write markdown
-        html = "**Hello World**"
+        # html = "**Hello World**"
+        # html = """<b>Hello world</b>. Go read the <a href="http://nytimes.com">NYT</a>"""
 
         stream = streams.StringStream(html)
-        stream.content_type = "text/markdown"
-        stream.name = "{}.md".format(note_guid)
+        stream.content_type = "text/html"
+        stream.name = "{}.html".format(note_guid)
 
         # modeling after gdoc provider
         # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
