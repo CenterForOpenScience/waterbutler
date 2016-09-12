@@ -1,7 +1,8 @@
 from waterbutler.core import metadata
 
+
 class EvernoteFileMetadata(metadata.BaseFileMetadata):
-  
+
     def __init__(self, raw):
         metadata.BaseFileMetadata.__init__(self, raw)
 
@@ -19,8 +20,8 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
 
     @property
     def name(self):
-        
-        print ("EvernoteFileMetadata.name: self.raw['title']", self.raw['title'])
+
+        print("EvernoteFileMetadata.name: self.raw['title']", self.raw['title'])
         return self.raw['title'] + ".enml"
 
     @property
@@ -42,12 +43,8 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
     @property
     def path(self):
         return "/" + self.raw["guid"]
-    
+
     @property
     def etag(self):
         # TO DO: implement
         return "[ETAG]"
-
-
-
-

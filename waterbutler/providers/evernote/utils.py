@@ -5,8 +5,10 @@ from evernote.edam.notestore.ttypes import (NoteFilter, NotesMetadataResultSpec)
 from ENML2HTML import MediaStore
 import base64
 
+
 def get_evernote_client(token, sandbox=False):
     return EvernoteClient(token=token, sandbox=sandbox)
+
 
 def get_notebooks(client):
 
@@ -18,6 +20,7 @@ def get_notebooks(client):
 
 # https://dev.evernote.com/doc/reference/NoteStore.html#Fn_NoteStore_getNotebook
 
+
 def get_notebook(client, nb_guid):
     noteStore = client.get_note_store()
     notebook = noteStore.getNotebook(nb_guid)
@@ -25,6 +28,7 @@ def get_notebook(client, nb_guid):
              'guid': notebook.guid,
              'stack': notebook.stack,
              'defaultNotebook': notebook.defaultNotebook}
+
 
 def notes_metadata(client, **input_kw):
     """ """
@@ -61,14 +65,14 @@ def notes_metadata(client, **input_kw):
     filter_kw = dict([(k, input_kw[k]) for k in set(filter_kw_list) & set(input_kw.keys())])
 
     # what possible parameters are aimed at NoteFilter
-    #order	i32		optional
-    #ascending	bool		optional
-    #words	string		optional
-    #notebookGuid	Types.Guid		optional
-    #tagGuids	list<Types.Guid>		optional
-    #timeZone	string		optional
-    #inactive   bool
-    #emphasized string
+    # order	i32		optional
+    # ascending	bool		optional
+    # words	string		optional
+    # notebookGuid	Types.Guid		optional
+    # tagGuids	list<Types.Guid>		optional
+    # timeZone	string		optional
+    # inactive   bool
+    # emphasized string
 
     more_nm = True
 
@@ -88,6 +92,7 @@ def notes_metadata(client, **input_kw):
         else:
             more_nm = False
 
+
 def get_note(client, guid,
             withContent=False,
             withResourcesData=False,
@@ -98,6 +103,7 @@ def get_note(client, guid,
     noteStore = client.get_note_store()
     return noteStore.getNote(guid, withContent, withResourcesData,
                                  withResourcesRecognition, withResourcesAlternateData)
+
 
 def timestamp_iso(ts):
     """
