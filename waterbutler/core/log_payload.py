@@ -50,6 +50,7 @@ class LogPayload:
                 'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + self.path.raw_path,
                 'name': self.path.name,
                 'materialized': self.path.materialized_path,
+                'extra': self.path.extra,
             })
         else:
             payload.update(self.metadata.serialized())

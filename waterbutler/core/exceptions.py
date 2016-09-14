@@ -31,8 +31,7 @@ class WaterButlerError(Exception):
 
 
 class InvalidParameters(WaterButlerError):
-    """Errors regarding incorrect
-    data being sent to a method should raise either this
+    """Errors regarding incorrect data being sent to a method should raise either this
     Exception or a subclass thereof
     """
     def __init__(self, message, code=400):
