@@ -711,7 +711,7 @@ class GitHubProvider(provider.BaseProvider):
         commit = None
 
         if src_path.branch_ref == dest_path.branch_ref:
-            exists = self._path_exists_in_tree(src_tree['tree'], src_path)
+            exists = self._path_exists_in_tree(src_tree['tree'], dest_path)
 
             # if we're overwriting an existing dir, we must remove its blobs from the tree
             if dest_path.is_dir:
