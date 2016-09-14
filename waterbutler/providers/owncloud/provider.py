@@ -116,8 +116,10 @@ class OwnCloudProvider(provider.BaseProvider):
         content = await response.content.read()
         await response.release()
 
-        item = await utils.parse_dav_response(content, self.folder)
-
+        try:
+            item = await utils.parse_dav_response(content, '/')
+        except exceptions.NotFoundError:
+            pass
         if full_path.is_dir and type(item[0]) != OwnCloudFolderMetadata:
             raise exceptions.NotFoundError(str(full_path.full_path))
         elif not full_path.is_dir and type(item[0]) == OwnCloudFolderMetadata:
