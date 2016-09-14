@@ -119,7 +119,7 @@ class OwnCloudProvider(provider.BaseProvider):
         try:
             item = await utils.parse_dav_response(content, '/')
         except exceptions.NotFoundError:
-            pass
+            return full_path
         if full_path.is_dir and type(item[0]) != OwnCloudFolderMetadata:
             raise exceptions.NotFoundError(str(full_path.full_path))
         elif not full_path.is_dir and type(item[0]) == OwnCloudFolderMetadata:
@@ -255,7 +255,8 @@ class OwnCloudProvider(provider.BaseProvider):
         await resp.release()
         # get the folder metadata
         meta = await self.metadata(path.parent)
-        return [m for m in meta if m.path == OwnCloudFolderMetadata('/' + path.path, {}).path][0]
+        expected = OwnCloudFolderMetadata(path.path, {}).path
+        return [m for m in meta if m.full_path == expected][0]
 
     def can_duplicate_names(self):
         return True
