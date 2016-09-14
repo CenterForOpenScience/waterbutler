@@ -2,6 +2,15 @@
 ChangeLog
 *********
 
+0.24.0 (2016-09-14)
+===================
+- Feature: Update the v1 API to passthrough unrecognized query params to the provider.
+- Feature: Teach the GitHub provider to accept branch identifiers in the URL and body of v1
+operations.  You can now do cross-branch move/copies with the v1 API!
+- Feature: The GitHub provider now includes the branch operated on in its callback logs.
+- Fix: Add `--pty` arguments to invoke install and invoke wheelhouse, to support building WB Docker
+images without pseudoterminals. (thanks, @emetsger!)
+
 0.23.3 (2016-08-31)
 ===================
 - Fix: Fix flake error in remote_logging. Not at all embarrassing.
