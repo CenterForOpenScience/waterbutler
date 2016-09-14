@@ -85,7 +85,11 @@ class OwnCloudProvider(provider.BaseProvider):
         if response.status == 404:
             raise exceptions.NotFoundError(str(full_path.full_path))
 
-        item = await utils.parse_dav_response(content, '/')
+        try:
+            item = await utils.parse_dav_response(content, '/')
+        except exceptions.NotFoundError:
+            # Re-raise with the proper path
+            raise exceptions.NotFoundError(str(full_path.full_path))
         if full_path.is_dir and type(item[0]) != OwnCloudFolderMetadata:
             raise exceptions.NotFoundError(str(full_path.full_path))
         elif not full_path.is_dir and type(item[0]) == OwnCloudFolderMetadata:
@@ -102,7 +106,6 @@ class OwnCloudProvider(provider.BaseProvider):
         if path == '/':
             return WaterButlerPath(path, prepend=self.folder)
         full_path = WaterButlerPath(path, prepend=self.folder)
-
         response = await self.make_request('PROPFIND',
             self._webdav_url_ + full_path.full_path,
             expects=(200, 207, 404),
@@ -113,7 +116,8 @@ class OwnCloudProvider(provider.BaseProvider):
         content = await response.content.read()
         await response.release()
 
-        item = await utils.parse_dav_response(content, '/')
+        item = await utils.parse_dav_response(content, self.folder)
+
         if full_path.is_dir and type(item[0]) != OwnCloudFolderMetadata:
             raise exceptions.NotFoundError(str(full_path.full_path))
         elif not full_path.is_dir and type(item[0]) == OwnCloudFolderMetadata:

@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 from urllib import parse
-
+from waterbutler.core import exceptions
 from waterbutler.providers.owncloud.metadata import OwnCloudFileMetadata
 from waterbutler.providers.owncloud.metadata import OwnCloudFolderMetadata
 
@@ -42,8 +42,11 @@ async def parse_dav_response(content, folder, skip_first=False):
         tree = tree[1:]
 
     for child in tree:
-        href = parse.unquote(strip_dav_path(child.find('{DAV:}href').text))
-
+        href = ''
+        try:
+            href = parse.unquote(strip_dav_path(child.find('{DAV:}href').text))
+        except AttributeError:
+            raise exceptions.NotFoundError(folder)
         file_type = 'file'
         if href[-1] == '/':
             file_type = 'dir'
