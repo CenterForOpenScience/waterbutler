@@ -6,7 +6,6 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.owncloud import utils
-from waterbutler.providers.owncloud.metadata import OwnCloudFolderMetadata
 
 
 class OwnCloudProvider(provider.BaseProvider):
