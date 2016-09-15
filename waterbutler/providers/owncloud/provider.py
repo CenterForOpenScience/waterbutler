@@ -90,11 +90,8 @@ class OwnCloudProvider(provider.BaseProvider):
         except exceptions.NotFoundError:
             # Re-raise with the proper path
             raise exceptions.NotFoundError(str(full_path.full_path))
-        if full_path.is_dir and type(item[0]) != OwnCloudFolderMetadata:
-            raise exceptions.NotFoundError(str(full_path.full_path))
-        elif not full_path.is_dir and type(item[0]) == OwnCloudFolderMetadata:
-            raise exceptions.NotFoundError(str(full_path.full_path))
-
+        if full_path.kind != item[0].kind:
+            raise exceptions.NotFoundError(full_path.full_path)
         return full_path
 
     async def validate_path(self, path, **kwargs):
@@ -119,12 +116,7 @@ class OwnCloudProvider(provider.BaseProvider):
         try:
             item = await utils.parse_dav_response(content, '/')
         except exceptions.NotFoundError:
-            return full_path
-        if full_path.is_dir and type(item[0]) != OwnCloudFolderMetadata:
-            raise exceptions.NotFoundError(str(full_path.full_path))
-        elif not full_path.is_dir and type(item[0]) == OwnCloudFolderMetadata:
-            raise exceptions.NotFoundError(str(full_path.full_path))
-
+            pass
         return full_path
 
     async def download(self, path, accept_url=False, range=None, **kwargs):
@@ -247,16 +239,18 @@ class OwnCloudProvider(provider.BaseProvider):
         resp = await self.make_request(
             'MKCOL',
             self._webdav_url_ + self.folder + path.path,
-            expects=(201,),
+            expects=(201, 405),
             throws=exceptions.CreateFolderError,
             auth=self._auth,
             connector=self.connector
         )
-        await resp.release()
+        # await resp.release()
+        if resp.status == 405:
+            raise exceptions.FolderNamingConflict(path)
         # get the folder metadata
         meta = await self.metadata(path.parent)
-        expected = OwnCloudFolderMetadata(path.path, {}).path
-        return [m for m in meta if m.full_path == expected][0]
+        expected = OwnCloudFolderMetadata(path.path, {}).name
+        return [m for m in meta if m.name == expected][0]
 
     def can_duplicate_names(self):
         return True
@@ -267,7 +261,13 @@ class OwnCloudProvider(provider.BaseProvider):
     def can_intra_move(self, dest_provider, path=None):
         return self is dest_provider
 
-    async def do_dav_move_copy(self, src_path, dest_path, operation):
+    async def intra_copy(self, dest_provider, src_path, dest_path):
+        return await self._do_dav_move_copy(src_path, dest_path, 'COPY')
+
+    async def intra_move(self, dest_provider, src_path, dest_path):
+        return await self._do_dav_move_copy(src_path, dest_path, 'MOVE')
+
+    async def _do_dav_move_copy(self, src_path, dest_path, operation):
         """
             Performs a quick copy or move operation on the remote host.
 
@@ -295,10 +295,4 @@ class OwnCloudProvider(provider.BaseProvider):
             return items[0], True
         meta = self.metadata(dest_path)
         meta.children = items
-        return resp, resp.status_code == 200
-
-    async def intra_copy(self, dest_provider, src_path, dest_path):
-        return await self.do_dav_move_copy(src_path, dest_path, 'COPY')
-
-    async def intra_move(self, dest_provider, src_path, dest_path):
-        return await self.do_dav_move_copy(src_path, dest_path, 'MOVE')
+        return resp, resp.status == 200
