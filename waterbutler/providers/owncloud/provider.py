@@ -114,7 +114,7 @@ class OwnCloudProvider(provider.BaseProvider):
         await response.release()
 
         try:
-            item = await utils.parse_dav_response(content, '/')
+            await utils.parse_dav_response(content, '/')
         except exceptions.NotFoundError:
             pass
         return full_path
@@ -249,8 +249,7 @@ class OwnCloudProvider(provider.BaseProvider):
             raise exceptions.FolderNamingConflict(path)
         # get the folder metadata
         meta = await self.metadata(path.parent)
-        expected = OwnCloudFolderMetadata(path.path, {}).name
-        return [m for m in meta if m.name == expected][0]
+        return [m for m in meta if m.path == path.materialized_path][0]
 
     def can_duplicate_names(self):
         return True
