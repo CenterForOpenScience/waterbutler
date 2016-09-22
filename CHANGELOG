@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.25.0 (2016-09-22)
+===================
+- Feature: Include user id when requesting files from osfstorage, to allow the OSF to distinguish
+contributing users in download counts. (thanks, @darioncassel!)
+
 0.24.0 (2016-09-14)
 ===================
 - Feature: Update the v1 API to passthrough unrecognized query params to the provider.
