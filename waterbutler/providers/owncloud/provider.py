@@ -131,7 +131,7 @@ class OwnCloudProvider(provider.BaseProvider):
             'GET',
             self._webdav_url_ + path.full_path,
             range=range,
-            expects=(200,),
+            expects=(200, 206,),
             throws=exceptions.DownloadError,
             auth=self._auth,
             connector=self.connector
