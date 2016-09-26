@@ -14,10 +14,10 @@ from waterbutler.core import streams
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import build_url
+from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.gitlab import GitLabProvider
 from waterbutler.providers.gitlab import settings as gitlab_settings
-from waterbutler.providers.gitlab.provider import GitLabPath
 from waterbutler.providers.gitlab.metadata import GitLabRevision
 from waterbutler.providers.gitlab.metadata import GitLabFileTreeMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFolderTreeMetadata
@@ -75,7 +75,7 @@ class TestMetadata:
     async def test_metadata_file_with_default_ref(self, provider):
         path = '/folder1/folder2/file'
 
-        waterbutler_path = GitLabPath(path)
+        waterbutler_path = WaterButlerPath(path)
 
         url = 'http://base.url/projects/123/repository/files?ref=master&file_path=folder1/folder2/file'
 
@@ -98,7 +98,7 @@ class TestMetadata:
     async def test_metadata_file_with_ref(self, provider):
         path = '/folder1/folder2/file'
 
-        waterbutler_path = GitLabPath(path)
+        waterbutler_path = WaterButlerPath(path)
 
         url = 'http://base.url/projects/123/repository/files?ref=my-branch&file_path=folder1/folder2/file'
 
@@ -121,7 +121,7 @@ class TestMetadata:
     async def test_metadata_folder(self, provider):
         path = '/folder1/folder2/folder3/'
 
-        waterbutler_path = GitLabPath(path)
+        waterbutler_path = WaterButlerPath(path)
 
         url = 'http://base.url/projects/123/repository/tree?path=folder1/folder2/folder3/'
 
@@ -151,7 +151,7 @@ class TestMetadata:
     async def test_metadata_folder_with_sha(self, provider):
         path = '/folder1/folder2/folder3/'
 
-        waterbutler_path = GitLabPath(path)
+        waterbutler_path = WaterButlerPath(path)
 
         result = await provider.metadata(waterbutler_path, ref='4b825dc642cb6eb9a060e54bf8d69288fbee4904')
 
@@ -162,7 +162,7 @@ class TestMetadata:
     async def test_metadata_folder_recursive(self, provider):
         path = '/folder1/folder2/folder3/'
 
-        waterbutler_path = GitLabPath(path)
+        waterbutler_path = WaterButlerPath(path)
 
         result = await provider.metadata(waterbutler_path, recursive=True)
 
@@ -173,7 +173,7 @@ class TestMetadata:
     async def test_metadata_folder_with_no_dict_response(self, provider):
         path = '/folder1/folder2/folder3/'
 
-        waterbutler_path = GitLabPath(path)
+        waterbutler_path = WaterButlerPath(path)
 
         url = 'http://base.url/projects/123/repository/tree?path=folder1/folder2/folder3/'
 
@@ -189,7 +189,7 @@ class TestDelete:
     async def test_delete(self, provider):
         path = '/folder1/file.py'
 
-        waterbutler_path = GitLabPath(path)
+        waterbutler_path = WaterButlerPath(path)
 
         url = 'http://base.url/projects/123/repository/files?commit_message=File+folder1/file.py+deleted&branch_name=master&file_path=folder1/file.py'
 
@@ -202,7 +202,7 @@ class TestDelete:
     async def test_delete_with_custom_message(self, provider):
         path = '/folder1/file.py'
 
-        waterbutler_path = GitLabPath(path)
+        waterbutler_path = WaterButlerPath(path)
 
         url = 'http://base.url/projects/123/repository/files?commit_message=custom&branch_name=master&file_path=folder1/file.py'
 
@@ -218,7 +218,7 @@ class TestDownload:
     async def test_download_with_wrong_http_response(self, provider):
         path = '/folder1/file.py'
 
-        waterbutler_path = GitLabPath(path)
+        waterbutler_path = WaterButlerPath(path)
 
         url = 'http://base.url/projects/2123/repository/files?commit_message=File+folder1/file.py+deleted&branch_name=master&file_path=folder1/file.py'
 
@@ -232,7 +232,7 @@ class TestDownload:
     async def test_download(self, provider):
         path = '/folder1/file.py'
 
-        waterbutler_path = GitLabPath(path)
+        waterbutler_path = WaterButlerPath(path)
 
         url = 'http://base.url/projects/123/repository/files?ref=master&file_path=folder1/file.py'
 
@@ -244,7 +244,6 @@ class TestDownload:
 
         assert await result.read() == b'hello'
 
-
 class TestUpload:
 
     @pytest.mark.asyncio
@@ -252,7 +251,7 @@ class TestUpload:
     async def test_delete(self, provider):
         path = '/folder1/file.py'
 
-        waterbutler_path = GitLabPath(path)
+        waterbutler_path = WaterButlerPath(path)
 
         url = 'http://base.url/projects/123/repository/files'
         aiohttpretty.register_json_uri('POST', url)
@@ -275,3 +274,39 @@ class TestUpload:
         stream.content_type = 'application/octet-stream'
 
         result = await provider.upload(stream, waterbutler_path, 'my message', 'master')
+
+class TestCreateFolter:
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_folder_with_invalid_path(self, provider):
+        path = '/folder1/file.py'
+
+        waterbutler_path = WaterButlerPath(path)
+
+        with pytest.raises(exceptions.CreateFolderError) as exc:
+            result = await provider.create_folder(waterbutler_path, 'master', 'commit message')
+
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_folder(self, provider):
+        path = '/folder1/'
+
+        waterbutler_path = WaterButlerPath(path)
+
+        url = 'http://base.url/projects/123/repository/files'
+        aiohttpretty.register_json_uri('POST', url)
+
+        url_get_metadata = 'http://base.url/projects/123/repository/files?file_path=folder1/.gitkeep&ref=master'
+        aiohttpretty.register_json_uri('GET', url_get_metadata, body={
+            'file_name': '.gitkeep',
+            'file_path': '/folder1/.gitkeep',
+            'blob_id': '123',
+            'size': '5',
+            'commit_id': '1442422sss',
+        })
+
+        url_put = 'http://base.url/projects/123/repository/files'
+        aiohttpretty.register_json_uri('PUT', url)
+
+        result = await provider.create_folder(waterbutler_path, 'master', 'commit message')
