@@ -55,10 +55,11 @@ class TestProviderIntegration:
         )
 
         await provider.make_request(
-            'PUT', url, expects=(201,)
+            'PUT', url, headers={'Content-Type': 'text/turtle'}, expects=(201,)
         )
 
     # Test that root folder return list.
+    @pytest.mark.asyncio
     async def test_get_root_metadata(self, provider):
         root_path = WaterButlerPath('/')
 
@@ -67,6 +68,7 @@ class TestProviderIntegration:
         assert type(result) == list
 
     # Test uploading and downloading a file
+    @pytest.mark.asyncio
     async def test_upload_file(self, provider):
         await self.setup_sandbox(provider)
 
@@ -88,6 +90,7 @@ class TestProviderIntegration:
         assert file_content == content
 
     # Test creating a folder
+    @pytest.mark.asyncio
     async def test_create_folder(self, provider):
         await self.setup_sandbox(provider)
 
@@ -100,6 +103,7 @@ class TestProviderIntegration:
 
 
     # Test moving a file into a subfolder.
+    @pytest.mark.asyncio
     async def test_move_file(self, provider):
         await self.setup_sandbox(provider)
 
@@ -142,6 +146,7 @@ class TestProviderIntegration:
 
 
     # Test copying a file into a subfolder.
+    @pytest.mark.asyncio
     async def test_copying_file(self, provider):
         await self.setup_sandbox(provider)
 
@@ -183,6 +188,7 @@ class TestProviderIntegration:
         assert exists != False
 
     # Test copying a folder into a subfolder.
+    @pytest.mark.asyncio
     async def test_copying_folder(self, provider):
         await self.setup_sandbox(provider)
 
