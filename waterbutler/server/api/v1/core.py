@@ -15,11 +15,15 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler, 
         return (cls.PATTERN, cls)
 
     def write_error(self, status_code, exc_info):
-        self.captureException(exc_info)
         etype, exc, _ = exc_info
 
         if issubclass(etype, exceptions.WaterButlerError):
             self.set_status(int(exc.code))
+            if exc.code == 404:
+                self.captureException(exc_info, data={'level': 'info'})
+            else:
+                self.captureException(exc_info)
+
             if exc.data:
                 self.finish(exc.data)
             else:
@@ -32,6 +36,7 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler, 
             # TODO
             self.set_status(202)
         else:
+            self.captureException(exc_info)
             self.finish({
                 'code': status_code,
                 'message': self._reason,
