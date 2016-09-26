@@ -10,6 +10,7 @@ from waterbutler.core import path
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
+from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.gitlab import settings
 from waterbutler.providers.gitlab.metadata import GitLabRevision
@@ -29,15 +30,6 @@ class GitLabPathPart(path.WaterButlerPathPart):
         self._id = _id or (self._id[0], None)
         self._count += 1
         return self
-
-
-class GitLabPath(path.WaterButlerPath):
-    PART_CLASS = GitLabPathPart
-
-    def child(self, name, _id=None, folder=False):
-        if _id is None:
-            _id = (self.identifier[0], None)
-        return super().child(name, _id=_id, folder=folder)
 
 
 class GitLabProvider(provider.BaseProvider):
@@ -100,12 +92,12 @@ class GitLabProvider(provider.BaseProvider):
         branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
 
         if path == '/':
-            return GitLabPath(path, _ids=[(branch_ref, '')])
+            return WaterButlerPath(path, _ids=[(branch_ref, '')])
 
         branch_data = await self._fetch_branch(branch_ref)
         await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
 
-        path = GitLabPath(path)
+        path = WaterButlerPath(path)
         for part in path.parts:
             part._id = (branch_ref, None)
 
@@ -119,7 +111,7 @@ class GitLabProvider(provider.BaseProvider):
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
-        path = GitLabPath(path)
+        path = WaterButlerPath(path)
         branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
 
         for part in path.parts:
@@ -232,7 +224,7 @@ class GitLabProvider(provider.BaseProvider):
                confirm_delete=0, **kwargs):
         """Delete file, folder, or provider root contents
 
-        :param GitLabPath path: GitLabPath path object for file, folder, or root
+        :param WaterButlerPath path: WaterButlerPath path object for file, folder, or root
         :param str sha: SHA-1 checksum of file/folder object
         :param str message: Commit message
         :param str branch: Repository branch
@@ -270,7 +262,7 @@ class GitLabProvider(provider.BaseProvider):
         ]
 
     async def create_folder(self, path, branch=None, message=None, **kwargs):
-        GitLabPath.validate_folder(path)
+        WaterButlerPath.validate_folder(path)
 
         message = message or settings.UPLOAD_FILE_MESSAGE
         branch = branch or path.identifier[0]
@@ -336,7 +328,7 @@ class GitLabProvider(provider.BaseProvider):
     async def _delete_root_folder_contents(self, path, message=None, **kwargs):
         """Delete the contents of the root folder.
 
-        :param GitLabPath path: GitLabPath path object for folder
+        :param WaterButlerPath path: WaterButlerPath path object for folder
         :param str message: Commit message
         """
         branch_data = await self._fetch_branch(path.identifier[0])
