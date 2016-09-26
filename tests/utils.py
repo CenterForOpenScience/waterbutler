@@ -21,12 +21,13 @@ class MockCoroutine(mock.Mock):
 
 
 class MockFileMetadata(metadata.BaseFileMetadata):
-    provider = 'mock'
+    provider = 'MockProvider'
     name = 'Foo.name'
     size = 1337
     etag = 'etag'
     path = '/Foo.name'
     modified = 'never'
+    modified_utc = 'never'
     content_type = 'application/octet-stream'
 
     def __init__(self):
@@ -34,7 +35,7 @@ class MockFileMetadata(metadata.BaseFileMetadata):
 
 
 class MockFolderMetadata(metadata.BaseFolderMetadata):
-    provider = 'mock'
+    provider = 'MockProvider'
     name = 'Bar'
     size = 1337
     etag = 'etag'
@@ -50,6 +51,7 @@ class MockFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
     version = 1
     version_identifier = 'versions'
     modified = 'never'
+    modified_utc = 'never'
 
     def __init__(self):
         super().__init__({})
@@ -146,12 +148,19 @@ class HandlerTestCase(testing.AsyncHTTPTestCase):
         self.mock_make_provider = mock.Mock(return_value=self.mock_provider)
         self.make_provider_patcher = mock.patch('waterbutler.core.utils.make_provider', self.mock_make_provider)
 
+        if hasattr(self, 'HOOK_PATH'):
+            self.mock_send_hook = mock.Mock()
+            self.send_hook_patcher = mock.patch(self.HOOK_PATH, self.mock_send_hook)
+            self.send_hook_patcher.start()
+
         self.identity_patcher.start()
         self.make_provider_patcher.start()
 
     def tearDown(self):
         super().tearDown()
         self.identity_patcher.stop()
+        if hasattr(self, 'HOOK_PATH'):
+            self.send_hook_patcher.stop()
         self.make_provider_patcher.stop()
         self.event_loop.close()
 
@@ -169,10 +178,6 @@ class MultiProviderHandlerTestCase(HandlerTestCase):
         self.source_provider = MockProvider2({}, {}, {})
         self.destination_provider = MockProvider2({}, {}, {})
 
-        self.mock_send_hook = mock.Mock()
-        self.send_hook_patcher = mock.patch(self.HOOK_PATH, self.mock_send_hook)
-        self.send_hook_patcher.start()
-
         self.mock_make_provider.return_value = None
         self.mock_make_provider.side_effect = [
             self.source_provider,
@@ -181,7 +186,6 @@ class MultiProviderHandlerTestCase(HandlerTestCase):
 
     def tearDown(self):
         super().tearDown()
-        self.send_hook_patcher.stop()
 
     def payload(self):
         return copy.deepcopy({

@@ -14,6 +14,11 @@ from waterbutler.providers.box.metadata import BoxFolderMetadata
 
 
 class BoxProvider(provider.BaseProvider):
+    """Provider for the Box.com cloud storage service.
+
+    API docs: https://box-content.readme.io/reference
+    """
+
     NAME = 'box'
     BASE_URL = settings.BASE_URL
 
@@ -220,6 +225,7 @@ class BoxProvider(provider.BaseProvider):
         resp = await self.make_request(
             'GET',
             self.build_url('files', path.identifier, 'content', **query),
+            headers={'Accept-Encoding': ''},
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,

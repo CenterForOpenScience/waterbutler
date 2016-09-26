@@ -25,21 +25,21 @@ def monkey_patch():
 
 
 @task
-def wheelhouse(develop=False):
+def wheelhouse(develop=False, pty=True):
     req_file = 'dev-requirements.txt' if develop else 'requirements.txt'
     cmd = 'pip wheel --find-links={} -r {} --wheel-dir={}'.format(WHEELHOUSE_PATH, req_file, WHEELHOUSE_PATH)
-    run(cmd, pty=True)
+    run(cmd, pty=pty)
 
 
 @task
-def install(develop=False):
+def install(develop=False, pty=True):
     run('python setup.py develop')
     req_file = 'dev-requirements.txt' if develop else 'requirements.txt'
     cmd = 'pip install --upgrade -r {}'.format(req_file)
 
     if WHEELHOUSE_PATH:
         cmd += ' --no-index --find-links={}'.format(WHEELHOUSE_PATH)
-    run(cmd, pty=True)
+    run(cmd, pty=pty)
 
 
 @task

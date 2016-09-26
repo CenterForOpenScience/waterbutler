@@ -1,3 +1,6 @@
+import pytz
+import dateutil.parser
+
 from waterbutler.core import metadata
 
 
@@ -33,6 +36,21 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
         return self.raw['modified']
 
     @property
+    def modified_utc(self):
+        try:
+            return self.raw['modified_utc']
+        except KeyError:
+            if self.raw['modified'] is None:
+                return None
+
+            # Kludge for OSF, whose modified attribute does not include
+            # tzinfo but is assumed to be UTC.
+            parsed_datetime = dateutil.parser.parse(self.raw['modified'])
+            if not parsed_datetime.tzinfo:
+                parsed_datetime = parsed_datetime.replace(tzinfo=pytz.UTC)
+            return parsed_datetime.isoformat()
+
+    @property
     def size(self):
         return self.raw['size']
 
@@ -47,6 +65,7 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
     @property
     def extra(self):
         return {
+            'guid': self.raw.get('guid', None),
             'version': self.raw['version'],
             'downloads': self.raw['downloads'],
             'checkout': self.raw['checkout'],

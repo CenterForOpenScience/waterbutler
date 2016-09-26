@@ -1,65 +1,45 @@
-import sys
 import time
 import logging
 
 from waterbutler.core import utils
 from waterbutler.tasks import core
-from waterbutler.tasks import settings
-from waterbutler.constants import IDENTIFIER_PATHS
+from waterbutler.core import remote_logging
+from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.log_payload import LogPayload
+
 
 logger = logging.getLogger(__name__)
 
 
 @core.celery_task
-async def copy(src_bundle, dest_bundle, callback_url, auth, start_time=None, **kwargs):
+async def copy(src_bundle, dest_bundle, request={}, start_time=None, **kwargs):
     start_time = start_time or time.time()
+
     src_path, src_provider = src_bundle.pop('path'), utils.make_provider(**src_bundle.pop('provider'))
     dest_path, dest_provider = dest_bundle.pop('path'), utils.make_provider(**dest_bundle.pop('provider'))
 
-    data = {
-        'errors': [],
-        'action': 'copy',
-        'source': dict(src_bundle, **{
-            'path': src_path.identifier_path if src_provider.NAME in IDENTIFIER_PATHS else '/' + src_path.raw_path,
-            'name': src_path.name,
-            'materialized': str(src_path),
-            'provider': src_provider.NAME,
-            'kind': src_path.kind,
-        }),
-        'destination': dict(dest_bundle, **{
-            'path': dest_path.identifier_path if dest_provider.NAME in IDENTIFIER_PATHS else '/' + dest_path.raw_path,
-            'name': dest_path.name,
-            'materialized': str(dest_path),
-            'provider': dest_provider.NAME,
-            'kind': dest_path.kind,
-        }),
-        'auth': auth['auth'],
-    }
+    logger.info('Starting copying {!r}, {!r} to {!r}, {!r}'
+                .format(src_path, src_provider, dest_path, dest_provider))
 
-    logger.info('Starting copying {!r}, {!r} to {!r}, {!r}'.format(src_path, src_provider, dest_path, dest_provider))
-
+    metadata, errors = None, []
     try:
         metadata, created = await src_provider.copy(dest_provider, src_path, dest_path, **kwargs)
     except Exception as e:
         logger.error('Copy failed with error {!r}'.format(e))
-        data.update({'errors': [e.__repr__()]})
+        errors = [e.__repr__()]
         raise  # Ensure sentry sees this
     else:
         logger.info('Copy succeeded')
-        data.update({'destination': dict(src_bundle, **metadata.serialized())})
+        dest_path = WaterButlerPath.from_metadata(metadata)
     finally:
-        resp = await utils.send_signed_request('PUT', callback_url, dict(data, **{
-            'time': time.time() + 60,
-            'email': time.time() - start_time > settings.WAIT_TIMEOUT
-        }))
-        logger.info('Callback returned {!r}'.format(resp))
+        source = LogPayload(src_bundle['nid'], src_provider, path=src_path)
+        destination = LogPayload(
+            dest_bundle['nid'], dest_provider, path=dest_path, metadata=metadata
+        )
 
-        resp_data = await resp.read()
-        if resp.status // 100 != 2:
-            raise Exception(
-                'Callback failed with {!r}, got {}'.format(resp, resp_data.decode('utf-8'))
-            ) from sys.exc_info()[1]
-
-        logger.info('Callback succeeded with {}'.format(resp_data.decode('utf-8')))
+        await remote_logging.wait_for_log_futures(
+            'copy', source=source, destination=destination, start_time=start_time,
+            errors=errors, request=request, api_version='celery',
+        )
 
     return metadata, created

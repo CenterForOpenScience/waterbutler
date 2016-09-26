@@ -40,6 +40,10 @@ class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMeta
     def name(self):
         return self.raw['title']
 
+    @property
+    def export_name(self):
+        return self.name
+
 
 class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata):
 
@@ -50,7 +54,7 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     @property
     def name(self):
         title = self.raw['title']
-        if utils.is_docs_file(self.raw):
+        if self.is_google_doc:
             ext = utils.get_extension(self.raw)
             title += ext
         return title
@@ -75,10 +79,22 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     @property
     def extra(self):
         ret = super().extra
-        if utils.is_docs_file(self.raw):
+        if self.is_google_doc:
             ret['downloadExt'] = utils.get_download_extension(self.raw)
         ret['webView'] = self.raw.get('alternateLink')
         return ret
+
+    @property
+    def is_google_doc(self):
+        return utils.is_docs_file(self.raw) is not None
+
+    @property
+    def export_name(self):
+        title = self.raw['title']
+        if self.is_google_doc:
+            ext = utils.get_download_extension(self.raw)
+            title += ext
+        return title
 
 
 class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
@@ -89,7 +105,7 @@ class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
     @property
     def name(self):
         title = self.raw.get('originalFilename', self._path.name)
-        if utils.is_docs_file(self.raw):
+        if self.is_google_doc:
             ext = utils.get_extension(self.raw)
             title += ext
         return title
@@ -113,9 +129,17 @@ class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
 
     @property
     def extra(self):
-        if utils.is_docs_file(self.raw):
+        if self.is_google_doc:
             return {'downloadExt': utils.get_download_extension(self.raw)}
         return {'md5': self.raw['md5Checksum']}
+
+    @property
+    def export_name(self):
+        title = self.raw.get('originalFilename', self._path.name)
+        if self.is_google_doc:
+            ext = utils.get_download_extension(self.raw)
+            title += ext
+        return title
 
 
 class GoogleDriveRevision(metadata.BaseFileRevisionMetadata):

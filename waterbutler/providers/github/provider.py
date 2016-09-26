@@ -3,12 +3,12 @@ import json
 
 import furl
 
-from waterbutler.core import path
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 
 from waterbutler.providers.github import settings
+from waterbutler.providers.github.path import GitHubPath
 from waterbutler.providers.github.metadata import GitHubRevision
 from waterbutler.providers.github.metadata import GitHubFileContentMetadata
 from waterbutler.providers.github.metadata import GitHubFolderContentMetadata
@@ -18,23 +18,6 @@ from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
 
 
 GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
-
-
-class GitHubPathPart(path.WaterButlerPathPart):
-    def increment_name(self, _id=None):
-        """Overridden to preserve branch from _id upon incrementing"""
-        self._id = _id or (self._id[0], None)
-        self._count += 1
-        return self
-
-
-class GitHubPath(path.WaterButlerPath):
-    PART_CLASS = GitHubPathPart
-
-    def child(self, name, _id=None, folder=False):
-        if _id is None:
-            _id = (self.identifier[0], None)
-        return super().child(name, _id=_id, folder=folder)
 
 
 class GitHubProvider(provider.BaseProvider):
@@ -48,6 +31,8 @@ class GitHubProvider(provider.BaseProvider):
         GH (dir):   'foo/bar'
         GH (file):  'foo/bar.txt'
 
+    API docs: https://developer.github.com/v3/
+
     Quirks:
 
     * git doesn't have a concept of empty folders, so this provider creates 0-byte ``.gitkeep``
@@ -56,6 +41,11 @@ class GitHubProvider(provider.BaseProvider):
     * The ``contents`` endpoint cannot be used to fetch metadata reliably for all files. Requesting
       a file that is larger than 1Mb will result in a error response directing you to the ``blob``
       endpoint.  A recursive tree fetch may be used instead.
+
+    * The tree endpoint truncates results after a large number of files.  It does not provide a way
+      to page through the tree.  Since move, copy, and folder delete operations rely on whole-tree
+      replacement, they cannot be reliably supported for large repos.  Attempting to use them will
+      throw a 501 Not Implemented error.
     """
     NAME = 'github'
     BASE_URL = settings.BASE_URL
@@ -87,11 +77,15 @@ class GitHubProvider(provider.BaseProvider):
             self.default_branch = self._repo['default_branch']
 
         branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
+        if isinstance(branch_ref, list):
+            raise exceptions.InvalidParameters('Only one ref or branch may be given.')
 
         if path == '/':
             return GitHubPath(path, _ids=[(branch_ref, '')])
 
         branch_data = await self._fetch_branch(branch_ref)
+
+        # throws Not Found if path not in tree
         await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
 
         path = GitHubPath(path)
@@ -110,6 +104,8 @@ class GitHubProvider(provider.BaseProvider):
 
         path = GitHubPath(path)
         branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
+        if isinstance(branch_ref, list):
+            raise exceptions.InvalidParameters('Only one ref or branch may be given.')
 
         for part in path.parts:
             part._id = (branch_ref, None)
@@ -120,7 +116,7 @@ class GitHubProvider(provider.BaseProvider):
         return path
 
     async def revalidate_path(self, base, path, folder=False):
-        return base.child(path, _id=((base.identifier[0], None)), folder=folder)
+        return base.child(path, _id=((base.branch_ref, None)), folder=folder)
 
     def can_duplicate_names(self):
         return False
@@ -165,12 +161,12 @@ class GitHubProvider(provider.BaseProvider):
         :param dict kwargs: Ignored
         '''
         data = await self.metadata(path, revision=revision)
-        file_sha = path.identifier[1] or data.extra['fileSha']
+        file_sha = path.file_sha or data.extra['fileSha']
 
         resp = await self.make_request(
             'GET',
             self.build_repo_url('git', 'blobs', file_sha),
-            headers={'Accept': 'application/vnd.github.VERSION.raw'},
+            headers={'Accept': 'application/vnd.github.v3.raw'},
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
@@ -193,7 +189,7 @@ class GitHubProvider(provider.BaseProvider):
                         'content': '',
                         'path': '.gitkeep',
                         'committer': self.committer,
-                        'branch': path.identifier[0],
+                        'branch': path.branch_ref,
                         'message': 'Initial commit'
                     }),
                     expects=(201,),
@@ -202,7 +198,7 @@ class GitHubProvider(provider.BaseProvider):
                 data = await resp.json()
                 latest_sha = data['commit']['sha']
         else:
-            latest_sha = await self._get_latest_sha(ref=path.identifier[0])
+            latest_sha = await self._get_latest_sha(ref=path.branch_ref)
 
         blob = await self._create_blob(stream)
         tree = await self._create_tree({
@@ -223,14 +219,14 @@ class GitHubProvider(provider.BaseProvider):
         })
 
         # Doesn't return anything useful
-        await self._update_ref(commit['sha'], ref=path.identifier[0])
+        await self._update_ref(commit['sha'], ref=path.branch_ref)
 
         # You're hacky
         return GitHubFileTreeMetadata({
             'path': path.path,
             'sha': blob['sha'],
             'size': stream.size,
-        }, commit=commit), not exists
+        }, commit=commit, ref=path.branch_ref), not exists
 
     async def delete(self, path, sha=None, message=None, branch=None,
                confirm_delete=0, **kwargs):
@@ -258,22 +254,21 @@ class GitHubProvider(provider.BaseProvider):
         else:
             await self._delete_file(path, message, **kwargs)
 
-    async def metadata(self, path, ref=None, recursive=False, **kwargs):
+    async def metadata(self, path, **kwargs):
         """Get Metadata about the requested file or folder
         :param str path: The path to a file or folder
-        :param str ref: A branch or a commit SHA
-        :rtype dict:
-        :rtype list:
+        :rtype dict: if file, metadata object describing the file
+        :rtype list: if folder, array of metadata objects describing contents
         """
         if path.is_dir:
-            return (await self._metadata_folder(path, ref=ref, recursive=recursive, **kwargs))
+            return (await self._metadata_folder(path, **kwargs))
         else:
-            return (await self._metadata_file(path, ref=ref, **kwargs))
+            return (await self._metadata_file(path, **kwargs))
 
     async def revisions(self, path, sha=None, **kwargs):
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=sha or path.identifier),
+            self.build_repo_url('commits', path=path.path, sha=sha or path.file_sha),
             expects=(200, ),
             throws=exceptions.RevisionsError
         )
@@ -296,7 +291,7 @@ class GitHubProvider(provider.BaseProvider):
             'content': '',
             'path': keep_path.path,
             'committer': self.committer,
-            'branch': path.identifier[0],
+            'branch': path.branch_ref,
             'message': message or settings.UPLOAD_FILE_MESSAGE
         }
 
@@ -318,11 +313,11 @@ class GitHubProvider(provider.BaseProvider):
         data['content']['name'] = path.name
         data['content']['path'] = data['content']['path'].replace('.gitkeep', '')
 
-        return GitHubFolderContentMetadata(data['content'], commit=data['commit'])
+        return GitHubFolderContentMetadata(data['content'], commit=data['commit'], ref=path.branch_ref)
 
     async def _delete_file(self, path, message=None, **kwargs):
-        if path.identifier[1]:
-            sha = path.identifier
+        if path.file_sha:
+            sha = path.file_sha
         else:
             sha = (await self.metadata(path)).extra['fileSha']
 
@@ -331,7 +326,7 @@ class GitHubProvider(provider.BaseProvider):
 
         data = {
             'sha': sha,
-            'branch': path.identifier[0],
+            'branch': path.branch_ref,
             'committer': self.committer,
             'message': message or settings.DELETE_FILE_MESSAGE,
         }
@@ -347,7 +342,7 @@ class GitHubProvider(provider.BaseProvider):
         await resp.release()
 
     async def _delete_folder(self, path, message=None, **kwargs):
-        branch_data = await self._fetch_branch(path.identifier[0])
+        branch_data = await self._fetch_branch(path.branch_ref)
 
         old_commit_sha = branch_data['commit']['sha']
         old_commit_tree_sha = branch_data['commit']['commit']['tree']['sha']
@@ -437,7 +432,7 @@ class GitHubProvider(provider.BaseProvider):
         # No need to store data, rely on expects to raise exceptions
         resp = await self.make_request(
             'PATCH',
-            self.build_repo_url('git', 'refs', 'heads', path.identifier[0]),
+            self.build_repo_url('git', 'refs', 'heads', path.branch_ref),
             headers={'Content-Type': 'application/json'},
             data=json.dumps({'sha': commit_sha}),
             expects=(200, ),
@@ -451,7 +446,7 @@ class GitHubProvider(provider.BaseProvider):
         :param GitHubPath path: GitHubPath path object for folder
         :param str message: Commit message
         """
-        branch_data = await self._fetch_branch(path.identifier[0])
+        branch_data = await self._fetch_branch(path.branch_ref)
         old_commit_sha = branch_data['commit']['sha']
         tree_sha = GIT_EMPTY_SHA
         message = message or settings.DELETE_FOLDER_MESSAGE
@@ -477,7 +472,7 @@ class GitHubProvider(provider.BaseProvider):
         # No need to store data, rely on expects to raise exceptions
         await self.make_request(
             'PATCH',
-            self.build_repo_url('git', 'refs', 'heads', path.identifier[0]),
+            self.build_repo_url('git', 'refs', 'heads', path.branch_ref),
             headers={'Content-Type': 'application/json'},
             data=json.dumps({'sha': commit_sha}),
             expects=(200, ),
@@ -598,40 +593,41 @@ class GitHubProvider(provider.BaseProvider):
         return True
 
     def _web_view(self, path):
-        segments = (self.owner, self.repo, 'blob', path.identifier[0], path.path)
+        segments = (self.owner, self.repo, 'blob', path.branch_ref, path.path)
         return provider.build_url(settings.VIEW_URL, *segments)
 
-    async def _metadata_folder(self, path, recursive=False, **kwargs):
-        # if we have a sha or recursive lookup specified we'll need to perform
-        # the operation using the git/trees api which requires a sha.
+    async def _metadata_folder(self, path, **kwargs):
+        ref = path.branch_ref
 
-        if not (self._is_sha(path.identifier[0]) or recursive):
-            try:
-                data = await self._fetch_contents(path, ref=path.identifier[0])
-            except exceptions.MetadataError as e:
-                if e.data.get('message') == 'This repository is empty.':
-                    data = []
-                else:
-                    raise
+        try:
+            # it's cool to use the contents API here because we know path is a dir and won't hit
+            # the 1mb size limit
+            data = await self._fetch_contents(path, ref=ref)
+        except exceptions.MetadataError as e:
+            if e.data.get('message') == 'This repository is empty.':
+                data = []
+            else:
+                raise
 
-            if isinstance(data, dict):
-                raise exceptions.MetadataError(
-                    'Could not retrieve folder "{0}"'.format(str(path)),
-                    code=404,
-                )
+        if isinstance(data, dict):
+            raise exceptions.MetadataError(
+                'Could not retrieve folder "{0}"'.format(str(path)),
+                code=404,
+            )
 
-            ret = []
-            for item in data:
-                if item['type'] == 'dir':
-                    ret.append(GitHubFolderContentMetadata(item))
-                else:
-                    ret.append(GitHubFileContentMetadata(item, web_view=item['html_url']))
-            return ret
+        ret = []
+        for item in data:
+            if item['type'] == 'dir':
+                ret.append(GitHubFolderContentMetadata(item, ref=ref))
+            else:
+                ret.append(GitHubFileContentMetadata(item, ref=ref, web_view=item['html_url']))
 
-    async def _metadata_file(self, path, revision=None, ref=None, **kwargs):
+        return ret
+
+    async def _metadata_file(self, path, revision=None, **kwargs):
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=revision or ref or path.identifier[0]),
+            self.build_repo_url('commits', path=path.path, sha=revision or path.branch_ref),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
@@ -658,7 +654,10 @@ class GitHubProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return GitHubFileTreeMetadata(data, commit=latest['commit'], web_view=self._web_view(path))
+        return GitHubFileTreeMetadata(
+            data, commit=latest['commit'], web_view=self._web_view(path),
+            ref=path.branch_ref
+        )
 
     async def _get_latest_sha(self, ref='master'):
         resp = await self.make_request(
@@ -692,30 +691,15 @@ class GitHubProvider(provider.BaseProvider):
         #     GH (dir):   'foo/bar'
         #     GH (file):  'foo/bar.txt'
 
-        branch = src_path.identifier[0]
-        branch_data = await self._fetch_branch(branch)
-
-        old_commit_sha = branch_data['commit']['sha']
-        old_commit_tree_sha = branch_data['commit']['commit']['tree']['sha']
-
-        tree = await self._fetch_tree(old_commit_tree_sha, recursive=True)
-        exists = any(x['path'] == dest_path.path.rstrip('/') for x in tree['tree'])
+        src_tree, src_head = await self._get_tree_and_head(src_path.branch_ref)
 
         # these are the blobs to copy/move
         blobs = [
             item
-            for item in tree['tree']
+            for item in src_tree['tree']
             if src_path.is_dir and item['path'].startswith(src_path.path) or
             src_path.is_file and item['path'] == src_path.path
         ]
-
-        # if we're overwriting an existing dir, we must remove its blobs from the tree
-        if dest_path.is_dir:
-            tree['tree'] = [
-                item
-                for item in tree['tree']
-                if not item['path'].startswith(dest_path.path)
-            ]
 
         if len(blobs) == 0:
             raise exceptions.NotFoundError(str(src_path))
@@ -723,66 +707,180 @@ class GitHubProvider(provider.BaseProvider):
         if src_path.is_file:
             assert len(blobs) == 1, 'Found multiple targets'
 
-        # if this is a copy, duplicate and append our source blobs. The originals will be updated
-        # with the new destination path.
-        if is_copy:
-            tree['tree'].extend([copy.deepcopy(blob) for blob in blobs])
+        commit_msg = settings.COPY_MESSAGE if is_copy else settings.MOVE_MESSAGE
+        commit = None
 
-        # see, I told you they'd be overwritten
-        for blob in blobs:
-            blob['path'] = blob['path'].replace(src_path.path, dest_path.path, 1)
+        if src_path.branch_ref == dest_path.branch_ref:
+            exists = self._path_exists_in_tree(src_tree['tree'], dest_path)
 
-        # github infers tree contents from blob paths
-        # see: http://www.levibotelho.com/development/commit-a-file-with-the-github-api/
-        tree['tree'] = [item for item in tree['tree'] if item['type'] != 'tree']
-        new_tree_data = await self._create_tree({'tree': tree['tree']})
-        new_tree_sha = new_tree_data['sha']
+            # if we're overwriting an existing dir, we must remove its blobs from the tree
+            if dest_path.is_dir:
+                src_tree['tree'] = self._remove_path_from_tree(src_tree['tree'], dest_path)
 
-        # Create a new commit which references our top most tree change.
-        commit_resp = await self.make_request(
-            'POST',
-            self.build_repo_url('git', 'commits'),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({
-                'tree': new_tree_sha,
-                'parents': [old_commit_sha],
-                'committer': self.committer,
-                'message': settings.COPY_MESSAGE if is_copy else settings.MOVE_MESSAGE
-            }),
-            expects=(201, ),
-            throws=exceptions.DeleteError,
-        )
+            # if this is a copy, duplicate and append our source blobs. The originals will be updated
+            # with the new destination path.
+            if is_copy:
+                src_tree['tree'].extend(copy.deepcopy(blobs))
 
-        commit = await commit_resp.json()
+            # see, I told you they'd be overwritten
+            self._reparent_blobs(blobs, src_path, dest_path)
 
-        # Update repository reference, point to the newly created commit.
-        # No need to store data, rely on expects to raise exceptions
-        resp = await self.make_request(
-            'PATCH',
-            self.build_repo_url('git', 'refs', 'heads', branch),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({'sha': commit['sha']}),
-            expects=(200, ),
-            throws=exceptions.DeleteError,
-        )
-        await resp.release()
+            src_tree['tree'] = self._prune_subtrees(src_tree['tree'])
+
+            commit = await self._commit_tree_and_advance_branch(src_tree['tree'], {'sha': src_head},
+                                                                commit_msg, src_path.branch_ref)
+
+        else:
+            dest_tree, dest_head = await self._get_tree_and_head(dest_path.branch_ref)
+
+            exists = self._path_exists_in_tree(dest_tree['tree'], dest_path)
+
+            dest_tree['tree'] = self._remove_path_from_tree(dest_tree['tree'], dest_path)
+
+            new_blobs = copy.deepcopy(blobs)
+            self._reparent_blobs(new_blobs, src_path, dest_path)
+            dest_tree['tree'].extend(new_blobs)
+
+            dest_tree['tree'] = self._prune_subtrees(dest_tree['tree'])
+
+            commit = await self._commit_tree_and_advance_branch(dest_tree['tree'], {'sha': dest_head},
+                                                                commit_msg, dest_path.branch_ref)
+
+            if not is_copy:
+                src_tree['tree'] = self._remove_path_from_tree(src_tree['tree'], src_path)
+                src_tree['tree'] = self._prune_subtrees(src_tree['tree'])
+                await self._commit_tree_and_advance_branch(src_tree['tree'], {'sha': src_head},
+                                                           commit_msg, src_path.branch_ref)
+
+            blobs = new_blobs  # for the metadata
 
         if dest_path.is_file:
             assert len(blobs) == 1, 'Destination file should have exactly one candidate'
-            return GitHubFileTreeMetadata(blobs[0], commit=commit), not exists
+            return GitHubFileTreeMetadata(
+                blobs[0], commit=commit, ref=dest_path.branch_ref
+            ), not exists
 
         folder = GitHubFolderTreeMetadata({
             'path': dest_path.path.strip('/')
-        }, commit=commit)
+        }, commit=commit, ref=dest_path.branch_ref)
 
         folder.children = []
 
         for item in blobs:
-            if item['path'] == src_path.path.rstrip('/'):
+            if item['path'] == dest_path.path.rstrip('/'):
                 continue
             if item['type'] == 'tree':
-                folder.children.append(GitHubFolderTreeMetadata(item))
+                folder.children.append(GitHubFolderTreeMetadata(item, ref=dest_path.branch_ref))
             else:
-                folder.children.append(GitHubFileTreeMetadata(item))
+                folder.children.append(GitHubFileTreeMetadata(item, ref=dest_path.branch_ref))
 
         return folder, not exists
+
+    async def _get_tree_and_head(self, branch):
+        """Fetch the head commit and tree for the given branch.
+
+        :param str branch: The branch to fetch
+        :returns dict: A GitHub tree object. Contents are under the ``tree`` key.
+        :returns dict: A GitHub commit object. The SHA is under the ``sha`` key.
+        """
+        branch_data = await self._fetch_branch(branch)
+        head = branch_data['commit']['sha']
+
+        tree_sha = branch_data['commit']['commit']['tree']['sha']
+        tree = await self._fetch_tree(tree_sha, recursive=True)
+
+        return tree, head
+
+    def _path_exists_in_tree(self, tree, path):
+        """Search through a tree and return true if the given path is found.
+
+        :param list tree: A list of blobs in a git tree.
+        :param GitHubPath path:  The path to search for.
+        :returns bool: true if ``path`` is found in ``tree``
+        """
+        return any(x['path'] == path.path.rstrip('/') for x in tree)
+
+    def _remove_path_from_tree(self, tree, path):
+        """Search through a tree and remove any blobs or trees that match ``path`` or are a child of
+        ``path``.
+
+        :param list tree: A list of blobs in a git tree.
+        :param GitHubPath path:  The path to exclude.
+        :returns list: A new list containing the filtered tree contents.
+        """
+        return [
+            item
+            for item in tree
+            if (path.is_file and not item['path'] == path.path) or  # file != path
+            (path.is_dir and not
+             (item['path'].startswith(path.path) or  # file/folder != child of path
+              (item['type'] == 'tree' and item['path'] == path.path.rstrip('/'))))  # folder != path
+
+        ]
+
+    def _reparent_blobs(self, blobs, src_path, dest_path):
+        """Take a list of blobs and replace the source path with the dest path.
+
+        Two caveats:
+
+        * This method operates on the list of blobs in place. This is intentional. Anything you pass
+        as the ``blobs`` arg will be mutated back in the calling scope.
+
+        * This method assumes that the list of blobs all begin with ``src_path``, since its purpose
+        is to rewite all the blobs found at or under ``src_path`` to be at or under ``dest_path``.
+        If you pass it something that is not located under ``src_path``, a later part of the path
+        may be updated.
+
+        :param list blobs: A list of blobs whose paths should be updated.
+        :param GitHubPath src_path:  The original path.
+        :param GitHubPath dest_path:  The new path.
+        :returns None: This methods returns **nothing**. It operates on the blobs in-place.
+        """
+        for blob in blobs:
+            if blob['path'] == src_path.path.rstrip('/') and blob['type'] == 'tree':
+                # Renaming the parent folder is not necessary. Tress are pruned before uploading
+                # to GH.  This is only here because at somepoint someone will use it without pruning
+                # and wonder why on earth the parent folder isn't renamed.
+                blob['path'] = dest_path.path.rstrip('/')
+            else:
+                blob['path'] = blob['path'].replace(src_path.path, dest_path.path, 1)
+        return
+
+    def _prune_subtrees(self, tree):
+        """Takes in a list representing a git tree and remove all the entries that are also trees.
+        Only blobs should remain. GitHub infers tree structure from blob paths.  Deleting a blob
+        without removing its parent tree will result in the blob *NOT* being deleted. See:
+        http://www.levibotelho.com/development/commit-a-file-with-the-github-api/
+
+        :param list tree: A list representing a git tree. May contain trees, in addition to blobs.
+        :returns list: A new list containing just the blobs.
+        """
+        return [item for item in tree if item['type'] != 'tree']
+
+    async def _commit_tree_and_advance_branch(self, old_tree, old_head, commit_msg, branch_ref):
+        """Utilty method to bundle several commands into one.  Takes a tree, head commit, a message,
+        and a branch, creates a new commit pointing to tree, then advances branch to point to the
+        new commit. Basically the same thing as ``git commit -am "foo message"`` on the command
+        line.  Returns the new commit.
+
+        :param list old_tree: A list of blobs representing the new file tree.
+        :param dict old_head: The commit object will be the parent of the new commit. Must have 'sha' key.
+        :param str commit_msg: The commit message for the new commit.
+        :param str branch_ref: The branch that will be advanced to the new commit.
+        :returns dict new_head: The commit object returned by GitHub.
+        """
+        new_tree = await self._create_tree({'tree': old_tree})
+
+        # Create a new commit which references our top most tree change.
+        new_head = await self._create_commit({
+            'tree': new_tree['sha'],
+            'parents': [old_head['sha']],
+            'committer': self.committer,
+            'message': commit_msg,
+        })
+
+        # Update repository reference, point to the newly created commit.
+        # No need to store data, rely on expects to raise exceptions
+        await self._update_ref(new_head['sha'], ref=branch_ref)
+
+        return new_head

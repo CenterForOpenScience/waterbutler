@@ -97,5 +97,5 @@ class TestMoveHandler(utils.MultiProviderHandlerTestCase):
 
         self.mock_send_hook.assert_called_once_with(
             'move',
-            utils.MockFileMetadata().serialized()
+            utils.MockFileMetadata()
         )

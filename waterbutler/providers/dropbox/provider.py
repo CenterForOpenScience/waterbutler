@@ -13,6 +13,17 @@ from waterbutler.providers.dropbox.metadata import DropboxFolderMetadata
 
 
 class DropboxProvider(provider.BaseProvider):
+    """Provider for the Dropbox.com cloud storage service.
+
+    This provider uses the v1 Dropbox API.  An ID-based v2 API is available, but the provider
+    has not yet been updated.
+
+    API docs: https://www.dropbox.com/developers-v1/core/docs
+
+    Quirks:
+
+    * Dropbox is a case-insensitive.
+    """
     NAME = 'dropbox'
     BASE_URL = settings.BASE_URL
 

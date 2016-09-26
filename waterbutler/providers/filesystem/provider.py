@@ -14,6 +14,11 @@ from waterbutler.providers.filesystem.metadata import FileSystemFolderMetadata
 
 
 class FileSystemProvider(provider.BaseProvider):
+    """Provider using the local filesystem as a backend-store
+
+    This provider is used for local testing.  Files are stored by hash, preserving
+    case-sensitivity on case-insensitive host filesystems.
+    """
     NAME = 'filesystem'
 
     def __init__(self, auth, credentials, settings):
@@ -115,6 +120,7 @@ class FileSystemProvider(provider.BaseProvider):
             'path': full_path,
             'size': os.path.getsize(full_path),
             'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
+            'modified_utc': modified.isoformat(),
             'mime_type': mimetypes.guess_type(full_path)[0],
         }
 

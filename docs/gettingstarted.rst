@@ -8,7 +8,7 @@ Make sure that you are using >= python3.5 and install invoke for your current py
 
 .. code-block:: bash
 
-    pip install invoke
+    pip install invoke==0.11.1
 
 Install requirements
 

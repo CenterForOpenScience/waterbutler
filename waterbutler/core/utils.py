@@ -1,7 +1,9 @@
 import json
+import pytz
 import asyncio
 import logging
 import functools
+import dateutil.parser
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
@@ -22,13 +24,14 @@ sentry_dsn = settings.get('SENTRY_DSN', None)
 client = Client(sentry_dsn) if sentry_dsn else None
 
 
-def make_provider(name, auth, credentials, settings):
+def make_provider(name, auth, credentials, settings, **kwargs):
     """Returns an instance of :class:`waterbutler.core.provider.BaseProvider`
 
     :param str name: The name of the provider to instantiate. (s3, box, etc)
     :param dict auth:
     :param dict credentials:
     :param dict settings:
+    :param dict \*\*kwargs: currently there to absorb ``callback_url``
 
     :rtype: :class:`waterbutler.core.provider.BaseProvider`
     """
@@ -64,14 +67,13 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
         @functools.wraps(func)
         async def wrapped(*args, __retries=0, **kwargs):
             try:
-                return (await asyncio.coroutine(func)(*args, **kwargs))
+                return await asyncio.coroutine(func)(*args, **kwargs)
             except exceptions as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
                     logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting {4} seconds before retrying'.format(func, e, __retries, retries, wait_time))
-
                     await asyncio.sleep(wait_time)
-                    return wrapped(*args, __retries=__retries + 1, **kwargs)
+                    return await wrapped(*args, __retries=__retries + 1, **kwargs)
                 else:
                     # Logs before all things
                     logger.error('Task {0} failed with exception {1}'.format(func, e))
@@ -100,6 +102,17 @@ async def send_signed_request(method, url, payload):
         }),
         headers={'Content-Type': 'application/json'},
     ))
+
+
+def normalize_datetime(date_string):
+    if date_string is None:
+        return None
+    parsed_datetime = dateutil.parser.parse(date_string)
+    if not parsed_datetime.tzinfo:
+        parsed_datetime = parsed_datetime.replace(tzinfo=pytz.UTC)
+    parsed_datetime = parsed_datetime.astimezone(tz=pytz.UTC)
+    parsed_datetime = parsed_datetime.replace(microsecond=0)
+    return parsed_datetime.isoformat()
 
 
 class ZipStreamGenerator:

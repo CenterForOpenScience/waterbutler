@@ -35,6 +35,25 @@ class GoogleDrivePath(path.WaterButlerPath):
 
 
 class GoogleDriveProvider(provider.BaseProvider):
+    """Provider for Google's Drive cloud storage service.
+
+    This provider uses the v2 Drive API.  A v3 API is available, but this provider has not yet
+    been updated.
+
+    API docs: https://developers.google.com/drive/v2/reference/
+
+    Quirks:
+
+    * Google doc files (``.gdoc``, ``.gsheet``, ``.gsheet``, ``.gdraw``) cannot be downloaded in
+      their native format and must be exported to another format.  e.g. ``.gdoc`` to ``.docx``
+
+    * Some Google doc files (currently ``.gform`` and ``.gmap``) do not have an available export
+      format and cannot be downloaded at all.
+
+    * Google Drive is not really a filesystem.  Folders are actually labels, meaning a file ``foo``
+      could be in two folders (ex. ``A``, ``B``) at the same time.  Deleting ``/A/foo`` will
+      cause ``/B/foo`` to be deleted as well.
+    """
     NAME = 'googledrive'
     BASE_URL = settings.BASE_URL
     FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
@@ -57,19 +76,11 @@ class GoogleDriveProvider(provider.BaseProvider):
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 
-    async def validate_path(self, path, file_id=None, **kwargs):
+    async def validate_path(self, path, **kwargs):
         if path == '/':
             return GoogleDrivePath('/', _ids=[self.folder['id']], folder=True)
 
         parts = await self._resolve_path_to_ids(path)
-
-        # TODO Allow for just passing file_id
-        # if file_id:
-        #     parts = await self._resolve_id_to_parts(file_id)
-        # elif path:
-        # else:
-        #     raise Exception  # TODO
-
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 
@@ -150,35 +161,27 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def download(self, path, revision=None, range=None, **kwargs):
         if revision and not revision.endswith(settings.DRIVE_IGNORE_VERSION):
-            # Must make additional request to look up download URL for revision
-            async with self.request(
-                'GET',
-                self.build_url('files', path.identifier, 'revisions', revision, alt='json'),
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            ) as response:
-                data = await response.json()
+            metadata = await self.metadata(path, revision=revision)
         else:
-            data = await self.metadata(path, raw=True)
+            metadata = await self.metadata(path)
 
         download_resp = await self.make_request(
             'GET',
-            data.get('downloadUrl') or drive_utils.get_export_link(data),
+            metadata.raw.get('downloadUrl') or drive_utils.get_export_link(metadata.raw),
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 
-        if 'fileSize' in data:
-            return streams.ResponseStreamReader(download_resp, size=data['fileSize'])
+        if metadata.size is not None:
+            return streams.ResponseStreamReader(download_resp, size=metadata.size)
 
         # google docs, not drive files, have no way to get the file size
         # must buffer the entire file into memory
         stream = streams.StringStream(await download_resp.read())
         if download_resp.headers.get('Content-Type'):
             stream.content_type = download_resp.headers['Content-Type']
-        if drive_utils.is_docs_file(data):
-            stream.name = path.name + drive_utils.get_download_extension(data)
+        stream.name = metadata.export_name
         return stream
 
     async def upload(self, stream, path, **kwargs):
@@ -303,7 +306,8 @@ class GoogleDriveProvider(provider.BaseProvider):
             return GoogleDriveFolderMetadata(await resp.json(), path)
 
     def path_from_metadata(self, parent_path, metadata):
-        return parent_path.child(metadata.name, _id=metadata.id, folder=metadata.is_folder)
+        """ Unfortunately-named method, currently only used to get path name for zip archives. """
+        return parent_path.child(metadata.export_name, _id=metadata.id, folder=metadata.is_folder)
 
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
@@ -372,6 +376,10 @@ class GoogleDriveProvider(provider.BaseProvider):
         return item_id
 
     async def _resolve_path_to_ids(self, path, start_at=None):
+        """Takes a path and traverses the file tree (ha!) beginning at ``start_at``, looking for
+        something that matches ``path``.  Returns a list of dicts for each part of the path, with
+        ``title``, ``mimeType``, and ``id`` keys.
+        """
         ret = start_at or [{
             'title': '',
             'mimeType': 'folder',
@@ -406,7 +414,12 @@ class GoogleDriveProvider(provider.BaseProvider):
                 item_id = data['items'][0]['id']
             except (KeyError, IndexError):
                 if parts:
+                    # if we can't find an intermediate path part, that's an error
                     raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
+
+                # Couldn't find id for last part of path. If path includes Google Doc extension,
+                # search again without extension (gdrive won't find it if included). Otherwise,
+                # assume file or folder doesn't yet exist (i.e. id = None)
                 name, ext = os.path.splitext(current_part[0])
                 if ext not in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
                     return ret + [{
@@ -414,7 +427,9 @@ class GoogleDriveProvider(provider.BaseProvider):
                         'title': current_part[0],
                         'mimeType': 'folder' if path.endswith('/') else '',
                     }]
+                # strip google docs extension and try again
                 parts.append([name, current_part[1]])
+                continue
 
             async with self.request(
                 'GET',

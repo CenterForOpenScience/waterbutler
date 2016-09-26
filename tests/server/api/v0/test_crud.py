@@ -14,6 +14,8 @@ from tests import utils
 
 class TestCrudHandler(utils.HandlerTestCase):
 
+    HOOK_PATH = 'waterbutler.server.api.v0.crud.CRUDHandler._send_hook'
+
     @testing.gen_test
     def test_download_redirect(self):
         redirect_url = 'http://queen.com/freddie.png'

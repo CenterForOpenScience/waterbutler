@@ -1,5 +1,4 @@
 import http
-import time
 import socket
 import asyncio
 import logging
@@ -9,8 +8,9 @@ import tornado.gen
 from waterbutler.core import utils
 from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
+from waterbutler.core import remote_logging
 from waterbutler.server.auth import AuthHandler
-from waterbutler.constants import IDENTIFIER_PATHS
+from waterbutler.core.log_payload import LogPayload
 from waterbutler.core.streams import RequestStreamReader
 from waterbutler.server.api.v1.provider.create import CreateMixin
 from waterbutler.server.api.v1.provider.metadata import MetadataMixin
@@ -18,6 +18,16 @@ from waterbutler.server.api.v1.provider.movecopy import MoveCopyMixin
 
 logger = logging.getLogger(__name__)
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
+
+
+def list_or_value(value):
+    assert isinstance(value, list)
+    if len(value) == 0:
+        return None
+    if len(value) == 1:
+        # Remove leading slashes as they break things
+        return value[0].decode('utf-8')
+    return [item.decode('utf-8') for item in value]
 
 
 @tornado.web.stream_request_body
@@ -33,6 +43,11 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if method == 'options':
             return
 
+        self.arguments = {
+            key: list_or_value(value)
+            for key, value in self.request.query_arguments.items()
+        }
+
         self.path = self.path_kwargs['path'] or '/'
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
@@ -47,7 +62,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
         self.auth = await auth_handler.get(self.resource, provider, self.request)
         self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
-        self.path = await self.provider.validate_v1_path(self.path)
+        self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
 
         self.target_path = None
 
@@ -97,6 +112,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     async def data_received(self, chunk):
         """Note: Only called during uploads."""
+        self.bytes_uploaded += len(chunk)
         if self.stream:
             self.writer.write(chunk)
             await self.writer.drain()
@@ -118,14 +134,18 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     def on_finish(self):
         status, method = self.get_status(), self.request.method.upper()
         # If the response code is not within the 200 range,
-        # the request was a GET, HEAD, or OPTIONS,
+        # the request was a HEAD or OPTIONS,
         # or the response code is 202, celery will send its own callback
         # no callbacks should be sent.
-        if any((method in ('GET', 'HEAD', 'OPTIONS'), status == 202, status // 100 != 2)):
+        if any((method in ('HEAD', 'OPTIONS'), status == 202, status // 100 != 2)):
+            return
+
+        if method == 'GET' and 'meta' in self.request.query_arguments:
             return
 
         # Done here just because method is defined
         action = {
+            'GET': lambda: 'download_file' if self.path.is_file else 'download_zip',
             'PUT': lambda: ('create' if self.target_path.is_file else 'create_folder') if status == 201 else 'update',
             'POST': lambda: 'move' if self.json['action'] == 'rename' else self.json['action'],
             'DELETE': lambda: 'delete'
@@ -133,54 +153,29 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
         self._send_hook(action)
 
-    @utils.async_retry(retries=5, backoff=5)
-    async def _send_hook(self, action):
-        payload = {
-            'action': action,
-            'time': time.time() + 60,
-            'auth': self.auth['auth'],
-            'provider': self.provider.NAME,
-        }
+    def _send_hook(self, action):
+        source = None
+        destination = None
 
-        callback_url = None
         if action in ('move', 'copy'):
-            payload.update({
-                'source': {
-                    'nid': self.resource,
-                    'kind': self.path.kind,
-                    'name': self.path.name,
-                    'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + self.path.raw_path,
-                    'provider': self.provider.NAME,  # TODO rename to name
-                    'materialized': str(self.path),
-                },
-                'destination': {
-                    'nid': self.dest_resource,
-                }
-            })
-            payload['destination'].update(self.dest_meta.serialized())
-            callback_url = self.dest_auth['callback_url']
-        else:
-            # This is adequate for everything but github
-            # If extra can be included it will link to the given sha
-            payload_path = self.target_path or self.path
-            payload.update({
-                'metadata': {
-                    # Hack: OSF and box use identifiers to refer to files
-                    'path': payload_path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + payload_path.raw_path,
-                    'name': payload_path.name,
-                    'materialized': str(payload_path),
-                    'provider': self.provider.NAME,
-                }
-            })
-            callback_url = self.auth['callback_url']
+            # if provider can't intra_move or copy, then the celery task will take care of logging
+            if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
+                return
 
-        resp = (await utils.send_signed_request('PUT', callback_url, payload))
-        data = await resp.read()
-
-        if resp.status != 200:
-            raise Exception(
-                'Callback was unsuccessful, got {}, {}'.format(resp, data.decode('utf-8'))
+            source = LogPayload(self.resource, self.provider, path=self.path)
+            destination = LogPayload(
+                self.dest_resource,
+                self.dest_provider,
+                metadata=self.dest_meta,
             )
+        elif action in ('create', 'create_folder', 'update'):
+            source = LogPayload(self.resource, self.provider, metadata=self.metadata)
+        elif action in ('delete', 'download_file', 'download_zip'):
+            source = LogPayload(self.resource, self.provider, path=self.path)
+        else:
+            return
 
-        logger.info('Successfully sent callback for a {} request'.format(action))
-        logger.info('Callback succeeded with {}'.format(data.decode('utf-8')))
+        remote_logging.log_file_action(action, source=source, destination=destination, api_version='v1',
+                                       request=remote_logging._serialize_request(self.request),
+                                       bytes_downloaded=self.bytes_downloaded,
+                                       bytes_uploaded=self.bytes_uploaded,)

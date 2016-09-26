@@ -11,7 +11,6 @@ import tornado.platform.asyncio
 from waterbutler.core import mime_types
 from waterbutler.server import utils
 from waterbutler.server.api.v0 import core
-from waterbutler.constants import IDENTIFIER_PATHS
 from waterbutler.core.streams import RequestStreamReader
 
 TRUTH_MAP = {
@@ -51,6 +50,7 @@ class CRUDHandler(core.BaseProviderHandler):
 
     async def data_received(self, chunk):
         """Note: Only called during uploads."""
+        self.bytes_uploaded += len(chunk)
         if self.stream:
             self.writer.write(chunk)
             await self.writer.drain()
@@ -96,13 +96,14 @@ class CRUDHandler(core.BaseProviderHandler):
             self.set_header('Content-Type', mime_types[ext])
 
         await self.write_stream(result)
+        self._send_hook('download_file', path=self.path)
 
     async def post(self):
         """Create a folder"""
-        metadata = (await self.provider.create_folder(**self.arguments)).serialized()
+        metadata = await self.provider.create_folder(**self.arguments)
 
         self.set_status(201)
-        self.write(metadata)
+        self.write(metadata.serialized())
 
         self._send_hook('create_folder', metadata)
 
@@ -111,11 +112,10 @@ class CRUDHandler(core.BaseProviderHandler):
         self.writer.write_eof()
 
         metadata, created = await self.uploader
-        metadata = metadata.serialized()
 
         if created:
             self.set_status(201)
-        self.write(metadata)
+        self.write(metadata.serialized())
 
         self.writer.close()
         self.wsock.close()
@@ -131,10 +131,4 @@ class CRUDHandler(core.BaseProviderHandler):
         await self.provider.delete(**self.arguments)
         self.set_status(int(http.client.NO_CONTENT))
 
-        self._send_hook(
-            'delete',
-            {
-                'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + self.path.raw_path,
-                'materialized': str(self.arguments['path'])
-            }
-        )
+        self._send_hook('delete', path=self.path)
