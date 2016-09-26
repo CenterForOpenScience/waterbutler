@@ -246,6 +246,7 @@ class FedoraProvider(provider.BaseProvider):
         async with self.request(
             'PUT',
             url,
+            headers={'Content-Type': 'text/turtle'},
             expects=(201,),
             throws=exceptions.CreateFolderError
         ):
