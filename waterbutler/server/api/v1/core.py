@@ -17,27 +17,15 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler, 
     def write_error(self, status_code, exc_info):
         etype, exc, _ = exc_info
 
+        exception_kwargs, finish_args = {}, []
         if issubclass(etype, exceptions.WaterButlerError):
             self.set_status(int(exc.code))
-            if exc.code == 404:
-                self.captureException(exc_info, data={'level': 'info'})
-            else:
-                self.captureException(exc_info)
-
-            if exc.data:
-                self.finish(exc.data)
-            else:
-                self.finish({
-                    'code': exc.code,
-                    'message': exc.message
-                })
-
+            exception_kwargs = {'data': {'level': 'info'}} if exc.is_user_error else {}
+            finish_args = [exc.data] if exc.data else [{'code': exc.code, 'message': exc.message}]
         elif issubclass(etype, tasks.WaitTimeOutError):
-            # TODO
             self.set_status(202)
         else:
-            self.captureException(exc_info)
-            self.finish({
-                'code': status_code,
-                'message': self._reason,
-            })
+            finish_args = [{'code': status_code, 'message': self._reason}]
+
+        self.captureException(exc_info, **exception_kwargs)
+        self.finish(*finish_args)
