@@ -35,29 +35,21 @@ class GitLabPathPart(path.WaterButlerPathPart):
 class GitLabProvider(provider.BaseProvider):
     """Provider for GitLab repositories.
 
-    **On paths:**  WB and GH use slightly different default conventions for their paths, so we
+    **On paths:**  WB and GL use slightly different default conventions for their paths, so we
     often have to munge our WB paths before comparison. Here is a quick overview::
 
         WB (dirs):  wb_dir.path == 'foo/bar/'     str(wb_dir) == '/foo/bar/'
         WB (file):  wb_file.path = 'foo/bar.txt'  str(wb_file) == '/foo/bar.txt'
-        GH (dir):   'foo/bar'
-        GH (file):  'foo/bar.txt'
+        GL (dir):   'foo/bar'
+        GL (file):  'foo/bar.txt'
 
-    API docs: https://developer.github.com/v3/
+    API docs: https://docs.gitlab.com/ce/api/
 
     Quirks:
 
     * git doesn't have a concept of empty folders, so this provider creates 0-byte ``.gitkeep``
       files in the requested folder.
 
-    * The ``contents`` endpoint cannot be used to fetch metadata reliably for all files. Requesting
-      a file that is larger than 1Mb will result in a error response directing you to the ``blob``
-      endpoint.  A recursive tree fetch may be used instead.
-
-    * The tree endpoint truncates results after a large number of files.  It does not provide a way
-      to page through the tree.  Since move, copy, and folder delete operations rely on whole-tree
-      replacement, they cannot be reliably supported for large repos.  Attempting to use them will
-      throw a 501 Not Implemented error.
     """
     NAME = 'gitlab'
 
@@ -161,11 +153,12 @@ class GitLabProvider(provider.BaseProvider):
         return (await self._do_intra_move_or_copy(src_path, dest_path, False))
 
     async def download(self, path, revision=None, **kwargs):
-        '''Get the stream to the specified file on github
-        :param str path: The path to the file on github
-        :param str ref: The git 'ref' a branch or commit sha at which to get the file from
-        :param dict kwargs: Ignored
-        '''
+        """Get the stream to the specified file on gitlab.
+
+        :param str path: The path to the file on gitlab
+        :param str revision: The revision of the file on gitlab
+        :param dict kwargs: Must have 'branch'
+        """
 
         if 'branch' not in kwargs:
             raise exceptions.DownloadError(
@@ -205,6 +198,16 @@ class GitLabProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(resp, len(raw))
 
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
+        """Uploads the given stream to GitLab.
+
+        :param waterbutler.core.streams.RequestWrapper stream: The stream to put to GitLab
+        :param str path: The full path of the key to upload to/into
+        :param str message: The commit message
+        :param str branch: The branch which the ``stream`` will be added
+        :param dict kwargs: Ignored
+
+        :rtype: dict, bool
+        """
         assert self.name is not None
         assert self.email is not None
 
@@ -237,7 +240,8 @@ class GitLabProvider(provider.BaseProvider):
             await self._delete_file(path, message, branch, **kwargs)
 
     async def metadata(self, path, ref=None, recursive=False, **kwargs):
-        """Get Metadata about the requested file or folder
+        """Get Metadata about the requested file or folder.
+
         :param str path: The path to a file or folder
         :param str ref: A branch or a commit SHA
         :rtype dict:
@@ -585,8 +589,8 @@ class GitLabProvider(provider.BaseProvider):
         for blob in blobs:
             blob['path'] = blob['path'].replace(src_path.path, dest_path.path, 1)
 
-        # github infers tree contents from blob paths
-        # see: http://www.levibotelho.com/development/commit-a-file-with-the-github-api/
+        # gitlab infers tree contents from blob paths
+        # see: http://www.levibotelho.com/development/commit-a-file-with-the-gitlab-api/
         tree['tree'] = [item for item in tree['tree'] if item['type'] != 'tree']
         new_tree_data = await self._create_tree({'tree': tree['tree']})
         new_tree_sha = new_tree_data['sha']
