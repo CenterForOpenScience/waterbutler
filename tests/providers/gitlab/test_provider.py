@@ -1,26 +1,12 @@
 import pytest
-
-import io
-import os
-import json
-import base64
-import hashlib
-
-from http import client
-
 import aiohttpretty
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.core.provider import build_url
-from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.gitlab import GitLabProvider
 from waterbutler.providers.gitlab import settings as gitlab_settings
-from waterbutler.providers.gitlab.metadata import GitLabRevision
-from waterbutler.providers.gitlab.metadata import GitLabFileTreeMetadata
-from waterbutler.providers.gitlab.metadata import GitLabFolderTreeMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFileContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFolderContentMetadata
 
@@ -61,6 +47,11 @@ def repo_metadata():
 
 @pytest.fixture
 def provider(auth, credentials, settings, repo_metadata):
+    provider = GitLabProvider(auth, credentials, settings)
+    return provider
+
+@pytest.fixture
+def other(auth, credentials, settings, repo_metadata):
     provider = GitLabProvider(auth, credentials, settings)
     return provider
 
@@ -248,7 +239,7 @@ class TestUpload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete(self, provider):
+    async def test_upload(self, provider):
         path = '/folder1/file.py'
 
         waterbutler_path = WaterButlerPath(path)
@@ -310,3 +301,65 @@ class TestCreateFolter:
         aiohttpretty.register_json_uri('PUT', url)
 
         result = await provider.create_folder(waterbutler_path, 'master', 'commit message')
+
+class TestOperations:
+    def test_cant_duplicate_names(self, provider):
+        assert provider.can_duplicate_names() == False
+
+    def test_cant_intra_copy(self, provider, other):
+        assert provider.can_intra_copy(other) == False
+
+    def test_cant_intra_move(self, provider, other):
+        assert provider.can_intra_move(other) == False
+
+class TestValidatePath:
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_path_v1_is_file(self, provider):
+        path = '/folder1/file.py'
+        url_get = 'http://base.url/projects/123'
+        aiohttpretty.register_json_uri('GET', url_get, body={'default_branch': 'master'})
+
+        validated_path = await provider.validate_v1_path(path)
+
+        assert validated_path.is_file
+        assert not validated_path.is_dir
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_path_v1_is_dir(self, provider):
+        path = '/folder1/folder2/'
+        url_get = 'http://base.url/projects/123'
+        aiohttpretty.register_json_uri('GET', url_get, body={'default_branch': 'master'})
+
+        validated_path = await provider.validate_v1_path(path)
+
+        assert validated_path.is_dir
+        assert not validated_path.is_file
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_path_v1_with_wrong_http_response(self, provider):
+        path = '/folder1/file.py'
+        url_get = 'http://base.url/projects/123'
+        aiohttpretty.register_json_uri('GET', url_get, status=400)
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            validated_path = await provider.validate_v1_path(path)
+
+    @pytest.mark.asyncio
+    async def test_validate_path_is_file(self, provider):
+        path = '/folder1/file.py'
+
+        validated_path = await provider.validate_path(path)
+
+        assert validated_path.is_file
+        assert not validated_path.is_dir
+
+    @pytest.mark.asyncio
+    async def test_validate_path_is_dir(self, provider):
+        path = '/folder1/folder2/'
+        validated_path = await provider.validate_path(path)
+
+        assert validated_path.is_dir
+        assert not validated_path.is_file

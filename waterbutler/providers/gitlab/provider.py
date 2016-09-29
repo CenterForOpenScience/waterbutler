@@ -1,5 +1,3 @@
-import copy
-import json
 import base64
 import aiohttp
 import mimetypes
@@ -17,8 +15,6 @@ from waterbutler.providers.gitlab.metadata import GitLabRevision
 from waterbutler.providers.gitlab.metadata import GitLabFileContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFolderContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFileTreeMetadata
-from waterbutler.providers.gitlab.metadata import GitLabFolderTreeMetadata
-from waterbutler.providers.gitlab.exceptions import GitLabUnsupportedRepoError
 
 
 GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -35,29 +31,21 @@ class GitLabPathPart(path.WaterButlerPathPart):
 class GitLabProvider(provider.BaseProvider):
     """Provider for GitLab repositories.
 
-    **On paths:**  WB and GH use slightly different default conventions for their paths, so we
+    **On paths:**  WB and GL use slightly different default conventions for their paths, so we
     often have to munge our WB paths before comparison. Here is a quick overview::
 
         WB (dirs):  wb_dir.path == 'foo/bar/'     str(wb_dir) == '/foo/bar/'
         WB (file):  wb_file.path = 'foo/bar.txt'  str(wb_file) == '/foo/bar.txt'
-        GH (dir):   'foo/bar'
-        GH (file):  'foo/bar.txt'
+        GL (dir):   'foo/bar'
+        GL (file):  'foo/bar.txt'
 
-    API docs: https://developer.github.com/v3/
+    API docs: https://docs.gitlab.com/ce/api/
 
     Quirks:
 
     * git doesn't have a concept of empty folders, so this provider creates 0-byte ``.gitkeep``
       files in the requested folder.
 
-    * The ``contents`` endpoint cannot be used to fetch metadata reliably for all files. Requesting
-      a file that is larger than 1Mb will result in a error response directing you to the ``blob``
-      endpoint.  A recursive tree fetch may be used instead.
-
-    * The tree endpoint truncates results after a large number of files.  It does not provide a way
-      to page through the tree.  Since move, copy, and folder delete operations rely on whole-tree
-      replacement, they cannot be reliably supported for large repos.  Attempting to use them will
-      throw a 501 Not Implemented error.
     """
     NAME = 'gitlab'
 
@@ -84,18 +72,46 @@ class GitLabProvider(provider.BaseProvider):
         self.BASE_URL = self.settings['base_url']
         self.VIEW_URL = self.settings['view_url']
 
+    @property
+    def default_headers(self):
+        """ Headers to be included with every request.
+
+        :rtype: :class:`dict` with `Authorization` token
+        """
+        return {'Authorization': 'Bearer {}'.format(self.token)}
+
+    @property
+    def committer(self):
+        """ Information about the commit author.
+
+        :rtype: :class:`dict` with `name` and `email` of the author
+        """
+        return {
+            'name': self.name,
+            'email': self.email,
+        }
+
     async def validate_v1_path(self, path, **kwargs):
+        """Ensure path is in Waterbutler v1 format.
+
+        :param str path: The path to a file
+        :param dict kwargs: Without `ref` or `branch` will use `default_branch`
+        :rtype: WaterButlerPath
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        """
         if not getattr(self, '_repo', None):
-            self._repo = await self._fetch_repo()
-            self.default_branch = self._repo['default_branch']
+            try:
+                self._repo = await self._fetch_repo()
+                self.default_branch = self._repo['default_branch']
+            except:
+                raise exceptions.NotFoundError(
+                    'path information not found',
+                )
 
         branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
 
         if path == '/':
             return WaterButlerPath(path, _ids=[(branch_ref, '')])
-
-        branch_data = await self._fetch_branch(branch_ref)
-        await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
 
         path = WaterButlerPath(path)
         for part in path.parts:
@@ -107,20 +123,13 @@ class GitLabProvider(provider.BaseProvider):
         return path
 
     async def validate_path(self, path, **kwargs):
-        if not getattr(self, '_repo', None):
-            self._repo = await self._fetch_repo()
-            self.default_branch = self._repo['default_branch']
+        """Ensure path is in Waterbutler format.
 
-        path = WaterButlerPath(path)
-        branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
+        :param str path: The path to a file
+        :rtype: WaterButlerPath
+        """
 
-        for part in path.parts:
-            part._id = (branch_ref, None)
-
-        # TODO Validate that filesha is a valid sha
-        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
-
-        return path
+        return WaterButlerPath(path)
 
     async def revalidate_path(self, base, path, folder=False):
         return base.child(path, _id=((base.identifier[0], None)), folder=folder)
@@ -128,44 +137,23 @@ class GitLabProvider(provider.BaseProvider):
     def can_duplicate_names(self):
         return False
 
-    @property
-    def default_headers(self):
-        return {'Authorization': 'Bearer {}'.format(self.token)}
-
-    @property
-    def committer(self):
-        return {
-            'name': self.name,
-            'email': self.email,
-        }
-
     def build_repo_url(self, *segments, **query):
+        """Build the repository url with the params, retuning the complete repository url.
+
+        :param list segments: The list of child paths
+        :param dict query: The query used to append the parameters on url
+        :rtype: str
+        """
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
 
-    def can_intra_move(self, other, path=None):
-        return self.can_intra_copy(other, path=path)
-
-    def can_intra_copy(self, other, path=None):
-        return (
-            type(self) == type(other) and
-            self.repo == other.repo and
-            self.owner == other.owner
-        )
-
-    # do these need async?
-    async def intra_copy(self, dest_provider, src_path, dest_path):
-        return (await self._do_intra_move_or_copy(src_path, dest_path, True))
-
-    async def intra_move(self, dest_provider, src_path, dest_path):
-        return (await self._do_intra_move_or_copy(src_path, dest_path, False))
-
     async def download(self, path, revision=None, **kwargs):
-        '''Get the stream to the specified file on github
-        :param str path: The path to the file on github
-        :param str ref: The git 'ref' a branch or commit sha at which to get the file from
-        :param dict kwargs: Ignored
-        '''
+        """Get the stream to the specified file on gitlab.
+
+        :param str path: The path to the file on gitlab
+        :param str revision: The revision of the file on gitlab
+        :param dict kwargs: Must have `branch`
+        """
 
         if 'branch' not in kwargs:
             raise exceptions.DownloadError(
@@ -173,7 +161,8 @@ class GitLabProvider(provider.BaseProvider):
                 code=400,
             )
 
-        url = self.build_repo_url('repository', 'files', file_path=path.full_path, ref=kwargs['branch'])
+        url = self.build_repo_url('repository', 'files', file_path=path.full_path,
+                                  ref=kwargs['branch'])
 
         headers = {"Authorization": 'Bearer {}'.format(self.token)}
 
@@ -205,6 +194,16 @@ class GitLabProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(resp, len(raw))
 
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
+        """Uploads the given stream to GitLab.
+
+        :param waterbutler.core.streams.RequestWrapper stream: The stream to put to GitLab
+        :param str path: The full path of the key to upload to/into
+        :param str message: The commit message
+        :param str branch: The branch which the ``stream`` will be added
+        :param dict kwargs: Ignored
+
+        :rtype: dict, bool
+        """
         assert self.name is not None
         assert self.email is not None
 
@@ -222,7 +221,7 @@ class GitLabProvider(provider.BaseProvider):
 
     async def delete(self, path, sha=None, message=None, branch=None,
                confirm_delete=0, **kwargs):
-        """Delete file, folder, or provider root contents
+        """Delete file, folder, or provider root contents.
 
         :param WaterButlerPath path: WaterButlerPath path object for file, folder, or root
         :param str sha: SHA-1 checksum of file/folder object
@@ -237,18 +236,29 @@ class GitLabProvider(provider.BaseProvider):
             await self._delete_file(path, message, branch, **kwargs)
 
     async def metadata(self, path, ref=None, recursive=False, **kwargs):
-        """Get Metadata about the requested file or folder
+        """Get Metadata about the requested file or folder.
+
         :param str path: The path to a file or folder
         :param str ref: A branch or a commit SHA
-        :rtype dict:
-        :rtype list:
+        :rtype: :class:`GitLabFileTreeMetadata`
+        :rtype: :class:`list` of :class:`GitLabFileContentMetadata` or :class:`GitLabFolderContentMetadata`
         """
         if path.is_dir:
             return (await self._metadata_folder(path, ref=ref, recursive=recursive, **kwargs))
         else:
-            return (await self._metadata_file(path, ref=ref, **kwargs))
+            if ref is not None:
+                return (await self._metadata_file(path, ref=ref, **kwargs))
+            else:
+                return (await self._metadata_file(path, **kwargs))
 
     async def revisions(self, path, sha=None, **kwargs):
+        """Get past versions of the request file.
+
+        :param str path: The user specified path
+        :param str sha: The sha of the revision
+        :param dict kwargs: Ignored
+        :rtype: :class:`list` of :class:`GitLabRevision`
+        """
         resp = await self.make_request(
             'GET',
             self.build_repo_url('commits', path=path.path, sha=sha or path.identifier),
@@ -262,6 +272,14 @@ class GitLabProvider(provider.BaseProvider):
         ]
 
     async def create_folder(self, path, branch=None, message=None, **kwargs):
+        """Create a folder at `path`. Returns a `GitLabFolderContentMetadata` object
+        if successful.
+
+        :param str path: user-supplied path to create. must be a directory
+        :param str branch: user-supplied repository git branch to create folder
+        :param str message: user-supplied message used as commit message
+        :rtype: :class:`GitLabFolderContentMetadata`
+        """
         WaterButlerPath.validate_folder(path)
 
         message = message or settings.UPLOAD_FILE_MESSAGE
@@ -269,7 +287,7 @@ class GitLabProvider(provider.BaseProvider):
 
         keep_path = path.child('.gitkeep')
 
-        content = '\n'
+        content = ''
         stream = streams.StringStream(content)
 
         resp, insert = await self.upload(stream, keep_path, message, branch, **kwargs)
@@ -288,7 +306,8 @@ class GitLabProvider(provider.BaseProvider):
         if message is None:
             message = 'File {} deleted'.format(path.full_path)
 
-        url = self.build_repo_url('repository', 'files', file_path=path.full_path, branch_name=branch, commit_message=message)
+        url = self.build_repo_url('repository', 'files', file_path=path.full_path,
+                                  branch_name=branch, commit_message=message)
 
         headers = {"Authorization": 'Bearer {}'.format(self.token)}
 
@@ -325,52 +344,6 @@ class GitLabProvider(provider.BaseProvider):
         )
         await resp.release()
 
-    async def _delete_root_folder_contents(self, path, message=None, **kwargs):
-        """Delete the contents of the root folder.
-
-        :param WaterButlerPath path: WaterButlerPath path object for folder
-        :param str message: Commit message
-        """
-        branch_data = await self._fetch_branch(path.identifier[0])
-        old_commit_sha = branch_data['commit']['sha']
-        tree_sha = GIT_EMPTY_SHA
-        message = message or settings.DELETE_FOLDER_MESSAGE
-        commit_resp = await self.make_request(
-            'POST',
-            self.build_repo_url('git', 'commits'),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({
-                'message': message,
-                'committer': self.committer,
-                'tree': tree_sha,
-                'parents': [
-                    old_commit_sha,
-                ],
-            }),
-            expects=(201, ),
-            throws=exceptions.DeleteError,
-        )
-        commit_data = await commit_resp.json()
-        commit_sha = commit_data['sha']
-
-        # Update repository reference, point to the newly created commit.
-        # No need to store data, rely on expects to raise exceptions
-        await self.make_request(
-            'PATCH',
-            self.build_repo_url('git', 'refs', 'heads', path.identifier[0]),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({'sha': commit_sha}),
-            expects=(200, ),
-            throws=exceptions.DeleteError,
-        )
-
-    async def _fetch_branch(self, branch):
-        resp = await self.make_request(
-            'GET',
-            self.build_repo_url('branches', branch)
-        )
-        return (await resp.json())
-
     async def _fetch_contents(self, path, ref=None):
         url = furl.furl(self.build_repo_url('repository', 'tree'))
 
@@ -396,39 +369,6 @@ class GitLabProvider(provider.BaseProvider):
             throws=exceptions.MetadataError
         )
         return (await resp.json())
-
-    async def _fetch_tree(self, sha, recursive=False):
-        url = furl.furl(self.build_repo_url('git', 'trees', sha))
-        if recursive:
-            url.args.update({'recursive': 1})
-        resp = await self.make_request(
-            'GET',
-            url.url,
-            expects=(200, ),
-            throws=exceptions.MetadataError
-        )
-        tree = await resp.json()
-
-        if tree['truncated']:
-            raise GitLabUnsupportedRepoError
-
-        return tree
-
-    async def _search_tree_for_path(self, path, tree_sha, recursive=True):
-        """Search through the given tree for an entity matching the name and type of `path`.
-        """
-        tree = await self._fetch_tree(tree_sha, recursive=True)
-
-        if tree['truncated']:
-            raise GitLabUnsupportedRepoError
-
-        implicit_type = 'tree' if path.endswith('/') else 'blob'
-
-        for entity in tree['tree']:
-            if entity['path'] == path.strip('/') and entity['type'] == implicit_type:
-                return entity
-
-        raise exceptions.NotFoundError(str(path))
 
     async def _upsert_blob(self, stream, filepath, branchname, insert=True):
         if type(stream) is not streams.Base64EncodeStream:
@@ -501,13 +441,11 @@ class GitLabProvider(provider.BaseProvider):
                 if item['type'] == 'tree':
                     ret.append(GitLabFolderContentMetadata(item, thepath=path, commit=commit))
                 else:
-                    ret.append(GitLabFileContentMetadata(item, web_view=item['name'], thepath=path, commit=commit))
+                    ret.append(GitLabFileContentMetadata(item, web_view=item['name'],
+                                                         thepath=path, commit=commit))
             return ret
 
-    async def _metadata_file(self, path, revision=None, ref=None, **kwargs):
-
-        if ref is None:
-            ref = 'master'
+    async def _metadata_file(self, path, revision=None, ref='master', **kwargs):
 
         resp = await self.make_request(
             'GET',
@@ -521,121 +459,8 @@ class GitLabProvider(provider.BaseProvider):
         if not commits:
             raise exceptions.NotFoundError(str(path))
 
-        data = {'name': commits['file_name'], 'id': commits['blob_id'], 'path': commits['file_path'], 'size': commits['size']}
+        data = {'name': commits['file_name'], 'id': commits['blob_id'],
+                'path': commits['file_path'], 'size': commits['size']}
 
-        return GitLabFileTreeMetadata(data, commit=commits['commit_id'], thepath=commits['file_path'])
-
-    async def _get_latest_sha(self, ref='master'):
-        resp = await self.make_request(
-            'GET',
-            self.build_repo_url('git', 'refs', 'heads', ref),
-            expects=(200, ),
-            throws=exceptions.ProviderError
-        )
-        data = await resp.json()
-        return data['object']['sha']
-
-    async def _do_intra_move_or_copy(self, src_path, dest_path, is_copy):
-
-        # ON PATHS:
-        #   WB and GH use slightly different default conventions for their paths, so we often
-        #   have to munge our WB paths before comparison. Here is a quick overview:
-        #     WB (dirs):  wb_dir.path == 'foo/bar/'     str(wb_dir) == '/foo/bar/'
-        #     WB (file):  wb_file.path = 'foo/bar.txt'  str(wb_file) == '/foo/bar.txt'
-        #     GH (dir):   'foo/bar'
-        #     GH (file):  'foo/bar.txt'
-
-        branch = src_path.identifier[0]
-        branch_data = await self._fetch_branch(branch)
-
-        old_commit_sha = branch_data['commit']['sha']
-        old_commit_tree_sha = branch_data['commit']['commit']['tree']['sha']
-
-        tree = await self._fetch_tree(old_commit_tree_sha, recursive=True)
-        exists = any(x['path'] == dest_path.path.rstrip('/') for x in tree['tree'])
-
-        # these are the blobs to copy/move
-        blobs = [
-            item
-            for item in tree['tree']
-            if src_path.is_dir and item['path'].startswith(src_path.path) or
-            src_path.is_file and item['path'] == src_path.path
-        ]
-
-        # if we're overwriting an existing dir, we must remove its blobs from the tree
-        if dest_path.is_dir:
-            tree['tree'] = [
-                item
-                for item in tree['tree']
-                if not item['path'].startswith(dest_path.path)
-            ]
-
-        if len(blobs) == 0:
-            raise exceptions.NotFoundError(str(src_path))
-
-        if src_path.is_file:
-            assert len(blobs) == 1, 'Found multiple targets'
-
-        # if this is a copy, duplicate and append our source blobs. The originals will be updated
-        # with the new destination path.
-        if is_copy:
-            tree['tree'].extend([copy.deepcopy(blob) for blob in blobs])
-
-        # see, I told you they'd be overwritten
-        for blob in blobs:
-            blob['path'] = blob['path'].replace(src_path.path, dest_path.path, 1)
-
-        # github infers tree contents from blob paths
-        # see: http://www.levibotelho.com/development/commit-a-file-with-the-github-api/
-        tree['tree'] = [item for item in tree['tree'] if item['type'] != 'tree']
-        new_tree_data = await self._create_tree({'tree': tree['tree']})
-        new_tree_sha = new_tree_data['sha']
-
-        # Create a new commit which references our top most tree change.
-        commit_resp = await self.make_request(
-            'POST',
-            self.build_repo_url('git', 'commits'),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({
-                'tree': new_tree_sha,
-                'parents': [old_commit_sha],
-                'committer': self.committer,
-                'message': settings.COPY_MESSAGE if is_copy else settings.MOVE_MESSAGE
-            }),
-            expects=(201, ),
-            throws=exceptions.DeleteError,
-        )
-
-        commit = await commit_resp.json()
-
-        # Update repository reference, point to the newly created commit.
-        # No need to store data, rely on expects to raise exceptions
-        resp = await self.make_request(
-            'PATCH',
-            self.build_repo_url('git', 'refs', 'heads', branch),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({'sha': commit['sha']}),
-            expects=(200, ),
-            throws=exceptions.DeleteError,
-        )
-        await resp.release()
-
-        if dest_path.is_file:
-            assert len(blobs) == 1, 'Destination file should have exactly one candidate'
-            return GitLabFileTreeMetadata(blobs[0], commit=commit), not exists
-
-        folder = GitLabFolderTreeMetadata({
-            'path': dest_path.path.strip('/')
-        }, commit=commit)
-
-        folder.children = []
-
-        for item in blobs:
-            if item['path'] == src_path.path.rstrip('/'):
-                continue
-            if item['type'] == 'tree':
-                folder.children.append(GitLabFolderTreeMetadata(item))
-            else:
-                folder.children.append(GitLabFileTreeMetadata(item))
-
-        return folder, not exists
+        return GitLabFileTreeMetadata(data, commit=commits['commit_id'],
+                                      thepath=commits['file_path'])
