@@ -266,6 +266,14 @@ class GitLabProvider(provider.BaseProvider):
         ]
 
     async def create_folder(self, path, branch=None, message=None, **kwargs):
+        """Create a folder at `path`. Returns a `GitLabFolderContentMetadata` object
+        if successful.
+
+        :param str path: user-supplied path to create. must be a directory.
+        :param str branch: user-supplied repository branch to create folder.
+        :param str message: user-supplied message used as commit message.
+        :rtype: :class:`waterbutler.providers.gitlab.metadata.GitLabFileContentMetadata`.
+        """
         WaterButlerPath.validate_folder(path)
 
         message = message or settings.UPLOAD_FILE_MESSAGE
