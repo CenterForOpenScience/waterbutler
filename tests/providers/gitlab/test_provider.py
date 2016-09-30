@@ -64,6 +64,11 @@ def provider(auth, credentials, settings, repo_metadata):
     provider = GitLabProvider(auth, credentials, settings)
     return provider
 
+@pytest.fixture
+def other(auth, credentials, settings, repo_metadata):
+    provider = GitLabProvider(auth, credentials, settings)
+    return provider
+
 class TestHelpers:
     def test_build_repo_url(self, provider, settings):
         expected = 'http://base.url/projects/123/contents'
@@ -310,3 +315,13 @@ class TestCreateFolter:
         aiohttpretty.register_json_uri('PUT', url)
 
         result = await provider.create_folder(waterbutler_path, 'master', 'commit message')
+
+class TestOperations:
+    def test_cant_duplicate_names(self, provider):
+        assert provider.can_duplicate_names() == False
+
+    def test_cant_intra_copy(self, provider, other):
+        assert provider.can_intra_copy(other) == False
+
+    def test_cant_intra_move(self, provider, other):
+        assert provider.can_intra_move(other) == False

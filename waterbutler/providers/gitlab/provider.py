@@ -76,6 +76,19 @@ class GitLabProvider(provider.BaseProvider):
         self.BASE_URL = self.settings['base_url']
         self.VIEW_URL = self.settings['view_url']
 
+    @property
+    def default_headers(self):
+        """ Headers to be included with every request Commonly OAuth headers
+        """
+        return {'Authorization': 'Bearer {}'.format(self.token)}
+
+    @property
+    def committer(self):
+        return {
+            'name': self.name,
+            'email': self.email,
+        }
+
     async def validate_v1_path(self, path, **kwargs):
         if not getattr(self, '_repo', None):
             self._repo = await self._fetch_repo()
@@ -120,37 +133,9 @@ class GitLabProvider(provider.BaseProvider):
     def can_duplicate_names(self):
         return False
 
-    @property
-    def default_headers(self):
-        return {'Authorization': 'Bearer {}'.format(self.token)}
-
-    @property
-    def committer(self):
-        return {
-            'name': self.name,
-            'email': self.email,
-        }
-
     def build_repo_url(self, *segments, **query):
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
-
-    def can_intra_move(self, other, path=None):
-        return self.can_intra_copy(other, path=path)
-
-    def can_intra_copy(self, other, path=None):
-        return (
-            type(self) == type(other) and
-            self.repo == other.repo and
-            self.owner == other.owner
-        )
-
-    # do these need async?
-    async def intra_copy(self, dest_provider, src_path, dest_path):
-        return (await self._do_intra_move_or_copy(src_path, dest_path, True))
-
-    async def intra_move(self, dest_provider, src_path, dest_path):
-        return (await self._do_intra_move_or_copy(src_path, dest_path, False))
 
     async def download(self, path, revision=None, **kwargs):
         """Get the stream to the specified file on gitlab.
@@ -546,108 +531,3 @@ class GitLabProvider(provider.BaseProvider):
         )
         data = await resp.json()
         return data['object']['sha']
-
-    async def _do_intra_move_or_copy(self, src_path, dest_path, is_copy):
-
-        # ON PATHS:
-        #   WB and GH use slightly different default conventions for their paths, so we often
-        #   have to munge our WB paths before comparison. Here is a quick overview:
-        #     WB (dirs):  wb_dir.path == 'foo/bar/'     str(wb_dir) == '/foo/bar/'
-        #     WB (file):  wb_file.path = 'foo/bar.txt'  str(wb_file) == '/foo/bar.txt'
-        #     GH (dir):   'foo/bar'
-        #     GH (file):  'foo/bar.txt'
-
-        branch = src_path.identifier[0]
-        branch_data = await self._fetch_branch(branch)
-
-        old_commit_sha = branch_data['commit']['sha']
-        old_commit_tree_sha = branch_data['commit']['commit']['tree']['sha']
-
-        tree = await self._fetch_tree(old_commit_tree_sha, recursive=True)
-        exists = any(x['path'] == dest_path.path.rstrip('/') for x in tree['tree'])
-
-        # these are the blobs to copy/move
-        blobs = [
-            item
-            for item in tree['tree']
-            if src_path.is_dir and item['path'].startswith(src_path.path) or
-            src_path.is_file and item['path'] == src_path.path
-        ]
-
-        # if we're overwriting an existing dir, we must remove its blobs from the tree
-        if dest_path.is_dir:
-            tree['tree'] = [
-                item
-                for item in tree['tree']
-                if not item['path'].startswith(dest_path.path)
-            ]
-
-        if len(blobs) == 0:
-            raise exceptions.NotFoundError(str(src_path))
-
-        if src_path.is_file:
-            assert len(blobs) == 1, 'Found multiple targets'
-
-        # if this is a copy, duplicate and append our source blobs. The originals will be updated
-        # with the new destination path.
-        if is_copy:
-            tree['tree'].extend([copy.deepcopy(blob) for blob in blobs])
-
-        # see, I told you they'd be overwritten
-        for blob in blobs:
-            blob['path'] = blob['path'].replace(src_path.path, dest_path.path, 1)
-
-        # gitlab infers tree contents from blob paths
-        # see: http://www.levibotelho.com/development/commit-a-file-with-the-gitlab-api/
-        tree['tree'] = [item for item in tree['tree'] if item['type'] != 'tree']
-        new_tree_data = await self._create_tree({'tree': tree['tree']})
-        new_tree_sha = new_tree_data['sha']
-
-        # Create a new commit which references our top most tree change.
-        commit_resp = await self.make_request(
-            'POST',
-            self.build_repo_url('git', 'commits'),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({
-                'tree': new_tree_sha,
-                'parents': [old_commit_sha],
-                'committer': self.committer,
-                'message': settings.COPY_MESSAGE if is_copy else settings.MOVE_MESSAGE
-            }),
-            expects=(201, ),
-            throws=exceptions.DeleteError,
-        )
-
-        commit = await commit_resp.json()
-
-        # Update repository reference, point to the newly created commit.
-        # No need to store data, rely on expects to raise exceptions
-        resp = await self.make_request(
-            'PATCH',
-            self.build_repo_url('git', 'refs', 'heads', branch),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({'sha': commit['sha']}),
-            expects=(200, ),
-            throws=exceptions.DeleteError,
-        )
-        await resp.release()
-
-        if dest_path.is_file:
-            assert len(blobs) == 1, 'Destination file should have exactly one candidate'
-            return GitLabFileTreeMetadata(blobs[0], commit=commit), not exists
-
-        folder = GitLabFolderTreeMetadata({
-            'path': dest_path.path.strip('/')
-        }, commit=commit)
-
-        folder.children = []
-
-        for item in blobs:
-            if item['path'] == src_path.path.rstrip('/'):
-                continue
-            if item['type'] == 'tree':
-                folder.children.append(GitLabFolderTreeMetadata(item))
-            else:
-                folder.children.append(GitLabFileTreeMetadata(item))
-
-        return folder, not exists
