@@ -76,18 +76,30 @@ class GitLabProvider(provider.BaseProvider):
 
     @property
     def default_headers(self):
-        """ Headers to be included with every request Commonly OAuth headers
+        """ Headers to be included with every request.
+
+        :rtype: :class:`dict` with `Authorization` token
         """
         return {'Authorization': 'Bearer {}'.format(self.token)}
 
     @property
     def committer(self):
+        """ Information about the commit author.
+
+        :rtype: :class:`dict` with `name` and `email` of the author
+        """
         return {
             'name': self.name,
             'email': self.email,
         }
 
     async def validate_v1_path(self, path, **kwargs):
+        """Ensure path is in Waterbutler v1 format.
+
+        :param str path: The path to a file
+        :param dict kwargs: Without `ref` or `branch` will use `default_branch`
+        :rtype: WaterButlerPath
+        """
         if not getattr(self, '_repo', None):
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
@@ -110,6 +122,12 @@ class GitLabProvider(provider.BaseProvider):
         return path
 
     async def validate_path(self, path, **kwargs):
+        """Ensure path is in Waterbutler format.
+
+        :param str path: The path to a file
+        :param dict kwargs: Without `ref` or `branch` will use `default_branch`
+        :rtype: WaterButlerPath
+        """
         if not getattr(self, '_repo', None):
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
@@ -132,6 +150,12 @@ class GitLabProvider(provider.BaseProvider):
         return False
 
     def build_repo_url(self, *segments, **query):
+        """Build the repository url with the params, retuning the complete repository url.
+
+        :param list segments: The list of child paths
+        :param dict query: The query used to append the parameters on url
+        :rtype: str
+        """
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
 
@@ -140,7 +164,7 @@ class GitLabProvider(provider.BaseProvider):
 
         :param str path: The path to the file on gitlab
         :param str revision: The revision of the file on gitlab
-        :param dict kwargs: Must have 'branch'
+        :param dict kwargs: Must have `branch`
         """
 
         if 'branch' not in kwargs:
@@ -208,7 +232,7 @@ class GitLabProvider(provider.BaseProvider):
 
     async def delete(self, path, sha=None, message=None, branch=None,
                confirm_delete=0, **kwargs):
-        """Delete file, folder, or provider root contents
+        """Delete file, folder, or provider root contents.
 
         :param WaterButlerPath path: WaterButlerPath path object for file, folder, or root
         :param str sha: SHA-1 checksum of file/folder object
@@ -227,8 +251,8 @@ class GitLabProvider(provider.BaseProvider):
 
         :param str path: The path to a file or folder
         :param str ref: A branch or a commit SHA
-        :rtype dict:
-        :rtype list:
+        :rtype: :class:`GitLabFileTreeMetadata`
+        :rtype: :class:`list` of :class:`GitLabFileContentMetadata` or :class:`GitLabFolderContentMetadata`
         """
         if path.is_dir:
             return (await self._metadata_folder(path, ref=ref, recursive=recursive, **kwargs))
@@ -236,6 +260,13 @@ class GitLabProvider(provider.BaseProvider):
             return (await self._metadata_file(path, ref=ref, **kwargs))
 
     async def revisions(self, path, sha=None, **kwargs):
+        """Get past versions of the request file.
+
+        :param str path: The user specified path
+        :param str sha: The sha of the revision
+        :param dict kwargs: Ignored
+        :rtype: :class:`list` of :class:`GitLabRevision`
+        """
         resp = await self.make_request(
             'GET',
             self.build_repo_url('commits', path=path.path, sha=sha or path.identifier),
@@ -252,10 +283,10 @@ class GitLabProvider(provider.BaseProvider):
         """Create a folder at `path`. Returns a `GitLabFolderContentMetadata` object
         if successful.
 
-        :param str path: user-supplied path to create. must be a directory.
-        :param str branch: user-supplied repository branch to create folder.
-        :param str message: user-supplied message used as commit message.
-        :rtype: :class:`waterbutler.providers.gitlab.metadata.GitLabFileContentMetadata`.
+        :param str path: user-supplied path to create. must be a directory
+        :param str branch: user-supplied repository git branch to create folder
+        :param str message: user-supplied message used as commit message
+        :rtype: :class:`GitLabFolderContentMetadata`
         """
         WaterButlerPath.validate_folder(path)
 
