@@ -41,6 +41,7 @@ setup(
         ],
         'waterbutler.providers': [
             'cloudfiles = waterbutler.providers.cloudfiles:CloudFilesProvider',
+            'dmptool = waterbutler.providers.dmptool:DmptoolProvider',
             'dropbox = waterbutler.providers.dropbox:DropboxProvider',
             'evernote = waterbutler.providers.evernote:EvernoteProvider',
             'figshare = waterbutler.providers.figshare:FigshareProvider',

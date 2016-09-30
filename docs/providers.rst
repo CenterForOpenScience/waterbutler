@@ -8,6 +8,7 @@ Providers
    provider.box
    provider.cloudfiles
    provider.dataverse
+   provider.dmptool
    provider.dropbox
    provider.evernote
    provider.figshare

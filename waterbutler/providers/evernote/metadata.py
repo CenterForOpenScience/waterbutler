@@ -21,7 +21,7 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
     @property
     def name(self):
 
-        print("EvernoteFileMetadata.name: self.raw['title']", self.raw['title'])
+        # print("EvernoteFileMetadata.name: self.raw['title']", self.raw['title'])
         return self.raw['title'] + ".enml"
 
     @property

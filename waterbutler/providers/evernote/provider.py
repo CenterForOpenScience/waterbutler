@@ -84,7 +84,7 @@ class EvernoteProvider(provider.BaseProvider):
 
     async def _file_metadata(self, path):
 
-        print("_file_metadata -> path: ", path)
+        # print("_file_metadata -> path: ", path)
 
         token = self.credentials['token']
         note_md = await _evernote_note(path, token, withContent=False)
@@ -101,7 +101,7 @@ class EvernoteProvider(provider.BaseProvider):
          IIRC, Evernote doesn’t have a hierarchy, so the root directory is just a collection of all available notes.
         """
 
-        print("metadata: path: {}".format(path), type(path), path.is_dir)
+        # print("metadata: path: {}".format(path), type(path), path.is_dir)
 
         if str(path) == u'/':
             package = await self._package_metadata()
