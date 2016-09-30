@@ -122,14 +122,18 @@ class ZipLocalFile(MultiStream):
     """
     def __init__(self, file_tuple):
         filename, stream = file_tuple
-        filename = filename.strip('/')
         # Build a ZipInfo instance to use for the file's header and footer
         self.zinfo = zipfile.ZipInfo(
             filename=filename,
             date_time=time.localtime(time.time())[:6],
         )
+        # If the file is a directory, set the directory flag
+        if self.zinfo.filename[-1] == '/':
+            self.zinfo.external_attr = 0o40775 << 16   # drwxrwxr-x
+            self.zinfo.external_attr |= 0x10           # Directory flag
+        else:
+            self.zinfo.external_attr = 0o600 << 16
         self.zinfo.compress_type = zipfile.ZIP_DEFLATED
-        self.zinfo.external_attr = 0o600 << 16
         self.zinfo.header_offset = 0
         self.zinfo.flag_bits |= 0x08
         # Initial CRC: value will be updated as file is streamed

@@ -4,6 +4,7 @@ import asyncio
 import logging
 import functools
 import dateutil.parser
+from types import MethodType
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
@@ -130,7 +131,8 @@ class ZipStreamGenerator:
     async def __anext__(self):
         if not self.remaining:
             raise StopAsyncIteration
-        path = self.provider.path_from_metadata(*self.remaining.pop(0))
+        current = self.remaining.pop(0)
+        path = self.provider.path_from_metadata(*current)
         if path.is_dir:
             items = await self.provider.metadata(path)
             if items:
@@ -143,12 +145,11 @@ class ZipStreamGenerator:
                     self._eof = True
                     data = bytearray(b'\0')
                     return data
-                def at_eof(self):
-                    return self._eof
-                emptyFile = type('',(object,),
-                    {"_eof": False, "read": read, "at_eof": at_eof})()
-                path = path.path.replace(self.parent_path.path, '') + ".\n/"
-                return path, emptyFile
+                folder = current[1]
+                folder._eof = False
+                folder.read = MethodType(read, folder)
+                folder.at_eof = MethodType(lambda self: self._eof, folder)
+                return path.path.replace(self.parent_path.path, ''), folder
 
         return path.path.replace(self.parent_path.path, ''), await self.provider.download(path)
 
