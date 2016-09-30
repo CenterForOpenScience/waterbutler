@@ -155,14 +155,14 @@ class OwnCloudProvider(provider.BaseProvider):
             self._webdav_url_ + path.full_path,
             data=stream,
             headers={'Content-Length': str(stream.size)},
-            expects=(200, 201,),
+            expects=(201, 204,),
             throws=exceptions.UploadError,
             auth=self._auth,
             connector=self.connector
         )
         await response.release()
         meta = await self.metadata(path)
-        return meta, response.status == 200
+        return meta, response.status == 201
 
     async def delete(self, path, **kwargs):
         """

@@ -190,7 +190,7 @@ class TestCRUD:
         path = WaterButlerPath('/phile', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
-        aiohttpretty.register_uri('PUT', url, body=b'squares', auto_length=True)
+        aiohttpretty.register_uri('PUT', url, body=b'squares', auto_length=True, status=201)
         metadata, created = await provider.upload(file_stream, path)
         expected = OwnCloudFileMetadata('dissertation.aux','/owncloud/remote.php/webdav/Documents/phile',
         {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
