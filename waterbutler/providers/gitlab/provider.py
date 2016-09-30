@@ -1,4 +1,3 @@
-import copy
 import json
 import base64
 import aiohttp
@@ -17,7 +16,6 @@ from waterbutler.providers.gitlab.metadata import GitLabRevision
 from waterbutler.providers.gitlab.metadata import GitLabFileContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFolderContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFileTreeMetadata
-from waterbutler.providers.gitlab.metadata import GitLabFolderTreeMetadata
 from waterbutler.providers.gitlab.exceptions import GitLabUnsupportedRepoError
 
 
