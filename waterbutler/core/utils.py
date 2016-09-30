@@ -132,11 +132,23 @@ class ZipStreamGenerator:
             raise StopAsyncIteration
         path = self.provider.path_from_metadata(*self.remaining.pop(0))
         if path.is_dir:
-            self.remaining.extend([
-                (path, item) for item in
-                await self.provider.metadata(path)
-            ])
-            return await self.__anext__()
+            items = await self.provider.metadata(path)
+            if items:
+                self.remaining.extend([
+                    (path, item) for item in items
+                ])
+                return await self.__anext__()
+            else:
+                async def read(self, n):
+                    self._eof = True
+                    data = bytearray(b'\0')
+                    return data
+                def at_eof(self):
+                    return self._eof
+                emptyFile = type('',(object,),
+                    {"_eof": False, "read": read, "at_eof": at_eof})()
+                path = path.path.replace(self.parent_path.path, '') + ".\n/"
+                return path, emptyFile
 
         return path.path.replace(self.parent_path.path, ''), await self.provider.download(path)
 
