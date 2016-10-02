@@ -1,6 +1,6 @@
 from waterbutler import settings
 
-config = settings.get('DATAVERSE_PROVIDER_CONFIG')
+config = settings.child('DATAVERSE_PROVIDER_CONFIG')
 
 
 EDIT_MEDIA_BASE_URL = config.get('EDIT_MEDIA_BASE_URL', "/dvn/api/data-deposit/v1.1/swordv2/edit-media/")

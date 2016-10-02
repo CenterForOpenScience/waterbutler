@@ -6,9 +6,9 @@ import logging.config
 
 class SettingsDict(dict):
 
-    def __init__(self, parent=None):
+    def __init__(self, *args, parent=None, **kwargs):
         self.parent = parent
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def get(self, key, default=None):
         env = '{}_{}'.format(self.parent, key) if self.parent else key
@@ -18,7 +18,7 @@ class SettingsDict(dict):
 
     def child(self, key):
         env = '{}_{}'.format(self.parent, key) if self.parent else key
-        return SettingsDict(env)
+        return SettingsDict(self.get(key, {}), parent=env)
 
 
 PROJECT_NAME = 'waterbutler'
@@ -81,14 +81,10 @@ if not os.path.exists(config_path):
     logging.warning('No \'{}\' configuration file found'.format(config_path))
 else:
     with open(os.path.expanduser(config_path)) as fp:
-        config = json.load(fp)
+        config = SettingsDict(json.load(fp))
 
-
-def get(key):
-    value = config.get(key, None)
-    if not value:
-        value = SettingsDict(key)
-    return value
+def child(key):
+    return config.child(key)
 
 
 DEBUG = config.get('DEBUG', True)
@@ -100,7 +96,7 @@ logging.config.dictConfig(logging_config)
 
 SENTRY_DSN = config.get('SENTRY_DSN', None)
 
-analytics_config = get('ANALYTICS')
+analytics_config = config.child('ANALYTICS')
 MFR_IDENTIFYING_HEADER = analytics_config.get('MFR_IDENTIFYING_HEADER', 'X-Cos-Mfr-Render-Request')
 MFR_DOMAIN = analytics_config.get('MFR_DOMAIN', 'http://localhost:7778').rstrip('/')
 

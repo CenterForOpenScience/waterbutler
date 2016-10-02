@@ -6,7 +6,7 @@ from kombu import Queue, Exchange
 from waterbutler import settings
 
 
-config = settings.get('TASKS_CONFIG')
+config = settings.child('TASKS_CONFIG')
 
 BROKER_URL = config.get(
     'BROKER_URL',

@@ -3,7 +3,7 @@ import hashlib
 from waterbutler import settings
 
 
-config = settings.get('SERVER_CONFIG')
+config = settings.child('SERVER_CONFIG')
 
 ADDRESS = config.get('ADDRESS', 'localhost')
 PORT = config.get('PORT', 7777)
