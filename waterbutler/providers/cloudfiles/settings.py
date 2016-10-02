@@ -1,6 +1,6 @@
 from waterbutler import settings
 
-config = settings.get('CLOUDFILES_PROVIDER_CONFIG')
+config = settings.child('CLOUDFILES_PROVIDER_CONFIG')
 
 
 TEMP_URL_SECS = config.get('TEMP_URL_SECS', 100)

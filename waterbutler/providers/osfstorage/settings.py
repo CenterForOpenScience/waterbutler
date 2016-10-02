@@ -2,7 +2,7 @@ import hashlib
 
 from waterbutler import settings
 
-config = settings.get('OSFSTORAGE_PROVIDER_CONFIG')
+config = settings.child('OSFSTORAGE_PROVIDER_CONFIG')
 
 
 FILE_PATH_PENDING = config.get('FILE_PATH_PENDING', '/tmp/pending')

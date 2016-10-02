@@ -1,6 +1,6 @@
 from waterbutler import settings
 
-config = settings.get('GITHUB_PROVIDER_CONFIG')
+config = settings.child('GITHUB_PROVIDER_CONFIG')
 
 
 BASE_URL = config.get('BASE_URL', 'https://api.github.com/')
