@@ -16,6 +16,10 @@ class SettingsDict(dict):
             return os.environ.get(env)
         return super().get(key, default)
 
+    def child(self, key):
+        env = '{}_{}'.format(self.parent, key) if self.parent else key
+        return SettingsDict(env)
+
 
 PROJECT_NAME = 'waterbutler'
 PROJECT_CONFIG_PATH = '~/.cos'
@@ -96,18 +100,18 @@ logging.config.dictConfig(logging_config)
 
 SENTRY_DSN = config.get('SENTRY_DSN', None)
 
-analytics_config = config.get('ANALYTICS', {})
+analytics_config = get('ANALYTICS')
 MFR_IDENTIFYING_HEADER = analytics_config.get('MFR_IDENTIFYING_HEADER', 'X-Cos-Mfr-Render-Request')
 MFR_DOMAIN = analytics_config.get('MFR_DOMAIN', 'http://localhost:7778').rstrip('/')
 
-keen_config = analytics_config.get('KEEN', {})
+keen_config = analytics_config.child('KEEN')
 KEEN_API_BASE_URL = keen_config.get('API_BASE_URL', 'https://api.keen.io')
 KEEN_API_VERSION = keen_config.get('API_VERSION', '3.0')
 
-keen_private_config = keen_config.get('PRIVATE', {})
+keen_private_config = keen_config.child('PRIVATE')
 KEEN_PRIVATE_PROJECT_ID = keen_private_config.get('PROJECT_ID', None)
 KEEN_PRIVATE_WRITE_KEY = keen_private_config.get('WRITE_KEY', None)
 
-keen_public_config = keen_config.get('PUBLIC', {})
+keen_public_config = keen_config.child('PUBLIC')
 KEEN_PUBLIC_PROJECT_ID = keen_public_config.get('PROJECT_ID', None)
 KEEN_PUBLIC_WRITE_KEY = keen_public_config.get('WRITE_KEY', None)
