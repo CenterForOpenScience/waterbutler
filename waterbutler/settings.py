@@ -4,6 +4,19 @@ import logging
 import logging.config
 
 
+class SettingsDict(dict):
+
+    def __init__(self, parent=None):
+        self.parent = parent
+        super().__init__()
+
+    def get(self, key, default=None):
+        env = '{}_{}'.format(self.parent, key) if self.parent else key
+        if env in os.environ:
+            return os.environ.get(env)
+        return super().get(key, default)
+
+
 PROJECT_NAME = 'waterbutler'
 PROJECT_CONFIG_PATH = '~/.cos'
 
@@ -58,7 +71,7 @@ except KeyError:
     config_path = '{}/{}-{}.json'.format(PROJECT_CONFIG_PATH, PROJECT_NAME, env)
 
 
-config = {}
+config = SettingsDict()
 config_path = os.path.expanduser(config_path)
 if not os.path.exists(config_path):
     logging.warning('No \'{}\' configuration file found'.format(config_path))
@@ -67,20 +80,23 @@ else:
         config = json.load(fp)
 
 
-def get(key, default):
-    return config.get(key, default)
+def get(key):
+    value = config.get(key, None)
+    if not value:
+        value = SettingsDict(key)
+    return value
 
 
-DEBUG = get('DEBUG', True)
-REQUEST_LIMIT = get('REQUEST_LIMIT', 10)
+DEBUG = config.get('DEBUG', True)
+REQUEST_LIMIT = config.get('REQUEST_LIMIT', 10)
 OP_CONCURRENCY = config.get('OP_CONCURRENCY', 5)
 
-logging_config = get('LOGGING', DEFAULT_LOGGING_CONFIG)
+logging_config = config.get('LOGGING', DEFAULT_LOGGING_CONFIG)
 logging.config.dictConfig(logging_config)
 
-SENTRY_DSN = get('SENTRY_DSN', None)
+SENTRY_DSN = config.get('SENTRY_DSN', None)
 
-analytics_config = get('ANALYTICS', {})
+analytics_config = config.get('ANALYTICS', {})
 MFR_IDENTIFYING_HEADER = analytics_config.get('MFR_IDENTIFYING_HEADER', 'X-Cos-Mfr-Render-Request')
 MFR_DOMAIN = analytics_config.get('MFR_DOMAIN', 'http://localhost:7778').rstrip('/')
 

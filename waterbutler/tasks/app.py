@@ -3,7 +3,7 @@ from celery.signals import task_failure
 
 from raven import Client
 
-from waterbutler import settings
+from waterbutler.settings import config
 from waterbutler.tasks import settings as tasks_settings
 
 
@@ -25,7 +25,7 @@ def register_signal(client):
     task_failure.connect(process_failure_signal, weak=False)
 
 
-sentry_dsn = settings.get('SENTRY_DSN', None)
+sentry_dsn = config.get('SENTRY_DSN', None)
 if sentry_dsn:
     client = Client(sentry_dsn)
     register_signal(client)
