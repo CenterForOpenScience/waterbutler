@@ -83,6 +83,7 @@ else:
     with open(os.path.expanduser(config_path)) as fp:
         config = SettingsDict(json.load(fp))
 
+
 def child(key):
     return config.child(key)
 
