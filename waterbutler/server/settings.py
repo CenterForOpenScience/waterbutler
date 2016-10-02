@@ -1,12 +1,9 @@
 import hashlib
 
-try:
-    from waterbutler import settings
-except ImportError:
-    settings = {}
+from waterbutler import settings
 
-config = settings.get('SERVER_CONFIG', {})
 
+config = settings.get('SERVER_CONFIG')
 
 ADDRESS = config.get('ADDRESS', 'localhost')
 PORT = config.get('PORT', 7777)

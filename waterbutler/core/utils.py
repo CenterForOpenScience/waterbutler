@@ -10,7 +10,7 @@ import aiohttp
 from raven import Client
 from stevedore import driver
 
-from waterbutler import settings
+from waterbutler.settings import config
 from waterbutler.core import exceptions
 from waterbutler.server import settings as server_settings
 from waterbutler.core.signing import Signer
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 signer = Signer(server_settings.HMAC_SECRET, server_settings.HMAC_ALGORITHM)
 
-sentry_dsn = settings.get('SENTRY_DSN', None)
+sentry_dsn = config.get('SENTRY_DSN', None)
 client = Client(sentry_dsn) if sentry_dsn else None
 
 
