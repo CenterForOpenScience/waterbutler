@@ -1,4 +1,4 @@
-# from waterbutler.core import streams
+from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
@@ -16,12 +16,12 @@ def timestamp_iso(dt):
 
 
 @backgroundify
-def _dmptool_notes(token, host):
+def _dmptool_plans(token, host):
 
     client = DMPTool(token, host)
 
     plans = client.plans_owned()
-    print('_dmptool_notes: token, plans: ', token, plans)
+    print('_dmptool_plans: token, plans: ', token, plans)
 
     # TO DO:  length
     results = [{'title': plan['name'],
@@ -31,13 +31,13 @@ def _dmptool_notes(token, host):
               'length': 0}
               for plan in plans]
 
-    print('_dmptool_notes: results: ', results)
+    print('_dmptool_plans: results: ', results)
 
     return results
 
 
 @backgroundify
-def _dmptool_note(plan_id, token, host):
+def _dmptool_plan(plan_id, token, host):
 
     client = DMPTool(token, host)
     try:
@@ -80,9 +80,9 @@ class DmptoolProvider(provider.BaseProvider):
         print('DmptoolProvider._package_metadata:credentials', self.credentials)
         print('DmptoolProvider._package_metadata:settings', self.settings)
         print('DmptoolProvider._package_metadata:api_token', api_token)
-        notes = await _dmptool_notes(api_token, host)
+        plans = await _dmptool_plans(api_token, host)
 
-        return [DmptoolFileMetadata(note) for note in notes]
+        return [DmptoolFileMetadata(plan) for plan in plans]
 
     async def _file_metadata(self, path):
 
@@ -91,18 +91,18 @@ class DmptoolProvider(provider.BaseProvider):
         api_token = self.credentials['api_token']
         host = self.credentials['host']
 
-        note_md = await _dmptool_note(path, api_token, host)
+        plan_md = await _dmptool_plan(path, api_token, host)
 
-        return DmptoolFileMetadata(note_md)
+        return DmptoolFileMetadata(plan_md)
 
     async def metadata(self, path, **kwargs):
 
         # TO DO: IMPORTANT
         """
         responds to a GET request for the url you posted.
-        If the `path` query arg refers to a particular file/note, it should return the metadata for that file/note.
-        If `path` is just `/`, it should return a list of metadata objects for all file/notes in the root directory.
-         IIRC, Dmptool doesn’t have a hierarchy, so the root directory is just a collection of all available notes.
+        If the `path` query arg refers to a particular plan, it should return the metadata for that plan.
+        If `path` is just `/`, it should return a list of metadata objects for all plans in the root directory.
+         IIRC, Dmptool doesn’t have a hierarchy, so the root directory is just a collection of all available plans.
         """
 
         print("metadata: path: {}".format(path), type(path), path.is_dir)
@@ -152,28 +152,26 @@ class DmptoolProvider(provider.BaseProvider):
         # client = get_dmptool_client(token)
 
         # note_guid = path.parts[1].raw
-        # note_metadata = await _dmptool_note(note_guid, token, withContent=True)
+        # note_metadata = await _dmptool_plan(note_guid, token, withContent=True)
 
         # # convert to HTML
         # mediaStore = OSFMediaStore(client.get_note_store(), note_guid)
         # html = ENML2HTML.ENMLToHTML(note_metadata["content"], pretty=True, header=False,
         #       media_store=mediaStore)
 
-        # # HACK -- let me write markdown
-        # # html = "**Hello World**"
-        # # html = """<b>Hello world</b>. Go read the <a href="http://nytimes.com">NYT</a>"""
+        # HACK -- let me write markdown
+        html = "**Hello World**"
+        html = """<b>Hello world</b>. Go read the <a href="http://nytimes.com">NYT</a>"""
 
-        # stream = streams.StringStream(html)
-        # stream.content_type = "text/html"
-        # stream.name = "{}.html".format(note_guid)
+        stream = streams.StringStream(html)
+        stream.content_type = "text/markdown"
+        stream.name = "hack.md"
 
         # # modeling after gdoc provider
         # # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
 
-        # print("dmptool provider download: finishing")
-        # return stream
-
-        return None
+        print("dmptool provider download: finishing")
+        return stream
 
     async def validate_path(self, path, **kwargs):
         """
@@ -216,17 +214,18 @@ class DmptoolProvider(provider.BaseProvider):
         host = self.credentials['host']
 
         print("wbpath.parts[1].raw", wbpath.parts[1].raw)
-        note = await _dmptool_note(wbpath.parts[1].raw, api_token, host)
+        plan = await _dmptool_plan(wbpath.parts[1].raw, api_token, host)
 
-        if isinstance(note, Exception):
-            print("validate_v1_path. could not get Note", note)
+        if isinstance(plan, Exception):
+            print("validate_v1_path. could not get Plan", plan)
             raise exceptions.NotFoundError(str(path))
         else:
-            print("validate_v1_path. note is not None")
-            if note['notebook_guid'] == self.settings['folder']:
+            # TO: actually validate the plan
+            # for now just return wbpath
+            if True:
                 return wbpath
             else:
-                print('notebook_guid {} does not match folder {}'.format(note['notebook_guid'], self.settings['folder']))
+                print("plan does not exist")
                 raise exceptions.NotFoundError(str(path))
 
     def can_intra_move(self, other, path=None):

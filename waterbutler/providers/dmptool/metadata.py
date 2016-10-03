@@ -9,8 +9,10 @@ class DmptoolFileMetadata(metadata.BaseFileMetadata):
 
     @property
     def content_type(self):
-        # TO DO: Implement
-        return 'application/pdf'
+        # TO DO: move to pdf
+        # HACK --> pretend md
+        # return 'application/pdf'
+        return "text/markdown"
 
     @property
     def modified(self):
@@ -22,8 +24,9 @@ class DmptoolFileMetadata(metadata.BaseFileMetadata):
     @property
     def name(self):
 
+        # TO DO: change back to pdf --> md for now
         print("DmptoolFileMetadata.name: self.raw['title']", self.raw['title'])
-        return self.raw['title'] + ".pdf"
+        return self.raw['title'] + ".md"
 
     @property
     def provider(self):
