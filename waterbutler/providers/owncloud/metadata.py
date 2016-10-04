@@ -53,3 +53,25 @@ class OwnCloudFolderMetadata(BaseOwnCloudMetadata, metadata.BaseFolderMetadata):
         if '{DAV:}getcontenttype' in self.attributes:
             return str(self.attributes['{DAV:}getcontenttype'])
         return 'httpd/unix-directory'
+
+
+class OwnCloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
+
+    def __init__(self, modified):
+        self._modified = modified
+
+    @classmethod
+    def from_metadata(cls, metadata):
+        return OwnCloudFileRevisionMetadata(modified=metadata.modified)
+
+    @property
+    def version_identifier(self):
+        return 'revision'
+
+    @property
+    def version(self):
+        return 'latest'
+
+    @property
+    def modified(self):
+        return self._modified

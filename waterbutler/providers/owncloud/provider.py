@@ -6,6 +6,7 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.owncloud import utils
+from waterbutler.providers.owncloud.metadata import OwnCloudFileRevisionMetadata
 
 
 class OwnCloudProvider(provider.BaseProvider):
@@ -294,3 +295,7 @@ class OwnCloudProvider(provider.BaseProvider):
         meta = self.metadata(dest_path)
         meta.children = items
         return resp, resp.status == 200
+
+    async def revisions(self, path, **kwargs):
+        metadata = await self.metadata(path)
+        return [OwnCloudFileRevisionMetadata.from_metadata(metadata)]
