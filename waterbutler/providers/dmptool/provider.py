@@ -54,6 +54,12 @@ def _dmptool_plan(plan_id, token, host):
         return result
 
 
+@backgroundify
+def _dmptool_plan_pdf(plan_id, token, host):
+    client = DMPTool(token, host)
+    return client.plans_full(plan_id, 'pdf')
+
+
 class DmptoolProvider(provider.BaseProvider):
 
     NAME = 'dmptool'
@@ -124,26 +130,6 @@ class DmptoolProvider(provider.BaseProvider):
         :raises:   `waterbutler.core.exceptions.DownloadError`
         """
 
-        # TO DO: IMPORTANT
-        # what needs to be returned?
-        # looking at Google docs code for example
-        # https://github.com/CenterForOpenScience/waterbutler/blob/63b7d469e5545de9f2183b964fb6264fd9a423a5/waterbutler/providers/box/provider.py#L211-L227
-
-        # if path.identifier is None:
-        #     raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
-
-        # query = {}
-        # if revision and revision != path.identifier:
-        #     query['version'] = revision
-
-        # resp = await self.make_request(
-        #     'GET',
-        #     self.build_url('files', path.identifier, 'content', **query),
-        #     range=range,
-        #     expects=(200, 206),
-        #     throws=exceptions.DownloadError,
-        # )
-
         # ResponseStreamReader:
         # https://github.com/CenterForOpenScience/waterbutler/blob/63b7d469e5545de9f2183b964fb6264fd9a423a5/waterbutler/core/streams/http.py#L141-L183
 
@@ -159,13 +145,24 @@ class DmptoolProvider(provider.BaseProvider):
         # html = ENML2HTML.ENMLToHTML(note_metadata["content"], pretty=True, header=False,
         #       media_store=mediaStore)
 
-        # HACK -- let me write markdown
-        html = "**Hello World**"
-        html = """<b>Hello world</b>. Go read the <a href="http://nytimes.com">NYT</a>"""
+        try:
+            api_token = self.credentials['api_token']
+            host = self.credentials['host']
+            plan_id = path.parts[1].raw
+            pdf = await _dmptool_plan_pdf(plan_id, api_token, host)
+        except Exception as e:
+            print("DmptoolProvider.download: exception", e)
+        else:
+            print("DmptoolProvider.download: api_token, host, type(pdf)", path, api_token, host, type(pdf))
 
-        stream = streams.StringStream(html)
-        stream.content_type = "text/markdown"
-        stream.name = "hack.md"
+        # how to actually read the pdf file....
+
+        # HACK -- let me read a test pdf and stream
+        # test_pdf = open('/Users/raymondyee/Downloads/21222.pdf', 'rb').read()
+
+        stream = streams.StringStream(pdf)
+        stream.content_type = 'application/pdf'
+        stream.name = '{}.pdf'.format(plan_id)
 
         # # modeling after gdoc provider
         # # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
