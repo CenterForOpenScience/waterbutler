@@ -484,6 +484,11 @@ class GitHubProvider(provider.BaseProvider):
             'GET',
             self.build_repo_url('branches', branch)
         )
+
+        if resp.status == 404:
+            await resp.release()
+            raise exceptions.NotFoundError('. No such branch \'{}\''.format(branch))
+
         return (await resp.json())
 
     async def _fetch_contents(self, path, ref=None):
