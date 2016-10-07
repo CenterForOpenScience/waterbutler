@@ -393,8 +393,9 @@ class GoogleDriveProvider(provider.BaseProvider):
             parts[-1][1] = False
         while parts:
             current_part = parts.pop(0)
-            name, ext = os.path.splitext(current_part[0])
-            if ext in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
+            part_name, part_is_folder = current_part[0], current_part[1]
+            name, ext = os.path.splitext(part_name)
+            if not part_is_folder and ext in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
                 gd_ext = drive_utils.get_mimetype_from_ext(ext)
                 query = "title = '{}' " \
                         "and trashed = false " \
@@ -405,8 +406,8 @@ class GoogleDriveProvider(provider.BaseProvider):
                         "and mimeType != 'application/vnd.google-apps.form' " \
                         "and mimeType != 'application/vnd.google-apps.map' " \
                         "and mimeType {} '{}'".format(
-                            clean_query(current_part[0]),
-                            '=' if current_part[1] else '!=',
+                            clean_query(part_name),
+                            '=' if part_is_folder else '!=',
                             self.FOLDER_MIME_TYPE
                         )
             async with self.request(
@@ -425,8 +426,8 @@ class GoogleDriveProvider(provider.BaseProvider):
                     raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
                 return ret + [{
                     'id': None,
-                    'title': current_part[0],
-                    'mimeType': 'folder' if path.endswith('/') else '',
+                    'title': part_name,
+                    'mimeType': 'folder' if part_is_folder else '',
                 }]
 
             async with self.request(

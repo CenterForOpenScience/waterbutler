@@ -14,14 +14,6 @@ class BaseGoogleDriveMetadata(metadata.BaseMetadata):
     def provider(self):
         return 'googledrive'
 
-    # @property
-    # def path(self):
-    #     return '/' + self._path.raw_path
-
-    # @property
-    # def materialized_path(self):
-    #     return str(self._path)
-
     @property
     def extra(self):
         return {'revisionId': self.raw['version']}
