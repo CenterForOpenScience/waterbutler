@@ -3,13 +3,10 @@ import os
 from pkg_resources import iter_entry_points
 from kombu import Queue, Exchange
 
-try:
-    from waterbutler import settings
-except ImportError:
-    settings = {}
+from waterbutler import settings
 
-config = settings.get('TASKS_CONFIG', {})
 
+config = settings.child('TASKS_CONFIG')
 
 BROKER_URL = config.get(
     'BROKER_URL',
