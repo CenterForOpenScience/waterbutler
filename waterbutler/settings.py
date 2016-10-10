@@ -5,20 +5,77 @@ import logging.config
 
 
 class SettingsDict(dict):
+    """Allow overriding on-disk config via environment variables.  Normal config is done with a
+    hierarchical dict::
+
+        "SERVER_CONFIG": {
+          "HOST": "http://localhost:7777"
+        }
+
+    ``HOST`` can be retrieved in the python code with::
+
+        config = SettingsDict(json.load('local-config.json'))
+        server_cfg = config.child('SERVER_CONFIG')
+        host = server_cfg.get('HOST')
+
+    To override a value, join all of the parent keys and the child keys with an underscore::
+
+        $ SERVER_CONFIG_HOST='http://foo.bar.com' invoke server
+
+    Nested dicts can be handled with the ``.child()`` method.  Config keys will be all parent keys
+    joined by underscores::
+
+        "SERVER_CONFIG": {
+          "ANALYTICS": {
+            "PROJECT_ID": "foo"
+          }
+        }
+
+    The corresponding envvar for ``PROJECT_ID`` would be ``SERVER_CONFIG_ANALYTICS_PROJECT_ID``.
+    """
 
     def __init__(self, *args, parent=None, **kwargs):
         self.parent = parent
         super().__init__(*args, **kwargs)
 
     def get(self, key, default=None):
-        env = '{}_{}'.format(self.parent, key) if self.parent else key
+        """Fetch a config value for ``key`` from the settings.  First checks the env, then the
+        on-disk config.  If neither exists, returns ``default``."""
+        env = self.full_key(key)
         if env in os.environ:
             return os.environ.get(env)
         return super().get(key, default)
 
+    def get_bool(self, key, default=None):
+        """Fetch a config value and interpret as a bool. Since envvars are always strings,
+        interpret '0' and the empty string as False and '1' as True.  Anything else is probably
+        an acceident, so die screaming."""
+        value = self.get(key, default)
+        if value in [False, 0, '0', '']:
+            retval = False
+        elif value in [True, 1, '1']:
+            retval = True
+        else:
+            raise Exception(
+                '{} should be a truthy value, but instead we got {}'.format(
+                    self.full_key(key), value
+                )
+            )
+        return retval
+
+    def get_nullable(self, key, default=None):
+        """Fetch a config value and interpret the empty string as None. Useful for external code
+        that expects an explicit None."""
+        value = self.get(key, default)
+        return None if value == '' else value
+
+    def full_key(self, key):
+        """The name of the envvar which corresponds to this key."""
+        return '{}_{}'.format(self.parent, key) if self.parent else key
+
     def child(self, key):
-        env = '{}_{}'.format(self.parent, key) if self.parent else key
-        return SettingsDict(self.get(key, {}), parent=env)
+        """Fetch a sub-dict of the current dict."""
+        return SettingsDict(self.get(key, {}), parent=self.full_key(key))
 
 
 PROJECT_NAME = 'waterbutler'
