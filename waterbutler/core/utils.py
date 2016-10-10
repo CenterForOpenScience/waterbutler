@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 signer = Signer(server_settings.HMAC_SECRET, server_settings.HMAC_ALGORITHM)
 
-sentry_dsn = config.get('SENTRY_DSN', None)
+sentry_dsn = config.get_nullable('SENTRY_DSN', None)
 client = Client(sentry_dsn) if sentry_dsn else None
 
 

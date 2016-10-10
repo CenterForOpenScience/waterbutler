@@ -25,7 +25,7 @@ def register_signal(client):
     task_failure.connect(process_failure_signal, weak=False)
 
 
-sentry_dsn = config.get('SENTRY_DSN', None)
+sentry_dsn = config.get_nullable('SENTRY_DSN', None)
 if sentry_dsn:
     client = Client(sentry_dsn)
     register_signal(client)

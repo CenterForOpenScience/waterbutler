@@ -145,14 +145,14 @@ def child(key):
     return config.child(key)
 
 
-DEBUG = config.get('DEBUG', True)
-REQUEST_LIMIT = config.get('REQUEST_LIMIT', 10)
-OP_CONCURRENCY = config.get('OP_CONCURRENCY', 5)
+DEBUG = config.get_bool('DEBUG', True)
+REQUEST_LIMIT = int(config.get('REQUEST_LIMIT', 10))
+OP_CONCURRENCY = int(config.get('OP_CONCURRENCY', 5))
 
 logging_config = config.get('LOGGING', DEFAULT_LOGGING_CONFIG)
 logging.config.dictConfig(logging_config)
 
-SENTRY_DSN = config.get('SENTRY_DSN', None)
+SENTRY_DSN = config.get_nullable('SENTRY_DSN', None)
 
 analytics_config = config.child('ANALYTICS')
 MFR_IDENTIFYING_HEADER = analytics_config.get('MFR_IDENTIFYING_HEADER', 'X-Cos-Mfr-Render-Request')
@@ -163,9 +163,9 @@ KEEN_API_BASE_URL = keen_config.get('API_BASE_URL', 'https://api.keen.io')
 KEEN_API_VERSION = keen_config.get('API_VERSION', '3.0')
 
 keen_private_config = keen_config.child('PRIVATE')
-KEEN_PRIVATE_PROJECT_ID = keen_private_config.get('PROJECT_ID', None)
-KEEN_PRIVATE_WRITE_KEY = keen_private_config.get('WRITE_KEY', None)
+KEEN_PRIVATE_PROJECT_ID = keen_private_config.get_nullable('PROJECT_ID', None)
+KEEN_PRIVATE_WRITE_KEY = keen_private_config.get_nullable('WRITE_KEY', None)
 
 keen_public_config = keen_config.child('PUBLIC')
-KEEN_PUBLIC_PROJECT_ID = keen_public_config.get('PROJECT_ID', None)
-KEEN_PUBLIC_WRITE_KEY = keen_public_config.get('WRITE_KEY', None)
+KEEN_PUBLIC_PROJECT_ID = keen_public_config.get_nullable('PROJECT_ID', None)
+KEEN_PUBLIC_WRITE_KEY = keen_public_config.get_nullable('WRITE_KEY', None)
