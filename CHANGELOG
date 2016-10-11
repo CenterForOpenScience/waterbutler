@@ -2,6 +2,17 @@
 ChangeLog
 *********
 
+0.26.0 (2016-10-11)
+===================
+- Feature: WaterButler now supports ownCloud as a full provider! (thanks, @kwierman!)
+- Feature: WaterButler accepts configuration from the environment, overriding any file-based
+configuration.  This helps WB integrate nicer in a docker-compose environment. (thanks, @icereval!)
+- Fix: Gracefully handle branch-related GitHub errors.
+- Code: Start labeling user-caused errors as level=info in Sentry (thanks, @TomBaxter!)
+- Code: Log redirect-based downloads to analytics.
+- Code: Bump dependencies on Raven and cryptography.  cryptography v1.5.2 now installs on OSX via
+wheel.  This should silence scary-sounding cffi warnings!
+
 0.25.0 (2016-09-22)
 ===================
 - Feature: Include user id when requesting files from osfstorage, to allow the OSF to distinguish
