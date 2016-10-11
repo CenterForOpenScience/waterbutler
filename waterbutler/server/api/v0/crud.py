@@ -70,7 +70,9 @@ class CRUDHandler(core.BaseProviderHandler):
         result = await self.provider.download(range=request_range, **self.arguments)
 
         if isinstance(result, str):
-            return self.redirect(result)
+            self.redirect(result)
+            self._send_hook('download_file', path=self.path)
+            return
 
         if getattr(result, 'partial', None):
             # Use getattr here as not all stream may have a partial attribute
