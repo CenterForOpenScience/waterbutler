@@ -6,7 +6,7 @@ from waterbutler.core.path import WaterButlerPath
 from waterbutler.tasks.core import backgroundify
 
 from .metadata import DmptoolFileMetadata
-from .client import DMPTool
+from .client import _connect
 import datetime
 
 
@@ -18,12 +18,11 @@ def timestamp_iso(dt):
 @backgroundify
 def _dmptool_plans(token, host):
 
-    client = DMPTool(token, host)
+    client = _connect(host, token)
 
     plans = client.plans_owned()
-    print('_dmptool_plans: token, plans: ', token, plans)
 
-    # TO DO:  length
+    # TO DO: try to compute actual length
     results = [{'title': plan['name'],
               'guid': str(plan['id']),
               'created': timestamp_iso(plan['created']),
@@ -39,7 +38,7 @@ def _dmptool_plans(token, host):
 @backgroundify
 def _dmptool_plan(plan_id, token, host):
 
-    client = DMPTool(token, host)
+    client = _connect(host, token)
     try:
         plan = client.plans(id_=plan_id)
     except Exception as e:
@@ -56,7 +55,8 @@ def _dmptool_plan(plan_id, token, host):
 
 @backgroundify
 def _dmptool_plan_pdf(plan_id, token, host):
-    client = DMPTool(token, host)
+
+    client = _connect(host, token)
     return client.plans_full(plan_id, 'pdf')
 
 
@@ -66,7 +66,6 @@ class DmptoolProvider(provider.BaseProvider):
 
     def __init__(self, auth, credentials, dmptool_settings):
 
-        print('DmptoolProvider.__init__:auth, credentials, dmptool_settings', auth, credentials, dmptool_settings)
         super().__init__(auth, credentials, dmptool_settings)
 
     async def _package_metadata(self):
@@ -82,17 +81,13 @@ class DmptoolProvider(provider.BaseProvider):
         api_token = self.credentials['api_token']
         host = self.credentials['host']
 
-        # notebook_guid = self.settings['folder']
-        print('DmptoolProvider._package_metadata:credentials', self.credentials)
-        print('DmptoolProvider._package_metadata:settings', self.settings)
-        print('DmptoolProvider._package_metadata:api_token', api_token)
         plans = await _dmptool_plans(api_token, host)
 
         return [DmptoolFileMetadata(plan) for plan in plans]
 
     async def _file_metadata(self, path):
 
-        print("_file_metadata -> path: ", path)
+        # print("_file_metadata -> path: ", path)
 
         api_token = self.credentials['api_token']
         host = self.credentials['host']
@@ -111,14 +106,12 @@ class DmptoolProvider(provider.BaseProvider):
          IIRC, Dmptool doesn’t have a hierarchy, so the root directory is just a collection of all available plans.
         """
 
-        print("metadata: path: {}".format(path), type(path), path.is_dir)
-
         if str(path) == u'/':
             package = await self._package_metadata()
             return package
 
         if not path.is_dir:
-            print("metdata path.path:", path.path)
+            # print("metdata path.path:", path.path)
             return (await self._file_metadata(path.path))
 
     async def download(self, path, **kwargs):
@@ -130,35 +123,16 @@ class DmptoolProvider(provider.BaseProvider):
         :raises:   `waterbutler.core.exceptions.DownloadError`
         """
 
-        # ResponseStreamReader:
-        # https://github.com/CenterForOpenScience/waterbutler/blob/63b7d469e5545de9f2183b964fb6264fd9a423a5/waterbutler/core/streams/http.py#L141-L183
-
-        # print("dmptool provider download: starting")
-        # token = self.credentials['token']
-        # client = get_dmptool_client(token)
-
-        # note_guid = path.parts[1].raw
-        # note_metadata = await _dmptool_plan(note_guid, token, withContent=True)
-
-        # # convert to HTML
-        # mediaStore = OSFMediaStore(client.get_note_store(), note_guid)
-        # html = ENML2HTML.ENMLToHTML(note_metadata["content"], pretty=True, header=False,
-        #       media_store=mediaStore)
-
         try:
             api_token = self.credentials['api_token']
             host = self.credentials['host']
             plan_id = path.parts[1].raw
             pdf = await _dmptool_plan_pdf(plan_id, api_token, host)
         except Exception as e:
+            # TO DO: throw the correct exception
             print("DmptoolProvider.download: exception", e)
         else:
             print("DmptoolProvider.download: api_token, host, type(pdf)", path, api_token, host, type(pdf))
-
-        # how to actually read the pdf file....
-
-        # HACK -- let me read a test pdf and stream
-        # test_pdf = open('/Users/raymondyee/Downloads/21222.pdf', 'rb').read()
 
         stream = streams.StringStream(pdf)
         stream.content_type = 'application/pdf'
@@ -167,7 +141,6 @@ class DmptoolProvider(provider.BaseProvider):
         # # modeling after gdoc provider
         # # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
 
-        print("dmptool provider download: finishing")
         return stream
 
     async def validate_path(self, path, **kwargs):
@@ -176,13 +149,7 @@ class DmptoolProvider(provider.BaseProvider):
         :type path: `str`
         """
 
-        print("in Dmptool.validate_path. path, type(path):", path, type(path))
-
         wbpath = WaterButlerPath(path)
-
-        print("wbpath.is_root: {}".format(wbpath.is_root))
-        print("wbpath.is_dir: {}".format(wbpath.is_dir))
-        print("len(wbpath.parts): {}".format(len(wbpath.parts)))
 
         if wbpath.is_root:
             return wbpath
@@ -199,9 +166,6 @@ class DmptoolProvider(provider.BaseProvider):
             Additionally queries the Dmptool API to check if the package exists.
         """
 
-        print("in Dmptool.validate_v1_path. path: {}".format(path),
-               "kwargs: ", kwargs)
-
         wbpath = await self.validate_path(path, **kwargs)
 
         if wbpath.is_root:
@@ -210,11 +174,9 @@ class DmptoolProvider(provider.BaseProvider):
         api_token = self.credentials['api_token']
         host = self.credentials['host']
 
-        print("wbpath.parts[1].raw", wbpath.parts[1].raw)
         plan = await _dmptool_plan(wbpath.parts[1].raw, api_token, host)
 
         if isinstance(plan, Exception):
-            print("validate_v1_path. could not get Plan", plan)
             raise exceptions.NotFoundError(str(path))
         else:
             # TO: actually validate the plan
@@ -222,7 +184,6 @@ class DmptoolProvider(provider.BaseProvider):
             if True:
                 return wbpath
             else:
-                print("plan does not exist")
                 raise exceptions.NotFoundError(str(path))
 
     def can_intra_move(self, other, path=None):

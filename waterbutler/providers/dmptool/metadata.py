@@ -4,14 +4,10 @@ from waterbutler.core import metadata
 class DmptoolFileMetadata(metadata.BaseFileMetadata):
 
     def __init__(self, raw):
-        print("DmptoolFileMetadata.__init__:raw ", raw)
         metadata.BaseFileMetadata.__init__(self, raw)
 
     @property
     def content_type(self):
-        # TO DO: move to pdf
-        # HACK --> pretend md
-        # return 'application/pdf'
         return "application/pdf"
 
     @property
@@ -25,7 +21,6 @@ class DmptoolFileMetadata(metadata.BaseFileMetadata):
     def name(self):
 
         # TO DO: change back to pdf --> md for now
-        print("DmptoolFileMetadata.name: self.raw['title']", self.raw['title'])
         return self.raw['title'] + ".pdf"
 
     @property
