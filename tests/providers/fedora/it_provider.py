@@ -16,7 +16,7 @@ from waterbutler.providers.fedora import FedoraProvider
 from waterbutler.providers.fedora.metadata import FedoraFileMetadata
 from waterbutler.providers.fedora.metadata import FedoraFolderMetadata
 
-# IT tests FedoraProvider against a live Fedora 4 at http://localhost:8080/rest/
+# Integration tests for FedoraProvider against a live Fedora 4 at http://localhost:8080/rest/
 
 repo = 'http://localhost:8080/rest/'
 

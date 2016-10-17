@@ -2,6 +2,8 @@ from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
+from waterbutler.providers.fedora import settings
+
 # The raw data is a list of JSON_LD resources parsed as JSON.
 # The resource_index is an index of the raw data keyed by '@id' normalized by having any trailing slashes stripped.
 # The fedora_id is the id of the JSON_LD resource which the metadata resource represents.
@@ -33,7 +35,7 @@ class BaseFedoraMetadata(metadata.BaseMetadata):
 
     @property
     def modified(self):
-        return self._get_property('http://fedora.info/definitions/v4/repository#lastModified')
+        return self._get_property(settings.LAST_MODIFIED_PROPERTY_URI)
 
     # Return an resource from index
     def _get_resource(self, resource_id):
@@ -58,7 +60,7 @@ class FedoraFolderMetadata(BaseFedoraMetadata, metadata.BaseFolderMetadata):
         return [self._create_child_metadata(child_id, repo_id) for child_id in self._list_children()]
 
     def _list_children(self):
-        return [o['@id'] for o in self._get_resource(self.fedora_id).get('http://www.w3.org/ns/ldp#contains', [])]
+        return [o['@id'] for o in self._get_resource(self.fedora_id).get(settings.CONTAINS_PROPERTY_URI, [])]
 
     def _create_child_metadata(self, child_id, repo_id):
         # Derive the WaterButlerPath from the fedora ids being sure to handle its / requirements
@@ -76,25 +78,20 @@ class FedoraFolderMetadata(BaseFedoraMetadata, metadata.BaseFolderMetadata):
             return FedoraFileMetadata(self.raw, child_id, WaterButlerPath(child_path_str), self.resource_index)
 
 
-# TODO Add hashes to extras.
-
 class FedoraFileMetadata(BaseFedoraMetadata, metadata.BaseFileMetadata):
     @property
     def name(self):
-        val = self._get_property('http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#filename')
+        val = self._get_property(settings.FILENAME_PROPERTY_URI)
 
-        if val:
-            return val
-        else:
-            return self.wb_path.name
+        return val if val else self.wb_path.name
 
     @property
     def size(self):
-        return self._get_property('http://www.loc.gov/premis/rdf/v1#hasSize')
+        return self._get_property(settings.SIZE_PROPERTY_URI)
 
     @property
     def content_type(self):
-        return self._get_property('http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#hasMimeType')
+        return self._get_property(settings.MIME_TYPE_PROPERTY_URI)
 
     @property
     def etag(self):

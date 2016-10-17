@@ -6,6 +6,7 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
+from waterbutler.providers.fedora import settings
 from waterbutler.providers.fedora.metadata import FedoraFileMetadata
 from waterbutler.providers.fedora.metadata import FedoraFolderMetadata
 
@@ -16,8 +17,7 @@ from waterbutler.providers.fedora.metadata import FedoraFolderMetadata
 #   user:     Username for repo
 #   password: Password for repo
 #
-# Provider written against Fedora 4.5.1
-# TODO Add support for revisions
+# Provider written against Fedora 4.6.0
 
 
 class FedoraProvider(provider.BaseProvider):
@@ -102,11 +102,7 @@ class FedoraProvider(provider.BaseProvider):
             throws=exceptions.IntraMoveError
         ) as move_resp:
             # Delete tombstone of original file
-            async with self.request(
-                 'DELETE', src_url + '/fcr:tombstone',
-                 expects=(204, ),
-                 throws=exceptions.DeleteError,
-            ):
+            async with self.request('DELETE', src_url + '/fcr:tombstone', expects=(204, ), throws=exceptions.DeleteError):
                 pass
 
             # Recalcuate destination path based on Location header
@@ -144,12 +140,11 @@ class FedoraProvider(provider.BaseProvider):
         mime_type, encoding = mimetypes.guess_type(url)
 
         if mime_type is None:
-            mime_type = 'application/octet-stream'
+            mime_type = settings.OCTET_STREAM_MIME_TYPE
 
         # Must not say content is RDF because a container will be created.
-        if mime_type in ['text/turtle', 'text/rdf+n3', 'application/n3', 'text/n3'
-                            'application/rdf+xml' 'application/n-triples' 'application/ld+json']:
-            mime_type = 'application/octet-stream'
+        if mime_type in settings.RDF_MIME_TYPES:
+            mime_type = settings.OCTET_STREAM_MIME_TYPE
 
         async with self.request(
             'PUT',
