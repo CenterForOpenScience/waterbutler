@@ -1,9 +1,7 @@
-try:
-    from waterbutler import settings
-except ImportError:
-    settings = {}
+from waterbutler import settings
 
-config = settings.get('FEDORA_PROVIDER_CONFIG', {})
+config = settings.child('FEDORA_PROVIDER_CONFIG')
+
 
 LAST_MODIFIED_PROPERTY_URI = 'http://fedora.info/definitions/v4/repository#lastModified'
 CONTAINS_PROPERTY_URI = 'http://www.w3.org/ns/ldp#contains'
