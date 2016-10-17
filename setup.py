@@ -46,6 +46,7 @@ setup(
             'filesystem = waterbutler.providers.filesystem:FileSystemProvider',
             'github = waterbutler.providers.github:GitHubProvider',
             'osfstorage = waterbutler.providers.osfstorage:OSFStorageProvider',
+            'owncloud = waterbutler.providers.owncloud:OwnCloudProvider',
             's3 = waterbutler.providers.s3:S3Provider',
             'dataverse = waterbutler.providers.dataverse:DataverseProvider',
             'box = waterbutler.providers.box:BoxProvider',

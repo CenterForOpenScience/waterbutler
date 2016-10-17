@@ -133,11 +133,11 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     def on_finish(self):
         status, method = self.get_status(), self.request.method.upper()
-        # If the response code is not within the 200 range,
-        # the request was a HEAD or OPTIONS,
-        # or the response code is 202, celery will send its own callback
-        # no callbacks should be sent.
-        if any((method in ('HEAD', 'OPTIONS'), status == 202, status // 100 != 2)):
+        # If the response code is not within the 200-302 range, the request was a HEAD or OPTIONS,
+        # or the response code is 202 no callbacks should be sent and no metrics collected.
+        # For 202s, celery will send its own callback.  Osfstorage and s3 can return 302s for file
+        # downloads, which should be tallied.
+        if any((method in ('HEAD', 'OPTIONS'), status == 202, status > 302, status < 200)):
             return
 
         if method == 'GET' and 'meta' in self.request.query_arguments:
