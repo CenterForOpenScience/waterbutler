@@ -22,7 +22,7 @@ class DropboxProvider(provider.BaseProvider):
 
     Quirks:
 
-    * Dropbox is a case-insensitive.
+    * Dropbox is case-insensitive.
     """
     NAME = 'dropbox'
     BASE_URL = settings.BASE_URL
