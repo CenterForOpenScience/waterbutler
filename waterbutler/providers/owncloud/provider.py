@@ -296,15 +296,16 @@ class OwnCloudProvider(provider.BaseProvider):
             throws=exceptions.IntraCopyError,
             auth=self._auth,
             connector=self.connector(),
-            headers={'Destination': dest_path.full_path}
+            headers={'Destination': '/remote.php/webdav' + dest_path.full_path}
         )
         content = await resp.content.read()
-        items = utils.parse_dav_response(content, self.folder)
-        if len(items) == 1:
-            return items[0], True
-        meta = self.metadata(dest_path)
-        meta.children = items
-        return resp, resp.status == 200
+        if content:
+            items = await utils.parse_dav_response(content, self.folder)
+            if len(items) == 1:
+                return items[0], True
+
+        meta = await self.metadata(dest_path)
+        return meta, resp.status == 200
 
     async def revisions(self, path, **kwargs):
         metadata = await self.metadata(path)
