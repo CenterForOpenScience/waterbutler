@@ -59,6 +59,13 @@ class OwnCloudProvider(provider.BaseProvider):
             return self.url + '/remote.php/webdav/'
         return self.url + 'remote.php/webdav/'
 
+    def shares_storage_root(self, other):
+        """Owncloud settings only include the root folder. If a cross-resource move occurs
+        between two owncloud providers that are on different accounts but have the same folder
+        base name, the parent method could incorrectly think the action is a self-overwrite.
+        Comparing credentials means that this is unique per connected account."""
+        return super().shares_storage_root(other) and self.credentials == other.credentials
+
     async def validate_v1_path(self, path, **kwargs):
         """
             Verifies if a path exists and if so, returns a waterbutler path object.
