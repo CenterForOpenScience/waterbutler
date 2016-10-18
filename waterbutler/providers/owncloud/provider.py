@@ -42,12 +42,15 @@ class OwnCloudProvider(provider.BaseProvider):
         super().__init__(auth, credentials, settings)
 
         self.folder = settings['folder']
+        self.verify_ssl = settings['verify_ssl']
         self.url = credentials['host']
         self._auth = aiohttp.BasicAuth(
             credentials['username'],
             credentials['password']
         )
-        self.connector = aiohttp.TCPConnector(verify_ssl=settings['verify_ssl'])
+
+    def connector(self):
+        return aiohttp.TCPConnector(verify_ssl=self.verify_ssl)
 
     @property
     def _webdav_url_(self):
@@ -85,7 +88,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(200, 207, 404),
             throws=exceptions.MetadataError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
         content = await response.content.read()
         await response.release()
@@ -115,7 +118,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(200, 207, 404),
             throws=exceptions.MetadataError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
         content = await response.content.read()
         await response.release()
@@ -142,7 +145,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(200, 206,),
             throws=exceptions.DownloadError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
         return streams.ResponseStreamReader(download_resp)
 
@@ -166,7 +169,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(201, 204,),
             throws=exceptions.UploadError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
         await response.release()
         meta = await self.metadata(path)
@@ -186,7 +189,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(204,),
             throws=exceptions.DeleteError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
         await delete_resp.release()
         return
@@ -222,7 +225,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(204, 207),
             throws=exceptions.MetadataError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
 
         items = []
@@ -249,7 +252,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(201, 405),
             throws=exceptions.CreateFolderError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector()
         )
         await resp.release()
         if resp.status == 405:
@@ -292,7 +295,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(200, 201),
             throws=exceptions.IntraCopyError,
             auth=self._auth,
-            connector=self.connector,
+            connector=self.connector(),
             headers={'Destination': dest_path.full_path}
         )
         content = await resp.content.read()
