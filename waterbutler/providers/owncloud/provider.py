@@ -304,7 +304,14 @@ class OwnCloudProvider(provider.BaseProvider):
             if len(items) == 1:
                 return items[0], True
 
-        meta = await self.metadata(dest_path)
+        file_meta = await self.metadata(dest_path)
+        if dest_path.is_folder:
+            parent_meta = await self.metadata(dest_path.parent)
+            meta = [m for m in parent_meta if m.materialized_path == dest_path.materialized_path][0]
+            meta.children = file_meta
+        else:
+            meta = file_meta
+
         return meta, resp.status == 200
 
     async def revisions(self, path, **kwargs):
