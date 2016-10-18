@@ -10,31 +10,31 @@ from waterbutler.providers.owncloud.metadata import OwnCloudFileRevisionMetadata
 
 
 class OwnCloudProvider(provider.BaseProvider):
-    """
-        Provider for the ownCloud cloud storage service.
+    """Provider for the ownCloud cloud storage service.
 
-        This provider uses the OCS1.7 standard for communication
+    This provider uses WebDAV for communication
 
-        API docs: https://www.freedesktop.org/wiki/Specifications/open-collaboration-services-1.7/
+    API docs: https://www.freedesktop.org/wiki/Specifications/open-collaboration-services-1.7/
 
-        Required settings fields:
-            * folder
-            * verify_ssl
+    Required settings fields::
 
-        Required credentials fields:
-            * host
-            * username
-            * password
+    * folder
+    * verify_ssl
 
-        Quirks:
+    Required credentials fields::
 
-            * User credentials are stored in a aiohttp.BasicAuth object. At the
-            moment, there isn't a better way to do this.
+    * host
+    * username
+    * password
 
-            * Intra_move and Intra_copy fail at make_request when run inside of a
-            celery worker with a bland
-            RunTimeException("Non-thread-safe operation invoked on an event loop other than the current one").
-            This has been "solved" by using the `is` keyword in can_intra_move/copy.
+    Quirks:
+
+    * User credentials are stored in a aiohttp.BasicAuth object. At the moment, there isn't a
+      better way to do this.
+
+    * `intra_move` and `intra_copy` fail at make_request when run inside of a celery worker
+      with a bland RunTimeException("Non-thread-safe operation invoked on an event loop other than
+      the current one"). This has been "solved" by using the ``is`` keyword in can_intra_move/copy.
     """
     NAME = 'owncloud'
 
@@ -54,9 +54,8 @@ class OwnCloudProvider(provider.BaseProvider):
 
     @property
     def _webdav_url_(self):
-        """
-            Formats the outgoing url appropriately. This accounts for some differences
-            in oc server software.
+        """Formats the outgoing url appropriately. This accounts for some differences in oc server
+        software.
         """
         if self.url[-1] != '/':
             return self.url + '/remote.php/webdav/'
@@ -66,18 +65,23 @@ class OwnCloudProvider(provider.BaseProvider):
         """Owncloud settings only include the root folder. If a cross-resource move occurs
         between two owncloud providers that are on different accounts but have the same folder
         base name, the parent method could incorrectly think the action is a self-overwrite.
-        Comparing credentials means that this is unique per connected account."""
+        Comparing credentials means that this is unique per connected account.
+
+        :param waterbutler.core.provider.BaseProvider other: another provider to test
+        :return: `True` if both providers share the same storage root
+        :rtype: `bool`
+        """
         return super().shares_storage_root(other) and self.credentials == other.credentials
 
     async def validate_v1_path(self, path, **kwargs):
-        """
-            Verifies if a path exists and if so, returns a waterbutler path object.
-            WebDAV returns 200 for a single file, 207 for a multipart (folder) and
-            404 for DNE.
+        """Verifies that ``path`` exists and if so, returns a WaterButlerPath object that
+        represents it. WebDAV returns 200 for a single file, 207 for a multipart (folder), and 404
+        for Does Not Exist.
 
-            :param str path: user-supplied path to validate
-            :returns :class:`waterbutler.core.path.WaterButlerPath`: WaterButlerPath representation of path
-            :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :param str path: user-supplied path to validate
+        :return: WaterButlerPath object representing ``path``
+        :rtype: `waterbutler.core.path.WaterButlerPath`
+        :raises `waterbutler.core.exceptions.NotFoundError`: if the path doesn't exist
         """
         if path == '/':
             return WaterButlerPath(path, prepend=self.folder)
@@ -105,10 +109,12 @@ class OwnCloudProvider(provider.BaseProvider):
         return full_path
 
     async def validate_path(self, path, **kwargs):
-        """
-            The primary difference between `validate_path` and `validate_v1_path`
-            is that the 404 is not raised here in case the file is not found,
-            which is the case for paths checked before uploads.
+        """Similar to `validate_v1_path`, but will not throw a 404 if the path doesn't yet exist.
+        Instead, returns a WaterButlerPath object for the potential path (such as before uploads).
+
+        :param str path: user-supplied path to validate
+        :return: WaterButlerPath object representing ``path``
+        :rtype: :class:`waterbutler.core.path.WaterButlerPath`
         """
         if path == '/':
             return WaterButlerPath(path, prepend=self.folder)
@@ -130,13 +136,11 @@ class OwnCloudProvider(provider.BaseProvider):
         return full_path
 
     async def download(self, path, accept_url=False, range=None, **kwargs):
-        """
-            Creates a stream for downloading files from the remote host.
-            If the metadata query for the file has no size metadata, downloads
-            to memory.
+        """Creates a stream for downloading files from the remote host. If the metadata query for
+        the file has no size metadata, downloads to memory.
 
-            :param str path: user-supplied path to download.
-            :raises: :class:`waterbutler.core.exceptions.UploadError`
+        :param waterbutler.core.path.WaterButlerPath path: user-supplied path to download
+        :raises: `waterbutler.core.exceptions.DownloadError`
         """
         download_resp = await self.make_request(
             'GET',
@@ -150,12 +154,12 @@ class OwnCloudProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(download_resp)
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
-        """
-            Utilizes default name conflict handling behavior then adds the
-            appropriate headers and creates the upload request.
+        """Utilizes default name conflict handling behavior then adds the appropriate headers and
+        creates the upload request.
 
-            :param str path: user-supplied path to upload.
-            :raises: :class:`waterbutler.core.exceptions.UploadError`
+        :param waterbutler.core.streams.RequestStreamReader stream: stream containing file contents
+        :param waterbutler.core.path.WaterButlerPath path: user-supplied path to upload to
+        :raises: `waterbutler.core.exceptions.UploadError`
         """
         if path.identifier and conflict == 'keep':
             path, _ = await self.handle_name_conflict(path, conflict=conflict, kind='folder')
@@ -176,11 +180,10 @@ class OwnCloudProvider(provider.BaseProvider):
         return meta, response.status == 201
 
     async def delete(self, path, **kwargs):
-        """
-            Deletes path on remote host
+        """Deletes ``path`` on remote host
 
-            :param str path: user-supplied path to delete.
-            :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        :param waterbutler.core.path.WaterButlerPath path: user-supplied path to delete
+        :raises: `waterbutler.core.exceptions.DeleteError`
         """
 
         delete_resp = await self.make_request(
@@ -195,12 +198,11 @@ class OwnCloudProvider(provider.BaseProvider):
         return
 
     async def metadata(self, path, **kwargs):
-        """
-            Queries the remote host for metadata and returns metadata objects
-            based on the return value.
+        """Queries the remote host for metadata and returns metadata objects based on the return
+        value.
 
-            :param str path: user-supplied path to query.
-            :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        :param waterbutler.core.path.WaterButlerPath path: user-supplied path to query
+        :raises: `waterbutler.core.exceptions.MetadataError`
         """
         if path.is_dir:
             return (await self._metadata_folder(path, **kwargs))
@@ -208,14 +210,12 @@ class OwnCloudProvider(provider.BaseProvider):
             return (await self._metadata_file(path, **kwargs))
 
     async def _metadata_file(self, path, **kwargs):
-
         items = await self._metadata_folder(path, skip_first=False, **kwargs)
         return items[0]
 
     async def _metadata_folder(self, path, skip_first=True, **kwargs):
-        """
-            Performs the actual query against oC. In this case the return code depends
-            on the content:
+        """Performs the actual query against ownCloud. In this case the return code depends on the
+        content::
 
             * 204: Empty response
             * 207: Multipart response
@@ -236,15 +236,13 @@ class OwnCloudProvider(provider.BaseProvider):
         return items
 
     async def create_folder(self, path, **kwargs):
-        """
-            Create a folder in the current provider at `path`.
-            Returns a `OwnCloudFolderMetadata` object
-            if successful.
+        """Create a folder in the current provider at ``path``. Returns an
+        `.metadata.OwnCloudFolderMetadata` object if successful.
 
-            :param str path: user-supplied path to create. must be a directory.
-            :param boolean precheck_folder: flag to check for folder before attempting create
-            :rtype: :class:`waterbutler.core.metadata.BaseFolderMetadata`
-            :raises: :class:`waterbutler.core.exceptions.FolderCreationError`
+        :param waterbutler.core.path.WaterButlerPath path: user-supplied directory path to create
+        :param boolean precheck_folder: flag to check for folder before attempting create
+        :rtype: `.metadata.OwnCloudFolderMetadata`
+        :raises: `waterbutler.core.exceptions.CreateFolderError`
         """
         resp = await self.make_request(
             'MKCOL',
@@ -277,14 +275,14 @@ class OwnCloudProvider(provider.BaseProvider):
         return await self._do_dav_move_copy(src_path, dest_path, 'MOVE')
 
     async def _do_dav_move_copy(self, src_path, dest_path, operation):
-        """
-            Performs a quick copy or move operation on the remote host.
+        """Performs a quick copy or move operation on the remote host.
 
-            :param str src_path: user-supplied path to the source object
-            :param str dest_path: user-supplied path to the destination object
-            :param str operation: Either `COPY` or `MOVE`
-            :rtype: :class:`waterbutler.core.waterbutler.metadata.OwnCloudFileMetadata`
-            :raises: :class:`waterbutler.core.exceptions.IntraCopyError`
+        :param waterbutler.core.path.WaterButlerPath src_path: path for the source object
+        :param waterbutler.core.path.WaterButlerPath dest_path: path for the destination object
+        :param str operation: Either `COPY` or `MOVE`
+        :rtype: `.metadata.OwnCloudFileMetadata`
+        :rtype: `.metadata.OwnCloudFolderMetadata`
+        :raises: `waterbutler.core.exceptions.IntraCopyError`
         """
         if operation != 'MOVE' and operation != 'COPY':
             raise NotImplementedError("ownCloud move/copy only supports MOVE and COPY endpoints")
