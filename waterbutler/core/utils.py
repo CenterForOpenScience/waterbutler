@@ -4,7 +4,6 @@ import asyncio
 import logging
 import functools
 import dateutil.parser
-from types import MethodType
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
@@ -15,6 +14,7 @@ from waterbutler.settings import config
 from waterbutler.core import exceptions
 from waterbutler.server import settings as server_settings
 from waterbutler.core.signing import Signer
+from waterbutler.core.streams import EmptyStream
 
 
 logger = logging.getLogger(__name__)
@@ -141,15 +141,7 @@ class ZipStreamGenerator:
                 ])
                 return await self.__anext__()
             else:
-                async def read(self, n):
-                    self._eof = True
-                    data = bytearray(b'\0')
-                    return data
-                folder = current[1]
-                folder._eof = False
-                folder.read = MethodType(read, folder)
-                folder.at_eof = MethodType(lambda self: self._eof, folder)
-                return path.path.replace(self.parent_path.path, ''), folder
+                return path.path.replace(self.parent_path.path, ''), EmptyStream()
 
         return path.path.replace(self.parent_path.path, ''), await self.provider.download(path)
 
