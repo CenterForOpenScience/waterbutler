@@ -91,10 +91,13 @@ class ZipLocalFileData(BaseStream):
             self.file.zinfo.CRC = binascii.crc32(chunk, self.file.zinfo.CRC)
 
             # compress
-            compressed = self.file.compressor.compress(chunk)
-            compressed += self.file.compressor.flush(
-                zlib.Z_FINISH if self.stream.at_eof() else zlib.Z_SYNC_FLUSH
-            )
+            if self.file.compressor:
+                compressed = self.file.compressor.compress(chunk)
+                compressed += self.file.compressor.flush(
+                    zlib.Z_FINISH if self.stream.at_eof() else zlib.Z_SYNC_FLUSH
+                )
+            else:
+                compressed = chunk
 
             # Update file info
             self.file.compressed_size += len(compressed)
@@ -127,24 +130,26 @@ class ZipLocalFile(MultiStream):
             filename=filename,
             date_time=time.localtime(time.time())[:6],
         )
-        # If the file is a directory, set the directory flag
+        # If the file is a directory, set the directory flag, turn off compression
         if self.zinfo.filename[-1] == '/':
             self.zinfo.external_attr = 0o40775 << 16   # drwxrwxr-x
             self.zinfo.external_attr |= 0x10           # Directory flag
+            self.zinfo.compress_type = zipfile.ZIP_STORED
+            self.compressor = None
         else:
-            self.zinfo.external_attr = 0o600 << 16
-        self.zinfo.compress_type = zipfile.ZIP_DEFLATED
+            self.zinfo.external_attr = 0o600 << 16  # rw-------
+            # define a compressor
+            self.zinfo.compress_type = zipfile.ZIP_DEFLATED
+            self.compressor = zlib.compressobj(
+                zlib.Z_DEFAULT_COMPRESSION,
+                zlib.DEFLATED,
+                -15,
+            )
+
         self.zinfo.header_offset = 0
         self.zinfo.flag_bits |= 0x08
         # Initial CRC: value will be updated as file is streamed
         self.zinfo.CRC = 0
-
-        # define a compressor
-        self.compressor = zlib.compressobj(
-            zlib.Z_DEFAULT_COMPRESSION,
-            zlib.DEFLATED,
-            -15,
-        )
 
         # meta information - needed to build the footer
         self.original_size = 0
