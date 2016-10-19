@@ -2,6 +2,18 @@
 ChangeLog
 *********
 
+0.27.0 (2016-10-19)
+===================
+- Feature: Attempting to move or copy a file over itself will now fail with a 409 Conflict, even
+across different resources.
+- Fix: Fix bugs in ownCloud provider that were breaking renames.
+- Fix: v1 metadata requests now accept the `version` and `revision` query parameters like v0.
+
+0.26.1 (2016-10-18)
+===================
+- Feature: Dockerized WaterButler can now take a commit sha from the environment to indicate
+version to deploy. (thanks, @icereval!)
+
 0.26.0 (2016-10-11)
 ===================
 - Feature: WaterButler now supports ownCloud as a full provider! (thanks, @kwierman!)

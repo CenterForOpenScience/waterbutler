@@ -42,12 +42,15 @@ class OwnCloudProvider(provider.BaseProvider):
         super().__init__(auth, credentials, settings)
 
         self.folder = settings['folder']
+        self.verify_ssl = settings['verify_ssl']
         self.url = credentials['host']
         self._auth = aiohttp.BasicAuth(
             credentials['username'],
             credentials['password']
         )
-        self.connector = aiohttp.TCPConnector(verify_ssl=settings['verify_ssl'])
+
+    def connector(self):
+        return aiohttp.TCPConnector(verify_ssl=self.verify_ssl)
 
     @property
     def _webdav_url_(self):
@@ -58,6 +61,13 @@ class OwnCloudProvider(provider.BaseProvider):
         if self.url[-1] != '/':
             return self.url + '/remote.php/webdav/'
         return self.url + 'remote.php/webdav/'
+
+    def shares_storage_root(self, other):
+        """Owncloud settings only include the root folder. If a cross-resource move occurs
+        between two owncloud providers that are on different accounts but have the same folder
+        base name, the parent method could incorrectly think the action is a self-overwrite.
+        Comparing credentials means that this is unique per connected account."""
+        return super().shares_storage_root(other) and self.credentials == other.credentials
 
     async def validate_v1_path(self, path, **kwargs):
         """
@@ -78,7 +88,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(200, 207, 404),
             throws=exceptions.MetadataError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
         content = await response.content.read()
         await response.release()
@@ -108,7 +118,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(200, 207, 404),
             throws=exceptions.MetadataError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
         content = await response.content.read()
         await response.release()
@@ -135,7 +145,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(200, 206,),
             throws=exceptions.DownloadError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
         return streams.ResponseStreamReader(download_resp)
 
@@ -159,7 +169,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(201, 204,),
             throws=exceptions.UploadError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
         await response.release()
         meta = await self.metadata(path)
@@ -179,7 +189,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(204,),
             throws=exceptions.DeleteError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
         await delete_resp.release()
         return
@@ -215,7 +225,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(204, 207),
             throws=exceptions.MetadataError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector(),
         )
 
         items = []
@@ -242,7 +252,7 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(201, 405),
             throws=exceptions.CreateFolderError,
             auth=self._auth,
-            connector=self.connector
+            connector=self.connector()
         )
         await resp.release()
         if resp.status == 405:
@@ -285,16 +295,24 @@ class OwnCloudProvider(provider.BaseProvider):
             expects=(200, 201),
             throws=exceptions.IntraCopyError,
             auth=self._auth,
-            connector=self.connector,
-            headers={'Destination': dest_path.full_path}
+            connector=self.connector(),
+            headers={'Destination': '/remote.php/webdav' + dest_path.full_path}
         )
         content = await resp.content.read()
-        items = utils.parse_dav_response(content, self.folder)
-        if len(items) == 1:
-            return items[0], True
-        meta = self.metadata(dest_path)
-        meta.children = items
-        return resp, resp.status == 200
+        if content:
+            items = await utils.parse_dav_response(content, self.folder)
+            if len(items) == 1:
+                return items[0], True
+
+        file_meta = await self.metadata(dest_path)
+        if dest_path.is_folder:
+            parent_meta = await self.metadata(dest_path.parent)
+            meta = [m for m in parent_meta if m.materialized_path == dest_path.materialized_path][0]
+            meta.children = file_meta
+        else:
+            meta = file_meta
+
+        return meta, resp.status == 200
 
     async def revisions(self, path, **kwargs):
         metadata = await self.metadata(path)
