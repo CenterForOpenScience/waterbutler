@@ -12,9 +12,12 @@ from waterbutler.providers.owncloud.metadata import OwnCloudFileRevisionMetadata
 class OwnCloudProvider(provider.BaseProvider):
     """Provider for the ownCloud cloud storage service.
 
-    This provider uses WebDAV for communication
+    This provider uses WebDAV for communication.
 
-    API docs: https://www.freedesktop.org/wiki/Specifications/open-collaboration-services-1.7/
+    API docs::
+
+    * WebDAV: http://www.webdav.org/specs/rfc4918.html
+    * OCSv1.7: https://www.freedesktop.org/wiki/Specifications/open-collaboration-services-1.7/
 
     Required settings fields::
 
@@ -31,10 +34,6 @@ class OwnCloudProvider(provider.BaseProvider):
 
     * User credentials are stored in a aiohttp.BasicAuth object. At the moment, there isn't a
       better way to do this.
-
-    * `intra_move` and `intra_copy` fail at make_request when run inside of a celery worker
-      with a bland RunTimeException("Non-thread-safe operation invoked on an event loop other than
-      the current one"). This has been "solved" by using the ``is`` keyword in can_intra_move/copy.
     """
     NAME = 'owncloud'
 
@@ -44,10 +43,7 @@ class OwnCloudProvider(provider.BaseProvider):
         self.folder = settings['folder']
         self.verify_ssl = settings['verify_ssl']
         self.url = credentials['host']
-        self._auth = aiohttp.BasicAuth(
-            credentials['username'],
-            credentials['password']
-        )
+        self._auth = aiohttp.BasicAuth(credentials['username'], credentials['password'])
 
     def connector(self):
         return aiohttp.TCPConnector(verify_ssl=self.verify_ssl)
@@ -185,7 +181,6 @@ class OwnCloudProvider(provider.BaseProvider):
         :param waterbutler.core.path.WaterButlerPath path: user-supplied path to delete
         :raises: `waterbutler.core.exceptions.DeleteError`
         """
-
         delete_resp = await self.make_request(
             'DELETE',
             self._webdav_url_ + path.full_path,
@@ -263,10 +258,10 @@ class OwnCloudProvider(provider.BaseProvider):
         return True
 
     def can_intra_copy(self, dest_provider, path=None):
-        return self is dest_provider
+        return self == dest_provider
 
     def can_intra_move(self, dest_provider, path=None):
-        return self is dest_provider
+        return self == dest_provider
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
         return await self._do_dav_move_copy(src_path, dest_path, 'COPY')
@@ -290,17 +285,13 @@ class OwnCloudProvider(provider.BaseProvider):
         resp = await self.make_request(
             operation,
             self._webdav_url_ + self.folder + src_path.path,
-            expects=(200, 201),
+            expects=(201, 204),  # WebDAV MOVE/COPY: 201 = Created, 204 = Updated existing
             throws=exceptions.IntraCopyError,
             auth=self._auth,
             connector=self.connector(),
             headers={'Destination': '/remote.php/webdav' + dest_path.full_path}
         )
-        content = await resp.content.read()
-        if content:
-            items = await utils.parse_dav_response(content, self.folder)
-            if len(items) == 1:
-                return items[0], True
+        await resp.release()
 
         file_meta = await self.metadata(dest_path)
         if dest_path.is_folder:
@@ -310,7 +301,7 @@ class OwnCloudProvider(provider.BaseProvider):
         else:
             meta = file_meta
 
-        return meta, resp.status == 200
+        return meta, resp.status == 201
 
     async def revisions(self, path, **kwargs):
         metadata = await self.metadata(path)
