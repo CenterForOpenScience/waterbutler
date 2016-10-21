@@ -15,24 +15,24 @@ def timestamp_iso(dt):
     return datetime.datetime.strptime(dt, "%m/%d/%Y").isoformat()
 
 
-@backgroundify
-def _dmptool_plans(token, host):
+# @backgroundify
+# def _dmptool_plans(token, host):
 
-    client = _connect(host, token)
+#     client = _connect(host, token)
 
-    plans = client.plans_owned()
+#     plans = client.plans_owned()
 
-    # TO DO: try to compute actual length
-    results = [{'title': plan['name'],
-              'guid': str(plan['id']),
-              'created': timestamp_iso(plan['created']),
-              'updated': timestamp_iso(plan['modified']),
-              'length': 0}
-              for plan in plans]
+#     # TO DO: try to compute actual length
+#     results = [{'title': plan['name'],
+#               'guid': str(plan['id']),
+#               'created': timestamp_iso(plan['created']),
+#               'updated': timestamp_iso(plan['modified']),
+#               'length': 0}
+#               for plan in plans]
 
-    print('_dmptool_plans: results: ', results)
+#     print('_dmptool_plans: results: ', results)
 
-    return results
+#     return results
 
 
 @backgroundify
@@ -68,6 +68,12 @@ class DmptoolProvider(provider.BaseProvider):
 
         super().__init__(auth, credentials, dmptool_settings)
 
+        protocol = 'https'
+        # self.api_token = self.credentials['api_token']
+        # self.host = self.credentials['host']
+        self.base_url = '{}://{}/api/v1/'.format(protocol, self.credentials['host'])
+        self.headers = {'Authorization': 'Token token={}'.format(self.credentials['api_token'])}
+
     async def _package_metadata(self):
         """ Interface to file and package metadata from Dmptool
 
@@ -78,10 +84,11 @@ class DmptoolProvider(provider.BaseProvider):
 
         """
 
-        api_token = self.credentials['api_token']
-        host = self.credentials['host']
+        # api_token = self.credentials['api_token']
+        # host = self.credentials['host']
 
-        plans = await _dmptool_plans(api_token, host)
+        # plans = await _dmptool_plans(api_token, host)
+        plans = await self._dmptool_plans()
 
         return [DmptoolFileMetadata(plan) for plan in plans]
 
@@ -93,6 +100,7 @@ class DmptoolProvider(provider.BaseProvider):
         host = self.credentials['host']
 
         plan_md = await _dmptool_plan(path, api_token, host)
+        #plan_md = await self._dmptool_plan(path)
 
         return DmptoolFileMetadata(plan_md)
 
@@ -128,6 +136,7 @@ class DmptoolProvider(provider.BaseProvider):
             host = self.credentials['host']
             plan_id = path.parts[1].raw
             pdf = await _dmptool_plan_pdf(plan_id, api_token, host)
+            # pdf = await self._dmptool_plan_pdf(plan_id)
         except Exception as e:
             # TO DO: throw the correct exception
             print("DmptoolProvider.download: exception", e)
@@ -149,6 +158,7 @@ class DmptoolProvider(provider.BaseProvider):
         :type path: `str`
         """
 
+        print("DmptoolProvider.validate_path: path", path)
         wbpath = WaterButlerPath(path)
 
         if wbpath.is_root:
@@ -175,6 +185,7 @@ class DmptoolProvider(provider.BaseProvider):
         host = self.credentials['host']
 
         plan = await _dmptool_plan(wbpath.parts[1].raw, api_token, host)
+        # plan = await self._dmptool_plan(wbpath.parts[1].raw)
 
         if isinstance(plan, Exception):
             raise exceptions.NotFoundError(str(path))
@@ -250,3 +261,127 @@ class DmptoolProvider(provider.BaseProvider):
             `waterbutler.core.exceptions.ReadOnlyProviderError` Always
         """
         return False
+
+    def get_url(self, path, headers=None):
+        if headers is None:
+            headers = self.headers
+
+        url = self.base_url + path
+        response = requests.get(url, headers=headers)
+
+        response.raise_for_status()
+        return response
+
+    async def get_url_async(self, path, headers=None):
+
+        # https://github.com/CenterForOpenScience/waterbutler/blob/305c0aa57bd0066b8f0a4186b0fbb2067a97cafc/waterbutler/core/provider.py#L140-L176
+
+        if headers is None:
+            headers = self.headers
+
+        url = self.base_url + path
+
+        resp = await self.make_request('GET', url,
+            headers=headers,
+            expects=(200,),
+            throws=exceptions.MetadataError
+        )
+
+        return resp
+
+    def _unroll(self, plans):
+        """
+        each plan is a dict with a key plan
+        """
+        return [
+            plan.get('plan')
+            for plan in plans
+        ]
+
+    async def plans(self, id_=None):
+        """
+        https://dmptool.org/api/v1/plans
+        https://dmptool.org/api/v1/plans/:id
+        """
+
+        if id_ is None:
+            resp = await self.get_url_async('plans')
+            r = await resp.json()
+            return self._unroll(r)
+        else:
+            resp = await self.get_url_async('plans/{}'.format(id_))
+            r = await resp.json()
+            return r.get('plan')
+
+    async def plans_full(self, id_=None, format_='json'):
+
+        if id_ is None:
+            # a json doc for to represent all public docs
+            # I **think** if we include token, will get only docs owned
+            resp = await self.get_url_async('plans_full/', headers={})
+            r = await resp.json()
+            return self._unroll(r)
+        else:
+            if format_ == 'json':
+                resp = await self.get_url_async('plans_full/{}'.format(id_))
+                r = await resp.json()
+                return r.get('plan')
+            elif format_ in ['pdf', 'docx']:
+                resp = await self.get_url_async('plans_full/{}.{}'.format(id_, format_))
+                r = await resp.read()
+                return r
+            else:
+                return None
+
+    async def plans_owned(self):
+        resp = await self.get_url_async('plans_owned')
+        r = await resp.json()
+        return self._unroll(r)
+
+    def plans_owned_full(self):
+        return self._unroll(self.get_url('plans_owned_full').json())
+
+    def plans_templates(self):
+        return self._unroll(self.get_url('plans_templates').json())
+
+    def institutions_plans_count(self):
+        """
+        https://github.com/CDLUC3/dmptool/wiki/API#for-a-list-of-institutions-and-plans-count
+        """
+        plans_counts = self.get_url('institutions_plans_count').json()
+        return plans_counts
+
+    async def _dmptool_plans(self):
+
+        plans = await self.plans_owned()
+
+        # TO DO: try to compute actual length
+        results = [{'title': plan['name'],
+                  'guid': str(plan['id']),
+                  'created': timestamp_iso(plan['created']),
+                  'updated': timestamp_iso(plan['modified']),
+                  'length': 0}
+                  for plan in plans]
+
+        print('provider._dmptool_plans: results: ', results)
+
+        return results
+
+    async def _dmptool_plan(self, plan_id):
+
+        try:
+            plan = await self.plans(id_=plan_id)
+        except Exception as e:
+            return e
+        else:
+            result = {'title': plan['name'],
+                  'guid': str(plan['id']),
+                  'created': timestamp_iso(plan['created']),
+                  'updated': timestamp_iso(plan['modified']),
+                  'length': 0,
+                  'content': ''}
+            return result
+
+    async def _dmptool_plan_pdf(self, plan_id):
+
+        return await self.plans_full(plan_id, 'pdf')
