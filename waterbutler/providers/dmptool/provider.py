@@ -184,8 +184,8 @@ class DmptoolProvider(provider.BaseProvider):
         api_token = self.credentials['api_token']
         host = self.credentials['host']
 
-        plan = await _dmptool_plan(wbpath.parts[1].raw, api_token, host)
-        # plan = await self._dmptool_plan(wbpath.parts[1].raw)
+        # plan = await _dmptool_plan(wbpath.parts[1].raw, api_token, host)
+        plan = await self._dmptool_plan(wbpath.parts[1].raw)
 
         if isinstance(plan, Exception):
             raise exceptions.NotFoundError(str(path))
@@ -303,15 +303,19 @@ class DmptoolProvider(provider.BaseProvider):
         https://dmptool.org/api/v1/plans
         https://dmptool.org/api/v1/plans/:id
         """
+        print ("DmptoolProvider.plans: params ", id_)
 
         if id_ is None:
             resp = await self.get_url_async('plans')
             r = await resp.json()
-            return self._unroll(r)
+            result = self._unroll(r)
         else:
             resp = await self.get_url_async('plans/{}'.format(id_))
             r = await resp.json()
-            return r.get('plan')
+            result = r.get('plan')
+
+        print ("DmptoolProvider.plans: result ", result)
+        return result
 
     async def plans_full(self, id_=None, format_='json'):
 
