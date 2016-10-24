@@ -118,6 +118,12 @@ class GitHubProvider(provider.BaseProvider):
     async def revalidate_path(self, base, path, folder=False):
         return base.child(path, _id=((base.branch_ref, None)), folder=folder)
 
+    def path_from_metadata(self, parent_path, metadata):
+        """Build a path from a parent path and a metadata object.  Will correctly set the _id
+        Used for building zip archives."""
+        file_sha = metadata.extra.get('fileSha', None)
+        return parent_path.child(metadata.name, _id=(metadata.ref, file_sha), folder=metadata.is_folder, )
+
     def can_duplicate_names(self):
         return False
 

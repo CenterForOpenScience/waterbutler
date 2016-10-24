@@ -147,6 +147,13 @@ class BoxProvider(provider.BaseProvider):
     def can_duplicate_names(self):
         return False
 
+    def shares_storage_root(self, other):
+        """Box settings include the root folder id, which is unique across projects for subfolders.
+        But the root folder of a Box account always has an ID of 0.  This means that the root
+        folders of two separate Box accounts would incorrectly test as being the same storage root.
+        Add a comparison of credentials to avoid this."""
+        return super().shares_storage_root(other) and self.credentials == other.credentials
+
     def can_intra_move(self, other, path=None):
         return self == other
 
