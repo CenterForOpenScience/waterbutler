@@ -15,44 +15,6 @@ def timestamp_iso(dt):
     return datetime.datetime.strptime(dt, "%m/%d/%Y").isoformat()
 
 
-# @backgroundify
-# def _dmptool_plans(token, host):
-
-#     client = _connect(host, token)
-
-#     plans = client.plans_owned()
-
-#     # TO DO: try to compute actual length
-#     results = [{'title': plan['name'],
-#               'guid': str(plan['id']),
-#               'created': timestamp_iso(plan['created']),
-#               'updated': timestamp_iso(plan['modified']),
-#               'length': 0}
-#               for plan in plans]
-
-#     print('_dmptool_plans: results: ', results)
-
-#     return results
-
-
-# @backgroundify
-# def _dmptool_plan(plan_id, token, host):
-
-#     client = _connect(host, token)
-#     try:
-#         plan = client.plans(id_=plan_id)
-#     except Exception as e:
-#         return e
-#     else:
-#         result = {'title': plan['name'],
-#               'guid': str(plan['id']),
-#               'created': timestamp_iso(plan['created']),
-#               'updated': timestamp_iso(plan['modified']),
-#               'length': 0,
-#               'content': ''}
-#         return result
-
-
 @backgroundify
 def _dmptool_plan_pdf(plan_id, token, host):
 
@@ -84,24 +46,12 @@ class DmptoolProvider(provider.BaseProvider):
 
         """
 
-        # api_token = self.credentials['api_token']
-        # host = self.credentials['host']
-
-        # plans = await _dmptool_plans(api_token, host)
         plans = await self._dmptool_plans()
-
         return [DmptoolFileMetadata(plan) for plan in plans]
 
     async def _file_metadata(self, path):
 
-        # print("_file_metadata -> path: ", path)
-
-        # api_token = self.credentials['api_token']
-        # host = self.credentials['host']
-
-        # plan_md = await _dmptool_plan(path, api_token, host)
         plan_md = await self._dmptool_plan(path)
-
         return DmptoolFileMetadata(plan_md)
 
     async def metadata(self, path, **kwargs):
@@ -181,10 +131,6 @@ class DmptoolProvider(provider.BaseProvider):
         if wbpath.is_root:
             return wbpath
 
-        # api_token = self.credentials['api_token']
-        # host = self.credentials['host']
-
-        # plan = await _dmptool_plan(wbpath.parts[1].raw, api_token, host)
         plan = await self._dmptool_plan(wbpath.parts[1].raw)
 
         if isinstance(plan, Exception):
