@@ -35,22 +35,22 @@ def timestamp_iso(dt):
 #     return results
 
 
-@backgroundify
-def _dmptool_plan(plan_id, token, host):
+# @backgroundify
+# def _dmptool_plan(plan_id, token, host):
 
-    client = _connect(host, token)
-    try:
-        plan = client.plans(id_=plan_id)
-    except Exception as e:
-        return e
-    else:
-        result = {'title': plan['name'],
-              'guid': str(plan['id']),
-              'created': timestamp_iso(plan['created']),
-              'updated': timestamp_iso(plan['modified']),
-              'length': 0,
-              'content': ''}
-        return result
+#     client = _connect(host, token)
+#     try:
+#         plan = client.plans(id_=plan_id)
+#     except Exception as e:
+#         return e
+#     else:
+#         result = {'title': plan['name'],
+#               'guid': str(plan['id']),
+#               'created': timestamp_iso(plan['created']),
+#               'updated': timestamp_iso(plan['modified']),
+#               'length': 0,
+#               'content': ''}
+#         return result
 
 
 @backgroundify
@@ -96,11 +96,11 @@ class DmptoolProvider(provider.BaseProvider):
 
         # print("_file_metadata -> path: ", path)
 
-        api_token = self.credentials['api_token']
-        host = self.credentials['host']
+        # api_token = self.credentials['api_token']
+        # host = self.credentials['host']
 
-        plan_md = await _dmptool_plan(path, api_token, host)
-        #plan_md = await self._dmptool_plan(path)
+        # plan_md = await _dmptool_plan(path, api_token, host)
+        plan_md = await self._dmptool_plan(path)
 
         return DmptoolFileMetadata(plan_md)
 
@@ -181,8 +181,8 @@ class DmptoolProvider(provider.BaseProvider):
         if wbpath.is_root:
             return wbpath
 
-        api_token = self.credentials['api_token']
-        host = self.credentials['host']
+        # api_token = self.credentials['api_token']
+        # host = self.credentials['host']
 
         # plan = await _dmptool_plan(wbpath.parts[1].raw, api_token, host)
         plan = await self._dmptool_plan(wbpath.parts[1].raw)
@@ -303,7 +303,7 @@ class DmptoolProvider(provider.BaseProvider):
         https://dmptool.org/api/v1/plans
         https://dmptool.org/api/v1/plans/:id
         """
-        print ("DmptoolProvider.plans: params ", id_)
+        print("DmptoolProvider.plans: params ", id_)
 
         if id_ is None:
             resp = await self.get_url_async('plans')
@@ -314,7 +314,7 @@ class DmptoolProvider(provider.BaseProvider):
             r = await resp.json()
             result = r.get('plan')
 
-        print ("DmptoolProvider.plans: result ", result)
+        print("DmptoolProvider.plans: result ", result)
         return result
 
     async def plans_full(self, id_=None, format_='json'):
