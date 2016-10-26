@@ -3,23 +3,13 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
-from waterbutler.tasks.core import backgroundify
-
 from .metadata import DmptoolFileMetadata
-from .client import _connect
 import datetime
 
 
 def timestamp_iso(dt):
 
     return datetime.datetime.strptime(dt, "%m/%d/%Y").isoformat()
-
-
-@backgroundify
-def _dmptool_plan_pdf(plan_id, token, host):
-
-    client = _connect(host, token)
-    return client.plans_full(plan_id, 'pdf')
 
 
 class DmptoolProvider(provider.BaseProvider):
@@ -31,8 +21,6 @@ class DmptoolProvider(provider.BaseProvider):
         super().__init__(auth, credentials, dmptool_settings)
 
         protocol = 'https'
-        # self.api_token = self.credentials['api_token']
-        # self.host = self.credentials['host']
         self.base_url = '{}://{}/api/v1/'.format(protocol, self.credentials['host'])
         self.headers = {'Authorization': 'Token token={}'.format(self.credentials['api_token'])}
 
@@ -69,7 +57,6 @@ class DmptoolProvider(provider.BaseProvider):
             return package
 
         if not path.is_dir:
-            # print("metdata path.path:", path.path)
             return (await self._file_metadata(path.path))
 
     async def download(self, path, **kwargs):
@@ -81,24 +68,21 @@ class DmptoolProvider(provider.BaseProvider):
         :raises:   `waterbutler.core.exceptions.DownloadError`
         """
 
+        # # modeling after gdoc provider
+        # # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
+
         try:
-            api_token = self.credentials['api_token']
-            host = self.credentials['host']
             plan_id = path.parts[1].raw
-            pdf = await _dmptool_plan_pdf(plan_id, api_token, host)
-            # pdf = await self._dmptool_plan_pdf(plan_id)
+            pdf = await self._dmptool_plan_pdf(plan_id)
         except Exception as e:
             # TO DO: throw the correct exception
-            print("DmptoolProvider.download: exception", e)
-        else:
-            print("DmptoolProvider.download: api_token, host, type(pdf)", path, api_token, host, type(pdf))
+            raise exceptions.DownloadError(
+                'Could not retrieve file \'{0}\''.format(path),
+                code=404,)
 
         stream = streams.StringStream(pdf)
         stream.content_type = 'application/pdf'
         stream.name = '{}.pdf'.format(plan_id)
-
-        # # modeling after gdoc provider
-        # # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
 
         return stream
 
@@ -108,7 +92,6 @@ class DmptoolProvider(provider.BaseProvider):
         :type path: `str`
         """
 
-        print("DmptoolProvider.validate_path: path", path)
         wbpath = WaterButlerPath(path)
 
         if wbpath.is_root:
@@ -208,16 +191,6 @@ class DmptoolProvider(provider.BaseProvider):
         """
         return False
 
-    def get_url(self, path, headers=None):
-        if headers is None:
-            headers = self.headers
-
-        url = self.base_url + path
-        response = requests.get(url, headers=headers)
-
-        response.raise_for_status()
-        return response
-
     async def get_url_async(self, path, headers=None):
 
         # https://github.com/CenterForOpenScience/waterbutler/blob/305c0aa57bd0066b8f0a4186b0fbb2067a97cafc/waterbutler/core/provider.py#L140-L176
@@ -249,7 +222,6 @@ class DmptoolProvider(provider.BaseProvider):
         https://dmptool.org/api/v1/plans
         https://dmptool.org/api/v1/plans/:id
         """
-        print("DmptoolProvider.plans: params ", id_)
 
         if id_ is None:
             resp = await self.get_url_async('plans')
@@ -260,7 +232,6 @@ class DmptoolProvider(provider.BaseProvider):
             r = await resp.json()
             result = r.get('plan')
 
-        print("DmptoolProvider.plans: result ", result)
         return result
 
     async def plans_full(self, id_=None, format_='json'):
@@ -313,8 +284,6 @@ class DmptoolProvider(provider.BaseProvider):
                   'length': 0}
                   for plan in plans]
 
-        print('provider._dmptool_plans: results: ', results)
-
         return results
 
     async def _dmptool_plan(self, plan_id):
@@ -322,7 +291,8 @@ class DmptoolProvider(provider.BaseProvider):
         try:
             plan = await self.plans(id_=plan_id)
         except Exception as e:
-            return e
+            # TO raise the proper exception?
+            raise e
         else:
             result = {'title': plan['name'],
                   'guid': str(plan['id']),
