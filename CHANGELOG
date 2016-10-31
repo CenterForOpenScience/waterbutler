@@ -2,6 +2,16 @@
 ChangeLog
 *********
 
+0.28.0 (2016-10-31)
+===================
+- HALLOWEEN RELEASE! (^ ,–, ^)
+- Feature: Download-as-zip now includes empty directories! (thanks, @darioncassel!)
+- Feature: WaterButler now lists the full contents of Google Drive directories with more than 1,000
+children. (thanks, @TomBaxter!)
+- Feature: WaterButler now lists the full contents of Box.com directories with more than 1,000
+children. (thanks, @TomBaxter!)
+- Fix: Teach ownCloud to be more efficient about moving and copying files with a single provider.
+
 0.27.1 (2016-10-24)
 ===================
 - Fix: Fix broken Download-as-zip for GitHub by propagating the target branch during recursive

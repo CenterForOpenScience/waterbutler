@@ -1,5 +1,5 @@
-Metadata
---------
+ownCloud Storage Provider
+=========================
 
 .. automodule:: waterbutler.providers.owncloud.metadata
     :members:

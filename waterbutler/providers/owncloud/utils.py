@@ -6,12 +6,11 @@ from waterbutler.providers.owncloud.metadata import OwnCloudFolderMetadata
 
 
 def strip_dav_path(path):
-    """
-        Removes the leading "remote.php/webdav" path from the given path
+    """Removes the leading "remote.php/webdav" path from the given path.
 
-        :param path: path containing the remote DAV path "remote.php/webdav"
-        :type path: str
-        :returns: path stripped of the remote DAV path
+    :param str path: path containing the remote DAV path "remote.php/webdav"
+    :return: path stripped of the remote DAV path
+    :rtype: str
     """
     if 'remote.php/webdav' in path:
         return path.split('remote.php/webdav')[1]
@@ -19,21 +18,15 @@ def strip_dav_path(path):
 
 
 async def parse_dav_response(content, folder, skip_first=False):
-    """
-        Parses the xml content returned from WebDAV and returns the metadata
-        equivalent. By default, WebDAV returns the metadata of the queried item
-        first. If the root directory is selected, then WebDAV returns server
-        information first. Hence, a `skip_first` option is included in the
-        parameters.
+    """Parses the xml content returned from WebDAV and returns the metadata equivalent. By default,
+    WebDAV returns the metadata of the queried item first. If the root directory is selected, then
+    WebDAV returns server information first. Hence, a ``skip_first`` option is included in the
+    parameters.
 
-        :param content: Body content from WebDAV response
-        :type content: str
-        :param folder: Parent folder for content
-        :type folder: str
-        :param skip_first: WebDav returns server information in first result.
-        This strips off the first result
-        :type skip_first: bool
-        :returns: List of metadata responses.
+    :param str content: Body content from WebDAV response
+    :param str folder: Parent folder for content
+    :param bool skip_first: strip off the first result of the WebDAV response
+    :return: List of metadata responses.
     """
     items = []
     tree = ET.fromstring(content)

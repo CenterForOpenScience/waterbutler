@@ -14,6 +14,7 @@ from waterbutler.settings import config
 from waterbutler.core import exceptions
 from waterbutler.server import settings as server_settings
 from waterbutler.core.signing import Signer
+from waterbutler.core.streams import EmptyStream
 
 
 logger = logging.getLogger(__name__)
@@ -130,13 +131,17 @@ class ZipStreamGenerator:
     async def __anext__(self):
         if not self.remaining:
             raise StopAsyncIteration
-        path = self.provider.path_from_metadata(*self.remaining.pop(0))
+        current = self.remaining.pop(0)
+        path = self.provider.path_from_metadata(*current)
         if path.is_dir:
-            self.remaining.extend([
-                (path, item) for item in
-                await self.provider.metadata(path)
-            ])
-            return await self.__anext__()
+            items = await self.provider.metadata(path)
+            if items:
+                self.remaining.extend([
+                    (path, item) for item in items
+                ])
+                return await self.__anext__()
+            else:
+                return path.path.replace(self.parent_path.path, ''), EmptyStream()
 
         return path.path.replace(self.parent_path.path, ''), await self.provider.download(path)
 
