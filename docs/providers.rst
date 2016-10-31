@@ -1,12 +1,11 @@
 Providers
-=============
+=========
 
 .. toctree::
 
    baseprovider
    provider.s3
    provider.box
-   provider.cloudfiles
    provider.dataverse
    provider.dmptool
    provider.dropbox
@@ -16,3 +15,5 @@ Providers
    provider.github
    provider.googledrive
    provider.osfstorage
+   provider.owncloud
+   provider.cloudfiles

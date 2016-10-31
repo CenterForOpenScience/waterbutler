@@ -1,11 +1,9 @@
-try:
-    from waterbutler import settings
-except ImportError:
-    settings = {}
+from waterbutler import settings
 
-config = settings.get('OSF_AUTH_CONFIG', {})
+config = settings.child('OSF_AUTH_CONFIG')
 
-JWT_EXPIRATION = config.get('JWT_EXPIRATION', 15)
+
+JWT_EXPIRATION = int(config.get('JWT_EXPIRATION', 15))
 JWT_ALGORITHM = config.get('JWT_ALGORITHM', 'HS256')
 API_URL = config.get('API_URL', 'http://localhost:5000/api/v1/files/auth/')
 

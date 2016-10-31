@@ -2,6 +2,51 @@
 ChangeLog
 *********
 
+0.28.0 (2016-10-31)
+===================
+- HALLOWEEN RELEASE! (^ ,–, ^)
+- Feature: Download-as-zip now includes empty directories! (thanks, @darioncassel!)
+- Feature: WaterButler now lists the full contents of Google Drive directories with more than 1,000
+children. (thanks, @TomBaxter!)
+- Feature: WaterButler now lists the full contents of Box.com directories with more than 1,000
+children. (thanks, @TomBaxter!)
+- Fix: Teach ownCloud to be more efficient about moving and copying files with a single provider.
+
+0.27.1 (2016-10-24)
+===================
+- Fix: Fix broken Download-as-zip for GitHub by propagating the target branch during recursive
+traversal.
+- Fix: Fix incorrectly detected self-overwrite when copying a file between the root paths of two
+separate Box.com accounts.
+
+0.27.0 (2016-10-19)
+===================
+- Feature: Attempting to move or copy a file over itself will now fail with a 409 Conflict, even
+across different resources.
+- Fix: Fix bugs in ownCloud provider that were breaking renames.
+- Fix: v1 metadata requests now accept the `version` and `revision` query parameters like v0.
+
+0.26.1 (2016-10-18)
+===================
+- Feature: Dockerized WaterButler can now take a commit sha from the environment to indicate
+version to deploy. (thanks, @icereval!)
+
+0.26.0 (2016-10-11)
+===================
+- Feature: WaterButler now supports ownCloud as a full provider! (thanks, @kwierman!)
+- Feature: WaterButler accepts configuration from the environment, overriding any file-based
+configuration.  This helps WB integrate nicer in a docker-compose environment. (thanks, @icereval!)
+- Fix: Gracefully handle branch-related GitHub errors.
+- Code: Start labeling user-caused errors as level=info in Sentry (thanks, @TomBaxter!)
+- Code: Log redirect-based downloads to analytics.
+- Code: Bump dependencies on Raven and cryptography.  cryptography v1.5.2 now installs on OSX via
+wheel.  This should silence scary-sounding cffi warnings!
+
+0.25.0 (2016-09-22)
+===================
+- Feature: Include user id when requesting files from osfstorage, to allow the OSF to distinguish
+contributing users in download counts. (thanks, @darioncassel!)
+
 0.24.0 (2016-09-14)
 ===================
 - Feature: Update the v1 API to passthrough unrecognized query params to the provider.

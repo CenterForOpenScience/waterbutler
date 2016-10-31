@@ -120,3 +120,22 @@ class StringStream(BaseStream):
 
     async def _read(self, n=-1):
         return (await asyncio.StreamReader.read(self, n))
+
+
+class EmptyStream(BaseStream):
+    """An empty stream with size 0 that returns nothing when read. Useful for representing
+    empty folders when building zipfiles.
+    """
+    def __init__(self):
+        super().__init__()
+        self._eof = False
+
+    def size(self):
+        return 0
+
+    def at_eof(self):
+        return self._eof
+
+    async def _read(self, n):
+        self._eof = True
+        return bytearray()

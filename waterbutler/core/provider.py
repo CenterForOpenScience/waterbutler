@@ -202,6 +202,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
             args = (dest_provider, src_path, dest_path)
             kwargs = {}
 
+        # files and folders shouldn't overwrite themselves
+        if (
+            self.shares_storage_root(dest_provider) and
+            src_path.materialized_path == dest_path.materialized_path
+        ):
+            raise exceptions.OverwriteSelfError(src_path)
+
         if self.can_intra_move(dest_provider, src_path):
             return (await self.intra_move(*args))
 
@@ -228,8 +235,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
             args = (dest_provider, src_path, dest_path)
             kwargs = {}
 
+        # files and folders shouldn't overwrite themselves
+        if (
+                self.shares_storage_root(dest_provider) and
+                src_path.materialized_path == dest_path.materialized_path
+        ):
+            raise exceptions.OverwriteSelfError(src_path)
+
         if self.can_intra_copy(dest_provider, src_path):
-                return (await self.intra_copy(*args))
+            return (await self.intra_copy(*args))
 
         if src_path.is_dir:
             return (await self._folder_file_op(self.copy, *args, **kwargs))
@@ -461,6 +475,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
             path = path.parent
 
         return streams.ZipStreamReader(ZipStreamGenerator(self, path, *metadata))
+
+    def shares_storage_root(self, other):
+        """Returns True if ``self`` and ``other`` both point to the same storage root.  Used to
+        detect when a file move/copy action might result in the file overwriting itself. Most
+        providers have enough uniquely identifing information in the settings to detect this,
+        but some providers may need to override this to do further detection.
+
+        :param BaseProvider other: another provider instance to compare with
+        :returns bool: True if both providers use the same storage root.
+        """
+        return self.NAME == other.NAME and self.settings == other.settings
 
     @abc.abstractmethod
     def can_duplicate_names(self):

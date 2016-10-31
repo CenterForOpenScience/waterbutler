@@ -221,11 +221,17 @@ class OSFStorageProvider(provider.BaseProvider):
             # version could be 0 here
             version = revision
 
+        # Capture user_id for analytics if user is logged in
+        user_param = {}
+        if self.auth.get('id', None):
+            user_param = {'user': self.auth['id']}
+
         # osf storage metadata will return a virtual path within the provider
         async with self.signed_request(
             'GET',
             self.build_url(path.identifier, 'download', version=version, mode=mode),
             expects=(200, ),
+            params=user_param,
             throws=exceptions.DownloadError,
         ) as resp:
             data = await resp.json()
