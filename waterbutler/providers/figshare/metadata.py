@@ -29,20 +29,33 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
         return self.raw_file['name']
 
     @property
-    def path(self):
-        return '/{0}/{1}'.format(self.article_id, self.raw_file['id'])
-
-    @property
-    def materialized_path(self):
-        return '/{0}/{1}'.format(self.article_name, self.name)
-
-    @property
     def article_id(self):
         return self.raw['id']
 
     @property
     def article_name(self):
+        if settings.ARTICLE_TYPE_IDENTIFIER in self.raw['url']:
+            return ''
         return self.raw['title']
+
+    @property
+    def path(self):
+        if settings.ARTICLE_TYPE_IDENTIFIER in self.raw['url']:
+            return '/{0}'.format(self.id)
+        return '/{0}/{1}'.format(self.article_id, self.id)
+
+    @property
+    def materialized_path(self):
+        if settings.ARTICLE_TYPE_IDENTIFIER in self.raw['url']:
+            return '/{0}'.format(self.name)
+        # if self.raw['defined_type'] in settings.FOLDER_TYPES:
+        #     return '/{0}/{1}'.format(self.article_name, self.name)
+        # return '/{0}'.format(self.name)
+        return '/{0}/{1}'.format(self.article_name, self.name)
+
+    @property
+    def upload_path(self):
+        return self.path
 
     @property
     def content_type(self):
@@ -58,7 +71,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return '{}::{}'.format(self.raw['status'].lower(),
+        return '{}:{}:{}'.format(self.raw['status'].lower(),
                                self.article_id,
                                self.raw_file['computed_md5'])
 

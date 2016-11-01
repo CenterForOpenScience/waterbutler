@@ -7,7 +7,7 @@ from waterbutler.server import settings
 from waterbutler.core import remote_logging
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.utils import make_provider
-from waterbutler.constants import DEFAULT_CONFLICT
+from waterbutler.constants import DEFAULT_CONFLICT, KEEP_ONLY_PROVIDERS
 
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
 
@@ -92,9 +92,13 @@ class MoveCopyMixin:
 
         if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
             # this weird signature syntax courtesy of py3.4 not liking trailing commas on kwargs
+            if self.dest_provider.NAME in KEEP_ONLY_PROVIDERS:
+                conflict = 'keep'
+            else:
+                conflict = self.json.get('conflict', DEFAULT_CONFLICT)
             result = await getattr(tasks, action).adelay(
                 rename=self.json.get('rename'),
-                conflict=self.json.get('conflict', DEFAULT_CONFLICT),
+                conflict=conflict,
                 request=remote_logging._serialize_request(self.request),
                 *self.build_args()
             )
