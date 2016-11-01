@@ -2,7 +2,6 @@ import http
 import json
 import time
 import asyncio
-from urllib.parse import urlparse, urlunparse
 
 import aiohttp
 
@@ -17,10 +16,12 @@ from waterbutler.providers.figshare import settings
 
 class FigsharePath(WaterButlerPath):
 
-    def __init__(self, path, folder: bool, is_public=False, _ids=(),
+    def __init__(self, path, folder: bool, is_public=False,
+                 parent_is_folder=True, _ids=(),
                  prepend=None):
         super().__init__(path, _ids=_ids, prepend=prepend, folder=folder)
         self.is_public = is_public
+        self.parent_is_folder = parent_is_folder
 
     @property
     def identifier_path(self):
@@ -31,6 +32,32 @@ class FigsharePath(WaterButlerPath):
         if len(self.parts) == 1:
             return ''
         return '/'.join([x.identifier for x in self.parts[1:]]) + ('/' if self.is_dir else '')
+
+    @property
+    def parent(self):
+        """ Returns a new WaterButlerPath that represents the parent of the current path.
+
+        Calling `.parent()` on the root path returns None.
+        """
+        if len(self.parts) == 1:
+            return None
+        return self.__class__.from_parts(self.parts[:-1],
+                                         folder=self.parent_is_folder,
+                                         is_public=self.is_public,
+                                         prepend=self._prepend)
+
+    def child(self, name, _id=None, folder=False, parent_is_folder=True):
+        """ Create a child of the current WaterButlerPath, propagating prepend and id information to it.
+
+        :param str name: the name of the child entity
+        :param _id: the id of the child entity (defaults to None)
+        :param bool folder: whether or not the child is a folder (defaults to False)
+        """
+        return self.__class__.from_parts(
+            self.parts + [self.PART_CLASS(name, _id=_id)],
+            folder=folder, parent_is_folder=parent_is_folder,
+            prepend=self._prepend
+        )
 
 
 class FigshareProvider(provider.BaseProvider):
@@ -48,20 +75,30 @@ class FigshareProvider(provider.BaseProvider):
 
     'Articles' are one of (currently)ten types. All but one of these 'defined_types' may contain no more then one file. The exception is the 'fileset' 'defined_type' which may contain more then one 'file'
 
-    The FigshareProvider allows for the possibility of either a private 'project' or a private 'collection' as the root of a waterbutler provider instance. This provider's deafult configuration treats 'articles' with a 'defined_type' of 'fileset' as a folder, and all other 'defined_type's as a file.
+    The FigshareProvider allows for the possibility of a private 'article', a private 'project', or a private 'collection' as the root of a waterbutler provider instance. The FigshareProvider's deafult configuration treats 'articles' with a 'defined_type' of 'fileset' as a folder, and all other 'defined_type's as a file.
 
     In practice, this means that when returning the metadata for the root(/) folder, only 'articles' of 'defined_type' 'fileset' will be returned as a folder. All other 'articles' will be returned as a file if they contain a file and ignored if they do not contain a file.
+    If the root is configured as a provider, it will contain 0 or more files.
 
-    Valid FigsharePaths:
+    Valid FigsharePaths for root project/collection:
         /
-        /<article_id for type fileset>/
+        /<article_id for type fileset>/ (default configuration)
         /<article_id of any type>/<file_id>
 
-    Invalid FigsharePaths(include but are not limited to):
+    Valid FigsharePaths for root article:
+        /
+        /<file_id>
+
+    Invalid FigsharePaths for root project/collection examples:
         /<article_id of any type>
-        /<article_id of any type other then fileset>/
+        /<article_id of any type other then fileset>/ (default configuration)
         /<article_id of any type>/<file_id>/
         path of any depth greater then 2
+
+    Invalid FigsharePaths for root article examples:
+        /<any_id>/
+        /<any_id other then a file_id>
+        path of any depth greater then 1
 
     API docs: https://docs.figshare.com/
     """
@@ -70,11 +107,16 @@ class FigshareProvider(provider.BaseProvider):
     BASE_URL = settings.BASE_URL
     VIEW_URL = settings.VIEW_URL
     DOWNLOAD_URL = settings.DOWNLOAD_URL
+    VALID_CONTAINER_TYPES = settings.VALID_CONTAINER_TYPES
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
         self.container_type = self.settings['container_type']
+        if self.container_type not in self.VALID_CONTAINER_TYPES:
+            raise exceptions.ProviderError('{} is not a valid container type.'.format(self.container_type))
+        if self.container_type == 'fileset':
+            self.container_type = 'article'
         self.container_id = self.settings['container_id']
 
     @property
@@ -87,35 +129,43 @@ class FigshareProvider(provider.BaseProvider):
             'Authorization': 'token {}'.format(self.token),
         }
 
-    async def make_request(self, method, url, is_public: bool, *args, **kwargs):
-        """Add 'account' for private request and super make_request
+    def build_url(self, is_public: bool, *segments, **query):
+        """A nice wrapper around furl, builds urls based on self.BASE_URL
 
-        :param method: str: HTTP method
-        :param url: str: URL
         :param is_public: bool: True if addressing public resource
-        :param *args:
-        :param **kwargs:
+        :param tuple \*segments: A tuple of strings joined into /foo/bar/..
+        :param dict \*\*query: A dictionary that will be turned into query parameters ?foo=bar
+        :rtype: str
 
         Subclassed to include handling of is_public argument. 'collection'
         'container_type's may contain public 'article's which are accessed
         through an URN with a different prefix.
         """
         if not is_public:
-            url = urlparse(url)
-            url_path = url[2].replace('/v2/', '/v2/account/', 1)
-            url = urlunparse((url[0], url[1], url_path, url[3], url[4], url[5]))
+            segments = ('account', (*segments))
+        return (super().build_url(*segments, **query))
+
+    async def make_request(self, method, url, *args, **kwargs):
+        """Add 'account' for private request and super make_request
+
+        :param method: str: HTTP method
+        :param url: str: URL
+        :param *args:
+        :param **kwargs:
+        """
         if isinstance(kwargs.get('data'), dict):
             kwargs['data'] = json.dumps(kwargs['data'])
         return (await super().make_request(method, url, *args, **kwargs))
 
     def can_duplicate_names(self):
         """
-        Articles may have duplicate titles and files may have duplicate names
+        Figshare allows articles to have duplicate titles and files to have
+        duplicate names
 
         However, this provider does not allow the creation of duplicate files
         and folders.
         """
-        return True
+        return False
 
     async def validate_path(self, path, **kwargs):
         """
@@ -139,17 +189,41 @@ class FigshareProvider(provider.BaseProvider):
                                 folder=True,
                                 is_public=False)
         if len(self._path_split(path)) == 2:
-            junk, article_id = self._path_split(path)
-            file_id = None
-        elif len(self._path_split(path)) == 3:
+            junk, path_id = self._path_split(path)
+            if self.container_type == 'article':
+                article_id = None
+                file_id = path_id
+            else:
+                article_id = path_id
+                file_id = None
+        elif len(self._path_split(path)) == 3 and not self.container_type == 'article':
             junk, article_id, file_id = self._path_split(path)
         else:
-            raise exceptions.InvalidPathError('Figshare paths may have a depth of no more than two.\n {} is not a valid Figshare path.'.format(path))
+            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+
+        if self.container_type == 'article':
+            file_response = await self.make_request(
+                'GET',
+                self.build_url(False, *self.root_path_parts, 'files', file_id),
+                expects=(200, 404, ),
+            )
+            if file_response.status == 200:
+                file_response_json = await file_response.json()
+                file_name = file_response_json['name']
+                return FigsharePath('/' + file_name,
+                                    _ids=('', file_id),
+                                    folder=False,
+                                    is_public=False)
+            # catch for create file in article root
+            file_response.close()
+            return FigsharePath('/' + file_id,
+                                _ids=('', ''),
+                                folder=False,
+                                is_public=False)
 
         root_article_response = await self.make_request(
             'GET',
-            self.build_url(*self.root_path_parts, 'articles'),
-            False,
+            self.build_url(False, *self.root_path_parts, 'articles'),
             expects=(200, ),
         )
         # TODO: need better way to get public/private
@@ -168,8 +242,7 @@ class FigshareProvider(provider.BaseProvider):
         if file_id:
             file_response = await self.make_request(
                 'GET',
-                self.build_url(*article_segments, 'files', file_id),
-                is_public,
+                self.build_url(is_public, *article_segments, 'files', file_id),
                 expects=(200, 404, ),
             )
             if file_response.status == 200:
@@ -184,8 +257,7 @@ class FigshareProvider(provider.BaseProvider):
 
         article_response = await self.make_request(
             'GET',
-            self.build_url(*article_segments),
-            is_public,
+            self.build_url(is_public, *article_segments),
             expects=(200, 404, ),
         )
         if article_response.status == 200:
@@ -206,7 +278,7 @@ class FigshareProvider(provider.BaseProvider):
             article_response.close()
         if file_id:
             # Catch for if neither file nor article exist
-            raise exceptions.NotFoundError()
+            raise exceptions.NotFoundError(path)
         # Return for v0 folder creation
         return FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
 
@@ -220,17 +292,34 @@ class FigshareProvider(provider.BaseProvider):
         if path == '/':
             return FigsharePath('/', _ids=('', ), folder=True, is_public=False)
         if len(self._path_split(path)) == 2:
-            junk, article_id = self._path_split(path)
-            file_id = None
-        elif len(self._path_split(path)) == 3:
+            junk, path_id = self._path_split(path)
+            if self.container_type == 'article':
+                article_id = None
+                file_id = path_id
+            else:
+                article_id = path_id
+                file_id = None
+        elif len(self._path_split(path)) == 3 and not self.container_type == 'article':
             junk, article_id, file_id = self._path_split(path)
         else:
-            raise exceptions.InvalidPathError('Figshare paths may have a depth of no more than two.\n {} is not a valid Figshare path.'.format(path))
+            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+
+        if self.container_type == 'article':
+            file_response = await self.make_request(
+                'GET',
+                self.build_url(False, *self.root_path_parts, 'files', file_id),
+                expects=(200, ),
+            )
+            file_response_json = await file_response.json()
+            file_name = file_response_json['name']
+            return FigsharePath('/' + file_name,
+                                _ids=('', file_id),
+                                folder=False,
+                                is_public=False)
 
         root_article_response = await self.make_request(
             'GET',
-            self.build_url(*self.root_path_parts, 'articles'),
-            False,
+            self.build_url(False, *self.root_path_parts, 'articles'),
             expects=(200, ),
         )
         # TODO: need better way to get public/private
@@ -249,8 +338,7 @@ class FigshareProvider(provider.BaseProvider):
         if file_id:
             file_response = await self.make_request(
                 'GET',
-                self.build_url(*article_segments, 'files', file_id),
-                is_public,
+                self.build_url(is_public, *article_segments, 'files', file_id),
                 expects=(200, ),
             )
             file_json = await file_response.json()
@@ -265,8 +353,7 @@ class FigshareProvider(provider.BaseProvider):
 
         article_response = await self.make_request(
             'GET',
-            self.build_url(*article_segments),
-            is_public,
+            self.build_url(is_public, *article_segments),
             expects=(200, ),
         )
         article_json = await article_response.json()
@@ -295,7 +382,12 @@ class FigshareProvider(provider.BaseProvider):
         the correct id of an existing child_name. will return the first id that
         matches the folder and child_name arguments or '' if no match.
         """
-        urn_parts = (*self.root_path_parts, 'articles')
+        # article_id = None
+        print('### reval parent_path.is_root is {}'.format(str(parent_path.is_root)))
+        parent_is_folder = False
+        urn_parts = self.root_path_parts
+        if not self.container_type == 'article':
+            urn_parts = (*urn_parts, 'articles')
         if not parent_path.is_root:
             if not folder:
                 urn_parts = (*urn_parts, (parent_path.identifier))
@@ -303,20 +395,20 @@ class FigshareProvider(provider.BaseProvider):
                 raise exceptions.NotFoundError('{} is not a valid parent path of folder={}. Folder can only exist at the root level.'.format(parent_path.identifier_path, str(folder)))
         list_children_response = await self.make_request(
             'GET',
-            self.build_url(*urn_parts),
-            False,
+            self.build_url(False, *urn_parts),
             expects=(200, ),
         )
         child_id = ''
-        if not parent_path.is_root:
+        print('### reval parent_path.path is: {}'.format(parent_path.path))
+        if not parent_path.is_root or self.container_type == 'article':
             article_json = await list_children_response.json()
-            if article_json['defined_type'] in settings.FOLDER_TYPES:
-                for file in article_json['files']:
-                    if file['name'] == child_name:
-                        child_id = str(file['id'])
-                        break
-            else:
-                raise exceptions.NotFoundError('{} is not a valid parent path of folder={}. defined_type is {}.'.format(parent_path.identifier_path, str(folder), article_json['defined_type']))
+            # if article_json['defined_type'] in settings.FOLDER_TYPES or self.container_type == 'article':
+            for file in article_json['files']:
+                if file['name'] == child_name:
+                    child_id = str(file['id'])
+                    break
+            # else:
+            #     raise exceptions.NotFoundError('{} is not a valid parent path of folder={}. defined_type is {}.'.format(parent_path.identifier_path, str(folder), article_json['defined_type']))
         else:
             root_json = await list_children_response.json()
             articles = await asyncio.gather(*[
@@ -330,13 +422,22 @@ class FigshareProvider(provider.BaseProvider):
                             child_id = str(article['id'])  # string?
                             break
             else:
+                print('### Get here reval')
                 for article in articles:
                     if not article['defined_type'] in settings.FOLDER_TYPES:
+                        parent_is_folder = False
+                        article_id = str(article['id'])
+                        article_name = str(article['title'])
                         for file in article['files']:
                             if file['name'] == child_name:
+                                parent_path = parent_path.child(article_name,
+                                                                _id=article_id,
+                                                                folder=False)
                                 child_id = str(file['id'])  # string?
                                 break
-        return parent_path.child(child_name, _id=child_id, folder=folder)
+        print('### child_name: {}\n child_id: {}\n'.format(child_name, child_id))
+        print('### child path is: {}'.format(parent_path.child(child_name, _id=child_id, folder=folder).path))
+        return parent_path.child(child_name, _id=child_id, folder=folder, parent_is_folder=parent_is_folder)
 
     async def _get_url_super(self, url):
         # Use super to avoid is_public logic
@@ -355,19 +456,43 @@ class FigshareProvider(provider.BaseProvider):
         :param path: FigsharePath: who's Metadata object(s) will be returned
         :rtype FigshareFileMetadata obj or list of Metadata objs:
         """
+        if self.container_type == 'article':
+            article_response = await self.make_request(
+                'GET',
+                self.build_url(path.is_public, *self.root_path_parts),
+                expects=(200,),
+            )
+            article_json = await article_response.json()
+            if path.is_root:
+                contents = []
+                for file in article_json['files']:
+                    contents.append(metadata.FigshareFileMetadata(
+                                    article_json, raw_file=file))
+                return contents
+
+            elif len(path.parts) == 2:
+                ret = False
+                for file in article_json['files']:
+                    # if file['id'] == int(path.parts[1].identifier):
+                    if str(file['id']) == path.parts[1].identifier:
+                        ret = (metadata.FigshareFileMetadata(article_json,
+                                                             raw_file=file))
+                if ret:
+                    return ret
+            raise exceptions.NotFoundError(str(path))
+
         if path.is_root:
             articles_response = await self.make_request(
                 'GET',
-                self.build_url(*self.root_path_parts, 'articles'),
-                False,
+                self.build_url(False, *self.root_path_parts, 'articles'),
                 expects=(200, ),
             )
             articles_json = await articles_response.json()
-            path.is_public = False  # this needed?
+            path.is_public = False
             contents = await asyncio.gather(*[
                 # TODO: collections may need to use each['url'] for correct URN
                 # Use _get_url_super ? figshare API needs to get fixed first.
-                self._get_articles_metadata(str(each['id']), path.is_public)
+                self._get_article_metadata(str(each['id']), path.is_public)
                 for each in articles_json
             ])
             return [each for each in contents if each]
@@ -377,9 +502,8 @@ class FigshareProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
         article_response = await self.make_request(
             'GET',
-            self.build_url(*self.root_path_parts,
+            self.build_url(path.is_public, *self.root_path_parts,
                            'articles', path.parts[1].identifier),
-            path.is_public,
             expects=(200, 404),
         )
         if article_response.status == 404:
@@ -405,7 +529,7 @@ class FigshareProvider(provider.BaseProvider):
             if ret:
                 return ret
             else:
-                raise exceptions.NotFoundError()
+                raise exceptions.NotFoundError(path.path)
         else:
             raise exceptions.NotFoundError('{} is not a valid path.'.format(path))
 
@@ -418,7 +542,7 @@ class FigshareProvider(provider.BaseProvider):
         """
         return path.rstrip('/').split('/')
 
-    async def _get_articles_metadata(self, article_id, is_public: bool):
+    async def _get_article_metadata(self, article_id, is_public: bool):
         """Return Figshare*Metadata object for given article_id
 
         Seperate def to allow for taking advantage of asyncio.gather
@@ -428,8 +552,8 @@ class FigshareProvider(provider.BaseProvider):
         """
         response = await self.make_request(
             'GET',
-            self.build_url(*self.root_path_parts, 'articles', article_id),
-            is_public,
+            self.build_url(is_public, *self.root_path_parts, 'articles',
+                           article_id),
             expects=(200, ),
         )
         article_json = await response.json()
@@ -476,7 +600,7 @@ class FigshareProvider(provider.BaseProvider):
         _id = str(metadata.id)
         return parent_path.child(metadata.name, _id=_id, folder=folder)
 
-    async def upload(self, stream, path, **kwargs):
+    async def upload(self, stream, path, conflict='replace', **kwargs):
         """ Upload a file to provider.
 
         Upload a file to provider root or to an article who's defined_type is
@@ -486,18 +610,35 @@ class FigshareProvider(provider.BaseProvider):
         :param path: FigsharePath: inclusive of file to be uploaded
         :param **kwargs: Will be passed to returned metadata object
         """
-        # Create article or retrieve article_id from existing article
+        path, exists = await self.handle_name_conflict(path, conflict=conflict)
         if not path.parent.is_root:
+            parent_resp = await self.make_request(
+                'GET',
+                self.build_url(False,
+                               *self.root_path_parts,
+                               'articles', path.parent.identifier),
+                expects=(200, ),
+            )
+            parent_json = await parent_resp.json()
+            if not parent_json['defined_type'] in settings.FOLDER_TYPES:
+                # replace_article = path._parts[1]._id
+                del path._parts[1]
+
+        # Create article or retrieve article_id from existing article
+        print('### upload path is: {}'.format(path.path))
+        print('### upload path.parent.is_root is: {}'.format(path.parent.is_root))
+        if self.container_type == 'article':
+            article_id = self.container_id
+        elif not path.parent.is_root:
             article_id = path.parent.identifier
         else:
             article_name = json.dumps({'title': path.name})
             if self.container_type == 'project':
                 article_resp = await self.make_request(
                     'POST',
-                    self.build_url('account',
+                    self.build_url(False,
                                    *self.root_path_parts,
                                    'articles'),
-                    'false',
                     data=article_name,
                     expects=(201, ),
                 )
@@ -506,8 +647,7 @@ class FigshareProvider(provider.BaseProvider):
             elif self.container_type == 'collection':
                 article_resp = await self.make_request(
                     'POST',
-                    self.build_url('account', 'articles'),
-                    'false',
+                    self.build_url(False, *self.root_path_parts, 'articles'),
                     data=article_name,
                     expects=(201, ),
                 )
@@ -516,21 +656,17 @@ class FigshareProvider(provider.BaseProvider):
                 article_list = json.dumps({'articles': [article_id]})
                 await self.make_request(
                     'POST',
-                    self.build_url('account',
+                    self.build_url(False,
                                    *self.root_path_parts,
                                    'articles'),
-                    'false',
                     data=article_list,
                     expects=(201, ),
                 )
-            else:
-                raise exceptions.ProviderError('Invalid container_type: {}'.format(self.container_type))
         # Create file. Get file ID
         file_data = json.dumps({'name': path.name, 'size': stream.size})
         file_resp = await self.make_request(
             'POST',
-            self.build_url('account', 'articles', article_id, 'files'),
-            'false',
+            self.build_url(False, 'articles', article_id, 'files'),
             data=file_data,
             expects=(201, ),
         )
@@ -542,8 +678,7 @@ class FigshareProvider(provider.BaseProvider):
         time.sleep(settings.FILE_CREATE_WAIT)
         file_resp = await self.make_request(
             'GET',
-            self.build_url('account', 'articles', article_id, 'files', file_id),
-            'false',
+            self.build_url(False, 'articles', article_id, 'files', file_id),
             expects=(200, 404),
         )
         if file_resp.status == 404:
@@ -553,7 +688,6 @@ class FigshareProvider(provider.BaseProvider):
         token_resp = await self.make_request(
             'GET',
             upload_url,
-            'false',
             expects=(200, ),
         )
         token_json = await token_resp.json()
@@ -565,7 +699,6 @@ class FigshareProvider(provider.BaseProvider):
             upload_response = await self.make_request(
                 'PUT',
                 upload_url + '/' + str(part_number),
-                'false',
                 data=stream._read(size),
                 expects=(200, ),
             )
@@ -574,15 +707,20 @@ class FigshareProvider(provider.BaseProvider):
         # Mark upload complete
         upload_response = await self.make_request(
             'POST',
-            self.build_url('account', 'articles', article_id, 'files', file_id),
-            'false',
+            self.build_url(False, 'articles', article_id, 'files', file_id),
             expects=(202, ),
         )
         upload_response.close()
-        path = FigsharePath('/' + article_id + '/' + file_id,
-                            _ids=(self.container_id, article_id, file_id),
-                            folder=False,
-                            is_public=False)
+        if self.container_type == 'article':
+            path = FigsharePath('/' + file_id,
+                                _ids=('', file_id),
+                                folder=False,
+                                is_public=False)
+        else:
+            path = FigsharePath('/' + article_id + '/' + file_id,
+                                _ids=(self.container_id, article_id, file_id),
+                                folder=False,
+                                is_public=False)
         return (await self.metadata(path, **kwargs)), True
 
     async def delete(self, path, confirm_delete=0, **kwargs):
@@ -606,7 +744,9 @@ class FigshareProvider(provider.BaseProvider):
                 'confirm_delete=1 is required for deleting root provider folder',
                 code=400
             )
-        if len(path.parts) == 2:
+        if self.container_type == 'article':
+            delete_path = (*self.root_path_parts, 'files', path.parts[-1]._id)
+        elif len(path.parts) == 2:
             if not path.is_folder:
                 raise exceptions.NotFoundError(str(path))
             delete_path = (*self.root_path_parts, 'articles', path.parts[1]._id)
@@ -615,9 +755,8 @@ class FigshareProvider(provider.BaseProvider):
                 raise exceptions.NotFoundError(str(path))
             article_response = await self.make_request(
                 'GET',
-                self.build_url(*self.root_path_parts, 'articles',
+                self.build_url(False, *self.root_path_parts, 'articles',
                                path.parts[1]._id),
-                False,
                 expects=(200, ),
             )
             article_json = await article_response.json()
@@ -629,8 +768,7 @@ class FigshareProvider(provider.BaseProvider):
                                path.parts[1]._id)
         delete_article_response = await self.make_request(
             'DELETE',
-            self.build_url(*(delete_path)),
-            False,
+            self.build_url(False, *(delete_path)),
             expects=(204, ),
         )
         delete_article_response.close()
@@ -640,23 +778,37 @@ class FigshareProvider(provider.BaseProvider):
 
         :param path: FigsharePath to be emptied
         """
-        # TODO: Needs logic for skipping public articles in collections
-        articles_response = await self.make_request(
-            'GET',
-            self.build_url(*self.root_path_parts, 'articles'),
-            False,
-            expects=(200, ),
-        )
-        articles_json = await articles_response.json()
-        for article in articles_json:
-            delete_article_response = await self.make_request(
-                'DELETE',
-                self.build_url(*self.root_path_parts, 'articles',
-                               str(article['id'])),
-                False,
-                expects=(204, ),
+        if self.container_type == 'article':
+            article_response = await self.make_request(
+                'GET',
+                self.build_url(False, *self.root_path_parts),
+                expects=(200, ),
             )
-            delete_article_response.close()
+            article_json = await article_response.json()
+            for file in article_json['files']:
+                delete_file_response = await self.make_request(
+                    'DELETE',
+                    self.build_url(False, *self.root_path_parts, 'files',
+                                   str(file['id'])),
+                    expects=(204, ),
+                )
+                delete_file_response.close()
+        else:
+            # TODO: Needs logic for skipping public articles in collections
+            articles_response = await self.make_request(
+                'GET',
+                self.build_url(False, *self.root_path_parts, 'articles'),
+                expects=(200, ),
+            )
+            articles_json = await articles_response.json()
+            for article in articles_json:
+                delete_article_response = await self.make_request(
+                    'DELETE',
+                    self.build_url(False, *self.root_path_parts, 'articles',
+                                   str(article['id'])),
+                    expects=(204, ),
+                )
+                delete_article_response.close()
 
     async def create_folder(self, path, **kwargs):
         """Create a folder
@@ -668,16 +820,17 @@ class FigshareProvider(provider.BaseProvider):
         :rtype: :class:`waterbutler.core.metadata.FigshareFolderMetadata`
         :raises: :class:`waterbutler.core.exceptions.CreateFolderError`
         """
+        if self.container_type == 'article':
+            raise exceptions.CreateFolderError('Cannot create folders when provider root is type article.', code=400)
         if (len(path.parts) == 2) and path.is_folder:
             article_name = path.parts[-1].value
         else:
-            raise exceptions.CreateFolderError(str(path) + ' is not a valid folder creation path. Must be directly off of root and of kind "folder".', code=400)
+            raise exceptions.CreateFolderError('{} is not a valid folder creation path. Must be directly off of root and of kind "folder".'.format(str(path)), code=400)
         article_data = json.dumps({'title': article_name,
                                    'defined_type': 'fileset'})
         create_article_response = await self.make_request(
             'POST',
-            self.build_url(*self.root_path_parts, 'articles'),
-            False,
+            self.build_url(False, *self.root_path_parts, 'articles'),
             data=article_data,
             expects=(201, ),
             throws=exceptions.CreateFolderError,
@@ -686,8 +839,8 @@ class FigshareProvider(provider.BaseProvider):
         create_article_response.close()
         get_article_response = await self.make_request(
             'GET',
-            self.build_url(*self.root_path_parts, 'articles', new_article_id),
-            False,
+            self.build_url(False, *self.root_path_parts, 'articles',
+                           new_article_id),
             expects=(200, ),
             throws=exceptions.NotFoundError,
         )
