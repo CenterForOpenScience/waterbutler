@@ -12,10 +12,11 @@ class WaterButlerError(Exception):
     to HTTPResponses.
     """
 
-    def __init__(self, message, code=500, log_message=None):
+    def __init__(self, message, code=500, log_message=None, is_user_error=False):
         super().__init__(code)
         self.code = code
         self.log_message = log_message
+        self.is_user_error = is_user_error
         if isinstance(message, dict):
             self.data = message
             self.message = json.dumps(message)
@@ -31,8 +32,7 @@ class WaterButlerError(Exception):
 
 
 class InvalidParameters(WaterButlerError):
-    """Errors regarding incorrect
-    data being sent to a method should raise either this
+    """Errors regarding incorrect data being sent to a method should raise either this
     Exception or a subclass thereof
     """
     def __init__(self, message, code=400):
@@ -105,35 +105,42 @@ class RevisionsError(ProviderError):
 
 
 class FolderNamingConflict(ProviderError):
-    def __init__(self, path, name=None):
+    def __init__(self, path, name=None, is_user_error=True):
         super().__init__(
             'Cannot create folder "{name}" because a file or folder already exists at path "{path}"'.format(
                 path=path,
                 name=name or os.path.split(path.strip('/'))[1]
-            ), code=409
+            ), code=409, is_user_error=is_user_error,
         )
 
 
 class NamingConflict(ProviderError):
-    def __init__(self, path, name=None):
+    def __init__(self, path, name=None, is_user_error=True):
         super().__init__(
             'Cannot complete action: file or folder "{name}" already exists in this location'.format(
                 name=name or path.name
-            ), code=409
+            ), code=409, is_user_error=is_user_error,
         )
 
 
 class NotFoundError(ProviderError):
-    def __init__(self, path):
+    def __init__(self, path, is_user_error=True):
         super().__init__(
             'Could not retrieve file or directory {}'.format(path),
             code=http.client.NOT_FOUND,
+            is_user_error=is_user_error,
         )
 
 
 class InvalidPathError(ProviderError):
-    def __init__(self, message):
-        super().__init__(message, code=http.client.BAD_REQUEST)
+    def __init__(self, message, is_user_error=True):
+        super().__init__(message, code=http.client.BAD_REQUEST, is_user_error=is_user_error)
+
+
+class OverwriteSelfError(InvalidParameters):
+    def __init__(self, path):
+        super().__init__('Unable to move or copy \'{}\'. Moving or copying a file or '
+                         'folder onto itself is not supported.'.format(path))
 
 
 async def exception_from_response(resp, error=ProviderError, **kwargs):

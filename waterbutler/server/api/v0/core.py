@@ -11,6 +11,7 @@ from waterbutler.core import utils
 from waterbutler.core import signing
 from waterbutler.core import exceptions
 from waterbutler.server import settings
+from waterbutler.core import remote_logging
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.log_payload import LogPayload
 from waterbutler.server import utils as server_utils
@@ -91,17 +92,12 @@ class BaseProviderHandler(BaseHandler):
         self.path = await self.provider.validate_path(**self.arguments)
         self.arguments['path'] = self.path  # TODO Not this
 
-    @utils.async_retry(retries=5, backoff=5)
-    async def _send_hook(self, action, metadata=None, path=None):
-        await utils.log_to_callback(
-            action,
-            source=LogPayload(
-                self.arguments['nid'],
-                self.provider,
-                metadata=metadata,
-                path=path
-            ),
-        )
+    def _send_hook(self, action, metadata=None, path=None):
+        source = LogPayload(self.arguments['nid'], self.provider, metadata=metadata, path=path)
+        remote_logging.log_file_action(action, source=source, api_version='v0',
+                                       request=remote_logging._serialize_request(self.request),
+                                       bytes_downloaded=self.bytes_downloaded,
+                                       bytes_uploaded=self.bytes_uploaded)
 
 
 class BaseCrossProviderHandler(BaseHandler):
@@ -142,10 +138,12 @@ class BaseCrossProviderHandler(BaseHandler):
 
         return self._json
 
-    @utils.async_retry(retries=0, backoff=5)
-    async def _send_hook(self, action, metadata):
+    def _send_hook(self, action, metadata):
         source = LogPayload(self.json['source']['nid'], self.source_provider,
                             path=self.json['source']['path'])
         destination = LogPayload(self.json['destination']['nid'], self.destination_provider,
                                  metadata=metadata)
-        await utils.log_to_callback(action, source=source, destination=destination)
+        remote_logging.log_file_action(action, source=source, destination=destination, api_version='v0',
+                                       request=remote_logging._serialize_request(self.request),
+                                       bytes_downloaded=self.bytes_downloaded,
+                                       bytes_uploaded=self.bytes_uploaded)

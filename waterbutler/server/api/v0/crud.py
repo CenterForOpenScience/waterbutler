@@ -50,6 +50,7 @@ class CRUDHandler(core.BaseProviderHandler):
 
     async def data_received(self, chunk):
         """Note: Only called during uploads."""
+        self.bytes_uploaded += len(chunk)
         if self.stream:
             self.writer.write(chunk)
             await self.writer.drain()
@@ -69,7 +70,9 @@ class CRUDHandler(core.BaseProviderHandler):
         result = await self.provider.download(range=request_range, **self.arguments)
 
         if isinstance(result, str):
-            return self.redirect(result)
+            self.redirect(result)
+            self._send_hook('download_file', path=self.path)
+            return
 
         if getattr(result, 'partial', None):
             # Use getattr here as not all stream may have a partial attribute
@@ -95,6 +98,7 @@ class CRUDHandler(core.BaseProviderHandler):
             self.set_header('Content-Type', mime_types[ext])
 
         await self.write_stream(result)
+        self._send_hook('download_file', path=self.path)
 
     async def post(self):
         """Create a folder"""

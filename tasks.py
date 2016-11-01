@@ -25,21 +25,21 @@ def monkey_patch():
 
 
 @task
-def wheelhouse(develop=False):
+def wheelhouse(develop=False, pty=True):
     req_file = 'dev-requirements.txt' if develop else 'requirements.txt'
     cmd = 'pip wheel --find-links={} -r {} --wheel-dir={}'.format(WHEELHOUSE_PATH, req_file, WHEELHOUSE_PATH)
-    run(cmd, pty=True)
+    run(cmd, pty=pty)
 
 
 @task
-def install(develop=False):
+def install(develop=False, pty=True):
     run('python setup.py develop')
     req_file = 'dev-requirements.txt' if develop else 'requirements.txt'
     cmd = 'pip install --upgrade -r {}'.format(req_file)
 
     if WHEELHOUSE_PATH:
         cmd += ' --no-index --find-links={}'.format(WHEELHOUSE_PATH)
-    run(cmd, pty=True)
+    run(cmd, pty=pty)
 
 
 @task
@@ -77,6 +77,12 @@ def rabbitmq():
 @task
 def server():
     monkey_patch()
+
+    if os.environ.get('REMOTE_DEBUG', None):
+        import pydevd
+        # e.g. '127.0.0.1:5678'
+        remote_parts = os.environ.get('REMOTE_DEBUG').split(':')
+        pydevd.settrace(remote_parts[0], port=int(remote_parts[1]), suspend=False, stdoutToServer=True, stderrToServer=True)
 
     from waterbutler.server.app import serve
     serve()

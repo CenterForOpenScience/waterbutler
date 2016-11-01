@@ -1,6 +1,5 @@
 import json
 import pytz
-import time
 import asyncio
 import logging
 import functools
@@ -11,18 +10,18 @@ import aiohttp
 from raven import Client
 from stevedore import driver
 
-from waterbutler import settings
+from waterbutler.settings import config
 from waterbutler.core import exceptions
-from waterbutler.tasks import settings as task_settings
 from waterbutler.server import settings as server_settings
 from waterbutler.core.signing import Signer
+from waterbutler.core.streams import EmptyStream
 
 
 logger = logging.getLogger(__name__)
 
 signer = Signer(server_settings.HMAC_SECRET, server_settings.HMAC_ALGORITHM)
 
-sentry_dsn = settings.get('SENTRY_DSN', None)
+sentry_dsn = config.get_nullable('SENTRY_DSN', None)
 client = Client(sentry_dsn) if sentry_dsn else None
 
 
@@ -69,14 +68,13 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
         @functools.wraps(func)
         async def wrapped(*args, __retries=0, **kwargs):
             try:
-                return (await asyncio.coroutine(func)(*args, **kwargs))
+                return await asyncio.coroutine(func)(*args, **kwargs)
             except exceptions as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
                     logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting {4} seconds before retrying'.format(func, e, __retries, retries, wait_time))
-
                     await asyncio.sleep(wait_time)
-                    return wrapped(*args, __retries=__retries + 1, **kwargs)
+                    return await wrapped(*args, __retries=__retries + 1, **kwargs)
                 else:
                     # Logs before all things
                     logger.error('Task {0} failed with exception {1}'.format(func, e))
@@ -107,39 +105,6 @@ async def send_signed_request(method, url, payload):
     ))
 
 
-async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[]):
-    auth = getattr(destination, 'auth', source.auth)
-
-    log_payload = {
-        'action': action,
-        'auth': auth,
-        'time': time.time() + 60,
-        'errors': errors,
-    }
-
-    if start_time:
-        log_payload['email'] = time.time() - start_time > task_settings.WAIT_TIMEOUT
-
-    if action in ('move', 'copy'):
-        log_payload['source'] = source.serialize()
-        log_payload['destination'] = destination.serialize()
-    else:
-        log_payload['metadata'] = source.serialize()
-        log_payload['provider'] = log_payload['metadata']['provider']
-
-    resp = await send_signed_request('PUT', auth['callback_url'], log_payload)
-    resp_data = await resp.read()
-
-    if resp.status // 100 != 2:
-        raise Exception(
-            'Callback for {} request failed with {!r}, got {}'.format(
-                action, resp, resp_data.decode('utf-8')
-            )
-        )
-
-    logger.info('Callback for {} request succeeded with {}'.format(action, resp_data.decode('utf-8')))
-
-
 def normalize_datetime(date_string):
     if date_string is None:
         return None
@@ -166,13 +131,17 @@ class ZipStreamGenerator:
     async def __anext__(self):
         if not self.remaining:
             raise StopAsyncIteration
-        path = self.provider.path_from_metadata(*self.remaining.pop(0))
+        current = self.remaining.pop(0)
+        path = self.provider.path_from_metadata(*current)
         if path.is_dir:
-            self.remaining.extend([
-                (path, item) for item in
-                await self.provider.metadata(path)
-            ])
-            return await self.__anext__()
+            items = await self.provider.metadata(path)
+            if items:
+                self.remaining.extend([
+                    (path, item) for item in items
+                ])
+                return await self.__anext__()
+            else:
+                return path.path.replace(self.parent_path.path, ''), EmptyStream()
 
         return path.path.replace(self.parent_path.path, ''), await self.provider.download(path)
 

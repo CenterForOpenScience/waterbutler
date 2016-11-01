@@ -24,7 +24,7 @@ class DropboxProvider(provider.BaseProvider):
 
     Quirks:
 
-    * Dropbox is a case-insensitive.
+    * Dropbox is case-insensitive.
     """
     NAME = 'dropbox'
     BASE_URL = settings.BASE_URL
@@ -81,6 +81,13 @@ class DropboxProvider(provider.BaseProvider):
 
     def can_duplicate_names(self):
         return False
+
+    def shares_storage_root(self, other):
+        """Dropbox settings only include the root folder. If a cross-resource move occurs
+        between two dropbox providers that are on different accounts but have the same folder
+        base name, the parent method could incorrectly think the action is a self-overwrite.
+        Comparing credentials means that this is unique per connected account."""
+        return super().shares_storage_root(other) and self.credentials == other.credentials
 
     @property
     def default_headers(self):

@@ -184,11 +184,29 @@ def file_lineage():
 
 @pytest.mark.asyncio
 @pytest.mark.aiohttpretty
-async def test_download(monkeypatch, provider_and_mock, osf_response, mock_path, mock_time):
+async def test_download_with_auth(monkeypatch, provider_and_mock, osf_response, mock_path, mock_time):
     provider, inner_provider = provider_and_mock
-
     base_url = provider.build_url(mock_path.identifier, 'download', version=None, mode=None)
-    url, _, params = provider.build_signed_url('GET', base_url)
+    url, _, params = provider.build_signed_url('GET', base_url, params={'user': 'cat'})
+
+    aiohttpretty.register_json_uri('GET', url, params=params, body=osf_response)
+
+    await provider.download(mock_path)
+
+    assert provider.make_provider.called
+    assert inner_provider.download.called
+
+    assert aiohttpretty.has_call(method='GET', uri=url, params=params)
+    provider.make_provider.assert_called_once_with(osf_response['settings'])
+    inner_provider.download.assert_called_once_with(path=WaterButlerPath('/test/path'), displayName='unrelatedpath')
+
+@pytest.mark.asyncio
+@pytest.mark.aiohttpretty
+async def test_download_without_auth(monkeypatch, provider_and_mock, osf_response, mock_path, mock_time):
+    provider, inner_provider = provider_and_mock
+    provider.auth = {} # Remove auth for test
+    base_url = provider.build_url(mock_path.identifier, 'download', version=None, mode=None)
+    url, _, params = provider.build_signed_url('GET', base_url, params={})
 
     aiohttpretty.register_json_uri('GET', url, params=params, body=osf_response)
 

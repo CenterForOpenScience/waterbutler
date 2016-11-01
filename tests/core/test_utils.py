@@ -21,8 +21,7 @@ class TestAsyncRetry:
         mock_func = mock.Mock(side_effect=[Exception(), 'Foo'])
         retryable = utils.async_retry(5, 0, raven=None)(mock_func)
 
-        first = await retryable()
-        x = await first
+        x = await retryable()
 
         assert x == 'Foo'
         assert mock_func.call_count == 2
@@ -32,12 +31,8 @@ class TestAsyncRetry:
         mock_func = mock.Mock(side_effect=Exception('Foo'))
         retryable = utils.async_retry(5, 0, raven=None)(mock_func)
 
-        coro = await retryable()
-
         with pytest.raises(Exception) as e:
-            for _ in range(10):
-                assert isinstance(coro, asyncio.Task)
-                coro = await coro
+            coro = await retryable()
 
         assert e.type == Exception
         assert e.value.args == ('Foo',)

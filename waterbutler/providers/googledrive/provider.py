@@ -514,17 +514,22 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def _folder_metadata(self, path, raw=False):
         query = self._build_query(path.identifier)
-
-        async with self.request(
-            'GET',
-            self.build_url('files', q=query, alt='json', maxResults=1000),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        ) as resp:
-            return [
-                self._serialize_item(path.child(item['title']), item, raw=raw)
-                for item in (await resp.json())['items']
-            ]
+        built_url = self.build_url('files', q=query, alt='json', maxResults=1000)
+        full_resp = []
+        while built_url:
+            async with self.request(
+                'GET',
+                built_url,
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            ) as resp:
+                resp_json = await resp.json()
+                full_resp.extend([
+                    self._serialize_item(path.child(item['title']), item, raw=raw)
+                    for item in resp_json['items']
+                ])
+                built_url = resp_json.get('nextLink', None)
+        return full_resp
 
     async def _file_metadata(self, path, revision=None, raw=False):
         if revision:
