@@ -1,6 +1,3 @@
-try:
-    from waterbutler import settings
-except ImportError:
-    settings = {}
+from waterbutler import settings
 
-config = settings.get('DMPTOOL_PROVIDER_CONFIG', {})
+config = settings.child('DMPTOOL_PROVIDER_CONFIG')
