@@ -64,7 +64,8 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
     @property
     def extra(self):
         return {
-            'revisionId': self.raw['rev']
+            'revisionId': self.raw['rev'],
+            'id': self.raw['id']
         }
 
 
@@ -86,5 +87,6 @@ class DropboxRevision(metadata.BaseFileRevisionMetadata):
     @property
     def extra(self):
         return {
-            'revisionId': self.raw['rev']
+            'revisionId': self.raw['rev'],
+            'id': self.raw['id']
         }
