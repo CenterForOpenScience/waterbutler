@@ -20,11 +20,31 @@ class DropboxProvider(provider.BaseProvider):
     This provider uses the v2 Dropbox API. Files and folders are assigned IDs and some API calls can use IDs in place of paths.
     But this has not yet been implemented.
 
+    Currently (11/3/16) used dropbox endpoints listed by id path allowed
+
+    Can use ID as path:
+        /files/get_metadata
+        /files/copy_reference/get
+        /files/download
+        /files/list_revisions
+
+    Cannot use ID as path:
+        /files/copy
+        /files/copy_reference/save
+        /files/move
+        /files/upload
+        /files/delete
+        /files/list_folder
+        /files/create_folder
+
+    Does not use path:
+        /files/list_folder/continue
+
     API docs: https://www.dropbox.com/developers/documentation/http/documentation
 
     Quirks:
 
-    * Dropbox is case-insensitive.
+    * Dropbox paths are case-insensitive.
     """
     NAME = 'dropbox'
     BASE_URL = settings.BASE_URL
@@ -141,7 +161,8 @@ class DropboxProvider(provider.BaseProvider):
             data = await self.dropbox_request(self.build_url('files', 'move'),
                                               {'from_path': src_path.full_path.rstrip('/'),
                                                'to_path': dest_path.full_path.rstrip('/')},
-                                              exceptions.IntraMoveError)
+                                              exceptions.IntraMoveError,
+                                              expects=(200, 201, 409))
         except DropboxNamingConflictError:
             await dest_provider.delete(dest_path)
             resp, _ = await self.intra_move(dest_provider, src_path, dest_path)
