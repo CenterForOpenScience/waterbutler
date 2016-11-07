@@ -232,90 +232,6 @@ class BaseFigshareProvider(provider.BaseProvider):
         )
         return await response.json()
 
-    async def metadata(self, path, **kwargs):
-        """
-        Return metadata object for given FigsharePath object
-
-        :param path: FigsharePath: who's Metadata object(s) will be returned
-        :rtype FigshareFileMetadata obj or list of Metadata objs:
-        """
-        if self.container_type == 'article':
-            article_response = await self.make_request(
-                'GET',
-                self.build_url(path.is_public, *self.root_path_parts),
-                expects=(200,),
-            )
-            article_json = await article_response.json()
-            if path.is_root:
-                contents = []
-                for file in article_json['files']:
-                    contents.append(metadata.FigshareFileMetadata(
-                                    article_json, raw_file=file))
-                return contents
-
-            elif len(path.parts) == 2:
-                ret = False
-                for file in article_json['files']:
-                    # if file['id'] == int(path.parts[1].identifier):
-                    if str(file['id']) == path.parts[1].identifier:
-                        ret = (metadata.FigshareFileMetadata(article_json,
-                                                             raw_file=file))
-                if ret:
-                    return ret
-            raise exceptions.NotFoundError(str(path))
-
-        if path.is_root:
-            articles_response = await self.make_request(
-                'GET',
-                self.build_url(False, *self.root_path_parts, 'articles'),
-                expects=(200, ),
-            )
-            articles_json = await articles_response.json()
-            path.is_public = False
-            contents = await asyncio.gather(*[
-                # TODO: collections may need to use each['url'] for correct URN
-                # Use _get_url_super ? figshare API needs to get fixed first.
-                self._get_article_metadata(str(each['id']), path.is_public)
-                for each in articles_json
-            ])
-            return [each for each in contents if each]
-        if not path.parts[-1].identifier:
-            raise exceptions.NotFoundError(str(path))
-        if len(path.parts) > 3:
-            raise exceptions.NotFoundError(str(path))
-        article_response = await self.make_request(
-            'GET',
-            self.build_url(path.is_public, *self.root_path_parts,
-                           'articles', path.parts[1].identifier),
-            expects=(200, 404),
-        )
-        if article_response.status == 404:
-            raise exceptions.NotFoundError(str(path))
-        article_json = await article_response.json()
-
-        if len(path.parts) == 2:
-            if article_json['defined_type'] in settings.FOLDER_TYPES:
-                contents = []
-                for file in article_json['files']:
-                    contents.append(metadata.FigshareFileMetadata(
-                                    article_json, raw_file=file))
-                return contents
-            else:
-                raise exceptions.NotFoundError(str(path))
-
-        elif len(path.parts) == 3:
-            ret = False
-            for file in article_json['files']:
-                if file['id'] == int(path.parts[2].identifier):
-                    ret = (metadata.FigshareFileMetadata(article_json,
-                                                         raw_file=file))
-            if ret:
-                return ret
-            else:
-                raise exceptions.NotFoundError(path.path)
-        else:
-            raise exceptions.NotFoundError('{} is not a valid path.'.format(path))
-
     # YEP
     def _path_split(self, path):
         """Strip trailing slash from path string, then split on remaining slashes.
@@ -323,26 +239,6 @@ class BaseFigshareProvider(provider.BaseProvider):
         :param str path: url path string to be split.
         """
         return path.rstrip('/').split('/')
-
-    async def _get_article_metadata(self, article_id, is_public: bool):
-        """Return Figshare*Metadata object for given article_id
-
-        Seperate def to allow for taking advantage of asyncio.gather
-
-        :param article_id: str: article id who's metadata is requested
-        :param is_public: bool: True if article to accessed through public URN
-        """
-        response = await self.make_request(
-            'GET',
-            self.build_url(is_public, *self.root_path_parts, 'articles',
-                           article_id),
-            expects=(200, ),
-        )
-        article_json = await response.json()
-        if article_json['defined_type'] in settings.FOLDER_TYPES:
-            return metadata.FigshareFolderMetadata(article_json)
-        elif article_json['files']:
-            return metadata.FigshareFileMetadata(article_json)
 
     # YEP
     async def download(self, path, **kwargs):
@@ -792,10 +688,80 @@ class FigshareProjectProvider(BaseFigshareProvider):
         pass
 
     async def metadata(self, path, **kwargs):
-        pass
+        """Return metadata for entity identified by ``path`` under the parent project.
+
+        :param FigsharePath path: entity whose metadata will be returned
+        :rtype FigshareFileMetadata obj or list of Metadata objs:
+        """
+        if path.is_root:
+            articles_response = await self.make_request(
+                'GET',
+                self.build_url(False, *self.root_path_parts, 'articles'),
+                expects=(200, ),
+            )
+            articles_json = await articles_response.json()
+            path.is_public = False
+            contents = await asyncio.gather(*[
+                # TODO: collections may need to use each['url'] for correct URN
+                # Use _get_url_super ? figshare API needs to get fixed first.
+                self._get_article_metadata(str(each['id']), path.is_public)
+                for each in articles_json
+            ])
+            return [each for each in contents if each]
+
+        if not path.parts[-1].identifier:
+            raise exceptions.NotFoundError(str(path))
+        if len(path.parts) > 3:
+            raise exceptions.NotFoundError(str(path))
+        article_response = await self.make_request(
+            'GET',
+            self.build_url(path.is_public, *self.root_path_parts,
+                           'articles', path.parts[1].identifier),
+            expects=(200, 404),
+        )
+        if article_response.status == 404:
+            raise exceptions.NotFoundError(str(path))
+        article_json = await article_response.json()
+
+        if len(path.parts) == 2:
+            if article_json['defined_type'] not in settings.FOLDER_TYPES:
+                raise exceptions.NotFoundError(str(path))
+            contents = []
+            for file in article_json['files']:
+                contents.append(metadata.FigshareFileMetadata(article_json, raw_file=file))
+            return contents
+        elif len(path.parts) == 3:
+            for file in article_json['files']:
+                if file['id'] == int(path.parts[2].identifier):
+                    return metadata.FigshareFileMetadata(article_json, raw_file=file)
+            raise exceptions.NotFoundError(path.path)
+        else:
+            raise exceptions.NotFoundError('{} is not a valid path.'.format(path))
 
     async def revisions(self, path, **kwargs):
         pass
+
+    # YEP, ProjectProvider only
+    async def _get_article_metadata(self, article_id, is_public: bool):
+        """Return Figshare*Metadata object for given article_id
+
+        Seperate def to allow for taking advantage of asyncio.gather
+
+        :param str article_id: id of article whose metadata is requested
+        :param bool is_public: ``True`` if article is accessed through public URN
+        """
+        response = await self.make_request(
+            'GET',
+            self.build_url(is_public, *self.root_path_parts, 'articles', article_id),
+            expects=(200, ),
+        )
+        article_json = await response.json()
+        if article_json['defined_type'] in settings.FOLDER_TYPES:
+            return metadata.FigshareFolderMetadata(article_json)
+        elif article_json['files']:
+            return metadata.FigshareFileMetadata(article_json)
+
+        # TODO: WHAT SHOULD RETURN IF NOTHING?
 
 
 class FigshareArticleProvider(BaseFigshareProvider):
@@ -875,14 +841,35 @@ class FigshareArticleProvider(BaseFigshareProvider):
     # async def download(self, path, **kwargs):
     #     pass
 
-    async def delete(self, path, **kwargs):
-        pass
-
     async def upload(self, stream, path, **kwargs):
         pass
 
-    async def metadata(self, path, **kwargs):
+    async def delete(self, path, **kwargs):
         pass
+
+    async def metadata(self, path, **kwargs):
+        """Return metadata for entity identified by ``path`` under the parent project.
+
+        :param FigsharePath path: entity whose metadata will be returned
+        :rtype FigshareFileMetadata obj or list of Metadata objs:
+        """
+        article_response = await self.make_request(
+            'GET',
+            self.build_url(path.is_public, *self.root_path_parts),
+            expects=(200,),
+        )
+        article_json = await article_response.json()
+        if path.is_root:
+            contents = []
+            for file in article_json['files']:
+                contents.append(metadata.FigshareFileMetadata(article_json, raw_file=file))
+            return contents
+        elif len(path.parts) == 2:
+            for file in article_json['files']:
+                if str(file['id']) == path.parts[1].identifier:
+                    return metadata.FigshareFileMetadata(article_json, raw_file=file)
+        # ??? what's the other condition here?
+        raise exceptions.NotFoundError(str(path))
 
     async def revisions(self, path, **kwargs):
         pass
