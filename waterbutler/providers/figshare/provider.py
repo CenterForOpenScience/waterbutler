@@ -148,89 +148,6 @@ class BaseFigshareProvider(provider.BaseProvider):
         """
         return False
 
-    async def validate_v1_path(self, path, **kwargs):
-        """
-        Validate existance of a path and return a FigsharePath object.
-
-        :param path: str: identifier_path URN as passed through the v1 API
-        :rtype FigsharePath:
-        """
-        if path == '/':
-            return FigsharePath('/', _ids=('', ), folder=True, is_public=False)
-        if len(self._path_split(path)) == 2:
-            junk, path_id = self._path_split(path)
-            if self.container_type == 'article':
-                article_id = None
-                file_id = path_id
-            else:
-                article_id = path_id
-                file_id = None
-        elif len(self._path_split(path)) == 3 and not self.container_type == 'article':
-            junk, article_id, file_id = self._path_split(path)
-        else:
-            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
-
-        if self.container_type == 'article':
-            file_response = await self.make_request(
-                'GET',
-                self.build_url(False, *self.root_path_parts, 'files', file_id),
-                expects=(200, ),
-            )
-            file_response_json = await file_response.json()
-            file_name = file_response_json['name']
-            return FigsharePath('/' + file_name,
-                                _ids=('', file_id),
-                                folder=False,
-                                is_public=False)
-
-        root_article_response = await self.make_request(
-            'GET',
-            self.build_url(False, *self.root_path_parts, 'articles'),
-            expects=(200, ),
-        )
-        # TODO: need better way to get public/private
-        # also this call's return is currently busted at figshare
-        # https://support.figshare.com/support/tickets/26558
-        is_public = False
-        for item in await root_article_response.json():
-            if '/articles/' + article_id in item['url']:
-                article_name = item['title']
-                if settings.PRIVATE_IDENTIFIER not in item['url']:
-                    is_public = True
-
-        article_segments = (*self.root_path_parts,
-                            'articles',
-                            article_id)
-        if file_id:
-            file_response = await self.make_request(
-                'GET',
-                self.build_url(is_public, *article_segments, 'files', file_id),
-                expects=(200, ),
-            )
-            file_json = await file_response.json()
-            file_name = file_json['name']
-            file_response.close()
-            if path[-1] == '/':
-                raise exceptions.NotFoundError('File paths must not end with "/".  {} not found.'.format(path))
-            return FigsharePath('/' + article_name + '/' + file_name,
-                                _ids=('', article_id, file_id),
-                                folder=False,
-                                is_public=is_public)
-
-        article_response = await self.make_request(
-            'GET',
-            self.build_url(is_public, *article_segments),
-            expects=(200, ),
-        )
-        article_json = await article_response.json()
-        if article_json['defined_type'] in settings.FOLDER_TYPES:
-            if not path[-1] == '/':
-                raise exceptions.NotFoundError('Folder paths must end with "/".  {} not found.'.format(path))
-            return FigsharePath('/' + article_name + '/', _ids=('', article_id),
-                                folder=True, is_public=is_public)
-        else:
-            raise exceptions.NotFoundError('This article is not configured as a folder defined_type. {} not found.'.format(path))
-
     async def revalidate_path(self, parent_path, child_name, folder: bool):
         """Attempt to get child's id and return FigsharePath of child
 
@@ -720,7 +637,68 @@ class FigshareProjectProvider(BaseFigshareProvider):
         super().__init__(*args, **kwargs)
 
     async def validate_v1_path(self, path, **kwargs):
-        pass
+        """Take a string path from the url and attempt to map it to an entity within this project.
+        If the entity is found, returns a FigsharePath object with the entity identifiers included.
+        Otherwise throws a 404 Not Found. Will also assert that the entity type inferred from the
+        path matches the type of the entity at that url.
+
+        :param str path: entity path from the v1 API
+        :rtype FigsharePath:
+        """
+        if path == '/':
+            return FigsharePath('/', _ids=('', ), folder=True, is_public=False)
+
+        path_parts = self._path_split(path)
+        if len(path_parts) not in (2, 3):
+            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+        article_id = path_parts[1]
+        file_id = path_parts[2] if len(path_parts) == 3 else None
+
+        root_article_response = await self.make_request(
+            'GET',
+            self.build_url(False, *self.root_path_parts, 'articles'),
+            expects=(200, ),
+        )
+
+        # TODO: need better way to get public/private
+        # also this call's return  value is currently busted at figshare
+        # https://support.figshare.com/support/tickets/26558
+        is_public = False
+        for item in await root_article_response.json():
+            if '/articles/' + article_id in item['url']:
+                article_name = item['title']
+                if settings.PRIVATE_IDENTIFIER not in item['url']:
+                    is_public = True
+
+        article_segments = (*self.root_path_parts, 'articles', article_id)
+        if file_id:
+            file_response = await self.make_request(
+                'GET',
+                self.build_url(is_public, *article_segments, 'files', file_id),
+                expects=(200, ),
+            )
+            file_json = await file_response.json()
+            file_name = file_json['name']
+            if path[-1] == '/':
+                raise exceptions.NotFoundError('File paths must not end with "/".  {} not found.'.format(path))
+            return FigsharePath('/' + article_name + '/' + file_name,
+                                _ids=('', article_id, file_id),
+                                folder=False,
+                                is_public=is_public)
+
+        article_response = await self.make_request(
+            'GET',
+            self.build_url(is_public, *article_segments),
+            expects=(200, ),
+        )
+        article_json = await article_response.json()
+        if article_json['defined_type'] in settings.FOLDER_TYPES:
+            if not path[-1] == '/':
+                raise exceptions.NotFoundError('Folder paths must end with "/".  {} not found.'.format(path))
+            return FigsharePath('/' + article_name + '/', _ids=('', article_id),
+                                folder=True, is_public=is_public)
+
+        raise exceptions.NotFoundError('This article is not configured as a folder defined_type. {} not found.'.format(path))
 
     async def validate_path(self, path, **kwargs):
         """Take a string path from the url and attempt to map it to an entity within this project.
@@ -827,7 +805,32 @@ class FigshareArticleProvider(BaseFigshareProvider):
         super().__init__(auth, credentials, settings)
 
     async def validate_v1_path(self, path, **kwargs):
-        pass
+        """Take a string path from the url and attempt to map it to an entity within this article.
+        If the entity is found, returns a FigsharePath object with the entity identifiers included.
+        Otherwise throws a 404 Not Found. Will also assert that the entity type inferred from the
+        path matches the type of the entity at that url.
+
+        :param str path: entity path from the v1 API
+        :rtype FigsharePath:
+        """
+        if path == '/':
+            return FigsharePath('/', _ids=('', ), folder=True, is_public=False)
+
+        path_parts = self._path_split(path)
+        if len(path_parts) != 2:
+            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+        file_id = path_parts[1]
+
+        file_response = await self.make_request(
+            'GET',
+            self.build_url(False, *self.root_path_parts, 'files', file_id),
+            expects=(200, ),
+        )
+        file_response_json = await file_response.json()
+        return FigsharePath('/' + file_response_json['name'],
+                            _ids=('', file_id),
+                            folder=False,
+                            is_public=False)
 
     # YEP
     async def validate_path(self, path, **kwargs):
