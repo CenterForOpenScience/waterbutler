@@ -130,17 +130,18 @@ class BaseFigshareProvider(provider.BaseProvider):
             segments = ('account', (*segments))
         return (super().build_url(*segments, **query))
 
+    # YEP
     async def make_request(self, method, url, *args, **kwargs):
-        """Add 'account' for private request and super make_request
+        """JSONifies ``data`` kwarg, if present and a ``dict``.
 
-        :param method: str: HTTP method
-        :param url: str: URL
-        :param *args:
-        :param **kwargs:
+        :param str method: HTTP method
+        :param str url: URL
+        :param tuple \*args:
+        :param dict \*\*kwargs:
         """
         if isinstance(kwargs.get('data'), dict):
             kwargs['data'] = json.dumps(kwargs['data'])
-        return (await super().make_request(method, url, *args, **kwargs))
+        return await super().make_request(method, url, *args, **kwargs)
 
     # YEP
     def can_duplicate_names(self):
