@@ -63,39 +63,53 @@ class FigsharePath(WaterButlerPath):
 class FigshareProvider(provider.BaseProvider):
     """Provider for Figshare repositories.
 
-    **On paths:**  Figshare does not have any notion of paths and has a very
-    flat structure. Top level objects are one of the following.
+    **On paths:**  Figshare does not have any notion of paths and has a very flat structure. Top
+    level objects are one of the following.
 
     A 'project' that contains 'articles'. The project can be either public or private.
-    A 'collection' that points to private and/or public 'articles' and can itself be either public or private.
-    An 'article' that contains 0 or more 'files' and may or may not be associated with a project. Articles may be either public or private.
+    A 'collection' that points to private and/or public 'articles' and can itself be either public
+    or private.
+    An 'article' that contains 0 or more 'files' and may or may not be associated with a project.
+    Articles may be either public or private.
 
 
     'Articles' may contain 'files'.
 
-    'Articles' are one of (currently)ten types. All but one of these 'defined_types' may contain no more then one file. The exception is the 'fileset' 'defined_type' which may contain more then one 'file'
+    'Articles' are one of (currently) ten types. All but one of these 'defined_types' may contain no
+    more than one file. The exception is the 'fileset' 'defined_type' which may contain more than
+    one 'file'.
 
-    The FigshareProvider allows for the possibility of a private 'article', a private 'project', or a private 'collection' as the root of a waterbutler provider instance. The FigshareProvider's deafult configuration treats 'articles' with a 'defined_type' of 'fileset' as a folder, and all other 'defined_type's as a file.
+    The FigshareProvider allows for the possibility of a private 'article', a private 'project', or
+    a private 'collection' as the root of a waterbutler provider instance. The FigshareProvider's
+    default configuration treats 'articles' with a 'defined_type' of 'fileset' as a folder, and all
+    other 'defined_type's as a file.
 
-    In practice, this means that when returning the metadata for the root(/) folder, only 'articles' of 'defined_type' 'fileset' will be returned as a folder. All other 'articles' will be returned as a file if they contain a file and ignored if they do not contain a file.
+    In practice, this means that when returning the metadata for the root(/) folder, only 'articles'
+    of 'defined_type' 'fileset' will be returned as a folder. All other 'articles' will be returned
+    as a file if they contain a file and ignored if they do not contain a file.
+
     If the root is configured as a provider, it will contain 0 or more files.
 
-    Valid FigsharePaths for root project/collection:
+    Valid FigsharePaths for root project/collection::
+
         /
         /<article_id for type fileset>/ (default configuration)
         /<article_id of any type>/<file_id>
 
-    Valid FigsharePaths for root article:
+    Valid FigsharePaths for root article::
+
         /
         /<file_id>
 
-    Invalid FigsharePaths for root project/collection examples:
+    Invalid FigsharePaths for root project/collection examples::
+
         /<article_id of any type>
         /<article_id of any type other then fileset>/ (default configuration)
         /<article_id of any type>/<file_id>/
         path of any depth greater then 2
 
-    Invalid FigsharePaths for root article examples:
+    Invalid FigsharePaths for root article examples::
+
         /<any_id>/
         /<any_id other then a file_id>
         path of any depth greater then 1
