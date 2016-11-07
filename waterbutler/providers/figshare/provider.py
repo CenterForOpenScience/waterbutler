@@ -150,88 +150,15 @@ class BaseFigshareProvider(provider.BaseProvider):
         """
         return False
 
-    async def revalidate_path(self, parent_path, child_name, folder: bool):
-        """Attempt to get child's id and return FigsharePath of child
+    # YEP
+    # async def revalidate_path(self, parent_path, child_name, folder: bool):
+    #     pass
 
-        revalidate_path is used to check for the existance of a child_name/folder
-        within the parent. Returning a FigsharePath of child. Child will have _id
-        if conflicting child_name/folder exists otherwise _id will be ''.
-
-        :param parent_path: FigsharePath: Path of parent
-        :param child_name: str: Name of child
-        :param folder: bool: True if child is folder
-
-        Code notes:
-        Due to the fact that figshare allows duplicate titles/names for
-        articles/files, revalidate_path can not be relied on to always return
-        the correct id of an existing child_name. will return the first id that
-        matches the folder and child_name arguments or '' if no match.
-        """
-        # article_id = None
-        print('### reval parent_path.is_root is {}'.format(str(parent_path.is_root)))
-        parent_is_folder = False
-        urn_parts = self.root_path_parts
-        if not self.container_type == 'article':
-            urn_parts = (*urn_parts, 'articles')
-        if not parent_path.is_root:
-            if not folder:
-                urn_parts = (*urn_parts, (parent_path.identifier))
-            else:
-                raise exceptions.NotFoundError('{} is not a valid parent path of folder={}. Folder can only exist at the root level.'.format(parent_path.identifier_path, str(folder)))
-        list_children_response = await self.make_request(
-            'GET',
-            self.build_url(False, *urn_parts),
-            expects=(200, ),
-        )
-        child_id = ''
-        print('### reval parent_path.path is: {}'.format(parent_path.path))
-        if not parent_path.is_root or self.container_type == 'article':
-            article_json = await list_children_response.json()
-            # if article_json['defined_type'] in settings.FOLDER_TYPES or self.container_type == 'article':
-            for file in article_json['files']:
-                if file['name'] == child_name:
-                    child_id = str(file['id'])
-                    break
-            # else:
-            #     raise exceptions.NotFoundError('{} is not a valid parent path of folder={}. defined_type is {}.'.format(parent_path.identifier_path, str(folder), article_json['defined_type']))
-        else:
-            root_json = await list_children_response.json()
-            articles = await asyncio.gather(*[
-                self._get_url_super(article_json['url'])
-                for article_json in root_json
-            ])
-            if folder:
-                for article in articles:
-                    if article['defined_type'] in settings.FOLDER_TYPES:
-                        if article['title'] == child_name:
-                            child_id = str(article['id'])  # string?
-                            break
-            else:
-                print('### Get here reval')
-                for article in articles:
-                    if not article['defined_type'] in settings.FOLDER_TYPES:
-                        parent_is_folder = False
-                        article_id = str(article['id'])
-                        article_name = str(article['title'])
-                        for file in article['files']:
-                            if file['name'] == child_name:
-                                parent_path = parent_path.child(article_name,
-                                                                _id=article_id,
-                                                                folder=False)
-                                child_id = str(file['id'])  # string?
-                                break
-        print('### child_name: {}\n child_id: {}\n'.format(child_name, child_id))
-        print('### child path is: {}'.format(parent_path.child(child_name, _id=child_id, folder=folder).path))
-        return parent_path.child(child_name, _id=child_id, folder=folder, parent_is_folder=parent_is_folder)
-
+    # YEP, common to base
     async def _get_url_super(self, url):
         # Use super to avoid is_public logic
         # Allows for taking advantage of asyncio.gather
-        response = await super().make_request(
-            'GET',
-            url,
-            expects=(200, ),
-        )
+        response = await super().make_request('GET', url, expects=(200, ))
         return await response.json()
 
     # YEP
@@ -465,6 +392,76 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         # Return for v0 folder creation
         return FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
+
+    # YEP
+    async def revalidate_path(self, parent_path, child_name, folder: bool):
+        """Attempt to get child's id and return FigsharePath of child.
+
+        ``revalidate_path`` is used to check for the existance of a child_name/folder
+        within the parent. Returning a FigsharePath of child. Child will have _id
+        if conflicting child_name/folder exists otherwise _id will be ''.
+
+        :param FigsharePath parent_path: Path of parent
+        :param str child_name: Name of child
+        :param bool folder: ``True`` if child is folder
+
+        Code notes::
+
+        Due to the fact that figshare allows duplicate titles/names for
+        articles/files, revalidate_path can not be relied on to always return
+        the correct id of an existing child_name. will return the first id that
+        matches the folder and child_name arguments or '' if no match.
+        """
+        parent_is_folder = False
+        urn_parts = (*self.root_path_parts, 'articles')
+        if not parent_path.is_root:
+            if folder:
+                raise exceptions.NotFoundError(
+                    '{} is not a valid parent path of folder={}. Folders can only exist at the '
+                    'root level.'.format(parent_path.identifier_path, str(folder)))
+            else:
+                urn_parts = (*urn_parts, (parent_path.identifier))
+
+        list_children_response = await self.make_request(
+            'GET',
+            self.build_url(False, *urn_parts),
+            expects=(200, ),
+        )
+
+        child_id = ''
+        if not parent_path.is_root:
+            article_json = await list_children_response.json()
+            for file in article_json['files']:
+                if file['name'] == child_name:
+                    child_id = str(file['id'])
+                    break
+        else:
+            root_json = await list_children_response.json()
+            articles = await asyncio.gather(*[
+                self._get_url_super(article_json['url'])
+                for article_json in root_json
+            ])
+            if folder:
+                for article in articles:
+                    if article['defined_type'] in settings.FOLDER_TYPES:
+                        if article['title'] == child_name:
+                            child_id = str(article['id'])  # string?
+                            break
+            else:
+                for article in articles:
+                    if not article['defined_type'] in settings.FOLDER_TYPES:
+                        parent_is_folder = False
+                        article_id = str(article['id'])
+                        article_name = str(article['title'])
+                        for file in article['files']:
+                            if file['name'] == child_name:
+                                parent_path = parent_path.child(article_name, _id=article_id,
+                                                                folder=False)
+                                child_id = str(file['id'])  # string?
+                                break
+
+        return parent_path.child(child_name, _id=child_id, folder=folder,
+                                 parent_is_folder=parent_is_folder)
 
     # YEP parent method suffices
     # async def download(self, path, **kwargs):
@@ -830,6 +827,51 @@ class FigshareArticleProvider(BaseFigshareProvider):
         # catch for create file in article root
         await file_response.release()
         return FigsharePath('/' + file_id, _ids=('', ''), folder=False, is_public=False)
+
+    # YEP
+    async def revalidate_path(self, parent_path, child_name, folder: bool):
+        """Attempt to get child's id and return FigsharePath of child.
+
+        ``revalidate_path`` is used to check for the existance of a child_name/folder
+        within the parent. Returning a FigsharePath of child. Child will have _id
+        if conflicting child_name/folder exists otherwise _id will be ''.
+
+        :param FigsharePath parent_path: Path of parent
+        :param str child_name: Name of child
+        :param bool folder: ``True`` if child is folder
+
+        Code notes::
+
+        Due to the fact that figshare allows duplicate titles/names for
+        articles/files, revalidate_path can not be relied on to always return
+        the correct id of an existing child_name. will return the first id that
+        matches the folder and child_name arguments or '' if no match.
+        """
+        parent_is_folder = False
+        urn_parts = self.root_path_parts
+        if not parent_path.is_root:
+            if folder:
+                raise exceptions.NotFoundError(
+                    '{} is not a valid parent path of folder={}. Folders can only exist at the '
+                    'root level.'.format(parent_path.identifier_path, str(folder)))
+            else:
+                urn_parts = (*urn_parts, (parent_path.identifier))
+
+        list_children_response = await self.make_request(
+            'GET',
+            self.build_url(False, *urn_parts),
+            expects=(200, ),
+        )
+
+        child_id = ''
+        article_json = await list_children_response.json()
+        for file in article_json['files']:
+            if file['name'] == child_name:
+                child_id = str(file['id'])
+                break
+
+        return parent_path.child(child_name, _id=child_id, folder=folder,
+                                 parent_is_folder=parent_is_folder)
 
     # YEP, parent method suffices
     # async def download(self, path, **kwargs):
