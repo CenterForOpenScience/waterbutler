@@ -524,6 +524,11 @@ class BaseFigshareProvider(provider.BaseProvider):
 
         return metadata.FigshareFolderMetadata(article_json)
 
+    # YEP, common, moved to BaseProvider
+    async def revisions(self, path, **kwargs):
+        # TODO: still true?
+        raise exceptions.ProviderError({'message': 'figshare does not support file revisions.'}, code=405)
+
 
 class FigshareProjectProvider(BaseFigshareProvider):
 
@@ -738,9 +743,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
         else:
             raise exceptions.NotFoundError('{} is not a valid path.'.format(path))
 
-    async def revisions(self, path, **kwargs):
-        pass
-
     # YEP, ProjectProvider only
     async def _get_article_metadata(self, article_id, is_public: bool):
         """Return Figshare*Metadata object for given article_id
@@ -871,5 +873,3 @@ class FigshareArticleProvider(BaseFigshareProvider):
         # ??? what's the other condition here?
         raise exceptions.NotFoundError(str(path))
 
-    async def revisions(self, path, **kwargs):
-        pass
