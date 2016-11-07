@@ -114,17 +114,17 @@ class BaseFigshareProvider(provider.BaseProvider):
             'Authorization': 'token {}'.format(self.token),
         }
 
+    # YEP
     def build_url(self, is_public: bool, *segments, **query):
         """A nice wrapper around furl, builds urls based on self.BASE_URL
 
-        :param is_public: bool: True if addressing public resource
-        :param tuple \*segments: A tuple of strings joined into /foo/bar/..
-        :param dict \*\*query: A dictionary that will be turned into query parameters ?foo=bar
+        :param bool is_public: ``True`` if addressing public resource
+        :param tuple \*segments: A tuple of strings joined into ``/foo/bar/``
+        :param dict \*\*query: A dictionary that will be turned into query parameters ``?foo=bar``
         :rtype: str
 
-        Subclassed to include handling of is_public argument. 'collection'
-        'container_type's may contain public 'article's which are accessed
-        through an URN with a different prefix.
+        Subclassed to include handling of ``is_public`` argument. ``collection`` containers may
+        contain public articles which are accessed through an URN with a different prefix.
         """
         if not is_public:
             segments = ('account', (*segments))
@@ -143,129 +143,10 @@ class BaseFigshareProvider(provider.BaseProvider):
         return (await super().make_request(method, url, *args, **kwargs))
 
     def can_duplicate_names(self):
-        """
-        Figshare allows articles to have duplicate titles and files to have
-        duplicate names
-
-        However, this provider does not allow the creation of duplicate files
-        and folders.
+        """Figshare allows articles to have duplicate titles and files to have duplicate names, but
+        does not allow the creation of duplicate files and folders.
         """
         return False
-
-    async def validate_path(self, path, **kwargs):
-        """
-        Validate existance of a path
-
-        ...to the extent possible with v0 API input, and return a FigsharePath
-        object.
-
-        :param path: str: identifier_path URN as passed through the v0 API
-        :rtype FigsharePath:
-
-        Quirks:
-            v0 may pass an identifier_path who's last part is a name and not an
-            identifier, in the case of file/folder creation calls.
-            validate_path validates parent  and returns a FigsharePath as
-            accurately as possible.
-        """
-        if path == '/':
-            return FigsharePath('/',
-                                _ids=('', ),
-                                folder=True,
-                                is_public=False)
-        if len(self._path_split(path)) == 2:
-            junk, path_id = self._path_split(path)
-            if self.container_type == 'article':
-                article_id = None
-                file_id = path_id
-            else:
-                article_id = path_id
-                file_id = None
-        elif len(self._path_split(path)) == 3 and not self.container_type == 'article':
-            junk, article_id, file_id = self._path_split(path)
-        else:
-            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
-
-        if self.container_type == 'article':
-            file_response = await self.make_request(
-                'GET',
-                self.build_url(False, *self.root_path_parts, 'files', file_id),
-                expects=(200, 404, ),
-            )
-            if file_response.status == 200:
-                file_response_json = await file_response.json()
-                file_name = file_response_json['name']
-                return FigsharePath('/' + file_name,
-                                    _ids=('', file_id),
-                                    folder=False,
-                                    is_public=False)
-            # catch for create file in article root
-            file_response.close()
-            return FigsharePath('/' + file_id,
-                                _ids=('', ''),
-                                folder=False,
-                                is_public=False)
-
-        root_article_response = await self.make_request(
-            'GET',
-            self.build_url(False, *self.root_path_parts, 'articles'),
-            expects=(200, ),
-        )
-        # TODO: need better way to get public/private
-        # also this call's return is currently busted at figshare
-        # https://support.figshare.com/support/tickets/26558
-        is_public = False
-        for item in await root_article_response.json():
-            if '/articles/' + article_id in item['url']:
-                article_name = item['title']
-                if settings.PRIVATE_IDENTIFIER not in item['url']:
-                    is_public = True
-
-        article_segments = (*self.root_path_parts,
-                            'articles',
-                            article_id)
-        if file_id:
-            file_response = await self.make_request(
-                'GET',
-                self.build_url(is_public, *article_segments, 'files', file_id),
-                expects=(200, 404, ),
-            )
-            if file_response.status == 200:
-                file_response_json = await file_response.json()
-                file_name = file_response_json['name']
-                return FigsharePath('/' + article_name + '/' + file_name,
-                                    _ids=('', article_id, file_id),
-                                    folder=False,
-                                    is_public=is_public)
-            else:
-                file_response.close()
-
-        article_response = await self.make_request(
-            'GET',
-            self.build_url(is_public, *article_segments),
-            expects=(200, 404, ),
-        )
-        if article_response.status == 200:
-            article_json = await article_response.json()
-            if article_json['defined_type'] in settings.FOLDER_TYPES:
-                # Case of v0 file creation
-                if file_id:
-                    ids = ('', article_id, '')
-                    folder = False
-                    path_urn = '/' + article_name + '/' + file_id
-                else:
-                    ids = ('', article_id)
-                    folder = True
-                    path_urn = '/' + article_name + '/'
-                return FigsharePath(path_urn, _ids=ids, folder=folder,
-                                    is_public=is_public)
-        else:
-            article_response.close()
-        if file_id:
-            # Catch for if neither file nor article exist
-            raise exceptions.NotFoundError(path)
-        # Return for v0 folder creation
-        return FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
 
     async def validate_v1_path(self, path, **kwargs):
         """
@@ -518,12 +399,11 @@ class BaseFigshareProvider(provider.BaseProvider):
         else:
             raise exceptions.NotFoundError('{} is not a valid path.'.format(path))
 
+    # YEP
     def _path_split(self, path):
-        """Split path dropping trailing '/'
+        """Strip trailing slash from path string, then split on remaining slashes.
 
-        Convenience method
-
-        :param path: str: Path t be split
+        :param str path: url path string to be split.
         """
         return path.rstrip('/').split('/')
 
@@ -843,7 +723,87 @@ class FigshareProjectProvider(BaseFigshareProvider):
         pass
 
     async def validate_path(self, path, **kwargs):
-        pass
+        """Take a string path from the url and attempt to map it to an entity within this project.
+        If the entity is found, returns a FigsharePath object with the entity identifiers included.
+        Otherwise returns a FigsharePath with empty identifiers.
+
+        :param str path: identifier_path URN as passed through the v0 API
+        :rtype FigsharePath:
+
+        Quirks::
+
+        * v0 may pass an identifier_path whose last part is a name and not an identifier, in the
+        case of file/folder creation calls.
+
+        * validate_path validates parent and returns a FigsharePath as accurately as possible.
+        """
+        if path == '/':
+            return FigsharePath('/', _ids=('', ), folder=True, is_public=False)
+
+        path_parts = self._path_split(path)
+        if len(path_parts) not in (2, 3):
+            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+        article_id = path_parts[1]
+        file_id = path_parts[2] if len(path_parts) == 3 else None
+
+        root_article_response = await self.make_request(
+            'GET',
+            self.build_url(False, *self.root_path_parts, 'articles'),
+            expects=(200, ),
+        )
+        # TODO: need better way to get public/private
+        # also this call's return is currently busted at figshare
+        # https://support.figshare.com/support/tickets/26558
+        is_public = False
+        for item in await root_article_response.json():
+            if '/articles/' + article_id in item['url']:
+                article_name = item['title']
+                if settings.PRIVATE_IDENTIFIER not in item['url']:
+                    is_public = True
+
+        article_segments = (*self.root_path_parts, 'articles', article_id)
+        if file_id:
+            file_response = await self.make_request(
+                'GET',
+                self.build_url(is_public, *article_segments, 'files', file_id),
+                expects=(200, 404, ),
+            )
+            if file_response.status == 200:
+                file_response_json = await file_response.json()
+                file_name = file_response_json['name']
+                return FigsharePath('/' + article_name + '/' + file_name,
+                                    _ids=('', article_id, file_id),
+                                    folder=False,
+                                    is_public=is_public)
+            await file_response.release()
+
+        article_response = await self.make_request(
+            'GET',
+            self.build_url(is_public, *article_segments),
+            expects=(200, 404, ),
+        )
+        if article_response.status == 200:
+            article_json = await article_response.json()
+            if article_json['defined_type'] in settings.FOLDER_TYPES:
+                # Case of v0 file creation
+                if file_id:
+                    ids = ('', article_id, '')
+                    folder = False
+                    path_urn = '/' + article_name + '/' + file_id
+                else:
+                    ids = ('', article_id)
+                    folder = True
+                    path_urn = '/' + article_name + '/'
+                return FigsharePath(path_urn, _ids=ids, folder=folder, is_public=is_public)
+        else:
+            await article_response.release()
+
+        if file_id:
+            # Catch for if neither file nor article exist
+            raise exceptions.NotFoundError(path)
+
+        # Return for v0 folder creation
+        return FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
 
     async def download(self, path, **kwargs):
         pass
@@ -869,8 +829,45 @@ class FigshareArticleProvider(BaseFigshareProvider):
     async def validate_v1_path(self, path, **kwargs):
         pass
 
+    # YEP
     async def validate_path(self, path, **kwargs):
-        pass
+        """Take a string path from the url and attempt to map it to an entity within this article.
+        If the entity is found, returns a FigsharePath object with the entity identifiers included.
+        Otherwise returns a FigsharePath with empty identifiers.
+
+        :param str path: identifier path URN as passed through the v0 API
+        :rtype FigsharePath:
+
+        Quirks::
+
+        * v0 may pass an identifier_path whose last part is a name and not an identifier, in the
+        case of file/folder creation calls.
+
+        * validate_path validates parent and returns a FigsharePath as accurately as possible.
+        """
+        if path == '/':
+            return FigsharePath('/', _ids=('', ), folder=True, is_public=False)
+
+        path_parts = self._path_split(path)
+        if len(path_parts) != 2:
+            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+        file_id = path_parts[1]
+
+        file_response = await self.make_request(
+            'GET',
+            self.build_url(False, *self.root_path_parts, 'files', file_id),
+            expects=(200, 404, ),
+        )
+        if file_response.status == 200:
+            file_response_json = await file_response.json()
+            file_name = file_response_json['name']
+            return FigsharePath('/' + file_name,
+                                _ids=('', file_id),
+                                folder=False,
+                                is_public=False)
+        # catch for create file in article root
+        await file_response.release()
+        return FigsharePath('/' + file_id, _ids=('', ''), folder=False, is_public=False)
 
     async def download(self, path, **kwargs):
         pass
