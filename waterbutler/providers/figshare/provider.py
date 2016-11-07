@@ -409,6 +409,10 @@ class BaseFigshareProvider(provider.BaseProvider):
                                 is_public=False)
         return (await self.metadata(path, **kwargs)), True
 
+    # YEP, implemented in children
+    # async def create_folder(self, path, **kwargs):
+    #     pass
+
     async def delete(self, path, confirm_delete=0, **kwargs):
         """Given a WaterButlerPath, delete that path
         :param path: FigsharePath: Path to be deleted
@@ -496,43 +500,6 @@ class BaseFigshareProvider(provider.BaseProvider):
                 )
                 delete_article_response.close()
 
-    async def create_folder(self, path, **kwargs):
-        """Create a folder
-
-        Create a folder at `path`. Returns a `FigshareFolderMetadata` object
-        if successful.
-
-        :param obj path: FigsharePath obj to create. must be a directory.
-        :rtype: :class:`waterbutler.core.metadata.FigshareFolderMetadata`
-        :raises: :class:`waterbutler.core.exceptions.CreateFolderError`
-        """
-        if self.container_type == 'article':
-            raise exceptions.CreateFolderError('Cannot create folders when provider root is type article.', code=400)
-        if (len(path.parts) == 2) and path.is_folder:
-            article_name = path.parts[-1].value
-        else:
-            raise exceptions.CreateFolderError('{} is not a valid folder creation path. Must be directly off of root and of kind "folder".'.format(str(path)), code=400)
-        article_data = json.dumps({'title': article_name,
-                                   'defined_type': 'fileset'})
-        create_article_response = await self.make_request(
-            'POST',
-            self.build_url(False, *self.root_path_parts, 'articles'),
-            data=article_data,
-            expects=(201, ),
-            throws=exceptions.CreateFolderError,
-        )
-        new_article_id = create_article_response.headers['LOCATION'].rstrip('/').split('/')[-1]
-        create_article_response.close()
-        get_article_response = await self.make_request(
-            'GET',
-            self.build_url(False, *self.root_path_parts, 'articles',
-                           new_article_id),
-            expects=(200, ),
-            throws=exceptions.NotFoundError,
-        )
-        article_json = await get_article_response.json()
-
-        return metadata.FigshareFolderMetadata(article_json)
     # YEP, implemented in children
     # async def metadata(self, path, **kwargs):
     #     pass
@@ -704,6 +671,43 @@ class FigshareProjectProvider(BaseFigshareProvider):
     async def upload(self, stream, path, **kwargs):
         pass
 
+    # YEP
+    async def create_folder(self, path, **kwargs):
+        """Create a folder at ``path``. Returns a `FigshareFolderMetadata` object if successful.
+
+        :param FigsharePath path: FigsharePath representing the folder to create
+        :rtype: :class:`waterbutler.core.metadata.FigshareFolderMetadata`
+        :raises: :class:`waterbutler.core.exceptions.CreateFolderError`
+        """
+        if (len(path.parts) == 2) and path.is_folder:
+            article_name = path.parts[-1].value
+        else:
+            raise exceptions.CreateFolderError(
+                '{} is not a valid folder creation path. Must be directly off of root and '
+                'of kind "folder".'.format(str(path)),
+                code=400
+            )
+
+        article_data = json.dumps({'title': article_name, 'defined_type': 'fileset'})
+        create_article_response = await self.make_request(
+            'POST',
+            self.build_url(False, *self.root_path_parts, 'articles'),
+            data=article_data,
+            expects=(201, ),
+            throws=exceptions.CreateFolderError,
+        )
+        new_article_id = create_article_response.headers['LOCATION'].rstrip('/').split('/')[-1]
+        await create_article_response.release()
+        get_article_response = await self.make_request(
+            'GET',
+            self.build_url(False, *self.root_path_parts, 'articles', new_article_id),
+            expects=(200, ),
+            throws=exceptions.NotFoundError,
+        )
+        article_json = await get_article_response.json()
+
+        return metadata.FigshareFolderMetadata(article_json)
+
     async def delete(self, path, **kwargs):
         pass
 
@@ -866,6 +870,14 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
     async def upload(self, stream, path, **kwargs):
         pass
+
+    # YEP
+    async def create_folder(self, path, **kwargs):
+        if self.container_type == 'article':
+            raise exceptions.CreateFolderError(
+                'Cannot create folders when provider root is type article.',
+                code=400
+            )
 
     async def delete(self, path, **kwargs):
         pass
