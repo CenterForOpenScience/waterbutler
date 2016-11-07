@@ -13,7 +13,7 @@ from waterbutler.providers.figshare.path import FigsharePath
 from waterbutler.providers.figshare import metadata, settings
 
 
-class FigshareProvider(provider.BaseProvider):
+class FigshareProvider:
     """Provider for Figshare repositories.
 
     **On paths:**  Figshare does not have any notion of paths and has a very flat structure. Top
@@ -70,6 +70,24 @@ class FigshareProvider(provider.BaseProvider):
     API docs: https://docs.figshare.com/
     """
 
+    def __new__(cls, auth, credentials, settings):
+        if settings['container_type'] == 'project':
+            return FigshareProjectProvider(
+                auth, credentials,
+                dict(settings, container_id=settings['container_id'])
+            )
+
+        if settings['container_type'] in ('article', 'fileset'):
+            return FigshareArticleProvider(
+                auth, credentials, dict(settings, container_id=settings['container_id'])
+            )
+
+        raise exceptions.ProviderError(
+            'Invalid "container_type" {0}'.format(settings['container_type'])
+        )
+
+
+class BaseFigshareProvider(provider.BaseProvider):
     NAME = 'figshare'
     BASE_URL = settings.BASE_URL
     VIEW_URL = settings.VIEW_URL
@@ -814,3 +832,57 @@ class FigshareProvider(provider.BaseProvider):
         article_json = await get_article_response.json()
 
         return metadata.FigshareFolderMetadata(article_json)
+
+
+class FigshareProjectProvider(BaseFigshareProvider):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def validate_v1_path(self, path, **kwargs):
+        pass
+
+    async def validate_path(self, path, **kwargs):
+        pass
+
+    async def download(self, path, **kwargs):
+        pass
+
+    async def upload(self, stream, path, **kwargs):
+        pass
+
+    async def delete(self, path, **kwargs):
+        pass
+
+    async def metadata(self, path, **kwargs):
+        pass
+
+    async def revisions(self, path, **kwargs):
+        pass
+
+
+class FigshareArticleProvider(BaseFigshareProvider):
+
+    def __init__(self, auth, credentials, settings, child=False):
+        super().__init__(auth, credentials, settings)
+
+    async def validate_v1_path(self, path, **kwargs):
+        pass
+
+    async def validate_path(self, path, **kwargs):
+        pass
+
+    async def download(self, path, **kwargs):
+        pass
+
+    async def delete(self, path, **kwargs):
+        pass
+
+    async def upload(self, stream, path, **kwargs):
+        pass
+
+    async def metadata(self, path, **kwargs):
+        pass
+
+    async def revisions(self, path, **kwargs):
+        pass
