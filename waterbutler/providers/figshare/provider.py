@@ -276,15 +276,15 @@ class BaseFigshareProvider(provider.BaseProvider):
                                      headers=headers)
         return streams.ResponseStreamReader(resp)
 
+    # YEP
     def path_from_metadata(self, parent_path, metadata):
-        """Add child to FigsharePath given child's metadata
+        """Build FigsharePath for child entity given child's metadata and parent's path object.
 
-        :param parent_path: FigsharePath: of parent
-        :param metadata: Figshare*Metadata object of child
+        :param FigsharePath parent_path: path obj for child's parent
+        :param metadata: Figshare*Metadata object for child
         """
-        folder = (metadata.kind == 'folder')
-        _id = str(metadata.id)
-        return parent_path.child(metadata.name, _id=_id, folder=folder)
+        return parent_path.child(metadata.name, _id=str(metadata.id),
+                                 folder=(metadata.kind == 'folder'))
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
         """ Upload a file to provider.
