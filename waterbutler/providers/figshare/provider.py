@@ -344,12 +344,12 @@ class BaseFigshareProvider(provider.BaseProvider):
         elif article_json['files']:
             return metadata.FigshareFileMetadata(article_json)
 
+    # YEP
     async def download(self, path, **kwargs):
-        """
-        Download a file.
+        """Download the file identified by ``path`` from this project.
 
-        :param obj path: FigsharePath to file you want to download
-        :rtype ResponseWrapper:
+        :param FigsharePath path: FigsharePath to file you want to download
+        :rtype ResponseStreamReader:
         """
         if not path.is_file:
             raise exceptions.NotFoundError(str(path))
@@ -361,10 +361,8 @@ class BaseFigshareProvider(provider.BaseProvider):
                 'Download not available',
                 code=http.client.FORBIDDEN,
             )
-        if path.is_public:
-            params = {}
-        else:
-            params = {'token': self.token}
+
+        params = {} if path.is_public else {'token': self.token}
         headers = {'Host': 'ndownloader.figshare.com', 'Accept': '*/*'}
         resp = await aiohttp.request('GET',
                                      download_url,
@@ -783,8 +781,9 @@ class FigshareProjectProvider(BaseFigshareProvider):
         # Return for v0 folder creation
         return FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
 
-    async def download(self, path, **kwargs):
-        pass
+    # parent method suffices
+    # async def download(self, path, **kwargs):
+    #     pass
 
     async def upload(self, stream, path, **kwargs):
         pass
@@ -872,8 +871,9 @@ class FigshareArticleProvider(BaseFigshareProvider):
         await file_response.release()
         return FigsharePath('/' + file_id, _ids=('', ''), folder=False, is_public=False)
 
-    async def download(self, path, **kwargs):
-        pass
+    # parent method suffices
+    # async def download(self, path, **kwargs):
+    #     pass
 
     async def delete(self, path, **kwargs):
         pass
