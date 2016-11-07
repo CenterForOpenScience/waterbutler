@@ -142,6 +142,7 @@ class BaseFigshareProvider(provider.BaseProvider):
             kwargs['data'] = json.dumps(kwargs['data'])
         return (await super().make_request(method, url, *args, **kwargs))
 
+    # YEP
     def can_duplicate_names(self):
         """Figshare allows articles to have duplicate titles and files to have duplicate names, but
         does not allow the creation of duplicate files and folders.
@@ -239,6 +240,14 @@ class BaseFigshareProvider(provider.BaseProvider):
         :param str path: url path string to be split.
         """
         return path.rstrip('/').split('/')
+
+    # YEP, implemented in children
+    # async def validate_v1_path(self, path, **kwargs):
+    #     pass
+
+    # YEP, implemented in children
+    # async def validate_path(self, path, **kwargs):
+    #     pass
 
     # YEP
     async def download(self, path, **kwargs):
@@ -523,6 +532,9 @@ class BaseFigshareProvider(provider.BaseProvider):
         article_json = await get_article_response.json()
 
         return metadata.FigshareFolderMetadata(article_json)
+    # YEP, implemented in children
+    # async def metadata(self, path, **kwargs):
+    #     pass
 
     # YEP, common, moved to BaseProvider
     async def revisions(self, path, **kwargs):
@@ -535,6 +547,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    # YEP
     async def validate_v1_path(self, path, **kwargs):
         """Take a string path from the url and attempt to map it to an entity within this project.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
@@ -599,6 +612,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         raise exceptions.NotFoundError('This article is not configured as a folder defined_type. {} not found.'.format(path))
 
+    # YEP
     async def validate_path(self, path, **kwargs):
         """Take a string path from the url and attempt to map it to an entity within this project.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
@@ -682,7 +696,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         # Return for v0 folder creation
         return FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
 
-    # parent method suffices
+    # YEP parent method suffices
     # async def download(self, path, **kwargs):
     #     pass
 
@@ -692,6 +706,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
     async def delete(self, path, **kwargs):
         pass
 
+    # YEP
     async def metadata(self, path, **kwargs):
         """Return metadata for entity identified by ``path`` under the parent project.
 
@@ -743,6 +758,10 @@ class FigshareProjectProvider(BaseFigshareProvider):
         else:
             raise exceptions.NotFoundError('{} is not a valid path.'.format(path))
 
+    # YEP, parent method suffices
+    # async def revision(self, path, **kwargs):
+    #     pass
+
     # YEP, ProjectProvider only
     async def _get_article_metadata(self, article_id, is_public: bool):
         """Return Figshare*Metadata object for given article_id
@@ -771,6 +790,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
     def __init__(self, auth, credentials, settings, child=False):
         super().__init__(auth, credentials, settings)
 
+    # YEP
     async def validate_v1_path(self, path, **kwargs):
         """Take a string path from the url and attempt to map it to an entity within this article.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
@@ -839,7 +859,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
         await file_response.release()
         return FigsharePath('/' + file_id, _ids=('', ''), folder=False, is_public=False)
 
-    # parent method suffices
+    # YEP, parent method suffices
     # async def download(self, path, **kwargs):
     #     pass
 
@@ -849,6 +869,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
     async def delete(self, path, **kwargs):
         pass
 
+    # YEP
     async def metadata(self, path, **kwargs):
         """Return metadata for entity identified by ``path`` under the parent project.
 
@@ -873,3 +894,6 @@ class FigshareArticleProvider(BaseFigshareProvider):
         # ??? what's the other condition here?
         raise exceptions.NotFoundError(str(path))
 
+    # YEP, parent method suffices
+    # async def revision(self, path, **kwargs):
+    #     pass
