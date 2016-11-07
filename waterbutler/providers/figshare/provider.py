@@ -286,128 +286,9 @@ class BaseFigshareProvider(provider.BaseProvider):
         return parent_path.child(metadata.name, _id=str(metadata.id),
                                  folder=(metadata.kind == 'folder'))
 
-    async def upload(self, stream, path, conflict='replace', **kwargs):
-        """ Upload a file to provider.
-
-        Upload a file to provider root or to an article who's defined_type is
-        configured to represent a folder.
-
-        :param stream: asyncio.StreamReader: stream to upload
-        :param path: FigsharePath: inclusive of file to be uploaded
-        :param **kwargs: Will be passed to returned metadata object
-        """
-        path, exists = await self.handle_name_conflict(path, conflict=conflict)
-        if not path.parent.is_root:
-            parent_resp = await self.make_request(
-                'GET',
-                self.build_url(False,
-                               *self.root_path_parts,
-                               'articles', path.parent.identifier),
-                expects=(200, ),
-            )
-            parent_json = await parent_resp.json()
-            if not parent_json['defined_type'] in settings.FOLDER_TYPES:
-                # replace_article = path._parts[1]._id
-                del path._parts[1]
-
-        # Create article or retrieve article_id from existing article
-        print('### upload path is: {}'.format(path.path))
-        print('### upload path.parent.is_root is: {}'.format(path.parent.is_root))
-        if self.container_type == 'article':
-            article_id = self.container_id
-        elif not path.parent.is_root:
-            article_id = path.parent.identifier
-        else:
-            article_name = json.dumps({'title': path.name})
-            if self.container_type == 'project':
-                article_resp = await self.make_request(
-                    'POST',
-                    self.build_url(False,
-                                   *self.root_path_parts,
-                                   'articles'),
-                    data=article_name,
-                    expects=(201, ),
-                )
-                article_json = await article_resp.json()
-                article_id = article_json['location'].rsplit('/', 1)[1]
-            elif self.container_type == 'collection':
-                article_resp = await self.make_request(
-                    'POST',
-                    self.build_url(False, *self.root_path_parts, 'articles'),
-                    data=article_name,
-                    expects=(201, ),
-                )
-                articles_json = await article_resp.json()
-                article_id = articles_json['location'].rsplit('/', 1)[1]
-                article_list = json.dumps({'articles': [article_id]})
-                await self.make_request(
-                    'POST',
-                    self.build_url(False,
-                                   *self.root_path_parts,
-                                   'articles'),
-                    data=article_list,
-                    expects=(201, ),
-                )
-        # Create file. Get file ID
-        file_data = json.dumps({'name': path.name, 'size': stream.size})
-        file_resp = await self.make_request(
-            'POST',
-            self.build_url(False, 'articles', article_id, 'files'),
-            data=file_data,
-            expects=(201, ),
-        )
-        file_json = await file_resp.json()
-        file_id = file_json['location'].rsplit('/', 1)[1]
-        # Get upload url and file parts info
-        # added sleep() as file was not availble right away after getting 201 back.
-        # polling with HEADs is another possible solution
-        time.sleep(settings.FILE_CREATE_WAIT)
-        file_resp = await self.make_request(
-            'GET',
-            self.build_url(False, 'articles', article_id, 'files', file_id),
-            expects=(200, 404),
-        )
-        if file_resp.status == 404:
-            raise exceptions.ProviderError('Could not get upload_url. File creation may have taken more than {} seconds to finish.'.format(str(settings.FILE_CREATE_WAIT)))
-        file_json = await file_resp.json()
-        upload_url = file_json['upload_url']
-        token_resp = await self.make_request(
-            'GET',
-            upload_url,
-            expects=(200, ),
-        )
-        token_json = await token_resp.json()
-        parts = token_json['parts']  # dict
-        # Upload parts
-        for part in parts:
-            size = part['endOffset'] - part['startOffset'] + 1
-            part_number = part['partNo']
-            upload_response = await self.make_request(
-                'PUT',
-                upload_url + '/' + str(part_number),
-                data=stream._read(size),
-                expects=(200, ),
-            )
-            upload_response.close()
-
-        # Mark upload complete
-        upload_response = await self.make_request(
-            'POST',
-            self.build_url(False, 'articles', article_id, 'files', file_id),
-            expects=(202, ),
-        )
-        upload_response.close()
-        if self.container_type == 'article':
-            path = FigsharePath('/' + file_id,
-                                _ids=('', file_id),
-                                folder=False,
-                                is_public=False)
-        else:
-            path = FigsharePath('/' + article_id + '/' + file_id,
-                                _ids=(self.container_id, article_id, file_id),
-                                folder=False,
-                                is_public=False)
-        return (await self.metadata(path, **kwargs)), True
+    # YEP, implemented in children
+    # async def upload(self, stream, path, conflict='replace', **kwargs):
+    #     pass
 
     # YEP, implemented in children
     # async def create_folder(self, path, **kwargs):
@@ -417,7 +298,7 @@ class BaseFigshareProvider(provider.BaseProvider):
     # async def delete(self, path, confirm_delete=0, **kwargs):
     #     pass
 
-    # YEP
+    # YEP, implemented in children
     # async def _delete_container_contents(self, path):
     #     pass
 
@@ -589,8 +470,107 @@ class FigshareProjectProvider(BaseFigshareProvider):
     # async def download(self, path, **kwargs):
     #     pass
 
-    async def upload(self, stream, path, **kwargs):
-        pass
+    # YEP
+    async def upload(self, stream, path, conflict='replace', **kwargs):
+        """Upload a file to provider root or to an article whose defined_type is
+        configured to represent a folder.
+
+        :param asyncio.StreamReader stream: stream to upload
+        :param FigsharePath path: FigsharePath to upload the file to.
+        :param dict \*\*kwargs: Will be passed to returned metadata object
+        """
+        path, exists = await self.handle_name_conflict(path, conflict=conflict)
+        if not path.parent.is_root:
+            parent_resp = await self.make_request(
+                'GET',
+                self.build_url(False, *self.root_path_parts, 'articles', path.parent.identifier),
+                expects=(200, ),
+            )
+            parent_json = await parent_resp.json()
+            if not parent_json['defined_type'] in settings.FOLDER_TYPES:
+                # replace_article = path._parts[1]._id
+                del path._parts[1]
+
+        # Create article or retrieve article_id from existing article
+        if not path.parent.is_root:
+            article_id = path.parent.identifier
+        else:
+            article_name = json.dumps({'title': path.name})
+            if self.container_type == 'project':
+                article_resp = await self.make_request(
+                    'POST',
+                    self.build_url(False, *self.root_path_parts, 'articles'),
+                    data=article_name,
+                    expects=(201, ),
+                )
+                article_json = await article_resp.json()
+                article_id = article_json['location'].rsplit('/', 1)[1]
+            elif self.container_type == 'collection':
+                article_resp = await self.make_request(
+                    'POST',
+                    self.build_url(False, *self.root_path_parts, 'articles'),
+                    data=article_name,
+                    expects=(201, ),
+                )
+                articles_json = await article_resp.json()
+                article_id = articles_json['location'].rsplit('/', 1)[1]
+                article_list = json.dumps({'articles': [article_id]})
+                await self.make_request(
+                    'POST',
+                    self.build_url(False, *self.root_path_parts, 'articles'),
+                    data=article_list,
+                    expects=(201, ),
+                )
+        # Create file. Get file ID
+        file_data = json.dumps({'name': path.name, 'size': stream.size})
+        file_resp = await self.make_request(
+            'POST',
+            self.build_url(False, 'articles', article_id, 'files'),
+            data=file_data,
+            expects=(201, ),
+        )
+        file_json = await file_resp.json()
+        file_id = file_json['location'].rsplit('/', 1)[1]
+        # Get upload url and file parts info
+        # added sleep() as file was not availble right away after getting 201 back.
+        # polling with HEADs is another possible solution
+        time.sleep(settings.FILE_CREATE_WAIT)
+        file_resp = await self.make_request(
+            'GET',
+            self.build_url(False, 'articles', article_id, 'files', file_id),
+            expects=(200, 404),
+        )
+        if file_resp.status == 404:
+            raise exceptions.ProviderError('Could not get upload_url. File creation may have taken more than {} seconds to finish.'.format(str(settings.FILE_CREATE_WAIT)))
+        file_json = await file_resp.json()
+        upload_url = file_json['upload_url']
+        token_resp = await self.make_request('GET', upload_url, expects=(200, ),)
+        token_json = await token_resp.json()
+        parts = token_json['parts']  # dict
+        # Upload parts
+        for part in parts:
+            size = part['endOffset'] - part['startOffset'] + 1
+            part_number = part['partNo']
+            upload_response = await self.make_request(
+                'PUT',
+                upload_url + '/' + str(part_number),
+                data=stream._read(size),
+                expects=(200, ),
+            )
+            await upload_response.release()
+
+        # Mark upload complete
+        upload_response = await self.make_request(
+            'POST',
+            self.build_url(False, 'articles', article_id, 'files', file_id),
+            expects=(202, ),
+        )
+        await upload_response.release()
+        path = FigsharePath('/' + article_id + '/' + file_id,
+                            _ids=(self.container_id, article_id, file_id),
+                            folder=False,
+                            is_public=False)
+        return (await self.metadata(path, **kwargs)), True
 
     # YEP
     async def create_folder(self, path, **kwargs):
@@ -855,8 +835,77 @@ class FigshareArticleProvider(BaseFigshareProvider):
     # async def download(self, path, **kwargs):
     #     pass
 
-    async def upload(self, stream, path, **kwargs):
-        pass
+    # YEP
+    async def upload(self, stream, path, conflict='replace', **kwargs):
+        """Upload a file to provider root or to an article whose defined_type is
+        configured to represent a folder.
+
+        :param asyncio.StreamReader stream: stream to upload
+        :param FigsharePath path: FigsharePath to upload the file to.
+        :param dict \*\*kwargs: Will be passed to returned metadata object
+        """
+        path, exists = await self.handle_name_conflict(path, conflict=conflict)
+        if not path.parent.is_root:
+            parent_resp = await self.make_request(
+                'GET',
+                self.build_url(False, *self.root_path_parts, 'articles', path.parent.identifier),
+                expects=(200, ),
+            )
+            parent_json = await parent_resp.json()
+            if not parent_json['defined_type'] in settings.FOLDER_TYPES:
+                del path._parts[1]
+
+        article_id = self.container_id
+
+        # Create file. Get file ID
+        file_data = json.dumps({'name': path.name, 'size': stream.size})
+        file_resp = await self.make_request(
+            'POST',
+            self.build_url(False, 'articles', article_id, 'files'),
+            data=file_data,
+            expects=(201, ),
+        )
+        file_json = await file_resp.json()
+        file_id = file_json['location'].rsplit('/', 1)[1]
+        # Get upload url and file parts info
+        # added sleep() as file was not availble right away after getting 201 back.
+        # polling with HEADs is another possible solution
+        time.sleep(settings.FILE_CREATE_WAIT)
+        file_resp = await self.make_request(
+            'GET',
+            self.build_url(False, 'articles', article_id, 'files', file_id),
+            expects=(200, 404),
+        )
+        if file_resp.status == 404:
+            raise exceptions.ProviderError(
+                'Could not get upload_url. File creation may have taken more '
+                'than {} seconds to finish.'.format(str(settings.FILE_CREATE_WAIT)))
+        file_json = await file_resp.json()
+        upload_url = file_json['upload_url']
+        token_resp = await self.make_request('GET', upload_url, expects=(200, ),)
+        token_json = await token_resp.json()
+        parts = token_json['parts']  # dict
+        # Upload parts
+        for part in parts:
+            size = part['endOffset'] - part['startOffset'] + 1
+            part_number = part['partNo']
+            upload_response = await self.make_request(
+                'PUT',
+                upload_url + '/' + str(part_number),
+                data=stream._read(size),
+                expects=(200, ),
+            )
+            await upload_response.release()
+
+        # Mark upload complete
+        upload_response = await self.make_request(
+            'POST',
+            self.build_url(False, 'articles', article_id, 'files', file_id),
+            expects=(202, ),
+        )
+        await upload_response.release()
+        path = FigsharePath('/' + file_id, _ids=('', file_id), folder=False, is_public=False)
+        return (await self.metadata(path, **kwargs)), True
 
     # YEP
     async def create_folder(self, path, **kwargs):
