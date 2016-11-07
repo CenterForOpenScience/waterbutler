@@ -413,92 +413,13 @@ class BaseFigshareProvider(provider.BaseProvider):
     # async def create_folder(self, path, **kwargs):
     #     pass
 
-    async def delete(self, path, confirm_delete=0, **kwargs):
-        """Given a WaterButlerPath, delete that path
-        :param path: FigsharePath: Path to be deleted
-        :param confirm_delete: int: Must be 1 to confirm root folder delete
-        :rtype: None
-        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
-        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+    # YEP, implemented in children
+    # async def delete(self, path, confirm_delete=0, **kwargs):
+    #     pass
 
-        Quirks:
-            If the WaterButlerPath given is for the provider root path, then
-            the contents of provider root path will be deleted. But not the
-            provider root itself.
-        """
-        if path.is_root:
-            if confirm_delete == 1:
-                await self._delete_container_contents(path)
-                return
-            raise exceptions.DeleteError(
-                'confirm_delete=1 is required for deleting root provider folder',
-                code=400
-            )
-        if self.container_type == 'article':
-            delete_path = (*self.root_path_parts, 'files', path.parts[-1]._id)
-        elif len(path.parts) == 2:
-            if not path.is_folder:
-                raise exceptions.NotFoundError(str(path))
-            delete_path = (*self.root_path_parts, 'articles', path.parts[1]._id)
-        elif len(path.parts) == 3:
-            if path.is_folder:
-                raise exceptions.NotFoundError(str(path))
-            article_response = await self.make_request(
-                'GET',
-                self.build_url(False, *self.root_path_parts, 'articles',
-                               path.parts[1]._id),
-                expects=(200, ),
-            )
-            article_json = await article_response.json()
-            if article_json['defined_type'] in settings.FOLDER_TYPES:
-                delete_path = ('articles', path.parts[1]._id,
-                               'files', path.parts[2]._id)
-            else:
-                delete_path = (*self.root_path_parts, 'articles',
-                               path.parts[1]._id)
-        delete_article_response = await self.make_request(
-            'DELETE',
-            self.build_url(False, *(delete_path)),
-            expects=(204, ),
-        )
-        delete_article_response.close()
-
-    async def _delete_container_contents(self, path):
-        """Delete contents but leave root of Project/Collection
-
-        :param path: FigsharePath to be emptied
-        """
-        if self.container_type == 'article':
-            article_response = await self.make_request(
-                'GET',
-                self.build_url(False, *self.root_path_parts),
-                expects=(200, ),
-            )
-            article_json = await article_response.json()
-            for file in article_json['files']:
-                delete_file_response = await self.make_request(
-                    'DELETE',
-                    self.build_url(False, *self.root_path_parts, 'files',
-                                   str(file['id'])),
-                    expects=(204, ),
-                )
-                delete_file_response.close()
-        else:
-            # TODO: Needs logic for skipping public articles in collections
-            articles_response = await self.make_request(
-                'GET',
-                self.build_url(False, *self.root_path_parts, 'articles'),
-                expects=(200, ),
-            )
-            articles_json = await articles_response.json()
-            for article in articles_json:
-                delete_article_response = await self.make_request(
-                    'DELETE',
-                    self.build_url(False, *self.root_path_parts, 'articles',
-                                   str(article['id'])),
-                    expects=(204, ),
-                )
-                delete_article_response.close()
+    # YEP
+    # async def _delete_container_contents(self, path):
+    #     pass
 
     # YEP, implemented in children
     # async def metadata(self, path, **kwargs):
@@ -708,8 +629,53 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         return metadata.FigshareFolderMetadata(article_json)
 
-    async def delete(self, path, **kwargs):
-        pass
+    # YEP
+    async def delete(self, path, confirm_delete=0, **kwargs):
+        """Delete the entity at ``path``.
+
+        :param FigsharePath path: Path to be deleted
+        :param int confirm_delete: Must be 1 to confirm root folder delete
+        :rtype: None
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+
+        Quirks::
+
+        * If the FigsharePath given is for the provider root path, then the contents of the
+        provider root path will be deleted, but not the provider root itself.
+        """
+        if path.is_root:
+            if confirm_delete == 1:
+                return await self._delete_container_contents(path)
+            raise exceptions.DeleteError(
+                'confirm_delete=1 is required for deleting root provider folder',
+                code=400
+            )
+
+        if len(path.parts) == 2:
+            if not path.is_folder:
+                raise exceptions.NotFoundError(str(path))
+            delete_path = (*self.root_path_parts, 'articles', path.parts[1]._id)
+        elif len(path.parts) == 3:
+            if path.is_folder:
+                raise exceptions.NotFoundError(str(path))
+            article_response = await self.make_request(
+                'GET',
+                self.build_url(False, *self.root_path_parts, 'articles', path.parts[1]._id),
+                expects=(200, ),
+            )
+            article_json = await article_response.json()
+            if article_json['defined_type'] in settings.FOLDER_TYPES:
+                delete_path = ('articles', path.parts[1]._id, 'files', path.parts[2]._id)
+            else:
+                delete_path = (*self.root_path_parts, 'articles', path.parts[1]._id)
+
+        delete_article_response = await self.make_request(
+            'DELETE',
+            self.build_url(False, *delete_path),
+            expects=(204, ),
+        )
+        await delete_article_response.release()
 
     # YEP
     async def metadata(self, path, **kwargs):
@@ -788,6 +754,27 @@ class FigshareProjectProvider(BaseFigshareProvider):
             return metadata.FigshareFileMetadata(article_json)
 
         # TODO: WHAT SHOULD RETURN IF NOTHING?
+
+    # YEP
+    async def _delete_container_contents(self, path):
+        """Delete contents but leave root of Project/Collection.
+
+        :param FigsharePath path: ``path`` of Project/Collection  to be emptied.
+        """
+        # TODO: Needs logic for skipping public articles in collections
+        articles_response = await self.make_request(
+            'GET',
+            self.build_url(False, *self.root_path_parts, 'articles'),
+            expects=(200, ),
+        )
+        articles_json = await articles_response.json()
+        for article in articles_json:
+            delete_article_response = await self.make_request(
+                'DELETE',
+                self.build_url(False, *self.root_path_parts, 'articles', str(article['id'])),
+                expects=(204, ),
+            )
+            await delete_article_response.release()
 
 
 class FigshareArticleProvider(BaseFigshareProvider):
@@ -879,8 +866,35 @@ class FigshareArticleProvider(BaseFigshareProvider):
                 code=400
             )
 
-    async def delete(self, path, **kwargs):
-        pass
+    # YEP
+    async def delete(self, path, confirm_delete=0, **kwargs):
+        """Delete the entity at ``path``.
+
+        :param FigsharePath path: Path to be deleted
+        :param int confirm_delete: Must be 1 to confirm root folder delete
+        :rtype: None
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+
+        Quirks::
+
+        * If the FigsharePath given is for the provider root path, then the contents of the
+        provider root path will be deleted, but not the provider root itself.
+        """
+        if path.is_root:
+            if confirm_delete == 1:
+                return await self._delete_container_contents(path)
+            raise exceptions.DeleteError(
+                'confirm_delete=1 is required for deleting root provider folder',
+                code=400
+            )
+
+        delete_article_response = await self.make_request(
+            'DELETE',
+            self.build_url(False, *self.root_path_parts, 'files', path.parts[-1]._id),
+            expects=(204, ),
+        )
+        await delete_article_response.release()
 
     # YEP
     async def metadata(self, path, **kwargs):
@@ -910,3 +924,23 @@ class FigshareArticleProvider(BaseFigshareProvider):
     # YEP, parent method suffices
     # async def revision(self, path, **kwargs):
     #     pass
+
+    # YEP
+    async def _delete_container_contents(self, path):
+        """Delete contents but leave root of Article.
+
+        :param FigsharePath path: ``path`` of Article to be emptied.
+        """
+        article_response = await self.make_request(
+            'GET',
+            self.build_url(False, *self.root_path_parts),
+            expects=(200, ),
+        )
+        article_json = await article_response.json()
+        for file in article_json['files']:
+            delete_file_response = await self.make_request(
+                'DELETE',
+                self.build_url(False, *self.root_path_parts, 'files', str(file['id'])),
+                expects=(204, ),
+            )
+            await delete_file_response.release()
