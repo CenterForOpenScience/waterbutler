@@ -468,20 +468,24 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_file_article_contents(self, project_provider, list_project_articles, file_article_metadata, file_metadata):
+    async def test_project_file_article_contents(self, project_provider, list_project_articles,
+                                                 file_article_metadata, file_metadata):
 
-        list_articles_url = project_provider.build_url(False, (*project_provider.root_path_parts), 'articles')
-        file_article_metadata_url = project_provider.build_url(False, (*project_provider.root_path_parts),'articles', str(list_project_articles[0]['id']))
-        file_metadata_url = project_provider.build_url(False, (*project_provider.root_path_parts),'articles', str(file_article_metadata['id']), 'files', str(file_article_metadata['files'][0]['id']))
+        root_parts = project_provider.root_path_parts
+        article_id = file_article_metadata['id']
+        file_id = file_article_metadata['files'][0]['id']
+
+        list_articles_url = project_provider.build_url(False, *root_parts, 'articles')
+        file_article_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
+                                                               str(list_project_articles[0]['id']))
+        file_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
+                                                       str(article_id), 'files', str(file_id))
 
         aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
         aiohttpretty.register_json_uri('GET', file_article_metadata_url, body=file_article_metadata)
         aiohttpretty.register_json_uri('GET', file_metadata_url, body=file_metadata)
 
-        article_id = file_article_metadata['id']
-        file_id = file_article_metadata['files'][0]['id']
-        path = await project_provider.validate_path('/{}/{}'.format(article_id,
-                                                                    file_id))
+        path = await project_provider.validate_path('/{}/{}'.format(article_id, file_id))
         result = await project_provider.metadata(path)
 
         assert aiohttpretty.has_call(method='GET', uri=list_articles_url)
@@ -493,30 +497,35 @@ class TestMetadata:
 
         assert result.id == file_metadata['id']
         assert result.name == file_metadata['name']
-        assert result.path == '/{}/{}'.format(file_article_metadata['id'],
-                                              file_metadata['id'])
-        assert result.materialized_path == '/{}'.format(file_metadata['name'])
-        assert result.article_id == file_article_metadata['id']
+        assert result.path == '/{}/{}'.format(article_id, file_metadata['id'])
+        assert result.materialized_path == '/{}/{}'.format(file_article_metadata['title'],
+                                                           file_metadata['name'])
+        assert result.article_id == article_id
         assert result.article_name == file_article_metadata['title']
         assert result.size == file_metadata['size']
         assert result.is_public == (PRIVATE_IDENTIFIER not in file_article_metadata['url'])
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_folder_article_contents(self, project_provider, list_project_articles, folder_article_metadata, folder_file_metadata):
+    async def test_project_folder_article_contents(self, project_provider, list_project_articles,
+                                                   folder_article_metadata, folder_file_metadata):
 
-        list_articles_url = project_provider.build_url(False, (*project_provider.root_path_parts), 'articles')
-        folder_article_metadata_url = project_provider.build_url(False, (*project_provider.root_path_parts),'articles', str(list_project_articles[1]['id']))
-        file_metadata_url = project_provider.build_url(False, (*project_provider.root_path_parts),'articles', str(folder_article_metadata['id']), 'files', str(folder_article_metadata['files'][0]['id']))
-
-        aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
-        aiohttpretty.register_json_uri('GET', folder_article_metadata_url, body=folder_article_metadata)
-        aiohttpretty.register_json_uri('GET', file_metadata_url, body=folder_file_metadata)
-
+        root_parts = project_provider.root_path_parts
         article_id = folder_article_metadata['id']
         file_id = folder_article_metadata['files'][0]['id']
-        path = await project_provider.validate_path('/{}/{}'.format(article_id,
-                                                                    file_id))
+
+        list_articles_url = project_provider.build_url(False, *root_parts, 'articles')
+        folder_article_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
+                                                                 str(article_id))
+        file_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
+                                                       str(article_id), 'files', str(file_id))
+
+        aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
+        aiohttpretty.register_json_uri('GET', folder_article_metadata_url,
+                                       body=folder_article_metadata)
+        aiohttpretty.register_json_uri('GET', file_metadata_url, body=folder_file_metadata)
+
+        path = await project_provider.validate_path('/{}/{}'.format(article_id, file_id))
         result = await project_provider.metadata(path)
 
         assert aiohttpretty.has_call(method='GET', uri=list_articles_url)
@@ -528,10 +537,10 @@ class TestMetadata:
 
         assert result.id == folder_file_metadata['id']
         assert result.name == folder_file_metadata['name']
-        assert result.path == '/{}/{}'.format(folder_article_metadata['id'],
-                                              folder_file_metadata['id'])
-        assert result.materialized_path == '/{}/{}'.format(folder_article_metadata['title'], folder_file_metadata['name'])
-        assert result.article_id == folder_article_metadata['id']
+        assert result.path == '/{}/{}'.format(article_id, folder_file_metadata['id'])
+        assert result.materialized_path == '/{}/{}'.format(folder_article_metadata['title'],
+                                                           folder_file_metadata['name'])
+        assert result.article_id == article_id
         assert result.article_name == folder_article_metadata['title']
         assert result.size == folder_file_metadata['size']
         assert result.is_public == (PRIVATE_IDENTIFIER not in folder_article_metadata['url'])
@@ -560,7 +569,8 @@ class TestMetadata:
         assert result.name == folder_file_metadata['name']
         assert result.path == '/{}/{}'.format(folder_article_metadata['id'],
                                               folder_file_metadata['id'])
-        assert result.materialized_path == '/{}/{}'.format(folder_article_metadata['title'], folder_file_metadata['name'])
+        assert result.materialized_path == '/{}/{}'.format(folder_article_metadata['title'],
+                                                           folder_file_metadata['name'])
         assert result.article_name == folder_article_metadata['title']
         assert result.size == folder_file_metadata['size']
         assert result.is_public == (PRIVATE_IDENTIFIER not in folder_article_metadata['url'])
@@ -691,24 +701,28 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_article_download(self, project_provider, file_article_metadata, list_project_articles, file_metadata):
+    async def test_project_article_download(self, project_provider, file_article_metadata,
+                                            list_project_articles, file_metadata):
         article_id = str(list_project_articles[0]['id'])
         file_id = str(file_article_metadata['files'][0]['id'])
         body = b'castle on a cloud'
 
-        list_articles_url = project_provider.build_url(False, (*project_provider.root_path_parts), 'articles')
-        file_metadata_url = project_provider.build_url(False, (*project_provider.root_path_parts),'articles', article_id, 'files', file_id)
-        article_metadata_url = project_provider.build_url(False, (*project_provider.root_path_parts),'articles', article_id)
+        list_articles_url = project_provider.build_url(False, (*project_provider.root_path_parts),
+                                                       'articles')
+        file_metadata_url = project_provider.build_url(False, (*project_provider.root_path_parts),
+                                                       'articles', article_id, 'files', file_id)
+        article_metadata_url = project_provider.build_url(False,
+                                                          (*project_provider.root_path_parts),
+                                                          'articles', article_id)
         download_url = file_metadata['download_url']
-        print('### download_url is: {}'.format(download_url))
 
         aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
         aiohttpretty.register_json_uri('GET', file_metadata_url, body=file_metadata)
         aiohttpretty.register_json_uri('GET', article_metadata_url, body=file_article_metadata)
-        aiohttpretty.register_uri('GET', download_url, body=body, auto_length=True)
+        aiohttpretty.register_uri('GET', download_url, params={'token': project_provider.token},
+                                  body=body, auto_length=True)
 
-        path = await project_provider.validate_path('/{}/{}'.format(article_id,
-                                                                    file_id))
+        path = await project_provider.validate_path('/{}/{}'.format(article_id, file_id))
         result = await project_provider.download(path)
         content = await result.read()
 
@@ -719,17 +733,16 @@ class TestCRUD:
     async def test_article_download(self, article_provider, file_article_metadata, file_metadata):
         body = b'castle on a cloud'
         file_id = str(file_metadata['id'])
-        # article_id = article_provider.article_id
-        file_metadata_url = article_provider.build_url(False, (*article_provider.root_path_parts), 'files', file_id)
-        article_metadata_url = article_provider.build_url(False, (*article_provider.root_path_parts))
+        file_metadata_url = article_provider.build_url(False, (*article_provider.root_path_parts),
+                                                       'files', file_id)
+        article_metadata_url = article_provider.build_url(False,
+                                                          (*article_provider.root_path_parts))
         download_url = file_metadata['download_url']
-        print('### download_url is: {}'.format(download_url))
 
-        aiohttpretty.register_json_uri('GET', file_metadata_url,
-                                       body=file_metadata)
-        aiohttpretty.register_json_uri('GET', article_metadata_url,
-                                       body=file_article_metadata)
-        aiohttpretty.register_uri('GET', download_url, body=body, auto_length=True)
+        aiohttpretty.register_json_uri('GET', file_metadata_url, body=file_metadata)
+        aiohttpretty.register_json_uri('GET', article_metadata_url, body=file_article_metadata)
+        aiohttpretty.register_uri('GET', download_url, params={'token': article_provider.token},
+                                   body=body, auto_length=True)
 
         path = await article_provider.validate_path('/{}'.format(file_id))
         result = await article_provider.download(path)
@@ -738,7 +751,8 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_file_delete(self, project_provider, list_project_articles, file_article_metadata, file_metadata):
+    async def test_project_file_delete(self, project_provider, list_project_articles,
+                                       file_article_metadata, file_metadata):
         file_id = str(file_metadata['id'])
         article_id = str(list_project_articles[0]['id'])
 
