@@ -51,6 +51,21 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
             return parsed_datetime.isoformat()
 
     @property
+    def created_utc(self):
+        try:
+            return self.raw['created_utc']
+        except KeyError:
+            if self.raw['created'] is None:
+                return None
+
+            # Kludge for OSF, whose created attribute does not include
+            # tzinfo but is assumed to be UTC.
+            parsed_datetime = dateutil.parser.parse(self.raw['created'])
+            if not parsed_datetime.tzinfo:
+                parsed_datetime = parsed_datetime.replace(tzinfo=pytz.UTC)
+            return parsed_datetime.isoformat()
+
+    @property
     def size(self):
         return self.raw['size']
 

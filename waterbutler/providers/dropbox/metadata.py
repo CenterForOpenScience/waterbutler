@@ -56,6 +56,10 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
         return self.raw['modified']
 
     @property
+    def created_utc(self):
+        return None
+
+    @property
     def content_type(self):
         return self.raw['mime_type']
 
