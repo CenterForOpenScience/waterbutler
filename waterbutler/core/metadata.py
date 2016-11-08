@@ -206,6 +206,7 @@ class BaseFileMetadata(BaseMetadata):
             'contentType': self.content_type,
             'modified': self.modified,
             'modified_utc': self.modified_utc,
+            'created_utc': self.created_utc,
             'size': self.size,
         })
 
@@ -239,6 +240,12 @@ class BaseFileMetadata(BaseMetadata):
         """ Date the file was last modified, as reported by the provider,
         converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
         return utils.normalize_datetime(self.modified)
+
+    @property
+    def created_utc(self):
+        """ Date the file was created, as reported by the provider,
+        converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
+        raise NotImplementedError
 
     @abc.abstractproperty
     def size(self):
@@ -284,6 +291,8 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
 
     @property
     def modified_utc(self):
+        """ Date the revision was last modified, as reported by the provider,
+        converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
         return utils.normalize_datetime(self.modified)
 
     @abc.abstractproperty

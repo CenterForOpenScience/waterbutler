@@ -1,4 +1,5 @@
 from waterbutler.core import metadata
+import waterbutler.core.utils as core_utils
 
 from waterbutler.providers.googledrive import utils
 
@@ -67,6 +68,10 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     @property
     def modified(self):
         return self.raw['modifiedDate']
+
+    @property
+    def created_utc(self):
+        return core_utils.normalize_datetime(self.raw['createdDate'])
 
     @property
     def content_type(self):
