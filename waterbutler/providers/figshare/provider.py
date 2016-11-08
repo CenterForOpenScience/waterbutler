@@ -1,6 +1,5 @@
 import http
 import json
-import time
 import asyncio
 
 import aiohttp
@@ -238,6 +237,85 @@ class BaseFigshareProvider(provider.BaseProvider):
         # TODO: still true?
         raise exceptions.ProviderError({'message': 'figshare does not support file revisions.'}, code=405)
 
+    async def _make_file_placeholder(self, article_id, name, size):
+        """Create a placeholder for a file to be uploaded later.  Takes the id of the parent
+        article, a name for the file, and the size.  Returns the id set aside for the file.
+
+        :param str article_id: the id of the parent article
+        :param str name: the name of the file
+        :param int size: the size of the file
+        :returns str: the id of the file placeholder
+        """
+        file_resp = await self.make_request(
+            'POST',
+            self.build_url(False, 'articles', article_id, 'files'),
+            data=json.dumps({'name': name, 'size': size}),
+            expects=(201, ),
+        )
+        file_json = await file_resp.json()
+        return file_json['location'].rsplit('/', 1)[1]
+
+    async def _get_file_upload_url(self, article_id, file_id):
+        """Request an upload url and partitioning spec from Figshare.
+        See: https://docs.figshare.com/api/file_uploader/
+
+        :param str article_id: the id of the parent article
+        :param str file_id: the name of the file
+        :returns (str, dict): the upload url and the parts specification
+        """
+        # TODO: retry with backoff
+        resp = await self.make_request(
+            'GET',
+            self.build_url(False, 'articles', article_id, 'files', file_id),
+            expects=(200, 404),
+        )
+        if resp.status == 404:
+            raise exceptions.ProviderError(
+                'Could not get upload_url. File creation may have taken more '
+                'than {} seconds to finish.'.format(str(settings.FILE_CREATE_WAIT)))
+
+        upload_json = await resp.json()
+        upload_url = upload_json['upload_url']
+
+        parts_resp = await self.make_request('GET', upload_url, expects=(200, ),)
+        parts_json = await parts_resp.json()
+        return upload_url, parts_json['parts']  # str, dict
+
+    async def _upload_file_parts(self, stream, upload_url, parts):
+        """Takes a stream, the upload url and a dict of parts to upload, and send the chunks
+        dictated by ``parts`` to figshare.
+        See: https://docs.figshare.com/api/file_uploader/
+
+        :param stream: the file stream to upload
+        :param str upload_url: the base url to upload to
+        :param dict parts: a structure describing the expected partitioning of the file
+        """
+        # TODO: WTF? isn't this out of order?
+        for part in parts:
+            size = part['endOffset'] - part['startOffset'] + 1
+            part_number = part['partNo']
+            upload_response = await self.make_request(
+                'PUT',
+                upload_url + '/' + str(part_number),
+                data=stream._read(size),
+                expects=(200, ),
+            )
+            await upload_response.release()
+
+    async def _mark_upload_complete(self, article_id, file_id):
+        """Signal to Figshare that all of the parts of the file have been uploaded successfully.
+        See: https://docs.figshare.com/api/file_uploader/
+
+        :param str article_id: the id of the parent article
+        :param str file_id: the name of the file
+        """
+        resp = await self.make_request(
+            'POST',
+            self.build_url(False, 'articles', article_id, 'files', file_id),
+            expects=(202, ),
+        )
+        await resp.release()
+
 
 class FigshareProjectProvider(BaseFigshareProvider):
 
@@ -289,7 +367,8 @@ class FigshareProjectProvider(BaseFigshareProvider):
             file_json = await file_response.json()
             file_name = file_json['name']
             if path[-1] == '/':
-                raise exceptions.NotFoundError('File paths must not end with "/".  {} not found.'.format(path))
+                raise exceptions.NotFoundError('File paths must not end with "/". '
+                                               '{} not found.'.format(path))
             return FigsharePath('/' + article_name + '/' + file_name,
                                 _ids=('', article_id, file_id),
                                 folder=False,
@@ -307,7 +386,8 @@ class FigshareProjectProvider(BaseFigshareProvider):
             return FigsharePath('/' + article_name + '/', _ids=('', article_id),
                                 folder=True, is_public=is_public)
 
-        raise exceptions.NotFoundError('This article is not configured as a folder defined_type. {} not found.'.format(path))
+        raise exceptions.NotFoundError('This article is not configured as a folder defined_type. '
+                                       '{} not found.'.format(path))
 
     # YEP
     async def validate_path(self, path, **kwargs):
@@ -518,51 +598,25 @@ class FigshareProjectProvider(BaseFigshareProvider):
                     data=article_list,
                     expects=(201, ),
                 )
-        # Create file. Get file ID
-        file_data = json.dumps({'name': path.name, 'size': stream.size})
-        file_resp = await self.make_request(
-            'POST',
-            self.build_url(False, 'articles', article_id, 'files'),
-            data=file_data,
-            expects=(201, ),
-        )
-        file_json = await file_resp.json()
-        file_id = file_json['location'].rsplit('/', 1)[1]
-        # Get upload url and file parts info
+
+        # Process for creating a file:
+
+        # 1. Get file ID
+        file_id = await self._make_file_placeholder(article_id, path.name, stream.size)
+
+        # 2. Get upload url and file parts info
         # added sleep() as file was not availble right away after getting 201 back.
         # polling with HEADs is another possible solution
-        time.sleep(settings.FILE_CREATE_WAIT)
-        file_resp = await self.make_request(
-            'GET',
-            self.build_url(False, 'articles', article_id, 'files', file_id),
-            expects=(200, 404),
-        )
-        if file_resp.status == 404:
-            raise exceptions.ProviderError('Could not get upload_url. File creation may have taken more than {} seconds to finish.'.format(str(settings.FILE_CREATE_WAIT)))
-        file_json = await file_resp.json()
-        upload_url = file_json['upload_url']
-        token_resp = await self.make_request('GET', upload_url, expects=(200, ),)
-        token_json = await token_resp.json()
-        parts = token_json['parts']  # dict
-        # Upload parts
-        for part in parts:
-            size = part['endOffset'] - part['startOffset'] + 1
-            part_number = part['partNo']
-            upload_response = await self.make_request(
-                'PUT',
-                upload_url + '/' + str(part_number),
-                data=stream._read(size),
-                expects=(200, ),
-            )
-            await upload_response.release()
+        await asyncio.sleep(settings.FILE_CREATE_WAIT)
+        upload_url, parts = await self._get_file_upload_url(article_id, file_id)
 
-        # Mark upload complete
-        upload_response = await self.make_request(
-            'POST',
-            self.build_url(False, 'articles', article_id, 'files', file_id),
-            expects=(202, ),
-        )
-        await upload_response.release()
+        # 3. Upload parts
+        await self._upload_file_parts(stream, upload_url, parts)
+
+        # 4. Mark upload complete
+        await self._mark_upload_complete(article_id, file_id)
+
+        # Build new file path and return metadata
         path = FigsharePath('/' + article_id + '/' + file_id,
                             _ids=(self.container_id, article_id, file_id),
                             folder=False,
@@ -899,53 +953,24 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
         article_id = self.container_id
 
-        # Create file. Get file ID
-        file_data = json.dumps({'name': path.name, 'size': stream.size})
-        file_resp = await self.make_request(
-            'POST',
-            self.build_url(False, 'articles', article_id, 'files'),
-            data=file_data,
-            expects=(201, ),
-        )
-        file_json = await file_resp.json()
-        file_id = file_json['location'].rsplit('/', 1)[1]
-        # Get upload url and file parts info
+        # Process for creating a file:
+
+        # 1. Get file ID
+        file_id = await self._make_file_placeholder(article_id, path.name, stream.size)
+
+        # 2. Get upload url and file parts info
         # added sleep() as file was not availble right away after getting 201 back.
         # polling with HEADs is another possible solution
-        time.sleep(settings.FILE_CREATE_WAIT)
-        file_resp = await self.make_request(
-            'GET',
-            self.build_url(False, 'articles', article_id, 'files', file_id),
-            expects=(200, 404),
-        )
-        if file_resp.status == 404:
-            raise exceptions.ProviderError(
-                'Could not get upload_url. File creation may have taken more '
-                'than {} seconds to finish.'.format(str(settings.FILE_CREATE_WAIT)))
-        file_json = await file_resp.json()
-        upload_url = file_json['upload_url']
-        token_resp = await self.make_request('GET', upload_url, expects=(200, ),)
-        token_json = await token_resp.json()
-        parts = token_json['parts']  # dict
-        # Upload parts
-        for part in parts:
-            size = part['endOffset'] - part['startOffset'] + 1
-            part_number = part['partNo']
-            upload_response = await self.make_request(
-                'PUT',
-                upload_url + '/' + str(part_number),
-                data=stream._read(size),
-                expects=(200, ),
-            )
-            await upload_response.release()
+        await asyncio.sleep(settings.FILE_CREATE_WAIT)
+        upload_url, parts = await self._get_file_upload_url(article_id, file_id)
 
-        # Mark upload complete
-        upload_response = await self.make_request(
-            'POST',
-            self.build_url(False, 'articles', article_id, 'files', file_id),
-            expects=(202, ),
-        )
-        await upload_response.release()
+        # 3. Upload parts
+        await self._upload_file_parts(stream, upload_url, parts)
+
+        # 4. Mark upload complete
+        await self._mark_upload_complete(article_id, file_id)
+
+        # Build new file path and return metadata
         path = FigsharePath('/' + file_id, _ids=('', file_id), folder=False, is_public=False)
         return (await self.metadata(path, **kwargs)), True
 
