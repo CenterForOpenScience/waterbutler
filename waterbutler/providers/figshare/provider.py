@@ -652,7 +652,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         """
         if path.is_root:
             if confirm_delete == 1:
-                return await self._delete_container_contents(path)
+                return await self._delete_container_contents()
             raise exceptions.DeleteError(
                 'confirm_delete=1 is required for deleting root provider folder',
                 code=400
@@ -688,7 +688,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         """Return metadata for entity identified by ``path`` under the parent project.
 
         :param FigsharePath path: entity whose metadata will be returned
-        :rtype FigshareFileMetadata obj or list of Metadata objs:
+        :rtype: FigshareFileMetadata obj or list of Metadata objs
         """
         if path.is_root:
             path.is_public = False
@@ -982,7 +982,8 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
     # YEP
     async def delete(self, path, confirm_delete=0, **kwargs):
-        """Delete the entity at ``path``.
+        """Delete the file at ``path``. If ``path`` is ``/`` and ``confirm_delete`` is ``1``, then
+        delete all of the files within the article, but not the article itself.
 
         :param FigsharePath path: Path to be deleted
         :param int confirm_delete: Must be 1 to confirm root folder delete
@@ -997,28 +998,29 @@ class FigshareArticleProvider(BaseFigshareProvider):
         """
         if path.is_root:
             if confirm_delete == 1:
-                return await self._delete_container_contents(path)
+                return await self._delete_container_contents()
             raise exceptions.DeleteError(
                 'confirm_delete=1 is required for deleting root provider folder',
                 code=400
             )
 
-        await self._delete_file(path.parts[-1]._id, False)
+        await self._delete_file(path.parts[-1]._id)
 
     # YEP
     async def metadata(self, path, **kwargs):
-        """Return metadata for entity identified by ``path`` under the parent project.
+        """Return metadata for entity identified by ``path``. May be the containing article or
+        a file in a fileset article.
 
         :param FigsharePath path: entity whose metadata will be returned
         :rtype FigshareFileMetadata obj or list of Metadata objs:
         """
-        article = await self._get_article(path.is_public)
-        if path.is_root:
+        article = await self._get_article(not path.is_public)
+        if path.is_root:  # list files in article
             contents = []
             for file in article['files']:
                 contents.append(metadata.FigshareFileMetadata(article, raw_file=file))
             return contents
-        elif len(path.parts) == 2:
+        elif len(path.parts) == 2:  # metadata for a particular file
             for file in article['files']:
                 if str(file['id']) == path.parts[1].identifier:
                     return metadata.FigshareFileMetadata(article, raw_file=file)
@@ -1031,27 +1033,34 @@ class FigshareArticleProvider(BaseFigshareProvider):
     #     pass
 
     # YEP
-    async def _delete_container_contents(self, path):
-        """Delete contents but leave root of Article.
-
-        :param FigsharePath path: ``path`` of Article to be emptied.
-        """
+    async def _delete_container_contents(self):
+        """Delete files within the containing article."""
         article = await self._get_article()
         for file in article['files']:
-            await self._delete_file(str(file['id']), False)
+            await self._delete_file(str(file['id']))
 
-    async def _get_article(self, is_public=False):
+    async def _get_article(self, is_owned=True):
+        """Get the metadata for the container article. If the article is a public article not owned
+        by the credentialed user, the request must be sent to a different endpoint.
+
+        :param bool is_owned: Is this article owned by the credentialed user? Default: ``True``
+        """
         resp = await self.make_request(
             'GET',
-            self.build_url(is_public, *self.root_path_parts),
+            self.build_url(not is_owned, *self.root_path_parts),
             expects=(200, ),
         )
         return await resp.json()
 
-    async def _delete_file(self, file_id, is_public=False):
+    async def _delete_file(self, file_id):
+        """Delete a file from the root article. Docs:
+        https://docs.figshare.com/api/articles/#delete-file-from-article
+
+        :param str file: the id of the file to delete
+        """
         resp = await self.make_request(
             'DELETE',
-            self.build_url(is_public, *self.root_path_parts, 'files', file_id),
+            self.build_url(False, *self.root_path_parts, 'files', file_id),
             expects=(204, ),
         )
         await resp.release()
