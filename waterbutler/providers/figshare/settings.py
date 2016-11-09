@@ -15,3 +15,6 @@ ARTICLE_TYPE_IDENTIFIER = 'https://api.figshare.com/v2/account/articles/'
 
 # During initial testing this was set to 2 because file was not instantly ready after receiving HTTP 201
 FILE_CREATE_WAIT = 0.1   # seconds passed to time.sleep
+
+# project/collection article listings are paginated.  Specify max number of results returned per page.
+MAX_PAGE_SIZE = int(config.get('MAX_PAGE_SIZE', 100))

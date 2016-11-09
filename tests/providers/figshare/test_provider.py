@@ -10,7 +10,7 @@ from waterbutler.core import exceptions
 
 from waterbutler.providers.figshare import metadata
 from waterbutler.providers.figshare import provider
-from waterbutler.providers.figshare.settings import PRIVATE_IDENTIFIER
+from waterbutler.providers.figshare.settings import PRIVATE_IDENTIFIER, MAX_PAGE_SIZE
 
 
 @pytest.fixture
@@ -456,16 +456,18 @@ class TestMetadata:
         folder_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
                                                          str(list_project_articles[1]['id']))
 
-        aiohttpretty.register_json_uri('GET', list_articles_url, params={'page': '1'},
-                                       body=list_project_articles)
-        aiohttpretty.register_json_uri('GET', list_articles_url, params={'page': '2'}, body=[])
+        aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles,
+                                       params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
+        aiohttpretty.register_json_uri('GET', list_articles_url, body=[],
+                                       params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
         aiohttpretty.register_json_uri('GET', file_metadata_url, body=file_article_metadata)
         aiohttpretty.register_json_uri('GET', folder_metadata_url, body=folder_article_metadata)
 
         path = await project_provider.validate_path('/')
         result = await project_provider.metadata(path)
 
-        assert aiohttpretty.has_call(method='GET', uri=list_articles_url, params={'page': '1'})
+        assert aiohttpretty.has_call(method='GET', uri=list_articles_url,
+                                     params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
         assert aiohttpretty.has_call(method='GET', uri=file_metadata_url)
         assert aiohttpretty.has_call(method='GET', uri=folder_metadata_url)
 

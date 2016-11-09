@@ -769,12 +769,19 @@ class FigshareProjectProvider(BaseFigshareProvider):
             await delete_article_response.release()
 
     async def _get_all_articles(self):
+        """Get all articles under a project or collection. This endpoint is paginated and does not
+        provide limit metadata, so we keep querying until we receive an empty array response.
+        See https://docs.figshare.com/api/#searching-filtering-and-pagination for details.
+
+        :return: list of article json objects
+        :rtype: `list`
+        """
         all_articles, keep_going, page = [], True, 1
         while keep_going:
             resp = await self.make_request(
                 'GET',
                 self.build_url(False, *self.root_path_parts, 'articles'),
-                params={'page': str(page)},
+                params={'page': str(page), 'page_size': str(settings.MAX_PAGE_SIZE)},
                 expects=(200, ),
             )
             articles = await resp.json()
