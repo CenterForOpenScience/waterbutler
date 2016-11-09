@@ -261,7 +261,7 @@ class BaseFigshareProvider(provider.BaseProvider):
 
         :param str article_id: the id of the parent article
         :param str file_id: the name of the file
-        :returns (str, dict): the upload url and the parts specification
+        :returns (str, list): the upload url and the parts specification
         """
         # TODO: retry with backoff
         resp = await self.make_request(
@@ -279,7 +279,7 @@ class BaseFigshareProvider(provider.BaseProvider):
 
         parts_resp = await self.make_request('GET', upload_url, expects=(200, ),)
         parts_json = await parts_resp.json()
-        return upload_url, parts_json['parts']  # str, dict
+        return upload_url, parts_json['parts']  # str, list
 
     async def _upload_file_parts(self, stream, upload_url, parts):
         """Takes a stream, the upload url and a dict of parts to upload, and send the chunks
@@ -341,17 +341,13 @@ class FigshareProjectProvider(BaseFigshareProvider):
         article_id = path_parts[1]
         file_id = path_parts[2] if len(path_parts) == 3 else None
 
-        root_article_response = await self.make_request(
-            'GET',
-            self.build_url(False, *self.root_path_parts, 'articles'),
-            expects=(200, ),
-        )
+        articles = await self._get_all_articles()
 
         # TODO: need better way to get public/private
         # also this call's return  value is currently busted at figshare
         # https://support.figshare.com/support/tickets/26558
         is_public = False
-        for item in await root_article_response.json():
+        for item in articles:
             if '/articles/' + article_id in item['url']:
                 article_name = item['title']
                 if settings.PRIVATE_IDENTIFIER not in item['url']:
@@ -574,23 +570,10 @@ class FigshareProjectProvider(BaseFigshareProvider):
         else:
             article_name = json.dumps({'title': path.name})
             if self.container_type == 'project':
-                article_resp = await self.make_request(
-                    'POST',
-                    self.build_url(False, *self.root_path_parts, 'articles'),
-                    data=article_name,
-                    expects=(201, ),
-                )
-                article_json = await article_resp.json()
-                article_id = article_json['location'].rsplit('/', 1)[1]
+                article_id = await self._create_article(article_name, False)
             elif self.container_type == 'collection':
-                article_resp = await self.make_request(
-                    'POST',
-                    self.build_url(False, *self.root_path_parts, 'articles'),
-                    data=article_name,
-                    expects=(201, ),
-                )
-                articles_json = await article_resp.json()
-                article_id = articles_json['location'].rsplit('/', 1)[1]
+                # TODO don't think this is correct.  Probably should POST to /accounts/articles
+                article_id = await self._create_article(article_name, False)
                 article_list = json.dumps({'articles': [article_id]})
                 await self.make_request(
                     'POST',
@@ -641,18 +624,10 @@ class FigshareProjectProvider(BaseFigshareProvider):
             )
 
         article_data = json.dumps({'title': article_name, 'defined_type': 'fileset'})
-        create_article_response = await self.make_request(
-            'POST',
-            self.build_url(False, *self.root_path_parts, 'articles'),
-            data=article_data,
-            expects=(201, ),
-            throws=exceptions.CreateFolderError,
-        )
-        new_article_id = create_article_response.headers['LOCATION'].rstrip('/').split('/')[-1]
-        await create_article_response.release()
+        article_id = await self._create_article(article_data, False)
         get_article_response = await self.make_request(
             'GET',
-            self.build_url(False, *self.root_path_parts, 'articles', new_article_id),
+            self.build_url(False, *self.root_path_parts, 'articles', article_id),
             expects=(200, ),
             throws=exceptions.NotFoundError,
         )
@@ -716,18 +691,12 @@ class FigshareProjectProvider(BaseFigshareProvider):
         :rtype FigshareFileMetadata obj or list of Metadata objs:
         """
         if path.is_root:
-            articles_response = await self.make_request(
-                'GET',
-                self.build_url(False, *self.root_path_parts, 'articles'),
-                expects=(200, ),
-            )
-            articles_json = await articles_response.json()
             path.is_public = False
             contents = await asyncio.gather(*[
                 # TODO: collections may need to use each['url'] for correct URN
                 # Use _get_url_super ? figshare API needs to get fixed first.
                 self._get_article_metadata(str(each['id']), path.is_public)
-                for each in articles_json
+                for each in await self._get_all_articles()
             ])
             return [each for each in contents if each]
 
@@ -793,19 +762,42 @@ class FigshareProjectProvider(BaseFigshareProvider):
         :param FigsharePath path: ``path`` of Project/Collection  to be emptied.
         """
         # TODO: Needs logic for skipping public articles in collections
-        articles_response = await self.make_request(
-            'GET',
-            self.build_url(False, *self.root_path_parts, 'articles'),
-            expects=(200, ),
-        )
-        articles_json = await articles_response.json()
-        for article in articles_json:
+        articles = await self._get_all_articles()
+        for article in articles:
             delete_article_response = await self.make_request(
                 'DELETE',
                 self.build_url(False, *self.root_path_parts, 'articles', str(article['id'])),
                 expects=(204, ),
             )
             await delete_article_response.release()
+
+    async def _get_all_articles(self):
+        all_articles, keep_going, page = [], True, 1
+        while keep_going:
+            resp = await self.make_request(
+                'GET',
+                self.build_url(False, *self.root_path_parts, 'articles'),
+                params={'page': page},
+                expects=(200, ),
+            )
+            articles = await resp.json()
+            all_articles.extend(articles)
+            page += 1
+            keep_going = len(articles) > 0
+
+        return all_articles
+
+    async def _create_article(self, data, is_public=False):
+        resp = await self.make_request(
+            'POST',
+            self.build_url(False, *self.root_path_parts, 'articles'),
+            data=data,
+            expects=(201, ),
+            throws=exceptions.CreateFolderError,
+        )
+        articles_json = await resp.json()
+        article_id = articles_json['location'].rsplit('/', 1)[1]
+        return article_id
 
 
 class FigshareArticleProvider(BaseFigshareProvider):
@@ -829,17 +821,16 @@ class FigshareArticleProvider(BaseFigshareProvider):
         path_parts = self._path_split(path)
         if len(path_parts) != 2:
             raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+
         file_id = path_parts[1]
 
-        file_response = await self.make_request(
+        resp = await self.make_request(
             'GET',
             self.build_url(False, *self.root_path_parts, 'files', file_id),
             expects=(200, ),
         )
-        file_response_json = await file_response.json()
-        return FigsharePath('/' + file_response_json['name'],
-                            _ids=('', file_id),
-                            folder=False,
+        file_json = await resp.json()
+        return FigsharePath('/' + file_json['name'], _ids=('', file_id), folder=False,
                             is_public=False)
 
     # YEP
@@ -864,22 +855,21 @@ class FigshareArticleProvider(BaseFigshareProvider):
         path_parts = self._path_split(path)
         if len(path_parts) != 2:
             raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+
         file_id = path_parts[1]
 
-        file_response = await self.make_request(
+        resp = await self.make_request(
             'GET',
             self.build_url(False, *self.root_path_parts, 'files', file_id),
             expects=(200, 404, ),
         )
-        if file_response.status == 200:
-            file_response_json = await file_response.json()
-            file_name = file_response_json['name']
-            return FigsharePath('/' + file_name,
-                                _ids=('', file_id),
-                                folder=False,
-                                is_public=False)
+        if resp.status == 200:
+            file_json = await resp.json()
+            file_name = file_json['name']
+            return FigsharePath('/' + file_name, _ids=('', file_id), folder=False, is_public=False)
+
         # catch for create file in article root
-        await file_response.release()
+        await resp.release()
         return FigsharePath('/' + file_id, _ids=('', ''), folder=False, is_public=False)
 
     # YEP
@@ -976,11 +966,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
     # YEP
     async def create_folder(self, path, **kwargs):
-        if self.container_type == 'article':
-            raise exceptions.CreateFolderError(
-                'Cannot create folders when provider root is type article.',
-                code=400
-            )
+        raise exceptions.CreateFolderError('Cannot create folders within articles.', code=400)
 
     # YEP
     async def delete(self, path, confirm_delete=0, **kwargs):
@@ -1005,12 +991,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
                 code=400
             )
 
-        delete_article_response = await self.make_request(
-            'DELETE',
-            self.build_url(False, *self.root_path_parts, 'files', path.parts[-1]._id),
-            expects=(204, ),
-        )
-        await delete_article_response.release()
+        await self._delete_file(path.parts[-1]._id, False)
 
     # YEP
     async def metadata(self, path, **kwargs):
@@ -1019,22 +1000,18 @@ class FigshareArticleProvider(BaseFigshareProvider):
         :param FigsharePath path: entity whose metadata will be returned
         :rtype FigshareFileMetadata obj or list of Metadata objs:
         """
-        article_response = await self.make_request(
-            'GET',
-            self.build_url(path.is_public, *self.root_path_parts),
-            expects=(200,),
-        )
-        article_json = await article_response.json()
+        article = await self._get_article(path.is_public)
         if path.is_root:
             contents = []
-            for file in article_json['files']:
-                contents.append(metadata.FigshareFileMetadata(article_json, raw_file=file))
+            for file in article['files']:
+                contents.append(metadata.FigshareFileMetadata(article, raw_file=file))
             return contents
         elif len(path.parts) == 2:
-            for file in article_json['files']:
+            for file in article['files']:
                 if str(file['id']) == path.parts[1].identifier:
-                    return metadata.FigshareFileMetadata(article_json, raw_file=file)
-        # ??? what's the other condition here?
+                    return metadata.FigshareFileMetadata(article, raw_file=file)
+        # TODO: what's the other condition here?
+
         raise exceptions.NotFoundError(str(path))
 
     # YEP, parent method suffices
@@ -1047,16 +1024,22 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
         :param FigsharePath path: ``path`` of Article to be emptied.
         """
-        article_response = await self.make_request(
+        article = await self._get_article()
+        for file in article['files']:
+            await self._delete_file(str(file['id']), False)
+
+    async def _get_article(self, is_public=False):
+        resp = await self.make_request(
             'GET',
-            self.build_url(False, *self.root_path_parts),
+            self.build_url(is_public, *self.root_path_parts),
             expects=(200, ),
         )
-        article_json = await article_response.json()
-        for file in article_json['files']:
-            delete_file_response = await self.make_request(
-                'DELETE',
-                self.build_url(False, *self.root_path_parts, 'files', str(file['id'])),
-                expects=(204, ),
-            )
-            await delete_file_response.release()
+        return await resp.json()
+
+    async def _delete_file(self, file_id, is_public=False):
+        resp = await self.make_request(
+            'DELETE',
+            self.build_url(is_public, *self.root_path_parts, 'files', file_id),
+            expects=(204, ),
+        )
+        await resp.release()
