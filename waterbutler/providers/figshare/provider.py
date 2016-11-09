@@ -756,11 +756,8 @@ class FigshareProjectProvider(BaseFigshareProvider):
         # TODO: WHAT SHOULD RETURN IF NOTHING?
 
     # YEP
-    async def _delete_container_contents(self, path):
-        """Delete contents but leave root of Project/Collection.
-
-        :param FigsharePath path: ``path`` of Project/Collection  to be emptied.
-        """
+    async def _delete_container_contents(self):
+        """Delete all articles within this Project or Collection."""
         # TODO: Needs logic for skipping public articles in collections
         articles = await self._get_all_articles()
         for article in articles:
