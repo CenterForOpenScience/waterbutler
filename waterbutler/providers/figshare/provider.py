@@ -777,7 +777,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
             resp = await self.make_request(
                 'GET',
                 self.build_url(False, *self.root_path_parts, 'articles'),
-                params={'page': page},
+                params={'page': str(page)},
                 expects=(200, ),
             )
             articles = await resp.json()

@@ -446,25 +446,33 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_contents(self, project_provider, list_project_articles, file_article_metadata, folder_article_metadata):
-        list_articles_url = project_provider.build_url(False, (*project_provider.root_path_parts), 'articles')
-        file_article_metadata_url = project_provider.build_url(False, (*project_provider.root_path_parts),'articles', str(list_project_articles[0]['id']))
-        folder_article_metadata_url = project_provider.build_url(False, (*project_provider.root_path_parts),'articles', str(list_project_articles[1]['id']))
+    async def test_project_contents(self, project_provider, list_project_articles,
+                                    file_article_metadata, folder_article_metadata):
 
-        aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
-        aiohttpretty.register_json_uri('GET', file_article_metadata_url, body=file_article_metadata)
-        aiohttpretty.register_json_uri('GET', folder_article_metadata_url, body=folder_article_metadata)
+        root_parts = project_provider.root_path_parts
+        list_articles_url = project_provider.build_url(False, *root_parts, 'articles')
+        file_metadata_url = project_provider.build_url(False, *root_parts,'articles',
+                                                       str(list_project_articles[0]['id']))
+        folder_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
+                                                         str(list_project_articles[1]['id']))
+
+        aiohttpretty.register_json_uri('GET', list_articles_url, params={'page': '1'},
+                                       body=list_project_articles)
+        aiohttpretty.register_json_uri('GET', list_articles_url, params={'page': '2'}, body=[])
+        aiohttpretty.register_json_uri('GET', file_metadata_url, body=file_article_metadata)
+        aiohttpretty.register_json_uri('GET', folder_metadata_url, body=folder_article_metadata)
 
         path = await project_provider.validate_path('/')
         result = await project_provider.metadata(path)
 
-        assert aiohttpretty.has_call(method='GET', uri=list_articles_url)
-        assert aiohttpretty.has_call(method='GET', uri=file_article_metadata_url)
-        assert aiohttpretty.has_call(method='GET',
-                                     uri=folder_article_metadata_url)
+        assert aiohttpretty.has_call(method='GET', uri=list_articles_url, params={'page': '1'})
+        assert aiohttpretty.has_call(method='GET', uri=file_metadata_url)
+        assert aiohttpretty.has_call(method='GET', uri=folder_metadata_url)
 
-        expected = [metadata.FigshareFileMetadata(file_article_metadata, file_article_metadata['files'][0]), metadata.FigshareFolderMetadata(folder_article_metadata)]
-        assert result == expected
+        assert result ==  [
+            metadata.FigshareFileMetadata(file_article_metadata, file_article_metadata['files'][0]),
+            metadata.FigshareFolderMetadata(folder_article_metadata)
+        ]
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
