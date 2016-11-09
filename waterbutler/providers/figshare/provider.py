@@ -570,10 +570,10 @@ class FigshareProjectProvider(BaseFigshareProvider):
         else:
             article_name = json.dumps({'title': path.name})
             if self.container_type == 'project':
-                article_id = await self._create_article(article_name, False)
+                article_id = await self._create_article(article_name)
             elif self.container_type == 'collection':
                 # TODO don't think this is correct.  Probably should POST to /accounts/articles
-                article_id = await self._create_article(article_name, False)
+                article_id = await self._create_article(article_name)
                 article_list = json.dumps({'articles': [article_id]})
                 await self.make_request(
                     'POST',
@@ -624,7 +624,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
             )
 
         article_data = json.dumps({'title': article_name, 'defined_type': 'fileset'})
-        article_id = await self._create_article(article_data, False)
+        article_id = await self._create_article(article_data)
         get_article_response = await self.make_request(
             'GET',
             self.build_url(False, *self.root_path_parts, 'articles', article_id),
@@ -787,7 +787,15 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         return all_articles
 
-    async def _create_article(self, data, is_public=False):
+    async def _create_article(self, data):
+        """Create an article placeholder with the properties given in ``data``.  Returns the id of
+        the new article. See https://docs.figshare.com/api/articles/#create-a-new-article for
+        valid properties.
+
+        :param dict data: properties to set for new article
+        :return: the id of the newly created article
+        :rtype: `str`
+        """
         resp = await self.make_request(
             'POST',
             self.build_url(False, *self.root_path_parts, 'articles'),
