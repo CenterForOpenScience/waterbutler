@@ -424,7 +424,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         # Return for v0 folder creation
         return FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
 
-    async def revalidate_path(self, parent_path, child_name, folder: bool):
+    async def revalidate_path(self, parent_path, child_name, folder):
         """Attempt to get child's id and return FigsharePath of child.
 
         ``revalidate_path`` is used to check for the existance of a child_name/folder
@@ -446,9 +446,8 @@ class FigshareProjectProvider(BaseFigshareProvider):
         urn_parts = (*self.root_path_parts, 'articles')
         if not parent_path.is_root:
             if folder:
-                raise exceptions.NotFoundError(
-                    '{} is not a valid parent path of folder={}. Folders can only exist at the '
-                    'root level.'.format(parent_path.identifier_path, str(folder)))
+                return parent_path.child(child_name, _id=None, folder=folder,
+                                         parent_is_folder=parent_is_folder)
             else:
                 urn_parts = (*urn_parts, (parent_path.identifier))
 
