@@ -196,10 +196,7 @@ class BaseFigshareProvider(provider.BaseProvider):
 
         params = {} if path.is_public else {'token': self.token}
         headers = {'Host': 'ndownloader.figshare.com', 'Accept': '*/*'}
-        resp = await aiohttp.request('GET',
-                                     download_url,
-                                     params=params,
-                                     headers=headers)
+        resp = await aiohttp.request('GET', download_url, params=params, headers=headers)
         return streams.ResponseStreamReader(resp)
 
     # YEP
