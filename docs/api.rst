@@ -151,3 +151,9 @@ If a moved/copied file is overwriting an existing file, a 200 OK response will b
     Success:       204 No Content
 
 To delete a file or folder send a DELETE request to the delete link. Nothing will be returned in the response body. As a precaution against inadvertantly deleting the root folder, the query parameter ``confirm_delete`` must be set to ``1`` for root folder deletes. In addition, a root folder delete does not actually delete the root folder. Instead it deletes all contents of the folder, but not the folder itself.
+
+
+Magic Query Parameters
+----------------------
+
+* ``direct``: issuing a download request with a query parameter named ``direct`` indicates that WB should handle the download, even if a redirect would be possible (e.g. osfstorage and s3).  In this case, WB will act as a middleman, downloading the data from the provider and passing through to the requestor.
