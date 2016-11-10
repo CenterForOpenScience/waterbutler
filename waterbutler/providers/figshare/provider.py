@@ -501,6 +501,9 @@ class FigshareProjectProvider(BaseFigshareProvider):
         :param FigsharePath path: FigsharePath to upload the file to.
         :param dict \*\*kwargs: Will be passed to returned metadata object
         """
+        if path.identifier and conflict == 'replace':
+            raise exceptions.UnsupportedOperationError('Files in Figshare cannot be updated')
+
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         if not path.parent.is_root:
             parent_resp = await self.make_request(
