@@ -300,7 +300,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         articles = await self._get_all_articles()
 
         # TODO: need better way to get public/private
-        # also this call's return  value is currently busted at figshare
+        # also this call's return value is currently busted at figshare
         # https://support.figshare.com/support/tickets/26558
         is_public = False
         for item in articles:
@@ -322,7 +322,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                 raise exceptions.NotFoundError('File paths must not end with "/". '
                                                '{} not found.'.format(path))
             return FigsharePath('/' + article_name + '/' + file_name,
-                                _ids=('', article_id, file_id),
+                                _ids=(self.container_id, article_id, file_id),
                                 folder=False,
                                 is_public=is_public)
 
@@ -335,7 +335,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         if article_json['defined_type'] in settings.FOLDER_TYPES:
             if not path[-1] == '/':
                 raise exceptions.NotFoundError('Folder paths must end with "/".  {} not found.'.format(path))
-            return FigsharePath('/' + article_name + '/', _ids=('', article_id),
+            return FigsharePath('/' + article_name + '/', _ids=(self.container_id, article_id),
                                 folder=True, is_public=is_public)
 
         raise exceptions.NotFoundError('This article is not configured as a folder defined_type. '
@@ -391,7 +391,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                 file_response_json = await file_response.json()
                 file_name = file_response_json['name']
                 return FigsharePath('/' + article_name + '/' + file_name,
-                                    _ids=('', article_id, file_id),
+                                    _ids=(self.container_id, article_id, file_id),
                                     folder=False,
                                     is_public=is_public)
             await file_response.release()
