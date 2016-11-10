@@ -113,7 +113,6 @@ class BaseFigshareProvider(provider.BaseProvider):
             'Authorization': 'token {}'.format(self.token),
         }
 
-    # YEP
     def build_url(self, is_public: bool, *segments, **query):
         """A nice wrapper around furl, builds urls based on self.BASE_URL
 
@@ -129,7 +128,6 @@ class BaseFigshareProvider(provider.BaseProvider):
             segments = ('account', (*segments))
         return (super().build_url(*segments, **query))
 
-    # YEP
     async def make_request(self, method, url, *args, **kwargs):
         """JSONifies ``data`` kwarg, if present and a ``dict``.
 
@@ -142,25 +140,18 @@ class BaseFigshareProvider(provider.BaseProvider):
             kwargs['data'] = json.dumps(kwargs['data'])
         return await super().make_request(method, url, *args, **kwargs)
 
-    # YEP
     def can_duplicate_names(self):
         """Figshare allows articles to have duplicate titles and files to have duplicate names, but
         does not allow the creation of duplicate files and folders.
         """
         return False
 
-    # YEP
-    # async def revalidate_path(self, parent_path, child_name, folder: bool):
-    #     pass
-
-    # YEP, common to base
     async def _get_url_super(self, url):
         # Use super to avoid is_public logic
         # Allows for taking advantage of asyncio.gather
         response = await super().make_request('GET', url, expects=(200, ))
         return await response.json()
 
-    # YEP
     def _path_split(self, path):
         """Strip trailing slash from path string, then split on remaining slashes.
 
@@ -168,15 +159,6 @@ class BaseFigshareProvider(provider.BaseProvider):
         """
         return path.rstrip('/').split('/')
 
-    # YEP, implemented in children
-    # async def validate_v1_path(self, path, **kwargs):
-    #     pass
-
-    # YEP, implemented in children
-    # async def validate_path(self, path, **kwargs):
-    #     pass
-
-    # YEP
     async def download(self, path, **kwargs):
         """Download the file identified by ``path`` from this project.
 
@@ -199,7 +181,6 @@ class BaseFigshareProvider(provider.BaseProvider):
         resp = await aiohttp.request('GET', download_url, params=params, headers=headers)
         return streams.ResponseStreamReader(resp)
 
-    # YEP
     def path_from_metadata(self, parent_path, metadata):
         """Build FigsharePath for child entity given child's metadata and parent's path object.
 
@@ -209,27 +190,6 @@ class BaseFigshareProvider(provider.BaseProvider):
         return parent_path.child(metadata.name, _id=str(metadata.id),
                                  folder=(metadata.kind == 'folder'))
 
-    # YEP, implemented in children
-    # async def upload(self, stream, path, conflict='replace', **kwargs):
-    #     pass
-
-    # YEP, implemented in children
-    # async def create_folder(self, path, **kwargs):
-    #     pass
-
-    # YEP, implemented in children
-    # async def delete(self, path, confirm_delete=0, **kwargs):
-    #     pass
-
-    # YEP, implemented in children
-    # async def _delete_container_contents(self, path):
-    #     pass
-
-    # YEP, implemented in children
-    # async def metadata(self, path, **kwargs):
-    #     pass
-
-    # YEP, common, moved to BaseProvider
     async def revisions(self, path, **kwargs):
         # TODO: still true?
         raise exceptions.ProviderError({'message': 'figshare does not support file revisions.'}, code=405)
@@ -319,7 +279,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    # YEP
     async def validate_v1_path(self, path, **kwargs):
         """Take a string path from the url and attempt to map it to an entity within this project.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
@@ -382,7 +341,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
         raise exceptions.NotFoundError('This article is not configured as a folder defined_type. '
                                        '{} not found.'.format(path))
 
-    # YEP
     async def validate_path(self, path, **kwargs):
         """Take a string path from the url and attempt to map it to an entity within this project.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
@@ -466,7 +424,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
         # Return for v0 folder creation
         return FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
 
-    # YEP
     async def revalidate_path(self, parent_path, child_name, folder: bool):
         """Attempt to get child's id and return FigsharePath of child.
 
@@ -536,11 +493,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
         return parent_path.child(child_name, _id=child_id, folder=folder,
                                  parent_is_folder=parent_is_folder)
 
-    # YEP parent method suffices
-    # async def download(self, path, **kwargs):
-    #     pass
-
-    # YEP
     async def upload(self, stream, path, conflict='replace', **kwargs):
         """Upload a file to provider root or to an article whose defined_type is
         configured to represent a folder.
@@ -603,7 +555,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
                             is_public=False)
         return (await self.metadata(path, **kwargs)), True
 
-    # YEP
     async def create_folder(self, path, **kwargs):
         """Create a folder at ``path``. Returns a `FigshareFolderMetadata` object if successful.
 
@@ -632,7 +583,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         return metadata.FigshareFolderMetadata(article_json)
 
-    # YEP
     async def delete(self, path, confirm_delete=0, **kwargs):
         """Delete the entity at ``path``.
 
@@ -680,7 +630,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
         )
         await delete_article_response.release()
 
-    # YEP
     async def metadata(self, path, **kwargs):
         """Return metadata for entity identified by ``path`` under the parent project.
 
@@ -726,11 +675,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
         else:
             raise exceptions.NotFoundError('{} is not a valid path.'.format(path))
 
-    # YEP, parent method suffices
-    # async def revision(self, path, **kwargs):
-    #     pass
-
-    # YEP, ProjectProvider only
     async def _get_article_metadata(self, article_id, is_public: bool):
         """Return Figshare*Metadata object for given article_id
 
@@ -752,7 +696,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         # TODO: WHAT SHOULD RETURN IF NOTHING?
 
-    # YEP
     async def _delete_container_contents(self):
         """Delete all articles within this Project or Collection."""
         # TODO: Needs logic for skipping public articles in collections
@@ -814,7 +757,6 @@ class FigshareArticleProvider(BaseFigshareProvider):
     def __init__(self, auth, credentials, settings, child=False):
         super().__init__(auth, credentials, settings)
 
-    # YEP
     async def validate_v1_path(self, path, **kwargs):
         """Take a string path from the url and attempt to map it to an entity within this article.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
@@ -842,7 +784,6 @@ class FigshareArticleProvider(BaseFigshareProvider):
         return FigsharePath('/' + file_json['name'], _ids=('', file_id), folder=False,
                             is_public=False)
 
-    # YEP
     async def validate_path(self, path, **kwargs):
         """Take a string path from the url and attempt to map it to an entity within this article.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
@@ -881,7 +822,6 @@ class FigshareArticleProvider(BaseFigshareProvider):
         await resp.release()
         return FigsharePath('/' + file_id, _ids=('', ''), folder=False, is_public=False)
 
-    # YEP
     async def revalidate_path(self, parent_path, child_name, folder: bool):
         """Attempt to get child's id and return FigsharePath of child.
 
@@ -926,11 +866,6 @@ class FigshareArticleProvider(BaseFigshareProvider):
         return parent_path.child(child_name, _id=child_id, folder=folder,
                                  parent_is_folder=parent_is_folder)
 
-    # YEP, parent method suffices
-    # async def download(self, path, **kwargs):
-    #     pass
-
-    # YEP
     async def upload(self, stream, path, conflict='replace', **kwargs):
         """Upload a file to provider root or to an article whose defined_type is
         configured to represent a folder.
@@ -973,11 +908,9 @@ class FigshareArticleProvider(BaseFigshareProvider):
         path = FigsharePath('/' + file_id, _ids=('', file_id), folder=False, is_public=False)
         return (await self.metadata(path, **kwargs)), True
 
-    # YEP
     async def create_folder(self, path, **kwargs):
         raise exceptions.CreateFolderError('Cannot create folders within articles.', code=400)
 
-    # YEP
     async def delete(self, path, confirm_delete=0, **kwargs):
         """Delete the file at ``path``. If ``path`` is ``/`` and ``confirm_delete`` is ``1``, then
         delete all of the files within the article, but not the article itself.
@@ -1003,7 +936,6 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
         await self._delete_file(path.parts[-1]._id)
 
-    # YEP
     async def metadata(self, path, **kwargs):
         """Return metadata for entity identified by ``path``. May be the containing article or
         a file in a fileset article.
@@ -1025,11 +957,6 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
         raise exceptions.NotFoundError(str(path))
 
-    # YEP, parent method suffices
-    # async def revision(self, path, **kwargs):
-    #     pass
-
-    # YEP
     async def _delete_container_contents(self):
         """Delete files within the containing article."""
         article = await self._get_article()
