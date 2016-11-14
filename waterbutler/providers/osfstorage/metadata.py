@@ -77,7 +77,11 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
 
 
 class OsfStorageFolderMetadata(BaseOsfStorageItemMetadata, metadata.BaseFolderMetadata):
-    pass
+    @property
+    def extra(self):
+        return {
+            'undeletable_contents': self.raw.get('undeletable_contents', []),
+        }
 
 
 class OsfStorageRevisionMetadata(BaseOsfStorageMetadata, metadata.BaseFileRevisionMetadata):
