@@ -80,7 +80,7 @@ class OsfStorageFolderMetadata(BaseOsfStorageItemMetadata, metadata.BaseFolderMe
     @property
     def extra(self):
         return {
-            'undeletable_contents': self.raw.get('undeletable_contents', []),
+            'undeletableContents': self.raw.get('undeletable_contents', []),
         }
 
 
