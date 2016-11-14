@@ -8,7 +8,7 @@ VIEW_URL = config.get('VIEW_URL', 'https://figshare.com/')
 DOWNLOAD_URL = config.get('VIEW_URL', 'https://ndownloader.figshare.com/')
 
 VALID_CONTAINER_TYPES = ['project', 'collection', 'article', 'fileset']
-FOLDER_TYPES = [4]
+FOLDER_TYPES = [4]  # Figshare ID for filesets
 
 PRIVATE_IDENTIFIER = 'https://api.figshare.com/v2/account/'
 ARTICLE_TYPE_IDENTIFIER = 'https://api.figshare.com/v2/account/articles/'

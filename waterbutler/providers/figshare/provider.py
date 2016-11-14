@@ -191,8 +191,36 @@ class BaseFigshareProvider(provider.BaseProvider):
                                  folder=(metadata.kind == 'folder'))
 
     async def revisions(self, path, **kwargs):
-        # TODO: still true?
+        # Public articles have revisions, but projects, collections, and private articles do not
         raise exceptions.ProviderError({'message': 'figshare does not support file revisions.'}, code=405)
+
+    async def _upload_file(self, article_id, name, stream):
+        """Uploads a file to Figshare and returns the file id.
+
+        :param str article_id: the id of the parent article
+        :param str name: the name of the file
+        :param stream: the file stream to upload
+        :rtype: `str`
+        :return: id of new file
+        """
+        # Process for creating a file:
+
+        # 1. Get file ID
+        file_id = await self._make_file_placeholder(article_id, name, stream.size)
+
+        # 2. Get upload url and file parts info
+        # added sleep() as file was not availble right away after getting 201 back.
+        # polling with HEADs is another possible solution
+        await asyncio.sleep(settings.FILE_CREATE_WAIT)
+        upload_url, parts = await self._get_file_upload_url(article_id, file_id)
+
+        # 3. Upload parts
+        await self._upload_file_parts(stream, upload_url, parts)
+
+        # 4. Mark upload complete
+        await self._mark_upload_complete(article_id, file_id)
+
+        return file_id
 
     async def _make_file_placeholder(self, article_id, name, size):
         """Create a placeholder for a file to be uploaded later.  Takes the id of the parent
@@ -239,15 +267,14 @@ class BaseFigshareProvider(provider.BaseProvider):
         return upload_url, parts_json['parts']  # str, list
 
     async def _upload_file_parts(self, stream, upload_url, parts):
-        """Takes a stream, the upload url and a dict of parts to upload, and send the chunks
+        """Takes a stream, the upload url, and a list of parts to upload, and send the chunks
         dictated by ``parts`` to figshare.
         See: https://docs.figshare.com/api/file_uploader/
 
         :param stream: the file stream to upload
         :param str upload_url: the base url to upload to
-        :param dict parts: a structure describing the expected partitioning of the file
+        :param list parts: a structure describing the expected partitioning of the file
         """
-        # TODO: WTF? isn't this out of order?
         for part in parts:
             size = part['endOffset'] - part['startOffset'] + 1
             part_number = part['partNo']
@@ -300,8 +327,8 @@ class FigshareProjectProvider(BaseFigshareProvider):
         articles = await self._get_all_articles()
 
         # TODO: need better way to get public/private
-        # also this call's return value is currently busted at figshare
-        # https://support.figshare.com/support/tickets/26558
+        # This call's return value is currently busted at figshare for collections. Figshare always
+        # returns private-looking urls.
         is_public = False
         for item in articles:
             if '/articles/' + article_id in item['url']:
@@ -365,16 +392,13 @@ class FigshareProjectProvider(BaseFigshareProvider):
         article_id = path_parts[1]
         file_id = path_parts[2] if len(path_parts) == 3 else None
 
-        root_article_response = await self.make_request(
-            'GET',
-            self.build_url(False, *self.root_path_parts, 'articles'),
-            expects=(200, ),
-        )
+        articles = await self._get_all_articles()
+
         # TODO: need better way to get public/private
-        # also this call's return is currently busted at figshare
-        # https://support.figshare.com/support/tickets/26558
+        # This call's return value is currently busted at figshare for collections. Figshare always
+        # returns private-looking urls.
         is_public = False
-        for item in await root_article_response.json():
+        for item in articles:
             if '/articles/' + article_id in item['url']:
                 article_name = item['title']
                 if settings.PRIVATE_IDENTIFIER not in item['url']:
@@ -413,7 +437,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
                     ids = ('', article_id)
                     folder = True
                     path_urn = '/' + article_name + '/'
-                # TODO: not sure about this...
                 return FigsharePath(path_urn, _ids=ids, folder=folder, is_public=is_public)
         else:
             await article_response.release()
@@ -426,69 +449,61 @@ class FigshareProjectProvider(BaseFigshareProvider):
         return FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
 
     async def revalidate_path(self, parent_path, child_name, folder):
-        """Attempt to get child's id and return FigsharePath of child.
+        """Look for file or folder named ``child_name`` under ``parent_path``. If it finds a match,
+        it returns a FigsharePath object with the appropriate ids set.  Otherwise, it returns a
+        FigsharePath where the ids are set to ``None``.
 
-        ``revalidate_path`` is used to check for the existance of a child_name/folder
-        within the parent. Returning a FigsharePath of child. Child will have _id
-        if conflicting child_name/folder exists otherwise _id will be ''.
+        Due to the fact that figshare allows duplicate titles/names for
+        articles/files, revalidate_path can not be relied on to always return
+        the correct id of an existing child_name. It will return the first id that
+        matches the folder and child_name arguments or '' if no match.
 
         :param FigsharePath parent_path: Path of parent
         :param str child_name: Name of child
         :param bool folder: ``True`` if child is folder
-
-        Code notes::
-
-        Due to the fact that figshare allows duplicate titles/names for
-        articles/files, revalidate_path can not be relied on to always return
-        the correct id of an existing child_name. will return the first id that
-        matches the folder and child_name arguments or '' if no match.
+        :rtype: ``FigsharePath``
+        :return: a FigsharePath object, with ids set if a match was found
         """
         parent_is_folder = False
         urn_parts = (*self.root_path_parts, 'articles')
-        if not parent_path.is_root:
-            if folder:
-                return parent_path.child(child_name, _id=None, folder=folder,
-                                         parent_is_folder=parent_is_folder)
-            else:
-                urn_parts = (*urn_parts, (parent_path.identifier))
-
-        list_children_response = await self.make_request(
-            'GET',
-            self.build_url(False, *urn_parts),
-            expects=(200, ),
-        )
-
-        child_id = ''
-        if not parent_path.is_root:
-            article_json = await list_children_response.json()
-            for file in article_json['files']:
-                if file['name'] == child_name:
-                    child_id = str(file['id'])
+        child_id = None
+        if not parent_path.is_root:  # parent is fileset or article
+            if not folder:  # child is article/file
+                list_children_response = await self.make_request(
+                    'GET',
+                    self.build_url(False, *urn_parts, parent_path.identifier),
+                    expects=(200, ),
+                )
+                article_json = await list_children_response.json()
+                for file in article_json['files']:
+                    if file['name'] == child_name:
+                        child_id = str(file['id'])
+                        break
+            return parent_path.child(child_name, _id=child_id, folder=folder,
+                                     parent_is_folder=parent_is_folder)
+        # parent is root
+        children = await self._get_all_articles()
+        articles = await asyncio.gather(*[
+            self._get_url_super(article_json['url'])
+            for article_json in children
+        ])
+        for article in articles:
+            is_folder = article['defined_type'] in settings.FOLDER_TYPES
+            article_id = str(article['id'])
+            article_name = str(article['title'])
+            if folder != is_folder:
+                continue
+            elif folder:
+                if article_name == child_name:
+                    child_id = article_id
                     break
-        else:
-            root_json = await list_children_response.json()
-            articles = await asyncio.gather(*[
-                self._get_url_super(article_json['url'])
-                for article_json in root_json
-            ])
-            if folder:
-                for article in articles:
-                    if article['defined_type'] in settings.FOLDER_TYPES:
-                        if article['title'] == child_name:
-                            child_id = str(article['id'])  # string?
-                            break
             else:
-                for article in articles:
-                    if not article['defined_type'] in settings.FOLDER_TYPES:
-                        parent_is_folder = False
-                        article_id = str(article['id'])
-                        article_name = str(article['title'])
-                        for file in article['files']:
-                            if file['name'] == child_name:
-                                parent_path = parent_path.child(article_name, _id=article_id,
-                                                                folder=False)
-                                child_id = str(file['id'])  # string?
-                                break
+                parent_is_folder = False
+                for file in article['files']:
+                    if file['name'] == child_name:
+                        parent_path = parent_path.child(article_name, _id=article_id, folder=False)
+                        child_id = str(file['id'])
+                        break
 
         return parent_path.child(child_name, _id=child_id, folder=folder,
                                  parent_is_folder=parent_is_folder)
@@ -513,7 +528,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
             )
             parent_json = await parent_resp.json()
             if not parent_json['defined_type'] in settings.FOLDER_TYPES:
-                # replace_article = path._parts[1]._id
                 del path._parts[1]
 
         # Create article or retrieve article_id from existing article
@@ -534,22 +548,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                     expects=(201, ),
                 )
 
-        # Process for creating a file:
-
-        # 1. Get file ID
-        file_id = await self._make_file_placeholder(article_id, path.name, stream.size)
-
-        # 2. Get upload url and file parts info
-        # added sleep() as file was not availble right away after getting 201 back.
-        # polling with HEADs is another possible solution
-        await asyncio.sleep(settings.FILE_CREATE_WAIT)
-        upload_url, parts = await self._get_file_upload_url(article_id, file_id)
-
-        # 3. Upload parts
-        await self._upload_file_parts(stream, upload_url, parts)
-
-        # 4. Mark upload complete
-        await self._mark_upload_complete(article_id, file_id)
+        file_id = await self._upload_file(article_id, path.name, stream)
 
         # Build new file path and return metadata
         path = FigsharePath('/' + article_id + '/' + file_id,
@@ -679,9 +678,11 @@ class FigshareProjectProvider(BaseFigshareProvider):
             raise exceptions.NotFoundError('{} is not a valid path.'.format(path))
 
     async def _get_article_metadata(self, article_id, is_public: bool):
-        """Return Figshare*Metadata object for given article_id
+        """Return Figshare*Metadata object for given article_id. Returns a FolderMetadata object
+        for filesets, a FileMetadat object for other article types, and ``None`` if the article
+        is not a fileset and has no files attached.
 
-        Seperate def to allow for taking advantage of asyncio.gather
+        Defined separately to allow for taking advantage of ``asyncio.gather``.
 
         :param str article_id: id of article whose metadata is requested
         :param bool is_public: ``True`` if article is accessed through public URN
@@ -697,7 +698,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         elif article_json['files']:
             return metadata.FigshareFileMetadata(article_json)
 
-        # TODO: WHAT SHOULD RETURN IF NOTHING?
+        return None  # article without attached file
 
     async def _delete_container_contents(self):
         """Delete all articles within this Project or Collection."""
@@ -888,24 +889,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
             if not parent_json['defined_type'] in settings.FOLDER_TYPES:
                 del path._parts[1]
 
-        article_id = self.container_id
-
-        # Process for creating a file:
-
-        # 1. Get file ID
-        file_id = await self._make_file_placeholder(article_id, path.name, stream.size)
-
-        # 2. Get upload url and file parts info
-        # added sleep() as file was not availble right away after getting 201 back.
-        # polling with HEADs is another possible solution
-        await asyncio.sleep(settings.FILE_CREATE_WAIT)
-        upload_url, parts = await self._get_file_upload_url(article_id, file_id)
-
-        # 3. Upload parts
-        await self._upload_file_parts(stream, upload_url, parts)
-
-        # 4. Mark upload complete
-        await self._mark_upload_complete(article_id, file_id)
+        file_id = await self._upload_file(self.container_id, path.name, stream)
 
         # Build new file path and return metadata
         path = FigsharePath('/' + file_id, _ids=('', file_id), folder=False, is_public=False)
@@ -956,8 +940,8 @@ class FigshareArticleProvider(BaseFigshareProvider):
             for file in article['files']:
                 if str(file['id']) == path.parts[1].identifier:
                     return metadata.FigshareFileMetadata(article, raw_file=file)
-        # TODO: what's the other condition here?
 
+        # Invalid path, e.g. /422313/67709/1234
         raise exceptions.NotFoundError(str(path))
 
     async def _delete_container_contents(self):
