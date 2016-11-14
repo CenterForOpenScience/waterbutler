@@ -821,13 +821,17 @@ class TestRevalidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_revalidate_path(self, project_provider, list_project_articles, file_article_metadata, folder_article_metadata, ):
+    async def test_revalidate_path(self, project_provider, list_project_articles,
+                                   file_article_metadata, folder_article_metadata):
         file_article_id = str(list_project_articles[0]['id'])
         folder_article_id = str(list_project_articles[1]['id'])
 
-        list_articles_url = project_provider.build_url(False, (*project_provider.root_path_parts),'articles')
-        file_article_url = project_provider.build_url(False, (*project_provider.root_path_parts),'articles', file_article_id)
-        folder_article_url = project_provider.build_url(False, (*project_provider.root_path_parts),'articles', folder_article_id)
+        root_parts = project_provider.root_path_parts
+        list_articles_url = project_provider.build_url(False, *root_parts, 'articles')
+        file_article_url = project_provider.build_url(False, *root_parts, 'articles',
+                                                      file_article_id)
+        folder_article_url = project_provider.build_url(False, *root_parts, 'articles',
+                                                        folder_article_id)
 
         aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles)
         aiohttpretty.register_json_uri('GET', file_article_url, body=file_article_metadata)
