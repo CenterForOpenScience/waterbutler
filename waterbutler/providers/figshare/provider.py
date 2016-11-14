@@ -413,6 +413,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                     ids = ('', article_id)
                     folder = True
                     path_urn = '/' + article_name + '/'
+                # TODO: not sure about this...
                 return FigsharePath(path_urn, _ids=ids, folder=folder, is_public=is_public)
         else:
             await article_response.release()
@@ -568,9 +569,9 @@ class FigshareProjectProvider(BaseFigshareProvider):
             article_name = path.parts[-1].value
         else:
             raise exceptions.CreateFolderError(
-                '{} is not a valid folder creation path. Must be directly off of root and '
-                'of kind "folder".'.format(str(path)),
-                code=400
+                'Only projects and collections may contain folders. Unable to create '
+                '"{}/"'.format(path.name),
+                code=400,
             )
 
         article_data = json.dumps({'title': article_name, 'defined_type': 'fileset'})
