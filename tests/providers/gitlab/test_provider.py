@@ -1,26 +1,12 @@
 import pytest
-
-import io
-import os
-import json
-import base64
-import hashlib
-
-from http import client
-
 import aiohttpretty
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.core.provider import build_url
-from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.gitlab import GitLabProvider
 from waterbutler.providers.gitlab import settings as gitlab_settings
-from waterbutler.providers.gitlab.metadata import GitLabRevision
-from waterbutler.providers.gitlab.metadata import GitLabFileTreeMetadata
-from waterbutler.providers.gitlab.metadata import GitLabFolderTreeMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFileContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFolderContentMetadata
 

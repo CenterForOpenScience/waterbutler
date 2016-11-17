@@ -547,16 +547,10 @@ class GitLabProvider(provider.BaseProvider):
         if not commits:
             raise exceptions.NotFoundError(str(path))
 
-        data = {'name': commits['file_name'], 'id': commits['blob_id'], 'path': commits['file_path'], 'size': commits['size']}
+        data = {
+                'name': commits['file_name'], 'id': commits['blob_id'],
+                'path': commits['file_path'], 'size': commits['size']
+        }
 
-        return GitLabFileTreeMetadata(data, commit=commits['commit_id'], thepath=commits['file_path'])
-
-    async def _get_latest_sha(self, ref='master'):
-        resp = await self.make_request(
-            'GET',
-            self.build_repo_url('git', 'refs', 'heads', ref),
-            expects=(200, ),
-            throws=exceptions.ProviderError
-        )
-        data = await resp.json()
-        return data['object']['sha']
+        return GitLabFileTreeMetadata(data, commit=commits['commit_id'],
+                                      thepath=commits['file_path'])
