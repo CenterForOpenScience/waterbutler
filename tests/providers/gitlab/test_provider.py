@@ -311,3 +311,55 @@ class TestOperations:
 
     def test_cant_intra_move(self, provider, other):
         assert provider.can_intra_move(other) == False
+
+class TestValidatePath:
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_path_v1_is_file(self, provider):
+        path = '/folder1/file.py'
+        url_get = 'http://base.url/projects/123'
+        aiohttpretty.register_json_uri('GET', url_get, body={'default_branch': 'master'})
+
+        validated_path = await provider.validate_v1_path(path)
+
+        assert validated_path.is_file
+        assert not validated_path.is_dir
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_path_v1_is_dir(self, provider):
+        path = '/folder1/folder2/'
+        url_get = 'http://base.url/projects/123'
+        aiohttpretty.register_json_uri('GET', url_get, body={'default_branch': 'master'})
+
+        validated_path = await provider.validate_v1_path(path)
+
+        assert validated_path.is_dir
+        assert not validated_path.is_file
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_path_v1_with_wrong_http_response(self, provider):
+        path = '/folder1/file.py'
+        url_get = 'http://base.url/projects/123'
+        aiohttpretty.register_json_uri('GET', url_get, status=400)
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            validated_path = await provider.validate_v1_path(path)
+
+    @pytest.mark.asyncio
+    async def test_validate_path_is_file(self, provider):
+        path = '/folder1/file.py'
+
+        validated_path = await provider.validate_path(path)
+
+        assert validated_path.is_file
+        assert not validated_path.is_dir
+
+    @pytest.mark.asyncio
+    async def test_validate_path_is_dir(self, provider):
+        path = '/folder1/folder2/'
+        validated_path = await provider.validate_path(path)
+
+        assert validated_path.is_dir
+        assert not validated_path.is_file

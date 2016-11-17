@@ -99,18 +99,21 @@ class GitLabProvider(provider.BaseProvider):
         :param str path: The path to a file
         :param dict kwargs: Without `ref` or `branch` will use `default_branch`
         :rtype: WaterButlerPath
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
         if not getattr(self, '_repo', None):
-            self._repo = await self._fetch_repo()
-            self.default_branch = self._repo['default_branch']
+            try:
+                self._repo = await self._fetch_repo()
+                self.default_branch = self._repo['default_branch']
+            except:
+                raise exceptions.NotFoundError(
+                    'path information not found',
+                )
 
         branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
 
         if path == '/':
             return WaterButlerPath(path, _ids=[(branch_ref, '')])
-
-        branch_data = await self._fetch_branch(branch_ref)
-        await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
 
         path = WaterButlerPath(path)
         for part in path.parts:
@@ -125,23 +128,10 @@ class GitLabProvider(provider.BaseProvider):
         """Ensure path is in Waterbutler format.
 
         :param str path: The path to a file
-        :param dict kwargs: Without `ref` or `branch` will use `default_branch`
         :rtype: WaterButlerPath
         """
-        if not getattr(self, '_repo', None):
-            self._repo = await self._fetch_repo()
-            self.default_branch = self._repo['default_branch']
+        return WaterButlerPath(path)
 
-        path = WaterButlerPath(path)
-        branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
-
-        for part in path.parts:
-            part._id = (branch_ref, None)
-
-        # TODO Validate that filesha is a valid sha
-        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
-
-        return path
 
     async def revalidate_path(self, base, path, folder=False):
         return base.child(path, _id=((base.identifier[0], None)), folder=folder)
@@ -356,52 +346,6 @@ class GitLabProvider(provider.BaseProvider):
         )
         await resp.release()
 
-    async def _delete_root_folder_contents(self, path, message=None, **kwargs):
-        """Delete the contents of the root folder.
-
-        :param WaterButlerPath path: WaterButlerPath path object for folder
-        :param str message: Commit message
-        """
-        branch_data = await self._fetch_branch(path.identifier[0])
-        old_commit_sha = branch_data['commit']['sha']
-        tree_sha = GIT_EMPTY_SHA
-        message = message or settings.DELETE_FOLDER_MESSAGE
-        commit_resp = await self.make_request(
-            'POST',
-            self.build_repo_url('git', 'commits'),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({
-                'message': message,
-                'committer': self.committer,
-                'tree': tree_sha,
-                'parents': [
-                    old_commit_sha,
-                ],
-            }),
-            expects=(201, ),
-            throws=exceptions.DeleteError,
-        )
-        commit_data = await commit_resp.json()
-        commit_sha = commit_data['sha']
-
-        # Update repository reference, point to the newly created commit.
-        # No need to store data, rely on expects to raise exceptions
-        await self.make_request(
-            'PATCH',
-            self.build_repo_url('git', 'refs', 'heads', path.identifier[0]),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({'sha': commit_sha}),
-            expects=(200, ),
-            throws=exceptions.DeleteError,
-        )
-
-    async def _fetch_branch(self, branch):
-        resp = await self.make_request(
-            'GET',
-            self.build_repo_url('branches', branch)
-        )
-        return (await resp.json())
-
     async def _fetch_contents(self, path, ref=None):
         url = furl.furl(self.build_repo_url('repository', 'tree'))
 
@@ -427,39 +371,6 @@ class GitLabProvider(provider.BaseProvider):
             throws=exceptions.MetadataError
         )
         return (await resp.json())
-
-    async def _fetch_tree(self, sha, recursive=False):
-        url = furl.furl(self.build_repo_url('git', 'trees', sha))
-        if recursive:
-            url.args.update({'recursive': 1})
-        resp = await self.make_request(
-            'GET',
-            url.url,
-            expects=(200, ),
-            throws=exceptions.MetadataError
-        )
-        tree = await resp.json()
-
-        if tree['truncated']:
-            raise GitLabUnsupportedRepoError
-
-        return tree
-
-    async def _search_tree_for_path(self, path, tree_sha, recursive=True):
-        """Search through the given tree for an entity matching the name and type of `path`.
-        """
-        tree = await self._fetch_tree(tree_sha, recursive=True)
-
-        if tree['truncated']:
-            raise GitLabUnsupportedRepoError
-
-        implicit_type = 'tree' if path.endswith('/') else 'blob'
-
-        for entity in tree['tree']:
-            if entity['path'] == path.strip('/') and entity['type'] == implicit_type:
-                return entity
-
-        raise exceptions.NotFoundError(str(path))
 
     async def _upsert_blob(self, stream, filepath, branchname, insert=True):
         if type(stream) is not streams.Base64EncodeStream:
