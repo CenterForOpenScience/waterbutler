@@ -1,9 +1,6 @@
-try:
-    from waterbutler import settings
-except ImportError:
-    settings = {}
+from waterbutler import settings
 
-config = settings.get('GITLAB_PROVIDER_CONFIG', {})
+config = settings.child('GITLAB_PROVIDER_CONFIG')
 
 
 MOVE_MESSAGE = config.get('MOVE_MESSAGE', 'Moved on behalf of WaterButler')
