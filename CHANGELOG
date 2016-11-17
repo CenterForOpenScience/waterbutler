@@ -2,6 +2,107 @@
 ChangeLog
 *********
 
+0.28.0 (2016-10-31)
+===================
+- HALLOWEEN RELEASE! (^ ,–, ^)
+- Feature: Download-as-zip now includes empty directories! (thanks, @darioncassel!)
+- Feature: WaterButler now lists the full contents of Google Drive directories with more than 1,000
+children. (thanks, @TomBaxter!)
+- Feature: WaterButler now lists the full contents of Box.com directories with more than 1,000
+children. (thanks, @TomBaxter!)
+- Fix: Teach ownCloud to be more efficient about moving and copying files with a single provider.
+
+0.27.1 (2016-10-24)
+===================
+- Fix: Fix broken Download-as-zip for GitHub by propagating the target branch during recursive
+traversal.
+- Fix: Fix incorrectly detected self-overwrite when copying a file between the root paths of two
+separate Box.com accounts.
+
+0.27.0 (2016-10-19)
+===================
+- Feature: Attempting to move or copy a file over itself will now fail with a 409 Conflict, even
+across different resources.
+- Fix: Fix bugs in ownCloud provider that were breaking renames.
+- Fix: v1 metadata requests now accept the `version` and `revision` query parameters like v0.
+
+0.26.1 (2016-10-18)
+===================
+- Feature: Dockerized WaterButler can now take a commit sha from the environment to indicate
+version to deploy. (thanks, @icereval!)
+
+0.26.0 (2016-10-11)
+===================
+- Feature: WaterButler now supports ownCloud as a full provider! (thanks, @kwierman!)
+- Feature: WaterButler accepts configuration from the environment, overriding any file-based
+configuration.  This helps WB integrate nicer in a docker-compose environment. (thanks, @icereval!)
+- Fix: Gracefully handle branch-related GitHub errors.
+- Code: Start labeling user-caused errors as level=info in Sentry (thanks, @TomBaxter!)
+- Code: Log redirect-based downloads to analytics.
+- Code: Bump dependencies on Raven and cryptography.  cryptography v1.5.2 now installs on OSX via
+wheel.  This should silence scary-sounding cffi warnings!
+
+0.25.0 (2016-09-22)
+===================
+- Feature: Include user id when requesting files from osfstorage, to allow the OSF to distinguish
+contributing users in download counts. (thanks, @darioncassel!)
+
+0.24.0 (2016-09-14)
+===================
+- Feature: Update the v1 API to passthrough unrecognized query params to the provider.
+- Feature: Teach the GitHub provider to accept branch identifiers in the URL and body of v1
+operations.  You can now do cross-branch move/copies with the v1 API!
+- Feature: The GitHub provider now includes the branch operated on in its callback logs.
+- Fix: Add `--pty` arguments to invoke install and invoke wheelhouse, to support building WB Docker
+images without pseudoterminals. (thanks, @emetsger!)
+
+0.23.3 (2016-08-31)
+===================
+- Fix: Fix flake error in remote_logging. Not at all embarrassing.
+
+0.23.2 (2016-08-31)
+===================
+- Fix: For analytics, convert byte sizes into more convenient units.
+- Code: in sizes.py, call kilobytes "KBs", not "Bs"
+
+0.23.1 (2016-08-31)
+===================
+- Fix: Dataverse changed their API file metadata repsonse format. Update provider to handle both
+formats.
+
+0.23.0 (2016-08-25)
+===================
+- Code: Rewrite public file action logging to sync with MFR.
+- Docs: Document intra_move and intra_copy in core provider.
+
+0.22.1 (2016-08-19)
+===================
+- Fix: Don't try to derive modified_utc for osfstorage files that lack a modified date.
+
+0.22.0 (2016-08-19)
+===================
+- Feature: File metadata now includes a modified_utc field that is the modified timestamp in
+standard ISO-8601 format (YYYY-MM-DDTHH:MM::SS+00:00). (thanks, @TomBaxter!)
+- Feature: Metadata for osfstorage files will contain the file GUID, once the OSF is updated to
+return that information. (thanks, @Johnetordoff!)
+- Feature: WaterButler can now log file actions to Keen.io.
+- Fix: core.utils.async_retry was always intended to be fire-and-forget, but wasn't when await()-ed.
+It will now run until done, instead of executing one retry per await.  The tests have been updated
+to match this behavior.
+- Fix: Update copy and move celery tasks so that a failed logging callback will not make them return
+a 500.  Now they always return the result and metadata of the move/copy action.
+- Fix: Logging callbacks are now retried five times, no matter where they are called from.
+- Fix: Update Dockerfile to register plugins.
+- Fix: Correct minor typos and links to Python and aiohttp in the docs.
+
+0.21.4 (2016-08-02)
+===================
+- Fix: Ask Box not to zip our download requests. (thanks, @caseyrygt!)
+
+0.21.3 (2016-08-01)
+===================
+- Fix: Bump wheel dep to 0.26.0 to fix travis build.
+
 0.21.2 (2016-08-01)
 ===================
 - Fix: Pin cryptography to v1.3.4 to avoid v1,4 incompatibilities with OS X's vendor openssl.

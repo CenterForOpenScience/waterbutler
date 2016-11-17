@@ -32,7 +32,12 @@ class MetadataMixin:
         if 'zip' in self.request.query_arguments:
             return (await self.download_folder_as_zip())
 
-        data = await self.provider.metadata(self.path)
+        version = (
+            self.get_query_argument('version', default=None) or
+            self.get_query_argument('revision', default=None)
+        )
+
+        data = await self.provider.metadata(self.path, version=version, revision=version)
         return self.write({'data': [x.json_api_serialized(self.resource) for x in data]})
 
     async def get_file(self):

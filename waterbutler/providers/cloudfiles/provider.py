@@ -30,7 +30,9 @@ def ensure_connection(func):
 
 
 class CloudFilesProvider(provider.BaseProvider):
-    """Provider for Rackspace CloudFiles
+    """Provider for Rackspace CloudFiles.
+
+    API Docs: https://developer.rackspace.com/docs/cloud-files/v1/developer-guide/#document-developer-guide
     """
     NAME = 'cloudfiles'
 

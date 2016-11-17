@@ -40,6 +40,9 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
         try:
             return self.raw['modified_utc']
         except KeyError:
+            if self.raw['modified'] is None:
+                return None
+
             # Kludge for OSF, whose modified attribute does not include
             # tzinfo but is assumed to be UTC.
             parsed_datetime = dateutil.parser.parse(self.raw['modified'])

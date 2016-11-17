@@ -9,6 +9,7 @@ import celery
 import pytest
 
 from waterbutler import tasks  # noqa
+from waterbutler.core import remote_logging
 from waterbutler.core import utils as core_utils
 from waterbutler.core.path import WaterButlerPath
 
@@ -18,6 +19,7 @@ import tests.utils as test_utils
 copy = sys.modules['waterbutler.tasks.copy']
 
 FAKE_TIME = 1454684930.0
+
 
 @pytest.fixture(autouse=True)
 def patch_backend(monkeypatch):
@@ -80,6 +82,13 @@ def providers(monkeypatch, src_provider, dest_provider):
         raise ValueError('Unexpected provider')
     monkeypatch.setattr(copy.utils, 'make_provider', make_provider)
     return src_provider, dest_provider
+
+
+@pytest.fixture(autouse=True)
+def log_to_keen(monkeypatch):
+    mock_log_to_keen = test_utils.MockCoroutine()
+    monkeypatch.setattr(remote_logging, 'log_to_keen', mock_log_to_keen)
+    return mock_log_to_keen
 
 
 @pytest.fixture
@@ -182,6 +191,7 @@ class TestCopyTask:
             'materialized': str(src_path),
             'provider': src.NAME,
             'kind': 'file',
+            'extra': {},
         }
 
         assert data['destination'] == {

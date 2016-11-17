@@ -147,6 +147,13 @@ class BoxProvider(provider.BaseProvider):
     def can_duplicate_names(self):
         return False
 
+    def shares_storage_root(self, other):
+        """Box settings include the root folder id, which is unique across projects for subfolders.
+        But the root folder of a Box account always has an ID of 0.  This means that the root
+        folders of two separate Box accounts would incorrectly test as being the same storage root.
+        Add a comparison of credentials to avoid this."""
+        return super().shares_storage_root(other) and self.credentials == other.credentials
+
     def can_intra_move(self, other, path=None):
         return self == other
 
@@ -225,6 +232,7 @@ class BoxProvider(provider.BaseProvider):
         resp = await self.make_request(
             'GET',
             self.build_url('files', path.identifier, 'content', **query),
+            headers={'Accept-Encoding': ''},
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
@@ -391,30 +399,38 @@ class BoxProvider(provider.BaseProvider):
 
     async def _get_folder_meta(self, path, raw=False, folder=False):
         if folder:
-            url = self.build_url('folders', path.identifier)
-        else:
+            async with self.request(
+                'GET', self.build_url('folders', path.identifier),
+                expects=(200, ), throws=exceptions.MetadataError,
+            ) as resp:
+                data = await resp.json()
+                return data if raw else self._serialize_item(data)
+
+        # Box maximum limit is 1000
+        page_count, page_total, limit = 0, None, 1000
+        full_resp = {} if raw else []
+        while page_total is None or page_count < page_total:
             url = self.build_url('folders', path.identifier, 'items',
-                                 fields='id,name,size,modified_at,etag',
-                                 limit=1000)
+                                 fields='id,name,size,modified_at,etag,total_count',
+                                 offset=(page_count * limit),
+                                 limit=limit)
+            async with self.request('GET', url, expects=(200, ),
+                                    throws=exceptions.MetadataError) as response:
+                resp_json = await response.json()
+                if raw:
+                    full_resp.update(resp_json)
+                else:
+                    full_resp.extend([
+                        self._serialize_item(
+                            each, path.child(each['name'], folder=(each['type'] == 'folder'))
+                        )
+                        for each in resp_json['entries']
+                    ])
 
-        async with self.request(
-            'GET',
-            url,
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        ) as response:
-            data = await response.json()
-
-        if raw:
-            return data
-
-        if folder:
-            return self._serialize_item(data)
-
-        return [
-            self._serialize_item(each, path.child(each['name'], folder=(each['type'] == 'folder')))
-            for each in data['entries']
-        ]
+                page_count += 1
+                if page_total is None:
+                    page_total = ((resp_json['total_count'] - 1) // limit) + 1  # ceiling div
+        return full_resp
 
     def _serialize_item(self, item, path):
         if item['type'] == 'folder':
