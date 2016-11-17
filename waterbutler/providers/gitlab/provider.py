@@ -1,4 +1,3 @@
-import json
 import base64
 import aiohttp
 import mimetypes
@@ -16,7 +15,6 @@ from waterbutler.providers.gitlab.metadata import GitLabRevision
 from waterbutler.providers.gitlab.metadata import GitLabFileContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFolderContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFileTreeMetadata
-from waterbutler.providers.gitlab.exceptions import GitLabUnsupportedRepoError
 
 
 GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -130,8 +128,8 @@ class GitLabProvider(provider.BaseProvider):
         :param str path: The path to a file
         :rtype: WaterButlerPath
         """
-        return WaterButlerPath(path)
 
+        return WaterButlerPath(path)
 
     async def revalidate_path(self, base, path, folder=False):
         return base.child(path, _id=((base.identifier[0], None)), folder=folder)
@@ -461,10 +459,8 @@ class GitLabProvider(provider.BaseProvider):
         if not commits:
             raise exceptions.NotFoundError(str(path))
 
-        data = {
-                'name': commits['file_name'], 'id': commits['blob_id'],
-                'path': commits['file_path'], 'size': commits['size']
-        }
+        data = {'name': commits['file_name'], 'id': commits['blob_id'],
+                'path': commits['file_path'], 'size': commits['size']}
 
         return GitLabFileTreeMetadata(data, commit=commits['commit_id'],
                                       thepath=commits['file_path'])
