@@ -173,7 +173,8 @@ class GitLabProvider(provider.BaseProvider):
                 code=400,
             )
 
-        url = self.build_repo_url('repository', 'files', file_path=path.full_path, ref=kwargs['branch'])
+        url = self.build_repo_url('repository', 'files', file_path=path.full_path,
+                                  ref=kwargs['branch'])
 
         headers = {"Authorization": 'Bearer {}'.format(self.token)}
 
@@ -257,7 +258,10 @@ class GitLabProvider(provider.BaseProvider):
         if path.is_dir:
             return (await self._metadata_folder(path, ref=ref, recursive=recursive, **kwargs))
         else:
-            return (await self._metadata_file(path, ref=ref, **kwargs))
+            if ref is not None:
+                return (await self._metadata_file(path, ref=ref, **kwargs))
+            else:
+                return (await self._metadata_file(path, **kwargs))
 
     async def revisions(self, path, sha=None, **kwargs):
         """Get past versions of the request file.
@@ -295,7 +299,7 @@ class GitLabProvider(provider.BaseProvider):
 
         keep_path = path.child('.gitkeep')
 
-        content = '\n'
+        content = ''
         stream = streams.StringStream(content)
 
         resp, insert = await self.upload(stream, keep_path, message, branch, **kwargs)
@@ -314,7 +318,8 @@ class GitLabProvider(provider.BaseProvider):
         if message is None:
             message = 'File {} deleted'.format(path.full_path)
 
-        url = self.build_repo_url('repository', 'files', file_path=path.full_path, branch_name=branch, commit_message=message)
+        url = self.build_repo_url('repository', 'files', file_path=path.full_path,
+                                  branch_name=branch, commit_message=message)
 
         headers = {"Authorization": 'Bearer {}'.format(self.token)}
 
@@ -527,13 +532,11 @@ class GitLabProvider(provider.BaseProvider):
                 if item['type'] == 'tree':
                     ret.append(GitLabFolderContentMetadata(item, thepath=path, commit=commit))
                 else:
-                    ret.append(GitLabFileContentMetadata(item, web_view=item['name'], thepath=path, commit=commit))
+                    ret.append(GitLabFileContentMetadata(item, web_view=item['name'],
+                                                         thepath=path, commit=commit))
             return ret
 
-    async def _metadata_file(self, path, revision=None, ref=None, **kwargs):
-
-        if ref is None:
-            ref = 'master'
+    async def _metadata_file(self, path, revision=None, ref='master', **kwargs):
 
         resp = await self.make_request(
             'GET',

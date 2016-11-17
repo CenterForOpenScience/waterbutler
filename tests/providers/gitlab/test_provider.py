@@ -239,7 +239,7 @@ class TestUpload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete(self, provider):
+    async def test_upload(self, provider):
         path = '/folder1/file.py'
 
         waterbutler_path = WaterButlerPath(path)
