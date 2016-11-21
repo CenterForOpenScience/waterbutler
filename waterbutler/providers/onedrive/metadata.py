@@ -7,21 +7,25 @@ logger = logging.getLogger(__name__)
 
 class BaseOneDriveMetadata(metadata.BaseMetadata):
 
-    def __init__(self, raw, path_obj):
+    def __init__(self, raw, path):
         super().__init__(raw)
-        self._path_obj = path_obj
-#          logger.info('BaseOneDriveMetadata raw:{} path_obj:{}'.format(repr(raw), repr(path_obj)))
+        self._path = path
+
+    @property
+    def id(self):
+        return self.raw['id']
 
     @property
     def provider(self):
         return 'onedrive'
 
     @property
+    def path(self):
+        return '/' + self._path.raw_path
+
+    @property
     def materialized_path(self):
-        return '/{}/{}'.format(self.raw['parentReference']['path'].replace('/drive/root:/', ''), self.raw['name'])
-#          logger.debug("materialized_path raw:{}".format(repr(self.raw)))
-#          return str(self._path_obj)
-#        return self.raw['name']
+        return str(self._path)
 
     @property
     def extra(self):
@@ -38,10 +42,6 @@ class OneDriveFolderMetadata(BaseOneDriveMetadata, metadata.BaseFolderMetadata):
         return self.raw['name']
 
     @property
-    def path(self):
-        return '/{}/'.format(self.raw['id'])
-
-    @property
     def etag(self):
         return self.raw.get('eTag')
 
@@ -51,10 +51,6 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
     @property
     def name(self):
         return self.raw['name']
-
-    @property
-    def path(self):
-        return '/{0}'.format(self.raw['id'])
 
     @property
     def size(self):

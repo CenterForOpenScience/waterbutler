@@ -1,9 +1,6 @@
-try:
-    from waterbutler import settings
-except ImportError:
-    settings = {}
+from waterbutler import settings
 
-config = settings.get('ONEDRIVE_PROVIDER_CONFIG', {})
+config = settings.child('ONEDRIVE_PROVIDER_CONFIG')
 
 
 BASE_URL = config.get('BASE_URL', 'https://api.onedrive.com/v1.0/drive/items/')
