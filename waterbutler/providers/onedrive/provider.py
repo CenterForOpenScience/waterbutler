@@ -28,13 +28,17 @@ class OneDrivePath(path.WaterButlerPath):
     file paths in OneDrive."""
 
     def update_from_response(self, data):
+        """
+        Update current path - identifier, path name
+        :param dict data: OneDrive API response
+        """
         if not self.is_root:
             self._parts[-1] = self.PART_CLASS(data['name'], _id=data['id'])
 
     @classmethod
     def from_response(cls, data, prepend=None):
         """
-        Create OneDrivePath from response json
+        Create OneDrivePath from OneDrive API response
         :param dict data: OneDrive API response
         :param str prepend: relative path to OneDrive root drive
         :return: OneDrivePath
@@ -43,7 +47,7 @@ class OneDrivePath(path.WaterButlerPath):
         if not raw_path:
             # system root path
             raw_path = '/'
-            return cls(raw_path, _ids=(data['id'], ), prepend=prepend)
+            return cls(raw_path, _ids=(data['id'],), prepend=prepend)
 
         url_segment_count = len(urlparse(raw_path).path.split('/'))
         ids = [data['parentReference']['id'], data['id']]
@@ -87,24 +91,24 @@ class OneDriveProvider(provider.BaseProvider):
 
     async def validate_v1_path(self, path, **kwargs):
         if path == '/' and self.has_real_root():
-            return OneDrivePath(path, _ids=(self.folder.strip('/'), ), folder=True)
+            return OneDrivePath(path, _ids=(self.folder.strip('/'),), folder=True)
 
         prepend = None
         if not self.has_real_root():
             async with self.request(
-                'GET',
-                self._build_content_url(self.folder.strip('/')),
-                expects=(200, ),
-                throws=exceptions.MetadataError
+                    'GET',
+                    self._build_content_url(self.folder.strip('/')),
+                    expects=(200,),
+                    throws=exceptions.MetadataError
             ) as resp:
                 data = await resp.json()
                 prepend = OneDrivePath.file_path(data)
 
         async with self.request(
-            'GET',
-            self._build_root_url('/drive/root:', prepend or '', path),
-            expects=(200,),
-            throws=exceptions.MetadataError
+                'GET',
+                self._build_root_url('/drive/root:', prepend or '', path),
+                expects=(200,),
+                throws=exceptions.MetadataError
         ) as resp:
 
             data = await resp.json()
@@ -133,7 +137,7 @@ class OneDriveProvider(provider.BaseProvider):
                 expects=(200, 404),
                 throws=exceptions.MetadataError
         ) as resp:
-            #@todo can't raise exception if path already exists
+            # @todo can't raise exception if path already exists
             path_id = None
             is_folder = folder
             if resp.status != 404:
@@ -152,9 +156,20 @@ class OneDriveProvider(provider.BaseProvider):
     async def intra_copy(self, dest_provider, src_path, dest_path):
         """ OneDrive API Reference: https://dev.onedrive.com/items/copy.htm """
 
+        dest_exist = dest_path.identifier is not None
+
+        if dest_path.parent.is_root and self.has_real_root():
+            parent_reference = {
+                'path': '/drive/root:/'
+            }
+        else:
+            parent_reference = {
+                'id': dest_path.parent.identifier
+            }
+
+        payload = {'name': dest_path.name,
+                   'parentReference': parent_reference}
         url = self.build_url(src_path.identifier, 'action.copy')
-        payload = json.dumps({'name': dest_path.name,
-                              'parentReference': {'id': dest_path.parent.identifier}})
 
         logger.info(
             'intra_copy dest_provider::{} src_path::{} dest_path::{}  url::{} payload::{}'.format(repr(dest_provider),
@@ -162,84 +177,92 @@ class OneDriveProvider(provider.BaseProvider):
                                                                                                   repr(dest_path),
                                                                                                   repr(url), payload))
         async with self.request(
-            'POST',
-            url,
-            data=payload,
-            headers={'content-type': 'application/json', 'Prefer': 'respond-async'},
-            expects=(202,),
-            throws=exceptions.IntraCopyError,
+                'POST',
+                url,
+                data=json.dumps(payload),
+                headers={'content-type': 'application/json', 'Prefer': 'respond-async'},
+                expects=(202,),
+                throws=exceptions.IntraCopyError,
         ) as resp:
             logger.info('resp::{}'.format(repr(resp)))
             status_url = resp.headers['LOCATION']
             logger.info('status_url::{}'.format(repr(status_url)))
-            i = 0
-            status = None
 
-            while (i < settings.ONEDRIVE_COPY_ITERATION_COUNT):
-                logger.info('status::{}  i:{}'.format(repr(status), i))
-                status = await self._copy_status(status_url)
-                if (status is not None):
-                    break
-                await asyncio.sleep(settings.ONEDRIVE_COPY_SLEEP_INTERVAL)
-                i += 1
-
-            if i >= settings.ONEDRIVE_COPY_ITERATION_COUNT:
+            try:
+                data = await asyncio.wait_for(self._wait_for_async_job(status_url,
+                                                                       throws=exceptions.IntraCopyError),
+                                              settings.ONEDRIVE_COPY_REQUEST_TIMEOUT or None
+                                              )
+            except asyncio.TimeoutError:
                 raise exceptions.CopyError(
                     """OneDrive API file copy has not responded in a timely manner.  Please wait for 1-2 minutes,
                      then query for the file to see if the copy has completed""",
                     code=202)
-            metadata = self._construct_metadata(status, path)
-            return metadata, dest_path.identifier is None
 
-    async def _copy_status(self, status_url):
-        """ OneDrive API Reference: https://dev.onedrive.com/resources/asyncJobStatus.htm """
-        resp = await self.make_request(
-            'GET', status_url,
-            expects=(200, 202),
-            throws=exceptions.IntraCopyError,
-        )
-        data = await resp.json()
-        status = data.get('status')
-        logger.info('_copy_status  status::{} resp:{} data::{}'.format(repr(status), repr(resp), repr(data)))
-        return data if resp.status == 200 else None
+            dest_path.update_from_response(data)
+
+            return self._construct_metadata(data, dest_path), not dest_exist
+
+    async def _wait_for_async_job(self, url, throws=exceptions.ProviderError):
+        """
+        OneDrive API Reference: https://dev.onedrive.com/resources/asyncJobStatus.htm
+        :param str url: Status URL for Async Operation
+        :param Exception throws: The exception to be raised from expects
+        :return dict: Response json content
+        """
+        while True:
+            async with self.request(
+                'GET',
+                url,
+                expects=(200, 202),
+                throws=throws
+            ) as resp:
+                if resp.status == 200:
+                    return await resp.json()
+
+            await asyncio.sleep(settings.ONEDRIVE_ASYNC_REQUEST_SLEEP_INTERVAL)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
         """ OneDrive API Reference: https://dev.onedrive.com/items/move.htm
             Use Cases: file rename or file move or folder rename or folder move
         """
 
-        parentReference = {'id': dest_path.parent.full_path.strip(
-            '/') if dest_path.parent.identifier is None else dest_path.parent.identifier}
+        dest_exist = dest_path.identifier is not None
+
+        if dest_exist:
+            await dest_provider.delete(dest_path)
+
+        if dest_path.parent.is_root and self.has_real_root():
+            parent_reference = {
+                'path': '/drive/root:/'
+            }
+        else:
+            parent_reference = {
+                'id': dest_path.parent.identifier
+            }
+
         url = self.build_url(src_path.identifier)
-        payload = json.dumps({'name': dest_path.name,
-                              'parentReference': parentReference})
+        payload = {'name': dest_path.name,
+                   'parentReference': parent_reference}
 
         logger.info('intra_move dest_path::{} src_path::{} url::{} payload:{}'.format(str(dest_path.parent.identifier),
                                                                                       repr(src_path), url, payload))
 
-        try:
-            resp = await self.make_request(
+        async with self.request(
                 'PATCH',
                 url,
-                data=payload,
+                data=json.dumps(payload),
                 headers={'content-type': 'application/json'},
                 expects=(200,),
                 throws=exceptions.IntraMoveError,
-            )
-        except exceptions.IntraMoveError:
-            raise
+        ) as resp:
 
-        data = await resp.json()
+            data = await resp.json()
+            dest_path.update_from_response(data)
 
-        logger.info('intra_move data:{}'.format(data))
+            logger.info('intra_move data:{}'.format(data))
 
-        if 'folder' not in data.keys():
-            return OneDriveFileMetadata(data, dest_path), True
-
-        dest_path.update_from_response(data)
-        folder = OneDriveFolderMetadata(data, dest_path)
-
-        return folder, dest_path.identifier is None
+            return self._construct_metadata(data, dest_path), not dest_exist
 
     async def download(self, path, revision=None, range=None, **kwargs):
         """ OneDrive API Reference: https://dev.onedrive.com/items/download.htm """
@@ -250,12 +273,12 @@ class OneDriveProvider(provider.BaseProvider):
 
         if path.identifier is None:
             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
-        downloadUrl = None
+        download_url = None
         if revision:
             items = await self._revisions_json(path)
             for item in items['value']:
                 if item['eTag'] == revision:
-                    downloadUrl = item['@content.downloadUrl']
+                    download_url = item['@content.downloadUrl']
                     break
         else:
             url = self._build_content_url(path.identifier)
@@ -265,14 +288,15 @@ class OneDriveProvider(provider.BaseProvider):
                                                expects=(200,),
                                                throws=exceptions.MetadataError)
             data = await metaData.json()
-            logger.debug('data::{} downloadUrl::{}'.format(data, downloadUrl))
-            downloadUrl = data['@content.downloadUrl']
-        if downloadUrl is None:
+            logger.debug('data::{} downloadUrl::{}'.format(data, download_url))
+            download_url = data['@content.downloadUrl']
+
+        if download_url is None:
             raise exceptions.NotFoundError(str(path))
 
         resp = await self.make_request(
             'GET',
-            downloadUrl,
+            download_url,
             range=range,
             expects=(200, 206),
             headers={'accept-encoding': ''},
@@ -287,7 +311,7 @@ class OneDriveProvider(provider.BaseProvider):
         :param str path: The path to create a folder at
         :type path: OneDrivePath
         """
-        WaterButlerPath.validate_folder(path)
+        OneDrivePath.validate_folder(path)
 
         if not path.parent.identifier:
             raise exceptions.CreateFolderError('Path parent wasn\'t validated', code=400)
@@ -304,12 +328,12 @@ class OneDriveProvider(provider.BaseProvider):
                    "@name.conflictBehavior": "rename"}
 
         async with self.request(
-            'POST',
-            url,
-            data=json.dumps(payload),
-            headers={'content-type': 'application/json'},
-            expects=(201,),
-            throws=exceptions.CreateFolderError,
+                'POST',
+                url,
+                data=json.dumps(payload),
+                headers={'content-type': 'application/json'},
+                expects=(201,),
+                throws=exceptions.CreateFolderError,
         ) as resp:
             data = await resp.json()
             path.update_from_response(data)
@@ -331,42 +355,55 @@ class OneDriveProvider(provider.BaseProvider):
             "upload url:{} path:{} str(path):{} str(full_path):{} self:{}".format(upload_url, repr(path), str(path),
                                                                                   str(path), repr(self.folder)))
 
-        resp = await self.make_request(
-            'PUT',
-            upload_url,
-            headers={'Content-Length': str(stream.size)},
-            data=stream,
-            expects=(201,),
-            throws=exceptions.UploadError,
-        )
+        async with self.request(
+                'PUT',
+                upload_url,
+                headers={'Content-Length': str(stream.size)},
+                data=stream,
+                expects=(201,),
+                throws=exceptions.UploadError,
+        ) as resp:
+            data = await resp.json()
+            logger.info('upload:: data:{}'.format(data))
+            path.update_from_response(data)
+            return OneDriveFileMetadata(data, path), not exists
 
-        data = await resp.json()
-        logger.info('upload:: data:{}'.format(data))
-        path.update_from_response(data)
-        return OneDriveFileMetadata(data, path), not exists
-
-    async def delete(self, path, **kwargs):
+    async def delete(self, path, confirm_delete=0, **kwargs):
         """ OneDrive API Reference: https://dev.onedrive.com/items/delete.htm """
         # copy or move automatically try to delete all directories for 'conflict' = 'replace'
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
+        if path.is_root:
+            if confirm_delete != 1:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400
+                )
+            root_content = await self.metadata(path)
+            if root_content:
+                results, _ = (await asyncio.wait([self.delete(item._path) for item in root_content]))
+                # try to raise first exception
+                for fut in results:
+                    fut.result()
+            return
+
         async with self.request(
-            'DELETE',
-            self._build_content_url(path.identifier),
-            data={},
-            expects=(204,),
-            throws=exceptions.DeleteError,
+                'DELETE',
+                self._build_content_url(path.identifier),
+                data={},
+                expects=(204,),
+                throws=exceptions.DeleteError,
         ):
             return
 
     async def metadata(self, path, revision=None, **kwargs):
         """ OneDrive API Reference: https://dev.onedrive.com/items/get.htm """
-        logger.info(
-            'metadata identifier::{} path::{} revision::{}'.format(repr(path.identifier), repr(path), repr(revision)))
+        logger.info('metadata identifier::{} path::{} revision::{}'
+                    .format(repr(path.identifier), repr(path), repr(revision)))
 
         if path.is_root and self.has_real_root():
-            #  handle when OSF is linked to root onedrive
+            #  handle when OSF is linked to real root onedrive
             url = self._build_content_url('root', expand='children')
         else:
             # handles root/sub1, root/sub1/sub2
@@ -375,25 +412,24 @@ class OneDriveProvider(provider.BaseProvider):
             url = self._build_content_url(path.identifier, expand='children')
 
         logger.info("metadata url::{}".format(repr(url)))
-        resp = await self.make_request(
-            'GET', url,
-            expects=(200,),
-            throws=exceptions.MetadataError
-        )
-        logger.debug("metadata resp::{}".format(repr(resp)))
+        async with self.request(
+                'GET', url,
+                expects=(200,),
+                throws=exceptions.MetadataError
+        ) as resp:
+            logger.debug("metadata resp::{}".format(repr(resp)))
+            data = await resp.json()
 
-        data = await resp.json()
-
-        if data.get('deleted'):
-            raise exceptions.MetadataError(
-                "Could not retrieve {kind} '{path}'".format(
-                    kind='folder' if data['folder'] else 'file',
-                    path=path,
-                ),
-                code=http.client.NOT_FOUND,
-            )
-        path.update_from_response(data)
-        return self._construct_metadata(data, path)
+            if data.get('deleted'):
+                raise exceptions.MetadataError(
+                    "Could not retrieve {kind} '{path}'".format(
+                        kind='folder' if data['folder'] else 'file',
+                        path=path,
+                    ),
+                    code=http.client.NOT_FOUND,
+                )
+            path.update_from_response(data)
+            return self._construct_metadata_response(data, path)
 
     async def revisions(self, path, **kwargs):
         """ OneDrive API Reference: https://dev.onedrive.com/items/view_delta.htm
@@ -414,16 +450,16 @@ class OneDriveProvider(provider.BaseProvider):
         """
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
-        response = await self.make_request(
-            'GET',
-            self.build_url(path.identifier, 'view.delta', top=250),
-            expects=(200,),
-            throws=exceptions.RevisionsError
-        )
-        data = await response.json()
-        logger.info('revisions: data::{}'.format(data['value']))
+        async with self.request(
+                'GET',
+                self.build_url(path.identifier, 'view.delta', top=250),
+                expects=(200,),
+                throws=exceptions.RevisionsError
+        ) as resp:
+            data = await resp.json()
+            logger.info('revisions: data::{}'.format(data['value']))
 
-        return data
+            return data
 
     def can_duplicate_names(self):
         return False
@@ -434,20 +470,24 @@ class OneDriveProvider(provider.BaseProvider):
     def can_intra_move(self, dest_provider, path=None):
         return self == dest_provider
 
-    def _construct_metadata(self, data, path):
+    def _construct_metadata_response(self, data, path):
         if 'folder' in data.keys():
             ret = []
             if 'children' in data.keys():
                 for item in data['children']:
-                    if 'folder' in item.keys():
-                        item_path = path.child(item['name'], _id=item['id'], folder=True)
-                        ret.append(OneDriveFolderMetadata(item, item_path))
-                    else:
-                        item_path = path.child(item['name'], _id=item['id'], folder=False)
-                        ret.append(OneDriveFileMetadata(item, item_path))
+                    item_path = path.child(item['name'], _id=item['id'], folder=bool(item.get('folder', None)))
+                    ret.append(self._construct_metadata(item, item_path))
             return ret
 
-        return OneDriveFileMetadata(data, path)
+        return self._construct_metadata(data, path)
+
+    def _construct_metadata(self, item, path):
+        if 'folder' in item.keys():
+            metadata = OneDriveFolderMetadata(item, path)
+        else:
+            metadata = OneDriveFileMetadata(item, path)
+
+        return metadata
 
     def _build_root_url(self, *segments, **query):
         return provider.build_url(settings.BASE_ROOT_URL, *segments, **query)
