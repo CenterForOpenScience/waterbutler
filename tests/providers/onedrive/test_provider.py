@@ -1,644 +1,281 @@
-import pytest
+import json
+import os
 
-import io
-from http import client
+import pytest
 
 import aiohttpretty
 
 import logging
 
-from waterbutler.core import streams
 from waterbutler.core import exceptions
-from waterbutler.core.path import WaterButlerPath
-
-from waterbutler.providers.onedrive import OneDriveProvider
-from waterbutler.providers.onedrive.provider import OneDrivePath
-from waterbutler.providers.onedrive.settings import settings
-from waterbutler.providers.onedrive.metadata import OneDriveRevision
 from waterbutler.providers.onedrive.metadata import OneDriveFileMetadata
-from waterbutler.providers.onedrive.metadata import OneDriveFolderMetadata
+from waterbutler.providers.onedrive.provider import OneDrivePath
 
 logger = logging.getLogger(__name__)
 
-@pytest.fixture
-def auth():
-    return {
-        'name': 'cat',
-        'email': 'cat@cat.com',
-    }
-
-
-@pytest.fixture
-def credentials():
-    return {'token': 'wrote harry potter'}
-
-
-@pytest.fixture
-def settings():
-    return {'folder': '11446498'}
-
-
-@pytest.fixture
-def provider(auth, credentials, settings):
-    return OneDriveProvider(auth, credentials, settings)
-
-
-@pytest.fixture
-def file_content():
-    return b'SLEEP IS FOR OSX GO SERVE STREAMS'
-
-
-@pytest.fixture
-def file_like(file_content):
-    return io.BytesIO(file_content)
-
-
-@pytest.fixture
-def file_stream(file_like):
-    return streams.FileStreamReader(file_like)
-
-@pytest.fixture
-def folder_object_metadata():
-    return {
-       "size": 119410,
-       "name": "sub1-b",
-       "folder": {
-          "childCount": 4
-       },
-       "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
-       "id": "75BFE374EBEB1211!118",
-       "createdDateTime": "2015-11-29T17:21:09.997Z",
-       "lastModifiedDateTime": "2015-12-07T16:45:28.46Z",
-       "parentReference": {
-          "driveId": "75bfe374ebeb1211",
-          "path": "/drive/root:/ryan-test1",
-          "id": "75BFE374EBEB1211!107"
-       },
-       "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!118",
-       "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITExOC42MzU4NTEwMzUyODQ2MDAwMDA",
-       "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMTguMw",
-       "children": [
-              {
-                 "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!118",
-                 "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMTguMw",
-                 "fileSystemInfo": {
-                    "lastModifiedDateTime": "2015-12-07T16:45:28.46Z",
-                    "createdDateTime": "2015-11-29T17:21:09.997Z"
-                 },
-                 "id": "75BFE374EBEB1211!118",
-                 "lastModifiedDateTime": "2015-12-09T01:48:52.31Z",
-                 "size": 119410,
-                 "createdDateTime": "2015-11-29T17:21:09.997Z",
-                 "folder": {
-                    "childCount": 4
-                 },
-                 "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITExOC42MzU4NTIyMjUzMjMxMDAwMDA",
-                 "name": "sub1-b",
-                 "parentReference": {
-                    "driveId": "75bfe374ebeb1211",
-                    "path": "/drive/root:/ryan-test1/sub1",
-                    "id": "75BFE374EBEB1211!107"
-                 }
-              },
-              {
-                 "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!143",
-                 "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExNDMuMTI",
-                 "fileSystemInfo": {
-                    "lastModifiedDateTime": "2015-12-07T17:26:09.48Z",
-                    "createdDateTime": "2015-12-01T16:52:33.07Z"
-                 },
-                 "id": "75BFE374EBEB1211!143",
-                 "lastModifiedDateTime": "2015-12-07T17:26:09.48Z",
-                 "size": 0,
-                 "createdDateTime": "2015-12-01T16:52:33.07Z",
-                 "folder": {
-                    "childCount": 1
-                 },
-                 "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITE0My42MzU4NTEwNTk2OTQ4MDAwMDA",
-                 "name": "sub1-z",
-                 "parentReference": {
-                    "driveId": "75bfe374ebeb1211",
-                    "path": "/drive/root:/ryan-test1/sub1",
-                    "id": "75BFE374EBEB1211!107"
-                 }
-              },
-              {
-                 "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150",
-                 "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
-                 "fileSystemInfo": {
-                    "lastModifiedDateTime": "2015-12-08T21:51:15.593Z",
-                    "createdDateTime": "2015-12-02T20:25:26.51Z"
-                 },
-                 "id": "75BFE374EBEB1211!150",
-                 "lastModifiedDateTime": "2015-12-08T21:51:15.593Z",
-                 "size": 83736,
-                 "@content.downloadUrl": "https://public-ch3302.files.1drv.com/y3mgyZqUob4fS1RGIHa8w3tl0ozOlXXiKPMmz3hxZ0KbMqyZmIOnzXL8G9fWREL01mog9XRQn2g2qExRSSFce9ixl7fOlq_yjwOxX-6F2CNzgp3-wE9oThZSrvTix8h7cMD32RHd-__uwGK6Db0ErsGuxorWJKfRlmkpJFn7b8F9ZVvsIsLOmJWVKMyxrQMfves",
-                 "cTag": "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
-                 "file": {
-                    "mimeType": "image/jpeg",
-                    "hashes": {
-                       "crc32Hash": "6D98C9D5",
-                       "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4"
-                    }
-                 },
-                 "name": "elect-a.jpg",
-                 "parentReference": {
-                    "driveId": "75bfe374ebeb1211",
-                    "path": "/drive/root:/ryan-test1/sub1",
-                    "id": "75BFE374EBEB1211!107"
-                 },
-              }
-           ],
-    }
-
-@pytest.fixture
-def folder_list_metadata():
-    return {
-
-           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!107",
-           "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMDcuMA",
-           "fileSystemInfo": {
-              "lastModifiedDateTime": "2015-11-22T14:33:33.57Z",
-              "createdDateTime": "2015-11-22T14:33:33.57Z"
-           },
-           "children@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('75BFE374EBEB1211%21107')/children",
-           "id": "75BFE374EBEB1211!107",
-           "lastModifiedDateTime": "2015-12-11T14:45:36.6Z",
-           "size": 203146,
-           "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
-           "createdDateTime": "2015-11-22T14:33:33.57Z",
-           "folder": {
-              "childCount": 3
-           },
-           "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITEwNy42MzU4NTQ0MTkzNjYwMDAwMDA",
-           "children": [
-              {
-                 "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!118",
-                 "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMTguMw",
-                 "fileSystemInfo": {
-                    "lastModifiedDateTime": "2015-12-07T16:45:28.46Z",
-                    "createdDateTime": "2015-11-29T17:21:09.997Z"
-                 },
-                 "id": "75BFE374EBEB1211!118",
-                 "lastModifiedDateTime": "2015-12-09T01:48:52.31Z",
-                 "size": 119410,
-                 "createdDateTime": "2015-11-29T17:21:09.997Z",
-                 "folder": {
-                    "childCount": 4
-                 },
-                 "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITExOC42MzU4NTIyMjUzMjMxMDAwMDA",
-                 "name": "sub1-b",
-                 "parentReference": {
-                    "driveId": "75bfe374ebeb1211",
-                    "path": "/drive/root:/ryan-test1",
-                    "id": "75BFE374EBEB1211!107"
-                 }
-              },
-              {
-                 "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!143",
-                 "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExNDMuMTI",
-                 "fileSystemInfo": {
-                    "lastModifiedDateTime": "2015-12-07T17:26:09.48Z",
-                    "createdDateTime": "2015-12-01T16:52:33.07Z"
-                 },
-                 "id": "75BFE374EBEB1211!143",
-                 "lastModifiedDateTime": "2015-12-07T17:26:09.48Z",
-                 "size": 0,
-                 "createdDateTime": "2015-12-01T16:52:33.07Z",
-                 "folder": {
-                    "childCount": 1
-                 },
-                 "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITE0My42MzU4NTEwNTk2OTQ4MDAwMDA",
-                 "name": "sub1-z",
-                 "parentReference": {
-                    "driveId": "75bfe374ebeb1211",
-                    "path": "/drive/root:/ryan-test1",
-                    "id": "75BFE374EBEB1211!107"
-                 }
-              },
-              {
-                 "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150",
-                 "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
-                 "fileSystemInfo": {
-                    "lastModifiedDateTime": "2015-12-08T21:51:15.593Z",
-                    "createdDateTime": "2015-12-02T20:25:26.51Z"
-                 },
-                 "id": "75BFE374EBEB1211!150",
-                 "lastModifiedDateTime": "2015-12-08T21:51:15.593Z",
-                 "photo": {
-                    "takenDateTime": "2013-04-17T14:32:26Z"
-                 },
-                 "size": 83736,
-                 "@content.downloadUrl": "https://public-ch3302.files.1drv.com/y3mgyZqUob4fS1RGIHa8w3tl0ozOlXXiKPMmz3hxZ0KbMqyZmIOnzXL8G9fWREL01mog9XRQn2g2qExRSSFce9ixl7fOlq_yjwOxX-6F2CNzgp3-wE9oThZSrvTix8h7cMD32RHd-__uwGK6Db0ErsGuxorWJKfRlmkpJFn7b8F9ZVvsIsLOmJWVKMyxrQMfves",
-                 "cTag": "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
-                 "image": {
-                    "width": 883,
-                    "height": 431
-                 },
-                 "file": {
-                    "mimeType": "image/jpeg",
-                    "hashes": {
-                       "crc32Hash": "6D98C9D5",
-                       "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4"
-                    }
-                 },
-                 "name": "elect-a.jpg",
-                 "parentReference": {
-                    "driveId": "75bfe374ebeb1211",
-                    "path": "/drive/root:/ryan-test1",
-                    "id": "75BFE374EBEB1211!107"
-                 },
-                 "createdDateTime": "2015-12-02T20:25:26.51Z"
-              }
-           ],
-           "name": "ryan-test1",
-           "parentReference": {
-              "driveId": "75bfe374ebeb1211",
-              "path": "/drive/root:",
-              "id": "75BFE374EBEB1211!103"
-           }
-    }
-
-@pytest.fixture
-def file_root_folder_metadata():
-    return {
-           "id": "75BFE374EBEB1211!128",
-           "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITEyOC42MzU4NTYxODI2MDA5MzAwMDA",
-           "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMjguMA",
-           "size": 998322,
-           "name": "hello.jpg",
-           "parentReference": {
-              "id": "75BFE374EBEB1211!103",
-              "path": "/drive/root:/sam",
-              "driveId": "75bfe374ebeb1211"
-           },
-           "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
-           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!128",
-           "file": {
-                "hashes": {
-                   "crc32Hash": "6D98C9D5",
-                   "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4"
-                },
-                "mimeType": "image/jpeg"
-            },
-    }
-
-
-@pytest.fixture
-def folder_sub_folder_metadata():
-    return {
-           "id": "75BFE374EBEB1211!128",
-           "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITEyOC42MzU4NTYxODI2MDA5MzAwMDA",
-           "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMjguMA",
-           "size": 998322,
-           "name": "hello",
-           "parentReference": {
-              "id": "75BFE374EBEB1211!103",
-              "path": "/drive/root:/sam/i/am",
-              "driveId": "75bfe374ebeb1211"
-           },
-           "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
-           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!128",
-           "folder": {
-              "childCount": 3
-            },
-    }
-
-@pytest.fixture
-def file_sub_folder_metadata():
-    return {
-           "id": "75BFE374EBEB1211!128",
-           "cTag": "adDo3NUJGRTM3NEVCRUIxMjExITEyOC42MzU4NTYxODI2MDA5MzAwMDA",
-           "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExMjguMA",
-           "size": 998322,
-           "name": "hello.jpg",
-           "parentReference": {
-              "id": "75BFE374EBEB1211!103",
-              "path": "/drive/root:/sam/i/am",
-              "driveId": "75bfe374ebeb1211"
-           },
-           "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
-           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!128",
-           "file": {
-                "hashes": {
-                   "crc32Hash": "6D98C9D5",
-                   "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4"
-                },
-                "mimeType": "image/jpeg"
-            },
-    }
-
-@pytest.fixture
-def file_root_parent_metadata():
-    return {
-           "id": "75BFE374EBEB1211!150",
-           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150",
-           "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
-           "cTag": "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
-           "children": [],
-           "file": {
-              "hashes": {
-                 "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4",
-                 "crc32Hash": "6D98C9D5"
-              },
-              "mimeType": "image/jpeg"
-           },
-           "fileSystemInfo": {
-              "createdDateTime": "2015-12-02T20:25:26.51Z",
-              "lastModifiedDateTime": "2015-12-08T21:51:15.593Z"
-           },
-           "createdDateTime": "2015-12-02T20:25:26.51Z",
-           "size": 83736,
-           "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
-           "name": "elect-a.jpg",
-           "@content.downloadUrl": "https://public-ch3302.files.1drv.com/y3mnrbLFOgJJ8JQA7Ots0pzvL0xHYJx9NQJylS6IoQqp5G2CIIG5IWCKT_ADdp035kbr3qEmz6Va5j8-NCplk4ZMG_cYipxUfhP-NNl-SjlKocwc7yDplc1qWEynHGm_lME_o98pKSxNg6sKbEphRPufHea_h7LU1XH2qkFEGOIZGHQlw_JmH9fvygq8_XY2iE-",
-           "children@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('75BFE374EBEB1211%21150')/children",
-           "parentReference": {
-              "id": "75BFE374EBEB1211!107",
-              "driveId": "75bfe374ebeb1211",
-              "path": "/drive/root:"
-           },
-           "lastModifiedDateTime": "2015-12-08T21:51:15.593Z"
-    }
-
-@pytest.fixture
-def file_metadata():
-    return {
-           "id": "75BFE374EBEB1211!150",
-           "webUrl": "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150",
-           "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
-           "cTag": "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
-           "children": [],
-           "image": {
-              "width": 883,
-              "height": 431
-           },
-           "file": {
-              "hashes": {
-                 "sha1Hash": "68A4192BF9DEAD103D7E4EA481074745932989F4",
-                 "crc32Hash": "6D98C9D5"
-              },
-              "mimeType": "image/jpeg"
-           },
-           "fileSystemInfo": {
-              "createdDateTime": "2015-12-02T20:25:26.51Z",
-              "lastModifiedDateTime": "2015-12-08T21:51:15.593Z"
-           },
-           "createdDateTime": "2015-12-02T20:25:26.51Z",
-           "size": 83736,
-           "photo": {
-              "takenDateTime": "2013-04-17T14:32:26Z"
-           },
-           "eTag": "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
-           "name": "elect-a.jpg",
-           "@content.downloadUrl": "https://public-ch3302.files.1drv.com/y3mnrbLFOgJJ8JQA7Ots0pzvL0xHYJx9NQJylS6IoQqp5G2CIIG5IWCKT_ADdp035kbr3qEmz6Va5j8-NCplk4ZMG_cYipxUfhP-NNl-SjlKocwc7yDplc1qWEynHGm_lME_o98pKSxNg6sKbEphRPufHea_h7LU1XH2qkFEGOIZGHQlw_JmH9fvygq8_XY2iE-",
-           "children@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('75BFE374EBEB1211%21150')/children",
-           "parentReference": {
-              "id": "75BFE374EBEB1211!107",
-              "driveId": "75bfe374ebeb1211",
-              "path": "/drive/root:/ryan-test1"
-           },
-           "lastModifiedDateTime": "2015-12-08T21:51:15.593Z"
-    }
-
-
-@pytest.fixture
-def revisions_list_metadata():
-    return {
-    }
-
 
 class TestValidatePath:
-
-    @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_validate_v1_path_file(self, provider, file_root_parent_metadata):
-        file_id = '75BFE374EBEB1211!150'
-        file_id = '1234'
+    @pytest.mark.parametrize('settings', [{'folder': '0'}])
+    async def test_root_path(self, provider):
+        path = await provider.validate_v1_path('/')
+        assert isinstance(path, OneDrivePath)
+        assert path.is_root
+        assert path.name == ''
+        assert path.full_path == '/'
 
-        good_url = provider.build_url(file_id)
-
-        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
-
-        wb_path_v1 = await provider.validate_v1_path('/' + file_id)
-
-        assert str(wb_path_v1) == '/{}'.format(file_root_parent_metadata['name'])
-
-        wb_path_v0 = await provider.validate_path('/' + file_id)
-
-        assert str(wb_path_v0) == '/{}'.format(file_root_parent_metadata['name'])
-
-        assert wb_path_v1 == wb_path_v0
-
-    @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_revalidate_path_base_has_id(self, provider, file_root_parent_metadata):
-        file_id = '1234'
-        file_name = 'elect-a.jpg'
-        parent_id = '75BFE374EBEB1211!107'
-        expected_path = WaterButlerPath('/' + file_name, [None, file_id])
-        base_path = WaterButlerPath('/', [file_id])
-
-        good_url = "https://api.onedrive.com/v1.0/drive/root%3A/{}/{}".format(file_name, file_name)
-        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
-
-        good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(parent_id)
-        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
-
-        good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(file_id)
-        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
-
-        actual_path = await provider.revalidate_path(base_path, file_name, False)
-
-        assert actual_path == expected_path
-
     @pytest.mark.aiohttpretty
-    @pytest.mark.asyncio
-    async def test_revalidate_path_does_not_exist(self, provider, file_root_parent_metadata):
-        file_id = '1234'
-        file_name = 'elect-a.jpg'
-        parent_id = '75BFE374EBEB1211!107'
-        expected_path = WaterButlerPath('/' + file_name, [None, file_id])
-        base_path = WaterButlerPath('/', [file_id])
+    @pytest.mark.parametrize('settings', [{'folder': '75BFE374EBEB1211'}, {'folder': '75BFE374EBEB1211!118'}])
+    async def test_root_relative_path(self, provider, folder_sub_response, settings):
+        folder_url_by_id = provider._build_content_url(settings['folder'].strip('/'))
+        _url_parts = (
+            folder_sub_response['parentReference']['path'].replace('/drive/root:', ''),
+            folder_sub_response['name']
+        )
+        folder_url = provider._build_root_url('/drive/root:', *_url_parts)
+        aiohttpretty.register_json_uri('GET', folder_url_by_id, body=folder_sub_response)
+        aiohttpretty.register_json_uri('GET', folder_url, body=folder_sub_response)
 
-        good_url = "https://api.onedrive.com/v1.0/drive/root%3A/{}/{}".format(file_name, file_name)
-        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
+        path = await provider.validate_v1_path('/')
 
-        good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(parent_id)
-        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
+        assert isinstance(path, OneDrivePath)
+        assert path.is_root
+        assert path.is_folder
+        assert path.name == ''
+        expected_folder_full_path = '/' + os.path.join(*_url_parts) + '/'
+        assert path.full_path == expected_folder_full_path
 
-        good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(file_id)
-        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
-
-        actual_path = await provider.revalidate_path(base_path, file_name, False)
-
-        assert actual_path == expected_path
-
-    @pytest.mark.aiohttpretty
-    @pytest.mark.asyncio
-    async def test_revalidate_path_no_child_folders_sub_folder(self, provider, file_root_parent_metadata):
-        file_id = '1234'
-        file_name = 'elect-a.jpg'
-        parent_id = '75BFE374EBEB1211!107'
-        expected_path = WaterButlerPath('/' + file_name, [None, file_id])
-        base_path = WaterButlerPath('/', prepend=parent_id)
-
-        good_url = "https://api.onedrive.com/v1.0/drive/root%3A/{}/{}".format(file_name, file_name)
-        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
-
-        good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(parent_id)
-        aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
-
-        actual_path = await provider.revalidate_path(base_path, file_name, False)
-
-        assert actual_path == expected_path
-
-
-    @pytest.mark.aiohttpretty
-    @pytest.mark.asyncio
-    async def test_revalidate_path_has_child_folders(self, provider, folder_object_metadata):
-        file_id = '1234'
-        file_name = 'elect-a.jpg'
-        parent_id = '75BFE374EBEB1211!107'
-        base_path = WaterButlerPath('/sub1-b', prepend=parent_id)
-        expected_path = WaterButlerPath('/sub1-b/' + file_name, [None, None, file_id])
-
-        good_url = provider._build_root_url('drive/root:', 'ryan-test1', 'sub1-b', file_name)
-        aiohttpretty.register_json_uri('GET', good_url, body=folder_object_metadata, status=200)
-
-        good_url = "https://api.onedrive.com/v1.0/drive/items/{}".format(parent_id)
-        aiohttpretty.register_json_uri('GET', good_url, body=folder_object_metadata, status=200)
-
-        assert '/sub1-b/' + file_name == str(expected_path)
-
-
-class TestMoveOperations:
-
-    @pytest.mark.aiohttpretty
-    @pytest.mark.asyncio
-    async def test_rename_file(self, provider, folder_object_metadata, folder_list_metadata):
-#         dest_path::WaterButlerPath('/elect-b.jpg', prepend='75BFE374EBEB1211!128') srcpath:WaterButlerPath('/75BFE374EBEB1211!132', prepend='75BFE374EBEB1211!128')
-        dest_path = WaterButlerPath('/elect-b.jpg', [None, '1234!1'])
-        src_path = WaterButlerPath('/elect-c.jpg', [None, '1234!1'])
-
-#         logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
-
-        list_url = provider.build_url('1234!1')
-
-        aiohttpretty.register_json_uri('PATCH', list_url, body=folder_object_metadata)
-
-        result = await provider.intra_move(provider, src_path, dest_path)
-
-        assert result is not None
 
 class TestUpload:
+    @pytest.mark.aiohttpretty
+    @pytest.mark.asyncio
+    async def test_upload(self, provider, folder_sub_response, file_sub_response, file_stream, not_found_error_response):
+        path = OneDrivePath.from_response(folder_sub_response).child(file_sub_response['name'])
+
+        file_metadata_url = provider._build_content_url(file_sub_response['id'], expand='children')
+        aiohttpretty.register_json_uri('GET', file_metadata_url, body=not_found_error_response, status=404)
+        folder_metadata_url = provider._build_content_url(path.parent.identifier, expand='children')
+        aiohttpretty.register_json_uri('GET', folder_metadata_url, body=folder_sub_response, status=200)
+
+        file_upload_url = provider._build_content_url(path.parent.identifier, 'children', path.name, 'content')
+        aiohttpretty.register_json_uri('PUT', file_upload_url, body=file_sub_response, status=201)
+
+        assert path.identifier is None
+
+        file_metadata, created = await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='PUT', uri=file_upload_url)
+        assert not aiohttpretty.has_call(method='GET', uri=file_metadata_url)
+        assert not aiohttpretty.has_call(method='GET', uri=folder_metadata_url)
+
+        expected = OneDriveFileMetadata(file_sub_response, path)
+        assert file_metadata == expected
+        assert created is True
+
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_upload_to_one_drive_path_root (self, provider, folder_object_metadata, file_root_parent_metadata, file_stream):
-        # root: upload path:
-        #    WaterButlerPath('/screenshot_0000.png', prepend='0') str(path):/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'aa', }, {'folder': '0'})>
+    async def test_upload_update(self, provider, file_stream, file_sub_response):
+        path = OneDrivePath.from_response(file_sub_response)
 
-        path = WaterButlerPath('/elect-a.jpg', prepend='0')
-        upload_url = provider._build_root_url('drive/root:/elect-a.jpg:/content')
-        #  upload_url = self.build_url(path, 'children', fileName, "content")
-        aiohttpretty.register_json_uri('PUT', upload_url, body=file_root_parent_metadata, status=201)
+        delete_url = provider._build_content_url(file_sub_response['id'])
+        aiohttpretty.register_json_uri('DELETE', delete_url, status=200)
+        metadata_url = provider._build_content_url(file_sub_response['id'], expand='children')
+        aiohttpretty.register_json_uri('GET', metadata_url, body=file_sub_response, status=200)
+        file_upload_url = provider._build_content_url(path.parent.identifier, 'children', path.name, 'content')
+        aiohttpretty.register_json_uri('PUT', file_upload_url, body=file_sub_response, status=201)
 
-#          result = await provider.metadata(path)
-        metadata, created = await provider.upload(file_stream, path)
-#
-        assert metadata is not None
-        assert created == True
-        assert metadata.name == 'elect-a.jpg'
+        file_metadata, created = await provider.upload(file_stream, path, conflict='replace')
 
-    @pytest.mark.aiohttpretty
-    @pytest.mark.asyncio
-    async def test_upload_to_one_drive_sub_folder (self, provider, folder_object_metadata, file_root_parent_metadata, file_stream):
-        # project linked to sub folder, upload project root folder (sub folder):
-        #    upload path:WaterButlerPath('/screenshot_0000.png', prepend='75BFE374EBEB1211!128') str(path):/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'ryan casey', 'callback_url': 'http://localhost:5000/api/v1/project/f5qnw/waterbutler/logs/'}, {'folder': '75BFE374EBEB1211!128'})>
+        assert aiohttpretty.has_call(method='GET', uri=metadata_url)
+        assert aiohttpretty.has_call(method='PUT', uri=file_upload_url)
+        assert not aiohttpretty.has_call(method='DELETE', uri=delete_url)
+        assert created is False
 
-        path = WaterButlerPath('/elect-b.jpg', prepend='1234!1')
+        expected = OneDriveFileMetadata(file_sub_response, path)
+        assert expected == file_metadata
 
-        upload_url = provider.build_url('1234!1/children', path.name, "content")
-        metadata_url = provider.build_url('1234!1', expand='children')
-
-        logger.info(metadata_url)
-
-        aiohttpretty.register_json_uri('PUT', upload_url, body=file_root_parent_metadata, status=201)
-        aiohttpretty.register_json_uri('GET', metadata_url, body=file_root_parent_metadata)
-
-        metadata, created = await provider.upload(file_stream, path)
-
-        assert metadata is not None
-        assert metadata.name == 'elect-a.jpg'
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_upload_to_one_drive_sub_sub_folder (self, provider, folder_object_metadata, file_root_parent_metadata, file_stream):
-        # project linked to sub folder, upload project sub folder (sub, sub folder):
-        #    upload path:WaterButlerPath('/75BFE374EBEB1211!129/screenshot_0000.png', prepend='75BFE374EBEB1211!128') str(path):/75BFE374EBEB1211!129/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'ryan casey', 'callback_url': 'http://localhost:5000/api/v1/project/f5qnw/waterbutler/logs/'}, {'folder': '75BFE374EBEB1211!128'})>
+    async def test_upload_exists(self, provider, file_stream, file_sub_response):
+        path = OneDrivePath.from_response(file_sub_response)
 
-        path = WaterButlerPath('/1234!2/elect-b.jpg', prepend='1234!1')
+        metadata_url = provider._build_content_url(file_sub_response['id'], expand='children')
+        aiohttpretty.register_json_uri('GET', metadata_url, body=file_sub_response, status=200)
 
-        upload_url = provider.build_url('/1234!2/children', path.name, "content")
-        metadata_url = provider.build_url('1234!2', expand='children')
+        with pytest.raises(exceptions.NamingConflict) as e:
+            file_metadata, created = await provider.upload(file_stream, path, conflict='warn')
 
-        logger.info(metadata_url)
+        assert aiohttpretty.has_call(method='GET', uri=metadata_url)
+        assert e.value.message == 'Cannot complete action: file or folder "{}" already exists in this location'\
+            .format(path.name)
 
-        aiohttpretty.register_json_uri('PUT', upload_url, body=file_root_parent_metadata, status=201)
-        aiohttpretty.register_json_uri('GET', metadata_url, body=file_root_parent_metadata)
+    @pytest.mark.aiohttpretty
+    @pytest.mark.asyncio
+    async def test_upload_rename(self, provider, file_stream, file_sub_response, file_rename_sub_response, not_found_error_response):
+        path = OneDrivePath.from_response(file_sub_response)
+        new_path = OneDrivePath.from_response(file_sub_response)
+        new_path.increment_name()
 
-        metadata, created = await provider.upload(file_stream, path)
+        metadata_url = provider._build_content_url(file_sub_response['id'], expand='children')
+        aiohttpretty.register_json_uri('GET', metadata_url, body=file_sub_response, status=200)
 
-        assert metadata is not None
-        assert metadata.name == 'elect-a.jpg'
+        new_file_metadata_url = provider._build_root_url('/drive/root:', new_path.full_path)
+        aiohttpretty.register_json_uri('GET', new_file_metadata_url, body=not_found_error_response, status=404)
+        new_file_upload_url = provider._build_content_url(path.parent.identifier, 'children', new_path.name, 'content')
+        aiohttpretty.register_json_uri('PUT', new_file_upload_url, body=file_rename_sub_response, status=201)
+
+        file_metadata, created = await provider.upload(file_stream, path, conflict='rename')
+
+        assert aiohttpretty.has_call(method='GET', uri=metadata_url)
+        assert aiohttpretty.has_call(method='PUT', uri=new_file_upload_url)
+        assert created is True
+
+        assert new_path == file_metadata._path
 
 
 class TestMetadata:
+    @pytest.mark.aiohttpretty
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('settings', [{'folder': '0'}])
+    async def test_metadata_root(self, provider, folder_root_response):
+        path = OneDrivePath('/')
+
+        metadata_url = provider._build_content_url('root', expand='children')
+        aiohttpretty.register_json_uri('GET', metadata_url, body=folder_root_response, status=200)
+
+        res = await provider.metadata(path)
+
+        assert len(res) == len(folder_root_response['children'])
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_metadata_root(self, provider, folder_object_metadata, folder_list_metadata):
-        path = WaterButlerPath('/0/', _ids=(0, ))
-        logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
+    async def test_metadata_relative_root(self, provider, folder_sub_response):
+        path = OneDrivePath('/', _ids=(folder_sub_response['id'], ))
 
-        list_url = provider.build_url('root', expand='children')
+        metadata_url = provider._build_content_url(folder_sub_response['id'], expand='children')
+        aiohttpretty.register_json_uri('GET', metadata_url, body=folder_sub_response, status=200)
 
-        aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
+        res = await provider.metadata(path)
 
-        result = await provider.metadata(path)
-
-        assert len(result) == 3
-
-    @pytest.mark.aiohttpretty
-    def test_metadata_file_root_parent_names(self, provider, folder_object_metadata, file_root_parent_metadata):
-        path = OneDrivePath('/elect-b.jpg')
-        result = path.file_path(file_root_parent_metadata)
-
-        assert result == '/elect-a.jpg'
+        assert isinstance(res, (list, tuple))
+        assert len(res) == len(folder_sub_response['children'])
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_metadata_material_path_has_slash(self, provider, file_root_parent_metadata):
-        path = WaterButlerPath("/elect-a.jpg")
+    async def test_metadata_file(self, provider, file_root_response):
+        path = OneDrivePath.from_response(file_root_response)
+        metadata_url = provider._build_content_url(file_root_response['id'], expand='children')
 
-        assert path.materialized_path.startswith('/')
+        aiohttpretty.register_json_uri('GET', metadata_url, body=file_root_response, status=200)
 
-    @pytest.mark.aiohttpretty
-    def test_metadata_ids_padding(self, provider, folder_object_metadata, file_sub_folder_metadata):
-        od_path = OneDrivePath("/test.foo")
-        result = od_path.ids(file_sub_folder_metadata)
-        assert result == [None, None, None, file_sub_folder_metadata['parentReference']['id'], file_sub_folder_metadata['id']]
+        res = await provider.metadata(path)
 
-    @pytest.mark.aiohttpretty
-    def test_metadata_ids_no_padding(self, provider, folder_object_metadata, file_root_folder_metadata):
-        od_path = OneDrivePath("/test.foo")
-        result = od_path.ids(file_root_folder_metadata)
-        assert result == [None, file_root_folder_metadata['parentReference']['id'], file_root_folder_metadata['id']]
+        assert isinstance(res, OneDriveFileMetadata)
+        assert res.materialized_path == path.materialized_path
 
     @pytest.mark.aiohttpretty
-    def test_metadata_folder_ids_padding(self, provider, folder_sub_folder_metadata):
-        od_path = OneDrivePath("/test.foo")
-        result = od_path.ids(folder_sub_folder_metadata)
-        assert result == [None, None, None, folder_sub_folder_metadata['parentReference']['id'], folder_sub_folder_metadata['id']]
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('settings', [{'folder': '0'}])
+    async def test_metadata_sub_folder(self, provider, folder_sub_response):
+        path = OneDrivePath.from_response(folder_sub_response)
+
+        metadata_url = provider._build_content_url(folder_sub_response['id'], expand='children')
+
+        aiohttpretty.register_json_uri('GET', metadata_url, body=folder_sub_response, status=200)
+
+        res = await provider.metadata(path)
+
+        assert isinstance(res, (list, tuple))
+        assert len(res) == len(folder_sub_response['children'])
+
+    @pytest.mark.aiohttpretty
+    @pytest.mark.asyncio
+    async def test_metadata_not_found(self, provider, not_found_error_response):
+        file_id = '435a3s567fdd433!111'
+        path = OneDrivePath('/not-found.jpg', _ids=('0', file_id))
+
+        metadata_url = provider._build_content_url(file_id, expand='children')
+
+        aiohttpretty.register_json_uri('GET', metadata_url, body=not_found_error_response, status=404)
+
+        with pytest.raises(exceptions.MetadataError) as e:
+            await provider.metadata(path)
+
+        assert e.value.code == 404
+        assert e.value.message == json.dumps(not_found_error_response)
+
+
+class TestDelete:
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_not_found(self, provider, folder_sub_response):
+        path = OneDrivePath.from_response(folder_sub_response)
+        path = path.child('not-exist.jpg')
+
+        with pytest.raises(exceptions.NotFoundError) as e:
+            await provider.delete(path)
+
+        assert e.value.code == 404
+        assert e.value.message == 'Could not retrieve file or directory {}'.format(path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_root(self, provider, folder_sub_response):
+        path = OneDrivePath('/', _ids=(folder_sub_response['id'],), prepend='/{}'.format(folder_sub_response['name']))
+
+        root_delete_url = provider._build_content_url(folder_sub_response['id'])
+        root_metadata_url = provider._build_content_url(folder_sub_response['id'], expaned='children')
+        aiohttpretty.register_json_uri('DELETE', root_delete_url, status=204)
+        aiohttpretty.register_json_uri('GET', root_metadata_url, body=folder_sub_response, status=200)
+        child1_delete_url = provider._build_content_url(folder_sub_response['children'][0]['id'])
+        aiohttpretty.register_json_uri('DELETE', child1_delete_url, status=204)
+        child2_delete_url = provider._build_content_url(folder_sub_response['children'][1]['id'])
+        aiohttpretty.register_json_uri('DELETE', child2_delete_url, status=204)
+        child3_delete_url = provider._build_content_url(folder_sub_response['children'][2]['id'])
+        aiohttpretty.register_json_uri('DELETE', child3_delete_url, status=204)
+
+        await provider.delete(path, confirm_delete=1)
+
+        assert aiohttpretty.has_call(method='GET', uri=root_metadata_url)
+        assert not aiohttpretty.has_call(method='DELETE', uri=root_delete_url)
+
+        assert aiohttpretty.has_call(method='DELETE', uri=child1_delete_url)
+        assert aiohttpretty.has_call(method='DELETE', uri=child2_delete_url)
+        assert aiohttpretty.has_call(method='DELETE', uri=child3_delete_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_root_not_confirmed(self, provider):
+        path = OneDrivePath('/', _ids=('0',))
+
+        with pytest.raises(exceptions.DeleteError) as e:
+            await provider.delete(path)
+
+        assert e.value.code == 400
+        assert e.value.message == 'confirm_delete=1 is required for deleting root provider folder'
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_file(self, provider, file_sub_folder_response):
+        path = OneDrivePath.from_response(file_sub_folder_response)
+
+        delete_url = provider._build_content_url(file_sub_folder_response['id'])
+        aiohttpretty.register_json_uri('DELETE', delete_url, status=204)
+
+        await provider.delete(path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_folder(self, provider, folder_sub_sub_response):
+        path = OneDrivePath.from_response(folder_sub_sub_response)
+
+        delete_url = provider._build_content_url(folder_sub_sub_response['id'])
+        aiohttpretty.register_json_uri('DELETE', delete_url, status=204)
+
+        await provider.delete(path)
+
+
 
