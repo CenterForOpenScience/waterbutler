@@ -1,17 +1,12 @@
-import json
 import os
-
 import pytest
-
 import aiohttpretty
 
-import logging
+from tests import utils
 
 from waterbutler.core import exceptions
 from waterbutler.providers.onedrive.metadata import OneDriveFileMetadata
 from waterbutler.providers.onedrive.provider import OneDrivePath
-
-logger = logging.getLogger(__name__)
 
 
 class TestValidatePath:
@@ -47,6 +42,168 @@ class TestValidatePath:
         assert path.full_path == expected_folder_full_path
 
 
+class TestIntraMove:
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_move_file(self, provider, file_sub_response, file_rename_sub_response):
+        src_path = OneDrivePath.from_response(file_sub_response)
+        dest_path = src_path.parent.child(file_rename_sub_response['name'])
+
+        update_url = provider._build_content_url(src_path.identifier)
+        aiohttpretty.register_json_uri('PATCH', update_url, body=file_rename_sub_response)
+
+        assert dest_path.identifier is None
+
+        metadata, created = await provider.intra_move(provider, src_path, dest_path)
+
+        assert aiohttpretty.has_call(method='PATCH', uri=update_url)
+        assert created is True
+        assert metadata._path.full_path == dest_path.full_path
+        assert metadata._path.parent == src_path.parent
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize('settings', [{'folder': '0'}])
+    async def test_move_file_exists(self, provider, file_sub_response, file_root_response):
+        src_path = OneDrivePath.from_response(file_sub_response)
+        dest_path = OneDrivePath.from_response(file_root_response)
+
+        update_url = provider._build_content_url(src_path.identifier)
+        aiohttpretty.register_json_uri('PATCH', update_url, body=file_root_response)
+        delete_url = provider._build_content_url(dest_path.identifier)
+        aiohttpretty.register_json_uri('DELETE', delete_url, status=204)
+
+        metadata, created = await provider.intra_move(provider, src_path, dest_path)
+
+        assert aiohttpretty.has_call(method='PATCH', uri=update_url)
+        assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
+        assert created is False
+
+        expected_path = OneDrivePath.from_response(file_root_response)
+        assert metadata._path == expected_path
+
+
+class TestIntraCopy:
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize('settings', [{'folder': '0'}])
+    async def test_copy_directory(self, provider, folder_sub_response):
+        src_path = OneDrivePath.from_response(folder_sub_response)
+        dest_response = folder_sub_response.copy()
+        dest_response['name'] = 'elect-y.jpg'
+        dest_path = src_path.parent.child(dest_response['name'])
+
+        status_url = 'http://any.url'
+        copy_url = provider._build_content_url(src_path.identifier, 'action.copy')
+        aiohttpretty.register_uri('POST', copy_url, headers={
+            'LOCATION': status_url
+        }, status=202)
+        aiohttpretty.register_json_uri('GET', status_url, body=dest_response, status=200)
+
+        metadata, created = await provider.intra_copy(provider, src_path, dest_path)
+
+        assert aiohttpretty.has_call(method='POST', uri=copy_url)
+        assert aiohttpretty.has_call(method='GET', uri=status_url)
+
+        assert created is True
+        assert metadata._path.name == dest_path.name
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_copy_timeout(self, monkeypatch, provider, folder_sub_sub_response):
+        monkeypatch.setattr('waterbutler.providers.onedrive.settings.ONEDRIVE_COPY_REQUEST_TIMEOUT', 3)
+
+        src_path = OneDrivePath.from_response(folder_sub_sub_response)
+        dest_path = src_path.parent.child('new_big_folder/', folder=True)
+
+        status_url = 'http://any.url'
+        copy_url = provider._build_content_url(src_path.identifier, 'action.copy')
+        aiohttpretty.register_uri('POST', copy_url, headers={
+            'LOCATION': status_url
+        }, status=202)
+        aiohttpretty.register_uri('GET', status_url, status=202)
+
+        with pytest.raises(exceptions.CopyError) as e:
+            await provider.intra_copy(provider, src_path, dest_path)
+
+        assert e.value.code == 202
+        assert e.value.message.startswith("OneDrive API file copy has not responded in a timely manner")
+
+
+class TestCreateFolder:
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize('settings', [{'folder': '0'}])
+    async def test_create_folder(self, provider, folder_sub_response):
+        root_path = OneDrivePath('/', _ids=('0', ))
+        path = root_path.child(folder_sub_response['name'], folder=True)
+
+        create_url = provider._build_content_url(path.parent.identifier, 'children')
+        create_root_url = provider._build_root_url('drive', 'root', 'children')
+        aiohttpretty.register_json_uri('POST', create_url, body=folder_sub_response, status=201)
+        aiohttpretty.register_json_uri('POST', create_root_url, body=folder_sub_response, status=201)
+
+        resp = await provider.create_folder(path)
+
+        assert aiohttpretty.has_call(method='POST', uri=create_root_url)
+        assert not aiohttpretty.has_call(method='POST', uri=create_url)
+
+        assert resp.kind == 'folder'
+        assert resp.name == path.name
+        assert resp.path == '/' + path.path
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_sub_folder(self, provider, folder_sub_response, folder_sub_sub_response):
+        root_path = OneDrivePath.from_response(folder_sub_response)
+        path = root_path.child(folder_sub_sub_response['name'], folder=True)
+
+        create_url = provider._build_content_url(path.parent.identifier, 'children')
+        create_root_url = provider._build_root_url('drive', 'root', 'children')
+        aiohttpretty.register_json_uri('POST', create_url, body=folder_sub_sub_response, status=201)
+        aiohttpretty.register_json_uri('POST', create_root_url, body=folder_sub_sub_response, status=201)
+
+        resp = await provider.create_folder(path)
+
+        assert not aiohttpretty.has_call(method='POST', uri=create_root_url)
+        assert aiohttpretty.has_call(method='POST', uri=create_url)
+
+        assert resp.kind == 'folder'
+        assert resp.name == path.name
+        assert resp.path == '/' + path.path
+
+    @pytest.mark.skip
+    async def test_already_exist(self, provider):
+        pass
+
+    @pytest.mark.asyncio
+    async def test_must_be_folder(self, provider):
+        with pytest.raises(exceptions.CreateFolderError) as e:
+            await provider.create_folder(OneDrivePath('/test.jpg', _ids=(None, None)))
+
+
+class TestDownload:
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download(self, provider, file_sub_response):
+        body = b'test download content'
+        path = OneDrivePath.from_response(file_sub_response)
+        download_url = file_sub_response['@content.downloadUrl']
+        metadata_url = provider._build_content_url(path.identifier)
+        aiohttpretty.register_json_uri('GET', metadata_url, body=file_sub_response, status=200)
+        aiohttpretty.register_uri('GET', download_url, body=body, auto_length=True, status=200)
+
+        stream = await provider.download(path)
+
+        assert aiohttpretty.has_call(method='GET', uri=metadata_url)
+        assert aiohttpretty.has_call(method='GET', uri=download_url)
+        assert (await stream.read()) == body
+
+    @pytest.mark.skip
+    async def test_download_revision(self, provider):
+        pass
+
+
 class TestUpload:
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
@@ -72,7 +229,6 @@ class TestUpload:
         expected = OneDriveFileMetadata(file_sub_response, path)
         assert file_metadata == expected
         assert created is True
-
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
@@ -205,7 +361,7 @@ class TestMetadata:
             await provider.metadata(path)
 
         assert e.value.code == 404
-        assert e.value.message == json.dumps(not_found_error_response)
+        utils.assert_deep_equal(e.value.message, not_found_error_response)
 
 
 class TestDelete:
@@ -276,6 +432,3 @@ class TestDelete:
         aiohttpretty.register_json_uri('DELETE', delete_url, status=204)
 
         await provider.delete(path)
-
-
-

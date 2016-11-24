@@ -3,7 +3,11 @@ import os
 import copy
 import shutil
 import tempfile
+import json
+
 from unittest import mock
+from copy import deepcopy
+from difflib import unified_diff
 
 import pytest
 from tornado import testing
@@ -226,3 +230,40 @@ def temp_files():
     context = TempFilesContext()
     yield context
     context.tear_down()
+
+
+def _check_list(items):
+    return len(items) > 1 and all(isinstance(v, dict) and v.get('id') for v in items)
+
+
+def _reorder(obj):
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            obj[k] = _reorder(v)
+    if isinstance(obj, tuple):
+        obj = tuple(_reorder(list(obj)))
+    if isinstance(obj, list):
+        # A list of dicts can't be sorted by default. _check_list is used
+        # to check if all items of list are dicts and has an 'id' attr
+        if _check_list(obj):
+            obj = sorted(obj, key=lambda item: item['id'])
+        else:
+            obj = sorted(obj)
+        for i, v in enumerate(obj):
+            obj[i] = _reorder(v)
+    return obj
+
+
+def assert_deep_equal(payload1, payload2):
+    payload1 = json.loads(payload1) if isinstance(payload1, str) else payload1
+    payload2 = json.loads(payload2) if isinstance(payload2, str) else payload2
+
+    f = _reorder(deepcopy(payload1))
+    s = _reorder(deepcopy(payload2))
+    payload1_str = json.dumps(f, indent=4, sort_keys=True)
+    payload2_str = json.dumps(s, indent=4, sort_keys=True)
+    diff = '\n'.join(unified_diff(
+        payload1_str.splitlines(), payload2_str.splitlines(), fromfile='payload1 argument', tofile='payload2 argument'))
+
+    if diff:
+        raise AssertionError('Payloads are not equals.\n' + diff)
