@@ -12,8 +12,6 @@ from waterbutler.core import streams
 from waterbutler.core import path
 from waterbutler.core import provider
 from waterbutler.core import exceptions
-#  from waterbutler.tasks.core import backgroundify
-from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.onedrive import settings
 from waterbutler.providers.onedrive.metadata import OneDriveRevision
@@ -423,7 +421,7 @@ class OneDriveProvider(provider.BaseProvider):
             if data.get('deleted'):
                 raise exceptions.MetadataError(
                     "Could not retrieve {kind} '{path}'".format(
-                        kind='folder' if data['folder'] else 'file',
+                        kind='folder' if 'folder' in data else 'file',
                         path=path,
                     ),
                     code=http.client.NOT_FOUND,
@@ -432,21 +430,19 @@ class OneDriveProvider(provider.BaseProvider):
             return self._construct_metadata_response(data, path)
 
     async def revisions(self, path, **kwargs):
-        """ OneDrive API Reference: https://dev.onedrive.com/items/view_delta.htm
-            As of May 20, 2016: for files, the latest state is returned.  There is not a list of changes for the file.
+        """
+        OneDrive API Reference: https://dev.onedrive.com/items/view_delta.htm
+        As of May 20, 2016: for files, the latest state is returned. There is not a list of changes for the file.
         """
         data = await self._revisions_json(path, **kwargs)
         logger.info('revisions: data::{}'.format(data['value']))
 
-        return [
-            OneDriveRevision(item)
-            for item in data['value']
-            if not item.get('deleted')
-            ]
+        return [OneDriveRevision(item) for item in data['value'] if not item.get('deleted')]
 
     async def _revisions_json(self, path, **kwargs):
-        """ OneDrive API Reference: https://dev.onedrive.com/items/view_delta.htm
-            As of May 20, 2016: for files, the latest state is returned.  There is not a list of changes for the file.
+        """
+        OneDrive API Reference: https://dev.onedrive.com/items/view_delta.htm
+        As of May 20, 2016: for files, the latest state is returned.  There is not a list of changes for the file.
         """
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
