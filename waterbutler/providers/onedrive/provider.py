@@ -466,6 +466,9 @@ class OneDriveProvider(provider.BaseProvider):
     def can_intra_move(self, dest_provider, path=None):
         return self == dest_provider
 
+    def path_from_metadata(self, parent_path, metadata):
+        return metadata._path
+
     def _construct_metadata_response(self, data, path):
         if 'folder' in data.keys():
             ret = []
