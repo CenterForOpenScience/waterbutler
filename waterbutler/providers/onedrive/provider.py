@@ -462,7 +462,7 @@ class OneDriveProvider(provider.BaseProvider):
         return False
 
     def can_intra_copy(self, dest_provider, path=None):
-        return type(self) == type(dest_provider)
+        return self == dest_provider
 
     def can_intra_move(self, dest_provider, path=None):
         return self == dest_provider
