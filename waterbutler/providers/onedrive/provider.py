@@ -4,6 +4,7 @@ import asyncio
 
 import logging
 
+from urllib import parse
 from urllib.parse import urlparse
 
 from itertools import repeat
@@ -62,7 +63,7 @@ class OneDrivePath(path.WaterButlerPath):
         if not parent_path:
             path = '/{}'.format(data['name'])
         else:
-            path = '{}/{}'.format(parent_path, data['name'])
+            path = '{}/{}'.format(parse.unquote(parent_path), data['name'])
 
         if prepend is not None:
             assert path.startswith(prepend)
