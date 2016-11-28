@@ -211,10 +211,10 @@ class OneDriveProvider(provider.BaseProvider):
         """
         while True:
             async with self.request(
-                'GET',
-                url,
-                expects=(200, 202),
-                throws=throws
+                    'GET',
+                    url,
+                    expects=(200, 202),
+                    throws=throws
             ) as resp:
                 if resp.status == 200:
                     return await resp.json()
@@ -341,10 +341,15 @@ class OneDriveProvider(provider.BaseProvider):
             return OneDriveFolderMetadata(data, path)
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
+        path, exists = await self.handle_name_conflict(path, conflict=conflict)
+        if stream.size > settings.ONEDRIVE_RESUMABLE_UPLOAD_FILE_SIZE:
+            return await self._resumable_upload(stream, path, exists)
+
+        return await self._simple_upload(stream, path, exists)
+
+    async def _simple_upload(self, stream, path, exists):
         """ OneDrive API Reference: https://dev.onedrive.com/items/upload_put.htm
             Limited to 100MB file upload. """
-        path, exists = await self.handle_name_conflict(path, conflict=conflict)
-
         logger.info("upload path:{} path.parent:{} path.path:{} self:{}".format(repr(path), path.parent, path.full_path,
                                                                                 repr(self)))
 
@@ -366,6 +371,102 @@ class OneDriveProvider(provider.BaseProvider):
             logger.info('upload:: data:{}'.format(data))
             path.update_from_response(data)
             return OneDriveFileMetadata(data, path), not exists
+
+    async def _resumable_upload(self, stream, path, exists):
+        """
+        OneDrive API Reference: https://dev.onedrive.com/items/upload_large_files.htm#
+        Up to 100mb files.
+        """
+        upload_url = await self._resumable_upload_create_session(path)
+        try:
+            data = await self._resumable_upload_stream(upload_url, stream)
+        except:
+            await self.make_request(
+                'DELETE',
+                upload_url,
+                expects=None
+            )
+            raise
+        return OneDriveFileMetadata(data, path), not exists
+
+    async def _resumable_upload_create_session(self, path):
+        """
+        OneDrive API Reference: https://dev.onedrive.com/items/upload_large_files.htm#
+        Create upload session
+        """
+        if path.parent.is_root and self.has_real_root():
+            create_session_url = self._build_root_url('/drive/root:{}:'.format(path.full_path), 'upload.createSession')
+        else:
+            create_session_url = self._build_content_url('{}:'.format(path.parent.identifier), '{}:'.format(path.name),
+                                                         'upload.createSession')
+        payload = {
+            'item': {
+                'name': path.name
+            }
+        }
+
+        async with self.request(
+                'POST',
+                create_session_url,
+                data=json.dumps(payload),
+                headers={'content-type': 'application/json'},
+                expects=(200,),
+                throws=exceptions.UploadError
+
+        ) as resp:
+            data = await resp.json()
+            return data['uploadUrl']
+
+    async def _resumable_upload_stream(self, upload_url, stream):
+        """
+        OneDrive API Reference: https://dev.onedrive.com/items/upload_large_files.htm#
+        Upload file by chunks.
+        """
+        result = missed_chunks = None
+
+        start_range = 0
+        total_size = stream.size
+
+        while not stream.at_eof():
+            data = await stream.read(settings.ONEDRIVE_RESUMABLE_UPLOAD_CHUNK_SIZE)
+            missed_chunks, result = await self._resumable_upload_stream_by_range(upload_url, data,
+                                                                                 start_range=start_range,
+                                                                                 total_size=total_size)
+            start_range += settings.ONEDRIVE_RESUMABLE_UPLOAD_CHUNK_SIZE
+
+        if missed_chunks or not result:
+            raise exceptions.UploadError(
+                "OneDrive API upload request failed. Please repeat the upload request.",
+                code=400)
+
+        return result
+
+    async def _resumable_upload_stream_by_range(self, upload_url, data, start_range=0, total_size=0):
+        """
+        OneDrive API Reference: https://dev.onedrive.com/items/upload_large_files.htm#
+        Upload file fragment to OneDrive.
+        :param str upload_url: OneDrive file upload url
+        :param bytes data: file chunk
+        :param int start_range:
+        :param int total_size:
+        :return: Return two arguments - next expected file chunk or result file metadata
+        """
+        async with self.request(
+                'PUT',
+                upload_url,
+                data=data,
+                headers={
+                    'Content-Length': str(len(data)),
+                    'Content-Range': self._build_range_header_for_upload(start_range, start_range + len(data) - 1,
+                                                                         total_size)
+                },
+                expects=(202, 201),
+                throws=exceptions.UploadError
+        ) as resp:
+            data = await resp.json()
+            if resp.status == 201:
+                return None, data
+            return data.get('nextExpectedRanges'), None
 
     async def delete(self, path, confirm_delete=0, **kwargs):
         """ OneDrive API Reference: https://dev.onedrive.com/items/delete.htm """
@@ -494,3 +595,12 @@ class OneDriveProvider(provider.BaseProvider):
 
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
+
+    def _build_range_header_for_upload(self, start, end, total):
+        if end >= total:
+            end = None
+        return 'bytes {}-{}/{}'.format(
+            '' if start is None else start,
+            '' if end is None else end,
+            total
+        )
