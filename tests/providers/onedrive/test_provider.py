@@ -135,7 +135,7 @@ class TestCreateFolder:
     @pytest.mark.aiohttpretty
     @pytest.mark.parametrize('settings', [{'folder': '0'}])
     async def test_create_folder(self, provider, folder_sub_response):
-        root_path = OneDrivePath('/', _ids=('0', ))
+        root_path = OneDrivePath('/', _ids=('0',))
         path = root_path.child(folder_sub_response['name'], folder=True)
 
         create_url = provider._build_content_url(path.parent.identifier, 'children')
@@ -207,7 +207,8 @@ class TestDownload:
 class TestUpload:
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_upload(self, provider, folder_sub_response, file_sub_response, file_stream, not_found_error_response):
+    async def test_upload(self, provider, folder_sub_response, file_sub_response, file_stream,
+                          not_found_error_response):
         path = OneDrivePath.from_response(folder_sub_response).child(file_sub_response['name'])
 
         file_metadata_url = provider._build_content_url(file_sub_response['id'], expand='children')
@@ -252,7 +253,6 @@ class TestUpload:
         expected = OneDriveFileMetadata(file_sub_response, path)
         assert expected == file_metadata
 
-
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
     async def test_upload_exists(self, provider, file_stream, file_sub_response):
@@ -265,12 +265,13 @@ class TestUpload:
             file_metadata, created = await provider.upload(file_stream, path, conflict='warn')
 
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
-        assert e.value.message == 'Cannot complete action: file or folder "{}" already exists in this location'\
+        assert e.value.message == 'Cannot complete action: file or folder "{}" already exists in this location' \
             .format(path.name)
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_upload_rename(self, provider, file_stream, file_sub_response, file_rename_sub_response, not_found_error_response):
+    async def test_upload_rename(self, provider, file_stream, file_sub_response, file_rename_sub_response,
+                                 not_found_error_response):
         path = OneDrivePath.from_response(file_sub_response)
         new_path = OneDrivePath.from_response(file_sub_response)
         new_path.increment_name()
@@ -291,6 +292,64 @@ class TestUpload:
 
         assert new_path == file_metadata._path
 
+    @pytest.mark.aiohttpretty
+    @pytest.mark.asyncio
+    async def test_resumable_upload(self, monkeypatch, provider, file_stream, folder_sub_response, file_sub_response,
+                                    create_upload_session_response):
+        parent_path = OneDrivePath.from_response(folder_sub_response)
+        path = parent_path.child(file_sub_response['name'])
+        fragment_size = int(file_stream.size / 2 + 1)
+        monkeypatch.setattr('waterbutler.providers.onedrive.settings.ONEDRIVE_RESUMABLE_UPLOAD_FILE_SIZE',
+                            file_stream.size - 1)
+        monkeypatch.setattr('waterbutler.providers.onedrive.settings.ONEDRIVE_RESUMABLE_UPLOAD_CHUNK_SIZE',
+                            fragment_size)
+
+        chunk_upload_mock = utils.MockCoroutine()
+        chunk_upload_mock.return_value = (None, file_sub_response)
+        monkeypatch.setattr(provider, '_resumable_upload_stream_by_range', chunk_upload_mock)
+
+        create_session_url = provider._build_content_url('{}:'.format(path.parent.identifier), '{}:'.format(path.name),
+                                                         'upload.createSession')
+        aiohttpretty.register_json_uri('POST', create_session_url, body=create_upload_session_response)
+
+        metadata, created = await provider.upload(file_stream, path)
+
+        assert created is True
+        assert metadata._path == OneDrivePath.from_response(file_sub_response)
+        assert aiohttpretty.has_call(method='POST', uri=create_session_url)
+        assert chunk_upload_mock.call_count == 2
+
+    @pytest.mark.aiohttpretty
+    @pytest.mark.asyncio
+    async def test_resumable_upload_failed(self, monkeypatch, provider, file_stream, folder_sub_response,
+                                           file_sub_response, create_upload_session_response):
+        parent_path = OneDrivePath.from_response(folder_sub_response)
+        path = parent_path.child(file_sub_response['name'])
+        fragment_size = int(file_stream.size / 2 + 1)
+
+        monkeypatch.setattr('waterbutler.providers.onedrive.settings.ONEDRIVE_RESUMABLE_UPLOAD_FILE_SIZE',
+                            file_stream.size - 1)
+        monkeypatch.setattr('waterbutler.providers.onedrive.settings.ONEDRIVE_RESUMABLE_UPLOAD_CHUNK_SIZE',
+                            fragment_size)
+
+        create_session_url = provider._build_content_url('{}:'.format(path.parent.identifier), '{}:'.format(path.name),
+                                                         'upload.createSession')
+        aiohttpretty.register_json_uri('POST', create_session_url, body=create_upload_session_response)
+        aiohttpretty.register_json_uri('DELETE', create_upload_session_response['uploadUrl'], status=204)
+
+        chunk_upload_mock = utils.MockCoroutine()
+        chunk_upload_mock.return_value = (["2-5", ], None)
+        monkeypatch.setattr(provider, '_resumable_upload_stream_by_range', chunk_upload_mock)
+        aiohttpretty.register_json_uri('POST', create_session_url, body=create_upload_session_response)
+
+        with pytest.raises(exceptions.UploadError) as e:
+            await provider.upload(file_stream, path)
+
+        assert e.value.code == 400
+        assert chunk_upload_mock.call_count == 3
+        assert aiohttpretty.has_call(method='POST', uri=create_session_url)
+        assert aiohttpretty.has_call(method='DELETE', uri=create_upload_session_response['uploadUrl'])
+
 
 class TestMetadata:
     @pytest.mark.aiohttpretty
@@ -309,7 +368,7 @@ class TestMetadata:
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
     async def test_metadata_relative_root(self, provider, folder_sub_response):
-        path = OneDrivePath('/', _ids=(folder_sub_response['id'], ))
+        path = OneDrivePath('/', _ids=(folder_sub_response['id'],))
 
         metadata_url = provider._build_content_url(folder_sub_response['id'], expand='children')
         aiohttpretty.register_json_uri('GET', metadata_url, body=folder_sub_response, status=200)

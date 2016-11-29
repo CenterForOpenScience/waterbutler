@@ -429,10 +429,12 @@ class OneDriveProvider(provider.BaseProvider):
 
         while not stream.at_eof():
             data = await stream.read(settings.ONEDRIVE_RESUMABLE_UPLOAD_CHUNK_SIZE)
-            missed_chunks, result = await self._resumable_upload_stream_by_range(upload_url, data,
-                                                                                 start_range=start_range,
-                                                                                 total_size=total_size)
-            start_range += settings.ONEDRIVE_RESUMABLE_UPLOAD_CHUNK_SIZE
+            if data or not result:
+                # sometimes we have to make last upload call to commit file
+                missed_chunks, result = await self._resumable_upload_stream_by_range(upload_url, data,
+                                                                                     start_range=start_range,
+                                                                                     total_size=total_size)
+                start_range += settings.ONEDRIVE_RESUMABLE_UPLOAD_CHUNK_SIZE
 
         if missed_chunks or not result:
             raise exceptions.UploadError(
