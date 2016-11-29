@@ -409,12 +409,22 @@ def file_sub_response():
         "lastModifiedDateTime": "2015-12-08T21:51:15.593Z"
     }
 
+
 @pytest.fixture
 def file_rename_sub_response(file_sub_response):
     new = file_sub_response.copy()
     new['name'] = 'elect-a (1).jpg'
     new['id'] = '66BFE321EBEB1211!150'
     return new
+
+
+@pytest.fixture
+def create_upload_session_response():
+    return {
+        "uploadUrl": "https://any.url/up/fe688",
+        "expirationDateTime": "2015-01-29T09:21:55.523Z",
+        "nextExpectedRanges": ["0-"]
+    }
 
 
 @pytest.fixture
