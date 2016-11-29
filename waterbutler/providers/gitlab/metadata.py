@@ -73,6 +73,7 @@ class BaseGitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
     def path(self):
         return '/' + self.givenpath.path + self.current_path + '/'
 
+
 class GitLabFileContentMetadata(BaseGitLabFileMetadata):
 
     @property
@@ -82,6 +83,7 @@ class GitLabFileContentMetadata(BaseGitLabFileMetadata):
     @property
     def size(self):
         return None
+
 
 class GitLabFolderContentMetadata(BaseGitLabFolderMetadata):
 
