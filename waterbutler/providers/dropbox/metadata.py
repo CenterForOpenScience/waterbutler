@@ -54,6 +54,10 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
         return None
 
     @property
+    def created_utc(self):
+        return None
+
+    @property
     def content_type(self):
         return None
 
