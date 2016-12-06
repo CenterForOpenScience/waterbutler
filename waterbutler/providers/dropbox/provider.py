@@ -77,7 +77,7 @@ class DropboxProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
             if resp.status == 409:
-                self.dropbox_conflict_error_handler(data, body.get('path'))
+                self.dropbox_conflict_error_handler(data, body.get('path', ''))
             return data
 
     def dropbox_conflict_error_handler(self, data, error_path=''):
@@ -98,7 +98,7 @@ class DropboxProvider(provider.BaseProvider):
                     raise exceptions.NotFoundError(error_path)
                 if 'conflict' in error_type:
                     raise DropboxNamingConflictError(data['error_summary'])
-            if 'conflict' in data['error']['reason']['.tag']:
+            if data['error'].get('reason', False) and 'conflict' in data['error']['reason']['.tag']:
                 raise DropboxNamingConflictError('{} for path {}'.format(data['error_summary'],
                                                                          error_path))
         raise DropboxUnhandledConflictError(str(data))
