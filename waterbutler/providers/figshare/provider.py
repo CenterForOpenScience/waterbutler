@@ -191,8 +191,9 @@ class BaseFigshareProvider(provider.BaseProvider):
                                  folder=(metadata.kind == 'folder'))
 
     async def revisions(self, path, **kwargs):
-        # Public articles have revisions, but projects, collections, and private articles do not
-        raise exceptions.ProviderError({'message': 'figshare does not support file revisions.'}, code=405)
+        # Public articles have revisions, but projects, collections, and private articles do not.
+        # For now, return a single Revision labeled "latest".
+        return [metadata.FigshareFileRevisionMetadata()]
 
     async def _upload_file(self, article_id, name, stream):
         """Uploads a file to Figshare and returns the file id.

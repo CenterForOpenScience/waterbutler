@@ -108,8 +108,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
         }
 
 
-class FigshareFolderMetadata(BaseFigshareMetadata,
-                             metadata.BaseFolderMetadata):
+class FigshareFolderMetadata(BaseFigshareMetadata, metadata.BaseFolderMetadata):
     """Default config only allows articles of defined_type fileset to be
     considered folders.
     """
@@ -153,3 +152,25 @@ class FigshareFolderMetadata(BaseFigshareMetadata,
             'doi': self.raw.get('doi'),
             'status': self.raw['status'].lower(),
         }
+
+
+class FigshareFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
+
+    def __init__(self):
+        pass
+
+    @property
+    def modified(self):
+        return None
+
+    @property
+    def modified_utc(self):
+        return None
+
+    @property
+    def version_identifier(self):
+        return 'revision'
+
+    @property
+    def version(self):
+        return 'latest'
