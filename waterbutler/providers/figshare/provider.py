@@ -176,9 +176,8 @@ class BaseFigshareProvider(provider.BaseProvider):
                 code=http.client.FORBIDDEN,
             )
 
-        params = {} if path.is_public else {'token': self.token}
-        headers = {'Host': 'ndownloader.figshare.com', 'Accept': '*/*'}
-        resp = await aiohttp.request('GET', download_url, params=params, headers=headers)
+        params = {} if file_metadata.is_public else {'token': self.token}
+        resp = await aiohttp.request('GET', download_url, params=params)
         return streams.ResponseStreamReader(resp)
 
     def path_from_metadata(self, parent_path, metadata):
