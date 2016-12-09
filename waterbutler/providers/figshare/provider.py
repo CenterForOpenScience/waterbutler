@@ -171,13 +171,14 @@ class BaseFigshareProvider(provider.BaseProvider):
         file_metadata = await self.metadata(path)
         download_url = file_metadata.extra['downloadUrl']
         if download_url is None:
-            raise exceptions.DownloadError(
-                'Download not available',
-                code=http.client.FORBIDDEN,
-            )
+            raise exceptions.DownloadError('Download not available', code=http.client.FORBIDDEN)
 
         params = {} if file_metadata.is_public else {'token': self.token}
         resp = await aiohttp.request('GET', download_url, params=params)
+        if resp.status == 404:
+            await resp.release()
+            raise exceptions.DownloadError('Download not available', code=http.client.FORBIDDEN)
+
         return streams.ResponseStreamReader(resp)
 
     def path_from_metadata(self, parent_path, metadata):
