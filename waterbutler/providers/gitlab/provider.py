@@ -125,6 +125,7 @@ class GitLabProvider(provider.BaseProvider):
         :param str path: The path to the file on gitlab
         :param str revision: The revision of the file on gitlab
         :param dict kwargs: Must have `branch`
+        :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
         if 'branch' not in kwargs:
@@ -175,6 +176,7 @@ class GitLabProvider(provider.BaseProvider):
         :param dict kwargs: Ignored
 
         :rtype: dict, bool
+        :raises: :class:`waterbutler.core.exceptions.UploadError`
         """
         assert self.name is not None
         assert self.email is not None
@@ -185,9 +187,11 @@ class GitLabProvider(provider.BaseProvider):
         except:
             insert = True
 
-        await self._upsert_blob(stream, path.path, branch, insert)
-
-        metadata = await self.metadata(path, ref=branch)
+        try:
+            await self._upsert_blob(stream, path.path, branch, insert)
+            metadata = await self.metadata(path, ref=branch)
+        except:
+            raise exceptions.UploadError
 
         return metadata, insert
 
@@ -200,6 +204,7 @@ class GitLabProvider(provider.BaseProvider):
         :param str message: Commit message
         :param str branch: Repository branch
         :param int confirm_delete: Must be 1 to confirm root folder delete
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
         """
         assert self.name is not None
         assert self.email is not None
@@ -216,14 +221,19 @@ class GitLabProvider(provider.BaseProvider):
         :param str ref: A branch or a commit SHA
         :rtype: :class:`GitLabFileTreeMetadata`
         :rtype: :class:`list` of :class:`GitLabFileContentMetadata` or :class:`GitLabFolderContentMetadata`
+        :raises: :class:`waterbutler.core.exceptions.MetadataError`
         """
-        if path.is_dir:
-            return (await self._metadata_folder(path, ref=ref, recursive=recursive, **kwargs))
-        else:
-            if ref is not None:
-                return (await self._metadata_file(path, ref=ref, **kwargs))
+        try:
+            if path.is_dir:
+                return (await self._metadata_folder(path, ref=ref, recursive=recursive, **kwargs))
             else:
-                return (await self._metadata_file(path, **kwargs))
+                if ref is not None:
+                    return (await self._metadata_file(path, ref=ref, **kwargs))
+                else:
+                    return (await self._metadata_file(path, **kwargs))
+        except:
+            raise exceptions.MetadataError('error on fetch metadata from path {0}'
+                                           .format(path.full_path))
 
     async def revisions(self, path, sha=None, **kwargs):
         """Get past versions of the request file.
@@ -232,6 +242,7 @@ class GitLabProvider(provider.BaseProvider):
         :param str sha: The sha of the revision
         :param dict kwargs: Ignored
         :rtype: :class:`list` of :class:`GitLabRevision`
+        :raises: :class:`waterbutler.core.exceptions.RevisionsError`
         """
         resp = await self.make_request(
             'GET',
@@ -250,6 +261,7 @@ class GitLabProvider(provider.BaseProvider):
         :param str branch: user-supplied repository git branch to create folder
         :param str message: user-supplied message used as commit message
         :rtype: :class:`GitLabFolderContentMetadata`
+        :raises: :class:`waterbutler.core.exceptions.FolderCreationError`
         """
         GitLabPath.validate_folder(path)
 
@@ -261,7 +273,10 @@ class GitLabProvider(provider.BaseProvider):
         content = ''
         stream = streams.StringStream(content)
 
-        resp, insert = await self.upload(stream, keep_path, message, branch, **kwargs)
+        try:
+            resp, insert = await self.upload(stream, keep_path, message, branch, **kwargs)
+        except:
+            raise exceptions.FolderCreationError
 
         raw = {'name': path.path.strip('/').split('/')[-1]}
         return GitLabFolderContentMetadata(raw, thepath=path.parent)
@@ -302,7 +317,10 @@ class GitLabProvider(provider.BaseProvider):
         if message is None:
             message = 'Folder {} deleted'.format(path.full_path)
 
-        contents = await self._fetch_contents(path, ref=branch)
+        try:
+            contents = await self._fetch_contents(path, ref=branch)
+        except:
+            raise exceptions.DeleteError('error on fetch the folder content', code=400)
 
         for data in contents:
             if data['type'] == 'blob':
@@ -325,7 +343,7 @@ class GitLabProvider(provider.BaseProvider):
             'GET',
             url.url,
             expects=(200, ),
-            throws=exceptions.MetadataError
+            throws=exceptions.NotFoundError(path.full_path)
         )
         return (await resp.json())
 
