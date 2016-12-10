@@ -10,6 +10,7 @@ from waterbutler.providers.gitlab import settings as gitlab_settings
 from waterbutler.providers.gitlab.metadata import GitLabFileContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFolderContentMetadata
 
+
 @pytest.fixture
 def auth():
     return {
@@ -37,6 +38,24 @@ def gitlab_simple_project_tree():
             }
         ]
 
+@pytest.fixture
+def gitlab_example_sub_project_tree():
+    return [
+            {
+                "id": "a1e8f8d745cc87e3a9248358d9352bb7f9a0aeba",
+                "name": ".gitkeep",
+                "type": "blob",
+                "path": "files/html/.gitkeep",
+                "mode": "040000"
+            },
+            {
+                "id": "a1e8f8d745cc87e3a9248358d9352bb7f9a0aeba",
+                "name": ".gitkeep",
+                "type": "tree",
+                "path": "files/html/static",
+                "mode": "040000"
+            }
+        ]
 
 @pytest.fixture
 def gitlab_example_project_tree():
@@ -296,17 +315,21 @@ class TestDelete:
         sub4_url = 'http://base.url/projects/123/repository/tree?path=files/lfs/&ref_name=master'
         sub5_url = 'http://base.url/projects/123/repository/tree?path=files/markdown/&ref_name=master'
         sub6_url = 'http://base.url/projects/123/repository/tree?path=files/ruby/&ref_name=master'
+        sub7_url = 'http://base.url/projects/123/repository/tree?path=files/html/static/&ref_name=master'
 
         file1_url = 'http://base.url/projects/123/repository/files?file_path=files/whitespace&branch_name=master&commit_message=Folder+folder3/+deleted'
+        file2_url = 'http://base.url/projects/123/repository/files?file_path=files/html/.gitkeep&branch_name=master&commit_message=Folder+folder3/+deleted'
 
         aiohttpretty.register_json_uri('GET', info_url, body=gitlab_example_project_tree())
-        aiohttpretty.register_json_uri('GET', sub1_url, body={})
+        aiohttpretty.register_json_uri('GET', sub1_url, body=gitlab_example_sub_project_tree())
         aiohttpretty.register_json_uri('GET', sub2_url, body={})
         aiohttpretty.register_json_uri('GET', sub3_url, body={})
         aiohttpretty.register_json_uri('GET', sub4_url, body={})
         aiohttpretty.register_json_uri('GET', sub5_url, body={})
         aiohttpretty.register_json_uri('GET', sub6_url, body={})
+        aiohttpretty.register_json_uri('GET', sub7_url, body={})
         aiohttpretty.register_json_uri('DELETE', file1_url)
+        aiohttpretty.register_json_uri('DELETE', file2_url)
 
         result = await provider.delete(waterbutler_path, branch='master')
 

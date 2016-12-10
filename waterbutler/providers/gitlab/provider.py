@@ -16,16 +16,26 @@ from waterbutler.providers.gitlab.metadata import GitLabFolderContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFileTreeMetadata
 
 
-class GitLabProvider(provider.BaseProvider):
-    """Provider for GitLab repositories.
-
-    **On paths:**  WB and GL use slightly different default conventions for their paths, so we
+class GitLabPath(WaterButlerPath):
+    """WB and GL use slightly different default conventions for their paths, so we
     often have to munge our WB paths before comparison. Here is a quick overview::
 
         WB (dirs):  wb_dir.path == 'foo/bar/'     str(wb_dir) == '/foo/bar/'
         WB (file):  wb_file.path = 'foo/bar.txt'  str(wb_file) == '/foo/bar.txt'
         GL (dir):   'foo/bar'
         GL (file):  'foo/bar.txt'
+    """
+
+    def __init__(self, path):
+        wb_path = path
+        if path is not '/':
+            if not path.startswith('/'):
+                wb_path = "/{}".format(path)
+        super().__init__(wb_path)
+
+
+class GitLabProvider(provider.BaseProvider):
+    """Provider for GitLab repositories.
 
     API docs: https://docs.gitlab.com/ce/api/
 
@@ -83,24 +93,18 @@ class GitLabProvider(provider.BaseProvider):
         """Ensure path is in Waterbutler v1 format.
 
         :param str path: The path to a file/folder
-        :rtype: WaterButlerPath
+        :rtype: GitLabPath
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
-        return await self.validate_path(path)
+        return GitLabPath(path)
 
     async def validate_path(self, path, **kwargs):
         """Ensure path is in Waterbutler format.
 
         :param str path: The path to a file
-        :rtype: WaterButlerPath
+        :rtype: GitLabPath
         """
-        wb_path = path
-
-        if path is not '/':
-            if not path.startswith('/'):
-                wb_path = "/{}".format(path)
-
-        return WaterButlerPath(wb_path)
+        return GitLabPath(path)
 
     def can_duplicate_names(self):
         return False
@@ -191,7 +195,7 @@ class GitLabProvider(provider.BaseProvider):
                confirm_delete=0, **kwargs):
         """Delete file, folder, or provider root contents.
 
-        :param WaterButlerPath path: WaterButlerPath path object for file, folder, or root
+        :param GitLabPath path: GitLabPath path object for file, folder, or root
         :param str sha: SHA-1 checksum of file/folder object
         :param str message: Commit message
         :param str branch: Repository branch
@@ -208,7 +212,7 @@ class GitLabProvider(provider.BaseProvider):
     async def metadata(self, path, ref=None, recursive=False, **kwargs):
         """Get Metadata about the requested file or folder.
 
-        :param WaterButlerPath path: The path to a file or folder
+        :param GitLabPath path: The path to a file or folder
         :param str ref: A branch or a commit SHA
         :rtype: :class:`GitLabFileTreeMetadata`
         :rtype: :class:`list` of :class:`GitLabFileContentMetadata` or :class:`GitLabFolderContentMetadata`
@@ -247,7 +251,7 @@ class GitLabProvider(provider.BaseProvider):
         :param str message: user-supplied message used as commit message
         :rtype: :class:`GitLabFolderContentMetadata`
         """
-        WaterButlerPath.validate_folder(path)
+        GitLabPath.validate_folder(path)
 
         message = message or settings.UPLOAD_FILE_MESSAGE
         branch = branch or path.identifier[0]
