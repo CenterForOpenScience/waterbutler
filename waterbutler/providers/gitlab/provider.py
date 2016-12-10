@@ -4,7 +4,6 @@ import mimetypes
 
 import furl
 
-from waterbutler.core import path
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
@@ -15,17 +14,6 @@ from waterbutler.providers.gitlab.metadata import GitLabRevision
 from waterbutler.providers.gitlab.metadata import GitLabFileContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFolderContentMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFileTreeMetadata
-
-
-GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
-
-
-class GitLabPathPart(path.WaterButlerPathPart):
-    def increment_name(self, _id=None):
-        """Overridden to preserve branch from _id upon incrementing"""
-        self._id = _id or (self._id[0], None)
-        self._count += 1
-        return self
 
 
 class GitLabProvider(provider.BaseProvider):
@@ -94,33 +82,11 @@ class GitLabProvider(provider.BaseProvider):
     async def validate_v1_path(self, path, **kwargs):
         """Ensure path is in Waterbutler v1 format.
 
-        :param str path: The path to a file
-        :param dict kwargs: Without `ref` or `branch` will use `default_branch`
+        :param str path: The path to a file/folder
         :rtype: WaterButlerPath
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
-        if not getattr(self, '_repo', None):
-            try:
-                self._repo = await self._fetch_repo()
-                self.default_branch = self._repo['default_branch']
-            except:
-                raise exceptions.NotFoundError(
-                    'path information not found',
-                )
-
-        branch_ref = kwargs.get('ref') or kwargs.get('branch') or self.default_branch
-
-        if path == '/':
-            return WaterButlerPath(path, _ids=[(branch_ref, '')])
-
-        path = WaterButlerPath(path)
-        for part in path.parts:
-            part._id = (branch_ref, None)
-
-        # TODO Validate that filesha is a valid sha
-        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
-
-        return path
+        return await self.validate_path(path)
 
     async def validate_path(self, path, **kwargs):
         """Ensure path is in Waterbutler format.
@@ -128,11 +94,13 @@ class GitLabProvider(provider.BaseProvider):
         :param str path: The path to a file
         :rtype: WaterButlerPath
         """
+        wb_path = path
 
-        return WaterButlerPath(path)
+        if path is not '/':
+            if not path.startswith('/'):
+                wb_path = "/{}".format(path)
 
-    async def revalidate_path(self, base, path, folder=False):
-        return base.child(path, _id=((base.identifier[0], None)), folder=folder)
+        return WaterButlerPath(wb_path)
 
     def can_duplicate_names(self):
         return False
@@ -232,13 +200,15 @@ class GitLabProvider(provider.BaseProvider):
         assert self.name is not None
         assert self.email is not None
 
-        if not path.is_dir:
-            await self._delete_file(path, message, branch, **kwargs)
+        if path.is_dir:
+            await self._delete_folder(path, message, branch)
+        else:
+            await self._delete_file(path, message, branch)
 
     async def metadata(self, path, ref=None, recursive=False, **kwargs):
         """Get Metadata about the requested file or folder.
 
-        :param str path: The path to a file or folder
+        :param WaterButlerPath path: The path to a file or folder
         :param str ref: A branch or a commit SHA
         :rtype: :class:`GitLabFileTreeMetadata`
         :rtype: :class:`list` of :class:`GitLabFileContentMetadata` or :class:`GitLabFolderContentMetadata`
@@ -266,10 +236,7 @@ class GitLabProvider(provider.BaseProvider):
             throws=exceptions.RevisionsError
         )
 
-        return [
-            GitLabRevision(item)
-            for item in (await resp.json())
-        ]
+        return [GitLabRevision(item) for item in (await resp.json())]
 
     async def create_folder(self, path, branch=None, message=None, **kwargs):
         """Create a folder at `path`. Returns a `GitLabFolderContentMetadata` object
@@ -331,18 +298,15 @@ class GitLabProvider(provider.BaseProvider):
         if message is None:
             message = 'Folder {} deleted'.format(path.full_path)
 
-        url = self.build_repo_url('repository', 'files', file_path=path.full_path, branch_name=branch, commit_message=message)
+        contents = await self._fetch_contents(path, ref=branch)
 
-        headers = {"Authorization": 'Bearer {}'.format(self.token)}
-
-        resp = await self.make_request(
-            'DELETE',
-            url,
-            headers=headers,
-            expects=(200, ),
-            throws=exceptions.DeleteError,
-        )
-        await resp.release()
+        for data in contents:
+            if data['type'] == 'blob':
+                sub_path = await self.validate_path(data['path'])
+                await self._delete_file(sub_path, branch=branch, message=message)
+            if data['type'] == 'tree':
+                sub_path = await self.validate_path("{}/".format(data['path']))
+                await self._delete_folder(sub_path, branch=branch, message=message)
 
     async def _fetch_contents(self, path, ref=None):
         url = furl.furl(self.build_repo_url('repository', 'tree'))
@@ -356,15 +320,6 @@ class GitLabProvider(provider.BaseProvider):
         resp = await self.make_request(
             'GET',
             url.url,
-            expects=(200, ),
-            throws=exceptions.MetadataError
-        )
-        return (await resp.json())
-
-    async def _fetch_repo(self):
-        resp = await self.make_request(
-            'GET',
-            self.build_repo_url(),
             expects=(200, ),
             throws=exceptions.MetadataError
         )
