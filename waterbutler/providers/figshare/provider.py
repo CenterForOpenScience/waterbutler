@@ -282,7 +282,7 @@ class BaseFigshareProvider(provider.BaseProvider):
             upload_response = await self.make_request(
                 'PUT',
                 upload_url + '/' + str(part_number),
-                data=stream._read(size),
+                data=stream.readexactly(size),
                 expects=(200, ),
             )
             await upload_response.release()
