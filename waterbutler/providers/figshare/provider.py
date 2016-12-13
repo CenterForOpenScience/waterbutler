@@ -600,6 +600,9 @@ class FigshareProjectProvider(BaseFigshareProvider):
         * If the FigsharePath given is for the provider root path, then the contents of the
         provider root path will be deleted, but not the provider root itself.
         """
+        if not path.identifier:
+            raise exceptions.NotFoundError(str(path))
+
         if path.is_root:
             if confirm_delete == 1:
                 return await self._delete_container_contents()
