@@ -40,6 +40,7 @@ RUN mkdir -p /code
 WORKDIR /code
 
 RUN pip install -U pip
+RUN pip install setuptools==30.4.0
 
 COPY ./requirements.txt /code/
 
