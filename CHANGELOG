@@ -2,6 +2,15 @@
 ChangeLog
 *********
 
+0.29.0 (2016-12-14)
+===================
+- Feature: WaterButler now uses the V2 APIs for both Dropbox and Figshare.
+- Feature: Add a created timestamp to osfstorage file metadata.
+- Feature: Support the new Mumbai and Ohio regions in Amazon S3. (thanks, @erinspace!)
+- Feature: The server logs a message on startup, instead of just staring blankly at you.
+- Fix: Start appending extensions to Google Doc files to disambiguate identically-named
+files. e.g. foo.docx vs. foo.gsheet
+
 0.28.1 (2016-12-13)
 ===================
 - Pin setuptools to v30.4.0 to avoid package-namespace-related breakage.

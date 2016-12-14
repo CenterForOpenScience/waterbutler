@@ -28,6 +28,7 @@ class MockFileMetadata(metadata.BaseFileMetadata):
     path = '/Foo.name'
     modified = 'never'
     modified_utc = 'never'
+    created_utc = 'always'
     content_type = 'application/octet-stream'
 
     def __init__(self):
@@ -52,6 +53,7 @@ class MockFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
     version_identifier = 'versions'
     modified = 'never'
     modified_utc = 'never'
+    created_utc = 'always'
 
     def __init__(self):
         super().__init__({})

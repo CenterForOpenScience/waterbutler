@@ -1,4 +1,5 @@
 from waterbutler.core import metadata
+import waterbutler.core.utils as core_utils
 
 from waterbutler.providers.googledrive import utils
 
@@ -12,14 +13,6 @@ class BaseGoogleDriveMetadata(metadata.BaseMetadata):
     @property
     def provider(self):
         return 'googledrive'
-
-    @property
-    def path(self):
-        return '/' + self._path.raw_path
-
-    @property
-    def materialized_path(self):
-        return str(self._path)
 
     @property
     def extra(self):
@@ -41,6 +34,14 @@ class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMeta
         return self.raw['title']
 
     @property
+    def path(self):
+        return '/' + self._path.raw_path
+
+    @property
+    def materialized_path(self):
+        return str(self._path)
+
+    @property
     def export_name(self):
         return self.name
 
@@ -60,6 +61,22 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
         return title
 
     @property
+    def path(self):
+        path = '/' + self._path.raw_path
+        if self.is_google_doc:
+            ext = utils.get_extension(self.raw)
+            path += ext
+        return path
+
+    @property
+    def materialized_path(self):
+        materialized = str(self._path)
+        if self.is_google_doc:
+            ext = utils.get_extension(self.raw)
+            materialized += ext
+        return materialized
+
+    @property
     def size(self):
         # Google docs(Docs,sheets, slides, etc)  don't have file size before they are exported
         return self.raw.get('fileSize')
@@ -67,6 +84,10 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     @property
     def modified(self):
         return self.raw['modifiedDate']
+
+    @property
+    def created_utc(self):
+        return core_utils.normalize_datetime(self.raw['createdDate'])
 
     @property
     def content_type(self):
@@ -109,6 +130,22 @@ class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
             ext = utils.get_extension(self.raw)
             title += ext
         return title
+
+    @property
+    def path(self):
+        path = '/' + self._path.raw_path
+        if self.is_google_doc:
+            ext = utils.get_extension(self.raw)
+            path += ext
+        return path
+
+    @property
+    def materialized_path(self):
+        materialized = str(self._path)
+        if self.is_google_doc:
+            ext = utils.get_extension(self.raw)
+            materialized += ext
+        return materialized
 
     @property
     def size(self):

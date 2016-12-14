@@ -71,6 +71,10 @@ class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
         return self.commit['author']['date']
 
     @property
+    def created_utc(self):
+        return None
+
+    @property
     def content_type(self):
         return None
 
@@ -146,6 +150,10 @@ class GitHubRevision(metadata.BaseFileRevisionMetadata):
     @property
     def modified(self):
         return self.raw['commit']['author']['date']
+
+    @property
+    def created_utc(self):
+        return None
 
     @property
     def version(self):
