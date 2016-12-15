@@ -122,8 +122,7 @@ def settings():
         'owner': 'cat',
         'repo': 'food',
         'repo_id': '123',
-        'base_url': 'http://base.url',
-        'view_url': 'http://view.url',
+        'host': 'http://base.url',
     }
 
 
