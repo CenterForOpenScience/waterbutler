@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.29.1 (2017-01-04)
+===================
+- Happy New Year!
+- Fix: Be more ruthless about fixing setuptools breakage in Dockerfile. (thanks, @cwisecarver!)
+
 0.29.0 (2016-12-14)
 ===================
 - Feature: WaterButler now uses the V2 APIs for both Dropbox and Figshare.
