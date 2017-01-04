@@ -40,6 +40,8 @@ RUN mkdir -p /code
 WORKDIR /code
 
 RUN pip install -U pip
+RUN pip uninstall -y setuptools
+RUN rm -f /usr/local/lib/python3.5/site-packages/waterbutler-nspkg.pth
 RUN pip install setuptools==30.4.0
 
 COPY ./requirements.txt /code/
