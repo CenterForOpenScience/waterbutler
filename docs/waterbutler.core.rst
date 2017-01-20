@@ -33,6 +33,14 @@ waterbutler.core.metadata module
     :undoc-members:
     :show-inheritance:
 
+waterbutler.core.path module
+--------------------------------
+
+.. automodule:: waterbutler.core.path
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 waterbutler.core.signing module
 -------------------------------
 

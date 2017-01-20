@@ -29,9 +29,11 @@ def test_file_metadata_drive(basepath):
     assert parsed.size == item['fileSize']
     assert parsed.modified == item['modifiedDate']
     assert parsed.content_type == item['mimeType']
-    assert parsed.extra == {'revisionId': item['version'], 'viewUrl': item['alternateLink']}
+    assert parsed.extra == {'revisionId': item['version'], 'webView': item['alternateLink']}
     assert parsed.path == '/' + os.path.join(*[x.raw for x in path.parts])
     assert parsed.materialized_path == str(path)
+    assert parsed.is_google_doc == False
+    assert parsed.export_name == item['title']
 
 
 def test_file_metadata_drive_slashes(basepath):
@@ -46,9 +48,11 @@ def test_file_metadata_drive_slashes(basepath):
     assert parsed.size == item['fileSize']
     assert parsed.modified == item['modifiedDate']
     assert parsed.content_type == item['mimeType']
-    assert parsed.extra == {'revisionId': item['version'], 'viewUrl': item['alternateLink']}
+    assert parsed.extra == {'revisionId': item['version'], 'webView': item['alternateLink']}
     assert parsed.path == '/' + os.path.join(*[x.raw for x in path.parts])
     assert parsed.materialized_path == str(path)
+    assert parsed.is_google_doc == False
+    assert parsed.export_name == item['title']
 
 
 def test_file_metadata_docs(basepath):
@@ -57,7 +61,9 @@ def test_file_metadata_docs(basepath):
     parsed = GoogleDriveFileMetadata(item, path)
 
     assert parsed.name == item['title'] + '.gdoc'
-    assert parsed.extra == {'revisionId': item['version'], 'downloadExt': '.docx', 'viewUrl': item['alternateLink']}
+    assert parsed.extra == {'revisionId': item['version'], 'downloadExt': '.docx', 'webView': item['alternateLink']}
+    assert parsed.is_google_doc == True
+    assert parsed.export_name == item['title'] + '.docx'
 
 
 def test_folder_metadata():

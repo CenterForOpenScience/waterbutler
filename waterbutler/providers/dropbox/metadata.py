@@ -19,49 +19,43 @@ class BaseDropboxMetadata(metadata.BaseMetadata):
             path = path[len(self._folder):]
         return super().build_path(path)
 
-    @property
-    def extra(self):
-        return {
-            'revisionId': self.raw['rev']
-        }
-
 
 class DropboxFolderMetadata(BaseDropboxMetadata, metadata.BaseFolderMetadata):
 
     @property
     def name(self):
-        return os.path.split(self.raw['path'])[1]
+        return os.path.split(self.raw['path_display'])[1]
 
     @property
     def path(self):
-        return self.build_path(self.raw['path'])
+        return self.build_path(self.raw['path_display'])
 
 
 class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
 
-    def __init__(self, raw, folder, view_url=None):
-        super().__init__(raw, folder)
-        self.view_url = view_url
-
     @property
     def name(self):
-        return os.path.split(self.raw['path'])[1]
+        return os.path.split(self.raw['path_display'])[1]
 
     @property
     def path(self):
-        return self.build_path(self.raw['path'])
+        return self.build_path(self.raw['path_display'])
 
     @property
     def size(self):
-        return self.raw['bytes']
+        return self.raw['size']
 
     @property
     def modified(self):
-        return self.raw['modified']
+        return self.raw['server_modified']
+
+    @property
+    def created_utc(self):
+        return None
 
     @property
     def content_type(self):
-        return self.raw['mime_type']
+        return None
 
     @property
     def etag(self):
@@ -69,9 +63,10 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
 
     @property
     def extra(self):
-        return dict(super().extra, **{
-            'viewUrl': self.view_url
-        })
+        return {
+            'revisionId': self.raw['rev'],
+            'id': self.raw['id']
+        }
 
 
 # TODO dates!
@@ -87,4 +82,11 @@ class DropboxRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def modified(self):
-        return self.raw['modified']
+        return self.raw['server_modified']
+
+    @property
+    def extra(self):
+        return {
+            'revisionId': self.raw['rev'],
+            'id': self.raw['id']
+        }

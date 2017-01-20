@@ -8,7 +8,7 @@ WaterButler
     :height: 100px
     :alt: WaterButler
 
-`WaterButler <http://www.waterbutler.io>`_ is a Python web application for interacting with various file storage services via a single RESTful API, developed at `The Center for Open Science <http://cos.io>`_.  
+`WaterButler <http://www.waterbutler.io>`_ is a Python web application for interacting with various file storage services via a single RESTful API, developed at `The Center for Open Science <http://cos.io>`_.
 
 Quick links
 -----------
@@ -28,11 +28,12 @@ This documentation is also available in `PDF and Epub formats
     :maxdepth: 2
 
     gettingstarted
+    overview
     api
-    releases
     providers
-    faq
-    streams
+    adding-providers
+    code
+    releases
 
 * :ref:`genindex`
 * :ref:`modindex`

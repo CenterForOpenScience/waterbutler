@@ -1,35 +1,38 @@
+import os
 import asyncio
+import logging
 
 import tornado.web
 import tornado.httpserver
 import tornado.platform.asyncio
 
+from raven.contrib.tornado import AsyncSentryClient
+
+import waterbutler
 from waterbutler import settings
-from waterbutler.core.utils import AioSentryClient
-from waterbutler.server.handlers import crud
-from waterbutler.server.handlers import copy
-from waterbutler.server.handlers import move
-from waterbutler.server.handlers import status
-from waterbutler.server.handlers import metadata
-from waterbutler.server.handlers import revisions
-from waterbutler.server.handlers import zip
+from waterbutler.server.api import v0
+from waterbutler.server.api import v1
+from waterbutler.server import handlers
 from waterbutler.server import settings as server_settings
+
+logger = logging.getLogger(__name__)
+
+
+def api_to_handlers(api):
+    return [
+        (os.path.join('/', api.PREFIX, pattern.lstrip('/')), handler)
+        for (pattern, handler) in api.HANDLERS
+    ]
 
 
 def make_app(debug):
     app = tornado.web.Application(
-        [
-            (r'/file', crud.CRUDHandler),
-            (r'/data', metadata.MetadataHandler),
-            (r'/status', status.StatusHandler),
-            (r'/ops/copy', copy.CopyHandler),
-            (r'/ops/move', move.MoveHandler),
-            (r'/revisions', revisions.RevisionHandler),
-            (r'/zip', zip.ZipHandler),
-        ],
+        api_to_handlers(v0) +
+        api_to_handlers(v1) +
+        [(r'/status', handlers.StatusHandler)],
         debug=debug,
     )
-    app.sentry_client = AioSentryClient(settings.get('SENTRY_DSN', None))
+    app.sentry_client = AsyncSentryClient(settings.SENTRY_DSN, release=waterbutler.__version__)
     return app
 
 
@@ -52,6 +55,8 @@ def serve():
         max_body_size=server_settings.MAX_BODY_SIZE,
         ssl_options=ssl_options,
     )
+
+    logger.info("Listening on {0}:{1}".format(server_settings.ADDRESS, server_settings.PORT))
 
     asyncio.get_event_loop().set_debug(server_settings.DEBUG)
     asyncio.get_event_loop().run_forever()

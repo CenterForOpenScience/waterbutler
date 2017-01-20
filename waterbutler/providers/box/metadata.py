@@ -1,4 +1,4 @@
-from waterbutler.core import metadata
+from waterbutler.core import metadata, utils
 
 
 class BaseBoxMetadata(metadata.BaseMetadata):
@@ -29,10 +29,6 @@ class BoxFolderMetadata(BaseBoxMetadata, metadata.BaseFolderMetadata):
 
 class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
 
-    def __init__(self, raw, path_obj, view_url=None):
-        super().__init__(raw, path_obj)
-        self.view_url = view_url
-
     @property
     def name(self):
         return self.raw['name']
@@ -50,6 +46,10 @@ class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
         return self.raw.get('modified_at')
 
     @property
+    def created_utc(self):
+        return utils.normalize_datetime(self.raw.get('created_at'))
+
+    @property
     def content_type(self):
         return None
 
@@ -57,7 +57,6 @@ class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
     def extra(self):
         return {
             'etag': self.raw.get('etag'),
-            'viewUrl': self.view_url
         }
 
     @property

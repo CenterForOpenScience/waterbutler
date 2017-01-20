@@ -1,21 +1,22 @@
 import os
 import http
 import json
-import asyncio
 
 
 DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request to {response.url}'
 
 
-class PluginError(Exception):
-    """The WaterButler related errors raised
-    from a plugins should inherit from PluginError
+class WaterButlerError(Exception):
+    """The base exception that all other are a subclass of.
+    Provides str repr and additional helper to convert exceptions
+    to HTTPResponses.
     """
 
-    def __init__(self, message, code=500, log_message=None):
+    def __init__(self, message, code=500, log_message=None, is_user_error=False):
         super().__init__(code)
         self.code = code
         self.log_message = log_message
+        self.is_user_error = is_user_error
         if isinstance(message, dict):
             self.data = message
             self.message = json.dumps(message)
@@ -26,9 +27,26 @@ class PluginError(Exception):
     def __repr__(self):
         return '<{}({}, {})>'.format(self.__class__.__name__, self.code, self.message)
 
+    def __str__(self):
+        return '{}, {}'.format(self.code, self.message)
+
+
+class InvalidParameters(WaterButlerError):
+    """Errors regarding incorrect data being sent to a method should raise either this
+    Exception or a subclass thereof
+    """
+    def __init__(self, message, code=400):
+        super().__init__(message, code=code)
+
+
+class PluginError(WaterButlerError):
+    """WaterButler related errors raised
+    from a plugins should inherit from PluginError
+    """
+
 
 class AuthError(PluginError):
-    """The WaterButler related errors raised
+    """WaterButler related errors raised
     from a :class:`waterbutler.core.auth` should
     inherit from AuthError
     """
@@ -39,6 +57,11 @@ class ProviderError(PluginError):
     from a :class:`waterbutler.core.provider` should
     inherit from ProviderError
     """
+
+
+class ProviderNotFound(ProviderError):
+    def __init__(self, provider):
+        super().__init__('Provider "{}" not found'.format(provider), code=404)
 
 
 class CopyError(ProviderError):
@@ -82,30 +105,52 @@ class RevisionsError(ProviderError):
 
 
 class FolderNamingConflict(ProviderError):
-    def __init__(self, path, name=None):
+    def __init__(self, path, name=None, is_user_error=True):
         super().__init__(
             'Cannot create folder "{name}" because a file or folder already exists at path "{path}"'.format(
                 path=path,
                 name=name or os.path.split(path.strip('/'))[1]
-            ), code=409
+            ), code=409, is_user_error=is_user_error,
+        )
+
+
+class NamingConflict(ProviderError):
+    def __init__(self, path, name=None, is_user_error=True):
+        super().__init__(
+            'Cannot complete action: file or folder "{name}" already exists in this location'.format(
+                name=name or path.name
+            ), code=409, is_user_error=is_user_error,
         )
 
 
 class NotFoundError(ProviderError):
-    def __init__(self, path):
+    def __init__(self, path, is_user_error=True):
         super().__init__(
             'Could not retrieve file or directory {}'.format(path),
             code=http.client.NOT_FOUND,
+            is_user_error=is_user_error,
         )
 
 
 class InvalidPathError(ProviderError):
-    def __init__(self, message):
-        super().__init__(message, code=http.client.BAD_REQUEST)
+    def __init__(self, message, is_user_error=True):
+        super().__init__(message, code=http.client.BAD_REQUEST, is_user_error=is_user_error)
 
 
-@asyncio.coroutine
-def exception_from_response(resp, error=ProviderError, **kwargs):
+class OverwriteSelfError(InvalidParameters):
+    def __init__(self, path):
+        super().__init__('Unable to move or copy \'{}\'. Moving or copying a file or '
+                         'folder onto itself is not supported.'.format(path))
+
+
+class UnsupportedOperationError(ProviderError):
+    def __init__(self, message, is_user_error=True):
+        if not message:
+            message = 'The requested operation is not supported by WaterButler.'
+        super().__init__(message, code=http.client.FORBIDDEN, is_user_error=is_user_error)
+
+
+async def exception_from_response(resp, error=ProviderError, **kwargs):
     """Build and return, not raise, an exception from a response object
 
     :param Response resp: An aiohttp.Response stream with a non 200 range status
@@ -116,13 +161,13 @@ def exception_from_response(resp, error=ProviderError, **kwargs):
     """
     try:
         # Try to make an exception from our received json
-        data = yield from resp.json()
+        data = await resp.json()
         return error(data, code=resp.status)
     except Exception:
         pass
 
     try:
-        data = yield from resp.read()
+        data = await resp.read()
         return error({'response': data.decode('utf-8')}, code=resp.status)
     except TypeError:
         pass

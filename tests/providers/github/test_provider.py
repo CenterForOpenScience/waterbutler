@@ -1,20 +1,23 @@
 import pytest
 
-from tests.utils import async
-
 import io
 import os
+import copy
 import json
 import base64
 import hashlib
+from http import client
 
 import aiohttpretty
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.provider import build_url
 
 from waterbutler.providers.github import GitHubProvider
+from waterbutler.providers.github import settings as github_settings
+from waterbutler.providers.github.provider import GitHubPath
 from waterbutler.providers.github.metadata import GitHubRevision
 from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
 from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
@@ -443,6 +446,22 @@ def content_repo_metadata_root_file_txt():
 
 
 @pytest.fixture
+def nested_tree_metadata():
+    return {
+        'tree': [
+            {'path': 'alpha.txt', 'type': 'blob', 'mode': '100644', 'size': 11, 'url': 'https://api.github.com/repos/felliott/wb-testing/git/blobs/3e72bca321b45548d7a7cfd1e8570afec6e5f2f1', 'sha': '3e72bca321b45548d7a7cfd1e8570afec6e5f2f1'},
+            {'path': 'beta', 'type': 'tree', 'mode': '040000', 'url': 'https://api.github.com/repos/felliott/wb-testing/git/trees/48cf869b1f09e4b0cfa765ce3c0812fb719973e9', 'sha': '48cf869b1f09e4b0cfa765ce3c0812fb719973e9'},
+            {'path': 'beta/gamma.txt', 'type': 'blob', 'mode': '100644', 'size': 11, 'url': 'https://api.github.com/repos/felliott/wb-testing/git/blobs/f59573b4169cee7da926e6508961438952ba0aaf', 'sha': 'f59573b4169cee7da926e6508961438952ba0aaf'},
+            {'path': 'beta/delta', 'type': 'tree', 'mode': '040000', 'url': 'https://api.github.com/repos/felliott/wb-testing/git/trees/bb0c11bb86d7fc4807f6c8dc2a2bb9513802bf33','sha': 'bb0c11bb86d7fc4807f6c8dc2a2bb9513802bf33'},
+            {'path': 'beta/delta/epsilon.txt', 'type': 'blob', 'mode': '100644', 'size': 13, 'url': 'https://api.github.com/repos/felliott/wb-testing/git/blobs/44b20789279ae90266791ba07f87a3ab42264690', 'sha': '44b20789279ae90266791ba07f87a3ab42264690'},
+        ],
+        'truncated': False,
+        'url': 'https://api.github.com/repos/felliott/wb-testing/git/trees/076cc413680157d4dea4c17831687873998a4928',
+        'sha': '076cc413680157d4dea4c17831687873998a4928'
+    }
+
+
+@pytest.fixture
 def provider(auth, credentials, settings, repo_metadata):
     provider = GitHubProvider(auth, credentials, settings)
     provider._repo = repo_metadata
@@ -452,11 +471,11 @@ def provider(auth, credentials, settings, repo_metadata):
 
 class TestHelpers:
 
-    def test_build_repo_url(self, provider, settings):
+    async def test_build_repo_url(self, provider, settings):
         expected = provider.build_url('repos', settings['owner'], settings['repo'], 'contents')
         assert provider.build_repo_url('contents') == expected
 
-    def test_committer(self, auth, provider):
+    async def test_committer(self, auth, provider):
         expected = {
             'name': auth['name'],
             'email': auth['email'],
@@ -466,52 +485,133 @@ class TestHelpers:
 
 class TestValidatePath:
 
-    @async
-    def test_validate_path(self, provider):
-        path = yield from provider.validate_path('/this/is/my/path')
+    def test_child_gets_branch(self):
+        parent = GitHubPath('/', _ids=[('master', None)], folder=True)
+
+        child_file = parent.child('childfile', folder=False)
+        assert child_file.identifier[0] == 'master'
+
+        child_folder = parent.child('childfolder', folder=True)
+        assert child_folder.identifier[0] == 'master'
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v1_path_file(self, provider, branch_metadata, repo_tree_metadata_root):
+        branch_url = provider.build_repo_url('branches', provider.default_branch)
+        tree_url = provider.build_repo_url('git', 'trees',
+                                           branch_metadata['commit']['commit']['tree']['sha'],
+                                           recursive=1)
+
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+        aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
+
+        blob_path = 'file.txt'
+
+        try:
+            wb_path_v1 = await provider.validate_v1_path('/' + blob_path)
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.validate_v1_path('/' + blob_path + '/')
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = await provider.validate_path('/' + blob_path)
+
+        assert wb_path_v1 == wb_path_v0
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v1_path_folder(self, provider, branch_metadata, repo_tree_metadata_root):
+        branch_url = provider.build_repo_url('branches', provider.default_branch)
+        tree_url = provider.build_repo_url('git', 'trees',
+                                           branch_metadata['commit']['commit']['tree']['sha'],
+                                           recursive=1)
+
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+        aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
+
+        tree_path = 'level1'
+
+        try:
+            wb_path_v1 = await provider.validate_v1_path('/' + tree_path + '/')
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.validate_v1_path('/' + tree_path)
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = await provider.validate_path('/' + tree_path + '/')
+
+        assert wb_path_v1 == wb_path_v0
+
+    @pytest.mark.asyncio
+    async def test_reject_multiargs(self, provider):
+
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            await provider.validate_v1_path('/foo', ref=['bar','baz'])
+
+        assert exc.value.code == client.BAD_REQUEST
+
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            await provider.validate_path('/foo', ref=['bar','baz'])
+
+        assert exc.value.code == client.BAD_REQUEST
+
+    @pytest.mark.asyncio
+    async def test_validate_path(self, provider):
+        path = await provider.validate_path('/this/is/my/path')
 
         assert path.is_dir is False
         assert path.is_file is True
         assert path.name == 'path'
         assert isinstance(path.identifier, tuple)
         assert path.identifier == (provider.default_branch, None)
+        assert path.parts[0].identifier ==  (provider.default_branch, None)
 
-    @async
-    def test_validate_path_passes_branch(self, provider):
-        path = yield from provider.validate_path('/this/is/my/path', branch='NotMaster')
 
-        assert path.is_dir is False
-        assert path.is_file is True
-        assert path.name == 'path'
-        assert isinstance(path.identifier, tuple)
-        assert path.identifier == ('NotMaster', None)
-
-    @async
-    def test_validate_path_passes_ref(self, provider):
-        path = yield from provider.validate_path('/this/is/my/path', ref='NotMaster')
+    @pytest.mark.asyncio
+    async def test_validate_path_passes_branch(self, provider):
+        path = await provider.validate_path('/this/is/my/path', branch='NotMaster')
 
         assert path.is_dir is False
         assert path.is_file is True
         assert path.name == 'path'
         assert isinstance(path.identifier, tuple)
         assert path.identifier == ('NotMaster', None)
+        assert path.parts[0].identifier ==  ('NotMaster', None)
 
-    @async
-    def test_validate_path_passes_file_sha(self, provider):
-        path = yield from provider.validate_path('/this/is/my/path', fileSha='Thisisasha')
+    @pytest.mark.asyncio
+    async def test_validate_path_passes_ref(self, provider):
+        path = await provider.validate_path('/this/is/my/path', ref='NotMaster')
+
+        assert path.is_dir is False
+        assert path.is_file is True
+        assert path.name == 'path'
+        assert isinstance(path.identifier, tuple)
+        assert path.identifier == ('NotMaster', None)
+        assert path.parts[0].identifier ==  ('NotMaster', None)
+
+    @pytest.mark.asyncio
+    async def test_validate_path_passes_file_sha(self, provider):
+        path = await provider.validate_path('/this/is/my/path', fileSha='Thisisasha')
 
         assert path.is_dir is False
         assert path.is_file is True
         assert path.name == 'path'
         assert isinstance(path.identifier, tuple)
         assert path.identifier == (provider.default_branch, 'Thisisasha')
+        assert path.parts[0].identifier ==  (provider.default_branch, None)
 
 
 class TestCRUD:
 
-    # @async
+    # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
-    # def test_download_by_file_sha(self, provider, content_repo_metadata_root_file_txt):
+    # async def test_download_by_file_sha(self, provider, content_repo_metadata_root_file_txt):
     #     ref = hashlib.sha1().hexdigest()
     #     url = provider.build_repo_url('git', 'refs', 'heads', 'master')
     #     path = WaterButlerPath('/file.txt', _ids=(None, ('master', ref)))
@@ -519,68 +619,88 @@ class TestCRUD:
     #     aiohttpretty.register_uri('GET', url, body=b'delicious')
     #     aiohttpretty.register_json_uri('GET', url, body={'object': {'sha': ref}})
 
-    #     result = yield from provider.download(path)
+    #     result = await provider.download(path)
 
-    #     content = yield from result.read()
+    #     content = await result.read()
     #     assert content == b'delicious'
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_download_by_path(self, provider, repo_tree_metadata_root):
+    async def test_download_by_path(self, provider, repo_tree_metadata_root):
         ref = hashlib.sha1().hexdigest()
         file_sha = repo_tree_metadata_root['tree'][0]['sha']
-        path = yield from provider.validate_path('/file.txt')
+        path = await provider.validate_path('/file.txt')
 
         url = provider.build_repo_url('git', 'blobs', file_sha)
         tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
         latest_sha_url = provider.build_repo_url('git', 'refs', 'heads', path.identifier[0])
+        commit_url = provider.build_repo_url('commits', path=path.path.lstrip('/'), sha=path.identifier[0])
 
         aiohttpretty.register_uri('GET', url, body=b'delicious')
         aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
-        aiohttpretty.register_json_uri('GET', latest_sha_url, body={'object': {'sha': ref}})
+        aiohttpretty.register_json_uri('GET', commit_url, body=[{'commit': {'tree': {'sha': ref}}}])
 
-        result = yield from provider.download(path)
-        content = yield from result.read()
+        result = await provider.download(path)
+        content = await result.read()
         assert content == b'delicious'
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_download_by_path_ref_branch(self, provider, repo_tree_metadata_root):
+    async def test_download_by_path_ref_branch(self, provider, repo_tree_metadata_root):
         ref = hashlib.sha1().hexdigest()
         file_sha = repo_tree_metadata_root['tree'][0]['sha']
-        path = yield from provider.validate_path('/file.txt', branch='other_branch')
+        path = await provider.validate_path('/file.txt', branch='other_branch')
 
         url = provider.build_repo_url('git', 'blobs', file_sha)
         tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
-        latest_sha_url = provider.build_repo_url('git', 'refs', 'heads', path.identifier[0])
+        commit_url = provider.build_repo_url('commits', path=path.path.lstrip('/'), sha=path.identifier[0])
 
         aiohttpretty.register_uri('GET', url, body=b'delicious')
         aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
-        aiohttpretty.register_json_uri('GET', latest_sha_url, body={'object': {'sha': ref}})
+        aiohttpretty.register_json_uri('GET', commit_url, body=[{'commit': {'tree': {'sha': ref}}}])
 
-        result = yield from provider.download(path)
-        content = yield from result.read()
+        result = await provider.download(path)
+        content = await result.read()
         assert content == b'delicious'
 
-    # @async
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_by_path_revision(self, provider, repo_tree_metadata_root):
+        ref = hashlib.sha1().hexdigest()
+        file_sha = repo_tree_metadata_root['tree'][0]['sha']
+        path = await provider.validate_path('/file.txt', branch='other_branch')
+
+        url = provider.build_repo_url('git', 'blobs', file_sha)
+        tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
+        commit_url = provider.build_repo_url('commits', path=path.path.lstrip('/'), sha='Just a test')
+
+        aiohttpretty.register_uri('GET', url, body=b'delicious')
+        aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
+        aiohttpretty.register_json_uri('GET', commit_url, body=[{'commit': {'tree': {'sha': ref}}}])
+
+        result = await provider.download(path, revision='Just a test')
+        content = await result.read()
+        assert content == b'delicious'
+
+    # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
-    # def test_download_bad_status(self, provider):
+    # async def test_download_bad_status(self, provider):
     #     ref = hashlib.sha1().hexdigest()
     #     url = provider.build_repo_url('git', 'blobs', ref)
     #     aiohttpretty.register_uri('GET', url, body=b'delicious', status=418)
     #     with pytest.raises(exceptions.DownloadError):
-    #         yield from provider.download('', fileSha=ref)
+    #         await provider.download('', fileSha=ref)
 
-    # @async
+    # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
-    # def test_upload_create(self, provider, upload_response, file_content, file_stream):
+    # async def test_upload_create(self, provider, upload_response, file_content, file_stream):
     #     message = 'so hungry'
     #     path = upload_response['content']['path'][::-1]
     #     metadata_url = provider.build_repo_url('contents', os.path.dirname(path))
     #     aiohttpretty.register_json_uri('GET', metadata_url, body=[upload_response['content']], status=200)
     #     upload_url = provider.build_repo_url('contents', path)
     #     aiohttpretty.register_json_uri('PUT', upload_url, body=upload_response, status=201)
-    #     yield from provider.upload(file_stream, path, message)
+    #     await provider.upload(file_stream, path, message)
     #     expected_data = {
     #         'path': path,
     #         'message': message,
@@ -590,9 +710,9 @@ class TestCRUD:
     #     assert aiohttpretty.has_call(method='GET', uri=metadata_url)
     #     assert aiohttpretty.has_call(method='PUT', uri=upload_url, data=json.dumps(expected_data))
     #
-    # @async
+    # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
-    # def test_upload_update(self, provider, upload_response, file_content, file_stream):
+    # async def test_upload_update(self, provider, upload_response, file_content, file_stream):
     #     message = 'so hungry'
     #     sha = upload_response['content']['sha']
     #     path = '/' + upload_response['content']['path']
@@ -603,7 +723,7 @@ class TestCRUD:
     #     aiohttpretty.register_json_uri('PUT', upload_url, body=upload_response)
     #     aiohttpretty.register_json_uri('GET', metadata_url, body=[upload_response['content']])
     #
-    #     yield from provider.upload(file_stream, path, message)
+    #     await provider.upload(file_stream, path, message)
     #
     #     expected_data = {
     #         'path': path,
@@ -616,16 +736,16 @@ class TestCRUD:
     #     assert aiohttpretty.has_call(method='GET', uri=metadata_url)
     #     assert aiohttpretty.has_call(method='PUT', uri=upload_url, data=json.dumps(expected_data))
 
-    # @async
+    # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
-    # def test_delete_with_branch(self, provider, repo_contents):
+    # async def test_delete_with_branch(self, provider, repo_contents):
     #     path = os.path.join('/', repo_contents[0]['path'])
     #     sha = repo_contents[0]['sha']
     #     branch = 'master'
     #     message = 'deleted'
     #     url = provider.build_repo_url('contents', path)
     #     aiohttpretty.register_json_uri('DELETE', url)
-    #     yield from provider.delete(path, message, sha, branch=branch)
+    #     await provider.delete(path, message, sha, branch=branch)
     #     expected_data = {
     #         'message': message,
     #         'sha': sha,
@@ -635,15 +755,15 @@ class TestCRUD:
     #
     #     assert aiohttpretty.has_call(method='DELETE', uri=url, data=json.dumps(expected_data))
     #
-    # @async
+    # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
-    # def test_delete_without_branch(self, provider, repo_contents):
+    # async def test_delete_without_branch(self, provider, repo_contents):
     #     path = repo_contents[0]['path']
     #     sha = repo_contents[0]['sha']
     #     message = 'deleted'
     #     url = provider.build_repo_url('contents', path)
     #     aiohttpretty.register_json_uri('DELETE', url)
-    #     yield from provider.delete(path, message, sha)
+    #     await provider.delete(path, message, sha)
     #     expected_data = {
     #         'message': message,
     #         'sha': sha,
@@ -655,80 +775,102 @@ class TestCRUD:
 
 class TestMetadata:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_file(self, provider, repo_metadata, repo_tree_metadata_root):
+    async def test_metadata_file(self, provider, repo_metadata, repo_tree_metadata_root):
         ref = hashlib.sha1().hexdigest()
-        path = yield from provider.validate_path('/file.txt')
+        path = await provider.validate_path('/file.txt')
 
         tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
-        latest_sha_url = provider.build_repo_url('git', 'refs', 'heads', path.identifier[0])
+        commit_url = provider.build_repo_url('commits', path=path.path.lstrip('/'), sha=path.identifier[0])
 
         aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
-        aiohttpretty.register_json_uri('GET', latest_sha_url, body={'object': {'sha': ref}})
+        aiohttpretty.register_json_uri('GET', commit_url, body=[{
+            'commit': {
+                'tree': {'sha': ref},
+                'author': {'date': '1970-01-02T03:04:05Z'}
+            },
+        }])
 
-        result = yield from provider.metadata(path)
+        result = await provider.metadata(path)
         item = repo_tree_metadata_root['tree'][0]
-        view_url = provider.build_view_url(path.identifier[0], path.path)
+        web_view = provider._web_view(path=path)
 
-        assert result == GitHubFileTreeMetadata(item, view_url=view_url)
+        assert result == GitHubFileTreeMetadata(item, web_view=web_view, commit={
+            'tree': {'sha': ref}, 'author': {'date': '1970-01-02T03:04:05Z'}
+        }, ref=path.identifier[0])
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata_doesnt_exist(self, provider, repo_metadata, repo_tree_metadata_root):
+        ref = hashlib.sha1().hexdigest()
+        path = await provider.validate_path('/file.txt')
+
+        tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
+        commit_url = provider.build_repo_url('commits', path=path.path.lstrip('/'), sha=path.identifier[0])
+
+        aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
+        aiohttpretty.register_json_uri('GET', commit_url, body=[])
+
+        with pytest.raises(exceptions.NotFoundError):
+            await provider.metadata(path)
 
     # TODO: Additional Tests
-    # def test_metadata_root_file_txt_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
-    # def test_metadata_root_file_txt_commit_sha(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
+    # async def test_metadata_root_file_txt_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
+    # async def test_metadata_root_file_txt_commit_sha(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_metadata_folder_root(self, provider, repo_metadata, content_repo_metadata_root):
-        path = yield from provider.validate_path('/')
+    async def test_metadata_folder_root(self, provider, repo_metadata, content_repo_metadata_root):
+        path = await provider.validate_path('/')
 
         url = provider.build_repo_url('contents', path.path, ref=provider.default_branch)
         aiohttpretty.register_json_uri('GET', url, body=content_repo_metadata_root)
 
-        result = yield from provider.metadata(path)
+        result = await provider.metadata(path)
 
         ret = []
         for item in content_repo_metadata_root:
             if item['type'] == 'dir':
-                ret.append(GitHubFolderContentMetadata(item))
+                ret.append(GitHubFolderContentMetadata(item, ref=provider.default_branch))
             else:
-                ret.append(GitHubFileContentMetadata(item))
+                ret.append(GitHubFileContentMetadata(item, web_view=item['html_url'], ref=provider.default_branch))
 
         assert result == ret
 
     # TODO: Additional Tests
-    # def test_metadata_non_root_folder(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
-    # def test_metadata_non_root_folder_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
-    # def test_metadata_non_root_folder_commit_sha(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
+    # async def test_metadata_non_root_folder(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
+    # async def test_metadata_non_root_folder_branch(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
+    # async def test_metadata_non_root_folder_commit_sha(self, provider, repo_metadata, branch_metadata, repo_metadata_root):
 
 
 class TestCreateFolder:
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_errors_out(self, provider, repo_metadata):
-        path = yield from provider.validate_path('/Imarealboy/')
+    async def test_errors_out(self, provider, repo_metadata):
+        path = await provider.validate_path('/Imarealboy/')
         url = provider.build_repo_url('contents', path.child('.gitkeep').path)
 
         aiohttpretty.register_uri('PUT', url, status=400)
 
         with pytest.raises(exceptions.CreateFolderError) as e:
-            yield from provider.create_folder(path)
+            await provider.create_folder(path)
 
         assert e.value.code == 400
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_must_be_folder(self, provider, repo_metadata):
-        path = yield from provider.validate_path('/Imarealboy')
+    async def test_must_be_folder(self, provider, repo_metadata):
+        path = await provider.validate_path('/Imarealboy')
 
         with pytest.raises(exceptions.CreateFolderError) as e:
-            yield from provider.create_folder(path)
+            await provider.create_folder(path)
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_already_exists(self, provider, repo_metadata):
-        path = yield from provider.validate_path('/Imarealboy/')
+    async def test_already_exists(self, provider, repo_metadata):
+        path = await provider.validate_path('/Imarealboy/')
         url = provider.build_repo_url('contents', os.path.join(path.path, '.gitkeep'))
 
         aiohttpretty.register_json_uri('PUT', url, status=422, body={
@@ -736,15 +878,15 @@ class TestCreateFolder:
         })
 
         with pytest.raises(exceptions.FolderNamingConflict) as e:
-            yield from provider.create_folder(path)
+            await provider.create_folder(path)
 
         assert e.value.code == 409
         assert e.value.message == 'Cannot create folder "Imarealboy" because a file or folder already exists at path "/Imarealboy/"'
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_raises_other_422(self, provider, repo_metadata):
-        path = yield from provider.validate_path('/Imarealboy/')
+    async def test_raises_other_422(self, provider, repo_metadata):
+        path = await provider.validate_path('/Imarealboy/')
         url = provider.build_repo_url('contents', os.path.join(path.path, '.gitkeep'))
 
         aiohttpretty.register_json_uri('PUT', url, status=422, body={
@@ -752,21 +894,77 @@ class TestCreateFolder:
         })
 
         with pytest.raises(exceptions.CreateFolderError) as e:
-            yield from provider.create_folder(path)
+            await provider.create_folder(path)
 
         assert e.value.code == 422
         assert e.value.data == {'message': 'github no likey'}
 
-    @async
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    def test_returns_metadata(self, provider, repo_metadata, create_folder_response):
-        path = yield from provider.validate_path('/i/like/trains/')
+    async def test_returns_metadata(self, provider, repo_metadata, create_folder_response):
+        path = await provider.validate_path('/i/like/trains/')
         url = provider.build_repo_url('contents', os.path.join(path.path, '.gitkeep'))
 
         aiohttpretty.register_json_uri('PUT', url, status=201, body=create_folder_response)
 
-        metadata = yield from provider.create_folder(path)
+        metadata = await provider.create_folder(path)
 
         assert metadata.kind == 'folder'
         assert metadata.name == 'trains'
         assert metadata.path == '/i/like/trains/'
+
+
+class TestUtilities:
+
+    def test__path_exists_in_tree(self, provider, nested_tree_metadata):
+        _ids = [('master', '')]
+
+        assert provider._path_exists_in_tree(nested_tree_metadata['tree'], GitHubPath('/alpha.txt', _ids=_ids))
+        assert provider._path_exists_in_tree(nested_tree_metadata['tree'], GitHubPath('/beta/', _ids=_ids))
+        assert not provider._path_exists_in_tree(nested_tree_metadata['tree'], GitHubPath('/gaw-gai.txt', _ids=_ids))
+        assert not provider._path_exists_in_tree(nested_tree_metadata['tree'], GitHubPath('/kaw-kai/', _ids=_ids))
+
+    def test__remove_path_from_tree(self, provider, nested_tree_metadata):
+        _ids = [('master', '')]
+
+        simple_file_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/alpha.txt', _ids=_ids))
+        assert len(simple_file_tree) == (len(nested_tree_metadata['tree']) - 1)
+        assert 'alpha.txt' not in [x['path'] for x in simple_file_tree]
+
+        simple_folder_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/beta/', _ids=_ids))
+        assert len(simple_folder_tree) == 1
+        assert simple_folder_tree[0]['path'] == 'alpha.txt'
+
+        nested_file_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/beta/gamma.txt', _ids=_ids))
+        assert len(nested_file_tree) == (len(nested_tree_metadata['tree']) - 1)
+        assert 'beta/gamma.txt' not in [x['path'] for x in nested_file_tree]
+
+        nested_folder_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/beta/delta/', _ids=_ids))
+        assert len(nested_folder_tree) == 3
+        assert len([x for x in nested_folder_tree if x['path'].startswith('beta/delta')]) == 0
+
+        missing_file_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/bet', _ids=_ids))
+        assert missing_file_tree == nested_tree_metadata['tree']
+
+        missing_folder_tree = provider._remove_path_from_tree(nested_tree_metadata['tree'], GitHubPath('/beta/gam/', _ids=_ids))
+        assert missing_file_tree == nested_tree_metadata['tree']
+
+    def test__reparent_blobs(self, provider, nested_tree_metadata):
+        _ids = [('master', '')]
+
+        file_rename_blobs = copy.deepcopy([x for x in nested_tree_metadata['tree'] if x['path'] == 'alpha.txt'])
+        provider._reparent_blobs(file_rename_blobs, GitHubPath('/alpha.txt', _ids=_ids), GitHubPath('/zeta.txt', _ids=_ids))
+        assert len(file_rename_blobs) == 1
+        assert file_rename_blobs[0]['path'] == 'zeta.txt'
+
+        folder_rename_blobs = copy.deepcopy([x for x in nested_tree_metadata['tree'] if x['path'].startswith('beta')])
+        provider._reparent_blobs(folder_rename_blobs, GitHubPath('/beta/', _ids=_ids), GitHubPath('/theta/', _ids=_ids))
+        assert len(folder_rename_blobs) == 4  # beta/, gamma.txt, delta/, epsilon.txt
+        assert len([x for x in folder_rename_blobs if x['path'].startswith('theta/')]) == 3  # gamma.txt, delta/, epsilon.txt
+        assert len([x for x in folder_rename_blobs if x['path'] == 'theta']) == 1  # theta/
+
+
+    def test__prune_subtrees(self, provider, nested_tree_metadata):
+        pruned_tree = provider._prune_subtrees(nested_tree_metadata['tree'])
+        assert len(pruned_tree) == 3  # alpha.txt, gamma.txt, epsilon.txt
+        assert len([x for x in pruned_tree if x['type'] == 'tree']) == 0

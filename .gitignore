@@ -1,5 +1,6 @@
 # Created by .gitignore support plugin (hsz.mobi)
 
+.autoenv
 .env
 .git
 .idea
@@ -13,4 +14,6 @@ docs/_build
 
 src/
 env/
-env/
+dist/
+build/
+.cache

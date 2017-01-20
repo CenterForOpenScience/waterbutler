@@ -29,6 +29,10 @@ class CloudFilesFileMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata):
         return self.raw['last_modified']
 
     @property
+    def created_utc(self):
+        return None
+
+    @property
     def content_type(self):
         return self.raw['content_type']
 
@@ -58,6 +62,10 @@ class CloudFilesHeaderMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata
     @property
     def modified(self):
         return self.raw['Last-Modified']
+
+    @property
+    def created_utc(self):
+        return None
 
     @property
     def content_type(self):
