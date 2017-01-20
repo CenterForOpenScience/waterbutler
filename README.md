@@ -39,7 +39,7 @@ pip install virtualenv
 pip install virtualenvwrapper
 mkvirtualenv --python=python3.5 waterbutler
 pip install setuptools==30.4.0
-pip install invoke==0.11.1
+pip install invoke==0.13.0
 invoke install
 invoke server
 ```
@@ -112,9 +112,11 @@ invoke install --develop
 invoke test
 ```
 
-### Known Issues
+### Known issues
 
-Running `invoke install -d` with setuptools v31 or greater can break WaterButler.  The symptom error message is: `"AttributeError: module 'waterbutler' has no attribute '__version__'"`.  If you encounter this, you will need to remove the file `waterbutler-nspkg.pth` from your virtualenv directory, run `pip install setuptools==30.4.0`, then re-run `invoke install -d`.
+- Running `invoke install -d` with setuptools v31 or greater can break WaterButler.  The symptom error message is: `"AttributeError: module 'waterbutler' has no attribute '__version__'"`.  If you encounter this, you will need to remove the file `waterbutler-nspkg.pth` from your virtualenv directory, run `pip install setuptools==30.4.0`, then re-run `invoke install -d`.
+
+- `invoke $command` results in `'$command' did not receive all required positional arguments!`: this error message occurs when trying to run WB v0.30.0+ with `invoke<0.13.0`.  Run `pip install invoke==0.13.0`, then retry your command.
 
 ### License
 
