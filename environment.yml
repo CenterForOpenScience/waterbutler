@@ -10,8 +10,8 @@ dependencies:
 - wheel=0.29.0=py35_0
 - xz=5.0.5=1
 - zlib=1.2.8=0
-- furl=0.4.2
 - pip:
   - momoko>=2.2.3
   - psycopg2>=2.6.1
   - tornado==4.3
+  - furl==0.4.2
