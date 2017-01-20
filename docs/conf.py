@@ -41,10 +41,6 @@ coverage_ignore_functions = []
 
 html_favicon = 'favicon.ico'
 
-#latex_documents = [
-#    ('documentation', False),
-#]
-
 # HACK: sphinx has limited support for substitutions with the |version|
 # variable, but there doesn't appear to be any way to use this in a link
 # target.
