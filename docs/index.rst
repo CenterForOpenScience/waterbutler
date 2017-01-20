@@ -34,6 +34,7 @@ This documentation is also available in `PDF and Epub formats
     adding-providers
     code
     releases
+    testing
 
 * :ref:`genindex`
 * :ref:`modindex`
