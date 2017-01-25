@@ -34,6 +34,7 @@ After completing the installation of Python 3.5, you must create a virtual envir
 pip install virtualenv
 pip install virtualenvwrapper
 mkvirtualenv --python=python3.5 waterbutler
+pip install steptools==30.4.0
 pip install invoke==0.11.1
 invoke install
 invoke server
@@ -106,6 +107,12 @@ workon waterbutler
 invoke install --develop
 invoke test
 ```
+
+### Known Issues
+
+Running invoke install -d with setuptools v31 can break waterbutler.  The symptom error message is: "AttributeError:
+module 'waterbutler' has no attribute '__version__'".  If you encounter this, you will need to remove the file
+waterbutler-nspkg.pth from your virtualenv directory, run `pip install setuptools==30.4.0`, then re-run `invoke install -d`.
 
 ### License
 

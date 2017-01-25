@@ -40,6 +40,15 @@ Contributing
 
 `See CONTRIBUTING.md <https://github.com/CenterForOpenScience/waterbutler/blob/develop/CONTRIBUTING.md>`_.
 
+
+Know Issues
+___________
+
+Running invoke install -d with setuptools v31 can break waterbutler.  The symptom error message is: "AttributeError:
+module 'waterbutler' has no attribute '__version__'".  If you encounter this, you will need to remove the file
+waterbutler-nspkg.pth from your virtualenv directory, run `pip install setuptools==30.4.0`, then re-run `invoke install -d`.
+
+
 Running Tests
 -------------
 
@@ -48,3 +57,4 @@ Make sure that you already have dev-requirements
 .. code-block:: bash
 
     invoke test
+
