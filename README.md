@@ -10,14 +10,7 @@
 
 ### Documentation
 
-*Note: https://readthedocs.org/ is currently unable to build documentation for Python 3.5 projects.*  The documentation available at https://waterbutler.readthedocs.io/en/latest/ is outdated (v0.15.1). For the most up-to-date documentation, build locally. Within your checkout, run:
-
-```bash
-pip install -r doc-requirements.txt
-cd docs
-make
-open _build/html/index.html
-```
+Documentation available at https://waterbutler.readthedocs.io/en/latest/
 
 ### Setting up
 
