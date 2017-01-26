@@ -157,6 +157,10 @@ class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
         return self.raw['modifiedDate']
 
     @property
+    def created_utc(self):
+        return None
+
+    @property
     def content_type(self):
         return self.raw['mimeType']
 
