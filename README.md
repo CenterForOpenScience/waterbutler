@@ -114,7 +114,7 @@ Running `invoke install -d` with setuptools v31 or greater can break WaterButler
 
 ### License
 
-Copyright 2013-2016 Center for Open Science
+Copyright 2013-2017 Center for Open Science
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
