@@ -117,6 +117,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return self == other and (path and path.is_file)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
+        self.metrics.add('intra_move.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
 
@@ -140,6 +141,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
+        self.metrics.add('intra_copy.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
 
@@ -162,8 +164,10 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def download(self, path, revision=None, range=None, **kwargs):
         if revision and not revision.endswith(settings.DRIVE_IGNORE_VERSION):
             metadata = await self.metadata(path, revision=revision)
+            self.metrics.add('download.got_supported_revision', True)
         else:
             metadata = await self.metadata(path)
+            self.metrics.add('download.got_supported_revision', False)
 
         download_resp = await self.make_request(
             'GET',
@@ -215,7 +219,9 @@ class GoogleDriveProvider(provider.BaseProvider):
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
+        self.metrics.add('delete.is_root_delete', path.is_root)
         if path.is_root:
+            self.metrics.add('delete.root_delete_confirmed', confirm_delete == 1)
             if confirm_delete == 1:
                 await self._delete_folder_contents(path)
                 return
@@ -380,6 +386,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         something that matches ``path``.  Returns a list of dicts for each part of the path, with
         ``title``, ``mimeType``, and ``id`` keys.
         """
+        self.metrics.incr('called_resolve_path_to_ids')
         ret = start_at or [{
             'title': '',
             'mimeType': 'folder',
@@ -441,6 +448,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return ret
 
     async def _resolve_id_to_parts(self, _id, accum=None):
+        self.metrics.incr('called_resolve_id_to_parts')
         if _id == self.folder['id']:
             return [{
                 'title': '',
@@ -503,6 +511,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         # Revisions are not available for some sharing configurations. If
         # revisions list is empty, use the etag of the file plus a sentinel
         # string as a dummy revision ID.
+        self.metrics.add('handle_docs_versioning.revisions_not_supported', not revisions_data['items'])
         if not revisions_data['items']:
             # If there are no revisions use etag as vid
             item['version'] = revisions_data['etag'] + settings.DRIVE_IGNORE_VERSION

@@ -34,6 +34,12 @@ class DataverseProvider(provider.BaseProvider):
         self.doi = self.settings['doi']
         self._id = self.settings['id']
         self.name = self.settings['name']
+        self.metrics.add('host', {
+            'host': self.settings['host'],
+            'doi': self.doi,
+            'name': self.name,
+            'id': self._id,
+        })
 
         self._metadata_cache = {}
 
@@ -56,6 +62,7 @@ class DataverseProvider(provider.BaseProvider):
         :param str path: The path to a file
         :param list metadata: List of file metadata from _get_data
         """
+        self.metrics.add('validate_path.revision', revision)
         if path == '/':
             wbpath = WaterButlerPath('/')
             wbpath.revision = revision

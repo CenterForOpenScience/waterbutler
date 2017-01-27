@@ -13,6 +13,7 @@ import aiohttp
 from waterbutler import settings
 from waterbutler.core import streams
 from waterbutler.core import exceptions
+from waterbutler.core.metrics import MetricsRecord
 from waterbutler.core.utils import ZipStreamGenerator
 from waterbutler.core.utils import RequestHandlerContext
 
@@ -91,6 +92,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         self.credentials = credentials
         self.settings = settings
 
+        self.provider_metrics = MetricsRecord('provider')
+        self.provider_metrics.add('auth', auth)
+        self.metrics = self.provider_metrics.new_subrecord(self.NAME)
+
     @abc.abstractproperty
     def NAME(self):
         raise NotImplementedError
@@ -165,11 +170,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
             url = url()
         while retry >= 0:
             try:
+                self.provider_metrics.incr('requests.count')
+                self.provider_metrics.append('requests.urls', url)
                 response = await aiohttp.request(method, url, *args, **kwargs)
+                self.provider_metrics.append('requests.verbose', ['OK', response.status, url])
                 if expects and response.status not in expects:
                     raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
                 return response
             except throws as e:
+                self.provider_metrics.append('requests.verbose', ['NO', e.code, url])
                 if retry <= 0 or e.code not in self._retry_on:
                     raise
                 await asyncio.sleep((1 + _retry - retry) * 2)
@@ -192,6 +201,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict}
 
+        self.provider_metrics.add('move', {
+            'got_handle_naming': handle_naming,
+            'conflict': conflict,
+            'got_rename': rename is not None,
+        })
+
         if handle_naming:
             dest_path = await dest_provider.handle_naming(
                 src_path,
@@ -209,7 +224,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         ):
             raise exceptions.OverwriteSelfError(src_path)
 
+        self.provider_metrics.add('move.can_intra_move', False)
         if self.can_intra_move(dest_provider, src_path):
+            self.provider_metrics.add('move.can_intra_move', True)
             return (await self.intra_move(*args))
 
         if src_path.is_dir:
@@ -225,6 +242,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
 
+        self.provider_metrics.add('copy', {
+            'got_handle_naming': handle_naming,
+            'conflict': conflict,
+            'got_rename': rename is not None,
+        })
         if handle_naming:
             dest_path = await dest_provider.handle_naming(
                 src_path,
@@ -242,7 +264,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         ):
             raise exceptions.OverwriteSelfError(src_path)
 
+        self.provider_metrics.add('copy.can_intra_copy', False)
         if self.can_intra_copy(dest_provider, src_path):
+            self.provider_metrics.add('copy.can_intra_copy', True)
             return (await self.intra_copy(*args))
 
         if src_path.is_dir:
@@ -287,6 +311,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         folder.children = []
         items = await self.metadata(src_path)
+
+        self.provider_metrics.append('_folder_file_ops.item_counts', len(items))
 
         for i in range(0, len(items), settings.OP_CONCURRENCY):
             futures = []

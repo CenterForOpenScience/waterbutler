@@ -55,6 +55,7 @@ class DropboxProvider(provider.BaseProvider):
         super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
+        self.metrics.add('folder_is_root', self.folder == '/')
 
     async def dropbox_request(self, url, body, expects=(200, 409,), *args, **kwargs):
         """Convenience wrapper around ``BaseProvider.request`` for simple Dropbox API calls. Sets
@@ -275,7 +276,9 @@ class DropboxProvider(provider.BaseProvider):
         if path.is_folder:
             ret = []
             has_more = True
+            page_count = 0
             while has_more:
+                page_count += 1
                 data = await self.dropbox_request(url, body, throws=exceptions.MetadataError)
                 for entry in data['entries']:
                     if entry['.tag'] == 'folder':
@@ -287,6 +290,7 @@ class DropboxProvider(provider.BaseProvider):
                 else:
                     url = self.build_url('files', 'list_folder', 'continue')
                     body = {'cursor': data['cursor']}
+            self.metrics.add('metadata.folder.pages', page_count)
             return ret
 
         data = await self.dropbox_request(url, body, throws=exceptions.MetadataError)

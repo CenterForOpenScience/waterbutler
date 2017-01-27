@@ -496,6 +496,8 @@ class S3Provider(provider.BaseProvider):
                 self.connection._auth_handler = get_auth_handler(
                     self.connection.host, boto_config, self.connection.provider, self.connection._required_auth_capability())
 
+        self.metrics.add('region', self.region)
+
     async def _get_bucket_region(self):
         """Bucket names are unique across all regions.
 

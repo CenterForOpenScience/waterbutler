@@ -102,6 +102,10 @@ class BaseFigshareProvider(provider.BaseProvider):
         if self.container_type == 'fileset':
             self.container_type = 'article'
         self.container_id = self.settings['container_id']
+        self.metrics.add('container', {
+            'given_type': self.settings['container_type'],
+            'actual_type': self.container_type,
+        })
 
     @property
     def root_path_parts(self):
@@ -216,6 +220,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         upload_url, parts = await self._get_file_upload_url(article_id, file_id)
 
         # 3. Upload parts
+        self.metrics.add('upload.parts.count', len(parts))
         await self._upload_file_parts(stream, upload_url, parts)
 
         # 4. Mark upload complete
