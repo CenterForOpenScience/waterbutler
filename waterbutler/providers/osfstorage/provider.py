@@ -380,7 +380,7 @@ class OSFStorageProvider(provider.BaseProvider):
         if path.identifier is None:
             raise exceptions.MetadataError('File not found', code=404)
 
-        self.metrics.add('revisions', {'got_view_only', view_only is not None})
+        self.metrics.add('revisions', {'got_view_only': view_only is not None})
 
         async with self.signed_request(
             'GET',
