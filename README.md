@@ -8,6 +8,10 @@
 
 `develop` Build Status: [![Build Status](https://travis-ci.org/CenterForOpenScience/waterbutler.svg?branch=develop)](https://travis-ci.org/CenterForOpenScience/waterbutler)
 
+### Compatibility
+
+MFR is compatible with Python 3.5 (tested up to 3.5.3) and 3.6.
+
 ### Documentation
 
 Documentation available at https://waterbutler.readthedocs.io/en/latest/
