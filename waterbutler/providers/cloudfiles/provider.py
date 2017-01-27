@@ -47,6 +47,7 @@ class CloudFilesProvider(provider.BaseProvider):
         self.username = self.credentials['username']
         self.container = self.settings['container']
         self.use_public = self.settings.get('use_public', True)
+        self.metrics.add('region', self.region)
 
     async def validate_v1_path(self, path, **kwargs):
         return await self.validate_path(path, **kwargs)
@@ -86,6 +87,7 @@ class CloudFilesProvider(provider.BaseProvider):
         :rtype ResponseStreamReader:
         :raises: exceptions.DownloadError
         """
+        self.metrics.add('download.accept_url', accept_url)
         if accept_url:
             parsed_url = furl.furl(self.sign_url(path, endpoint=self.public_endpoint))
             parsed_url.args['filename'] = kwargs.get('displayName') or path.name
@@ -111,6 +113,7 @@ class CloudFilesProvider(provider.BaseProvider):
             created = not (await self.exists(path))
         else:
             created = None
+        self.metrics.add('upload.check_created', check_created)
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         resp = await self.make_request(
@@ -130,6 +133,7 @@ class CloudFilesProvider(provider.BaseProvider):
             metadata = await self.metadata(path)
         else:
             metadata = None
+        self.metrics.add('upload.fetch_metadata', fetch_metadata)
 
         return metadata, created
 
@@ -235,15 +239,20 @@ class CloudFilesProvider(provider.BaseProvider):
         """
         # Must have a temp url key for download and upload
         # Currently You must have one for everything however
+        self.metrics.add('ensure_connection.has_token_and_endpoint', True)
+        self.metrics.add('ensure_connection.has_temp_url_key', True)
         if not self.token or not self.endpoint:
+            self.metrics.add('ensure_connection.has_token_and_endpoint', False)
             data = await self._get_token()
             self.token = data['access']['token']['id']
+            self.metrics.add('ensure_connection.use_public', True if self.use_public else False)
             if self.use_public:
                 self.public_endpoint, _ = self._extract_endpoints(data)
                 self.endpoint = self.public_endpoint
             else:
                 self.public_endpoint, self.endpoint = self._extract_endpoints(data)
         if not self.temp_url_key:
+            self.metrics.add('ensure_connection.has_temp_url_key', False)
             async with self.request('HEAD', self.endpoint, expects=(204, )) as resp:
                 try:
                     self.temp_url_key = resp.headers['X-Account-Meta-Temp-URL-Key'].encode()
@@ -319,6 +328,7 @@ class CloudFilesProvider(provider.BaseProvider):
         """
         # prefix must be blank when searching the root of the container
         query = {'prefix': path.path}
+        self.metrics.add('metadata.folder.is_recursive', True if recursive else False)
         if not recursive:
             query.update({'delimiter': '/'})
         resp = await self.make_request(
