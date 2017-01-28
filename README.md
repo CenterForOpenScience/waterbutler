@@ -10,7 +10,7 @@
 
 ### Compatibility
 
-MFR is compatible with Python 3.5 (tested up to 3.5.3) and 3.6.
+WaterButler is compatible with Python 3.5 (tested up to 3.5.3) and 3.6.
 
 ### Documentation
 
@@ -136,4 +136,4 @@ limitations under the License.
 
 ### COS is hiring!
 
-Want to help save science? Want to get paid to develop free, open source software? [Check out our openings!](https://cos.io/jobs/)
+Want to help save science? Want to get paid to develop free, open source software? [Check out our openings!](https://cos.io/our-communities/jobs/)
