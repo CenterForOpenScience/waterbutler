@@ -12,7 +12,6 @@ dependencies:
   - cryptography==1.5.2
   - furl==0.4.2
   - humanfriendly==1.31
-  - invoke==0.11.1
   - oauthlib==0.7.2
   - pyjwe==1.0.0
   - pyjwt==1.4.0
