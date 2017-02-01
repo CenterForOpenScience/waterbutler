@@ -1,4 +1,5 @@
 import json
+import datetime
 
 from waterbutler import tasks
 from waterbutler.sizes import MBs
@@ -111,6 +112,10 @@ class MoveCopyMixin:
                     conflict=self.json.get('conflict', DEFAULT_CONFLICT),
                 )
             )
+
+        if self.json['action'] == 'rename':
+            metadata.raw['modified'] = datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S %z'),
+            metadata.raw['modified_utc'] = datetime.datetime.now().isoformat(),
 
         self.dest_meta = metadata
 
