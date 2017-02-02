@@ -44,6 +44,7 @@ class OwnCloudProvider(provider.BaseProvider):
         self.verify_ssl = settings['verify_ssl']
         self.url = credentials['host']
         self._auth = aiohttp.BasicAuth(credentials['username'], credentials['password'])
+        self.metrics.add('host', self.url)
 
     def connector(self):
         return aiohttp.TCPConnector(verify_ssl=self.verify_ssl)
@@ -138,6 +139,11 @@ class OwnCloudProvider(provider.BaseProvider):
         :param waterbutler.core.path.WaterButlerPath path: user-supplied path to download
         :raises: `waterbutler.core.exceptions.DownloadError`
         """
+
+        self.metrics.add('download', {
+            'got_accept_url': accept_url is False,
+            'got_range': range is not None,
+        })
         download_resp = await self.make_request(
             'GET',
             self._webdav_url_ + path.full_path,

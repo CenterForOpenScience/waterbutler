@@ -1,0 +1,4368 @@
+{
+	"variables": [],
+	"info": {
+		"name": "Copy files",
+		"_postman_id": "20a97c24-c8fb-b6c2-30f0-007427b44caa",
+		"description": "Required variables in Postman environment\nPID - project node_id\nPID2 - project node_id\nprovider - provider name to test e.g. dropbox\nalt_provider - provider name for inter provider testing\nbasicauth - Basic Auth Token\nprotocol - i.e. http:\nhost - e.g. //localhost\nport - e.g. :7777\n\nprovider and alt_provider must be setup in both PID and PID2 with the same root folder\n\nIn addition to extensive file copying, this collection will test...\n\nCreating directories\nUploading small files\nUpload relpacing small files\nDeleting files\nDeleting directories - with contents\nGetting metadata",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "10. Copy file1 to folder2 new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_etag\", data.data.attributes.etag);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"warn\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 copy (new content)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path_after\", data.data.attributes.path);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to folder2 replace",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file1_path_after\", data.data.attributes.path);",
+									"tests[\"confirm new etag\"] = data.data.attributes.etag != environment.prov_file1_etag;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"replace\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to folder2 keep",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"keep\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{file1_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "11. Copy file1 to folder2 rename new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to folder2 rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"rename\":   \"file2\",\n    \"conflict\": \"warn\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 copy (new content)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to folder2 rename replace",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file2_path_after\", data.data.attributes.path);",
+									"tests[\"confirm new etag\"] = data.data.attributes.etag != environment.prov_file1_etag;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"rename\":   \"file2\",\n    \"conflict\": \"replace\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to folder2 rename keep",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"rename\":   \"file2\",\n    \"conflict\": \"keep\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{file2_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "12. Copy file1 to PID2 folder2 new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create folder2 PID2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"warn\",\n    \"resource\": \"{{PID2}}\",\n    \"path\":     \"{{pid2_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 copy (new content)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 folder2 replace",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file1_path_after\", data.data.attributes.path);",
+									"tests[\"confirm new etag\"] = data.data.attributes.etag != environment.prov_file1_etag;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"replace\",\n    \"resource\": \"{{PID2}}\",\n    \"path\":     \"{{pid2_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 folder2 keep",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"keep\",\n    \"resource\": \"{{PID2}}\",\n    \"path\":     \"{{pid2_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file1 PID2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{provider}}{{file1_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder2 PID2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{provider}}{{pid2_prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "13. Copy file1 to PID2 folder2 rename new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create folder2 PID2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 folder2 rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"warn\",\n    \"rename\":   \"file2\",\n    \"resource\": \"{{PID2}}\",\n    \"path\":     \"{{pid2_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 copy (new content)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 folder2 replace rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file2_path_after\", data.data.attributes.path);",
+									"tests[\"confirm new etag\"] = data.data.attributes.etag != environment.prov_file1_etag;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"replace\",\n    \"rename\":   \"file2\",\n    \"resource\": \"{{PID2}}\",\n    \"path\":     \"{{pid2_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 folder2 keep rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"keep\",\n    \"rename\":   \"file2\",\n    \"resource\": \"{{PID2}}\",\n    \"path\":     \"{{pid2_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file2 PID2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{provider}}{{file2_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder2 PID2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{provider}}{{pid2_prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "14. Copy file1 to alt_provider folder2 new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create folder2 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"alt_prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to alt_provider folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm version\"] = data.data.attributes.extra.version === 1;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"warn\",\n    \"provider\": \"{{alt_provider}}\",\n    \"path\":     \"{{alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 copy (new content)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to alt_provider folder2 replace",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file1_path_after\", data.data.attributes.path);",
+									"tests[\"confirm version\"] = data.data.attributes.extra.version === 2;",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"replace\",\n    \"provider\": \"{{alt_provider}}\",\n    \"path\":     \"{{alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to alt_provider folder2 keep",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"keep\",\n    \"provider\": \"{{alt_provider}}\",\n    \"path\":     \"{{alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file1 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{file1_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder2 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "15. Copy file1 to alt_provider folder2 rename new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create folder2 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"alt_prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to alt_provider folder2 rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm version\"] = data.data.attributes.extra.version === 1;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"warn\",\n    \"rename\":   \"file2\",\n    \"provider\": \"{{alt_provider}}\",\n    \"path\":     \"{{alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 copy (new content)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to alt_provider folder2 replace rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file2_path_after\", data.data.attributes.path);",
+									"tests[\"confirm version\"] = data.data.attributes.extra.version === 2;",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"replace\",\n    \"rename\":   \"file2\",\n    \"provider\": \"{{alt_provider}}\",\n    \"path\":     \"{{alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to alt_provider folder2 keep rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"keep\",\n    \"rename\":   \"file2\",\n    \"provider\": \"{{alt_provider}}\",\n    \"path\":     \"{{alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file1 copy alt+provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{file2_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder2 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "16. Copy file1 from alt_provider folder1 new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"alt_prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"alt_prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy alt_provider file1 to folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_size\", data.data.attributes.size);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"warn\",\n    \"provider\": \"{{provider}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to alt_provider folder1 copy (new content) copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy alt_provider file1 to folder2 replace",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file1_path_after\", data.data.attributes.path);",
+									"tests[\"confirm new size\"] = data.data.attributes.size != postman.getEnvironmentVariable(\"prov_file1_size\");",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"replace\",\n    \"provider\": \"{{provider}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to alt_provider folder2 keep",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"keep\",\n    \"provider\": \"{{provider}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file1 copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{file1_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "17. Copy file1 from alt_provider folder1 rename new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"alt_prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"alt_prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy alt_provider file1 to folder2 rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file2_size\", data.data.attributes.size);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"warn\",\n    \"rename\":   \"file2\",\n    \"provider\": \"{{provider}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to alt_provider folder1 copy (new content) copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy alt_provider file1 to folder2 replace rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file2_path_after\", data.data.attributes.path);",
+									"tests[\"confirm new size\"] = data.data.attributes.size != postman.getEnvironmentVariable(\"prov_file2_size\");",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"replace\",\n    \"rename\":   \"file2\",\n    \"provider\": \"{{provider}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to alt_provider folder2 keep rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"keep\",\n    \"rename\":   \"file2\",\n    \"provider\": \"{{provider}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file1 copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{file2_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{alt_provider}}{{alt_prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "18. Copy file1 to PID2 alt_provider folder2 new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create PID2 alt_provider folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_alt_prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 alt_provider folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_alt_prov_file1_path_after\", data.data.attributes.path);",
+									"tests[\"confirm version\"] = data.data.attributes.extra.version === 1;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"warn\",\n    \"resource\": \"{{PID2}}\",\n    \"provider\": \"{{alt_provider}}\",\n    \"path\":     \"{{pid2_alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 copy (new content)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 alt_provider folder2 replace",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file1_path_after\", data.data.attributes.path);",
+									"tests[\"confirm version\"] = data.data.attributes.extra.version === 2;",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"replace\",\n    \"provider\": \"{{alt_provider}}\",\n    \"resource\": \"{{PID2}}\",\n    \"path\":     \"{{pid2_alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 alt_provider folder2 keep",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"keep\",\n    \"resource\": \"{{PID2}}\",\n    \"provider\": \"{{alt_provider}}\",\n    \"path\":     \"{{pid2_alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file1 PID2 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{file1_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete PID2 alt_provider folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "19. Copy file1 to PID2 alt_provider folder2 rename new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create PID2 alt_provider folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_alt_prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 alt_provider folder2 rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm version\"] = data.data.attributes.extra.version === 1;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"warn\",\n    \"rename\":   \"file2\",\n    \"resource\": \"{{PID2}}\",\n    \"provider\": \"{{alt_provider}}\",\n    \"path\":     \"{{pid2_alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 copy (new content)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 alt_provider folder2 replace rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file2_path_after\", data.data.attributes.path);",
+									"tests[\"confirm version\"] = data.data.attributes.extra.version === 2;",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"replace\",\n    \"rename\":   \"file2\",\n    \"provider\": \"{{alt_provider}}\",\n    \"resource\": \"{{PID2}}\",\n    \"path\":     \"{{pid2_alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy file1 to PID2 alt_provider folder2 keep rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"keep\",\n    \"rename\":   \"file2\",\n    \"resource\": \"{{PID2}}\",\n    \"provider\": \"{{alt_provider}}\",\n    \"path\":     \"{{pid2_alt_prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file2 alt_provider PID2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{file2_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete PID2 alt_provider folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "20. Copy file1 from PID2 alt_provider folder1 new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1 PID2 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_alt_prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 PID2 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_alt_prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy PID2 alt_provider file1 to folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_alt_prov_file1_size\", data.data.attributes.size);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"warn\",\n    \"resource\": \"{{PID}}\",\n    \"provider\": \"{{provider}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to PID2 alt_provider folder1 (new content)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_alt_prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy PID2 alt_provider file1 to folder2 replace",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file1_path_after\", data.data.attributes.path);",
+									"tests[\"confirm new size\"] = data.data.attributes.size != postman.getEnvironmentVariable(\"pid2_alt_prov_file1_size\");",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"replace\",\n    \"provider\": \"{{provider}}\",\n    \"resource\": \"{{PID}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy PID2 alt_provider file1 to folder2 keep",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file1 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"keep\",\n    \"provider\": \"{{provider}}\",\n    \"resource\": \"{{PID}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file1 copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{file1_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1 PID2 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "21. Copy file1 from PID2 alt_provider folder1 rename new/replace/keep",
+			"description": "",
+			"item": [
+				{
+					"name": "root create folder1 PID2 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_alt_prov_folder1_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}/?kind=folder&name=folder1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "root create folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"prov_folder2_path\", data.data.attributes.path);",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}/?kind=folder&name=folder2",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to folder1 PID2 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_alt_prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_folder1_path}}?kind=file&name=file1",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy PID2 alt_provider file1 to folder2 rename",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_alt_prov_file2_size\", data.data.attributes.size);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"warn\",\n    \"rename\":   \"file2\",\n    \"resource\": \"{{PID}}\",\n    \"provider\": \"{{provider}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "upload file1 to PID2 alt_provider folder1 (new content)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"pid2_alt_prov_file1_path\", data.data.attributes.path);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.alt_provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID2;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_file1_path}}?kind=file",
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "file1 new content"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy PID2 alt_provider file1 to folder2 rename replace",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 200\"] = responseCode.code === 200;",
+									"var data = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"file2_path_after\", data.data.attributes.path);",
+									"tests[\"confirm new size\"] = data.data.attributes.size != postman.getEnvironmentVariable(\"pid2_alt_prov_file2_size\");",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"replace\",\n    \"rename\":   \"file2\",\n    \"provider\": \"{{provider}}\",\n    \"resource\": \"{{PID}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "copy PID2 alt_provider file1 to folder2 rename keep",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 201\"] = responseCode.code === 201;",
+									"var data = JSON.parse(responseBody);",
+									"tests[\"confirm provider\"] = data.data.attributes.provider === environment.provider;",
+									"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
+									"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+									"tests[\"confirm path\"] = data.data.attributes.materialized === '/folder2/file2 (1)';"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_file1_path}}",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\":   \"copy\",\n    \"conflict\": \"keep\",\n    \"rename\":   \"file2\",\n    \"provider\": \"{{provider}}\",\n    \"resource\": \"{{PID}}\",\n    \"path\":     \"{{prov_folder2_path}}\"\n}"
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete file1 copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{file2_path_after}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder1 PID2 alt_provider",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID2}}/providers/{{alt_provider}}{{pid2_alt_prov_folder1_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				},
+				{
+					"name": "delete folder2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"tests[\"Status code is 204\"] = responseCode.code === 204;"
+								]
+							}
+						}
+					],
+					"request": {
+						"url": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}",
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Basic {{basic_auth}}",
+								"description": ""
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"description": ""
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

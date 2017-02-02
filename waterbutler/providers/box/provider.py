@@ -430,6 +430,7 @@ class BoxProvider(provider.BaseProvider):
                 page_count += 1
                 if page_total is None:
                     page_total = ((resp_json['total_count'] - 1) // limit) + 1  # ceiling div
+        self.metrics.add('metadata.folder.pages', page_total)
         return full_resp
 
     def _serialize_item(self, item, path):

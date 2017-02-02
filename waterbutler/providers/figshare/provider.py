@@ -102,6 +102,10 @@ class BaseFigshareProvider(provider.BaseProvider):
         if self.container_type == 'fileset':
             self.container_type = 'article'
         self.container_id = self.settings['container_id']
+        self.metrics.add('container', {
+            'given_type': self.settings['container_type'],
+            'actual_type': self.container_type,
+        })
 
     @property
     def root_path_parts(self):
@@ -216,6 +220,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         upload_url, parts = await self._get_file_upload_url(article_id, file_id)
 
         # 3. Upload parts
+        self.metrics.add('upload.parts.count', len(parts))
         await self._upload_file_parts(stream, upload_url, parts)
 
         # 4. Mark upload complete
@@ -377,10 +382,10 @@ class FigshareProjectProvider(BaseFigshareProvider):
         :param str path: identifier_path URN as passed through the v0 API
         :rtype FigsharePath:
 
-        Quirks::
+        Quirks:
 
         * v0 may pass an identifier_path whose last part is a name and not an identifier, in the
-        case of file/folder creation calls.
+          case of file/folder creation calls.
 
         * validate_path validates parent and returns a FigsharePath as accurately as possible.
         """
@@ -595,10 +600,10 @@ class FigshareProjectProvider(BaseFigshareProvider):
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         :raises: :class:`waterbutler.core.exceptions.DeleteError`
 
-        Quirks::
+        Quirks:
 
         * If the FigsharePath given is for the provider root path, then the contents of the
-        provider root path will be deleted, but not the provider root itself.
+          provider root path will be deleted, but not the provider root itself.
         """
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
@@ -800,10 +805,10 @@ class FigshareArticleProvider(BaseFigshareProvider):
         :param str path: identifier path URN as passed through the v0 API
         :rtype FigsharePath:
 
-        Quirks::
+        Quirks:
 
         * v0 may pass an identifier_path whose last part is a name and not an identifier, in the
-        case of file/folder creation calls.
+          case of file/folder creation calls.
 
         * validate_path validates parent and returns a FigsharePath as accurately as possible.
         """
@@ -841,7 +846,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
         :param str child_name: Name of child
         :param bool folder: ``True`` if child is folder
 
-        Code notes::
+        Code notes:
 
         Due to the fact that figshare allows duplicate titles/names for
         articles/files, revalidate_path can not be relied on to always return
@@ -912,10 +917,10 @@ class FigshareArticleProvider(BaseFigshareProvider):
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         :raises: :class:`waterbutler.core.exceptions.DeleteError`
 
-        Quirks::
+        Quirks:
 
         * If the FigsharePath given is for the provider root path, then the contents of the
-        provider root path will be deleted, but not the provider root itself.
+          provider root path will be deleted, but not the provider root itself.
         """
         if path.is_root:
             if confirm_delete == 1:

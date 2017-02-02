@@ -216,6 +216,11 @@ class OSFStorageProvider(provider.BaseProvider):
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
+        self.metrics.add('download', {
+            'mode_provided': mode is not None,
+            'version_from': 'revision' if version is None else 'version',
+            'user_logged_in': self.auth.get('id', None) is not None,
+        })
         if version is None:
             # TODO Clean this up
             # version could be 0 here
@@ -344,7 +349,9 @@ class OSFStorageProvider(provider.BaseProvider):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
+        self.metrics.add('delete.is_root_delete', path.is_root)
         if path.is_root:
+            self.metrics.add('delete.root_delete_confirmed', confirm_delete == 1)
             if confirm_delete == 1:
                 await self._delete_folder_contents(path)
                 return
@@ -372,6 +379,8 @@ class OSFStorageProvider(provider.BaseProvider):
     async def revisions(self, path, view_only=None, **kwargs):
         if path.identifier is None:
             raise exceptions.MetadataError('File not found', code=404)
+
+        self.metrics.add('revisions', {'got_view_only': view_only is not None})
 
         async with self.signed_request(
             'GET',

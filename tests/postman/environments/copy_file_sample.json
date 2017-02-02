@@ -1,0 +1,58 @@
+{
+  "id": "8a3a5726-6750-16b1-74f5-4144f4eaf92d",
+  "name": "water_butler_testing_sample_box",
+  "values": [
+    {
+      "key": "PID",
+      "value": "ab12c",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "PID2",
+      "value": "12ab3",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "provider",
+      "value": "box",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "alt_provider",
+      "value": "osfstorage",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "basic_auth",
+      "value": "basicauthtoken",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "protocol",
+      "value": "http://",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "host",
+      "value": "localhost",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "port",
+      "value": ":7777",
+      "type": "text",
+      "enabled": true
+    }
+  ],
+  "timestamp": 1484849957169,
+  "_postman_variable_scope": "environment",
+  "_postman_exported_at": "2017-01-19T18:19:25.900Z",
+  "_postman_exported_using": "Postman/4.9.3"
+}
