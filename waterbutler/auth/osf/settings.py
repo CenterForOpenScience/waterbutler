@@ -5,7 +5,7 @@ config = settings.child('OSF_AUTH_CONFIG')
 
 JWT_EXPIRATION = int(config.get('JWT_EXPIRATION', 15))
 JWT_ALGORITHM = config.get('JWT_ALGORITHM', 'HS256')
-API_URL = config.get('API_URL', 'http://localhost:5000/api/v1/files/auth/')
+API_URL = config.get('API_URL', 'http://192.168.168.167:5000/api/v1/files/auth/')
 
 JWE_SALT = config.get('JWE_SALT')
 JWE_SECRET = config.get('JWE_SECRET')
