@@ -13,7 +13,11 @@ from waterbutler.providers.dataverse.metadata import DataverseDatasetMetadata
 
 
 class DataverseProvider(provider.BaseProvider):
-    """Provider for Dataverse"""
+    """Provider for Dataverse
+
+    API Docs: http://guides.dataverse.org/en/4.5/api/
+
+    """
 
     NAME = 'dataverse'
 

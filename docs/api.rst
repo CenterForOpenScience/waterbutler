@@ -130,13 +130,13 @@ To rename a file or folder, issue a POST request to the move link with the actio
                     "path":     {path_attribute_of_target_folder},
                     // optional
                     "rename":   {new_name},
-                    "conflict": "replace"|"keep", // defaults to 'replace'
-                    "resource": {node_id},        // defaults to current {node_id}
-                    "provider": {provider}        // defaults to current {provider}
+                    "conflict": "replace"|"keep"|"warn", // defaults to 'warn'
+                    "resource": {node_id},               // defaults to current {node_id}
+                    "provider": {provider}               // defaults to current {provider}
                    }
     Success:       200 OK or 201 Created + new entity representation
 
-Move and copy actions both use the same request structure, a POST to the move url, but with different values for the action body parameters. The path parameter is also required and should be the OSF path attribute of the folder being written to. The rename and conflict parameters are optional. If you wish to change the name of the file or folder at its destination, set the rename parameter to the new name. The conflict param governs how name clashes are resolved. Possible values are replace and keep. replace is the default and will overwrite the file that already exists in the target folder. keep will attempt to keep both by adding a suffix to the new file's name until it no longer conflicts. The suffix will be ' (x)' where x is a increasing integer starting from 1. This behavior is intended to mimic that of the OS X Finder. The response will contain either a folder entity or file entity with the new name.
+Move and copy actions both use the same request structure, a POST to the move url, but with different values for the action body parameters. The path parameter is also required and should be the OSF path attribute of the folder being written to. The rename and conflict parameters are optional. If you wish to change the name of the file or folder at its destination, set the rename parameter to the new name. The conflict param governs how name clashes are resolved. Possible values are ``replace``, ``keep``, and ``warn``. ``warn`` is the default and will cause WaterButler to throw a 409 Conflict error if the file that already exists in the target folder. ``replace`` will tell WaterButler to overwrite the existing file, if present. ``keep`` will attempt to keep both by adding a suffix to the new file's name until it no longer conflicts. The suffix will be ' (x)' where x is a increasing integer starting from 1. This behavior is intended to mimic that of the OS X Finder. The response will contain either a folder entity or file entity with the new name.
 
 Files and folders can also be moved between nodes and providers. The resource parameter is the id of the node under which the file/folder should be moved. It must agree with the path parameter, that is the path must identify a valid folder under the node identified by resource. Likewise, the provider parameter may be used to move the file/folder to another storage provider, but both the resource and path parameters must belong to a node and folder already extant on that provider. Both resource and provider default to the current node and providers.
 
@@ -147,7 +147,13 @@ If a moved/copied file is overwriting an existing file, a 200 OK response will b
 ::
 
     Method:        DELETE
-    Query Params:  ?confirm_delete=1 //required for root folder delete only
+    Query Params:  ?confirm_delete=1 // required for root folder delete only
     Success:       204 No Content
 
-To delete a file or folder send a DELETE request to the delete link. Nothing will be returned in the response body. As a precaution against inadvertantly deleting the root folder, the query parameter confirm_delete must be set to 1 for root folder deletes. In adition, a root folder delete does not actually delete the root folder. Instead it deletes all contents of the folder, but not the folder itself.
+To delete a file or folder send a DELETE request to the delete link. Nothing will be returned in the response body. As a precaution against inadvertantly deleting the root folder, the query parameter ``confirm_delete`` must be set to ``1`` for root folder deletes. In addition, a root folder delete does not actually delete the root folder. Instead it deletes all contents of the folder, but not the folder itself.
+
+
+Magic Query Parameters
+----------------------
+
+* ``direct``: issuing a download request with a query parameter named ``direct`` indicates that WB should handle the download, even if a redirect would be possible (e.g. osfstorage and s3).  In this case, WB will act as a middleman, downloading the data from the provider and passing through to the requestor.

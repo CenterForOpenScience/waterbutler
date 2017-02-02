@@ -51,6 +51,21 @@ workon waterbutler
 invoke server
 ```
 
+Some tasks also require a running celery worker.  You will need to install `rabbitmq` and run a server:
+
+```bash
+brew install rabbitmq
+# on Ubuntu:
+# apt-get install rabbitmq-server
+rabbitmq-server
+```
+
+Then in your WaterButler virtualenv:
+
+```bash
+invoke celery
+```
+
 ### Configuring
 
 WaterButler configuration is done through a JSON file (`waterbutler-test.json`) that lives in the `.cos` directory of your home directory.  If this is your first time setting up WaterButler or its sister project, [MFR](https://github.com/CenterForOpenScience/modular-file-renderer/), you probably do not have this directory and will need to create it:
