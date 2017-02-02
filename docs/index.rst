@@ -36,6 +36,16 @@ This documentation is also available in `PDF and Epub formats
     releases
     testing
 
+Project info
+------------
+
+.. toctree::
+   :maxdepth: 1
+
+   contributing
+   changelog
+   license
+
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
