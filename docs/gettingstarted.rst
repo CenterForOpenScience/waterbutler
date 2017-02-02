@@ -36,6 +36,16 @@ Start the server
 
     invoke server
 
+Start the celery worker
+
+.. note
+
+    You will need to have rabbitmq installed and rabbitmq-server running.
+
+.. code-block:: bash
+
+    invoke celery
+
 Contributing
 ------------
 

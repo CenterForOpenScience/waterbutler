@@ -572,15 +572,37 @@ class BaseProvider(metaclass=abc.ABCMeta):
         validate_path must currently accomodate v0 AND v1 semantics.  After v0's retirement, this
         method can replace validate_path.
 
-        :param str path: user-supplied path to validate
-        :rtype: :class:`waterbutler.core.path`
-        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        ``path`` is the string in the url after the provider name and refers to the entity to be
+        acted on. For v1, this must *always exist*.  If it does not, ``validate_v1_path`` should
+        return a 404.  Creating a new file in v1 is done by making a PUT request against the parent
+        folder and specifying the file name as a query parameter.  If a user attempts to create a
+        file by PUTting to its inferred path, validate_v1_path should reject this request with a 404.
 
+        :param str path: user-supplied path to validate
+        :rtype: :class:`waterbutler.core.path.WaterButlerPath`
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
         raise NotImplementedError
 
     @abc.abstractmethod
     def validate_path(self, path, **kwargs):
+        """Validates paths passed in via the v0 API.  v0 paths are much less strict than v1 paths.
+        They may represent things that exist or something that should be created.  As such, the goal
+        of ``validate_path`` is to split the path into its component parts and attempt to determine
+        the ID of each part on the external provider.  For instance, if the ``googledrive`` provider
+        receives a path of ``/foo/bar/baz.txt``, it will split those into ``/``, ``foo/``, ``bar/``,
+        and ``baz.txt``, and query Google Drive for the ID of each.  ``validate_path`` then builds a
+        WaterButlerPath object with an ID, name tuple for each path part.  The last part is
+        permitted to not have an ID, since it may represent a file that has not yet been created.
+        All other parts should have an ID.
+
+        The WaterButler v0 API is deprecated and will be removed in a future release.  At that time
+        this method will be obsolete and will be removed from all providers.
+
+        :param str path: user-supplied path to validate
+        :rtype: :class:`waterbutler.core.path.WaterButlerPath`
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        """
         raise NotImplementedError
 
     def path_from_metadata(self, parent_path, metadata):
