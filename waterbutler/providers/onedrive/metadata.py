@@ -1,16 +1,14 @@
 from waterbutler.core import metadata
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 class BaseOneDriveMetadata(metadata.BaseMetadata):
 
     def __init__(self, raw, path_obj):
+        print('++++++++++++++++++++++++++++++ BaseOneDriveMetadata.__init__')
+        print('+++++ raw: {}'.format(raw))
+        print('+++++ path_obj: {}'.format(path_obj))
         super().__init__(raw)
         self._path_obj = path_obj
-#          logger.info('BaseOneDriveMetadata raw:{} path_obj:{}'.format(repr(raw), repr(path_obj)))
 
     @property
     def provider(self):
@@ -18,10 +16,10 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
 
     @property
     def materialized_path(self):
-        return '/{}/{}'.format(self.raw['parentReference']['path'].replace('/drive/root:/', ''), self.raw['name'])
-#          logger.debug("materialized_path raw:{}".format(repr(self.raw)))
-#          return str(self._path_obj)
-#        return self.raw['name']
+        return '/{}/{}'.format(
+            self.raw['parentReference']['path'].replace('/drive/root:/', ''),
+            self.raw['name']
+        )
 
     @property
     def extra(self):
@@ -29,6 +27,10 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
             'id': self.raw['id'],
             'parentReference': self.raw['parentReference']['path']
         }
+
+    @property
+    def created_utc(self):
+        return None
 
 
 class OneDriveFolderMetadata(BaseOneDriveMetadata, metadata.BaseFolderMetadata):
@@ -75,6 +77,7 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
         return {
             'id': self.raw.get('id'),
             'etag': self.raw.get('eTag'),
+            'webView': self.raw.get('webUrl'),
         }
 
     @property
@@ -82,7 +85,7 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
         return self.raw['eTag']
 
 
-class OneDriveRevision(metadata.BaseFileRevisionMetadata):
+class OneDriveRevisionMetadata(metadata.BaseFileRevisionMetadata):
 
     @property
     def version_identifier(self):
