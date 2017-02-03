@@ -1,24 +1,22 @@
-import pytest
-
 import io
+import pytest
+import logging
 from http import client
 
 import aiohttpretty
 
-import logging
-
 from waterbutler.core import streams
 from waterbutler.core import exceptions
-from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.onedrive import OneDriveProvider
-from waterbutler.providers.onedrive.provider import OneDrivePath
 from waterbutler.providers.onedrive.settings import settings
-from waterbutler.providers.onedrive.metadata import OneDriveRevision
+from waterbutler.providers.onedrive.provider import OneDrivePath
 from waterbutler.providers.onedrive.metadata import OneDriveFileMetadata
 from waterbutler.providers.onedrive.metadata import OneDriveFolderMetadata
+from waterbutler.providers.onedrive.metadata import OneDriveRevisionMetadata
 
 logger = logging.getLogger(__name__)
+
 
 @pytest.fixture
 def auth():
@@ -436,8 +434,8 @@ class TestValidatePath:
         file_id = '1234'
         file_name = 'elect-a.jpg'
         parent_id = '75BFE374EBEB1211!107'
-        expected_path = WaterButlerPath('/' + file_name, [None, file_id])
-        base_path = WaterButlerPath('/', [file_id])
+        expected_path = OneDrivePath('/' + file_name, [None, file_id])
+        base_path = OneDrivePath('/', [file_id])
 
         good_url = "https://api.onedrive.com/v1.0/drive/root%3A/{}/{}".format(file_name, file_name)
         aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
@@ -458,8 +456,8 @@ class TestValidatePath:
         file_id = '1234'
         file_name = 'elect-a.jpg'
         parent_id = '75BFE374EBEB1211!107'
-        expected_path = WaterButlerPath('/' + file_name, [None, file_id])
-        base_path = WaterButlerPath('/', [file_id])
+        expected_path = OneDrivePath('/' + file_name, [None, file_id])
+        base_path = OneDrivePath('/', [file_id])
 
         good_url = "https://api.onedrive.com/v1.0/drive/root%3A/{}/{}".format(file_name, file_name)
         aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
@@ -480,8 +478,8 @@ class TestValidatePath:
         file_id = '1234'
         file_name = 'elect-a.jpg'
         parent_id = '75BFE374EBEB1211!107'
-        expected_path = WaterButlerPath('/' + file_name, [None, file_id])
-        base_path = WaterButlerPath('/', prepend=parent_id)
+        expected_path = OneDrivePath('/' + file_name, [None, file_id])
+        base_path = OneDrivePath('/', prepend=parent_id)
 
         good_url = "https://api.onedrive.com/v1.0/drive/root%3A/{}/{}".format(file_name, file_name)
         aiohttpretty.register_json_uri('GET', good_url, body=file_root_parent_metadata, status=200)
@@ -500,8 +498,8 @@ class TestValidatePath:
         file_id = '1234'
         file_name = 'elect-a.jpg'
         parent_id = '75BFE374EBEB1211!107'
-        base_path = WaterButlerPath('/sub1-b', prepend=parent_id)
-        expected_path = WaterButlerPath('/sub1-b/' + file_name, [None, None, file_id])
+        base_path = OneDrivePath('/sub1-b', prepend=parent_id)
+        expected_path = OneDrivePath('/sub1-b/' + file_name, [None, None, file_id])
 
         good_url = provider._build_root_url('drive/root:', 'ryan-test1', 'sub1-b', file_name)
         aiohttpretty.register_json_uri('GET', good_url, body=folder_object_metadata, status=200)
@@ -517,9 +515,9 @@ class TestMoveOperations:
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
     async def test_rename_file(self, provider, folder_object_metadata, folder_list_metadata):
-#         dest_path::WaterButlerPath('/elect-b.jpg', prepend='75BFE374EBEB1211!128') srcpath:WaterButlerPath('/75BFE374EBEB1211!132', prepend='75BFE374EBEB1211!128')
-        dest_path = WaterButlerPath('/elect-b.jpg', [None, '1234!1'])
-        src_path = WaterButlerPath('/elect-c.jpg', [None, '1234!1'])
+#         dest_path::OneDrivePath('/elect-b.jpg', prepend='75BFE374EBEB1211!128') srcpath:OneDrivePath('/75BFE374EBEB1211!132', prepend='75BFE374EBEB1211!128')
+        dest_path = OneDrivePath('/elect-b.jpg', [None, '1234!1'])
+        src_path = OneDrivePath('/elect-c.jpg', [None, '1234!1'])
 
 #         logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
 
@@ -537,9 +535,9 @@ class TestUpload:
     @pytest.mark.asyncio
     async def test_upload_to_one_drive_path_root (self, provider, folder_object_metadata, file_root_parent_metadata, file_stream):
         # root: upload path:
-        #    WaterButlerPath('/screenshot_0000.png', prepend='0') str(path):/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'aa', }, {'folder': '0'})>
+        #    OneDrivePath('/screenshot_0000.png', prepend='0') str(path):/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'aa', }, {'folder': '0'})>
 
-        path = WaterButlerPath('/elect-a.jpg', prepend='0')
+        path = OneDrivePath('/elect-a.jpg', prepend='0')
         upload_url = provider._build_root_url('drive/root:/elect-a.jpg:/content')
         #  upload_url = self.build_url(path, 'children', fileName, "content")
         aiohttpretty.register_json_uri('PUT', upload_url, body=file_root_parent_metadata, status=201)
@@ -555,9 +553,9 @@ class TestUpload:
     @pytest.mark.asyncio
     async def test_upload_to_one_drive_sub_folder (self, provider, folder_object_metadata, file_root_parent_metadata, file_stream):
         # project linked to sub folder, upload project root folder (sub folder):
-        #    upload path:WaterButlerPath('/screenshot_0000.png', prepend='75BFE374EBEB1211!128') str(path):/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'ryan casey', 'callback_url': 'http://localhost:5000/api/v1/project/f5qnw/waterbutler/logs/'}, {'folder': '75BFE374EBEB1211!128'})>
+        #    upload path:OneDrivePath('/screenshot_0000.png', prepend='75BFE374EBEB1211!128') str(path):/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'ryan casey', 'callback_url': 'http://localhost:5000/api/v1/project/f5qnw/waterbutler/logs/'}, {'folder': '75BFE374EBEB1211!128'})>
 
-        path = WaterButlerPath('/elect-b.jpg', prepend='1234!1')
+        path = OneDrivePath('/elect-b.jpg', prepend='1234!1')
 
         upload_url = provider.build_url('1234!1/children', path.name, "content")
         metadata_url = provider.build_url('1234!1', expand='children')
@@ -576,9 +574,9 @@ class TestUpload:
     @pytest.mark.asyncio
     async def test_upload_to_one_drive_sub_sub_folder (self, provider, folder_object_metadata, file_root_parent_metadata, file_stream):
         # project linked to sub folder, upload project sub folder (sub, sub folder):
-        #    upload path:WaterButlerPath('/75BFE374EBEB1211!129/screenshot_0000.png', prepend='75BFE374EBEB1211!128') str(path):/75BFE374EBEB1211!129/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'ryan casey', 'callback_url': 'http://localhost:5000/api/v1/project/f5qnw/waterbutler/logs/'}, {'folder': '75BFE374EBEB1211!128'})>
+        #    upload path:OneDrivePath('/75BFE374EBEB1211!129/screenshot_0000.png', prepend='75BFE374EBEB1211!128') str(path):/75BFE374EBEB1211!129/screenshot_0000.png self:<OneDriveProvider({'id': '9fy26', 'email': '9fy26@osf.io', 'name': 'ryan casey', 'callback_url': 'http://localhost:5000/api/v1/project/f5qnw/waterbutler/logs/'}, {'folder': '75BFE374EBEB1211!128'})>
 
-        path = WaterButlerPath('/1234!2/elect-b.jpg', prepend='1234!1')
+        path = OneDrivePath('/1234!2/elect-b.jpg', prepend='1234!1')
 
         upload_url = provider.build_url('/1234!2/children', path.name, "content")
         metadata_url = provider.build_url('1234!2', expand='children')
@@ -599,7 +597,7 @@ class TestMetadata:
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
     async def test_metadata_root(self, provider, folder_object_metadata, folder_list_metadata):
-        path = WaterButlerPath('/0/', _ids=(0, ))
+        path = OneDrivePath('/0/', _ids=(0, ))
         logger.info('test_metadata path:{} provider.folder:{} provider:'.format(repr(path), repr(provider.folder), repr(provider)))
 
         list_url = provider.build_url('root', expand='children')
@@ -620,7 +618,7 @@ class TestMetadata:
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
     async def test_metadata_material_path_has_slash(self, provider, file_root_parent_metadata):
-        path = WaterButlerPath("/elect-a.jpg")
+        path = OneDrivePath("/elect-a.jpg")
 
         assert path.materialized_path.startswith('/')
 
