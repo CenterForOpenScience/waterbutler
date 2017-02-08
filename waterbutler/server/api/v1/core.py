@@ -24,6 +24,7 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler, 
             finish_args = [exc.data] if exc.data else [{'code': exc.code, 'message': exc.message}]
         elif issubclass(etype, tasks.WaitTimeOutError):
             self.set_status(202)
+            exception_kwargs = {'data': {'level': 'info'}}
         else:
             finish_args = [{'code': status_code, 'message': self._reason}]
 
