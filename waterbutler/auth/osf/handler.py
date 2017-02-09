@@ -107,11 +107,20 @@ class OsfAuthHandler(auth.BaseAuthHandler):
             # View only must go outside of the jwt
             view_only = view_only[0].decode()
 
+        try:
+            action = self.ACTION_MAP[request.method.lower()]
+        except KeyError:
+            supported_methods = ', '.join(list(self.ACTION_MAP.keys())).upper()
+            raise exceptions.UnsupportedMethodError("Method '{method_used}' not supported,"
+                                                    " currently supported methods are {supported_methods}"
+                                                    .format(method_used=request.method.lower(),
+                                                            supported_methods=supported_methods))
+
         payload = (await self.make_request(
             self.build_payload({
                 'nid': resource,
                 'provider': provider,
-                'action': self.ACTION_MAP[request.method.lower()]
+                'action': action
             }, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)

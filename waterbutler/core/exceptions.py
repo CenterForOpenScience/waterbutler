@@ -51,6 +51,12 @@ class AuthError(PluginError):
     inherit from AuthError
     """
 
+class UnsupportedMethodError(PluginError):
+    """WaterButler related errors raised
+    from a :class:`waterbutler.core.auth` should
+    inherit from AuthError
+    """
+
 
 class ProviderError(PluginError):
     """The WaterButler related errors raised
