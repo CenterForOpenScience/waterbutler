@@ -94,10 +94,10 @@ class GitHubProvider(provider.BaseProvider):
         if path == '/':
             return GitHubPath(path, _ids=[(branch_ref, '')])
 
-        branch_data = await self._fetch_branch(branch_ref)
-
-        # throws Not Found if path not in tree
-        await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
+        if not kwargs.get('ref'):
+            branch_data = await self._fetch_branch(branch_ref)
+            # throws Not Found if path not in tree
+            await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
 
         path = GitHubPath(path)
         for part in path.parts:
