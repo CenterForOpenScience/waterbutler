@@ -53,10 +53,10 @@ class AuthError(PluginError):
 
 
 class UnsupportedMethodError(PluginError):
-    """WaterButler related errors raised
-    from a :class:`waterbutler.core.auth` should
-    inherit from AuthError
+    """An unsupported method was used
     """
+    def __init__(self, msg):
+        super().__init__(msg, code=405)
 
 
 class ProviderError(PluginError):
