@@ -12,7 +12,7 @@ class TestOsfAuthHandler(unittest.TestCase):
     def test_supported_methods(self):
 
         supported_methods = ['put', 'post', 'get', 'head', 'delete']
-        assert list(self.handler.ACTION_MAP.keys()) == supported_methods
+        assert all(method in self.handler.ACTION_MAP.keys() for method in supported_methods)
 
         for method in supported_methods:
             assert requests.request(method, DOMAIN + '/v1/resources/test/providers/test/').status_code == 404
