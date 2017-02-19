@@ -169,10 +169,7 @@ class OSFStorageProvider(provider.BaseProvider):
         if data['kind'] == 'file':
             return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
 
-        folder = OsfStorageFolderMetadata(data, str(dest_path))
-        folder.children = await self._children_metadata(await self.validate_v1_path(data['path']))
-
-        return folder, dest_path.identifier is None
+        return OsfStorageFolderMetadata(data, str(dest_path)), dest_path.identifier is None
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
         if dest_path.identifier:
@@ -198,10 +195,7 @@ class OSFStorageProvider(provider.BaseProvider):
         if data['kind'] == 'file':
             return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
 
-        folder = OsfStorageFolderMetadata(data, str(dest_path))
-        folder.children = await self._children_metadata(await self.validate_v1_path(data['path']))
-
-        return folder, dest_path.identifier is None
+        return OsfStorageFolderMetadata(data, str(dest_path)), dest_path.identifier is None
 
     def build_signed_url(self, method, url, data=None, params=None, ttl=100, **kwargs):
         signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
