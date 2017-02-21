@@ -108,10 +108,14 @@ def actual_folder_response():
     }
 
 def _build_title_search_query(provider, entity_name, is_folder=True):
-        return "title = '{}' " \
+    return "title = '{}' " \
             "and trashed = false " \
             "and mimeType != 'application/vnd.google-apps.form' " \
             "and mimeType != 'application/vnd.google-apps.map' " \
+            "and mimeType != 'application/vnd.google-apps.document' " \
+            "and mimeType != 'application/vnd.google-apps.drawing' " \
+            "and mimeType != 'application/vnd.google-apps.presentation' " \
+            "and mimeType != 'application/vnd.google-apps.spreadsheet' " \
             "and mimeType {} '{}'".format(
                 entity_name,
                 '=' if is_folder else '!=',
