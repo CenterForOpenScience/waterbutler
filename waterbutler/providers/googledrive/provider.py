@@ -445,6 +445,10 @@ class GoogleDriveProvider(provider.BaseProvider):
             ) as resp:
                 ret.append(await resp.json())
 
+        content_type = ret[-1]['mimeType']
+        if not ext and 'application/vnd.google-apps' in content_type and content_type != 'application/vnd.google-apps.folder':
+            raise exceptions.ExtensionNotIncluded(provider=self.NAME)
+
         return ret
 
     async def _resolve_id_to_parts(self, _id, accum=None):
