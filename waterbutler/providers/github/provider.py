@@ -2,6 +2,7 @@ import copy
 import json
 
 import furl
+import base64
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -240,6 +241,16 @@ class GitHubProvider(provider.BaseProvider):
                 'sha': blob['sha']
             }]
         })
+
+        if exists:  # Avoids empty commits
+            old_blob = await self._fetch_contents(path, path.branch_ref)
+            if base64.b64decode(blob['content']) == base64.b64decode(old_blob['content']):
+
+                return GitHubFileTreeMetadata({
+                    'path': path.path,
+                    'sha': blob['sha'],
+                    'size': stream.size,
+                }, ref=path.branch_ref), not exists
 
         commit = await self._create_commit({
             'tree': tree['sha'],
@@ -602,11 +613,12 @@ class GitHubProvider(provider.BaseProvider):
             'encoding': 'base64',
             'content': streams.Base64EncodeStream(stream),
         })
+        json_blob = await blob_stream.read()
 
         resp = await self.make_request(
             'POST',
             self.build_repo_url('git', 'blobs'),
-            data=blob_stream,
+            data=json_blob,
             headers={
                 'Content-Type': 'application/json',
                 'Content-Length': str(blob_stream.size),
@@ -614,7 +626,10 @@ class GitHubProvider(provider.BaseProvider):
             expects=(201, ),
             throws=exceptions.UploadError,
         )
-        return (await resp.json())
+        resp = await resp.json()
+
+        resp.update(json.loads(json_blob))
+        return resp
 
     def _is_sha(self, ref):
         # sha1 is always 40 characters in length
