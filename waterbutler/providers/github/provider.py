@@ -244,8 +244,7 @@ class GitHubProvider(provider.BaseProvider):
 
         if exists:  # Avoids empty commits
             old_blob = await self._fetch_contents(path, path.branch_ref)
-            if base64.b64decode(blob['content']) == base64.b64decode(old_blob['content']):
-
+            if old_blob['sha'] == blob['sha']:
                 return GitHubFileTreeMetadata({
                     'path': path.path,
                     'sha': blob['sha'],
@@ -613,12 +612,11 @@ class GitHubProvider(provider.BaseProvider):
             'encoding': 'base64',
             'content': streams.Base64EncodeStream(stream),
         })
-        json_blob = await blob_stream.read()
 
         resp = await self.make_request(
             'POST',
             self.build_repo_url('git', 'blobs'),
-            data=json_blob,
+            data=blob_stream,
             headers={
                 'Content-Type': 'application/json',
                 'Content-Length': str(blob_stream.size),
@@ -628,7 +626,6 @@ class GitHubProvider(provider.BaseProvider):
         )
         resp = await resp.json()
 
-        resp.update(json.loads(json_blob))
         return resp
 
     def _is_sha(self, ref):
