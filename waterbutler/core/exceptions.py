@@ -52,8 +52,8 @@ class AuthError(PluginError):
     """
 
 
-class UnsupportedMethodError(PluginError):
-    """An unsupported method was used
+class UnsupportedHTTPMethodError(PluginError):
+    """An unsupported HTTP method was used
     """
     def __init__(self, msg):
         super().__init__(msg, code=405)

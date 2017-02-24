@@ -111,7 +111,7 @@ class OsfAuthHandler(auth.BaseAuthHandler):
             action = self.ACTION_MAP[request.method.lower()]
         except KeyError:
             supported_methods = ', '.join(list(self.ACTION_MAP.keys())).upper()
-            raise exceptions.UnsupportedMethodError("Method '{method_used}' not supported,"
+            raise exceptions.UnsupportedHTTPMethodError("Method '{method_used}' not supported,"
                                                     " currently supported methods are {supported_methods}"
                                                     .format(method_used=request.method.lower(),
                                                             supported_methods=supported_methods))
