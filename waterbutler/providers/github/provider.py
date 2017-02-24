@@ -2,7 +2,6 @@ import copy
 import json
 
 import furl
-import base64
 
 from waterbutler.core import streams
 from waterbutler.core import provider
