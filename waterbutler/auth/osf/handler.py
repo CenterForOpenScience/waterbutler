@@ -93,6 +93,13 @@ class OsfAuthHandler(auth.BaseAuthHandler):
 
     async def get(self, resource, provider, request):
         """Used for v1"""
+
+        try:
+            action = self.ACTION_MAP[request.method.lower()]
+        except KeyError:
+            raise exceptions.UnsupportedHTTPMethodError(method_used=request.method.lower(),
+                                                        supported_methods=self.ACTION_MAP.keys())
+
         headers = {'Content-Type': 'application/json'}
 
         if 'Authorization' in request.headers:
@@ -106,15 +113,6 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         if view_only:
             # View only must go outside of the jwt
             view_only = view_only[0].decode()
-
-        try:
-            action = self.ACTION_MAP[request.method.lower()]
-        except KeyError:
-            supported_methods = ', '.join(list(self.ACTION_MAP.keys())).upper()
-            raise exceptions.UnsupportedHTTPMethodError("Method '{method_used}' not supported,"
-                                                    " currently supported methods are {supported_methods}"
-                                                    .format(method_used=request.method.lower(),
-                                                            supported_methods=supported_methods))
 
         payload = (await self.make_request(
             self.build_payload({
