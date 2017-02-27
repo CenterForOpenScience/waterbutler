@@ -447,7 +447,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         content_type = ret[-1]['mimeType']
         if not ext and 'application/vnd.google-apps' in content_type and content_type != 'application/vnd.google-apps.folder':
-            raise exceptions.ExtensionNotIncluded(provider=self.NAME)
+            raise exceptions.NotFoundError(path=path)
 
         return ret
 

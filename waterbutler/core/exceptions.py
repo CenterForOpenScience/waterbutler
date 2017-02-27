@@ -64,11 +64,6 @@ class ProviderNotFound(ProviderError):
         super().__init__('Provider "{}" not found'.format(provider), code=404)
 
 
-class ExtensionNotIncluded(ProviderError):
-    def __init__(self, provider):
-        super().__init__('We require you include an extension for this type of file for {}'.format(provider), code=400)
-
-
 class CopyError(ProviderError):
     pass
 
