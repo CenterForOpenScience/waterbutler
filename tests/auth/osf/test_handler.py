@@ -39,3 +39,4 @@ class TestOsfAuthHandler(ServerTestCase):
             with pytest.raises(UnsupportedHTTPMethodError):
                 await self.handler.get("test", "test", self.request)
 
+        mock_auth_patcher.stop()
