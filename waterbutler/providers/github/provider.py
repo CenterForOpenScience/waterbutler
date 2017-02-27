@@ -242,8 +242,7 @@ class GitHubProvider(provider.BaseProvider):
         })
 
         if exists:  # Avoids empty commits
-            old_blob = await self._fetch_contents(path, path.branch_ref)
-            if old_blob['sha'] == blob['sha']:
+            if [x for x in tree['tree'] if x['path'] == path.name and blob['sha'] == x['sha']]:
                 return GitHubFileTreeMetadata({
                     'path': path.path,
                     'sha': blob['sha'],
