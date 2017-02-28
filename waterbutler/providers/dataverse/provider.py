@@ -13,7 +13,11 @@ from waterbutler.providers.dataverse.metadata import DataverseDatasetMetadata
 
 
 class DataverseProvider(provider.BaseProvider):
-    """Provider for Dataverse"""
+    """Provider for Dataverse
+
+    API Docs: http://guides.dataverse.org/en/4.5/api/
+
+    """
 
     NAME = 'dataverse'
 
@@ -21,9 +25,8 @@ class DataverseProvider(provider.BaseProvider):
         """
         :param dict auth: Not used
         :param dict credentials: Contains `token`
-        :param dict settings: Contains `host`, `doi`, `id`, and `name` of a dataset. Hosts:
+        :param dict settings: Contains `host`, `doi`, `id`, and `name` of a dataset. Hosts::
 
-            - 'apitest.dataverse.org': Api Test Server
             - 'demo.dataverse.org': Harvard Demo Server
             - 'dataverse.harvard.edu': Dataverse Production Server **(NO TEST DATA)**
             - Other
@@ -35,6 +38,12 @@ class DataverseProvider(provider.BaseProvider):
         self.doi = self.settings['doi']
         self._id = self.settings['id']
         self.name = self.settings['name']
+        self.metrics.add('host', {
+            'host': self.settings['host'],
+            'doi': self.doi,
+            'name': self.name,
+            'id': self._id,
+        })
 
         self._metadata_cache = {}
 
@@ -57,6 +66,7 @@ class DataverseProvider(provider.BaseProvider):
         :param str path: The path to a file
         :param list metadata: List of file metadata from _get_data
         """
+        self.metrics.add('validate_path.revision', revision)
         if path == '/':
             wbpath = WaterButlerPath('/')
             wbpath.revision = revision

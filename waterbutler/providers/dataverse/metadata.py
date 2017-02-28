@@ -47,6 +47,10 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
         return None
 
     @property
+    def created_utc(self):
+        return None
+
+    @property
     def etag(self):
         return '{}::{}'.format(self.dataset_version, self.file_id)
 

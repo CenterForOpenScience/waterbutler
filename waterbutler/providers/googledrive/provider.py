@@ -117,6 +117,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return self == other and (path and path.is_file)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
+        self.metrics.add('intra_move.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
 
@@ -140,6 +141,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
+        self.metrics.add('intra_copy.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
 
@@ -162,8 +164,10 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def download(self, path, revision=None, range=None, **kwargs):
         if revision and not revision.endswith(settings.DRIVE_IGNORE_VERSION):
             metadata = await self.metadata(path, revision=revision)
+            self.metrics.add('download.got_supported_revision', True)
         else:
             metadata = await self.metadata(path)
+            self.metrics.add('download.got_supported_revision', False)
 
         download_resp = await self.make_request(
             'GET',
@@ -215,7 +219,9 @@ class GoogleDriveProvider(provider.BaseProvider):
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
+        self.metrics.add('delete.is_root_delete', path.is_root)
         if path.is_root:
+            self.metrics.add('delete.root_delete_confirmed', confirm_delete == 1)
             if confirm_delete == 1:
                 await self._delete_folder_contents(path)
                 return
@@ -380,6 +386,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         something that matches ``path``.  Returns a list of dicts for each part of the path, with
         ``title``, ``mimeType``, and ``id`` keys.
         """
+        self.metrics.incr('called_resolve_path_to_ids')
         ret = start_at or [{
             'title': '',
             'mimeType': 'folder',
@@ -393,15 +400,23 @@ class GoogleDriveProvider(provider.BaseProvider):
             parts[-1][1] = False
         while parts:
             current_part = parts.pop(0)
-            query = "title = '{}' " \
-                    "and trashed = false " \
-                    "and mimeType != 'application/vnd.google-apps.form' " \
-                    "and mimeType != 'application/vnd.google-apps.map' " \
-                    "and mimeType {} '{}'".format(
-                        clean_query(current_part[0]),
-                        '=' if current_part[1] else '!=',
-                        self.FOLDER_MIME_TYPE
-                    )
+            part_name, part_is_folder = current_part[0], current_part[1]
+            name, ext = os.path.splitext(part_name)
+            if not part_is_folder and ext in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
+                gd_ext = drive_utils.get_mimetype_from_ext(ext)
+                query = "title = '{}' " \
+                        "and trashed = false " \
+                        "and mimeType = '{}'".format(clean_query(name), gd_ext)
+            else:
+                query = "title = '{}' " \
+                        "and trashed = false " \
+                        "and mimeType != 'application/vnd.google-apps.form' " \
+                        "and mimeType != 'application/vnd.google-apps.map' " \
+                        "and mimeType {} '{}'".format(
+                            clean_query(part_name),
+                            '=' if part_is_folder else '!=',
+                            self.FOLDER_MIME_TYPE
+                        )
             async with self.request(
                 'GET',
                 self.build_url('files', item_id, 'children', q=query, fields='items(id)'),
@@ -416,20 +431,11 @@ class GoogleDriveProvider(provider.BaseProvider):
                 if parts:
                     # if we can't find an intermediate path part, that's an error
                     raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
-
-                # Couldn't find id for last part of path. If path includes Google Doc extension,
-                # search again without extension (gdrive won't find it if included). Otherwise,
-                # assume file or folder doesn't yet exist (i.e. id = None)
-                name, ext = os.path.splitext(current_part[0])
-                if ext not in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
-                    return ret + [{
-                        'id': None,
-                        'title': current_part[0],
-                        'mimeType': 'folder' if path.endswith('/') else '',
-                    }]
-                # strip google docs extension and try again
-                parts.append([name, current_part[1]])
-                continue
+                return ret + [{
+                    'id': None,
+                    'title': part_name,
+                    'mimeType': 'folder' if part_is_folder else '',
+                }]
 
             async with self.request(
                 'GET',
@@ -442,6 +448,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return ret
 
     async def _resolve_id_to_parts(self, _id, accum=None):
+        self.metrics.incr('called_resolve_id_to_parts')
         if _id == self.folder['id']:
             return [{
                 'title': '',
@@ -504,6 +511,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         # Revisions are not available for some sharing configurations. If
         # revisions list is empty, use the etag of the file plus a sentinel
         # string as a dummy revision ID.
+        self.metrics.add('handle_docs_versioning.revisions_not_supported', not revisions_data['items'])
         if not revisions_data['items']:
             # If there are no revisions use etag as vid
             item['version'] = revisions_data['etag'] + settings.DRIVE_IGNORE_VERSION
@@ -514,17 +522,22 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def _folder_metadata(self, path, raw=False):
         query = self._build_query(path.identifier)
-
-        async with self.request(
-            'GET',
-            self.build_url('files', q=query, alt='json', maxResults=1000),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        ) as resp:
-            return [
-                self._serialize_item(path.child(item['title']), item, raw=raw)
-                for item in (await resp.json())['items']
-            ]
+        built_url = self.build_url('files', q=query, alt='json', maxResults=1000)
+        full_resp = []
+        while built_url:
+            async with self.request(
+                'GET',
+                built_url,
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            ) as resp:
+                resp_json = await resp.json()
+                full_resp.extend([
+                    self._serialize_item(path.child(item['title']), item, raw=raw)
+                    for item in resp_json['items']
+                ])
+                built_url = resp_json.get('nextLink', None)
+        return full_resp
 
     async def _file_metadata(self, path, revision=None, raw=False):
         if revision:

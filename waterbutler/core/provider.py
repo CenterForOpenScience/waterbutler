@@ -13,6 +13,7 @@ import aiohttp
 from waterbutler import settings
 from waterbutler.core import streams
 from waterbutler.core import exceptions
+from waterbutler.core.metrics import MetricsRecord
 from waterbutler.core.utils import ZipStreamGenerator
 from waterbutler.core.utils import RequestHandlerContext
 
@@ -91,6 +92,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         self.credentials = credentials
         self.settings = settings
 
+        self.provider_metrics = MetricsRecord('provider')
+        self.provider_metrics.add('auth', auth)
+        self.metrics = self.provider_metrics.new_subrecord(self.NAME)
+
     @abc.abstractproperty
     def NAME(self):
         raise NotImplementedError
@@ -165,11 +170,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
             url = url()
         while retry >= 0:
             try:
+                self.provider_metrics.incr('requests.count')
+                self.provider_metrics.append('requests.urls', url)
                 response = await aiohttp.request(method, url, *args, **kwargs)
+                self.provider_metrics.append('requests.verbose', ['OK', response.status, url])
                 if expects and response.status not in expects:
                     raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
                 return response
             except throws as e:
+                self.provider_metrics.append('requests.verbose', ['NO', e.code, url])
                 if retry <= 0 or e.code not in self._retry_on:
                     raise
                 await asyncio.sleep((1 + _retry - retry) * 2)
@@ -192,6 +201,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict}
 
+        self.provider_metrics.add('move', {
+            'got_handle_naming': handle_naming,
+            'conflict': conflict,
+            'got_rename': rename is not None,
+        })
+
         if handle_naming:
             dest_path = await dest_provider.handle_naming(
                 src_path,
@@ -202,7 +217,16 @@ class BaseProvider(metaclass=abc.ABCMeta):
             args = (dest_provider, src_path, dest_path)
             kwargs = {}
 
+        # files and folders shouldn't overwrite themselves
+        if (
+            self.shares_storage_root(dest_provider) and
+            src_path.materialized_path == dest_path.materialized_path
+        ):
+            raise exceptions.OverwriteSelfError(src_path)
+
+        self.provider_metrics.add('move.can_intra_move', False)
         if self.can_intra_move(dest_provider, src_path):
+            self.provider_metrics.add('move.can_intra_move', True)
             return (await self.intra_move(*args))
 
         if src_path.is_dir:
@@ -218,6 +242,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
 
+        self.provider_metrics.add('copy', {
+            'got_handle_naming': handle_naming,
+            'conflict': conflict,
+            'got_rename': rename is not None,
+        })
         if handle_naming:
             dest_path = await dest_provider.handle_naming(
                 src_path,
@@ -228,8 +257,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
             args = (dest_provider, src_path, dest_path)
             kwargs = {}
 
+        # files and folders shouldn't overwrite themselves
+        if (
+                self.shares_storage_root(dest_provider) and
+                src_path.materialized_path == dest_path.materialized_path
+        ):
+            raise exceptions.OverwriteSelfError(src_path)
+
+        self.provider_metrics.add('copy.can_intra_copy', False)
         if self.can_intra_copy(dest_provider, src_path):
-                return (await self.intra_copy(*args))
+            self.provider_metrics.add('copy.can_intra_copy', True)
+            return (await self.intra_copy(*args))
 
         if src_path.is_dir:
             return (await self._folder_file_op(self.copy, *args, **kwargs))
@@ -273,6 +311,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         folder.children = []
         items = await self.metadata(src_path)
+
+        self.provider_metrics.append('_folder_file_ops.item_counts', len(items))
 
         for i in range(0, len(items), settings.OP_CONCURRENCY):
             futures = []
@@ -462,6 +502,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         return streams.ZipStreamReader(ZipStreamGenerator(self, path, *metadata))
 
+    def shares_storage_root(self, other):
+        """Returns True if ``self`` and ``other`` both point to the same storage root.  Used to
+        detect when a file move/copy action might result in the file overwriting itself. Most
+        providers have enough uniquely identifing information in the settings to detect this,
+        but some providers may need to override this to do further detection.
+
+        :param BaseProvider other: another provider instance to compare with
+        :returns bool: True if both providers use the same storage root.
+        """
+        return self.NAME == other.NAME and self.settings == other.settings
+
     @abc.abstractmethod
     def can_duplicate_names(self):
         """Returns True if a file and a folder in the same directory can have identical names."""
@@ -521,15 +572,37 @@ class BaseProvider(metaclass=abc.ABCMeta):
         validate_path must currently accomodate v0 AND v1 semantics.  After v0's retirement, this
         method can replace validate_path.
 
-        :param str path: user-supplied path to validate
-        :rtype: :class:`waterbutler.core.path`
-        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        ``path`` is the string in the url after the provider name and refers to the entity to be
+        acted on. For v1, this must *always exist*.  If it does not, ``validate_v1_path`` should
+        return a 404.  Creating a new file in v1 is done by making a PUT request against the parent
+        folder and specifying the file name as a query parameter.  If a user attempts to create a
+        file by PUTting to its inferred path, validate_v1_path should reject this request with a 404.
 
+        :param str path: user-supplied path to validate
+        :rtype: :class:`waterbutler.core.path.WaterButlerPath`
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
         raise NotImplementedError
 
     @abc.abstractmethod
     def validate_path(self, path, **kwargs):
+        """Validates paths passed in via the v0 API.  v0 paths are much less strict than v1 paths.
+        They may represent things that exist or something that should be created.  As such, the goal
+        of ``validate_path`` is to split the path into its component parts and attempt to determine
+        the ID of each part on the external provider.  For instance, if the ``googledrive`` provider
+        receives a path of ``/foo/bar/baz.txt``, it will split those into ``/``, ``foo/``, ``bar/``,
+        and ``baz.txt``, and query Google Drive for the ID of each.  ``validate_path`` then builds a
+        WaterButlerPath object with an ID, name tuple for each path part.  The last part is
+        permitted to not have an ID, since it may represent a file that has not yet been created.
+        All other parts should have an ID.
+
+        The WaterButler v0 API is deprecated and will be removed in a future release.  At that time
+        this method will be obsolete and will be removed from all providers.
+
+        :param str path: user-supplied path to validate
+        :rtype: :class:`waterbutler.core.path.WaterButlerPath`
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        """
         raise NotImplementedError
 
     def path_from_metadata(self, parent_path, metadata):

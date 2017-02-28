@@ -36,6 +36,12 @@ def is_docs_file(metadata):
     return metadata.get('exportLinks')
 
 
+def get_mimetype_from_ext(ext):
+    for format in DOCS_FORMATS:
+        if format['ext'] == ext:
+            return format['mime_type']
+
+
 def get_format(metadata):
     for format in DOCS_FORMATS:
         if format['mime_type'] == metadata['mimeType']:

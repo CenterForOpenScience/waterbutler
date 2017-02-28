@@ -9,7 +9,7 @@ import waterbutler.server  # noqa
 master_doc = "index"
 
 project = "WaterButler"
-copyright = "2016, Center For Open Science"
+copyright = "2017, Center For Open Science"
 
 version = release = waterbutler.__version__
 
@@ -40,10 +40,6 @@ coverage_ignore_classes = []
 coverage_ignore_functions = []
 
 html_favicon = 'favicon.ico'
-
-latex_documents = [
-    ('documentation', False),
-]
 
 # HACK: sphinx has limited support for substitutions with the |version|
 # variable, but there doesn't appear to be any way to use this in a link

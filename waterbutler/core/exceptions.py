@@ -137,6 +137,19 @@ class InvalidPathError(ProviderError):
         super().__init__(message, code=http.client.BAD_REQUEST, is_user_error=is_user_error)
 
 
+class OverwriteSelfError(InvalidParameters):
+    def __init__(self, path):
+        super().__init__('Unable to move or copy \'{}\'. Moving or copying a file or '
+                         'folder onto itself is not supported.'.format(path))
+
+
+class UnsupportedOperationError(ProviderError):
+    def __init__(self, message, is_user_error=True):
+        if not message:
+            message = 'The requested operation is not supported by WaterButler.'
+        super().__init__(message, code=http.client.FORBIDDEN, is_user_error=is_user_error)
+
+
 async def exception_from_response(resp, error=ProviderError, **kwargs):
     """Build and return, not raise, an exception from a response object
 

@@ -36,6 +36,10 @@ class BaseOwnCloudMetadata(metadata.BaseMetadata):
     def modified(self):
         return self.attributes['{DAV:}getlastmodified']
 
+    @property
+    def created_utc(self):
+        return None
+
 
 class OwnCloudFileMetadata(BaseOwnCloudMetadata, metadata.BaseFileMetadata):
 

@@ -39,6 +39,10 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
         return self.raw['LAST-MODIFIED']
 
     @property
+    def created_utc(self):
+        return None
+
+    @property
     def etag(self):
         return self.raw['ETAG'].replace('"', '')
 
@@ -63,6 +67,10 @@ class S3FileMetadata(S3Metadata, metadata.BaseFileMetadata):
     @property
     def modified(self):
         return self.raw['LastModified']
+
+    @property
+    def created_utc(self):
+        return None
 
     @property
     def content_type(self):

@@ -209,6 +209,7 @@ class TestMoveTask:
             'extra': metadata.extra,
             'modified': metadata.modified,
             'modified_utc': metadata.modified_utc,
+            'created_utc': metadata.created_utc,
             'size': metadata.size,
         }
 

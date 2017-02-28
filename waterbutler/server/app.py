@@ -1,5 +1,6 @@
 import os
 import asyncio
+import logging
 
 import tornado.web
 import tornado.httpserver
@@ -13,6 +14,8 @@ from waterbutler.server.api import v0
 from waterbutler.server.api import v1
 from waterbutler.server import handlers
 from waterbutler.server import settings as server_settings
+
+logger = logging.getLogger(__name__)
 
 
 def api_to_handlers(api):
@@ -52,6 +55,8 @@ def serve():
         max_body_size=server_settings.MAX_BODY_SIZE,
         ssl_options=ssl_options,
     )
+
+    logger.info("Listening on {0}:{1}".format(server_settings.ADDRESS, server_settings.PORT))
 
     asyncio.get_event_loop().set_debug(server_settings.DEBUG)
     asyncio.get_event_loop().run_forever()

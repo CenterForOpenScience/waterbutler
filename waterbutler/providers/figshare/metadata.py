@@ -1,12 +1,10 @@
-import humanfriendly
-
 from waterbutler.core import metadata
 from waterbutler.core.provider import build_url
 
 from waterbutler.providers.figshare import settings
 
 
-class BaseFigshareMetadata:
+class BaseFigshareMetadata(metadata.BaseMetadata):
 
     @property
     def provider(self):
@@ -15,86 +13,109 @@ class BaseFigshareMetadata:
 
 class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
 
-    def __init__(self, raw, parent, child):
+    def __init__(self, raw, raw_file=None):
         super().__init__(raw)
-        self.parent = parent
-        self.article_id = parent['article_id']
-        self.child = child
-
-    @property
-    def web_view(self):
-        if self.parent['status'].lower() == 'public':
-            segments = ('articles', self.parent['title'], str(self.article_id))
+        if raw_file:
+            self.raw_file = raw_file
         else:
-            segments = ('account', 'articles', str(self.article_id))
-        return build_url(settings.VIEW_URL, *segments)
+            self.raw_file = self.raw['files'][0]
 
     @property
-    def kind(self):
-        return 'file'
+    def id(self):
+        return self.raw_file['id']
 
     @property
     def name(self):
-        return self.raw['name']
+        return self.raw_file['name']
+
+    @property
+    def article_id(self):
+        return self.raw['id']
+
+    @property
+    def article_name(self):
+        if settings.ARTICLE_TYPE_IDENTIFIER in self.raw['url']:
+            return ''
+        return self.raw['title']
 
     @property
     def path(self):
-        if self.child:
-            return '/{0}/{1}'.format(self.article_id, self.raw['id'])
-        return '/{0}'.format(self.raw['id'])
+        if settings.ARTICLE_TYPE_IDENTIFIER in self.raw['url']:
+            return '/{0}'.format(self.id)
+        return '/{0}/{1}'.format(self.article_id, self.id)
 
     @property
     def materialized_path(self):
-        if self.child:
-            return '/{0}/{1}'.format(self.parent['title'], self.name)
-        return '/{0}'.format(self.name)
+        if settings.ARTICLE_TYPE_IDENTIFIER in self.raw['url']:
+            return '/{0}'.format(self.name)
+        # if self.raw['defined_type'] in settings.FOLDER_TYPES:
+        #     return '/{0}/{1}'.format(self.article_name, self.name)
+        # return '/{0}'.format(self.name)
+        return '/{0}/{1}'.format(self.article_name, self.name)
+
+    @property
+    def upload_path(self):
+        return self.path
 
     @property
     def content_type(self):
-        return self.raw.get('mime_type')
+        return None
 
     @property
     def size(self):
-        size = self.raw.get('size')
-        if type(size) == str:
-            return humanfriendly.parse_size(size)
-        return size
+        return self.raw_file['size']
 
     @property
     def modified(self):
         return None
 
     @property
-    def can_delete(self):
-        """Files can be deleted if private or if containing fileset contains
-        two or more files.
-        """
-        return (
-            self.parent['status'].lower() == 'drafts' or
-            len(self.parent.get('files', [])) > 1
-        )
+    def created_utc(self):
+        return None
 
     @property
     def etag(self):
-        return '{}::{}::{}'.format(self.parent['status'].lower(), self.article_id, self.raw['id'])
+        return '{}:{}:{}'.format(self.raw['status'].lower(),
+                               self.article_id,
+                               self.raw_file['computed_md5'])
+
+    @property
+    def is_public(self):
+        return (settings.PRIVATE_IDENTIFIER not in self.raw['url'])
+
+    @property
+    def web_view(self):
+        if self.is_public:
+            segments = ('articles', str(self.article_id))
+        else:
+            segments = ('account', 'articles', str(self.article_id))
+        return build_url(settings.VIEW_URL, *segments)
+
+    @property
+    def can_delete(self):
+        """Files can be deleted if not public."""
+        return (not self.is_public)
 
     @property
     def extra(self):
         return {
-            'fileId': self.raw['id'],
+            'fileId': self.raw_file['id'],
             'articleId': self.article_id,
-            'status': self.parent['status'].lower(),
-            'downloadUrl': self.raw.get('download_url'),
+            'status': self.raw['status'].lower(),
+            'downloadUrl': self.raw_file['download_url'],
             'canDelete': self.can_delete,
             'webView': self.web_view
         }
 
 
-class FigshareArticleMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
+class FigshareFolderMetadata(BaseFigshareMetadata, metadata.BaseFolderMetadata):
+    """Default config only allows articles of defined_type fileset to be
+    considered folders.
+    """
 
     @property
-    def kind(self):
-        return 'folder'
+    def id(self):
+        return self.raw['id']
 
     @property
     def name(self):
@@ -102,7 +123,7 @@ class FigshareArticleMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
 
     @property
     def path(self):
-        return '/{0}/'.format(self.raw.get('article_id'))
+        return '/{0}/'.format(self.raw.get('id'))
 
     @property
     def materialized_path(self):
@@ -114,31 +135,42 @@ class FigshareArticleMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
 
     @property
     def modified(self):
+        return self.raw['modified_date']
+
+    @property
+    def created_utc(self):
         return None
 
     @property
     def etag(self):
-        return '{}::{}::{}'.format(self.raw['status'].lower(), self.raw.get('doi'), self.raw.get('article_id'))
+        return '{}::{}::{}'.format(self.raw['status'].lower(), self.raw.get('doi'), self.raw.get('id'))
 
     @property
     def extra(self):
         return {
-            'id': self.raw.get('article_id'),
+            'id': self.raw.get('id'),
             'doi': self.raw.get('doi'),
             'status': self.raw['status'].lower(),
         }
 
 
-class FigshareProjectMetadata(BaseFigshareMetadata, metadata.BaseMetadata):
+class FigshareFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
+
+    def __init__(self):
+        pass
 
     @property
-    def kind(self):
-        return 'folder'
+    def modified(self):
+        return None
 
     @property
-    def name(self):
-        return self.raw['title']
+    def modified_utc(self):
+        return None
 
     @property
-    def path(self):
-        return '{0}/'.format(self.name)
+    def version_identifier(self):
+        return 'revision'
+
+    @property
+    def version(self):
+        return 'latest'

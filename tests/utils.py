@@ -28,6 +28,7 @@ class MockFileMetadata(metadata.BaseFileMetadata):
     path = '/Foo.name'
     modified = 'never'
     modified_utc = 'never'
+    created_utc = 'always'
     content_type = 'application/octet-stream'
 
     def __init__(self):
@@ -52,6 +53,7 @@ class MockFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
     version_identifier = 'versions'
     modified = 'never'
     modified_utc = 'never'
+    created_utc = 'always'
 
     def __init__(self):
         super().__init__({})
@@ -70,8 +72,8 @@ class MockProvider(provider.BaseProvider):
     revalidate_path = None
     can_duplicate_names = True
 
-    def __init__(self, auth=None, settings=None, creds=None):
-        super().__init__(auth or {}, settings or {}, creds or {})
+    def __init__(self, auth=None, creds=None, settings=None):
+        super().__init__(auth or {}, creds or {}, settings or {})
         self.copy = MockCoroutine()
         self.move = MockCoroutine()
         self.delete = MockCoroutine()
