@@ -202,6 +202,20 @@ class GitHubProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp, size=data.size)
 
+    async def get_blob_tree(self, branch_ref):
+
+        resp = await self.make_request(
+            'GET',
+            self.build_repo_url('git', 'trees') + '/{}:?recursive=99999'.format(branch_ref),
+        )
+
+        return await resp.json()
+
+    async def is_blob_in_tree(self, new_blob, path):
+        blob_tree = await self.get_blob_tree(path.branch_ref)
+        return any(new_blob['sha'] == blob['sha'] and path.path == blob['path'] for blob in blob_tree['tree'])
+
+
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
         assert self.name is not None
         assert self.email is not None
@@ -241,13 +255,12 @@ class GitHubProvider(provider.BaseProvider):
             }]
         })
 
-        if exists:  # Avoids empty commits
-            if [x for x in tree['tree'] if x['path'] == path.name and blob['sha'] == x['sha']]:
-                return GitHubFileTreeMetadata({
-                    'path': path.path,
-                    'sha': blob['sha'],
-                    'size': stream.size,
-                }, ref=path.branch_ref), not exists
+        if exists and await self.is_blob_in_tree(blob, path):  # Avoids empty commits
+            return GitHubFileTreeMetadata({
+                'path': path.path,
+                'sha': blob['sha'],
+                'size': stream.size,
+            }, ref=path.branch_ref), not exists
 
         commit = await self._create_commit({
             'tree': tree['sha'],
