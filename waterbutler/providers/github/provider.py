@@ -216,6 +216,10 @@ class GitHubProvider(provider.BaseProvider):
         return any(new_blob['sha'] == blob['sha'] and path.path == blob['path'] for blob in blob_tree['tree'])
 
 
+    async def is_tree_in_trees(self, new_tree, branch_ref):
+        blob_tree = await self.get_blob_tree(branch_ref)
+        return new_tree['sha'] == blob_tree['sha']
+
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
         assert self.name is not None
         assert self.email is not None
@@ -930,12 +934,15 @@ class GitHubProvider(provider.BaseProvider):
         new_tree = await self._create_tree({'tree': old_tree})
 
         # Create a new commit which references our top most tree change.
-        new_head = await self._create_commit({
-            'tree': new_tree['sha'],
-            'parents': [old_head['sha']],
-            'committer': self.committer,
-            'message': commit_msg,
-        })
+        if await self.is_tree_in_trees(new_tree, branch_ref):
+            return None
+        else:
+            new_head = await self._create_commit({
+                'tree': new_tree['sha'],
+                'parents': [old_head['sha']],
+                'committer': self.committer,
+                'message': commit_msg,
+            })
 
         # Update repository reference, point to the newly created commit.
         # No need to store data, rely on expects to raise exceptions
