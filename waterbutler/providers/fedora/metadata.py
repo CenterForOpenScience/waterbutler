@@ -37,6 +37,14 @@ class BaseFedoraMetadata(metadata.BaseMetadata):
     def modified(self):
         return self._get_property(settings.LAST_MODIFIED_PROPERTY_URI)
 
+    @property
+    def modified_utc(self):
+        return self._get_property(settings.LAST_MODIFIED_PROPERTY_URI)
+
+    @property
+    def created_utc(self):
+        return self._get_property(settings.CREATED_PROPERTY_URI)
+
     # Return an resource from index
     def _get_resource(self, resource_id):
         resource_id = resource_id.rstrip('/')
@@ -72,7 +80,7 @@ class FedoraFolderMetadata(BaseFedoraMetadata, metadata.BaseFolderMetadata):
 
         child_obj = self._get_resource(child_id)
 
-        if 'http://fedora.info/definitions/v4/repository#Container' in child_obj['@type']:
+        if settings.CONTAINER_TYPE_URI in child_obj['@type']:
             return FedoraFolderMetadata(self.raw, child_id, WaterButlerPath(child_path_str + '/'), self.resource_index)
         else:
             return FedoraFileMetadata(self.raw, child_id, WaterButlerPath(child_path_str), self.resource_index)

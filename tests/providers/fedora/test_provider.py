@@ -54,7 +54,7 @@ test_file_json_ld = '''
   "@type" : [ "http://www.w3.org/ns/ldp#NonRDFSource", "http://www.jcp.org/jcr/nt/1.0resource", "http://www.jcp.org/jcr/mix/1.0mimeType", "http://fedora.info/definitions/v4/repository#Binary", "http://fedora.info/definitions/v4/repository#Resource" ],
   "http://fedora.info/definitions/v4/repository#created" : [ {
     "@type" : "http://www.w3.org/2001/XMLSchema#dateTime",
-    "@value" : "2016-04-20T16:44:59.35Z"
+    "@value" : "2016-01-10T16:44:59.35Z"
   } ],
   "http://fedora.info/definitions/v4/repository#createdBy" : [ {
     "@value" : "bypassAdmin"
@@ -147,7 +147,7 @@ test_folder_json_ld = '''
   "@type" : [ "http://www.jcp.org/jcr/nt/1.0resource", "http://www.jcp.org/jcr/mix/1.0mimeType", "http://fedora.info/definitions/v4/repository#Binary", "http://fedora.info/definitions/v4/repository#Resource" ],
   "http://fedora.info/definitions/v4/repository#created" : [ {
     "@type" : "http://www.w3.org/2001/XMLSchema#dateTime",
-    "@value" : "2016-04-20T16:44:29.561Z"
+    "@value" : "2016-01-10T16:44:29.561Z"
   } ],
   "http://fedora.info/definitions/v4/repository#createdBy" : [ {
     "@value" : "bypassAdmin"
@@ -280,6 +280,8 @@ class TestProvider:
         assert subfile_md.path == test_subfile_path
         assert subfile_md.size == '22571'
         assert subfile_md.modified == '2016-04-20T16:44:29.561Z'
+        assert subfile_md.modified_utc == '2016-04-20T16:44:29.561Z'
+        assert subfile_md.created_utc == '2016-01-10T16:44:29.561Z'
         assert subfile_md.content_type == 'video/ogg'
 
         assert subfolder_md is not None
