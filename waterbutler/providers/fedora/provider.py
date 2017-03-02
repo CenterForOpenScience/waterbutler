@@ -38,18 +38,20 @@ class FedoraProvider(provider.BaseProvider):
         self.repo = self.credentials['repo']
         self.basic_auth_token = aiohttp.BasicAuth(self.credentials['user'], self.credentials['password']).encode()
 
-    # Return Fedora url for resource identified by WaterButlerPath
-    # Must turn WaterButlerPath into list of segments for build_url
     def build_repo_url(self, path, **query):
+        """Return Fedora url for resource identified by WaterButlerPath"""
         segments = [s.original_raw for s in path.parts]
         return provider.build_url(self.repo, *segments, **query)
 
-    # Return WaterButlerPath for a path string.
-    # Ensure that if the path is to a folder, it corresponds to a Fedora container
-    # and otherwise corresponds to a Fedora binary.
-    # Fedora resource must also exist.
-    # Throw NotFoundError if resource does not exist or types do not match
     async def validate_v1_path(self, path, **kwargs):
+        """Return WaterButlerPath for a path string.
+
+        Ensure that if the path is to a folder, it corresponds to a Fedora container
+        and otherwise corresponds to a Fedora binary. Fedora resource must also exist.
+
+        Throw NotFoundError if resource does not exist or types do not match
+        """
+
         wb_path = WaterButlerPath(path)
         url = self.build_repo_url(wb_path)
 
@@ -60,9 +62,8 @@ class FedoraProvider(provider.BaseProvider):
 
         raise exceptions.NotFoundError(str(path))
 
-    # Return WaterButlerPath for a path string.
-    # Any path understood by WaterButlerPath is fine
     async def validate_path(self, path, **kwargs):
+        """ Return WaterButlerPath for a path string."""
         return WaterButlerPath(path)
 
     def can_duplicate_names(self):
@@ -76,13 +77,17 @@ class FedoraProvider(provider.BaseProvider):
     def can_intra_copy(self, other, path=None):
         return self == other
 
-    # Transform a url in the fedora repo to a WaterButlerPath
     def fedora_url_to_path(self, url):
+        """Transform a url in the fedora repo to a WaterButlerPath"""
         return WaterButlerPath('/' + url[len(self.repo):].strip('/'))
 
-    # Copies src_path to dest_path.
-    # Returns BaseMetadata, Success tuple.
     async def intra_copy(self, dest_provider, src_path, dest_path):
+        """Copies src_path to dest_path.
+
+        Returns BaseMetadata, Success tuple.
+
+        """
+
         src_url = self.build_repo_url(src_path)
         dest_url = self.build_repo_url(dest_path)
 
@@ -99,9 +104,12 @@ class FedoraProvider(provider.BaseProvider):
 
             return md, True
 
-    # Moves src_path to dest_path.
-    # Returns BaseMetadata, Success tuple.
     async def intra_move(self, dest_provider, src_path, dest_path):
+        """Moves src_path to dest_path.
+
+        Returns BaseMetadata, Success tuple.
+        """
+
         src_url = self.build_repo_url(src_path)
         dest_url = self.build_repo_url(dest_path)
 
@@ -127,8 +135,9 @@ class FedoraProvider(provider.BaseProvider):
             'Authorization': self.basic_auth_token
         }
 
-    # Download a Fedora binary
     async def download(self, path, revision=None, range=None, **kwargs):
+        """Download a Fedora binary"""
+
         url = self.build_repo_url(path)
 
         resp = await self.make_request(
@@ -141,8 +150,9 @@ class FedoraProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp)
 
-    # Create a Fedora binary corrsponding to the path and return FedoraFileMetadata for it
     async def upload(self, stream, path, conflict='replace', **kwargs):
+        """Create a Fedora binary corrsponding to the path and return FedoraFileMetadata for it"""
+
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         url = self.build_repo_url(path)
 
@@ -167,9 +177,9 @@ class FedoraProvider(provider.BaseProvider):
             md = await self.metadata(path)
             return md, True
 
-    # Delete the Fedora resource corrsponding to the path
-    # Must also delete the tombstone so the resource can be recreated.
     async def delete(self, path, confirm_delete=0, **kwargs):
+        """Delete the Fedora resource corrsponding to the path"""
+
         url = self.build_repo_url(path)
 
         async with self.request(
@@ -179,6 +189,7 @@ class FedoraProvider(provider.BaseProvider):
         ):
             pass
 
+        # Must delete the tombstone so the resource can be recreated.
         async with self.request(
             'DELETE', url + '/fcr:tombstone',
             expects=(204, ),
@@ -186,10 +197,14 @@ class FedoraProvider(provider.BaseProvider):
         ):
             pass
 
-    # Given a WaterBulterPath, return metadata about the specified resource.
-    # The JSON-LD representations of Fedora resources are parsed as simple JSON.
-    # This is a little brittle and may cause issues in the future.
     async def metadata(self, path, revision=None, **kwargs):
+        """Given a WaterBulterPath, return metadata about the specified resource.
+
+        The JSON-LD representations of Fedora resources are parsed as simple JSON.
+        This is a little brittle and may cause issues in the future.
+
+        """
+
         result = await self.lookup_fedora_metadata(path)
 
         # If fedora resource is container, return list of metadata about child resources.
@@ -199,11 +214,13 @@ class FedoraProvider(provider.BaseProvider):
         else:
             return result
 
-    # Return FedoraFileMetadata for a Fedora binary or FedoraFolderMetadata for a container.
-    # Must do a HEAD request to figure out how to retrieve metadata because the url to a Fedora binary
-    # resource must have /fcr:metadata appended to it.
-    # The Prefer header tells fedora to include triples for child resources.
     async def lookup_fedora_metadata(self, path):
+        """Return FedoraFileMetadata for a Fedora binary or FedoraFolderMetadata for a container.
+
+        Must do a HEAD request to figure out how to retrieve metadata because the url to a Fedora binary
+        resource must have /fcr:metadata appended to it.
+        """
+
         fedora_id = self.build_repo_url(path)
         is_container = await self.is_fedora_container(fedora_id)
 
@@ -211,6 +228,8 @@ class FedoraProvider(provider.BaseProvider):
             url = fedora_id
         else:
             url = fedora_id + '/fcr:metadata'
+
+        # The Prefer header tells fedora to include triples for child resources.
 
         async with self.request(
             'GET', url,
@@ -230,8 +249,9 @@ class FedoraProvider(provider.BaseProvider):
             else:
                 return FedoraFileMetadata(raw, fedora_id, path)
 
-    # Do a head request on a url to check if it is a fedora container
     async def is_fedora_container(self, url):
+        """Do a head request on a url to check if it is a fedora container"""
+
         async with self.request(
             'HEAD', url,
             expects=(200, 404),
@@ -242,8 +262,9 @@ class FedoraProvider(provider.BaseProvider):
 
             return '<http://www.w3.org/ns/ldp#Container>;rel="type"' in resp.headers.getall('Link', [])
 
-    # Create the specified folder as a Fedora container and return FedoraFolderMetadata for it
     async def create_folder(self, path, folder_precheck=True, **kwargs):
+        """Create the specified folder as a Fedora container and return FedoraFolderMetadata for it"""
+
         WaterButlerPath.validate_folder(path)
 
         url = self.build_repo_url(path)
