@@ -17,10 +17,20 @@ from waterbutler.providers.fedora.metadata import FedoraFolderMetadata
 #   user:     Username for repo
 #   password: Password for repo
 #
-# Provider written against Fedora 4.6.0
+# Provider written against Fedora 4.7.1
 
 
 class FedoraProvider(provider.BaseProvider):
+    """Provider for a Fedora 4 repository.
+
+    This provider uses the Fedora 4 REST API which is based on LDP.
+
+    API docs: https://wiki.duraspace.org/display/FEDORA4x/Fedora+4.x+Documentation
+
+    Quirks:
+    * Fedora 4 is a component, not a singular service like Dropbox or Box.
+    """
+
     NAME = 'fedora'
 
     def __init__(self, auth, credentials, prov_settings):
