@@ -171,11 +171,11 @@ class FedoraProvider(provider.BaseProvider):
             url,
             headers={'Content-Length': str(stream.size), 'Content-Type': mime_type},
             data=stream,
-            expects=(201, ),
+            expects=(201, 204),
             throws=exceptions.UploadError,
         ):
             md = await self.metadata(path)
-            return md, True
+            return md, not exists
 
     async def delete(self, path, confirm_delete=0, **kwargs):
         """Delete the Fedora resource corrsponding to the path"""

@@ -338,7 +338,7 @@ class TestProvider:
 
         expected = FedoraFileMetadata(file_metadata, fedora_id, path)
 
-        assert created is True
+        assert created is False
         assert metadata == expected
 
 

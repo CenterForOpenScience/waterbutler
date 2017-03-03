@@ -17,6 +17,7 @@ from waterbutler.providers.fedora.metadata import FedoraFileMetadata
 from waterbutler.providers.fedora.metadata import FedoraFolderMetadata
 
 # Integration tests for FedoraProvider against a live Fedora 4 at http://localhost:8080/rest/
+# Running the one-click distribution of Fedora will setup such a instance.
 
 repo = 'http://localhost:8080/rest/'
 
@@ -76,9 +77,25 @@ class TestProviderIntegration:
         file_content =  b'important data'
         file_stream = streams.FileStreamReader(io.BytesIO(file_content))
 
-        md, created = await provider.upload(file_stream, file_path)
+        md, new = await provider.upload(file_stream, file_path)
 
-        assert created == True
+        assert new == True
+        assert md.kind == 'file'
+        assert md.name == 'data.txt'
+        assert md.size == str(len(file_content))
+        assert md.content_type == 'text/plain'
+
+        result = await provider.download(file_path)
+        content = await result.response.read()
+
+        assert file_content == content
+
+        # Reupload the file with different data to check that new is false
+
+        file_content =  b'important, but different, data'
+        file_stream = streams.FileStreamReader(io.BytesIO(file_content))
+        md, new = await provider.upload(file_stream, file_path)
+        assert new == False
         assert md.kind == 'file'
         assert md.name == 'data.txt'
         assert md.size == str(len(file_content))
