@@ -209,10 +209,7 @@ class FedoraProvider(provider.BaseProvider):
 
         # If fedora resource is container, return list of metadata about child resources.
 
-        if result.is_folder:
-            return result.list_children_metadata(self.repo)
-        else:
-            return result
+        return result.list_children_metadata(self.repo) if result.is_folder else result
 
     async def lookup_fedora_metadata(self, path):
         """Return FedoraFileMetadata for a Fedora binary or FedoraFolderMetadata for a container.
@@ -224,10 +221,7 @@ class FedoraProvider(provider.BaseProvider):
         fedora_id = self.build_repo_url(path)
         is_container = await self.is_fedora_container(fedora_id)
 
-        if is_container:
-            url = fedora_id
-        else:
-            url = fedora_id + '/fcr:metadata'
+        url = fedora_id + ('' if is_container else '/fcr:metadata')
 
         # The Prefer header tells fedora to include triples for child resources.
 
