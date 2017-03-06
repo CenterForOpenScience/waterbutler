@@ -265,10 +265,6 @@ class TestProvider:
 
         for md in result:
             assert isinstance(md, metadata.BaseMetadata)
-            print(md.name)
-            print(md.wb_path)
-            print(md.raw)
-            print('ASDFASDFASDF')
             if md.name == 'moo.ogg':
                 subfile_md = md
             else:
