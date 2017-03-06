@@ -11,6 +11,7 @@ from waterbutler.core import exceptions
 from waterbutler.core import metadata
 from waterbutler.core.path import WaterButlerPath
 
+from waterbutler.providers.fedora import settings
 from waterbutler.providers.fedora import FedoraProvider
 from waterbutler.providers.fedora.metadata import FedoraFileMetadata
 from waterbutler.providers.fedora.metadata import FedoraFolderMetadata
@@ -33,13 +34,13 @@ def credentials():
 
 
 @pytest.fixture
-def settings():
+def provider_settings():
     return {}
 
 
 @pytest.fixture
-def provider(auth, credentials, settings):
-    return FedoraProvider(auth, credentials, settings)
+def provider(auth, credentials, provider_settings):
+    return FedoraProvider(auth, credentials, provider_settings)
 
 test_file_path = '/farm/gorilla'
 test_file_content =  b'banana eater'
@@ -254,7 +255,7 @@ class TestProvider:
         path = WaterButlerPath(test_folder_path)
 
         url = provider.build_repo_url(path)
-        aiohttpretty.register_uri('HEAD', url, status=200, headers={'Link': '<http://www.w3.org/ns/ldp#Container>;rel="type"'})
+        aiohttpretty.register_uri('HEAD', url, status=200, headers={'Link': settings.LDP_CONTAINER_TYPE_HEADER})
         aiohttpretty.register_uri('GET', url, status=200, body=test_folder_json_ld, headers={'Content-Type': 'application/json'})
 
         result = await provider.metadata(path)
@@ -359,7 +360,7 @@ class TestProvider:
 
         aiohttpretty.register_uri('PUT', url, status=201)
         aiohttpretty.register_uri('GET', url, status=200, body=test_folder_json_ld, headers={'Content-Type': 'application/json'})
-        aiohttpretty.register_uri('HEAD', url, status=200, headers={'Link': '<http://www.w3.org/ns/ldp#Container>;rel="type"'})
+        aiohttpretty.register_uri('HEAD', url, status=200, headers={'Link': settings.LDP_CONTAINER_TYPE_HEADER})
 
         result = await provider.create_folder(path)
 
@@ -461,7 +462,7 @@ class TestProvider:
     async def test_validate_v1_path_fails_treating_file_as_folder(self, provider):
         url = provider.build_repo_url(WaterButlerPath(test_file_path))
 
-        aiohttpretty.register_uri('HEAD', url, status=200, headers={'Link': '<http://www.w3.org/ns/ldp#Container>;rel="type"'})
+        aiohttpretty.register_uri('HEAD', url, status=200, headers={'Link': settings.LDP_CONTAINER_TYPE_HEADER})
 
         with pytest.raises(exceptions.NotFoundError):
             result = await provider.validate_v1_path(test_file_path)

@@ -228,7 +228,7 @@ class FedoraProvider(provider.BaseProvider):
         async with self.request(
             'GET', url,
             headers={'Accept': 'application/ld+json',
-                     'Prefer': 'return=representation; include="http://fedora.info/definitions/v4/repository#EmbedResources"'},
+                     'Prefer': 'return=representation; include="' + settings.EMBED_RESOURCES_URI + '"'},
             expects=(200, 404),
             throws=exceptions.MetadataError
         ) as resp:
@@ -254,7 +254,7 @@ class FedoraProvider(provider.BaseProvider):
             if resp.status == 404:
                 raise exceptions.NotFoundError(str(url))
 
-            return '<http://www.w3.org/ns/ldp#Container>;rel="type"' in resp.headers.getall('Link', [])
+            return settings.LDP_CONTAINER_TYPE_HEADER in resp.headers.getall('Link', [])
 
     async def create_folder(self, path, folder_precheck=True, **kwargs):
         """Create the specified folder as a Fedora container and return FedoraFolderMetadata for it"""
