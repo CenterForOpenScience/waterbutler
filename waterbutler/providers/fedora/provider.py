@@ -272,5 +272,4 @@ class FedoraProvider(provider.BaseProvider):
         ):
             pass
 
-        md = await self.lookup_fedora_metadata(path)
-        return md
+        return await self.lookup_fedora_metadata(path)
