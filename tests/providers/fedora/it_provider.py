@@ -69,7 +69,7 @@ class TestProviderIntegration:
         assert type(result) == list
 
     # Test uploading and downloading a file
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio    
     async def test_upload_file(self, provider):
         await self.setup_sandbox(provider)
 
@@ -105,6 +105,28 @@ class TestProviderIntegration:
         content = await result.response.read()
 
         assert file_content == content
+
+    # Test deleting a file
+    @pytest.mark.asyncio    
+    async def test_delete_file(self, provider):
+        await self.setup_sandbox(provider)
+
+        file_path = WaterButlerPath(test_path + '/moo.txt')
+        file_content =  b'moo goes the cow'
+        file_stream = streams.FileStreamReader(io.BytesIO(file_content))
+
+        md, new = await provider.upload(file_stream, file_path)
+
+        assert new == True
+        assert md.kind == 'file'
+        assert md.name == 'moo.txt'
+        assert md.size == str(len(file_content))
+        assert md.content_type == 'text/plain'
+
+        await provider.delete(file_path)
+
+        exists = await provider.exists(file_path)
+        assert exists == False
 
     # Test creating a folder
     @pytest.mark.asyncio

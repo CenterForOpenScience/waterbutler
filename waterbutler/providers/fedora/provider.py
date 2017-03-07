@@ -180,6 +180,9 @@ class FedoraProvider(provider.BaseProvider):
     async def delete(self, path, confirm_delete=0, **kwargs):
         """Delete the Fedora resource corrsponding to the path"""
 
+        if path.is_root and confirm_delete == 0:
+            raise exceptions.DeleteError('confirm_delete=1 is required for deleting root provider folder', code=400)
+
         url = self.build_repo_url(path)
 
         async with self.request(
