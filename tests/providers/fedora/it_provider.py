@@ -18,6 +18,8 @@ from waterbutler.providers.fedora.metadata import FedoraFolderMetadata
 
 # Integration tests for FedoraProvider against a live Fedora 4 at http://localhost:8080/rest/
 # Running the one-click distribution of Fedora will setup such a instance.
+#
+# TODO Test behavior with pair trees.
 
 repo = 'http://localhost:8080/rest/'
 
@@ -59,6 +61,19 @@ class TestProviderIntegration:
             'PUT', url, headers={'Content-Type': 'text/turtle'}, expects=(201,)
         )
 
+
+    # Check if a path exists.
+    # The provider exists method confusingly returns metadata object
+    # for a file and a list of metadata objects for a folder.
+    async def path_exists(self, provider, path):
+        md = await provider.exists(path)
+    
+        if isinstance(md, list):
+            return True
+        if isinstance(md, FedoraFileMetadata):
+            return True
+        return False
+    
     # Test that root folder return list.
     @pytest.mark.asyncio
     async def test_get_root_metadata(self, provider):
@@ -125,9 +140,53 @@ class TestProviderIntegration:
 
         await provider.delete(file_path)
 
-        exists = await provider.exists(file_path)
+        exists = await self.path_exists(provider, file_path)
         assert exists == False
 
+    # Test that deleting the root folder deletes all the folder contents
+    # Note that this test operates outside of the sandbox
+    @pytest.mark.asyncio    
+    async def test_delete_root_folder(self, provider):
+        file_path1 = WaterButlerPath('/moo1.txt')
+        file_path2 = WaterButlerPath('/moo2.txt')        
+        file_content =  b'moo goes the cow'
+        file_stream1 = streams.FileStreamReader(io.BytesIO(file_content))
+        file_stream2 = streams.FileStreamReader(io.BytesIO(file_content))        
+
+        md, new = await provider.upload(file_stream1, file_path1)
+
+        # Add two files to root
+
+        assert md.kind == 'file'
+        assert md.name == 'moo1.txt'
+        assert md.size == str(len(file_content))
+        assert md.content_type == 'text/plain'
+
+        md, new = await provider.upload(file_stream2, file_path2)
+
+        assert md.kind == 'file'
+        assert md.name == 'moo2.txt'
+        assert md.size == str(len(file_content))
+        assert md.content_type == 'text/plain'        
+
+        root_path = WaterButlerPath('/')
+
+        exists = await self.path_exists(provider, root_path)
+        assert exists == True
+
+        await provider.delete(root_path, confirm_delete=1)
+
+        # Files should be gone, but root folder should remain
+
+        exists = await self.path_exists(provider, file_path1)
+        assert exists == False
+
+        exists = await self.path_exists(provider, file_path2)
+        assert exists == False
+
+        exists = await self.path_exists(provider, root_path)
+        assert exists == True
+        
     # Test creating a folder
     @pytest.mark.asyncio
     async def test_create_folder(self, provider):
@@ -139,6 +198,9 @@ class TestProviderIntegration:
 
         assert md.kind == 'folder'
         assert md.name == 'moo'
+
+        exists = await self.path_exists(provider, folder_path)
+        assert exists == True
 
 
     # Test moving a file into a subfolder.
@@ -157,14 +219,14 @@ class TestProviderIntegration:
 
         await provider.upload(file_stream, file_path)
 
-        exists = await provider.exists(file_path)
+        exists = await self.path_exists(provider, file_path)
         assert exists != False
 
         # Create subfolder
 
         await provider.create_folder(folder_path)
 
-        exists = await provider.exists(folder_path)
+        exists = await self.path_exists(provider, folder_path)
         assert exists != False
 
         # Move file to subfolder
@@ -177,10 +239,10 @@ class TestProviderIntegration:
         assert md.size == str(len(file_content))
         assert md.content_type == 'text/plain'
 
-        exists = await provider.exists(file_path)
+        exists = await self.path_exists(provider, file_path)
         assert exists == False
 
-        exists = await provider.exists(new_file_path)
+        exists = await self.path_exists(provider, new_file_path)
         assert exists != False
 
 
@@ -200,14 +262,14 @@ class TestProviderIntegration:
 
         await provider.upload(file_stream, file_path)
 
-        exists = await provider.exists(file_path)
+        exists = await self.path_exists(provider, file_path)
         assert exists != False
 
         # Create subfolder
 
         await provider.create_folder(folder_path)
 
-        exists = await provider.exists(folder_path)
+        exists = await self.path_exists(provider, folder_path)        
         assert exists != False
 
         # Copy file to subfolder
@@ -220,10 +282,10 @@ class TestProviderIntegration:
         assert md.size == str(len(file_content))
         assert md.content_type == 'text/plain'
 
-        exists = await provider.exists(file_path)
+        exists = await self.path_exists(provider, file_path)                
         assert exists != False
 
-        exists = await provider.exists(new_file_path)
+        exists = await self.path_exists(provider, new_file_path)                
         assert exists != False
 
     # Test copying a folder into a subfolder.
@@ -239,12 +301,12 @@ class TestProviderIntegration:
 
         await provider.create_folder(folder1_path)
 
-        exists = await provider.exists(folder1_path)
+        exists = await self.path_exists(provider, folder1_path)
         assert exists != False
 
         await provider.create_folder(folder2_path)
 
-        exists = await provider.exists(folder2_path)
+        exists = await self.path_exists(provider, folder2_path)
         assert exists != False
 
         # Copy /moo to /cow.
@@ -255,8 +317,8 @@ class TestProviderIntegration:
         assert md.kind == 'folder'
         assert md.name == 'moo'
 
-        exists = await provider.exists(folder2_path)
+        exists = await self.path_exists(provider, folder2_path)        
         assert exists != False
 
-        exists = await provider.exists(new_folder_path)
+        exists = await self.path_exists(provider, new_folder_path)        
         assert exists != False

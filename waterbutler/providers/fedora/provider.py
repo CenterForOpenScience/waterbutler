@@ -180,8 +180,15 @@ class FedoraProvider(provider.BaseProvider):
     async def delete(self, path, confirm_delete=0, **kwargs):
         """Delete the Fedora resource corrsponding to the path"""
 
-        if path.is_root and confirm_delete == 0:
-            raise exceptions.DeleteError('confirm_delete=1 is required for deleting root provider folder', code=400)
+        if path.is_root:
+            if confirm_delete == 1:
+                await self.delete_folder_contents(path)
+                return
+            else:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400
+                )
 
         url = self.build_repo_url(path)
 
@@ -199,6 +206,17 @@ class FedoraProvider(provider.BaseProvider):
             throws=exceptions.DeleteError,
         ):
             pass
+
+    async def delete_folder_contents(self, path, **kwargs):
+        """Delete the contents of a folder. For use against provider root.
+
+        :param WaterButlerPath path: WaterButlerPath path object for folder
+        """
+
+        meta = (await self.metadata(path))
+        for child in meta:
+            child_path = await self.validate_path(child.path)
+            await self.delete(child_path)
 
     async def metadata(self, path, revision=None, **kwargs):
         """Given a WaterBulterPath, return metadata about the specified resource.
