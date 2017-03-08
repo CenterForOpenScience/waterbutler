@@ -98,6 +98,10 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
             'source': source.auth,
             'destination': None if destination is None else destination.auth,
         },
+        'providers': {
+            'source': None,
+            'destination': None,
+        },
         'geo': {},  # added via keen addons
         'keen': {
             'addons': [
@@ -149,6 +153,12 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
             },
             'output': 'referrer.info',
         })
+
+    if hasattr(source, 'provider'):
+        keen_payload['providers']['source'] = source.provider.provider_metrics.serialize()
+
+    if destination is not None and hasattr(destination, 'provider'):
+        keen_payload['providers']['destination'] = destination.provider.provider_metrics.serialize()
 
     # send the private payload
     await _send_to_keen(keen_payload, 'file_access', settings.KEEN_PRIVATE_PROJECT_ID,

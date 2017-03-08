@@ -2,6 +2,38 @@
 ChangeLog
 *********
 
+0.30.0 (2017-02-02)
+===================
+- Feature: Support the new London and Central Canada regions in Amazon S3. (thanks, @johnetordoff!)
+- Feature: Include provider-specific metrics in metric logging payloads, including number of
+requests issued.
+- Fix: Don't crash when fetching file revision metadata from Google Drive.
+- Fix: WaterButler docs are once again building on readthedocs.org! (thanks, @johnetordoff!)
+- Code: Update WaterButler to use invoke 0.13.0. If you have an existing checkout, you will need to
+upgrade invoke manually: pip install invoke==0.13.0 (thanks, @johnetordoff!)
+- Code: Postman collections to test file and folder copy behavior for providers have been added to
+tests/postman/.  See docs/testing.rst for instructions on setting up and running them.
+- Docs: WaterButler has been verified to work with python 3.5.3 and 3.6.0. From now on, the docs
+will mention which python versions WB has been verfied to work on. (thanks, @johnetordoff!)
+
+0.29.1 (2017-01-04)
+===================
+- Happy New Year!
+- Fix: Be more ruthless about fixing setuptools breakage in Dockerfile. (thanks, @cwisecarver!)
+
+0.29.0 (2016-12-14)
+===================
+- Feature: WaterButler now uses the V2 APIs for both Dropbox and Figshare.
+- Feature: Add a created timestamp to osfstorage file metadata.
+- Feature: Support the new Mumbai and Ohio regions in Amazon S3. (thanks, @erinspace!)
+- Feature: The server logs a message on startup, instead of just staring blankly at you.
+- Fix: Start appending extensions to Google Doc files to disambiguate identically-named
+files. e.g. foo.docx vs. foo.gsheet
+
+0.28.1 (2016-12-13)
+===================
+- Pin setuptools to v30.4.0 to avoid package-namespace-related breakage.
+
 0.28.0 (2016-10-31)
 ===================
 - HALLOWEEN RELEASE! (^ ,–, ^)

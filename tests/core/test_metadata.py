@@ -36,6 +36,7 @@ class TestBaseMetadata:
             'contentType': 'application/octet-stream',
             'modified': 'never',
             'modified_utc': 'never',
+            'created_utc': 'always',
             'size': 1337,
             'resource': 'n0d3z',
         }
@@ -89,6 +90,7 @@ class TestBaseMetadata:
             'contentType': 'application/octet-stream',
             'modified': 'never',
             'modified_utc': 'never',
+            'created_utc': 'always',
             'size': 1337,
         }
 
