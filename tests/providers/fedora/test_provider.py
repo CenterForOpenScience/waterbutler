@@ -384,6 +384,7 @@ class TestProvider:
 
         aiohttpretty.register_uri('GET', dest_file_url + '/fcr:metadata', status=200, body=dest_file_json_ld, headers={'Content-Type': 'application/json'})
         aiohttpretty.register_uri('HEAD', dest_file_url, status=200)
+        aiohttpretty.register_uri('HEAD', dest_folder_url, status=404)
         aiohttpretty.register_json_uri('COPY', src_file_url, status=201, headers={'Location': dest_file_url})
 
         metadata, created = await provider.intra_copy(provider, test_file, test_folder)
@@ -410,6 +411,7 @@ class TestProvider:
 
         aiohttpretty.register_uri('GET', dest_file_url + '/fcr:metadata', status=200, body=dest_file_json_ld, headers={'Content-Type': 'application/json'})
         aiohttpretty.register_uri('HEAD', dest_file_url, status=200)
+        aiohttpretty.register_uri('HEAD', dest_folder_url, status=404)
         aiohttpretty.register_json_uri('MOVE', src_file_url, status=201, headers={'Location': dest_file_url})
         aiohttpretty.register_json_uri('DELETE', src_file_url + '/fcr:tombstone', status=204)
 

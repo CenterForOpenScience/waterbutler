@@ -81,12 +81,31 @@ class FedoraProvider(provider.BaseProvider):
         """Transform a url in the fedora repo to a WaterButlerPath"""
         return WaterButlerPath('/' + url[len(self.repo):].strip('/'))
 
+    async def path_exists(self, path):
+        """ Return whether or not a path exists """
+
+        # The exists method returns metadata object for a file and
+        # a list of metadata objects for a folder.
+        md = await self.exists(path)
+
+        if isinstance(md, list):
+            return True
+        if isinstance(md, FedoraFileMetadata):
+            return True
+        return False
+
     async def intra_copy(self, dest_provider, src_path, dest_path):
         """Copies src_path to dest_path.
 
         Returns BaseMetadata, Success tuple.
 
         """
+
+        # Must delete existing destination
+        exists = await self.path_exists(dest_path)
+
+        if exists:
+            await self.delete(dest_path)
 
         src_url = self.build_repo_url(src_path)
         dest_url = self.build_repo_url(dest_path)
@@ -102,13 +121,19 @@ class FedoraProvider(provider.BaseProvider):
 
             md = await self.lookup_fedora_metadata(dest_path)
 
-            return md, True
+            return md, not exists
 
     async def intra_move(self, dest_provider, src_path, dest_path):
         """Moves src_path to dest_path.
 
         Returns BaseMetadata, Success tuple.
         """
+
+        # Must delete existing destination
+        exists = await self.path_exists(dest_path)
+
+        if exists:
+            await self.delete(dest_path)
 
         src_url = self.build_repo_url(src_path)
         dest_url = self.build_repo_url(dest_path)
@@ -127,7 +152,7 @@ class FedoraProvider(provider.BaseProvider):
             dest_path = self.fedora_url_to_path(move_resp.headers.get('Location'))
 
             md = await self.lookup_fedora_metadata(dest_path)
-            return md, True
+            return md, not exists
 
     @property
     def default_headers(self):
