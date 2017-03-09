@@ -18,8 +18,6 @@ from waterbutler.providers.fedora.metadata import FedoraFolderMetadata
 
 # Integration tests for FedoraProvider against a live Fedora 4 at http://localhost:8080/rest/
 # Running the one-click distribution of Fedora will setup such a instance.
-#
-# TODO Test behavior with pair trees.
 
 repo = 'http://localhost:8080/rest/'
 
@@ -365,3 +363,19 @@ class TestProviderIntegration:
 
         exists = await provider.path_exists(new_folder_path)
         assert exists != False
+
+    # Test creating a pair tree object and getting its metadata
+    # TODO Pair tree behavior will need some more thought and testing
+    @pytest.mark.asyncio
+    async def test_get_pairtree_metadata(self, provider):
+        await self.setup_sandbox(provider)
+
+        # Create pair tree container
+        url = repo + test_path.strip('/')
+        await provider.make_request('POST', url, expects=(201,))
+
+        test_folder = WaterButlerPath(test_path)
+
+        md = await provider.metadata(test_folder)
+
+        assert len(md) == 1
