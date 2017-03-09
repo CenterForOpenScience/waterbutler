@@ -19,12 +19,19 @@ class TestOsfAuthHandler(ServerTestCase):
         self.handler = OsfAuthHandler()
         self.request = tornado.httputil.HTTPServerRequest(uri=settings.API_URL)
 
+        mock_auth = utils.MockCoroutine(return_value={'auth': {}, 'callback_url': 'test.com'})
+        self.mock_auth_patcher = mock.patch(
+            'waterbutler.auth.osf.handler.OsfAuthHandler.make_request',
+            mock_auth
+        )
+        self.mock_auth_patcher.start()
+
+    def tearDown(self):
+        self.mock_auth_patcher.stop()
+        super().tearDown()
+
     @tornado.testing.gen_test
     async def test_supported_and_unsupported_methods(self):
-
-        mock_auth = utils.MockCoroutine(return_value={'auth': {}, 'callback_url': 'test.com'})
-        mock_auth_patcher = mock.patch('waterbutler.auth.osf.handler.OsfAuthHandler.make_request', mock_auth)
-        mock_auth_patcher.start()
 
         supported_methods = ['put', 'post', 'get', 'head', 'delete']
         unsupported_methods = ['trace', 'connect', 'patch', 'ma1f0rmed']
@@ -39,5 +46,3 @@ class TestOsfAuthHandler(ServerTestCase):
             self.request.method = method
             with pytest.raises(UnsupportedHTTPMethodError):
                 await self.handler.get("test", "test", self.request)
-
-        mock_auth_patcher.stop()
