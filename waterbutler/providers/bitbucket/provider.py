@@ -182,7 +182,7 @@ class BitbucketProvider(provider.BaseProvider):
 
         resp = await self.make_request(
             'GET',
-            self._build_v1_repo_url('raw', path.commit_sha, str(path)),
+            self._build_v1_repo_url('raw', path.commit_sha, *path.path_tuple()),
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
@@ -296,7 +296,7 @@ class BitbucketProvider(provider.BaseProvider):
 
         resp = await self.make_request(
             'GET',
-            self._build_v1_repo_url('src', folder.ref, folder.path) + '/',
+            self._build_v1_repo_url('src', folder.ref, *folder.path_tuple()) + '/',
             expects=(200, ),
             throws=exceptions.ProviderError,
         )
