@@ -46,3 +46,6 @@ class BitbucketPath(path.WaterButlerPath):
     def set_commit_sha(self, commit_sha):
         for part in self.parts:
             part._id = (commit_sha, part._id[1])
+
+    def path_tuple(self):
+        return (x.value for x in self.parts[1:])
