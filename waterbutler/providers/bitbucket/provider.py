@@ -226,12 +226,15 @@ class BitbucketProvider(provider.BaseProvider):
         :return: BitbucketFileMetadata object
         """
 
-        if self._parent_dir is None:
-            self._parent_dir = await self._fetch_dir_listing(path.parent)
+        parent = path.parent
+        if self._parent_dir is None or self._parent_dir['path'] != str(parent):
+            parent_dir = await self._fetch_dir_listing(parent)
+        else:
+            parent_dir = self._parent_dir
 
         data = [
-            x for x in self._parent_dir['files']
-            if self.bitbucket_path_to_name(x['path'], self._parent_dir['path']) == path.name
+            x for x in parent_dir['files']
+            if path.name == self.bitbucket_path_to_name(x['path'], parent_dir['path'])
         ]
 
         return BitbucketFileMetadata(data[0], path, owner=self.owner, repo=self.repo)
