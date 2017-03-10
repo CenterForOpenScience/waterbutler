@@ -203,22 +203,39 @@ class GitHubProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(resp, size=data.size)
 
     async def get_blob_tree(self, branch_ref):
+        """This method takes a branch ref (usually the branch name) to call the github api and return a
+        "blob tree" which is a flat list of a repo's blobs and tree's (with no commits).
+
+        :param str branch_ref: The branch the commits and trees are gathered from.
+        :returns dict response json: This is a JSON dict with the flattened list of blobs and trees
+        include in the dict.
+        """
 
         resp = await self.make_request(
             'GET',
             self.build_repo_url('git', 'trees') + '/{}:?recursive=99999'.format(branch_ref),
+            expects=(200,)
         )
 
         return await resp.json()
 
     async def is_blob_in_tree(self, new_blob, path):
+        """
+        This method checks to if a branch's tree already contains a blob the same sha and with the
+        path provided, basically checking if a new blob of indentical path and has indentical
+        content to a blob already in the tree.
+
+        :param dict new_blob: a dict with data and metadata of the newly created blob which is not
+        yet committed.
+        :param GitHubPath path: The path where the newly created blob is to be committed.
+        :returns: bool: True if new_blob is in the tree, False if no blob or a different blob
+         exsists at the path given
+
+        """
+
         blob_tree = await self.get_blob_tree(path.branch_ref)
-        return any(new_blob['sha'] == blob['sha'] and path.path == blob['path'] for blob in blob_tree['tree'])
-
-
-    async def is_tree_in_trees(self, new_tree, branch_ref):
-        blob_tree = await self.get_blob_tree(branch_ref)
-        return new_tree['sha'] == blob_tree['sha']
+        return any(new_blob['sha'] == blob['sha']
+                   and path.path == blob['path'] for blob in blob_tree['tree'])
 
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
         assert self.name is not None
@@ -789,7 +806,7 @@ class GitHubProvider(provider.BaseProvider):
 
             src_tree['tree'] = self._prune_subtrees(src_tree['tree'])
 
-            commit = await self._commit_tree_and_advance_branch(src_tree['tree'], {'sha': src_head},
+            commit = await self._commit_tree_and_advance_branch(src_tree, {'sha': src_head},
                                                                 commit_msg, src_path.branch_ref)
 
         else:
@@ -805,13 +822,13 @@ class GitHubProvider(provider.BaseProvider):
 
             dest_tree['tree'] = self._prune_subtrees(dest_tree['tree'])
 
-            commit = await self._commit_tree_and_advance_branch(dest_tree['tree'], {'sha': dest_head},
+            commit = await self._commit_tree_and_advance_branch(dest_tree, {'sha': dest_head},
                                                                 commit_msg, dest_path.branch_ref)
 
             if not is_copy:
                 src_tree['tree'] = self._remove_path_from_tree(src_tree['tree'], src_path)
                 src_tree['tree'] = self._prune_subtrees(src_tree['tree'])
-                await self._commit_tree_and_advance_branch(src_tree['tree'], {'sha': src_head},
+                await self._commit_tree_and_advance_branch(src_tree, {'sha': src_head},
                                                            commit_msg, src_path.branch_ref)
 
             blobs = new_blobs  # for the metadata
@@ -931,10 +948,11 @@ class GitHubProvider(provider.BaseProvider):
         :param str branch_ref: The branch that will be advanced to the new commit.
         :returns dict new_head: The commit object returned by GitHub.
         """
-        new_tree = await self._create_tree({'tree': old_tree})
+        new_tree = await self._create_tree({'tree': old_tree['tree']})
 
         # Create a new commit which references our top most tree change.
-        if await self.is_tree_in_trees(new_tree, branch_ref):
+
+        if new_tree['sha'] == old_tree['sha']: # prevents empty commits
             return None
         else:
             new_head = await self._create_commit({
