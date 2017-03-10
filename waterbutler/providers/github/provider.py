@@ -234,8 +234,8 @@ class GitHubProvider(provider.BaseProvider):
         """
 
         blob_tree = await self.get_blob_tree(path.branch_ref)
-        return any(new_blob['sha'] == blob['sha']
-                   and path.path == blob['path'] for blob in blob_tree['tree'])
+        return any(new_blob['sha'] == blob['sha'] and
+                   path.path == blob['path'] for blob in blob_tree['tree'])
 
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
         assert self.name is not None
@@ -952,7 +952,7 @@ class GitHubProvider(provider.BaseProvider):
 
         # Create a new commit which references our top most tree change.
 
-        if new_tree['sha'] == old_tree['sha']: # prevents empty commits
+        if new_tree['sha'] == old_tree['sha']:  # prevents empty commits
             return None
         else:
             new_head = await self._create_commit({
