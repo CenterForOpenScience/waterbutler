@@ -93,15 +93,6 @@ class OsfAuthHandler(auth.BaseAuthHandler):
 
     async def get(self, resource, provider, request):
         """Used for v1"""
-
-        try:
-            action = self.ACTION_MAP[request.method.lower()]
-        except KeyError:
-            raise exceptions.UnsupportedHTTPMethodError(
-                method_used=request.method.lower(),
-                supported_methods=self.ACTION_MAP.keys()
-            )
-
         headers = {'Content-Type': 'application/json'}
 
         if 'Authorization' in request.headers:
@@ -120,7 +111,7 @@ class OsfAuthHandler(auth.BaseAuthHandler):
             self.build_payload({
                 'nid': resource,
                 'provider': provider,
-                'action': action
+                'action': self.ACTION_MAP[request.method.lower()]
             }, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)

@@ -202,6 +202,43 @@ class GitHubProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp, size=data.size)
 
+    async def get_blobs_and_trees(self, branch_ref):
+        """This method takes a branch ref (usually the branch name) to call the github api and returns a
+        a flat list of a repo's blobs and tree's (with no commits).
+
+        :param str branch_ref: The reference which leads to the branch, that the blobs and trees
+        are gathered from.
+        :returns dict response json: This is a JSON dict with the flattened list of blobs and trees
+        include in the dict.
+        """
+
+        resp = await self.make_request(
+            'GET',
+            self.build_repo_url('git', 'trees') + '/{}:?recursive=99999'.format(branch_ref),
+            expects=(200,)
+        )
+
+        return await resp.json()
+
+    async def is_blob_in_tree(self, new_blob, path):
+        """
+        This method checks to see if a branch's tree already contains a blob with the same sha and
+        at the path provided, basically checking if a new blob has identical path and has identical
+        content to a blob already in the tree. This ensures we don't overwrite a blob if it serves
+        no purpose.
+
+        :param dict new_blob: a dict with data and metadata of the newly created blob which is not
+        yet committed.
+        :param GitHubPath path: The path where the newly created blob is to be committed.
+        :returns: bool: True if new_blob is in the tree, False if no blob or a different blob
+         exists at the path given
+
+        """
+
+        blob_tree = await self.get_blobs_and_trees(path.branch_ref)
+        return any(new_blob['sha'] == blob['sha'] and
+                   path.path == blob['path'] for blob in blob_tree['tree'])
+
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
         assert self.name is not None
         assert self.email is not None
@@ -240,6 +277,13 @@ class GitHubProvider(provider.BaseProvider):
                 'sha': blob['sha']
             }]
         })
+
+        if exists and await self.is_blob_in_tree(blob, path):  # Avoids empty commits
+            return GitHubFileTreeMetadata({
+                'path': path.path,
+                'sha': blob['sha'],
+                'size': stream.size,
+            }, ref=path.branch_ref), not exists
 
         commit = await self._create_commit({
             'tree': tree['sha'],
@@ -614,7 +658,9 @@ class GitHubProvider(provider.BaseProvider):
             expects=(201, ),
             throws=exceptions.UploadError,
         )
-        return (await resp.json())
+        resp = await resp.json()
+
+        return resp
 
     def _is_sha(self, ref):
         # sha1 is always 40 characters in length
@@ -762,7 +808,7 @@ class GitHubProvider(provider.BaseProvider):
 
             src_tree['tree'] = self._prune_subtrees(src_tree['tree'])
 
-            commit = await self._commit_tree_and_advance_branch(src_tree['tree'], {'sha': src_head},
+            commit = await self._commit_tree_and_advance_branch(src_tree, {'sha': src_head},
                                                                 commit_msg, src_path.branch_ref)
 
         else:
@@ -778,13 +824,13 @@ class GitHubProvider(provider.BaseProvider):
 
             dest_tree['tree'] = self._prune_subtrees(dest_tree['tree'])
 
-            commit = await self._commit_tree_and_advance_branch(dest_tree['tree'], {'sha': dest_head},
+            commit = await self._commit_tree_and_advance_branch(dest_tree, {'sha': dest_head},
                                                                 commit_msg, dest_path.branch_ref)
 
             if not is_copy:
                 src_tree['tree'] = self._remove_path_from_tree(src_tree['tree'], src_path)
                 src_tree['tree'] = self._prune_subtrees(src_tree['tree'])
-                await self._commit_tree_and_advance_branch(src_tree['tree'], {'sha': src_head},
+                await self._commit_tree_and_advance_branch(src_tree, {'sha': src_head},
                                                            commit_msg, src_path.branch_ref)
 
             blobs = new_blobs  # for the metadata
@@ -904,15 +950,19 @@ class GitHubProvider(provider.BaseProvider):
         :param str branch_ref: The branch that will be advanced to the new commit.
         :returns dict new_head: The commit object returned by GitHub.
         """
-        new_tree = await self._create_tree({'tree': old_tree})
+        new_tree = await self._create_tree({'tree': old_tree['tree']})
 
         # Create a new commit which references our top most tree change.
-        new_head = await self._create_commit({
-            'tree': new_tree['sha'],
-            'parents': [old_head['sha']],
-            'committer': self.committer,
-            'message': commit_msg,
-        })
+
+        if new_tree['sha'] == old_tree['sha']:  # prevents empty commits
+            return None
+        else:
+            new_head = await self._create_commit({
+                'tree': new_tree['sha'],
+                'parents': [old_head['sha']],
+                'committer': self.committer,
+                'message': commit_msg,
+            })
 
         # Update repository reference, point to the newly created commit.
         # No need to store data, rely on expects to raise exceptions
