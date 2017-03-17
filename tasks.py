@@ -17,7 +17,7 @@ def monkey_patch(ctx):
 
     _create_default_context = ssl.create_default_context
 
-    def create_default_context(purpose=ssl.Purpose.SERVER_AUTH, *, cafile=None, capath=None, cadata=None):
+    def create_default_context(purpose=ssl.Purpose.SERVER_AUTH, env=None, cafile=None, capath=None, cadata=None):
         if cafile is None:
             cafile = certifi.where()
         return _create_default_context(purpose=purpose, cafile=cafile, capath=capath, cadata=cadata)
