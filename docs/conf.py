@@ -1,17 +1,19 @@
 # Ensure we get the local copy of tornado instead of what's on the standard path
 import os
 import sys
+
+from waterbutler.version import __version__
+
 sys.path.insert(0, os.path.abspath(".."))
-import waterbutler  # noqa
-import waterbutler.server  # noqa
-# import waterbutler.providers  # noqa
+
 
 master_doc = "index"
 
 project = "WaterButler"
 copyright = "2017, Center For Open Science"
 
-version = release = waterbutler.__version__
+
+version = release = __version__
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -59,7 +61,7 @@ intersphinx_mapping = {
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 # On RTD we can't import sphinx_rtd_theme, but it will be applied by
-# default anyway.  This block will use the same theme when building locally
+# default anyway. This block will use the same theme when building locally
 # as on RTD.
 if not on_rtd:
     import sphinx_rtd_theme
