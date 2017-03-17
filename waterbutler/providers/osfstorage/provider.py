@@ -375,7 +375,7 @@ class OSFStorageProvider(provider.BaseProvider):
             'path': data['data']['path'],
             'sha256': data['data']['sha256'],
             'version': data['data']['version'],
-            'modified': data['data']['modified'],
+            'modified': data['data'].get('modified'),
             'downloads': data['data']['downloads'],
             'checkout': data['data']['checkout'],
         })
