@@ -18,6 +18,10 @@ class DmptoolFileMetadata(metadata.BaseFileMetadata):
         return self.raw['updated']
 
     @property
+    def created_utc(self):
+        return None
+
+    @property
     def name(self):
 
         # TO DO: change back to pdf --> md for now

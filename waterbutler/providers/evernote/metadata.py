@@ -19,6 +19,10 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
         return self.raw['updated']
 
     @property
+    def created_utc(self):
+        return None
+
+    @property
     def name(self):
 
         # print("EvernoteFileMetadata.name: self.raw['title']", self.raw['title'])
