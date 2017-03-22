@@ -52,6 +52,19 @@ class AuthError(PluginError):
     """
 
 
+class UnsupportedHTTPMethodError(PluginError):
+    """An unsupported HTTP method was used
+    """
+    def __init__(self, method_used, supported_methods):
+        supported_methods = ', '.join(list(supported_methods)).upper()
+        super().__init__(
+            'Method "{method_used}" not supported, currently supported methods '
+            'are {supported_methods}'.format(method_used=method_used,
+                                             supported_methods=supported_methods),
+            code=405,
+        )
+
+
 class ProviderError(PluginError):
     """The WaterButler related errors raised
     from a :class:`waterbutler.core.provider` should
