@@ -34,15 +34,6 @@ def connect_or_error(host, token):
     # need to change DMPTool to account for host
     return _connect(host, token)
 
-    # from tornado.httpclient import HTTPError
-    # try:
-    #     connection = _connect(host, token)
-    #     if not connection:
-    #         raise HTTPError(http.SERVICE_UNAVAILABLE)
-    #     return connection
-    # except UnauthorizedError:
-    #     raise HTTPError(http.UNAUTHORIZED)
-
 
 def connect_from_settings_or_401(node_settings):
     if not (node_settings and node_settings.external_account):

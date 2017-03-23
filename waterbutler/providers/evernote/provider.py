@@ -120,29 +120,6 @@ class EvernoteProvider(provider.BaseProvider):
         :raises:   `waterbutler.core.exceptions.DownloadError`
         """
 
-        # TO DO: IMPORTANT
-        # what needs to be returned?
-        # looking at Google docs code for example
-        # https://github.com/CenterForOpenScience/waterbutler/blob/63b7d469e5545de9f2183b964fb6264fd9a423a5/waterbutler/providers/box/provider.py#L211-L227
-
-        # if path.identifier is None:
-        #     raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
-
-        # query = {}
-        # if revision and revision != path.identifier:
-        #     query['version'] = revision
-
-        # resp = await self.make_request(
-        #     'GET',
-        #     self.build_url('files', path.identifier, 'content', **query),
-        #     range=range,
-        #     expects=(200, 206),
-        #     throws=exceptions.DownloadError,
-        # )
-
-        # ResponseStreamReader:
-        # https://github.com/CenterForOpenScience/waterbutler/blob/63b7d469e5545de9f2183b964fb6264fd9a423a5/waterbutler/core/streams/http.py#L141-L183
-
         print("evernote provider download: starting")
         token = self.credentials['token']
         client = get_evernote_client(token)
