@@ -412,6 +412,10 @@ class GoogleDriveProvider(provider.BaseProvider):
                         "and trashed = false " \
                         "and mimeType != 'application/vnd.google-apps.form' " \
                         "and mimeType != 'application/vnd.google-apps.map' " \
+                        "and mimeType != 'application/vnd.google-apps.document' " \
+                        "and mimeType != 'application/vnd.google-apps.drawing' " \
+                        "and mimeType != 'application/vnd.google-apps.presentation' " \
+                        "and mimeType != 'application/vnd.google-apps.spreadsheet' " \
                         "and mimeType {} '{}'".format(
                             clean_query(part_name),
                             '=' if part_is_folder else '!=',
@@ -444,7 +448,6 @@ class GoogleDriveProvider(provider.BaseProvider):
                 throws=exceptions.MetadataError,
             ) as resp:
                 ret.append(await resp.json())
-
         return ret
 
     async def _resolve_id_to_parts(self, _id, accum=None):
