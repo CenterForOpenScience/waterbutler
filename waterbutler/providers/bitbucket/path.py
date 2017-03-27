@@ -1,7 +1,16 @@
+import functools
+from urllib import parse
+
 from waterbutler.core import path
 
 
 class BitbucketPathPart(path.WaterButlerPathPart):
+
+    bitbucket_safe_chars = '~`!@$^&*()_-+={}|[];:,<.>"\' '
+
+    DECODE = parse.unquote
+    ENCODE = functools.partial(parse.quote, safe=bitbucket_safe_chars)
+
     def increment_name(self, _id=None):
         """Overridden to preserve branch from _id upon incrementing"""
         self._id = _id or (self._id[0], self._id[1])

@@ -52,7 +52,7 @@ class BaseBitbucketMetadata(metadata.BaseMetadata):
         }
 
     def build_path(self):
-        return super().build_path(self._path_obj.full_path)
+        return super().build_path(self._path_obj.raw_path)
 
     def _json_api_links(self, resource):
         """Update JSON-API links to add commitSha or branch, if available"""
