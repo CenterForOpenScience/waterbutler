@@ -334,13 +334,16 @@ class OSFStorageProvider(provider.BaseProvider):
         else:
             await provider.delete(remote_pending_path)
 
-        metadata = metadata.serialized()
+        preupload_metadata = await self.exists(path)  # checks if revision
+        if preupload_metadata:
+            if preupload_metadata.raw['sha256'] == complete_name:  # upload with no changes
+                return OsfStorageFileMetadata(preupload_metadata, str(path)), False
+            else:
+                modified = datetime.datetime.now()
+                metadata.modified = modified.strftime('%a, %d %b %Y %H:%M:%S %z')
+                metadata.modified_utc = modified.isoformat()
 
-        old_sha = (await self.metadata(path)).raw['sha256']
-        if metadata['name'] != old_sha:
-            modified = datetime.datetime.now()
-            metadata['modified'] = modified.strftime('%a, %d %b %Y %H:%M:%S %z')
-            metadata['modified_utc'] = modified.isoformat()
+        metadata = metadata.serialized()
 
         # Due to cross volume movement in unix we leverage shutil.move which properly handles this case.
         # http://bytes.com/topic/python/answers/41652-errno-18-invalid-cross-device-link-using-os-rename#post157964
