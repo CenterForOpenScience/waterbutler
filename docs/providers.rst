@@ -8,6 +8,7 @@ Providers
    provider.box
    provider.dataverse
    provider.dropbox
+   provider.evernote
    provider.figshare
    provider.filesystem
    provider.github
