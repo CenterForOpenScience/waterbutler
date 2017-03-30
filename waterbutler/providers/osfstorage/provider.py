@@ -337,11 +337,11 @@ class OSFStorageProvider(provider.BaseProvider):
         preupload_metadata = await self.exists(path)  # checks if revision
         if preupload_metadata:
             if preupload_metadata.raw['sha256'] == complete_name:  # upload with no changes
-                return OsfStorageFileMetadata(preupload_metadata, str(path)), False
+                return OsfStorageFileMetadata(preupload_metadata.raw, str(path)), False
             else:
-                modified = datetime.datetime.now()
-                metadata.modified = modified.strftime('%a, %d %b %Y %H:%M:%S %z')
-                metadata.modified_utc = modified.isoformat()
+                modified = datetime.datetime.now().replace(tzinfo=datetime.timezone.utc)
+                metadata.raw['modified'] = modified.strftime('%a, %d %b %Y %H:%M:%S %z')
+                metadata.raw['modified_utc'] = modified.isoformat()
 
         metadata = metadata.serialized()
 
