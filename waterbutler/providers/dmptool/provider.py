@@ -71,6 +71,8 @@ class DmptoolProvider(provider.BaseProvider):
         # # modeling after gdoc provider
         # # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
 
+        # print ("download: {path}".format(path=path))
+
         try:
             plan_id = path.parts[1].raw
             pdf = await self._dmptool_plan_pdf(plan_id)
@@ -304,4 +306,5 @@ class DmptoolProvider(provider.BaseProvider):
 
     async def _dmptool_plan_pdf(self, plan_id):
 
+        print("_dmptool_plan_pdf: {plan_id}".format(plan_id=plan_id))
         return await self.plans_full(plan_id, 'pdf')
