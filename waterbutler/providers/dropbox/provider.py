@@ -89,7 +89,10 @@ class DropboxProvider(provider.BaseProvider):
         :param str error_path: the path where the error occurred. Base folder will be stripped.
         """
 
-        error_path = '/{}'.format(error_path.lstrip(self.folder))
+        if error_path.startswith(self.folder):
+            error_path = error_path[len(self.folder):]
+        if not error_path.startswith('/'):
+            error_path = '/{}'.format(error_path)
 
         if 'error' in data:
             error_class = data['error']['.tag']
