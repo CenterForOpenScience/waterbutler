@@ -8,6 +8,7 @@ from dateutil.parser import parse as datetime_parser
 
 from waterbutler.core import mime_types
 from waterbutler.server import utils
+from waterbutler.server import settings
 
 
 # TODO split this into metadata.py and data.py
@@ -91,6 +92,7 @@ class MetadataMixin:
         # Build `Content-Disposition` header from `displayName` override,
         # headers of provider response, or file path, whichever is truthy first
         name = self.get_query_argument('displayName', default=None) or getattr(stream, 'name', None) or self.path.name
+        name = settings.INVALID_FILE_NAME_CHAR_RE.sub(b'', name.encode('utf-8')).decode('utf-8')
         self.set_header('Content-Disposition', utils.make_disposition(name))
 
         _, ext = os.path.splitext(name)

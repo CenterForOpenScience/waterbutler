@@ -1,3 +1,4 @@
+import re
 import hashlib
 
 from waterbutler import settings
@@ -30,3 +31,7 @@ HMAC_SECRET = config.get('HMAC_SECRET')
 if not settings.DEBUG:
     assert HMAC_SECRET, 'HMAC_SECRET must be specified when not in debug mode'
 HMAC_SECRET = (HMAC_SECRET or 'changeme').encode('utf-8')
+
+# Matches https://github.com/tornadoweb/tornado/blob/v4.4.2/tornado/web.py#L354
+# We should consider adding "Delete" x7f
+INVALID_FILE_NAME_CHAR_RE = re.compile(br"[\x00-\x1f]")
