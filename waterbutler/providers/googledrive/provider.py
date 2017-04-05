@@ -430,7 +430,12 @@ class GoogleDriveProvider(provider.BaseProvider):
                 results = data['items']
 
             if len(results) == 0:
-                raise exceptions.NotFoundError(str(path))
+                ret += [{
+                    'title': name_with_ext,
+                    'mimeType': '',
+                    'id': None
+                }]
+                return ret
             elif len(results) == 1:
                 item = results[0]
             else:
