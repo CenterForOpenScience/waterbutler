@@ -53,6 +53,15 @@ class TestValidatePut(BaseCreateMixinTest):
         assert e.value.code == client.LENGTH_REQUIRED
         assert e.value.message == 'Content-Length is required for file uploads'
 
+    def test_file_name_may_not_contain_ctrl_chars(self):
+        self.mixin.get_query_argument.return_value = 'tabby\tmctabface'
+
+        with pytest.raises(exceptions.InvalidParameters) as e:
+            self.mixin.prevalidate_put()
+
+        assert e.value.code == 400
+        assert e.value.message == 'File names may not contain CTRL characters.'
+
     def test_payload_with_folder(self):
         self.mixin.path = '/'
         self.mixin.request.headers = {'Content-Length': 5000}

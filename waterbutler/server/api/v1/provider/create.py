@@ -1,4 +1,5 @@
 from waterbutler.core import exceptions
+from waterbutler.server import settings
 
 
 class CreateMixin:
@@ -14,6 +15,11 @@ class CreateMixin:
         3. Ensure that content length is either not present or 0 for folder creation requests
         """
         self.kind = self.get_query_argument('kind', default='file')
+        self.arg_name = self.get_query_argument('name', default=None)
+        if self.arg_name:
+            if settings.INVALID_FILE_NAME_CHAR_RE.search(self.arg_name.encode('utf-8')):
+                raise exceptions.InvalidParameters('File names may not contain CTRL characters.',
+                                                   code=400)
 
         if self.kind not in ('file', 'folder'):
             raise exceptions.InvalidParameters('Kind must be file, folder or unspecified (interpreted as file), not {}'.format(self.kind))
