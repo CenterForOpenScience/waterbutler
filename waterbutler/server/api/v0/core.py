@@ -89,8 +89,8 @@ class BaseProviderHandler(BaseHandler):
             self.payload['settings'],
         )
 
-        self.path = await self.provider.validate_path(**self.arguments)
-        self.arguments['path'] = self.path  # TODO Not this
+        path = self.arguments['path']
+        self.path = await self.provider.validate_path(path, params=self.arguments)
 
     def _send_hook(self, action, metadata=None, path=None):
         source = LogPayload(self.arguments['nid'], self.provider, metadata=metadata, path=path)
@@ -112,8 +112,8 @@ class BaseCrossProviderHandler(BaseHandler):
         self.source_provider = await self.make_provider(prefix='from', **self.json['source'])
         self.destination_provider = await self.make_provider(prefix='to', **self.json['destination'])
 
-        self.json['source']['path'] = await self.source_provider.validate_path(**self.json['source'])
-        self.json['destination']['path'] = await self.destination_provider.validate_path(**self.json['destination'])
+        self.json['source']['path'] = await self.source_provider.validate_path(self.json['source']['path'])
+        self.json['destination']['path'] = await self.destination_provider.validate_path(self.json['destination']['path'])
 
     async def make_provider(self, provider, prefix='', **kwargs):
         payload = await auth_handler.fetch(
