@@ -342,10 +342,21 @@ class GitLabProvider(provider.BaseProvider):
         resp = await self.make_request(
             'GET',
             url.url,
-            expects=(200, ),
+            expects=(200, 404),
             throws=exceptions.NotFoundError(path.full_path)
         )
-        return (await resp.json())
+
+        data = await resp.json()
+
+        if isinstance(data, dict):
+            # Empty Project
+            if data['message'] == '404 Tree Not Found':
+                return []
+            # True Not Found
+            elif resp.status == 404:
+                raise exceptions.NotFoundError(path.full_path)
+
+        return data
 
     async def _upsert_blob(self, stream, filepath, branchname, insert=True):
         if type(stream) is not streams.Base64EncodeStream:
@@ -398,19 +409,8 @@ class GitLabProvider(provider.BaseProvider):
         # the operation using the git/trees api which requires a sha.
 
         if not (self._is_sha(ref) or recursive):
-            try:
-                data = await self._fetch_contents(path, ref=ref)
-            except exceptions.MetadataError as e:
-                if e.data.get('message') == 'This repository is empty.':
-                    data = []
-                else:
-                    raise
 
-            if isinstance(data, dict):
-                raise exceptions.MetadataError(
-                    'Could not retrieve folder "{0}"'.format(str(path)),
-                    code=404,
-                )
+            data = await self._fetch_contents(path, ref=ref)
 
             ret = []
             for item in data:
