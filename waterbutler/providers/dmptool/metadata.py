@@ -4,7 +4,11 @@ from waterbutler.core import metadata
 class DmptoolFileMetadata(metadata.BaseFileMetadata):
 
     def __init__(self, raw):
-        metadata.BaseFileMetadata.__init__(self, raw)
+        # metadata.BaseFileMetadata.__init__(self, raw)
+
+        print('++++++++++++++++++++++++++++++ DmptoolFileMetadata.__init__')
+        print('+++++ raw: {}'.format(raw))
+        super().__init__(raw)
 
     @property
     def content_type(self):
@@ -39,9 +43,10 @@ class DmptoolFileMetadata(metadata.BaseFileMetadata):
 
     @property
     def extra(self):
-        return super(DmptoolFileMetadata, self).extra.update({
 
-        })
+        return {
+            'webView': 'https://dmptool.org/plans/{}/details'.format(self.raw.get('guid')),
+        }
 
     @property
     def path(self):
