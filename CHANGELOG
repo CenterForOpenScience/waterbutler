@@ -2,6 +2,18 @@
 ChangeLog
 *********
 
+0.31.0 (2017-04-07)
+===================
+- Feature: Stop creating empty commits on GitHub when the requested action doesn't change the tree
+e.g. when updating a file with the exact same content as before.
+- Fix: Moving or copying a folder within osfstorage will now return the metadata for the folder's
+children in the response.
+- Fix: Reject PATCH requests gracefully, instead of 500-ing.
+- Fix: Disallow accessing Google Docs (.gdoc, .gsheet, etc.) without the extension.
+- Fix: Fix poor error handling in Dropbox provider.
+- Fix: Log WaitTimeoutErrors as log level info to Sentry. These are expected and shouldn't be
+considered full errors.
+
 0.30.0 (2017-02-02)
 ===================
 - Feature: Support the new London and Central Canada regions in Amazon S3. (thanks, @johnetordoff!)
