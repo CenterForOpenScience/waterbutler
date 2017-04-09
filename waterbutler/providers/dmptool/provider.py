@@ -256,10 +256,17 @@ class DmptoolProvider(provider.BaseProvider):
             else:
                 return None
 
-    async def plans_owned(self):
+    async def plans_owned(self, filter_visibility=('test',)):
+        """
+        by default, filter out plans with test visibility
+        """
+
         resp = await self.get_url_async('plans_owned')
         r = await resp.json()
-        return self._unroll(r)
+        unrolled_plans = self._unroll(r)
+
+        return [plan for plan in unrolled_plans
+          if plan.get('visibility') not in filter_visibility]
 
     def plans_owned_full(self):
         return self._unroll(self.get_url('plans_owned_full').json())
