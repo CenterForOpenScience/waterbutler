@@ -26,6 +26,10 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
             path = os.path.join(self.folder, path.lstrip('/'))
         return super().build_path(path)
 
+    @property
+    def created_utc(self):
+        return None
+
 
 class BaseGitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
@@ -34,6 +38,10 @@ class BaseGitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
         self.web_view = web_view
         self.givenpath = thepath
         self.file_name = raw['name']
+        self.file_size = None
+        if 'size' in raw:
+            self.file_size = raw['size']
+        self.file_sha = raw['id']
 
     @property
     def path(self):
@@ -52,15 +60,24 @@ class BaseGitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return '{}::{}'.format(self.path, self.raw['id'])
+        return '{}::{}'.format(self.path, self.file_sha)
 
     @property
     def extra(self):
         return dict(super().extra, **{
-            'fileSha': self.raw['id'],
+            'fileSha': self.file_sha,
             'webView': self.web_view
         })
 
+class GitLabFileMetadata(BaseGitLabFileMetadata):
+
+    @property
+    def name(self):
+        return self.file_name
+
+    @property
+    def size(self):
+        return self.file_size
 
 class BaseGitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
 
@@ -74,43 +91,14 @@ class BaseGitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
         return '/' + self.givenpath.path + self.current_path + '/'
 
 
-class GitLabFileContentMetadata(BaseGitLabFileMetadata):
+
+class GitLabFolderMetadata(BaseGitLabFolderMetadata):
 
     @property
     def name(self):
-        return self.raw['name']
-
-    @property
-    def size(self):
-        return None
+        return self.current_path
 
 
-class GitLabFolderContentMetadata(BaseGitLabFolderMetadata):
-
-    @property
-    def name(self):
-        return self.raw['name']
-
-
-class GitLabFileTreeMetadata(BaseGitLabFileMetadata):
-
-    @property
-    def name(self):
-        return os.path.basename(self.raw['path'])
-
-    @property
-    def size(self):
-        return self.raw['size']
-
-
-class GitLabFolderTreeMetadata(BaseGitLabFolderMetadata):
-
-    @property
-    def name(self):
-        return os.path.basename(self.raw['path'])
-
-
-# TODO dates!
 class GitLabRevision(metadata.BaseFileRevisionMetadata):
 
     @property
@@ -123,7 +111,7 @@ class GitLabRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def version(self):
-        return self.raw['id']
+        return self.file_sha
 
     @property
     def extra(self):
