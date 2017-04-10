@@ -22,8 +22,8 @@ class GitLabPath(WaterButlerPath):
     PART_CLASS = GitLabPathPart
 
     @property
-    def branch_ref(self):
-        """Branch name or commit sha in which this file exists"""
+    def branch_name(self):
+        """Branch name in which this file exists"""
         return self.identifier[0]
 
     @property
@@ -34,8 +34,8 @@ class GitLabPath(WaterButlerPath):
     @property
     def extra(self):
         return dict(super().extra, **{
-            'ref': self.branch_ref,
             'fileSha': self.file_sha,
+            'ref': self.branch_name
         })
 
     def __init__(self, path, _ids=(), prepend=None, folder=False):
@@ -50,5 +50,9 @@ class GitLabPath(WaterButlerPath):
     def child(self, name, _id=None, folder=False):
         """Pass current branch down to children"""
         if _id is None:
-            _id = (self.branch_ref, None)
+            _id = (self.branch_name, None)
         return super().child(name, _id=_id, folder=folder)
+
+    def set_file_sha(self, file_sha):
+        for part in self.parts:
+            part._id = (part._id[0], file_sha)
