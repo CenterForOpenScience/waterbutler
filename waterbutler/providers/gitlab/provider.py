@@ -89,6 +89,43 @@ class GitLabProvider(provider.BaseProvider):
             'email': self.email,
         }
 
+    async def revalidate_path(self, base, path, folder=False):
+        return base.child(path, _id=((base.branch_ref, None)), folder=folder)
+
+    async def _fetch_file_contents(self, path, ref):
+
+        url = self.build_repo_url('repository', 'files',
+                                  file_path=path,
+                                  ref=ref)
+
+        headers = {'Authorization': 'Bearer {}'.format(self.token), 'Accept': 'text/json'}
+
+        resp = await self.make_request(
+            'GET',
+            url,
+            headers=headers,
+            expects=(200,),
+            throws=exceptions.NotFoundError(path.full_path)
+        )
+
+        return await resp.json()
+
+
+    async def _fetch_tree_contents(self, path, ref):
+
+        url = self.build_repo_url('repository', 'tree', path=path, ref=ref)
+        headers = {'Authorization': 'Bearer {}'.format(self.token), 'Accept': 'text/json'}
+
+        resp = await self.make_request(
+            'GET',
+            url,
+            headers=headers,
+            expects=(200,),
+            throws=exceptions.NotFoundError(path.full_path)
+        )
+
+        return await resp.json()
+
     async def validate_v1_path(self, path, **kwargs):
         """Ensure path is in Waterbutler v1 format.
 
@@ -96,7 +133,20 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: GitLabPath
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
-        return GitLabPath(path)
+
+        if 'ref' not in kwargs:
+            raise exceptions.NotFoundError('you must specify the ref branch')
+
+        ref = kwargs['ref']
+
+        g_path = GitLabPath(path)
+
+        if g_path.is_dir:
+            data = await self._fetch_tree_contents(g_path, ref)
+        else:
+            data = await self._fetch_file_contents(g_path, ref)
+
+        return g_path
 
     async def validate_path(self, path, **kwargs):
         """Ensure path is in Waterbutler format.
@@ -244,6 +294,7 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: :class:`list` of :class:`GitLabRevision`
         :raises: :class:`waterbutler.core.exceptions.RevisionsError`
         """
+        #TODO:
         resp = await self.make_request(
             'GET',
             self.build_repo_url('commits', path=path.path, sha=sha or path.identifier),
@@ -266,7 +317,7 @@ class GitLabProvider(provider.BaseProvider):
         GitLabPath.validate_folder(path)
 
         message = message or settings.UPLOAD_FILE_MESSAGE
-        branch = branch or path.identifier[0]
+        branch = branch or path.branch_ref
 
         keep_path = path.child('.gitkeep')
 
@@ -401,7 +452,7 @@ class GitLabProvider(provider.BaseProvider):
         return True
 
     def _web_view(self, path):
-        segments = (self.owner, self.repo, 'blob', path.identifier[0], path.path)
+        segments = (self.owner, self.repo, 'blob', path.branch_ref, path.path)
         return provider.build_url(settings.VIEW_URL, *segments)
 
     async def _metadata_folder(self, path, recursive=False, ref=None, **kwargs):
