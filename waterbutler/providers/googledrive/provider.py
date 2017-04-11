@@ -12,7 +12,8 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 
 from waterbutler.providers.googledrive import settings
-from waterbutler.providers.googledrive import utils as drive_utils
+from waterbutler.providers.googledrive import utils
+from waterbutler.providers.googledrive.utils import GFILES_FORMATS
 from waterbutler.providers.googledrive.metadata import GoogleDriveRevision
 from waterbutler.providers.googledrive.metadata import GoogleDriveFileMetadata
 from waterbutler.providers.googledrive.metadata import GoogleDriveFolderMetadata
@@ -169,9 +170,13 @@ class GoogleDriveProvider(provider.BaseProvider):
             metadata = await self.metadata(path)
             self.metrics.add('download.got_supported_revision', False)
 
+        if metadata.raw['userPermission']['role'] in ('commenter', 'reader'):
+            raise exceptions.AuthError('You don\'t have permission to download this file through '
+                                       'the Open Science Framework', code=403)
+
         download_resp = await self.make_request(
             'GET',
-            metadata.raw.get('downloadUrl') or drive_utils.get_export_link(metadata.raw),
+            metadata.raw.get('downloadUrl') or utils.get_export_link(metadata.raw),
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
@@ -265,6 +270,12 @@ class GoogleDriveProvider(provider.BaseProvider):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
+        metadata = await self.metadata(path, raw=True)
+
+        if metadata['userPermission']['role'] in ('commenter', 'reader'):
+            raise exceptions.AuthError('You don\'t have permission to download this file through '
+                                       'the Open Science Framework', code=403)
+
         async with self.request(
             'GET',
             self.build_url('files', path.identifier, 'revisions'),
@@ -277,8 +288,6 @@ class GoogleDriveProvider(provider.BaseProvider):
                 GoogleDriveRevision(item)
                 for item in reversed(data['items'])
             ]
-
-        metadata = await self.metadata(path, raw=True)
 
         # Use dummy ID if no revisions found
         return [GoogleDriveRevision({
@@ -382,72 +391,90 @@ class GoogleDriveProvider(provider.BaseProvider):
         return item_id
 
     async def _resolve_path_to_ids(self, path, start_at=None):
-        """Takes a path and traverses the file tree (ha!) beginning at ``start_at``, looking for
-        something that matches ``path``.  Returns a list of dicts for each part of the path, with
-        ``title``, ``mimeType``, and ``id`` keys.
+        """
+        This functions purpose is to parse the string path to find ids each file or folder
+        contained in that path. There are some problems with this.
+
+        1. The extension problem:
+        Files which are unique to Gdrive (gdocs, gsheets, ext) can have the same name so for
+        example a gdoc and gsheet can both be called "Test" with no extension. So in order to tell
+        the difference between these files we require the user to add supply an extension (Test.gdoc
+        for gdocs, Test.gsheet for gsheets, etc.) We use the mimeType in the metadata to pick out
+        the correct file. There are exceptions to this rule, if the user doesn't have permission to
+        download the file they can't use the extension.
+
+        2. The slash problem:
+        When we get the path, we divide it into parts by splitting the path by the '/' characters.
+        Example: 1/2/3 is split into parts "1", "2", "3", but this creates a problem if a file
+        contains a '/', Example 1/2/3 is actually "1", "2/3". We resolve this problem by assuming
+        there are no folders slashes in them, so any time a folder
         """
         self.metrics.incr('called_resolve_path_to_ids')
         ret = start_at or [{
             'title': '',
-            'mimeType': 'folder',
+            'mimeType': self.FOLDER_MIME_TYPE,
             'id': self.folder['id'],
         }]
         item_id = ret[0]['id']
-        # parts is list of [path_part_name, is_folder]
-        parts = [[parse.unquote(x), True] for x in path.strip('/').split('/')]
 
-        if not path.endswith('/'):
-            parts[-1][1] = False
-        while parts:
-            current_part = parts.pop(0)
-            part_name, part_is_folder = current_part[0], current_part[1]
-            name, ext = os.path.splitext(part_name)
-            if not part_is_folder and ext in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
-                gd_ext = drive_utils.get_mimetype_from_ext(ext)
-                query = "title = '{}' " \
-                        "and trashed = false " \
-                        "and mimeType = '{}'".format(clean_query(name), gd_ext)
-            else:
-                query = "title = '{}' " \
-                        "and trashed = false " \
-                        "and mimeType != 'application/vnd.google-apps.form' " \
-                        "and mimeType != 'application/vnd.google-apps.map' " \
-                        "and mimeType != 'application/vnd.google-apps.document' " \
-                        "and mimeType != 'application/vnd.google-apps.drawing' " \
-                        "and mimeType != 'application/vnd.google-apps.presentation' " \
-                        "and mimeType != 'application/vnd.google-apps.spreadsheet' " \
-                        "and mimeType {} '{}'".format(
-                            clean_query(part_name),
-                            '=' if part_is_folder else '!=',
-                            self.FOLDER_MIME_TYPE
-                        )
+        parts = [parse.unquote(x) for x in path.strip('/').split('/')]
+
+        for index, part in enumerate(parts):
+            last_part = index == len(parts) - 1
+
+            expects_part_is_folder = not last_part or path.endswith('/')
+
             async with self.request(
                 'GET',
-                self.build_url('files', item_id, 'children', q=query, fields='items(id)'),
+                self.build_url('files', q=self._build_query(item_id)),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             ) as resp:
-                data = await resp.json()
+                results = (await resp.json())['items']
 
-            try:
-                item_id = data['items'][0]['id']
-            except (KeyError, IndexError):
-                if parts:
-                    # if we can't find an intermediate path part, that's an error
-                    raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
+            name, ext = os.path.splitext(part)
+            if expects_part_is_folder:
+                items = utils.filter_title_and_mimeType(results, part, self.FOLDER_MIME_TYPE)
+
+                if not path.endswith('/') and not last_part \
+                        and '/'.join(parts[index:]) in [item['title'] for item in results]:
+                    # If a file is parsed as a folder. Example path "1/2/3" is a single file named
+                    # "1/2/3" not a folder "1" which contains a folder "2" and file "3", this will
+                    # catch the "1/2/3" and return it and preceding parts
+                    return ret + [item for item in results if '/'.join(parts[index:]) == item['title']]
+
+            elif ext in [file['ext'] for file in GFILES_FORMATS]:
+                mime_type = utils.get_mimetype_from_ext(ext)
+                items = utils.filter_title_and_mimeType(results, clean_query(name), mime_type)
+            else:
+                items = [item for item in results if item['title'] == clean_query(part) and
+                         item['mimeType'] not in [file['mime_type'] for file in GFILES_FORMATS]]
+
+                if not items:
+                    # Depending on permissions even a GFile can be extensionless, so if nothing
+                    # else matches this will catch that.
+                    items = [item for item in results if item['title'] == clean_query(part)]
+
+            if len(items) == 1:
+                item_id = items[0]['id']
+                ret.append(items[0])
+            elif len(items) > 1:
+                # If we have files we can't disambiguate. Example: two files that are identical
+                # except for id, we simply can't tell which one with only the path for reference.
+                raise exceptions.MetadataError('{} not found'.format(str(path)),
+                                               code=http.client.NOT_FOUND)
+            elif not items and last_part:
+                # If we are uploading or moving something to a new location the last part is going
+                # to be new and not have an ID in gdrive.
                 return ret + [{
                     'id': None,
-                    'title': part_name,
-                    'mimeType': 'folder' if part_is_folder else '',
+                    'title': part,
+                    'mimeType': self.FOLDER_MIME_TYPE if path.endswith('/') else '',
                 }]
+            else:
+                # if we can't find an intermediate path part, that's an error
+                raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
 
-            async with self.request(
-                'GET',
-                self.build_url('files', item_id, fields='id,title,mimeType'),
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            ) as resp:
-                ret.append(await resp.json())
         return ret
 
     async def _resolve_id_to_parts(self, _id, accum=None):
@@ -558,7 +585,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         if revision:
             return GoogleDriveFileRevisionMetadata(data, path)
 
-        if drive_utils.is_docs_file(data):
+        if utils.is_docs_file(data):
             return await self._handle_docs_versioning(path, data, raw=raw)
 
         return self._serialize_item(path, data, raw=raw)

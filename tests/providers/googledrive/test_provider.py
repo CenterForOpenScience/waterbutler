@@ -85,6 +85,206 @@ def actual_file_response():
         'title': 'B.txt',
     }
 
+
+@pytest.fixture()
+def file_list_response():
+    return {
+        'etag': '"bcIyJ9A3gXa8oTYmz6nzAjQd-lY/H_ibMImWHz1GTl7M1HOk-ONcBqw"',
+        'incompleteSearch': False,
+        'items': [
+            {'alternateLink': 'https://drive.google.com/a/cos.io/file/d/0B1wCl2fPFhPoQjJGSXY3dkJLU2s/view?usp=drivesdk',
+          'appDataContents': False,
+          'capabilities': {'canCopy': True, 'canEdit': True},
+          'copyable': True,
+          'createdDate': '2017-03-14T17:46:57.339Z',
+          'downloadUrl': 'https://doc-00-80-docs.googleusercontent.com/docs/securesc/ntfg9vrht378qhlmjtincrgr21dums06/3gq29qpfc1n4jvs0v1ddvtetb3ecg0tm/1490299200000/06821444256322263786/06821444256322263786/0B1wCl2fPFhPoQjJGSXY3dkJLU2s?h=02276134969107310156&e=download&gd=true',
+          'editable': True,
+          'embedLink': 'https://drive.google.com/a/cos.io/file/d/0B1wCl2fPFhPoQjJGSXY3dkJLU2s/preview?usp=drivesdk',
+          'etag': '"bcIyJ9A3gXa8oTYmz6nzAjQd-lY/MTQ4OTUxMzYxNzMzOQ"',
+          'explicitlyTrashed': False,
+          'fileExtension': '',
+          'fileSize': '20',
+          'headRevisionId': '0B1wCl2fPFhPoWklXQndYUDRQbGx0SG9ablhtZG1xOGFZNDdzPQ',
+          'iconLink': 'https://ssl.gstatic.com/docs/doclist/images/icon_10_generic_list.png',
+          'id': '0B1wCl2fPFhPoQjJGSXY3dkJLU2s',
+          'kind': 'drive#file',
+          'labels': {'hidden': False,
+                     'restricted': False,
+                     'starred': False,
+                     'trashed': False,
+                     'viewed': True},
+          'lastModifyingUser': {'displayName': 'John Tordoff',
+                                'emailAddress': 'john@cos.io',
+                                'isAuthenticatedUser': True,
+                                'kind': 'drive#user',
+                                'permissionId': '06821444256322263786'},
+          'lastModifyingUserName': 'John Tordoff',
+          'lastViewedByMeDate': '2017-03-14T17:46:57.339Z',
+          'markedViewedByMeDate': '1970-01-01T00:00:00.000Z',
+          'md5Checksum': 'c5053cbd4ceb890f0c545a60300ad1b3',
+          'mimeType': 'application/octet-stream',
+          'modifiedByMeDate': '2017-03-14T17:46:57.339Z',
+          'modifiedDate': '2017-03-14T17:46:57.339Z',
+          'originalFilename': 'shared',
+          'ownerNames': ['John Tordoff'],
+          'owners': [{'displayName': 'John Tordoff',
+                      'emailAddress': 'john@cos.io',
+                      'isAuthenticatedUser': True,
+                      'kind': 'drive#user',
+                      'permissionId': '06821444256322263786'}],
+          'parents': [{'id': '0AFwCl2fPFhPoUk9PVA',
+                       'isRoot': True,
+                       'kind': 'drive#parentReference',
+                       'parentLink': 'https://www.googleapis.com/drive/v2/files/0AFwCl2fPFhPoUk9PVA',
+                       'selfLink': 'https://www.googleapis.com/drive/v2/files/0B1wCl2fPFhPoQjJGSXY3dkJLU2s/parents/0AFwCl2fPFhPoUk9PVA'}],
+          'quotaBytesUsed': '20',
+          'selfLink': 'https://www.googleapis.com/drive/v2/files/0B1wCl2fPFhPoQjJGSXY3dkJLU2s',
+          'shared': False,
+          'spaces': ['drive'],
+          'title': 'file',
+          'userPermission': {'etag': '"bcIyJ9A3gXa8oTYmz6nzAjQd-lY/5FTbiILWwdAJODZ_YAIoRfvzAZ8"',
+                             'id': 'me',
+                             'kind': 'drive#permission',
+                             'role': 'owner',
+                             'selfLink': 'https://www.googleapis.com/drive/v2/files/0B1wCl2fPFhPoQjJGSXY3dkJLU2s/permissions/me',
+                             'type': 'user'},
+          'version': '831',
+          'webContentLink': 'https://drive.google.com/a/cos.io/uc?id=0B1wCl2fPFhPoQjJGSXY3dkJLU2s&export=download',
+          'writersCanShare': True},
+        {
+             'alternateLink': 'https://docs.google.com/a/cos.io/spreadsheets/d/11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw/edit?usp=drivesdk',
+             'appDataContents': False,
+             'capabilities': {'canCopy': True, 'canEdit': True},
+             'copyable': True,
+             'createdDate': '2017-02-21T20:28:00.628Z',
+             'editable': True,
+             'embedLink': 'https://docs.google.com/a/cos.io/spreadsheets/d/11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw/htmlembed',
+             'etag': '"bcIyJ9A3gXa8oTYmz6nzAjQd-lY/MTQ4OTQyODA2OTAxMQ"',
+             'explicitlyTrashed': False,
+             'exportLinks': {
+                 'application/pdf': 'https://docs.google.com/spreadsheets/export?id=11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw&exportFormat=pdf',
+                 'application/vnd.oasis.opendocument.spreadsheet': 'https://docs.google.com/spreadsheets/export?id=11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw&exportFormat=ods',
+                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'https://docs.google.com/spreadsheets/export?id=11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw&exportFormat=xlsx',
+                 'application/x-vnd.oasis.opendocument.spreadsheet': 'https://docs.google.com/spreadsheets/export?id=11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw&exportFormat=ods',
+                 'application/zip': 'https://docs.google.com/spreadsheets/export?id=11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw&exportFormat=zip',
+                 'text/csv': 'https://docs.google.com/spreadsheets/export?id=11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw&exportFormat=csv',
+                 'text/tab-separated-values': 'https://docs.google.com/spreadsheets/export?id=11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw&exportFormat=tsv'},
+             'iconLink': 'https://ssl.gstatic.com/docs/doclist/images/icon_11_spreadsheet_list.png',
+             'id': '11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw',
+             'kind': 'drive#file',
+             'labels': {'hidden': False,
+                        'restricted': False,
+                        'starred': False,
+                        'trashed': False,
+                        'viewed': True},
+             'lastModifyingUser': {'displayName': 'John Tordoff',
+                                   'emailAddress': 'john@cos.io',
+                                   'isAuthenticatedUser': True,
+                                   'kind': 'drive#user',
+                                   'permissionId': '06821444256322263786'},
+             'lastModifyingUserName': 'John Tordoff',
+             'lastViewedByMeDate': '2017-03-22T15:42:54.770Z',
+             'markedViewedByMeDate': '1970-01-01T00:00:00.000Z',
+             'mimeType': 'application/vnd.google-apps.spreadsheet',
+             'modifiedByMeDate': '2017-03-13T18:01:09.011Z',
+             'modifiedDate': '2017-03-13T18:01:09.011Z',
+             'ownerNames': ['John Tordoff'],
+             'owners': [{'displayName': 'John Tordoff',
+                         'emailAddress': 'john@cos.io',
+                         'isAuthenticatedUser': True,
+                         'kind': 'drive#user',
+                         'permissionId': '06821444256322263786'}],
+             'parents': [{'id': '0AFwCl2fPFhPoUk9PVA',
+                          'isRoot': True,
+                          'kind': 'drive#parentReference',
+                          'parentLink': 'https://www.googleapis.com/drive/v2/files/0AFwCl2fPFhPoUk9PVA',
+                          'selfLink': 'https://www.googleapis.com/drive/v2/files/11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw/parents/0AFwCl2fPFhPoUk9PVA'}],
+             'quotaBytesUsed': '0',
+             'selfLink': 'https://www.googleapis.com/drive/v2/files/11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw',
+             'shared': False,
+             'spaces': ['drive'],
+             'thumbnailLink': 'https://docs.google.com/a/cos.io/feeds/vt?gd=true&id=11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw&v=1&s=AMedNnoAAAAAWNRbOXwThWm_gwedVtYwsPryoa3V6NP7&sz=s220',
+             'title': 'file',
+             'userPermission': {'etag': '"bcIyJ9A3gXa8oTYmz6nzAjQd-lY/lfaNhy6x0-CZLEO2zDwMkBXIq3s"',
+                                'id': 'me',
+                                'kind': 'drive#permission',
+                                'role': 'owner',
+                                'selfLink': 'https://www.googleapis.com/drive/v2/files/11SrZojQm7HFvEi4pD9_WSLg6LAv59QIuGg-Of1Q13fw/permissions/me',
+                                'type': 'user'},
+             'version': '950',
+             'writersCanShare': True},
+            {
+            'alternateLink': 'https://docs.google.com/a/cos.io/document/d/1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I/edit?usp=drivesdk',
+            'appDataContents': False,
+            'capabilities': {'canCopy': True, 'canEdit': True},
+            'copyable': True,
+            'createdDate': '2017-02-28T15:34:51.550Z',
+            'editable': True,
+            'embedLink': 'https://docs.google.com/a/cos.io/document/d/1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I/preview',
+            'etag': '"bcIyJ9A3gXa8oTYmz6nzAjQd-lY/MTQ4ODI5NjEwMDAzOQ"',
+            'explicitlyTrashed': False,
+            'exportLinks': {
+                 'application/epub+zip': 'https://docs.google.com/feeds/download/documents/export/Export?id=1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I&exportFormat=epub',
+                 'application/pdf': 'https://docs.google.com/feeds/download/documents/export/Export?id=1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I&exportFormat=pdf',
+                 'application/rtf': 'https://docs.google.com/feeds/download/documents/export/Export?id=1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I&exportFormat=rtf',
+                 'application/vnd.oasis.opendocument.text': 'https://docs.google.com/feeds/download/documents/export/Export?id=1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I&exportFormat=odt',
+                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'https://docs.google.com/feeds/download/documents/export/Export?id=1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I&exportFormat=docx',
+                 'application/zip': 'https://docs.google.com/feeds/download/documents/export/Export?id=1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I&exportFormat=zip',
+                 'text/html': 'https://docs.google.com/feeds/download/documents/export/Export?id=1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I&exportFormat=html',
+                 'text/plain': 'https://docs.google.com/feeds/download/documents/export/Export?id=1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I&exportFormat=txt'},
+            'iconLink': 'https://ssl.gstatic.com/docs/doclist/images/icon_11_document_list.png',
+            'id': '1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I',
+            'kind': 'drive#file',
+            'labels': {'hidden': False,
+                        'restricted': False,
+                        'starred': False,
+                        'trashed': False,
+                        'viewed': True},
+            'lastModifyingUser': {'displayName': 'John Tordoff',
+                                   'emailAddress': 'john@cos.io',
+                                   'isAuthenticatedUser': True,
+                                   'kind': 'drive#user',
+                                   'permissionId': '06821444256322263786'},
+            'lastModifyingUserName': 'John Tordoff',
+            'lastViewedByMeDate': '2017-02-28T15:52:32.739Z',
+            'markedViewedByMeDate': '1970-01-01T00:00:00.000Z',
+            'mimeType': 'application/vnd.google-apps.document',
+            'modifiedByMeDate': '2017-02-28T15:35:00.039Z',
+            'modifiedDate': '2017-02-28T15:35:00.039Z',
+            'ownerNames': ['John Tordoff'],
+            'owners': [{'displayName': 'John Tordoff',
+                         'emailAddress': 'john@cos.io',
+                         'isAuthenticatedUser': True,
+                         'kind': 'drive#user',
+                         'permissionId': '06821444256322263786'}],
+            'parents': [{'id': '0AFwCl2fPFhPoUk9PVA',
+                          'isRoot': True,
+                          'kind': 'drive#parentReference',
+                          'parentLink': 'https://www.googleapis.com/drive/v2/files/0AFwCl2fPFhPoUk9PVA',
+                          'selfLink': 'https://www.googleapis.com/drive/v2/files/1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I/parents/0AFwCl2fPFhPoUk9PVA'}],
+            'quotaBytesUsed': '0',
+            'selfLink': 'https://www.googleapis.com/drive/v2/files/1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I',
+            'shared': False,
+            'spaces': ['drive'],
+            'thumbnailLink': 'https://docs.google.com/a/cos.io/feeds/vt?gd=true&id=1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I&v=3&s=AMedNnoAAAAAWNRbOWo7pI-Lg8-K3zdqkFzj_uvT2O4d&sz=s220',
+            'title': 'file',
+            'userPermission': {'etag': '"bcIyJ9A3gXa8oTYmz6nzAjQd-lY/__QBlvnh0XFmRhQvB-zDojUpMec"',
+                                'id': 'me',
+                                'kind': 'drive#permission',
+                                'role': 'owner',
+                                'selfLink': 'https://www.googleapis.com/drive/v2/files/1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I/permissions/me',
+                                'type': 'user'},
+            'version': '596',
+            'webContentLink': 'https://drive.google.com/a/cos.io/uc?id=1LY0Wls2MeMV5ETNcvYvttlxfCBQvJ_mCalSBt3xLY3I&export=download',
+            'writersCanShare': True
+            }
+        ],
+        'kind': 'drive#fileList',
+        'selfLink': "https://www.googleapis.com/drive/v2/files?q=title+%3D+'shared'+and+trashed+%3D+false+and+'0AFwCl2fPFhPoUk9PVA'+in+parents"
+    }
+
+
+
 @pytest.fixture
 def search_for_folder_response():
     return {
@@ -126,26 +326,12 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, search_for_file_response,
-                                         actual_file_response, no_folder_response):
-        file_name = 'file.txt'
-        file_id = '1234ideclarethumbwar'
+    async def test_validate_v1_path_file(self, provider, file_list_response):
+        file_name = 'file'
 
-        query_url = provider.build_url(
-            'files', provider.folder['id'], 'children',
-            q=_build_title_search_query(provider, file_name, False),
-            fields='items(id)'
-        )
-        wrong_query_url = provider.build_url(
-            'files', provider.folder['id'], 'children',
-            q=_build_title_search_query(provider, file_name, True),
-            fields='items(id)'
-        )
-        specific_url = provider.build_url('files', file_id, fields='id,title,mimeType')
+        query_url = provider.build_url('files', q=provider._build_query(provider.folder['id']))
 
-        aiohttpretty.register_json_uri('GET', query_url, body=search_for_file_response)
-        aiohttpretty.register_json_uri('GET', wrong_query_url, body=no_folder_response)
-        aiohttpretty.register_json_uri('GET', specific_url, body=actual_file_response)
+        aiohttpretty.register_json_uri('GET', query_url, body=file_list_response)
 
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + file_name)
@@ -163,26 +349,12 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider, search_for_folder_response,
-                                           actual_folder_response, no_file_response):
+    async def test_validate_v1_path_folder(self, provider, file_list_response, no_file_response):
         folder_name = 'foofolder'
-        folder_id = 'whyis6afraidof7'
 
-        query_url = provider.build_url(
-            'files', provider.folder['id'], 'children',
-            q=_build_title_search_query(provider, folder_name, True),
-            fields='items(id)'
-        )
-        wrong_query_url = provider.build_url(
-            'files', provider.folder['id'], 'children',
-            q=_build_title_search_query(provider, folder_name, False),
-            fields='items(id)'
-        )
-        specific_url = provider.build_url('files', folder_id, fields='id,title,mimeType')
+        query_url = provider.build_url('files', q=provider._build_query(provider.folder['id']))
 
-        aiohttpretty.register_json_uri('GET', query_url, body=search_for_folder_response)
-        aiohttpretty.register_json_uri('GET', wrong_query_url, body=no_file_response)
-        aiohttpretty.register_json_uri('GET', specific_url, body=actual_folder_response)
+        aiohttpretty.register_json_uri('GET', query_url, body=fixtures.folder_list)
 
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + folder_name + '/')
@@ -520,6 +692,9 @@ class TestRevisions:
 
         revisions_url = provider.build_url('files', item['id'], 'revisions')
         aiohttpretty.register_json_uri('GET', revisions_url, body=fixtures.revisions_list)
+
+        metadata_url = provider.build_url('files', item['id'])
+        aiohttpretty.register_json_uri('GET', metadata_url, body=fixtures.docs_file_metadata)
 
         result = await provider.revisions(path)
 

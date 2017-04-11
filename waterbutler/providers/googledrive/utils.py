@@ -1,4 +1,4 @@
-DOCS_FORMATS = [
+GFILES_FORMATS = [
     {
         'mime_type': 'application/vnd.google-apps.document',
         'ext': '.gdoc',
@@ -37,13 +37,13 @@ def is_docs_file(metadata):
 
 
 def get_mimetype_from_ext(ext):
-    for format in DOCS_FORMATS:
+    for format in GFILES_FORMATS:
         if format['ext'] == ext:
             return format['mime_type']
 
 
 def get_format(metadata):
-    for format in DOCS_FORMATS:
+    for format in GFILES_FORMATS:
         if format['mime_type'] == metadata['mimeType']:
             return format
     return DOCS_DEFAULT_FORMAT
@@ -62,3 +62,19 @@ def get_download_extension(metadata):
 def get_export_link(metadata):
     format = get_format(metadata)
     return metadata['exportLinks'][format['type']]
+
+
+def filter_title_and_mimeType(items, title, mime_type):
+    return [x for x in items if x['title'] == title and x['mimeType'] == mime_type]
+
+
+def disambiguate_items_with_slash(parts, items, path_points_to_file):
+    print(parts)
+    if path_points_to_file:
+        items = [x for x in items if x['title'] == '/'.join(parts) and
+                 x['mimeType'] != 'application/vnd.google-apps.folder']
+    else:
+        items = filter_title_and_mimeType(items, '/'.join(parts), 'application/vnd.google-apps.folder')
+
+    if len(items) == 1:
+        return items
