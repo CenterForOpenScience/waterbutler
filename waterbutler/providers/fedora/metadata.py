@@ -104,3 +104,26 @@ class FedoraFileMetadata(BaseFedoraMetadata, metadata.BaseFileMetadata):
     @property
     def etag(self):
         return None
+
+
+# For the moment revisions are not supported
+class FedoraFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
+
+    def __init__(self):
+        pass
+
+    @property
+    def modified(self):
+        return None
+
+    @property
+    def modified_utc(self):
+        return None
+
+    @property
+    def version_identifier(self):
+        return 'revision'
+
+    @property
+    def version(self):
+        return 'latest'

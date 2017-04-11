@@ -9,6 +9,7 @@ from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.fedora import settings
 from waterbutler.providers.fedora.metadata import FedoraFileMetadata
 from waterbutler.providers.fedora.metadata import FedoraFolderMetadata
+from waterbutler.providers.fedora.metadata import FedoraFileRevisionMetadata
 
 # User specifies a Fedora 4 repo which they have access to through HTTP basic authentication.
 #
@@ -319,3 +320,8 @@ class FedoraProvider(provider.BaseProvider):
             pass
 
         return await self.lookup_fedora_metadata(path)
+
+    async def revisions(self, path, **kwargs):
+        """Revisions are not supported. Just return a revision called latest."""
+
+        return [FedoraFileRevisionMetadata()]
