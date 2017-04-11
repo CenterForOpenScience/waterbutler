@@ -221,8 +221,14 @@ class DmptoolProvider(provider.BaseProvider):
 
     async def plans(self, id_=None):
         """
-        https://dmptool.org/api/v1/plans
-        https://dmptool.org/api/v1/plans/:id
+        https://dmptool.org/api/v1/plans:
+        For a list of plans: This API request requires authentication.
+        Note: this call will return information for all plans created by users at your institution.
+        "Private" plans will only be displayed if created after 09-26-2016 or if you are the plan owner.
+
+        https://dmptool.org/api/v1/plans/:id:
+        For a specific plan
+        This API request requires authentication.
         """
 
         if id_ is None:
@@ -237,6 +243,15 @@ class DmptoolProvider(provider.BaseProvider):
         return result
 
     async def plans_full(self, id_=None, format_='json'):
+
+        """
+        For a list of plans with all related attributes
+
+        This API request requires authentication.
+        Note: this call will return information for all plans created by users at your institution.
+        "Private" plans will only be displayed if created after 09-26-2016 or if you are the plan owner.
+        Without authentication, this call returns all public plans for all institutions.
+        """
 
         if id_ is None:
             # a json doc for to represent all public docs
@@ -258,6 +273,7 @@ class DmptoolProvider(provider.BaseProvider):
 
     async def plans_owned(self, filter_visibility=('test',)):
         """
+        For a list of plans owned or co-owned by a user
         by default, filter out plans with test visibility
         """
 
@@ -269,17 +285,10 @@ class DmptoolProvider(provider.BaseProvider):
           if plan.get('visibility') not in filter_visibility]
 
     def plans_owned_full(self):
+        """
+        For a list of plans and all related attributes owned or co-owned by a user
+        """
         return self._unroll(self.get_url('plans_owned_full').json())
-
-    def plans_templates(self):
-        return self._unroll(self.get_url('plans_templates').json())
-
-    def institutions_plans_count(self):
-        """
-        https://github.com/CDLUC3/dmptool/wiki/API#for-a-list-of-institutions-and-plans-count
-        """
-        plans_counts = self.get_url('institutions_plans_count').json()
-        return plans_counts
 
     async def _dmptool_plans(self):
 
