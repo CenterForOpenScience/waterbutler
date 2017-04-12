@@ -219,7 +219,7 @@ class DmptoolProvider(provider.BaseProvider):
             for plan in plans
         ]
 
-    async def plans(self, id_=None):
+    async def plans(self, id=None):
         """
         https://dmptool.org/api/v1/plans:
         For a list of plans: This API request requires authentication.
@@ -231,18 +231,18 @@ class DmptoolProvider(provider.BaseProvider):
         This API request requires authentication.
         """
 
-        if id_ is None:
+        if id is None:
             resp = await self.get_url_async('plans')
             r = await resp.json()
             result = self._unroll(r)
         else:
-            resp = await self.get_url_async('plans/{}'.format(id_))
+            resp = await self.get_url_async('plans/{}'.format(id))
             r = await resp.json()
             result = r.get('plan')
 
         return result
 
-    async def plans_full(self, id_=None, format_='json'):
+    async def plans_full(self, id=None, format='json'):
 
         """
         For a list of plans with all related attributes
@@ -253,19 +253,19 @@ class DmptoolProvider(provider.BaseProvider):
         Without authentication, this call returns all public plans for all institutions.
         """
 
-        if id_ is None:
+        if id is None:
             # a json doc for to represent all public docs
             # I **think** if we include token, will get only docs owned
             resp = await self.get_url_async('plans_full/', headers={})
             r = await resp.json()
             return self._unroll(r)
         else:
-            if format_ == 'json':
-                resp = await self.get_url_async('plans_full/{}'.format(id_))
+            if format == 'json':
+                resp = await self.get_url_async('plans_full/{}'.format(id))
                 r = await resp.json()
                 return r.get('plan')
-            elif format_ in ['pdf', 'docx']:
-                resp = await self.get_url_async('plans_full/{}.{}'.format(id_, format_))
+            elif format in ['pdf', 'docx']:
+                resp = await self.get_url_async('plans_full/{}.{}'.format(id, format))
                 r = await resp.read()
                 return r
             else:
@@ -307,7 +307,7 @@ class DmptoolProvider(provider.BaseProvider):
     async def _dmptool_plan(self, plan_id):
 
         try:
-            plan = await self.plans(id_=plan_id)
+            plan = await self.plans(id=plan_id)
         except Exception as e:
             # TO raise the proper exception?
             raise e
