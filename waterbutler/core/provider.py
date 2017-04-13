@@ -65,6 +65,43 @@ def build_url(base, *segments, **query):
     return url.url
 
 
+def move_or_copy_validation(func):
+    async def wrapper(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
+
+        self.provider_metrics.add(func.__name__, {
+            'got_handle_naming': handle_naming,
+            'conflict': conflict,
+            'got_rename': rename is not None,
+        })
+
+        if handle_naming:
+            dest_path = await dest_provider.handle_naming(
+                src_path,
+                dest_path,
+                rename=rename,
+                conflict=conflict,
+            )
+
+        # files and folders shouldn't overwrite themselves
+        if (
+                self.shares_storage_root(dest_provider) and
+                src_path.materialized_path == dest_path.materialized_path
+        ):
+            raise exceptions.OverwriteSelfError(src_path)
+
+        intra_move_or_copy = getattr(self, 'intra_{}'.format(func.__name__))
+        can_intra_move_or_copy = getattr(self, 'can_intra_{}'.format(func.__name__))
+
+        if can_intra_move_or_copy(dest_provider, src_path):
+            self.provider_metrics.add('{0}.can_intra_{0}'.format(func.__name__), True)
+            return await intra_move_or_copy(dest_provider, src_path, dest_path)
+        else:
+            self.provider_metrics.add('{0}.can_intra_{0}'.format(func.__name__), False)
+
+        return await func(self, dest_provider, src_path, dest_path)
+    return wrapper
+
+
 class BaseProvider(metaclass=abc.ABCMeta):
     """The base class for all providers. Every provider must, at the least, implement all abstract
     methods in this class.
@@ -187,90 +224,42 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def request(self, *args, **kwargs):
         return RequestHandlerContext(self.make_request(*args, **kwargs))
 
-    async def move(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
+    @move_or_copy_validation  # Takes kwargs rename, conflict and handle_naming
+    async def move(self, dest_provider, src_path, dest_path):
         """Moves a file or folder from the current provider to the specified one
         Performs a copy and then a delete.
         Calls :func:`BaseProvider.intra_move` if possible.
 
         :param BaseProvider dest_provider: The provider to move to
-        :param dict source_options: A dict to be sent to either :func:`BaseProvider.intra_move`
+        :param dict src_path: A path object to be sent to either :func:`BaseProvider.intra_move`
             or :func:`BaseProvider.copy` and :func:`BaseProvider.delete`
         :param dict dest_options: A dict to be sent to either :func:`BaseProvider.intra_move`
             or :func:`BaseProvider.copy`
         """
-        args = (dest_provider, src_path, dest_path)
-        kwargs = {'rename': rename, 'conflict': conflict}
-
-        self.provider_metrics.add('move', {
-            'got_handle_naming': handle_naming,
-            'conflict': conflict,
-            'got_rename': rename is not None,
-        })
-
-        if handle_naming:
-            dest_path = await dest_provider.handle_naming(
-                src_path,
-                dest_path,
-                rename=rename,
-                conflict=conflict,
-            )
-            args = (dest_provider, src_path, dest_path)
-            kwargs = {}
-
-        # files and folders shouldn't overwrite themselves
-        if (
-            self.shares_storage_root(dest_provider) and
-            src_path.materialized_path == dest_path.materialized_path
-        ):
-            raise exceptions.OverwriteSelfError(src_path)
-
-        self.provider_metrics.add('move.can_intra_move', False)
-        if self.can_intra_move(dest_provider, src_path):
-            self.provider_metrics.add('move.can_intra_move', True)
-            return (await self.intra_move(*args))
 
         if src_path.is_dir:
-            metadata, created = await self._folder_file_op(self.move, *args, **kwargs)
+            metadata, created = await self._folder_file_op(self.move, dest_provider, src_path, dest_path)
         else:
-            metadata, created = await self.copy(*args, handle_naming=False, **kwargs)
+            metadata, created = await self.copy(dest_provider, src_path, dest_path, handle_naming=False)
 
         await self.delete(src_path)
 
         return metadata, created
 
-    async def copy(self, dest_provider, src_path, dest_path, rename=None, conflict='replace', handle_naming=True):
-        args = (dest_provider, src_path, dest_path)
-        kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
+    @move_or_copy_validation  # Takes kwargs rename, conflict and handle_naming
+    async def copy(self, dest_provider, src_path, dest_path):
+        """Copies a file or folder from the current provider to the specified one by simply
+        downloading the file and uploading it to the destination directory, naming conflicts
+        intra-provider moves and metrics are dealt with in the move_or_copy_validation decorator.
 
-        self.provider_metrics.add('copy', {
-            'got_handle_naming': handle_naming,
-            'conflict': conflict,
-            'got_rename': rename is not None,
-        })
-        if handle_naming:
-            dest_path = await dest_provider.handle_naming(
-                src_path,
-                dest_path,
-                rename=rename,
-                conflict=conflict,
-            )
-            args = (dest_provider, src_path, dest_path)
-            kwargs = {}
-
-        # files and folders shouldn't overwrite themselves
-        if (
-                self.shares_storage_root(dest_provider) and
-                src_path.materialized_path == dest_path.materialized_path
-        ):
-            raise exceptions.OverwriteSelfError(src_path)
-
-        self.provider_metrics.add('copy.can_intra_copy', False)
-        if self.can_intra_copy(dest_provider, src_path):
-            self.provider_metrics.add('copy.can_intra_copy', True)
-            return (await self.intra_copy(*args))
+        :param BaseProvider dest_provider: The provider to move to
+        :param dict src_path: A path object to be sent to either :func:`BaseProvider.intra_copy`
+            or :func:`BaseProvider.copy`
+        :param dict dest_path: A path object to be sent to :func:`BaseProvider.intra_copy`
+        """
 
         if src_path.is_dir:
-            return (await self._folder_file_op(self.copy, *args, **kwargs))
+            return await self._folder_file_op(self.copy, dest_provider, src_path, dest_path)
 
         download_stream = await self.download(src_path)
 
@@ -279,7 +268,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         return (await dest_provider.upload(download_stream, dest_path))
 
-    async def _folder_file_op(self, func, dest_provider, src_path, dest_path, **kwargs):
+    async def _folder_file_op(self, func, dest_provider, src_path, dest_path):
         """Recursively apply func to src/dest path.
 
         Called from: func: copy and move if src_path.is_dir.
