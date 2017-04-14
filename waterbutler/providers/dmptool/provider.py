@@ -128,6 +128,30 @@ class DmptoolProvider(provider.BaseProvider):
             else:
                 raise exceptions.NotFoundError(str(path))
 
+    def path_from_metadata(self, parent_path, metadata):
+        """
+        TO FIX:
+
+        The path for individual files are of the form /PLAN_ID e.g., /21222
+        How to attach the name of the pdf so that the file names get used in the zip file?
+
+
+        """
+        print('path_from_metadata: ', parent_path, metadata.name, metadata.path.strip('/'), metadata.is_folder, metadata.path)
+        # default implementation
+        # pp = parent_path.child(metadata.name, _id=metadata.path.strip('/'), folder=metadata.is_folder)
+
+        # almost works -- generates a zip file full of pdf (but with just id and no .pdf extension)
+        # pp = parent_path.child(metadata.path.strip('/'), _id=metadata.path.strip('/'), folder=metadata.is_folder)
+
+        # following line gives basically same result
+        pp = WaterButlerPath.from_metadata(metadata)
+
+        print('path_from_metadata.pp: ', pp, type(pp))
+        return pp
+
+        # return super().path_from_metadata(parent_path, metadata)
+
     def can_intra_move(self, other, path=None):
         """
             Moves are not allowed. Only Copies from Dmptool to another provider.
