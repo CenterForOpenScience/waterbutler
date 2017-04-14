@@ -208,6 +208,21 @@ class DmptoolProvider(provider.BaseProvider):
         """
         raise exceptions.ReadOnlyProviderError(self)
 
+    async def move(self, *args, **kwargs):
+
+        print("dmptool.provider.move: ", args, kwargs)
+
+        raise exceptions.ReadOnlyProviderError(self.NAME)
+
+    # copy is okay if source is dmptool and destination is not
+    async def copy(self, dest_provider, *args, **kwargs):
+
+        print("dmptool.provider.copy: ", dest_provider, args, kwargs, dest_provider.NAME)
+
+        if dest_provider.NAME == 'dmptool':
+            raise exceptions.ReadOnlyProviderError(self.NAME)
+        return await super().copy(dest_provider, *args, **kwargs)
+
     def can_duplicate_names(self):
         """
             Dmptool write access is not allowed.
