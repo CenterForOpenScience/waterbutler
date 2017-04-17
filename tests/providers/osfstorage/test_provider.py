@@ -515,6 +515,20 @@ class TestUploads:
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
+        signed_url, _, params = provider.build_signed_url('GET', provider.build_url(path.identifier, revision=''))
+
+        metadata_resp = {
+            'name': 'OtherTest',
+            'path': '/OtherTest',
+            'kind': 'file',
+            'version': 10,
+            'downloads': 1,
+            'md5': '1234',
+            'sha256': 'old_sha',
+        }
+
+        aiohttpretty.register_json_uri('GET', signed_url, params=params, status=200, body=metadata_resp)
+
         aiohttpretty.register_json_uri('POST', url, status=200, body={'data': {'downloads': 10, 'version': 8, 'path': '/24601', 'checkout': 'hmoco', 'md5': '1234', 'sha256': '2345'}})
 
         res, created = await provider.upload(file_stream, path)
@@ -538,6 +552,20 @@ class TestUploads:
         basepath = 'waterbutler.providers.osfstorage.provider.{}'
         path = WaterButlerPath('/foopath', _ids=('Test', 'OtherTest'))
         url = 'https://waterbutler.io/{}/children/'.format(path.parent.identifier)
+
+        signed_url, _, params = provider.build_signed_url('GET', provider.build_url(path.identifier, revision=''))
+
+        metadata_resp = {
+            'name': 'OtherTest',
+            'path': '/OtherTest',
+            'kind': 'file',
+            'version': 10,
+            'downloads': 1,
+            'md5': '1234',
+            'sha256': 'old_sha',
+        }
+
+        aiohttpretty.register_json_uri('GET', signed_url, params=params, status=200, body=metadata_resp)
 
         mock_parity = mock.Mock()
         mock_backup = mock.Mock()
