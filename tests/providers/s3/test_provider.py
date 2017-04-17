@@ -40,7 +40,7 @@ def credentials():
 @pytest.fixture
 def settings():
     return {
-        'bucket': 'that kerning',
+        'bucket': 'thatkerning',
         'encrypt_uploads': False
     }
 
