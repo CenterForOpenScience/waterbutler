@@ -109,16 +109,16 @@ class FedoraFileMetadata(BaseFedoraMetadata, metadata.BaseFileMetadata):
 # For the moment revisions are not supported
 class FedoraFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
 
-    def __init__(self):
-        pass
+    def __init__(self, md):
+        self.md = md
 
     @property
     def modified(self):
-        return None
+        return self.md.modified
 
     @property
     def modified_utc(self):
-        return None
+        return self.md.modified_utc
 
     @property
     def version_identifier(self):

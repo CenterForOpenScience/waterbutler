@@ -324,4 +324,6 @@ class FedoraProvider(provider.BaseProvider):
     async def revisions(self, path, **kwargs):
         """Revisions are not supported. Just return a revision called latest."""
 
-        return [FedoraFileRevisionMetadata()]
+        md = await self.lookup_fedora_metadata(path)
+
+        return [FedoraFileRevisionMetadata(md)]

@@ -468,3 +468,23 @@ class TestProvider:
 
         with pytest.raises(exceptions.NotFoundError):
             result = await provider.validate_v1_path(test_file_path)
+
+
+  # Ensure that revisions returns a single revision called latest
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revisions(self, provider):
+        path = WaterButlerPath(test_file_path)
+
+        url = provider.build_repo_url(path)
+        aiohttpretty.register_uri('HEAD', url, status=200)
+        aiohttpretty.register_uri('GET', url + '/fcr:metadata', status=200, body=test_file_json_ld, headers={'Content-Type': 'application/json'})
+
+        result = await provider.revisions(path)
+
+        assert len(result) == 1
+
+        md = FedoraFileMetadata(json.loads(test_file_json_ld), url, path)
+        assert result[0].version == 'latest'
+        assert result[0].modified == md.modified
+        assert result[0].modified_utc == md.modified_utc
