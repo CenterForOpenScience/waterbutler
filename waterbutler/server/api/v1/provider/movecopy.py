@@ -53,23 +53,25 @@ class MoveCopyMixin:
         # Force the json body to load into memory
         await self.request.body
 
-        if self.json.get('action') not in ('copy', 'move', 'rename'):
+        action = self.json.get('action')
+
+        if action not in ('copy', 'move', 'rename'):
             # Note: null is used as the default to avoid python specific error messages
             raise exceptions.InvalidParameters('Action must be copy, move or rename, not {}'.format(self.json.get('action', 'null')))
 
-        if self.json['action'] == 'rename':
-            if not self.json.get('rename'):
-                raise exceptions.InvalidParameters('Rename is required for renaming')
-            action = 'move'
+        elif action == 'rename':
+
+            self.provider.validate_rename(self.json.get('rename'), self.path.is_dir)
+
             self.dest_auth = self.auth
             self.dest_provider = self.provider
             self.dest_path = self.path.parent
             self.dest_resource = self.resource
+
+            action = 'move'
         else:
             if 'path' not in self.json:
                 raise exceptions.InvalidParameters('Path is required for moves or copies')
-
-            action = self.json['action']
 
             # Note: attached to self so that _send_hook has access to these
             self.dest_resource = self.json.get('resource', self.resource)

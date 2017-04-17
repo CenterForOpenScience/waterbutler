@@ -50,6 +50,7 @@ class DropboxProvider(provider.BaseProvider):
     """
     NAME = 'dropbox'
     BASE_URL = settings.BASE_URL
+    FORBIDDEN_FILENAME_CHARS = ['/']
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
