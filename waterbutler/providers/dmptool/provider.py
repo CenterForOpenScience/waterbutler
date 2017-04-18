@@ -3,7 +3,7 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
-from .metadata import DmptoolFileMetadata
+from .metadata import DmptoolFileMetadata, DmptoolFileRevisionMetadata
 import datetime
 
 
@@ -207,6 +207,10 @@ class DmptoolProvider(provider.BaseProvider):
             `waterbutler.core.exceptions.ReadOnlyProviderError` Always
         """
         return False
+
+    async def revisions(self, path, **kwargs):
+        metadata = await self.metadata(path)
+        return [DmptoolFileRevisionMetadata.from_metadata(metadata)]
 
     async def get_url_async(self, path, headers=None):
 

@@ -37,7 +37,6 @@ class DmptoolFileMetadata(metadata.BaseFileMetadata):
 
     @property
     def size(self):
-        # TO DO
 
         return self.raw['length']
 
@@ -56,3 +55,25 @@ class DmptoolFileMetadata(metadata.BaseFileMetadata):
     def etag(self):
         # TO DO: implement
         return "[ETAG]"
+
+
+class DmptoolFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
+
+    def __init__(self, modified):
+        self._modified = modified
+
+    @classmethod
+    def from_metadata(cls, metadata):
+        return DmptoolFileRevisionMetadata(modified=metadata.modified)
+
+    @property
+    def version_identifier(self):
+        return 'revision'
+
+    @property
+    def version(self):
+        return 'latest'
+
+    @property
+    def modified(self):
+        return self._modified
