@@ -16,9 +16,9 @@ class DmptoolProvider(provider.BaseProvider):
 
     NAME = 'dmptool'
 
-    def __init__(self, auth, credentials, dmptool_settings):
+    def __init__(self, auth, credentials, settings):
 
-        super().__init__(auth, credentials, dmptool_settings)
+        super().__init__(auth, credentials, settings)
 
         protocol = 'https'
         self.base_url = '{}://{}/api/v1/'.format(protocol, self.credentials['host'])
@@ -57,7 +57,7 @@ class DmptoolProvider(provider.BaseProvider):
             return package
 
         if not path.is_dir:
-            return (await self._file_metadata(path.path))
+            return (await self._file_metadata(path.identifier))
 
     async def download(self, path, **kwargs):
         """ Interface to downloading files from Dmptool
@@ -74,7 +74,8 @@ class DmptoolProvider(provider.BaseProvider):
         # print ("download: {path}".format(path=path))
 
         try:
-            plan_id = path.parts[1].raw
+            plan_id = path.identifier
+            print("dmptool.provider.download: ", plan_id)
             pdf = await self._dmptool_plan_pdf(plan_id)
         except Exception as e:
             # TO DO: throw the correct exception
@@ -94,15 +95,16 @@ class DmptoolProvider(provider.BaseProvider):
         :type path: `str`
         """
 
-        wbpath = WaterButlerPath(path)
-
-        if wbpath.is_root:
-            return wbpath
-        if len(wbpath.parts) == 2 and wbpath.is_dir:
+        if path == '/':
+            wbpath = WaterButlerPath(path='/', _ids=['/'])
+        else:
+            try:
+                plan_id = int(path[1:])
+                wbpath = WaterButlerPath('/Plan_{}.pdf'.format(plan_id), _ids=('/', plan_id))
+            except Exception as e:
                 raise exceptions.NotFoundError(path)
-        if len(wbpath.parts) > 2:
-            raise exceptions.NotFoundError(path)
 
+        print("dmptool.provider.validate_path.wbpath: ", wbpath, type(wbpath))
         return wbpath
 
     async def validate_v1_path(self, path, **kwargs):
@@ -116,7 +118,7 @@ class DmptoolProvider(provider.BaseProvider):
         if wbpath.is_root:
             return wbpath
 
-        plan = await self._dmptool_plan(wbpath.parts[1].raw)
+        plan = await self._dmptool_plan(wbpath.identifier)
 
         if isinstance(plan, Exception):
             raise exceptions.NotFoundError(str(path))
@@ -127,30 +129,6 @@ class DmptoolProvider(provider.BaseProvider):
                 return wbpath
             else:
                 raise exceptions.NotFoundError(str(path))
-
-    def path_from_metadata(self, parent_path, metadata):
-        """
-        TO FIX:
-
-        The path for individual files are of the form /PLAN_ID e.g., /21222
-        How to attach the name of the pdf so that the file names get used in the zip file?
-
-
-        """
-        print('path_from_metadata: ', parent_path, metadata.name, metadata.path.strip('/'), metadata.is_folder, metadata.path)
-        # default implementation
-        # pp = parent_path.child(metadata.name, _id=metadata.path.strip('/'), folder=metadata.is_folder)
-
-        # almost works -- generates a zip file full of pdf (but with just id and no .pdf extension)
-        # pp = parent_path.child(metadata.path.strip('/'), _id=metadata.path.strip('/'), folder=metadata.is_folder)
-
-        # following line gives basically same result
-        pp = WaterButlerPath.from_metadata(metadata)
-
-        print('path_from_metadata.pp: ', pp, type(pp))
-        return pp
-
-        # return super().path_from_metadata(parent_path, metadata)
 
     def can_intra_move(self, other, path=None):
         """
@@ -216,8 +194,6 @@ class DmptoolProvider(provider.BaseProvider):
 
     # copy is okay if source is dmptool and destination is not
     async def copy(self, dest_provider, *args, **kwargs):
-
-        print("dmptool.provider.copy: ", dest_provider, args, kwargs, dest_provider.NAME)
 
         if dest_provider.NAME == 'dmptool':
             raise exceptions.ReadOnlyProviderError(self.NAME)
@@ -338,7 +314,7 @@ class DmptoolProvider(provider.BaseProvider):
                   'guid': str(plan['id']),
                   'created': timestamp_iso(plan['created']),
                   'updated': timestamp_iso(plan['modified']),
-                  'length': 0}
+                  'length': None}
                   for plan in plans]
 
         return results
@@ -355,7 +331,7 @@ class DmptoolProvider(provider.BaseProvider):
                   'guid': str(plan['id']),
                   'created': timestamp_iso(plan['created']),
                   'updated': timestamp_iso(plan['modified']),
-                  'length': 0,
+                  'length': None,
                   'content': ''}
             return result
 
