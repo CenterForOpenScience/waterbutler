@@ -1,62 +1,87 @@
 import os
+from furl import furl
 
 from waterbutler.core import metadata
 
 
 class BaseGitLabMetadata(metadata.BaseMetadata):
 
-    def __init__(self, raw, folder=None, commit=None):
+    def __init__(self, raw, path):
         super().__init__(raw)
-        self.folder = folder
-        self.commit = commit
+        self._path_obj = path
 
     @property
     def provider(self):
         return 'gitlab'
 
     @property
-    def extra(self):
-        ret = {}
-        if self.commit is not None:
-            ret['commit'] = self.commit
-        return ret
-
-    def build_path(self, path):
-        if self.folder:
-            path = os.path.join(self.folder, path.lstrip('/'))
-        return super().build_path(path)
+    def path(self):
+        return self.build_path()
 
     @property
-    def created_utc(self):
-        return None
+    def name(self):
+        return self._path_obj.name
+
+    @property
+    def branch_name(self):
+        return self._path_obj.branch_name
+
+    @property
+    def extra(self):
+        return {
+                'ref': self.branch_name
+                }
+
+    def build_path(self):
+        return super().build_path(self._path_obj.raw_path)
+
+    def _json_api_links(self, resource):
+        """Update JSON-API links to add branch, if available"""
+        links = super()._json_api_links(resource)
+
+        ref = None
+        if self.branch_name is not None:
+            ref = {'branch': self.branch_name}
+
+        if ref is not None:
+            for action, link in links.items():
+                links[action] = furl(link).add(ref).url
+
+    # Read-only version
+        for action in ['delete', 'upload']:
+            links[action] = None
+
+        return links
 
 
-class BaseGitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
+class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
-    def __init__(self, raw, commit=None, web_view=None, thepath=None):
-        super().__init__(raw, commit=commit)
-        self.web_view = web_view
-        self.givenpath = thepath
-        self.file_name = raw['name']
-        self.file_size = None
+    def __init__(self, raw, path, web_view=None):
+        super().__init__(raw, path)
+        self._path_obj = path
+        self.file_size = 0
         if 'size' in raw:
             self.file_size = raw['size']
-        self.file_sha = raw['id']
-
-    @property
-    def path(self):
-        if (isinstance(self.givenpath, str)):
-            return '/' + self.givenpath + self.file_name
-        else:
-            return '/' + self.givenpath.path + self.file_name
 
     @property
     def modified(self):
         return None
 
     @property
+    def created_utc(self):
+        return None
+
+    @property
     def content_type(self):
         return None
+
+    @property
+    def size(self):
+        return self.file_size
+
+    @property
+    def file_sha(self):
+        return self._path_obj.file_sha
 
     @property
     def etag(self):
@@ -67,36 +92,18 @@ class BaseGitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
         return dict(super().extra, **{
             'fileSha': self.file_sha,
             'webView': self.web_view
-        })
-
-class GitLabFileMetadata(BaseGitLabFileMetadata):
+            })
 
     @property
-    def name(self):
-        return self.file_name
+    def web_view(self):
+        return None
+
+
+class GitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
 
     @property
-    def size(self):
-        return self.file_size
-
-class BaseGitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
-
-    def __init__(self, raw, folder=None, commit=None, thepath=None):
-        super().__init__(raw, folder, commit)
-        self.givenpath = thepath
-        self.current_path = raw['name']
-
-    @property
-    def path(self):
-        return '/' + self.givenpath.path + self.current_path + '/'
-
-
-
-class GitLabFolderMetadata(BaseGitLabFolderMetadata):
-
-    @property
-    def name(self):
-        return self.current_path
+    def modified(self):
+        return None
 
 
 class GitLabRevision(metadata.BaseFileRevisionMetadata):
@@ -116,7 +123,7 @@ class GitLabRevision(metadata.BaseFileRevisionMetadata):
     @property
     def extra(self):
         return {
-            'user': {
-                'name': self.raw['commit']['committer']['name']
-            }
-        }
+                'user': {
+                    'name': self.raw['commit']['committer']['name']
+                    },
+                }
