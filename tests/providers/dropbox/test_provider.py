@@ -360,8 +360,14 @@ class TestCreateFolder:
 
 class TestOperations:
 
-    async def test_can_intra_copy(self, provider):
+    def test_can_intra_copy(self, provider):
         assert provider.can_intra_copy(provider)
 
-    async def test_can_intra_move(self, provider):
+    def test_can_intra_move(self, provider):
         assert provider.can_intra_move(provider)
+
+    def test_conflict_error_handler_not_found(self, provider, not_found_metadata_data):
+        error_path = '/Photos/folder/file'
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            provider.dropbox_conflict_error_handler(not_found_metadata_data, error_path=error_path)
+        assert str(exc.value).endswith(' /folder/file')

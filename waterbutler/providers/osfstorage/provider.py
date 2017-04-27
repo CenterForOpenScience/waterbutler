@@ -146,7 +146,9 @@ class OSFStorageProvider(provider.BaseProvider):
         return isinstance(other, self.__class__)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
+        created = True
         if dest_path.identifier:
+            created = False
             await dest_provider.delete(dest_path)
 
         async with self.signed_request(
@@ -169,13 +171,16 @@ class OSFStorageProvider(provider.BaseProvider):
         if data['kind'] == 'file':
             return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
 
-        folder = OsfStorageFolderMetadata(data, str(dest_path))
-        folder.children = await self._children_metadata(await self.validate_v1_path(data['path']))
+        folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
+        dest_path = await dest_provider.validate_v1_path(data['path'])
+        folder_meta.children = await dest_provider._children_metadata(dest_path)
 
-        return folder, dest_path.identifier is None
+        return folder_meta, created
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
+        created = True
         if dest_path.identifier:
+            created = False
             await dest_provider.delete(dest_path)
 
         async with self.signed_request(
@@ -198,10 +203,11 @@ class OSFStorageProvider(provider.BaseProvider):
         if data['kind'] == 'file':
             return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
 
-        folder = OsfStorageFolderMetadata(data, str(dest_path))
-        folder.children = await self._children_metadata(await self.validate_v1_path(data['path']))
+        folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
+        dest_path = await dest_provider.validate_v1_path(data['path'])
+        folder_meta.children = await dest_provider._children_metadata(dest_path)
 
-        return folder, dest_path.identifier is None
+        return folder_meta, created
 
     def build_signed_url(self, method, url, data=None, params=None, ttl=100, **kwargs):
         signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
