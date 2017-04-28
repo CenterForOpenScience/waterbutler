@@ -389,6 +389,7 @@ class OSFStorageProvider(provider.BaseProvider):
             'version': data['data']['version'],
             'downloads': data['data']['downloads'],
             'checkout': data['data']['checkout'],
+            'modified': data['data']['modified'],
         })
 
         path._parts[-1]._id = metadata['path'].strip('/')
