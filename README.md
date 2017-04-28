@@ -1,4 +1,5 @@
-<img src=/docs/waterbutler.png?raw=true" width="25%" style="float:left;">
+<img src="/docs/waterbutler.png?raw=true" width="25%" style="float:left;">
+
 # WaterButler
 
 [![Documentation Status](https://readthedocs.org/projects/waterbutler/badge/?version=latest)](http://waterbutler.readthedocs.org/en/latest/?badge=latest)

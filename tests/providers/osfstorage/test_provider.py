@@ -1,6 +1,7 @@
 import os
 import io
 import time
+import json
 import asyncio
 from http import client
 from unittest import mock
@@ -16,6 +17,7 @@ from waterbutler.core import exceptions
 from waterbutler.server import settings
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.osfstorage import OSFStorageProvider
+from waterbutler.providers.osfstorage.metadata import OsfStorageFolderMetadata
 from waterbutler.providers.osfstorage.settings import FILE_PATH_COMPLETE
 
 
@@ -80,6 +82,26 @@ def provider_and_mock(monkeypatch, auth, credentials, settings):
     mock_provider.upload = utils.MockCoroutine()
     mock_provider.download = utils.MockCoroutine()
     mock_provider.metadata = utils.MockCoroutine()
+    mock_provider.validate_v1_path = utils.MockCoroutine()
+    mock_provider._children_metadata = utils.MockCoroutine()
+
+    mock_make_provider = mock.Mock(return_value=mock_provider)
+    monkeypatch.setattr(OSFStorageProvider, 'make_provider', mock_make_provider)
+    return OSFStorageProvider(auth, credentials, settings), mock_provider
+
+
+@pytest.fixture
+def provider_and_mock2(monkeypatch, auth, credentials, settings):
+    mock_provider = utils.MockProvider1({}, {}, {})
+
+    mock_provider.copy = utils.MockCoroutine()
+    mock_provider.move = utils.MockCoroutine()
+    mock_provider.delete = utils.MockCoroutine()
+    mock_provider.upload = utils.MockCoroutine()
+    mock_provider.download = utils.MockCoroutine()
+    mock_provider.metadata = utils.MockCoroutine()
+    mock_provider.validate_v1_path = utils.MockCoroutine()
+    mock_provider._children_metadata = utils.MockCoroutine()
 
     mock_make_provider = mock.Mock(return_value=mock_provider)
     monkeypatch.setattr(OSFStorageProvider, 'make_provider', mock_make_provider)
@@ -90,6 +112,27 @@ def provider_and_mock(monkeypatch, auth, credentials, settings):
 def provider(provider_and_mock):
     provider, _ = provider_and_mock
     return provider
+
+
+@pytest.fixture
+def children_response():
+    return [{"etag": "d0a8d038885dd14d8ac25b80ac179a727d11da34d4a685804",
+             "size": 11839,
+             "name": "arch.zip",
+             "path": "/58c959e9cae5b6000bb09810",
+             "created_utc": "2017-03-13T15:43:02+00:00",
+             "contentType": None,
+             "extra": {"checkout": None,
+                       "downloads": 0,
+                       "hashes": {"sha256": "ba2b5a5fbd8aa1dff221b6438d2b7d38ea",
+                                  "md5": "51ca5a238854030ae5272d5c8cda8188"},
+                       "guid": None,
+                       "version": 1},
+             "modified": "2017-03-13T15:43:02+00:00",
+             "provider": "osfstorage",
+             "kind": "file",
+             "materialized": "/folder1/arch.zip",
+             "modified_utc": "2017-03-13T15:43:02+00:00"}]
 
 
 @pytest.fixture
@@ -116,6 +159,7 @@ def upload_response():
             'checkout': None,
             'md5': 'abcdabcdabcdabcdabcdabcdabcd',
             'sha256': '123123123123123123',
+            'modified': '2017-03-13T15:43:02+00:00',
         }
     }
 
@@ -291,6 +335,93 @@ async def test_provider_metadata(monkeypatch, provider, mock_folder_path, mock_t
 
     assert aiohttpretty.has_call(method='GET', uri=url, params=params)
 
+@pytest.mark.asyncio
+@pytest.mark.aiohttpretty
+async def test_intra_copy_folder(provider_and_mock, provider_and_mock2, children_response):
+    src_provider, src_mock = provider_and_mock
+    src_mock.intra_copy = src_provider.intra_copy
+
+    dest_provider, dest_mock = provider_and_mock2
+    dest_mock.nid = 'abcde'
+    dest_mock._children_metadata = utils.MockCoroutine(return_value=children_response)
+    dest_mock.validate_v1_path = utils.MockCoroutine(
+        return_value=WaterButlerPath('/folder1/', _ids=('rootId', 'folder1'))
+    )
+
+    src_path = WaterButlerPath('/folder1/', _ids=['RootId', 'folder1'], folder=True)
+    dest_path = WaterButlerPath('/folder1/', folder=True)
+
+    data=json.dumps({
+        'user': src_provider.auth['id'],
+        'source': src_path.identifier,
+        'destination': {
+            'name': dest_path.name,
+            'node': dest_provider.nid,
+            'parent': dest_path.parent.identifier
+        }
+    })
+    url, _, params = src_provider.build_signed_url(
+        'POST',
+        'https://waterbutler.io/hooks/copy/',
+        data=data
+    )
+
+    body = {'path': '/folder1/', 'id': 'folder1', 'kind': 'folder', 'name': 'folder1'}
+    aiohttpretty.register_json_uri('POST', url, params=params, status=201, body=body)
+
+    folder_meta, created = await src_mock.intra_copy(dest_mock, src_path, dest_path)
+    assert created == True
+    assert isinstance(folder_meta, OsfStorageFolderMetadata)
+    assert len(folder_meta.children) == 1
+    dest_mock._children_metadata.assert_called_once_with(WaterButlerPath('/folder1/'))
+    assert dest_mock.validate_v1_path.call_count == 1
+
+    src_mock._children_metadata.assert_not_called()
+    src_mock.validate_v1_path.assert_not_called()
+
+@pytest.mark.asyncio
+@pytest.mark.aiohttpretty
+async def test_intra_move_folder(provider_and_mock, provider_and_mock2, children_response):
+    src_provider, src_mock = provider_and_mock
+    src_mock.intra_move = src_provider.intra_move
+
+    dest_provider, dest_mock = provider_and_mock2
+    dest_mock.nid = 'abcde'
+    dest_mock._children_metadata = utils.MockCoroutine(return_value=children_response)
+    dest_mock.validate_v1_path = utils.MockCoroutine(
+        return_value=WaterButlerPath('/folder1/', _ids=('rootId', 'folder1'))
+    )
+
+    src_path = WaterButlerPath('/folder1/', _ids=['RootId', 'folder1'], folder=True)
+    dest_path = WaterButlerPath('/folder1/', _ids=['RootId', 'folder1'], folder=True)
+
+    data=json.dumps({
+        'user': src_provider.auth['id'],
+        'source': src_path.identifier,
+        'destination': {
+            'name': dest_path.name,
+            'node': dest_provider.nid,
+            'parent': dest_path.parent.identifier
+        }
+    })
+    url, _, params = src_provider.build_signed_url(
+        'POST',
+        'https://waterbutler.io/hooks/move/',
+        data=data
+    )
+
+    body = {'path': '/folder1/', 'id': 'folder1', 'kind': 'folder', 'name': 'folder1'}
+    aiohttpretty.register_json_uri('POST', url, params=params, status=201, body=body)
+
+    folder_meta, created = await src_mock.intra_move(dest_mock, src_path, dest_path)
+    assert created == False
+    assert isinstance(folder_meta, OsfStorageFolderMetadata)
+    assert len(folder_meta.children) == 1
+    dest_mock._children_metadata.assert_called_once_with(WaterButlerPath('/folder1/'))
+    assert dest_mock.validate_v1_path.call_count == 1
+
+    src_mock._children_metadata.assert_not_called()
+    src_mock.validate_v1_path.assert_not_called()
 
 class TestValidatePath:
 
@@ -385,7 +516,7 @@ class TestUploads:
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
-        aiohttpretty.register_json_uri('POST', url, status=200, body={'data': {'downloads': 10, 'version': 8, 'path': '/24601', 'checkout': 'hmoco', 'md5': '1234', 'sha256': '2345'}})
+        aiohttpretty.register_json_uri('POST', url, status=200, body={'data': {'downloads': 10, 'modified': '2017-03-13T15:43:02+00:00', 'version': 8, 'path': '/24601', 'checkout': 'hmoco', 'md5': '1234', 'sha256': '2345'}})
 
         res, created = await provider.upload(file_stream, path)
 
@@ -414,7 +545,7 @@ class TestUploads:
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
-        aiohttpretty.register_json_uri('POST', url, status=201, body={'version': 'versionpk', 'data': {'version': 42, 'downloads': 30, 'path': '/alkjdaslke09', 'checkout': None, 'md5': 'abcd', 'sha256': 'bcde'}})
+        aiohttpretty.register_json_uri('POST', url, status=201, body={'version': 'versionpk', 'data': {'version': 42, 'downloads': 30, 'modified': '2017-03-13T15:43:02+00:00', 'path': '/alkjdaslke09', 'checkout': None, 'md5': 'abcd', 'sha256': 'bcde'}})
 
         monkeypatch.setattr(basepath.format('backup.main'), mock_backup)
         monkeypatch.setattr(basepath.format('parity.main'), mock_parity)
