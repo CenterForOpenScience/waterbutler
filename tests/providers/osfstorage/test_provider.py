@@ -159,6 +159,7 @@ def upload_response():
             'checkout': None,
             'md5': 'abcdabcdabcdabcdabcdabcdabcd',
             'sha256': '123123123123123123',
+            'modified': '4-28-2017',
         }
     }
 
@@ -515,7 +516,7 @@ class TestUploads:
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
-        aiohttpretty.register_json_uri('POST', url, status=200, body={'data': {'downloads': 10, 'version': 8, 'path': '/24601', 'checkout': 'hmoco', 'md5': '1234', 'sha256': '2345'}})
+        aiohttpretty.register_json_uri('POST', url, status=200, body={'data': {'downloads': 10, 'modified': '4-28-2017', 'version': 8, 'path': '/24601', 'checkout': 'hmoco', 'md5': '1234', 'sha256': '2345'}})
 
         res, created = await provider.upload(file_stream, path)
 
@@ -544,7 +545,7 @@ class TestUploads:
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
-        aiohttpretty.register_json_uri('POST', url, status=201, body={'version': 'versionpk', 'data': {'version': 42, 'downloads': 30, 'path': '/alkjdaslke09', 'checkout': None, 'md5': 'abcd', 'sha256': 'bcde'}})
+        aiohttpretty.register_json_uri('POST', url, status=201, body={'version': 'versionpk', 'data': {'version': 42, 'downloads': 30, 'modified': '4-28-2017', 'path': '/alkjdaslke09', 'checkout': None, 'md5': 'abcd', 'sha256': 'bcde'}})
 
         monkeypatch.setattr(basepath.format('backup.main'), mock_backup)
         monkeypatch.setattr(basepath.format('parity.main'), mock_parity)
