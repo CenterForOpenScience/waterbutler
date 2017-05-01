@@ -78,6 +78,10 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
         return '{}::{}'.format(self.raw['version'], self.path)
 
     @property
+    def guid(self):
+        return self.raw['guid']
+
+    @property
     def extra(self):
         return {
             'guid': self.raw.get('guid', None),

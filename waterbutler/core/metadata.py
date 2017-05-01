@@ -45,6 +45,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
             'path': self.path,
             'provider': self.provider,
             'materialized': self.materialized_path,
+            'guid': self.guid,
             'etag': hashlib.sha256('{}::{}'.format(self.provider, self.etag).encode('utf-8')).hexdigest(),
         }
 
@@ -127,6 +128,11 @@ class BaseMetadata(metaclass=abc.ABCMeta):
     @abc.abstractproperty
     def kind(self):
         """ `file` or `folder` """
+        raise NotImplementedError
+
+    @abc.abstractproperty
+    def guid(self):
+        """ `not all files have them` """
         raise NotImplementedError
 
     @abc.abstractproperty
