@@ -48,7 +48,7 @@ class TestProviderIntegration:
         url = repo + test_path
 
         await provider.make_request(
-            'DELETE', url, expects=(204,404)
+            'DELETE', url, expects=(204,404,410)
         )
 
         await provider.make_request(
