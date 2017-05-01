@@ -18,6 +18,10 @@ class BaseGoogleDriveMetadata(metadata.BaseMetadata):
     def extra(self):
         return {'revisionId': self.raw['version']}
 
+    @property
+    def has_view_only_permission(self):
+        return self.raw['userPermission']['role'] in ('commenter', 'reader')
+
 
 class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMetadata):
 

@@ -220,7 +220,7 @@ docs_file_metadata = {
         'application/vnd.oasis.opendocument.text': 'https://docs.google.com/feeds/download/documents/export/Export?id=12go3hvnFZN5IuMWtz-2dft4EcPa5ti21pQYH1rjcxfQ&exportFormat=odt', 'text/html': 'https://docs.google.com/feeds/download/documents/export/Export?id=12go3hvnFZN5IuMWtz-2dft4EcPa5ti21pQYH1rjcxfQ&exportFormat=html', 'application/pdf': 'https://docs.google.com/feeds/download/documents/export/Export?id=12go3hvnFZN5IuMWtz-2dft4EcPa5ti21pQYH1rjcxfQ&exportFormat=pdf',
         'text/plain': 'https://docs.google.com/feeds/download/documents/export/Export?id=12go3hvnFZN5IuMWtz-2dft4EcPa5ti21pQYH1rjcxfQ&exportFormat=txt'
     },
-    'id': '12go3hvnFZN5IuMWtz-2dft4EcPa5ti21pQYH1rjcxfQ',
+    'id': '1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR',
     'modifiedDate': '2015-02-23T18:00:56.343Z',
     'etag': '"zWM2D6PBtLRQKuDNbaQNSNEy5BE/MTQyNDcxNDQ1NjM0Mw"',
     'ownerNames': ['Joshua Carp'],
@@ -311,7 +311,27 @@ revisions_list = {
     'etag': '"zWM2D6PBtLRQKuDNbaQNSNEy5BE/PeANBe5F3yk-YAzsoQO4pYPA5W8"',
     'selfLink': 'https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/revisions',
     'items': [
-        {'selfLink': 'https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/revisions/1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA', 'md5Checksum': '43c5a01efeaea6bfd0433fa516a0d71f', 'pinned': False, 'etag': '"zWM2D6PBtLRQKuDNbaQNSNEy5BE/sdQBhqMbZWHR5JnnXwR2jMjJYa4"', 'id': '1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA', 'kind': 'drive#revision', 'lastModifyingUserName': 'Joshua Carp', 'mimeType': 'application/pdf', 'fileSize': '918668', 'lastModifyingUser': {'kind': 'drive#user', 'emailAddress': 'jm.carp@gmail.com', 'permissionId': '07992110234966807597', 'picture': {'url': 'https://lh3.googleusercontent.com/-ndG-yHyqonM/AAAAAAAAAAI/AAAAAAAAADs/wUR8YhDe3vY/s64/photo.jpg'}, 'displayName': 'Joshua Carp', 'isAuthenticatedUser': True}, 'downloadUrl': 'https://doc-0g-5k-docs.googleusercontent.com/docs/securesc/6l6ti67c1gnej8b4rr55nfimce1282lr/nccdohm8rrrqmabek0d1ot5alel2768g/1424959200000/07992110234966807597/07992110234966807597/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR?rid=1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA&e=download&gd=true', 'modifiedDate': '2015-01-01T16:54:58.929Z', 'published': False}
+        {'selfLink': 'https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/revisions/1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA',
+         'md5Checksum': '43c5a01efeaea6bfd0433fa516a0d71f', 'pinned': False, 'etag': '"zWM2D6PBtLRQKuDNbaQNSNEy5BE/sdQBhqMbZWHR5JnnXwR2jMjJYa4"',
+         'id': '1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA',
+         'kind': 'drive#revision',
+         'lastModifyingUserName': 'Joshua Carp',
+         'mimeType': 'application/pdf',
+         'fileSize': '918668',
+         'lastModifyingUser': {
+             'kind': 'drive#user',
+             'emailAddress': 'jm.carp@gmail.com',
+             'permissionId': '07992110234966807597',
+             'picture': {
+                 'url': 'https://lh3.googleusercontent.com/-ndG-yHyqonM/AAAAAAAAAAI/AAAAAAAAADs/wUR8YhDe3vY/s64/photo.jpg'
+             },
+             'displayName': 'Joshua Carp',
+             'isAuthenticatedUser': True
+         },
+         'downloadUrl': 'https://doc-0g-5k-docs.googleusercontent.com/docs/securesc/6l6ti67c1gnej8b4rr55nfimce1282lr/nccdohm8rrrqmabek0d1ot5alel2768g/1424959200000/07992110234966807597/07992110234966807597/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR?rid=1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA&e=download&gd=true',
+         'modifiedDate': '2015-01-01T16:54:58.929Z',
+         'published': False
+         }
     ]
 }
 
@@ -321,3 +341,62 @@ revisions_list_empty = {
     'selfLink': 'https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/revisions',
     'items': []
 }
+
+folder_list = {
+     'etag': '"CHXJyqSTqQN6k2cni3iCrLmxCRE/nA8diRclF5h28_wXMjjcKYxo6h8"',
+     'incompleteSearch': False,
+     'items': [{'alternateLink': 'https://drive.google.com/drive/folders/0B1wCl2fPFhPoUHk2SzY0dnF3Nk0',
+                'appDataContents': False,
+                'capabilities': {'canCopy': False, 'canEdit': True},
+                'copyable': False,
+                'createdDate': '2017-02-10T15:50:46.914Z',
+                'editable': True,
+                'embedLink': 'https://drive.google.com/embeddedfolderview?id=0B1wCl2fPFhPoUHk2SzY0dnF3Nk0',
+                'etag': '"CHXJyqSTqQN6k2cni3iCrLmxCRE/MTQ4Njc0MTg0NjkxNA"',
+                'explicitlyTrashed': False,
+                'iconLink': 'https://ssl.gstatic.com/docs/doclist/images/icon_11_collection_list_1.png',
+                'id': '0B1wCl2fPFhPoUHk2SzY0dnF3Nk0',
+                'kind': 'drive#file',
+                'labels': {'hidden': False,
+                           'restricted': False,
+                           'starred': False,
+                           'trashed': False,
+                           'viewed': True},
+                'lastModifyingUser': {'displayName': 'John Tordoff',
+                                      'emailAddress': 'john@cos.io',
+                                      'isAuthenticatedUser': True,
+                                      'kind': 'drive#user',
+                                      'permissionId': '06821444256322263786'},
+                'lastModifyingUserName': 'John Tordoff',
+                'lastViewedByMeDate': '2017-03-23T16:06:07.621Z',
+                'markedViewedByMeDate': '1970-01-01T00:00:00.000Z',
+                'mimeType': 'application/vnd.google-apps.folder',
+                'modifiedByMeDate': '2017-02-10T15:50:46.914Z',
+                'modifiedDate': '2017-02-10T15:50:46.914Z',
+                'ownerNames': ['John Tordoff'],
+                'owners': [{'displayName': 'John Tordoff',
+                            'emailAddress': 'john@cos.io',
+                            'isAuthenticatedUser': True,
+                            'kind': 'drive#user',
+                            'permissionId': '06821444256322263786'}],
+                'parents': [{'id': '0AFwCl2fPFhPoUk9PVA',
+                             'isRoot': True,
+                             'kind': 'drive#parentReference',
+                             'parentLink': 'https://www.googleapis.com/drive/v2/files/0AFwCl2fPFhPoUk9PVA',
+                             'selfLink': 'https://www.googleapis.com/drive/v2/files/0B1wCl2fPFhPoUHk2SzY0dnF3Nk0/parents/0AFwCl2fPFhPoUk9PVA'}],
+                'quotaBytesUsed': '0',
+                'selfLink': 'https://www.googleapis.com/drive/v2/files/0B1wCl2fPFhPoUHk2SzY0dnF3Nk0',
+                'shared': False,
+                'spaces': ['drive'],
+                'title': 'foofolder',
+                'userPermission': {'etag': '"CHXJyqSTqQN6k2cni3iCrLmxCRE/cACbf6NA-UyyjWV7IqTIe3owkFo"',
+                                   'id': 'me',
+                                   'kind': 'drive#permission',
+                                   'role': 'owner',
+                                   'selfLink': 'https://www.googleapis.com/drive/v2/files/0B1wCl2fPFhPoUHk2SzY0dnF3Nk0/permissions/me',
+                                   'type': 'user'},
+                'version': '977',
+                'writersCanShare': True}],
+     'kind': 'drive#fileList',
+     'selfLink': "https://www.googleapis.com/drive/v2/files?q=title+%3D+'Test+Folder'+and+trashed+%3D+false+and+'0AFwCl2fPFhPoUk9PVA'+in+parents"
+    }
