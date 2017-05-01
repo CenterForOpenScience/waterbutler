@@ -195,7 +195,8 @@ class FedoraProvider(provider.BaseProvider):
         async with self.request(
             'PUT',
             url,
-            headers={'Content-Length': str(stream.size), 'Content-Type': mime_type},
+            headers={'Content-Length': str(stream.size), 'Content-Type': mime_type,
+                     'Content-Disposition': 'attachment; filename="' + path.name + '"'},
             data=stream,
             expects=(201, 204),
             throws=exceptions.UploadError,
