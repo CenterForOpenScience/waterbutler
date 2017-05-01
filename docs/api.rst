@@ -161,12 +161,14 @@ Magic Query Parameters
 Provider Handler Params
 ========================
 
-These are the query parameters that apply to all providers along with the request method this is the where Waterbutler get the infomation it needs to know what operation to perform, whether to upload, download, move, rename .etc.
+These are the query parameters that apply to all providers. Along with the request method, this is
+the where Waterbutler gets the information it needs to know what operation to perform, whether to
+upload, download, move, rename .etc.
 
 meta
 ----
 
-Indicates that WB should return metadata about the file or folder and not download the contents.
+Indicates that WB should return metadata about the files (not folders) and not download the contents.
 
 **Type**: flag
 
@@ -329,7 +331,7 @@ These query params are used to decide autorization and permissions for the user.
 
 cookie
 ------
-This gives user the user's cerdentials to Waterbutler
+This gives Waterbutler the user's credentials.
 
 **Type**: string
 
@@ -351,7 +353,7 @@ Notes: Only used internally for the Open Science Framework.
 
 Github Provider Params
 ======================
-Github, unlike other non-git providers requires special params to indicate the requested resource specfically the Git related infomation such as branch or commit shas which non-git providers don't need.
+Query params specific to Github
 
 ref
 ---
