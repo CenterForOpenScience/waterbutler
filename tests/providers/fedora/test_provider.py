@@ -266,13 +266,13 @@ class TestProvider:
 
         for md in result:
             assert isinstance(md, metadata.BaseMetadata)
-            if md.name == 'moo.ogg':
+            if md.name == 'moo':
                 subfile_md = md
             else:
                 subfolder_md = md
 
         assert subfile_md is not None
-        assert subfile_md.name == 'moo.ogg'
+        assert subfile_md.name == 'moo'
         assert subfile_md.kind == 'file'
         assert subfile_md.path == test_subfile_path
         assert subfile_md.size == '22571'
@@ -488,3 +488,21 @@ class TestProvider:
         assert result[0].version == 'latest'
         assert result[0].modified == md.modified
         assert result[0].modified_utc == md.modified_utc
+
+    # Ensure that the filename property of the Fedora object is not used as the name
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_file_name_defaults_to_path(self, provider):
+        path = WaterButlerPath(test_file_path)
+
+        url = provider.build_repo_url(path)
+
+        # Change the filename property so it cannot be found
+        rawdata = test_file_json_ld.replace(settings.FILENAME_PROPERTY_URI, 'http://example.com/other/property')
+
+        aiohttpretty.register_uri('HEAD', url, status=200)
+        aiohttpretty.register_uri('GET', url + '/fcr:metadata', status=200, body=rawdata, headers={'Content-Type': 'application/json'})
+
+        result = await provider.metadata(path)
+
+        assert result.name == 'gorilla'

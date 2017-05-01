@@ -35,15 +35,15 @@ class BaseFedoraMetadata(metadata.BaseMetadata):
 
     @property
     def modified(self):
-        return self._get_property(settings.LAST_MODIFIED_PROPERTY_URI)
+        return self._get_property(settings.LAST_MODIFIED_PROPERTY_URI, None)
 
     @property
     def modified_utc(self):
-        return self._get_property(settings.LAST_MODIFIED_PROPERTY_URI)
+        return self._get_property(settings.LAST_MODIFIED_PROPERTY_URI, None)
 
     @property
     def created_utc(self):
-        return self._get_property(settings.CREATED_PROPERTY_URI)
+        return self._get_property(settings.CREATED_PROPERTY_URI, None)
 
     # Return an resource from index
     def _get_resource(self, resource_id):
@@ -55,12 +55,11 @@ class BaseFedoraMetadata(metadata.BaseMetadata):
         return self.resource_index[resource_id]
 
     # Return first value or raise exception
-    def _get_property(self, property_uri):
+    def _get_property(self, property_uri, default_value):
         for o in self._get_resource(self.fedora_id).get(property_uri, []):
             if '@value' in o:
                 return o['@value']
-
-        raise exceptions.MetadataError('Could not find property {} in {}'.format(property_uri, self.fedora_id), code=404)
+        return default_value
 
 
 class FedoraFolderMetadata(BaseFedoraMetadata, metadata.BaseFolderMetadata):
@@ -89,17 +88,16 @@ class FedoraFolderMetadata(BaseFedoraMetadata, metadata.BaseFolderMetadata):
 class FedoraFileMetadata(BaseFedoraMetadata, metadata.BaseFileMetadata):
     @property
     def name(self):
-        val = self._get_property(settings.FILENAME_PROPERTY_URI)
-
-        return val if val else self.wb_path.name
+        # Do not return filename property because the OSF user cannot change it
+        return self.wb_path.name
 
     @property
     def size(self):
-        return self._get_property(settings.SIZE_PROPERTY_URI)
+        return self._get_property(settings.SIZE_PROPERTY_URI, None)
 
     @property
     def content_type(self):
-        return self._get_property(settings.MIME_TYPE_PROPERTY_URI)
+        return self._get_property(settings.MIME_TYPE_PROPERTY_URI, None)
 
     @property
     def etag(self):
