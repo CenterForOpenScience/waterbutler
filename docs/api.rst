@@ -152,8 +152,231 @@ If a moved/copied file is overwriting an existing file, a 200 OK response will b
 
 To delete a file or folder send a DELETE request to the delete link. Nothing will be returned in the response body. As a precaution against inadvertantly deleting the root folder, the query parameter ``confirm_delete`` must be set to ``1`` for root folder deletes. In addition, a root folder delete does not actually delete the root folder. Instead it deletes all contents of the folder, but not the folder itself.
 
-
+======================
 Magic Query Parameters
-----------------------
+======================
 
-* ``direct``: issuing a download request with a query parameter named ``direct`` indicates that WB should handle the download, even if a redirect would be possible (e.g. osfstorage and s3).  In this case, WB will act as a middleman, downloading the data from the provider and passing through to the requestor.
+
+========================
+Provider Handler Params
+========================
+
+These are the query parameters that apply to all providers along with the request method this is the where Waterbutler get the infomation it needs to know what operation to perform, whether to upload, download, move, rename .etc.
+
+meta
+----
+
+Indicates that WB should return metadata about the file or folder and not download the contents.
+
+**Type**: flag
+
+**Expected on**: GET requests against file paths
+
+**Interactions**:
+
+* revisions / versions: meta takes precedence.  File metadata is returned, not a revision list.
+
+* revision / version: These are honored and passed on the the metadata method.  version takes precendence over revision.
+
+**Notes**: The meta query param is not required to fetch folder metadata; a bare GET folder request suffices. To download a folder a zip param should be included.
+
+
+zip
+---
+This parameter tells Waterbutler to download a folder's content into a zip for download.
+
+**Type**: flag
+
+**Expected on**: GET requests against folder paths
+
+**Interactions**:
+
+* All other query parameters will be ignored.
+
+**Notes**: A GET request folder with no query params will return metadata, but the same request on a file will download it.
+
+
+kind
+----
+This param is used on uploads and indicates whether an item to upload is a file or a folder.
+
+**Type**: string ('file' or 'folder') defaults to file.
+
+**Expected on**: PUT requests
+
+**Interactions**:
+
+* validated by use of the trailing slash, Example ``/folder/item`` is a file, ``/folder/item/`` is a folder
+
+name
+----
+This param indicates the name of a folder to be created or file to be uploaded
+
+**Type**: string
+
+**Expected on**: PUT requests for folders
+
+**Purpose**:
+
+**Interactions**:
+
+* None
+
+**Notes**: Only applies to new files/folders renaming names are transmitted through the request body, not query params.
+
+
+revisions / versions
+--------------------
+This indicates the user wants a a list of all available metadata for file revisions.
+
+**Type**: flag
+
+**Expected on**: GET for file paths
+
+**Interactions**:
+
+* is overridden by the 'meta' query param, but shouldn't be used with other params.
+
+**Notes**:
+
+* Revision and version can be used interchangeably, comments within the code indicate version is preferred, but no reason is supplied.
+* Note the pluralization.
+
+
+revision / version
+------------------
+This is the id of the version or revision of the file or folder which Waterbuter is to return.
+
+**Type**: int
+
+**Expected on**: GET or HEAD requests for files or folders
+
+**Interactions**:
+
+* is used as a parameter of the metadata provider function.
+
+**Notes**:
+
+* Revision and version can be used interchangeably, comments within the code indicate version is preferred, but no reason is supplied.
+* Note the lack of pluralization.
+
+
+direct
+------
+Issuing a download request with a query parameter named direct indicates that WB should handle the download, even if a redirect would be possible (e.g. osfstorage and s3). In this case, WB will act as a middleman, downloading the data from the provider and passing through to the requestor.
+
+**Type**: flag
+
+**Expected on**: GET  file paths
+
+**Interactions**:
+
+* This is parameter of the download provider method.
+
+**Notes**:
+
+* Not used for all providers, currently only used for OwnCloud, Cloudfiles and S3
+
+
+displayName
+-----------
+Gives the name of a file being downloaded
+
+**Type**: string
+
+**Expected on**: GET file paths
+
+**Interactions**:
+* Is used both in handler and in S3 provider.
+* Overrides path.name when not null.
+
+**Notes**:
+
+* Currently only useful for S3
+* May want to depreciate soon.
+
+
+mode
+----
+Indicates if a file is being downloaded to be rendered. Outside OSF's MFR this isn't useful.
+
+**Type**: string
+
+**Expected on**: GET file paths
+
+**Interactions**:
+
+* Is only used for the osfstorage provider.
+
+**Notes**:
+
+* currently only used with MFR.
+
+
+confirm_delete
+--------------
+Certain providers; Figshare, Dropbox, Box, Github, S3, Google Drive and osfstorage need to include the parameter confirm_delete as equal 1 in order to delete a root folder. This is done to prevent inadvertant root deletion.
+
+**Type**: bool
+
+**Expected on**: DELETE for a root folder
+
+
+
+Auth Handler Params
+===================
+These query params are used to decide autorization and permissions for the user.
+
+cookie
+------
+This gives user the user's cerdentials to Waterbutler
+
+**Type**: string
+
+**Expected on**: All calls
+
+**Notes**: May be depericated in furture.
+
+
+view_only
+---------
+This param is used only in the OSF to give users a view only permission for the file resource.
+
+**Type**: flag
+
+**Expected on**: GET for files or folders
+
+Notes: Only used internally for the Open Science Framework.
+
+
+Github Provider Params
+======================
+Github, unlike other non-git providers requires special params to indicate the requested resource specfically the Git related infomation such as branch or commit shas which non-git providers don't need.
+
+ref
+---
+This gives a reference so Waterbutler can retrieve a commit with proper information to get metadata so it can preform other operations.
+
+**Type**: str
+
+**Expected on**: Calls to Github provider
+
+**Interactions**:
+
+* overrides 'branch' param
+
+branch
+------
+This gives Github a reference to the correct repo branch, so it can retrieve a commit with metadata useful for other operations.
+
+**Type**: str
+
+**Expected on**: Calls to Github provider
+
+fileSha
+-------
+This gives Github a reference to a file sha is part of it's path id with the branch ref.
+
+**Type**: str
+
+**Expected on**: Calls to Github provider
