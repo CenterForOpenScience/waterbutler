@@ -2,6 +2,7 @@ import http
 import socket
 import asyncio
 import logging
+import uuid
 
 import tornado.gen
 
@@ -77,6 +78,8 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         else:
             self.stream = None
         self.body = b''
+
+        self.add_header('X-WATERBUTLER-REQUEST-ID', str(uuid.uuid4()))
 
     async def head(self, **_):
         """Get metadata for a folder or file
