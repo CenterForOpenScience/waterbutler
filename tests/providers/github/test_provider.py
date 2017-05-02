@@ -156,6 +156,94 @@ def create_folder_response():
         }
     }
 
+@pytest.fixture
+def comparision_metadata():
+    return {'ahead_by': 0,
+            'base_commit': {'author': {'avatar_url': 'https://avatars0.githubusercontent.com/u/9688518?v=3',
+                                'events_url': 'https://api.github.com/users/Johnetordoff/events{/privacy}',
+                                'followers_url': 'https://api.github.com/users/Johnetordoff/followers',
+                                'following_url': 'https://api.github.com/users/Johnetordoff/following{/other_user}',
+                                'gists_url': 'https://api.github.com/users/Johnetordoff/gists{/gist_id}',
+                                'gravatar_id': '',
+                                'html_url': 'https://github.com/Johnetordoff',
+                                'id': 9688518,
+                                'login': 'Johnetordoff',
+                                'organizations_url': 'https://api.github.com/users/Johnetordoff/orgs',
+                                'received_events_url': 'https://api.github.com/users/Johnetordoff/received_events',
+                                'repos_url': 'https://api.github.com/users/Johnetordoff/repos',
+                                'site_admin': False,
+                                'starred_url': 'https://api.github.com/users/Johnetordoff/starred{/owner}{/repo}',
+                                'subscriptions_url': 'https://api.github.com/users/Johnetordoff/subscriptions',
+                                'type': 'User',
+                                'url': 'https://api.github.com/users/Johnetordoff'},
+                     'comments_url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/commits/b13aadfbe32408eea7d4e0eb0ffe7c6da78e3578/comments',
+                     'commit': {'author': {'date': '2017-05-02T19:00:19Z',
+                                           'email': 'Johnetordoff@users.noreply.github.com',
+                                           'name': 'John Tordoff'},
+                                'comment_count': 0,
+                                'committer': {'date': '2017-05-02T19:00:19Z',
+                                              'email': 'vscxw@osf.io',
+                                              'name': 'fake'},
+                                'message': 'File updated on behalf of WaterButler',
+                                'tree': {'sha': '48a98cf824b1ae6d64dc1216d6a3793ae6daf8a8',
+                                         'url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/git/trees/48a98cf824b1ae6d64dc1216d6a3793ae6daf8a8'},
+                                'url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/git/commits/b13aadfbe32408eea7d4e0eb0ffe7c6da78e3578'},
+                     'committer': None,
+                     'html_url': 'https://github.com/Johnetordoff/git-hub-api-test/commit/b13aadfbe32408eea7d4e0eb0ffe7c6da78e3578',
+                     'parents': [{
+                                     'html_url': 'https://github.com/Johnetordoff/git-hub-api-test/commit/a0f1708eef358227cb0bc1dbd29b604086e71a4e',
+                                     'sha': 'a0f1708eef358227cb0bc1dbd29b604086e71a4e',
+                                     'url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/commits/a0f1708eef358227cb0bc1dbd29b604086e71a4e'}],
+                     'sha': 'b13aadfbe32408eea7d4e0eb0ffe7c6da78e3578',
+                     'url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/commits/b13aadfbe32408eea7d4e0eb0ffe7c6da78e3578'},
+     'behind_by': 1,
+     'diff_url': 'https://github.com/Johnetordoff/git-hub-api-test/compare/master...a0f1708eef358227cb0bc1dbd29b604086e71a4e.diff',
+     'files': [],
+     'html_url': 'https://github.com/Johnetordoff/git-hub-api-test/compare/master...a0f1708eef358227cb0bc1dbd29b604086e71a4e',
+     'merge_base_commit': {'author': {'avatar_url': 'https://avatars0.githubusercontent.com/u/9688518?v=3',
+                                      'events_url': 'https://api.github.com/users/Johnetordoff/events{/privacy}',
+                                      'followers_url': 'https://api.github.com/users/Johnetordoff/followers',
+                                      'following_url': 'https://api.github.com/users/Johnetordoff/following{/other_user}',
+                                      'gists_url': 'https://api.github.com/users/Johnetordoff/gists{/gist_id}',
+                                      'gravatar_id': '',
+                                      'html_url': 'https://github.com/Johnetordoff',
+                                      'id': 9688518,
+                                      'login': 'Johnetordoff',
+                                      'organizations_url': 'https://api.github.com/users/Johnetordoff/orgs',
+                                      'received_events_url': 'https://api.github.com/users/Johnetordoff/received_events',
+                                      'repos_url': 'https://api.github.com/users/Johnetordoff/repos',
+                                      'site_admin': False,
+                                      'starred_url': 'https://api.github.com/users/Johnetordoff/starred{/owner}{/repo}',
+                                      'subscriptions_url': 'https://api.github.com/users/Johnetordoff/subscriptions',
+                                      'type': 'User',
+                                      'url': 'https://api.github.com/users/Johnetordoff'},
+                           'comments_url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/commits/a0f1708eef358227cb0bc1dbd29b604086e71a4e/comments',
+                           'commit': {'author': {'date': '2017-05-02T18:44:45Z',
+                                                 'email': 'Johnetordoff@users.noreply.github.com',
+                                                 'name': 'John Tordoff'},
+                                      'comment_count': 0,
+                                      'committer': {'date': '2017-05-02T18:44:45Z',
+                                                    'email': 'vscxw@osf.io',
+                                                    'name': 'fake'},
+                                      'message': 'Moved on behalf of WaterButler',
+                                      'tree': {'sha': 'ed792c2c6dfc1947e19b2b5f3059385cd674b86f',
+                                               'url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/git/trees/ed792c2c6dfc1947e19b2b5f3059385cd674b86f'},
+                                      'url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/git/commits/a0f1708eef358227cb0bc1dbd29b604086e71a4e'},
+                           'committer': None,
+                           'html_url': 'https://github.com/Johnetordoff/git-hub-api-test/commit/a0f1708eef358227cb0bc1dbd29b604086e71a4e',
+                           'parents': [{
+                                           'html_url': 'https://github.com/Johnetordoff/git-hub-api-test/commit/e5e79a120fd6baa78289df7a3528216088d5a3db',
+                                           'sha': 'e5e79a120fd6baa78289df7a3528216088d5a3db',
+                                           'url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/commits/e5e79a120fd6baa78289df7a3528216088d5a3db'}],
+                           'sha': 'a0f1708eef358227cb0bc1dbd29b604086e71a4e',
+                           'url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/commits/a0f1708eef358227cb0bc1dbd29b604086e71a4e'},
+     'patch_url': 'https://github.com/Johnetordoff/git-hub-api-test/compare/master...a0f1708eef358227cb0bc1dbd29b604086e71a4e.patch',
+     'permalink_url': 'https://github.com/Johnetordoff/git-hub-api-test/compare/Johnetordoff:b13aadf...Johnetordoff:a0f1708',
+     'status': 'behind',
+     'total_commits': 0,
+     'url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/compare/master...a0f1708eef358227cb0bc1dbd29b604086e71a4e'}
+
+
 
 @pytest.fixture
 def repo_metadata():
@@ -336,6 +424,16 @@ def branch_metadata():
         },
         'name': 'master'
     }
+
+@pytest.fixture
+def branch_list_metadata():
+    return [
+            {'commit': {
+                'sha': 'b13aadfbe32408eea7d4e0eb0ffe7c6da78e3578',
+                'url': 'https://api.github.com/repos/Johnetordoff/git-hub-api-test/commits/b13aadfbe32408eea7d4e0eb0ffe7c6da78e3578'},
+                'name': 'master'
+            }
+            ]
 
 @pytest.fixture
 def content_repo_metadata_root():
@@ -545,6 +643,39 @@ class TestValidatePath:
         assert exc.value.code == client.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + tree_path + '/')
+
+        assert wb_path_v1 == wb_path_v0
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v1_path_revision(self, provider, branch_metadata, comparision_metadata, branch_list_metadata, repo_tree_metadata_root):
+
+        params = {'ref' : 'a0f1708eef358227cb0bc1dbd29b604086e71a4e'}
+
+        branch_url = provider.build_repo_url('branches', 'master')
+        branches_url = provider.build_repo_url('branches')
+        compare_url = provider.build_repo_url('compare', '{}...{}'.format('master', params['ref']))
+        tree_url = provider.build_repo_url('git', 'trees',
+                                       branch_metadata['commit']['commit']['tree']['sha'], recursive=1)
+
+        aiohttpretty.register_json_uri('GET', branches_url, body=branch_list_metadata)
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+        aiohttpretty.register_json_uri('GET', compare_url, body=comparision_metadata)
+        aiohttpretty.register_json_uri('GET', tree_url, body=repo_tree_metadata_root)
+
+        blob_path = 'file.txt'
+
+        try:
+            wb_path_v1 = await provider.validate_v1_path('/' + blob_path, **params)
+        except Exception as exc:
+            pytest.fail(str(exc))
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.validate_v1_path('/' + blob_path + '/')
+
+        assert exc.value.code == client.NOT_FOUND
+
+        wb_path_v0 = await provider.validate_path('/' + blob_path)
 
         assert wb_path_v1 == wb_path_v0
 

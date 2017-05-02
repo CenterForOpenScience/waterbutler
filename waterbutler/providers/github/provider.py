@@ -72,7 +72,7 @@ class GitHubProvider(provider.BaseProvider):
         self.repo = self.settings['repo']
         self.metrics.add('repo', {'repo': self.repo, 'owner': self.owner})
 
-    async def get_comparison(self, ref, ref2):
+    async def _get_comparison(self, ref, ref2):
         """
         Compares two 'refs' (branch names or commits shas) and gives you lots of potentially useful
         metadata about there relationship.
@@ -96,7 +96,7 @@ class GitHubProvider(provider.BaseProvider):
         resp = await self.make_request('GET', self.build_repo_url('branches'))
         branches = await resp.json()
         for branch in branches:
-            comparison = await self.get_comparison(branch['name'], commit_sha)
+            comparison = await self._get_comparison(branch['name'], commit_sha)
             if comparison['status'] in ('behind', 'identical'):
                 return branch
 
