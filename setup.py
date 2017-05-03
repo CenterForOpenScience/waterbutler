@@ -58,6 +58,7 @@ setup(
             'googledrive = waterbutler.providers.googledrive:GoogleDriveProvider',
             'onedrive = waterbutler.providers.onedrive:OneDriveProvider',
             'googlecloud = waterbutler.providers.googlecloud:GoogleCloudProvider',
+            'swift = waterbutler.providers.swift:SwiftProvider',
         ],
     },
 )

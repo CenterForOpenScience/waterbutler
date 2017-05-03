@@ -19,3 +19,10 @@ xmltodict==0.9.0
 
 # Issue: certifi-2015.9.6.1 and 2015.9.6.2 fail verification (https://github.com/certifi/python-certifi/issues/26)
 certifi==2015.4.28
+
+# Analytics requirements
+python-geoip-geolite2==2015.0303
+
+# Swift
+python-keystoneclient==3.10.0
+python-swiftclient==3.3.0
