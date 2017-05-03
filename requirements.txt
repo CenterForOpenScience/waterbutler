@@ -21,3 +21,7 @@ certifi==2015.4.28
 
 # Analytics requirements
 python-geoip-geolite2==2015.0303
+
+# Swift
+python-keystoneclient==3.10.0
+python-swiftclient==3.3.0
