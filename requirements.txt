@@ -25,3 +25,6 @@ python-geoip-geolite2==2015.0303
 # Swift
 python-keystoneclient==3.10.0
 python-swiftclient==3.3.0
+
+# Azure Blob Storage
+azure-storage==0.33.0
