@@ -446,10 +446,13 @@ class BoxProvider(provider.BaseProvider):
 
     def _serialize_item(self, item, path):
         if item['type'] == 'folder':
-            serializer = BoxFolderMetadata
+            serialized_folder = BoxFolderMetadata(item, path)
+            if item.get('item_collection'):
+                serialized_folder._children = [self._serialize_item(item, path.child(item['name']))
+                                               for item in item['item_collection']['entries']]
+            return serialized_folder
         else:
-            serializer = BoxFileMetadata
-        return serializer(item, path)
+            return BoxFileMetadata(item, path)
 
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
