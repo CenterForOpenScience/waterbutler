@@ -59,6 +59,7 @@ setup(
             'onedrive = waterbutler.providers.onedrive:OneDriveProvider',
             'googlecloud = waterbutler.providers.googlecloud:GoogleCloudProvider',
             'swift = waterbutler.providers.swift:SwiftProvider',
+            'azureblobstorage = waterbutler.providers.azureblobstorage:AzureBlobStorageProvider',
         ],
     },
 )
