@@ -138,7 +138,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
+        return await self._serialize_item(dest_path, data), dest_path.identifier is None
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
         self.metrics.add('intra_copy.destination_exists', dest_path.identifier is not None)
@@ -159,7 +159,8 @@ class GoogleDriveProvider(provider.BaseProvider):
             throws=exceptions.IntraMoveError,
         ) as resp:
             data = await resp.json()
-        return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
+
+        return await self._serialize_item(path, data), dest_path.identifier is None
 
     async def download(self, path, revision=None, range=None, **kwargs):
         if revision and not revision.endswith(settings.DRIVE_IGNORE_VERSION):
@@ -318,12 +319,32 @@ class GoogleDriveProvider(provider.BaseProvider):
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
 
-    def _serialize_item(self, path, item, raw=False):
+    async def _serialize_item(self, path, item, raw=False):
+
         if raw:
             return item
-        if item['mimeType'] == self.FOLDER_MIME_TYPE:
-            return GoogleDriveFolderMetadata(item, path)
-        return GoogleDriveFileMetadata(item, path)
+        elif item['mimeType'] == self.FOLDER_MIME_TYPE:
+            folder_metadata = GoogleDriveFolderMetadata(item, path)
+
+            import pprint
+            pprint.pprint(item)
+
+            resp = await self.make_request(
+                'GET',
+                self.build_url('files', q="'{}' in parents".format(item['id'])),
+                expects=(200,),
+                throws=exceptions.MetadataError)
+            children = (await resp.json())['items']
+
+            if children:
+                folder_metadata._children = []
+
+                for child_item in children:
+                    folder_metadata._children.append(await self._serialize_item(path, child_item))
+
+            return folder_metadata
+        else:
+            return GoogleDriveFileMetadata(item, path)
 
     def _build_upload_metadata(self, folder_id, name):
         return {
@@ -521,7 +542,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         else:
             item['version'] = revisions_data['items'][-1]['id']
 
-        return self._serialize_item(path, item, raw=raw)
+        return await self._serialize_item(path, item, raw=raw)
 
     async def _folder_metadata(self, path, raw=False):
         query = self._build_query(path.identifier)
@@ -535,10 +556,10 @@ class GoogleDriveProvider(provider.BaseProvider):
                 throws=exceptions.MetadataError,
             ) as resp:
                 resp_json = await resp.json()
-                full_resp.extend([
-                    self._serialize_item(path.child(item['title']), item, raw=raw)
-                    for item in resp_json['items']
-                ])
+
+                for item in resp_json['items']:
+                    full_resp.append(await self._serialize_item(path.child(item['title']), item))
+
                 built_url = resp_json.get('nextLink', None)
         return full_resp
 
@@ -561,7 +582,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         if drive_utils.is_docs_file(data):
             return await self._handle_docs_versioning(path, data, raw=raw)
 
-        return self._serialize_item(path, data, raw=raw)
+        return await self._serialize_item(path, data, raw=raw)
 
     async def _delete_folder_contents(self, path):
         """Given a WaterButlerPath, delete all contents of folder
