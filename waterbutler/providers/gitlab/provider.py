@@ -47,7 +47,7 @@ class GitLabProvider(provider.BaseProvider):
         self.owner = self.settings['owner']
         self.repo = self.settings['repo']
         self.repo_id = self.settings['repo_id']
-        self.BASE_URL = self.settings['host'] + '/api/v3'
+        self.BASE_URL = self.settings['host'] + '/api/v4'
         self.VIEW_URL = self.settings['host']
 
     @property
@@ -132,7 +132,7 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: GitLabPath
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
-        branch_name = kwargs.get('ref')
+        branch_name = kwargs.get('ref') or kwargs.get('branch')
         file_sha = kwargs.get('fileSha')
 
         if not branch_name and not file_sha:
@@ -198,23 +198,17 @@ class GitLabProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
-        if 'branch' not in kwargs:
-            raise exceptions.DownloadError(
-                    'you must specify the branch to download the file',
-                    code=400,
-                    )
+        url = self.build_repo_url('repository', 'files', file_path=path.full_path,
+                ref=path.branch_name)
 
-            url = self.build_repo_url('repository', 'files', file_path=path.full_path,
-                    ref=kwargs['branch'])
+        resp = await self.make_request(
+                'GET',
+                url,
+                expects=(200,),
+                throws=exceptions.DownloadError,
+                )
 
-            resp = await self.make_request(
-                    'GET',
-                    url,
-                    expects=(200,),
-                    throws=exceptions.DownloadError,
-                    )
-
-            data = await resp.json()
+        data = await resp.json()
         raw = base64.b64decode(data['content'])
 
         mdict = aiohttp.multidict.MultiDict(resp.headers)
