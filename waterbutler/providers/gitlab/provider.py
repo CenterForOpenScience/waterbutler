@@ -47,7 +47,7 @@ class GitLabProvider(provider.BaseProvider):
         self.owner = self.settings['owner']
         self.repo = self.settings['repo']
         self.repo_id = self.settings['repo_id']
-        self.BASE_URL = self.settings['host'] + '/api/v3'
+        self.BASE_URL = self.settings['host'] + '/api/v4'
         self.VIEW_URL = self.settings['host']
 
     @property
