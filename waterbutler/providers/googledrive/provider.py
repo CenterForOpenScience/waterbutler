@@ -326,9 +326,6 @@ class GoogleDriveProvider(provider.BaseProvider):
         elif item['mimeType'] == self.FOLDER_MIME_TYPE:
             folder_metadata = GoogleDriveFolderMetadata(item, path)
 
-            import pprint
-            pprint.pprint(item)
-
             resp = await self.make_request(
                 'GET',
                 self.build_url('files', q="'{}' in parents".format(item['id'])),
