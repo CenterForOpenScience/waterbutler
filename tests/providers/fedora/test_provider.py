@@ -277,8 +277,8 @@ class TestProvider:
         assert subfile_md.path == test_subfile_path
         assert subfile_md.size == '22571'
         assert subfile_md.modified == '2016-04-20T16:44:29.561Z'
-        assert subfile_md.modified_utc == '2016-04-20T16:44:29.561Z'
-        assert subfile_md.created_utc == '2016-01-10T16:44:29.561Z'
+        assert subfile_md.modified_utc == '2016-04-20T16:44:29+00:00'
+        assert subfile_md.created_utc == '2016-01-10T16:44:29+00:00'
         assert subfile_md.content_type == 'video/ogg'
 
         assert subfolder_md is not None

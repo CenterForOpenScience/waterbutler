@@ -1,5 +1,6 @@
 from waterbutler.core import metadata
 from waterbutler.core import exceptions
+from waterbutler.core import utils
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.fedora import settings
@@ -39,11 +40,11 @@ class BaseFedoraMetadata(metadata.BaseMetadata):
 
     @property
     def modified_utc(self):
-        return self._get_property(settings.LAST_MODIFIED_PROPERTY_URI, None)
+        return utils.normalize_datetime(self.modified)
 
     @property
     def created_utc(self):
-        return self._get_property(settings.CREATED_PROPERTY_URI, None)
+        return utils.normalize_datetime(self._get_property(settings.CREATED_PROPERTY_URI, None))
 
     # Return an resource from index
     def _get_resource(self, resource_id):
@@ -54,7 +55,7 @@ class BaseFedoraMetadata(metadata.BaseMetadata):
 
         return self.resource_index[resource_id]
 
-    # Return first value or raise exception
+    # Return first value or default value
     def _get_property(self, property_uri, default_value):
         for o in self._get_resource(self.fedora_id).get(property_uri, []):
             if '@value' in o:
