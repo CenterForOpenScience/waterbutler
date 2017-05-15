@@ -43,6 +43,7 @@ def provider(auth, credentials, provider_settings):
     return FedoraProvider(auth, credentials, provider_settings)
 
 test_file_path = '/farm/gorilla'
+test_escaped_file_path = '/mu%CC%88-%E0%B8%97%E0%B8%99%E0%B8%99.zip'
 test_file_content =  b'banana eater'
 test_folder_path = '/farm/barn/'
 test_subfile_path = '/farm/barn/moo'
@@ -194,9 +195,72 @@ test_folder_json_ld = '''
 
 '''
 
+# JSON-LD returned by fedora 4 by http://localhost:8080/rest/mu%CC%88-%E0%B8%97%E0%B8%99%E0%B8%99.zip/fcr:metadata
+# The decoded path name is mü-ทนน.zip
+test_escaped_file_json_ld = '''
+[{
+  "http://fedora.info/definitions/v4/repository#lastModified" : [
+   {
+    "@type" : "http://www.w3.org/2001/XMLSchema#dateTime",
+    "@value" : "2017-05-15T17:22:09.521Z"
+   }],
+  "http://www.loc.gov/premis/rdf/v1#hasSize" : [
+   {
+    "@value" : "2514207",
+    "@type" : "http://www.w3.org/2001/XMLSchema#long"
+   }],
+  "http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#hasMimeType" : [
+   {
+    "@value" : "application/gzip"
+   }],
+  "http://fedora.info/definitions/v4/repository#createdBy" : [
+   {
+    "@value" : "bypassAdmin"
+   }],
+  "http://fedora.info/definitions/v4/repository#hasParent" : [
+   {
+    "@id" : "http://localhost:8080/rest/"
+   }],
+  "http://fedora.info/definitions/v4/repository#hasFixityService" : [
+   {
+    "@id" : "http://localhost:8080/rest/mu%CC%88-%E0%B8%97%E0%B8%99%E0%B8%99.zip/fcr:fixity"
+   }],
+  "@id" : "http://localhost:8080/rest/mu%CC%88-%E0%B8%97%E0%B8%99%E0%B8%99.zip",
+  "http://fedora.info/definitions/v4/repository#writable" : [
+   {
+    "@value" : true
+   }],
+  "http://www.iana.org/assignments/relation/describedby" : [
+   {
+    "@id" : "http://localhost:8080/rest/mu%CC%88-%E0%B8%97%E0%B8%99%E0%B8%99.zip/fcr:metadata"
+   }],
+  "http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#filename" : [
+   {
+    "@value" : "apache-tomcat-8.5.15-deployer.tar.gz"
+   }],
+  "http://fedora.info/definitions/v4/repository#created" : [
+   {
+    "@type" : "http://www.w3.org/2001/XMLSchema#dateTime",
+    "@value" : "2017-05-15T17:22:09.521Z"
+   }],
+  "http://www.loc.gov/premis/rdf/v1#hasMessageDigest" : [
+   {
+    "@id" : "urn:sha1:5a8f47ef561d1fe5edbb98a44c6d238a3642e004"
+   }],
+  "http://fedora.info/definitions/v4/repository#lastModifiedBy" : [
+   {
+    "@value" : "bypassAdmin"
+   }],
+  "@type" : [
+   "http://www.w3.org/ns/ldp#NonRDFSource",
+   "http://fedora.info/definitions/v4/repository#Binary",
+   "http://fedora.info/definitions/v4/repository#Resource"
+  ]}]
+'''
+
 class TestProvider:
     # Test building a URL to a resource in the respository
-    async def test_build_repo_url(self, provider, credentials):
+    def test_build_repo_url(self, provider, credentials):
         repo = credentials['repo']
         path_str = '/path/to/file'
         path = WaterButlerPath(path_str)
@@ -248,6 +312,25 @@ class TestProvider:
 
         assert expected == result
 
+    # Ensure that metadata can be returned for a file with an escaped name
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata_escaped_file(self, provider):
+        path = WaterButlerPath(test_escaped_file_path)
+
+        url = provider.build_repo_url(path)
+
+        aiohttpretty.register_uri('HEAD', url, status=200)
+        aiohttpretty.register_uri('GET', url + '/fcr:metadata', status=200, body=test_escaped_file_json_ld, headers={'Content-Type': 'application/json'})
+
+        result = await provider.metadata(path)
+
+        assert 'mü-ทนน.zip' == result.name
+
+        expected = FedoraFileMetadata(json.loads(test_escaped_file_json_ld), url, path)
+
+        assert expected == result
+
     # Ensure that metadata can be returned for a folder
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -275,7 +358,7 @@ class TestProvider:
         assert subfile_md.name == 'moo'
         assert subfile_md.kind == 'file'
         assert subfile_md.path == test_subfile_path
-        assert subfile_md.size == '22571'
+        assert subfile_md.size == 22571
         assert subfile_md.modified == '2016-04-20T16:44:29.561Z'
         assert subfile_md.modified_utc == '2016-04-20T16:44:29+00:00'
         assert subfile_md.created_utc == '2016-01-10T16:44:29+00:00'

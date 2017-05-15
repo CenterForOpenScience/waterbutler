@@ -1,6 +1,8 @@
 import aiohttp
 import mimetypes
 
+from urllib import parse
+
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
@@ -41,7 +43,8 @@ class FedoraProvider(provider.BaseProvider):
 
     def build_repo_url(self, path, **query):
         """Return Fedora url for resource identified by WaterButlerPath"""
-        segments = [s.original_raw for s in path.parts]
+        # Make sure that path segments have been decoded for build_url
+        segments = [parse.unquote(s.original_raw) for s in path.parts]
         return provider.build_url(self.repo, *segments, **query)
 
     async def validate_v1_path(self, path, **kwargs):
@@ -192,11 +195,12 @@ class FedoraProvider(provider.BaseProvider):
         if mime_type in settings.RDF_MIME_TYPES:
             mime_type = settings.OCTET_STREAM_MIME_TYPE
 
+        # TODO: Could set filename with Content-Disposition header, but there are char encoding issues.
+        
         async with self.request(
             'PUT',
             url,
-            headers={'Content-Length': str(stream.size), 'Content-Type': mime_type,
-                     'Content-Disposition': 'attachment; filename="' + path.name + '"'},
+            headers={'Content-Length': str(stream.size), 'Content-Type': mime_type},
             data=stream,
             expects=(201, 204),
             throws=exceptions.UploadError,

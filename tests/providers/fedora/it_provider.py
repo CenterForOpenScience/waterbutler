@@ -82,7 +82,7 @@ class TestProviderIntegration:
         assert new == True
         assert md.kind == 'file'
         assert md.name == 'data.txt'
-        assert md.size == str(len(file_content))
+        assert md.size == len(file_content)
         assert md.content_type == 'text/plain'
 
         result = await provider.download(file_path)
@@ -98,8 +98,30 @@ class TestProviderIntegration:
         assert new == False
         assert md.kind == 'file'
         assert md.name == 'data.txt'
-        assert md.size == str(len(file_content))
+        assert md.size == len(file_content)
         assert md.content_type == 'text/plain'
+
+        result = await provider.download(file_path)
+        content = await result.response.read()
+
+        assert file_content == content
+
+    # Test uploading and downloading a file with an escaped name
+    @pytest.mark.asyncio
+    async def test_escaped_upload_file(self, provider):
+        await self.setup_sandbox(provider)
+
+        file_path = WaterButlerPath(test_path + '/mu%CC%88-%E0%B8%97%E0%B8%99%E0%B8%99.zip')
+        file_content =  b'very important data'
+        file_stream = streams.FileStreamReader(io.BytesIO(file_content))
+
+        md, new = await provider.upload(file_stream, file_path)
+
+        assert new == True
+        assert md.kind == 'file'
+        assert md.name == 'mü-ทนน.zip'
+        assert md.size == len(file_content)
+        assert md.content_type == 'application/zip'
 
         result = await provider.download(file_path)
         content = await result.response.read()
@@ -120,7 +142,7 @@ class TestProviderIntegration:
         assert new == True
         assert md.kind == 'file'
         assert md.name == 'moo.txt'
-        assert md.size == str(len(file_content))
+        assert md.size == len(file_content)
         assert md.content_type == 'text/plain'
 
         await provider.delete(file_path)
@@ -144,14 +166,14 @@ class TestProviderIntegration:
 
         assert md.kind == 'file'
         assert md.name == 'moo1.txt'
-        assert md.size == str(len(file_content))
+        assert md.size == len(file_content)
         assert md.content_type == 'text/plain'
 
         md, new = await provider.upload(file_stream2, file_path2)
 
         assert md.kind == 'file'
         assert md.name == 'moo2.txt'
-        assert md.size == str(len(file_content))
+        assert md.size == len(file_content)
         assert md.content_type == 'text/plain'
 
         root_path = WaterButlerPath('/')
@@ -221,7 +243,7 @@ class TestProviderIntegration:
         assert created == True
         assert md.kind == 'file'
         assert md.name == 'data.txt'
-        assert md.size == str(len(file_content))
+        assert md.size == len(file_content)
         assert md.content_type == 'text/plain'
 
         exists = await provider.path_exists(file_path)
@@ -248,7 +270,7 @@ class TestProviderIntegration:
         assert created == False
         assert md.kind == 'file'
         assert md.name == 'data.txt'
-        assert md.size == str(len(file_content2))
+        assert md.size == len(file_content2)
         assert md.content_type == 'text/plain'
 
         exists = await provider.path_exists(file_path)
@@ -292,7 +314,7 @@ class TestProviderIntegration:
         assert created == True
         assert md.kind == 'file'
         assert md.name == 'data.txt'
-        assert md.size == str(len(file_content))
+        assert md.size == len(file_content)
         assert md.content_type == 'text/plain'
 
         exists = await provider.path_exists(file_path)
@@ -319,7 +341,7 @@ class TestProviderIntegration:
         assert created == False
         assert md.kind == 'file'
         assert md.name == 'data.txt'
-        assert md.size == str(len(file_content2))
+        assert md.size == len(file_content2)
         assert md.content_type == 'text/plain'
 
         exists = await provider.path_exists(file_path2)

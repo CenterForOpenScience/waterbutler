@@ -1,3 +1,5 @@
+from urllib import parse
+
 from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.core import utils
@@ -28,7 +30,12 @@ class BaseFedoraMetadata(metadata.BaseMetadata):
 
     @property
     def name(self):
-        return self.wb_path.name
+        # Do not return filename property because the OSF user cannot change it
+        return parse.unquote(self.wb_path.name)
+
+    @property
+    def materialized_path(self):
+        return parse.unquote(self.path)
 
     @property
     def provider(self):
@@ -88,13 +95,8 @@ class FedoraFolderMetadata(BaseFedoraMetadata, metadata.BaseFolderMetadata):
 
 class FedoraFileMetadata(BaseFedoraMetadata, metadata.BaseFileMetadata):
     @property
-    def name(self):
-        # Do not return filename property because the OSF user cannot change it
-        return self.wb_path.name
-
-    @property
     def size(self):
-        return self._get_property(settings.SIZE_PROPERTY_URI, None)
+        return int(self._get_property(settings.SIZE_PROPERTY_URI, None))
 
     @property
     def content_type(self):
