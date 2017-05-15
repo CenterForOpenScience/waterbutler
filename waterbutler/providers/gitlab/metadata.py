@@ -56,9 +56,12 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
 
 class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
-    def __init__(self, raw, path, web_view=None):
+    def __init__(self, raw, path, host=None, owner=None, repo=None):
         super().__init__(raw, path)
         self._path_obj = path
+        self.host = host
+        self.owner = owner
+        self.repo = repo
         self.file_size = 0
         if 'size' in raw:
             self.file_size = raw['size']
@@ -96,7 +99,8 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
     @property
     def web_view(self):
-        return None
+        return 'https://{}/{}/{}/blob/{}/{}'.format(self.host, self.owner, self.repo, self.branch_name, self.name)
+
 
 
 class GitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):

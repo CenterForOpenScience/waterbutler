@@ -285,7 +285,7 @@ class GitLabProvider(provider.BaseProvider):
                 ret.append(GitLabFolderMetadata(item, folder_path))
             else:
                 file_path = path.child(name, folder=False)
-                ret.append(GitLabFileMetadata(item, file_path, web_view=item['name']))
+                ret.append(GitLabFileMetadata(item, file_path, host=self.VIEW_URL, owner=self.owner, repo=self.repo))
 
         return ret
 
@@ -301,4 +301,4 @@ class GitLabProvider(provider.BaseProvider):
         data = {'name': data['file_name'], 'id': data['blob_id'],
                 'path': data['file_path'], 'size': data['size']}
 
-        return GitLabFileMetadata(data, path)
+        return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
