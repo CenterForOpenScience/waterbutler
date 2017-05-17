@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 @core.celery_task
-async def move(src_bundle, dest_bundle, request={}, start_time=None, **kwargs):
+async def move(src_bundle, dest_bundle, request: dict=None, start_time=None, **kwargs):
+    request = request or {}
     start_time = start_time or time.time()
 
     src_path, src_provider = src_bundle.pop('path'), utils.make_provider(**src_bundle.pop('provider'))
