@@ -54,9 +54,9 @@ class GitLabProvider(provider.BaseProvider):
     def default_headers(self):
         """ Headers to be included with every request.
 
-        :rtype: :class:`dict` with `Authorization` token
+        :rtype: :class:`dict` with `PRIVATE-TOKEN` token
         """
-        return {'Authorization': 'Bearer {}'.format(self.token), 'Accept': 'text/json'}
+        return {'PRIVATE-TOKEN': str(self.token)}
 
     @property
     def committer(self):
@@ -74,7 +74,7 @@ class GitLabProvider(provider.BaseProvider):
 
     async def _fetch_file_contents(self, path):
 
-        url = self.build_repo_url('repository', 'files', file_path=path.raw_path, ref=path.branch_name)
+        url = self.build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
 
         resp = await self.make_request(
                 'GET',
@@ -87,7 +87,10 @@ class GitLabProvider(provider.BaseProvider):
 
     async def _fetch_tree_contents(self, path):
 
-        url = self.build_repo_url('repository', 'tree', path=path.raw_path, ref=path.branch_name)
+        if path.is_root:
+            url = self.build_repo_url('repository', 'tree', ref=path.branch_name)
+        else:
+            url = self.build_repo_url('repository', 'tree', path=path.raw_path, ref=path.branch_name)
 
         resp = await self.make_request(
                 'GET',
@@ -132,21 +135,20 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: GitLabPath
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
+
         branch_name = kwargs.get('ref') or kwargs.get('branch')
         file_sha = kwargs.get('fileSha')
+        commit_sha = kwargs.get('commitSha')
 
         if not branch_name and not file_sha:
-            if 'revisions' in kwargs:
-                branch_name = kwargs['revisions']
-            else:
-                branch_name = await self._fetch_default_branch()
+            branch_name = await self._fetch_default_branch()
 
         if str_path == '/':
-            return GitLabPath(str_path, _ids=[(branch_name, file_sha)])
+            return GitLabPath(str_path, _ids=[(branch_name, file_sha, commit_sha)])
 
-        path = GitLabPath(str_path, _ids=[(branch_name, file_sha)])
+        path = GitLabPath(str_path, _ids=[(branch_name, file_sha, commit_sha)])
         for part in path.parts:
-            part._id = (branch_name, file_sha)
+            part._id = (branch_name, file_sha, commit_sha)
 
         data = await self._fetch_tree_contents(path.parent)
 
@@ -189,16 +191,20 @@ class GitLabProvider(provider.BaseProvider):
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
 
-    async def download(self, path, revision=None, **kwargs):
+    async def download(self, path, **kwargs):
         """Get the stream to the specified file on gitlab.
 
         :param str path: The path to the file on gitlab
-        :param str revision: The revision of the file on gitlab
-        :param dict kwargs: Must have `branch`
+        :param dict kwargs: Ignored
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
-        url = self.build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
+        url = ""
+
+        if path.commit_sha:
+            url = self.build_repo_url('repository', 'files', path.full_path, ref=path.commit_sha)
+        else:
+            url = self.build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
 
         resp = await self.make_request(
                 'GET',
@@ -250,8 +256,8 @@ class GitLabProvider(provider.BaseProvider):
             raise exceptions.MetadataError('error on fetch metadata from path {0}'
                     .format(path.full_path))
 
-        async def revisions(self, path, sha=None, **kwargs):
-            """Get past versions of the request file.
+    async def revisions(self, path, sha=None, **kwargs):
+        """Get past versions of the request file.
 
         :param str path: The user specified path
         :param str sha: The sha of the revision
@@ -259,10 +265,10 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: :class:`list` of :class:`GitLabRevision`
         :raises: :class:`waterbutler.core.exceptions.RevisionsError`
         """
-        #TODO:
+        url = self.build_repo_url('repository', 'commits', path=path.path)
         resp = await self.make_request(
                 'GET',
-                self.build_repo_url('commits', path=path.path, sha=sha or path.identifier),
+                url,
                 expects=(200,),
                 throws=exceptions.RevisionsError
                 )
@@ -290,14 +296,19 @@ class GitLabProvider(provider.BaseProvider):
 
     async def _metadata_file(self, path, **kwargs):
 
-        resp = await self._fetch_file_contents(path)
-
-        data = await resp.json()
+        data = await self._fetch_file_contents(path)
 
         if not data:
             raise exceptions.NotFoundError(str(path))
 
-        data = {'name': data['file_name'], 'id': data['blob_id'],
+        file_name = data['file_name']
+
+        data = {'name': file_name, 'id': data['blob_id'],
                 'path': data['file_path'], 'size': data['size']}
+
+        mimetype = mimetypes.guess_type(file_name)[0]
+
+        if mimetype:
+            data['mimetype'] = mimetype
 
         return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)

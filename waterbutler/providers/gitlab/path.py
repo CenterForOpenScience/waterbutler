@@ -5,7 +5,7 @@ from waterbutler.core.path import WaterButlerPathPart
 class GitLabPathPart(WaterButlerPathPart):
     def increment_name(self, _id=None):
         """Overridden to preserve branch from _id upon incrementing"""
-        self._id = _id or (self._id[0], None)
+        self._id = _id or (self._id[0], self._id[1], self._id[2])
         self._count += 1
         return self
 
@@ -32,9 +32,15 @@ class GitLabPath(WaterButlerPath):
         return self.identifier[1]
 
     @property
+    def commit_sha(self):
+        """Commit SHA-1"""
+        return self.identifier[2]
+
+    @property
     def extra(self):
         return dict(super().extra, **{
             'fileSha': self.file_sha,
+            'commitSha': self.commit_sha,
             'ref': self.branch_name
         })
 
@@ -48,11 +54,11 @@ class GitLabPath(WaterButlerPath):
         super().__init__(wb_path, _ids=_ids, prepend=prepend, folder=folder)
 
     def child(self, name, _id=None, folder=False):
-        """Pass current branch down to children"""
+        """Pass current branch and commit down to children"""
         if _id is None:
-            _id = (self.branch_name, None)
+            _id = (self.branch_name, None, self.commit_sha)
         return super().child(name, _id=_id, folder=folder)
 
     def set_file_sha(self, file_sha):
         for part in self.parts:
-            part._id = (part._id[0], file_sha)
+            part._id = (part._id[0], file_sha, part._id[2])
