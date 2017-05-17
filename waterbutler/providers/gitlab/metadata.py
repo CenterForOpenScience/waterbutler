@@ -99,7 +99,7 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
     @property
     def web_view(self):
-        return 'https://{}/{}/{}/blob/{}/{}'.format(self.host, self.owner, self.repo, self.branch_name, self.path)
+        return '{}/{}/{}/blob/{}{}'.format(self.host, self.owner, self.repo, self.branch_name, self.path)
 
 
 
