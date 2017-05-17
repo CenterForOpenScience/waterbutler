@@ -196,7 +196,7 @@ class FedoraProvider(provider.BaseProvider):
             mime_type = settings.OCTET_STREAM_MIME_TYPE
 
         # TODO: Could set filename with Content-Disposition header, but there are char encoding issues.
-        
+
         async with self.request(
             'PUT',
             url,
