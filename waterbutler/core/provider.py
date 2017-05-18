@@ -1,21 +1,25 @@
 import abc
-import time
 import asyncio
-import logging
-import weakref
 import functools
 import itertools
+import logging
+import time
+import weakref
+
 from urllib import parse
 
-import furl
 import aiohttp
+import furl
 
-from waterbutler import settings
-from waterbutler.core import streams
+from waterbutler import settings as wb_settings
+
 from waterbutler.core import exceptions
+from waterbutler.core import path as wb_path
+from waterbutler.core import streams
 from waterbutler.core.metrics import MetricsRecord
-from waterbutler.core.utils import ZipStreamGenerator
 from waterbutler.core.utils import RequestHandlerContext
+from waterbutler.core.utils import ZipStreamGenerator
+
 
 logger = logging.getLogger(__name__)
 _THROTTLES = weakref.WeakKeyDictionary()
@@ -79,7 +83,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     BASE_URL = None
 
-    def __init__(self, auth, credentials, settings, retry_on={408, 502, 503, 504}):
+    def __init__(self, auth: dict, credentials: dict, settings:dict , retry_on={408, 502, 503, 504}):
         """
         :param dict auth: Information about the user this provider will act on the behalf of
         :param dict credentials: The credentials used to authenticate with the provider,
@@ -314,9 +318,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         self.provider_metrics.append('_folder_file_ops.item_counts', len(items))
 
-        for i in range(0, len(items), settings.OP_CONCURRENCY):
+        for i in range(0, len(items), wb_settings.OP_CONCURRENCY):
             futures = []
-            for item in items[i:i + settings.OP_CONCURRENCY]:
+            for item in items[i:i + wb_settings.OP_CONCURRENCY]:
                 futures.append(asyncio.ensure_future(
                     func(
                         dest_provider,
@@ -411,7 +415,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
 
-    async def intra_move(self, dest_provider, src_path, dest_path):
+    async def intra_move(self, dest_provider: 'BaseProvider', src_path: wb_path.WaterButlerPath, dest_path: wb_path.WaterButlerPath):
         """If the provider supports moving files and/or folders within itself by some means other
         than download/upload/delete, then ``can_intra_move`` should return ``True``.  This method
         will implement the move.  It accepts the destination provider, a source path, and the
@@ -489,7 +493,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         return base.child(path, folder=folder)
 
-    async def zip(self, path, **kwargs):
+    async def zip(self, path: wb_path.WaterButlerPath, **kwargs):
         """Streams a Zip archive of the given folder
 
         :param str path: The folder to compress
@@ -551,8 +555,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def metadata(self, **kwargs):
-        """Get metdata about the specified resource from this provider. Will be a :class:`list`
+    async def metadata(self, **kwargs):
+        """Get metadata about the specified resource from this provider. Will be a :class:`list`
         if the resource is a directory otherwise an instance of
         :class:`waterbutler.core.metadata.BaseFileMetadata`
 

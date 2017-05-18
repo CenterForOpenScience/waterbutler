@@ -130,7 +130,7 @@ class WaterButlerPath:
 
     @classmethod
     def from_parts(cls,
-                   parts: list,
+                   parts: typing.Iterable[WaterButlerPathPart],
                    folder: bool=False,
                    **kwargs):
         _ids, _parts = [], []
@@ -153,7 +153,7 @@ class WaterButlerPath:
 
     def __init__(self,
                  path: str,
-                 _ids: tuple=(),
+                 _ids: typing.Sequence=(),
                  prepend: str=None,
                  folder: bool=None):
         self.__class__.generic_path_validation(path)
@@ -201,7 +201,7 @@ class WaterButlerPath:
         return not self._is_folder
 
     @property
-    def kind(self):
+    def kind(self) -> str:
         """ Returns `folder` if the path represents a folder, otherwise returns `file`. """
         return 'folder' if self._is_folder else 'file'
 
@@ -211,7 +211,7 @@ class WaterButlerPath:
         return self._parts
 
     @property
-    def name(self):
+    def name(self) -> str:
         """ Returns the name of the file or folder. """
         return self._parts[-1].value
 
@@ -245,7 +245,7 @@ class WaterButlerPath:
         return '/'.join([x.value for x in self.parts[1:]]) + ('/' if self.is_dir else '')
 
     @property
-    def raw_path(self):
+    def raw_path(self) -> str:
         """ Like `.path()`, but passes each path segment through the PathPart's ENCODE function.
         """
         if len(self.parts) == 1:
