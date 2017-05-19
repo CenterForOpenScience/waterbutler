@@ -278,7 +278,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                        path: wb_path.WaterButlerPath,
                        raw: bool = False,
                        revision=None,
-                       **kwargs) -> typing.Union[list, dict, BaseGoogleDriveMetadata]:
+                       **kwargs) -> typing.Union[dict, BaseGoogleDriveMetadata, typing.List[BaseGoogleDriveMetadata]]:
         # TODO: Work out correct return type (may be file vs folder discrepancy)
         if path.identifier is None:
             raise exceptions.MetadataError('{} not found'.format(str(path)), code=404)
@@ -313,7 +313,10 @@ class GoogleDriveProvider(provider.BaseProvider):
             'id': data['etag'] + settings.DRIVE_IGNORE_VERSION,
         })]
 
-    async def create_folder(self, path, folder_precheck=True, **kwargs):
+    async def create_folder(self,
+                            path: wb_path.WaterButlerPath,
+                            folder_precheck: bool=True,
+                            **kwargs) -> GoogleDriveFolderMetadata:
         GoogleDrivePath.validate_folder(path)
 
         if folder_precheck:
@@ -549,7 +552,8 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         return self._serialize_item(path, item, raw=raw)
 
-    async def _folder_metadata(self, path: wb_path.WaterButlerPath, raw: bool=False):
+    async def _folder_metadata(self, path: wb_path.WaterButlerPath, raw: bool=False) \
+            -> typing.List[BaseGoogleDriveMetadata]:
         query = self._build_query(path.identifier)
         built_url = self.build_url('files', q=query, alt='json', maxResults=1000)
         full_resp = []
@@ -595,7 +599,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def _delete_folder_contents(self, path: wb_path.WaterButlerPath) -> None:
         """Given a WaterButlerPath, delete all contents of folder
 
-        :param WaterButlerPath: Folder to be emptied
+        :param WaterButlerPath path: Folder to be emptied
         :rtype: None
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         :raises: :class:`waterbutler.core.exceptions.MetadataError`
