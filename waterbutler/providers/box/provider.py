@@ -1,16 +1,21 @@
-import os
+import aiohttp
 import http
 import json
+import os
+import typing
 
-from waterbutler.core import streams
-from waterbutler.core import provider
+
 from waterbutler.core import exceptions
+from waterbutler.core import provider
+from waterbutler.core import streams
+
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.box import settings
-from waterbutler.providers.box.metadata import BoxRevision
-from waterbutler.providers.box.metadata import BoxFileMetadata
-from waterbutler.providers.box.metadata import BoxFolderMetadata
+from waterbutler.providers.box.metadata import (BaseBoxMetadata,
+                                                BoxFileMetadata,
+                                                BoxFolderMetadata,
+                                                BoxRevision)
 
 
 class BoxProvider(provider.BaseProvider):
@@ -35,10 +40,10 @@ class BoxProvider(provider.BaseProvider):
 
         """
         super().__init__(auth, credentials, settings)
-        self.token = self.credentials['token']
-        self.folder = self.settings['folder']
+        self.token = self.credentials['token']  # type: str
+        self.folder = self.settings['folder']  # type: str
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
         if path == '/':
             return WaterButlerPath('/', _ids=[self.folder])
 
@@ -70,7 +75,7 @@ class BoxProvider(provider.BaseProvider):
 
         return WaterButlerPath('/'.join(names), _ids=ids, folder=path.endswith('/'))
 
-    async def validate_path(self, path, **kwargs):
+    async def validate_path(self, path: str, **kwargs) -> WaterButlerPath:
         if path == '/':
             return WaterButlerPath('/', _ids=[self.folder])
 
@@ -126,7 +131,7 @@ class BoxProvider(provider.BaseProvider):
 
         return ret
 
-    async def revalidate_path(self, base, path, folder=None):
+    async def revalidate_path(self, base: WaterButlerPath, path: str, folder: bool=None):
         # TODO Research the search api endpoint
         async with self.request(
             'GET',
@@ -155,23 +160,26 @@ class BoxProvider(provider.BaseProvider):
 
         return base.child(name, _id=_id, folder=folder)
 
-    def can_duplicate_names(self):
+    def can_duplicate_names(self)-> bool:
         return False
 
-    def shares_storage_root(self, other):
+    def shares_storage_root(self, other: provider.BaseProvider) -> bool:
         """Box settings include the root folder id, which is unique across projects for subfolders.
         But the root folder of a Box account always has an ID of 0.  This means that the root
         folders of two separate Box accounts would incorrectly test as being the same storage root.
         Add a comparison of credentials to avoid this."""
         return super().shares_storage_root(other) and self.credentials == other.credentials
 
-    def can_intra_move(self, other, path=None):
+    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
         return self == other
 
-    def can_intra_copy(self, other, path=None):
+    def can_intra_copy(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
         return self == other
 
-    async def intra_copy(self, dest_provider, src_path, dest_path):
+    async def intra_copy(self,
+                         dest_provider: provider.BaseProvider,
+                         src_path: WaterButlerPath,
+                         dest_path: WaterButlerPath) -> typing.Tuple[BoxFileMetadata, bool]:
         if dest_path.identifier is not None:
             await dest_provider.delete(dest_path)
 
@@ -196,7 +204,10 @@ class BoxProvider(provider.BaseProvider):
 
         return self._serialize_item(data, dest_path), dest_path.identifier is None
 
-    async def intra_move(self, dest_provider, src_path, dest_path):
+    async def intra_move(self,
+                         dest_provider: provider.BaseProvider,
+                         src_path: WaterButlerPath,
+                         dest_path: WaterButlerPath) -> typing.Tuple[BaseBoxMetadata, bool]:
         if dest_path.identifier is not None and str(dest_path).lower() != str(src_path).lower():
             await dest_provider.delete(dest_path)
 
@@ -221,18 +232,22 @@ class BoxProvider(provider.BaseProvider):
         return self._serialize_item(data, dest_path), dest_path.identifier is None
 
     @property
-    def default_headers(self):
+    def default_headers(self) -> dict:
         return {
             'Authorization': 'Bearer {}'.format(self.token),
         }
 
-    async def make_request(self, *args, **kwargs):
+    async def make_request(self, *args, **kwargs) -> aiohttp.client.ClientResponse:
         if isinstance(kwargs.get('data'), dict):
             kwargs['data'] = json.dumps(kwargs['data'])
 
         return await super().make_request(*args, **kwargs)
 
-    async def download(self, path, revision=None, range=None, **kwargs):
+    async def download(self,
+                       path: WaterButlerPath,
+                       revision: str=None,
+                       range: typing.Tuple[int, int]=None,
+                       **kwargs) -> streams.ResponseStreamReader:
         if path.identifier is None:
             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
 
@@ -251,7 +266,11 @@ class BoxProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp)
 
-    async def upload(self, stream, path, conflict='replace', **kwargs):
+    async def upload(self,
+                     stream: streams.BaseStream,
+                     path: WaterButlerPath,
+                     conflict: str='replace',
+                     **kwargs) -> typing.Tuple[BoxFileMetadata, bool]:
         if path.identifier and conflict == 'keep':
             path, _ = await self.handle_name_conflict(path, conflict=conflict, kind='folder')
             path._parts[-1]._id = None
@@ -280,7 +299,10 @@ class BoxProvider(provider.BaseProvider):
         path._parts[-1]._id = data['entries'][0]['id']
         return BoxFileMetadata(data['entries'][0], path), created
 
-    async def delete(self, path, confirm_delete=0, **kwargs):
+    async def delete(self,
+                     path: WaterButlerPath,
+                     confirm_delete: int=0,
+                     **kwargs) -> None:
         """Delete file, folder, or provider root contents
 
         :param BoxPath path: BoxPath path object for folder
@@ -311,7 +333,12 @@ class BoxProvider(provider.BaseProvider):
         ):
             return  # Ensures the response is properly released
 
-    async def metadata(self, path, raw=False, folder=False, revision=None, **kwargs):
+    async def metadata(self,
+                       path: WaterButlerPath,
+                       raw: bool=False,
+                       folder=False,
+                       revision=None,
+                       **kwargs) -> typing.Union[dict, BoxFileMetadata, BoxFolderMetadata]:
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
@@ -319,7 +346,7 @@ class BoxProvider(provider.BaseProvider):
             return await self._get_file_meta(path, revision=revision, raw=raw)
         return await self._get_folder_meta(path, raw=raw, folder=folder)
 
-    async def revisions(self, path, **kwargs):
+    async def revisions(self, path: WaterButlerPath, **kwargs) -> typing.List[BoxRevision]:
         # from https://developers.box.com/docs/#files-view-versions-of-a-file :
         # Alert: Versions are only tracked for Box users with premium accounts.
         # Few users will have a premium account, return only current if not
@@ -336,7 +363,7 @@ class BoxProvider(provider.BaseProvider):
 
         return [BoxRevision(each) for each in [curr] + revisions]
 
-    async def create_folder(self, path, folder_precheck=True, **kwargs):
+    async def create_folder(self, path: WaterButlerPath, folder_precheck: bool=True, **kwargs) -> BoxFolderMetadata:
         WaterButlerPath.validate_folder(path)
 
         if folder_precheck:
@@ -363,7 +390,7 @@ class BoxProvider(provider.BaseProvider):
         path._parts[-1]._id = resp_json['id']
         return BoxFolderMetadata(resp_json, path)
 
-    def _assert_child(self, paths, target=None):
+    def _assert_child(self, paths: typing.List[dict], target: str=None) -> bool:
         if self.folder == 0:
             return True
         if target == self.folder:
@@ -375,6 +402,7 @@ class BoxProvider(provider.BaseProvider):
         return self._assert_child(paths[1:])
 
     async def _assert_child_folder(self, path):
+        # TODO: This method and the one above may be totally unused
         async with self.request(
             'GET',
             self.build_url('folders', path._id),
@@ -384,7 +412,10 @@ class BoxProvider(provider.BaseProvider):
             data = await response.json()
         self._assert_child(data['path_collection']['entries'], target=data['id'])
 
-    async def _get_file_meta(self, path, raw=False, revision=None):
+    async def _get_file_meta(self,
+                             path: WaterButlerPath,
+                             raw: bool=False,
+                             revision: str=None) -> typing.Union[dict, BoxFileMetadata]:
         if revision:
             url = self.build_url('files', path.identifier, 'versions')
         else:
@@ -408,13 +439,17 @@ class BoxProvider(provider.BaseProvider):
 
         return data if raw else BoxFileMetadata(data, path)
 
-    async def _get_folder_meta(self, path, raw=False, folder=False):
+    async def _get_folder_meta(self,
+                               path: WaterButlerPath,
+                               raw: bool=False,
+                               folder: bool=False) -> typing.Union[dict, typing.List[BoxFolderMetadata]]:
         if folder:
             async with self.request(
                 'GET', self.build_url('folders', path.identifier),
                 expects=(200, ), throws=exceptions.MetadataError,
             ) as resp:
                 data = await resp.json()
+                # FIXME: Usage does not match function call signature!  Dead code or bug?
                 return data if raw else self._serialize_item(data)
 
         # Box maximum limit is 1000
@@ -444,7 +479,7 @@ class BoxProvider(provider.BaseProvider):
         self.metrics.add('metadata.folder.pages', page_total)
         return full_resp
 
-    def _serialize_item(self, item, path):
+    def _serialize_item(self, item: dict, path: WaterButlerPath) -> typing.Union[BoxFileMetadata, BoxFolderMetadata]:
         if item['type'] == 'folder':
             serializer = BoxFolderMetadata
         else:
@@ -454,7 +489,8 @@ class BoxProvider(provider.BaseProvider):
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
 
-    def _build_full_path(self, entries, filename):
+    def _build_full_path(self, entries: dict, filename: str):
+        # TODO: Method may be totally unused
         path = []
         for entry in reversed(entries):
             if self.folder == entry['id']:
@@ -464,12 +500,12 @@ class BoxProvider(provider.BaseProvider):
         path = '/'.join(reversed(path))
         return '/' + os.path.join(path, filename)
 
-    async def _delete_folder_contents(self, path, **kwargs):
+    async def _delete_folder_contents(self, path: WaterButlerPath, **kwargs) -> None:
         """Delete the contents of a folder. For use against provider root.
 
         :param BoxPath path: BoxPath path object for folder
         """
-        meta = (await self.metadata(path))
+        meta = await self.metadata(path)
         for child in meta:
             box_path = await self.validate_path(child.path)
             await self.delete(box_path)

@@ -153,7 +153,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         }
 
     @throttle()
-    async def make_request(self, method: str, url: str, *args, **kwargs) -> aiohttp.Response:
+    async def make_request(self, method: str, url: str, *args, **kwargs) -> aiohttp.client.ClientResponse:
         """A wrapper around :func:`aiohttp.request`. Inserts default headers.
 
         :param str method: The HTTP method
@@ -580,11 +580,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def upload(self, stream, **kwargs) -> typing.Tuple[metadata.BaseFileMetadata, bool]:
+    def upload(self, stream: streams.BaseStream, *args, **kwargs) \
+            -> typing.Tuple[metadata.BaseFileMetadata, bool]:
         """Uploads the given stream to the provider.  Returns the metadata for the newly created
         file and a boolean indicating whether the file is completely new (``True``) or overwrote
         a previously-existing file (``False``)
 
+        :param :class:`waterbutler.core.streams.BaseStream` stream: The content to be uploaded
         :param dict \*\*kwargs: Arguments to be parsed by child classes
         :rtype: (:class:`waterbutler.core.metadata.BaseFileMetadata`, :class:`bool`)
         :raises: :class:`waterbutler.core.exceptions.DeleteError`
@@ -616,7 +618,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def validate_v1_path(self, path: wb_path.WaterButlerPath, **kwargs) -> wb_path.WaterButlerPath:
+    def validate_v1_path(self, path: str, **kwargs) -> wb_path.WaterButlerPath:
         """API v1 requires that requests against folder endpoints always end with a slash, and
         requests against files never end with a slash.  This method checks the provider's metadata
         for the given id and throws a 404 Not Found if the implicit and explicit types don't
