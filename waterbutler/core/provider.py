@@ -15,7 +15,7 @@ import furl
 from waterbutler import settings as wb_settings
 
 from waterbutler.core import exceptions
-from waterbutler.core import metadata
+from waterbutler.core import metadata as wb_metadata
 from waterbutler.core import path as wb_path
 from waterbutler.core import streams
 from waterbutler.core.metrics import MetricsRecord
@@ -203,7 +203,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                    dest_path: wb_path.WaterButlerPath,
                    rename: str=None,
                    conflict: str='replace',
-                   handle_naming: bool=True) -> typing.Tuple[metadata.BaseMetadata, bool]:
+                   handle_naming: bool=True) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
         """Moves a file or folder from the current provider to the specified one
         Performs a copy and then a delete.
         Calls :func:`BaseProvider.intra_move` if possible.
@@ -261,7 +261,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                    dest_path: wb_path.WaterButlerPath,
                    rename: str=None, conflict: str='replace',
                    handle_naming: bool=True) \
-            -> typing.Tuple[metadata.BaseMetadata, bool]:
+            -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
 
@@ -307,7 +307,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                               dest_provider: 'BaseProvider',
                               src_path: wb_path.WaterButlerPath,
                               dest_path: wb_path.WaterButlerPath,
-                              **kwargs) -> typing.Tuple[metadata.BaseFolderMetadata, bool]:
+                              **kwargs) -> typing.Tuple[wb_metadata.BaseFolderMetadata, bool]:
         """Recursively apply func to src/dest path.
 
         Called from: func: copy and move if src_path.is_dir.
@@ -437,7 +437,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def intra_copy(self,
                          dest_provider: 'BaseProvider',
                          source_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[metadata.BaseFileMetadata, bool]:
+                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
         """If the provider supports copying files and/or folders within itself by some means other
         than download/upload, then ``can_intra_copy`` should return ``True``.  This method will
         implement the copy.  It accepts the destination provider, a source path, and the
@@ -455,7 +455,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def intra_move(self,
                          dest_provider: 'BaseProvider',
                          src_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[metadata.BaseFileMetadata, bool]:
+                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
         """If the provider supports moving files and/or folders within itself by some means other
         than download/upload/delete, then ``can_intra_move`` should return ``True``.  This method
         will implement the move.  It accepts the destination provider, a source path, and the
@@ -473,7 +473,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return data, created
 
     async def exists(self, path: wb_path.WaterButlerPath, **kwargs) \
-            -> typing.Union[bool, metadata.BaseMetadata, typing.List[metadata.BaseMetadata]]:
+            -> typing.Union[bool, wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
         """Check for existence of WaterButlerPath
 
         Attempt to retrieve provider metadata to determine existence of a WaterButlerPath.  If
@@ -581,7 +581,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def upload(self, stream: streams.BaseStream, *args, **kwargs) \
-            -> typing.Tuple[metadata.BaseFileMetadata, bool]:
+            -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
         """Uploads the given stream to the provider.  Returns the metadata for the newly created
         file and a boolean indicating whether the file is completely new (``True``) or overwrote
         a previously-existing file (``False``)
@@ -605,7 +605,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def metadata(self, **kwargs) \
-            -> typing.Union[metadata.BaseMetadata, typing.List[metadata.BaseMetadata]]:
+            -> typing.Union[wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
         """Get metadata about the specified resource from this provider. Will be a :class:`list`
         if the resource is a directory otherwise an instance of
         :class:`waterbutler.core.metadata.BaseFileMetadata`
@@ -661,13 +661,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     def path_from_metadata(self,
                            parent_path: wb_path.WaterButlerPath,
-                           meta_data: metadata.BaseMetadata) -> wb_path.WaterButlerPath:
+                           meta_data: wb_metadata.BaseMetadata) -> wb_path.WaterButlerPath:
         return parent_path.child(meta_data.name, _id=meta_data.path.strip('/'), folder=meta_data.is_folder)
 
     def revisions(self, **kwargs):
         return []  # TODO Raise 405 by default h/t @rliebz
 
-    def create_folder(self, path: wb_path.WaterButlerPath, **kwargs) -> metadata.BaseFolderMetadata:
+    def create_folder(self, path: wb_path.WaterButlerPath, **kwargs) -> wb_metadata.BaseFolderMetadata:
         """Create a folder in the current provider at `path`. Returns a `BaseFolderMetadata` object
         if successful.  May throw a 409 Conflict if a directory with the same name already exists.
 
