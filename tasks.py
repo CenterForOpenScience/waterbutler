@@ -48,8 +48,21 @@ def flake(ctx):
 
 
 @task
-def test(ctx, verbose=False):
+def mypy(ctx):
+    """
+    Check python types using mypy (additional level of linting)
+    These default options are aimed at a newly converted codebase. See:
+      http://mypy.readthedocs.io/en/latest/command_line.html#ignore-missing-imports
+    """
+    ctx.run('mypy -i --follow-imports silent --ignore-missing-imports waterbutler/', pty=True)
+
+
+@task
+def test(ctx, verbose=False, types=False):
     flake(ctx)
+    if types:
+        mypy(ctx)
+
     cmd = 'py.test --cov-report term-missing --cov waterbutler tests'
     if verbose:
         cmd += ' -v'

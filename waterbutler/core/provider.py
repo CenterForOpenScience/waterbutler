@@ -24,7 +24,7 @@ from waterbutler.core.utils import ZipStreamGenerator
 
 
 logger = logging.getLogger(__name__)
-_THROTTLES = weakref.WeakKeyDictionary()
+_THROTTLES = weakref.WeakKeyDictionary()  # type: weakref.WeakKeyDictionary
 
 
 def throttle(concurrency=10, interval=1):
@@ -88,7 +88,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def __init__(self, auth: dict,
                  credentials: dict,
                  settings: dict,
-                 retry_on: typing.Set[int]={408, 502, 503, 504}):
+                 retry_on: typing.Set[int]={408, 502, 503, 504}) -> None:
         """
         :param dict auth: Information about the user this provider will act on the behalf of
         :param dict credentials: The credentials used to authenticate with the provider,
@@ -247,9 +247,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
             return await self.intra_move(*args)
 
         if src_path.is_dir:
-            meta_data, created = await self._folder_file_op(self.move, *args, **kwargs)
+            meta_data, created = await self._folder_file_op(self.move, *args, **kwargs)  # type: ignore
         else:
-            meta_data, created = await self.copy(*args, handle_naming=False, **kwargs)
+            meta_data, created = await self.copy(*args, handle_naming=False, **kwargs)  # type: ignore
 
         await self.delete(src_path)
 
@@ -293,7 +293,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             return await self.intra_copy(*args)
 
         if src_path.is_dir:
-            return await self._folder_file_op(self.copy, *args, **kwargs)
+            return await self._folder_file_op(self.copy, *args, **kwargs)  # type: ignore
 
         download_stream = await self.download(src_path)
 
@@ -338,9 +338,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         dest_path = await dest_provider.revalidate_path(dest_path.parent, dest_path.name, folder=dest_path.is_dir)
 
         folder.children = []
-        items = await self.metadata(src_path)
+        items = await self.metadata(src_path)  # type: ignore
 
-        self.provider_metrics.append('_folder_file_ops.item_counts', len(items))
+        self.provider_metrics.append('_folder_file_ops.item_counts', len(items))  # type: ignore
 
         for i in range(0, len(items), wb_settings.OP_CONCURRENCY):
             futures = []
@@ -508,7 +508,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         exists = await self.exists(path, **kwargs)
         if (not exists and not exists == []) or conflict == 'replace':
-            return path, exists
+            return path, exists  # type: ignore
         if conflict == 'warn':
             raise exceptions.NamingConflict(path)
 
@@ -546,12 +546,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param WaterButlerPath path: The folder to compress
         """
 
-        meta_data = await self.metadata(path)
+        meta_data = await self.metadata(path)  # type: ignore
         if path.is_file:
-            meta_data = [meta_data]
+            meta_data = [meta_data]  # type: ignore
             path = path.parent
 
-        return streams.ZipStreamReader(ZipStreamGenerator(self, path, *meta_data))
+        return streams.ZipStreamReader(ZipStreamGenerator(self, path, *meta_data))  # type: ignore
 
     def shares_storage_root(self, other: 'BaseProvider') -> bool:
         """Returns True if ``self`` and ``other`` both point to the same storage root.  Used to
@@ -570,9 +570,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def download(self, **kwargs) -> streams.ResponseStreamReader:
+    async def download(self, src_path: wb_path.WaterButlerPath, **kwargs) -> streams.ResponseStreamReader:
         """Download a file from this provider.
-
+        :param WaterButlerPath src_path: Path to the file to be downloaded
         :param dict \*\*kwargs: Arguments to be parsed by child classes
         :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
@@ -580,7 +580,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def upload(self, stream: streams.BaseStream, *args, **kwargs) \
+    async def upload(self, stream: streams.BaseStream, *args, **kwargs) \
             -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
         """Uploads the given stream to the provider.  Returns the metadata for the newly created
         file and a boolean indicating whether the file is completely new (``True``) or overwrote
@@ -594,9 +594,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def delete(self, **kwargs) -> None:
+    async def delete(self, src_path: wb_path.WaterButlerPath, **kwargs) -> None:
         """
-
+        :param WaterButlerPath src_path: Path to be deleted
         :param dict \*\*kwargs: Arguments to be parsed by child classes
         :rtype: :class:`None`
         :raises: :class:`waterbutler.core.exceptions.DeleteError`
@@ -604,12 +604,16 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def metadata(self, **kwargs) \
+    async def metadata(self, path: wb_path.WaterButlerPath, **kwargs) \
             -> typing.Union[wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
         """Get metadata about the specified resource from this provider. Will be a :class:`list`
         if the resource is a directory otherwise an instance of
         :class:`waterbutler.core.metadata.BaseFileMetadata`
 
+        Developer note: Mypy doesn't seem to do very well with functions that can return more than one type of thing.
+        See: https://github.com/python/mypy/issues/1693
+
+        :param WaterButlerPath path: The path to a file or folder
         :param dict \*\*kwargs: Arguments to be parsed by child classes
         :rtype: :class:`waterbutler.core.metadata.BaseMetadata`
         :rtype: :class:`list` of :class:`waterbutler.core.metadata.BaseMetadata`
@@ -667,7 +671,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def revisions(self, **kwargs):
         return []  # TODO Raise 405 by default h/t @rliebz
 
-    def create_folder(self, path: wb_path.WaterButlerPath, **kwargs) -> wb_metadata.BaseFolderMetadata:
+    async def create_folder(self, path: wb_path.WaterButlerPath, **kwargs) -> wb_metadata.BaseFolderMetadata:
         """Create a folder in the current provider at `path`. Returns a `BaseFolderMetadata` object
         if successful.  May throw a 409 Conflict if a directory with the same name already exists.
 
