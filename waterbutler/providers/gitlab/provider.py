@@ -54,9 +54,9 @@ class GitLabProvider(provider.BaseProvider):
     def default_headers(self):
         """ Headers to be included with every request.
 
-        :rtype: :class:`dict` with `Authorization` token
+        :rtype: :class:`dict` with `PRIVATE-TOKEN` token
         """
-        return {'Authorization': 'Bearer {}'.format(self.token), 'Accept': 'text/json'}
+        return {'PRIVATE-TOKEN': str(self.token), 'Accept': 'text/json'}
 
     @property
     def committer(self):
