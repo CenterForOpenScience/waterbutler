@@ -42,7 +42,8 @@ def make_app(debug):
     app = tornado.web.Application(
         api_to_handlers(v0) +
         api_to_handlers(v1) +
-        [(r'/status', handlers.StatusHandler)],
+        [(r'/status', handlers.StatusHandler),
+         (r'/pending/(?P<result_resource>(?:\w|\d)+)/(?P<task_id>(?:\w|\d|-)+)', handlers.PendingHandler)],
         debug=debug,
     )
     app.sentry_client = AsyncSentryClient(settings.SENTRY_DSN, release=waterbutler.__version__)
