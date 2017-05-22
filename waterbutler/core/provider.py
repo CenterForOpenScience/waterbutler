@@ -340,11 +340,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
         folder.children = []
         items = await self.metadata(src_path)  # type: ignore
 
+        # Metadata returns a union, which confuses mypy
         self.provider_metrics.append('_folder_file_ops.item_counts', len(items))  # type: ignore
 
-        for i in range(0, len(items), wb_settings.OP_CONCURRENCY):
+        for i in range(0, len(items), wb_settings.OP_CONCURRENCY):  # type: ignore
             futures = []
-            for item in items[i:i + wb_settings.OP_CONCURRENCY]:
+            for item in items[i:i + wb_settings.OP_CONCURRENCY]:  # type: ignore
                 futures.append(asyncio.ensure_future(
                     func(
                         dest_provider,
@@ -580,12 +581,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def upload(self, stream: streams.BaseStream, *args, **kwargs) \
+    async def upload(self, stream: streams.BaseStream, path: wb_path.WaterButlerPath, *args, **kwargs) \
             -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
         """Uploads the given stream to the provider.  Returns the metadata for the newly created
         file and a boolean indicating whether the file is completely new (``True``) or overwrote
         a previously-existing file (``False``)
 
+        :param :class:`WaterButlerPath` path: Where to upload the file to
         :param :class:`waterbutler.core.streams.BaseStream` stream: The content to be uploaded
         :param dict \*\*kwargs: Arguments to be parsed by child classes
         :rtype: (:class:`waterbutler.core.metadata.BaseFileMetadata`, :class:`bool`)
@@ -622,7 +624,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def validate_v1_path(self, path: str, **kwargs) -> wb_path.WaterButlerPath:
+    async def validate_v1_path(self, path: str, **kwargs) -> wb_path.WaterButlerPath:
         """API v1 requires that requests against folder endpoints always end with a slash, and
         requests against files never end with a slash.  This method checks the provider's metadata
         for the given id and throws a 404 Not Found if the implicit and explicit types don't
@@ -643,7 +645,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def validate_path(self, path: str, **kwargs) -> wb_path.WaterButlerPath:
+    async def validate_path(self, path: str, **kwargs) -> wb_path.WaterButlerPath:
         """Validates paths passed in via the v0 API.  v0 paths are much less strict than v1 paths.
         They may represent things that exist or something that should be created.  As such, the goal
         of ``validate_path`` is to split the path into its component parts and attempt to determine
@@ -668,7 +670,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                            meta_data: wb_metadata.BaseMetadata) -> wb_path.WaterButlerPath:
         return parent_path.child(meta_data.name, _id=meta_data.path.strip('/'), folder=meta_data.is_folder)
 
-    def revisions(self, **kwargs):
+    def revisions(self, path: wb_path.WaterButlerPath, **kwargs):
         return []  # TODO Raise 405 by default h/t @rliebz
 
     async def create_folder(self, path: wb_path.WaterButlerPath, **kwargs) -> wb_metadata.BaseFolderMetadata:

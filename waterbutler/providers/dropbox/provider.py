@@ -1,4 +1,4 @@
-import http
+from http import HTTPStatus
 import json
 import typing
 
@@ -146,7 +146,7 @@ class DropboxProvider(provider.BaseProvider):
         return {'Authorization': 'Bearer {}'.format(self.token),
                 'Content-Type': 'application/json'}
 
-    async def intra_copy(self,
+    async def intra_copy(self,  # type: ignore
                          dest_provider: 'DropboxProvider',
                          src_path: WaterButlerPath,
                          dest_path: WaterButlerPath) \
@@ -186,10 +186,10 @@ class DropboxProvider(provider.BaseProvider):
         if data['.tag'] == 'file':
             return DropboxFileMetadata(data, dest_folder), True
         folder = DropboxFolderMetadata(data, dest_folder)
-        folder.children = [item for item in await dest_provider.metadata(dest_path)]
+        folder.children = [item for item in await dest_provider.metadata(dest_path)]  # type: ignore
         return folder, True
 
-    async def intra_move(self,
+    async def intra_move(self,  # type: ignore
                          dest_provider: 'DropboxProvider',
                          src_path: WaterButlerPath,
                          dest_path: WaterButlerPath) -> typing.Tuple[BaseDropboxMetadata, bool]:
@@ -216,10 +216,10 @@ class DropboxProvider(provider.BaseProvider):
         if data['.tag'] == 'file':
             return DropboxFileMetadata(data, dest_folder), True
         folder = DropboxFolderMetadata(data, dest_folder)
-        folder.children = [item for item in await dest_provider.metadata(dest_path)]
+        folder.children = [item for item in await dest_provider.metadata(dest_path)]  # type: ignore
         return folder, True
 
-    async def download(self,
+    async def download(self,  # type: ignore
                        path: WaterButlerPath,
                        revision: str=None,
                        range: typing.Tuple[int, int]=None,
@@ -242,7 +242,7 @@ class DropboxProvider(provider.BaseProvider):
             size = None
         return streams.ResponseStreamReader(resp, size=size)
 
-    async def upload(self,
+    async def upload(self,  # type: ignore
                      stream: streams.BaseStream,
                      path: WaterButlerPath,
                      conflict: str='replace',
@@ -269,7 +269,7 @@ class DropboxProvider(provider.BaseProvider):
             self.dropbox_conflict_error_handler(data, path.path)
         return DropboxFileMetadata(data, self.folder), not exists
 
-    async def delete(self, path: WaterButlerPath, confirm_delete: int=0, **kwargs) -> None:
+    async def delete(self, path: WaterButlerPath, confirm_delete: int=0, **kwargs) -> None:  # type: ignore
         """Delete file, folder, or provider root contents
 
         :param WaterButlerPath path: WaterButlerPath path object for folder
@@ -289,8 +289,10 @@ class DropboxProvider(provider.BaseProvider):
             throws=exceptions.DeleteError,
         )
 
-    async def metadata(self, path: WaterButlerPath, revision: str=None, **kwargs) \
-            -> typing.Union[BaseDropboxMetadata, typing.List[BaseDropboxMetadata]]:
+    async def metadata(self,  # type: ignore
+                       path: WaterButlerPath,
+                       revision: str=None,
+                       **kwargs) -> typing.Union[BaseDropboxMetadata, typing.List[BaseDropboxMetadata]]:
         full_path = path.full_path.rstrip('/')
         url = self.build_url('files', 'get_metadata')
         body = {'path': full_path}
@@ -300,7 +302,7 @@ class DropboxProvider(provider.BaseProvider):
             url = self.build_url('files', 'list_folder')
 
         if path.is_folder:
-            ret = []
+            ret = []  # type: typing.List[BaseDropboxMetadata]
             has_more = True
             page_count = 0
             while has_more:
@@ -324,14 +326,14 @@ class DropboxProvider(provider.BaseProvider):
         if data['.tag'] == 'deleted':
             raise exceptions.MetadataError(
                 "Could not retrieve '{}'".format(path),
-                code=http.client.NOT_FOUND,
+                code=HTTPStatus.NOT_FOUND,
             )
 
         # Dropbox will match a file or folder by name within the requested path
         if path.is_file and data['.tag'] == 'folder':
             raise exceptions.MetadataError(
                 "Could not retrieve file '{}'".format(path),
-                code=http.client.NOT_FOUND,
+                code=HTTPStatus.NOT_FOUND,
             )
 
         return DropboxFileMetadata(data, self.folder)
@@ -348,7 +350,7 @@ class DropboxProvider(provider.BaseProvider):
         if data['is_deleted'] is True:
             raise exceptions.RevisionsError(
                 "Could not retrieve '{}'".format(path),
-                code=http.client.NOT_FOUND,
+                code=HTTPStatus.NOT_FOUND,
             )
         if data['is_deleted']:
             return []
@@ -381,6 +383,6 @@ class DropboxProvider(provider.BaseProvider):
         :param WaterButlerPath path: WaterButlerPath path object for folder
         """
         meta = (await self.metadata(path))
-        for child in meta:
+        for child in meta:  # type: ignore
             dropbox_path = await self.validate_path(child.path)
             await self.delete(dropbox_path)

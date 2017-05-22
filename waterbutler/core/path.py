@@ -16,10 +16,10 @@ class WaterButlerPathPart:
     path.
     """
 
-    DECODE = lambda x: x  # type: typing.Callable[str]
-    ENCODE = lambda x: x  # type: typing.Callable[str]
+    DECODE = lambda x: x  # type: typing.Callable[[str], str]
+    ENCODE = lambda x: x  # type: typing.Callable[[str], str]
 
-    def __init__(self, part: str, *, _id=None):
+    def __init__(self, part: str, *, _id=None) -> None:
         self._id = _id
         self._count = 0
         self._orig_id = _id
@@ -132,7 +132,7 @@ class WaterButlerPath:
     def from_parts(cls,
                    parts: typing.Iterable[WaterButlerPathPart],
                    folder: bool=False,
-                   **kwargs):
+                   **kwargs) -> 'WaterButlerPath':
         _ids, _parts = [], []
         for part in parts:
             _ids.append(part.identifier)
@@ -142,21 +142,22 @@ class WaterButlerPath:
         if parts and not path:
             path = '/'
 
-        return cls(path, _ids=_ids, folder=folder, **kwargs)
+        return cls(path, _ids=_ids, folder=folder, **kwargs)  # type: ignore
 
     @classmethod
     def from_metadata(cls,
                       path_metadata: metadata.BaseMetadata,
                       **kwargs):
         _ids = path_metadata.path.rstrip('/').split('/') or []
-        return cls(path_metadata.materialized_path, _ids=_ids, folder=path_metadata.is_folder, **kwargs)
+        return cls(path_metadata.materialized_path, _ids=_ids, folder=path_metadata.is_folder, **kwargs)  # type: ignore
 
     def __init__(self,
                  path: str,
                  _ids: typing.Sequence=(),
                  prepend: str=None,
-                 folder: bool=None):
-        self.__class__.generic_path_validation(path)
+                 folder: bool=None, **kwargs) -> None:
+        # TODO: Should probably be a static method
+        self.__class__.generic_path_validation(path)  # type: ignore
 
         self._orig_path = path
 
@@ -284,7 +285,7 @@ class WaterButlerPath:
         :param _id: the id of the child entity (defaults to None)
         :param bool folder: whether or not the child is a folder (defaults to False)
         """
-        return self.__class__.from_parts(
+        return self.__class__.from_parts(  # type: ignore
             self.parts + [self.PART_CLASS(name, _id=_id)],
             folder=folder, prepend=self._prepend
         )

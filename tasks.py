@@ -54,7 +54,7 @@ def mypy(ctx):
     These default options are aimed at a newly converted codebase. See:
       http://mypy.readthedocs.io/en/latest/command_line.html#ignore-missing-imports
     """
-    ctx.run('mypy -i --follow-imports silent --ignore-missing-imports waterbutler/', pty=True)
+    ctx.run('mypy -i --follow-imports silent --ignore-missing-imports --python-version 3.5 waterbutler/', pty=True)
 
 
 @task

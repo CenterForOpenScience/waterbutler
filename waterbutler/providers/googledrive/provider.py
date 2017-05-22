@@ -1,5 +1,5 @@
 import functools
-import http
+from http import HTTPStatus
 import json
 import os
 import typing
@@ -29,7 +29,8 @@ def clean_query(query: str):
 
 class GoogleDrivePathPart(wb_path.WaterButlerPathPart):
     DECODE = parse.unquote
-    ENCODE = functools.partial(parse.quote, safe='')
+    # TODO: mypy lacks a syntax to define kwargs for callables
+    ENCODE = functools.partial(parse.quote, safe='')  # type: ignore
 
 
 class GoogleDrivePath(wb_path.WaterButlerPath):
@@ -60,7 +61,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     BASE_URL = settings.BASE_URL
     FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 
-    def __init__(self, auth: dict, credentials: dict, settings: dict):
+    def __init__(self, auth: dict, credentials: dict, settings: dict) -> None:
         super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
@@ -176,11 +177,11 @@ class GoogleDriveProvider(provider.BaseProvider):
             data = await resp.json()
         return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
 
-    async def download(self,
+    async def download(self,  # type: ignore
                        path: wb_path.WaterButlerPath,
                        revision: str=None,
                        range: typing.Tuple=None,
-                       **kwargs) -> streams.BaseStream:
+                       **kwargs) -> streams.BaseStream:  # type: ignore
         if revision and not revision.endswith(settings.DRIVE_IGNORE_VERSION):
             metadata = await self.metadata(path, revision=revision)
             self.metrics.add('download.got_supported_revision', True)
@@ -190,30 +191,32 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         download_resp = await self.make_request(
             'GET',
-            metadata.raw.get('downloadUrl') or drive_utils.get_export_link(metadata.raw),
+            metadata.raw.get('downloadUrl') or drive_utils.get_export_link(metadata.raw),  # type: ignore
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 
-        if metadata.size is not None:
-            return streams.ResponseStreamReader(download_resp, size=metadata.size)
+        if metadata.size is not None:  # type: ignore
+            return streams.ResponseStreamReader(download_resp, size=metadata.size)  # type: ignore
 
         # google docs, not drive files, have no way to get the file size
         # must buffer the entire file into memory
         stream = streams.StringStream(await download_resp.read())
         if download_resp.headers.get('Content-Type'):
-            stream.content_type = download_resp.headers['Content-Type']
-        stream.name = metadata.export_name
+            # TODO: Add these properties to base class officially, instead of as one-off
+            stream.content_type = download_resp.headers['Content-Type']  # type: ignore
+        stream.name = metadata.export_name  # type: ignore
         return stream
 
-    async def upload(self, stream, path: wb_path.WaterButlerPath, **kwargs) -> typing.Tuple[GoogleDriveFileMetadata, bool]:
+    async def upload(self, stream, path: wb_path.WaterButlerPath, *args, **kwargs) \
+            -> typing.Tuple[GoogleDriveFileMetadata, bool]:
         assert path.is_file
 
         if path.identifier:
-            segments = (path.identifier,)
+            segments = [path.identifier]
         else:
-            segments = ()
+            segments = []
 
         upload_metadata = self._build_upload_metadata(path.parent.identifier, path.name)
         upload_id = await self._start_resumable_upload(not path.identifier, segments, stream.size, upload_metadata)
@@ -221,13 +224,13 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         return GoogleDriveFileMetadata(data, path), path.identifier is None
 
-    async def delete(self,
+    async def delete(self,  # type: ignore
                      path: wb_path.WaterButlerPath,
                      confirm_delete: int=0,
                      **kwargs) -> None:
         """Given a WaterButlerPath, delete that path
 
-        :param WaterButlerPath: Path to be deleted
+        :param WaterButlerPath path: Path to be deleted
         :param int confirm_delete: Must be 1 to confirm root folder delete
         :rtype: None
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
@@ -274,12 +277,11 @@ class GoogleDriveProvider(provider.BaseProvider):
             queries.append("title = '{}'".format(clean_query(title)))
         return ' and '.join(queries)
 
-    async def metadata(self,
+    async def metadata(self,  # type: ignore
                        path: wb_path.WaterButlerPath,
                        raw: bool = False,
                        revision=None,
-                       **kwargs) -> typing.Union[dict, BaseGoogleDriveMetadata, typing.List[BaseGoogleDriveMetadata]]:
-        # TODO: Work out correct return type (may be file vs folder discrepancy)
+                       **kwargs) -> typing.Union[dict, BaseGoogleDriveMetadata, typing.List[typing.Union[BaseGoogleDriveMetadata, dict]]]:
         if path.identifier is None:
             raise exceptions.MetadataError('{} not found'.format(str(path)), code=404)
 
@@ -309,7 +311,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         # Use dummy ID if no revisions found
         return [GoogleDriveRevision({
-            'modifiedDate': metadata['modifiedDate'],
+            'modifiedDate': metadata['modifiedDate'],  # type: ignore
             'id': data['etag'] + settings.DRIVE_IGNORE_VERSION,
         })]
 
@@ -414,7 +416,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                 try:
                     item_id = (await resp.json())['items'][0]['id']
                 except (KeyError, IndexError):
-                    raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
+                    raise exceptions.MetadataError('{} not found'.format(str(path)), code=HTTPStatus.NOT_FOUND)
 
         return item_id
 
@@ -471,7 +473,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             except (KeyError, IndexError):
                 if parts:
                     # if we can't find an intermediate path part, that's an error
-                    raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
+                    raise exceptions.MetadataError('{} not found'.format(str(path)), code=HTTPStatus.NOT_FOUND)
                 return ret + [{
                     'id': None,
                     'title': part_name,
@@ -553,7 +555,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return self._serialize_item(path, item, raw=raw)
 
     async def _folder_metadata(self, path: wb_path.WaterButlerPath, raw: bool=False) \
-            -> typing.List[BaseGoogleDriveMetadata]:
+            -> typing.List[typing.Union[BaseGoogleDriveMetadata, dict]]:
         query = self._build_query(path.identifier)
         built_url = self.build_url('files', q=query, alt='json', maxResults=1000)
         full_resp = []
@@ -594,7 +596,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         if drive_utils.is_docs_file(data):
             return await self._handle_docs_versioning(path, data, raw=raw)
 
-        return self._serialize_item(path, data, raw=raw)
+        return self._serialize_item(path, data, raw=raw)  # type: ignore
 
     async def _delete_folder_contents(self, path: wb_path.WaterButlerPath) -> None:
         """Given a WaterButlerPath, delete all contents of folder
@@ -619,7 +621,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         try:
             child_ids = (await resp.json())['items']
         except (KeyError, IndexError):
-            raise exceptions.MetadataError('{} not found'.format(str(path)), code=http.client.NOT_FOUND)
+            raise exceptions.MetadataError('{} not found'.format(str(path)), code=HTTPStatus.NOT_FOUND)
 
         for child in child_ids:
             await self.make_request(

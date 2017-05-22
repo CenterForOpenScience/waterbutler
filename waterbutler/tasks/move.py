@@ -22,7 +22,7 @@ async def move(src_bundle, dest_bundle, request: dict=None, start_time=None, **k
     logger.info('Starting moving {!r}, {!r} to {!r}, {!r}'
                 .format(src_path, src_provider, dest_path, dest_provider))
 
-    metadata, errors = None, []
+    metadata, errors = None, []  # type: ignore
     try:
         metadata, created = await src_provider.move(dest_provider, src_path, dest_path, **kwargs)
     except Exception as e:
