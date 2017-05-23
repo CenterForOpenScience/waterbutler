@@ -19,15 +19,15 @@ class WaterButlerPathPart:
     DECODE = lambda x: x  # type: typing.Callable[[str], str]
     ENCODE = lambda x: x  # type: typing.Callable[[str], str]
 
-    def __init__(self, part: str, *, _id=None) -> None:
+    def __init__(self, part: str, *, _id: str=None) -> None:
         self._id = _id
-        self._count = 0
+        self._count = 0  # type: int
         self._orig_id = _id
         self._orig_part = part
         self._name, self._ext = os.path.splitext(self.original_value)
 
     @property
-    def identifier(self):
+    def identifier(self) -> str:
         return self._id
 
     @property
@@ -37,29 +37,29 @@ class WaterButlerPathPart:
         return'{}{}'.format(self._name, self._ext)
 
     @property
-    def raw(self):
+    def raw(self) -> str:
         """ The `value` as passed through the `ENCODE` function"""
-        return self.__class__.ENCODE(self.value)
+        return self.__class__.ENCODE(self.value)  # type: ignore
 
     @property
-    def original_value(self):
-        return self.__class__.DECODE(self._orig_part)
+    def original_value(self) -> str:
+        return self.__class__.DECODE(self._orig_part)  # type: ignore
 
     @property
-    def original_raw(self):
+    def original_raw(self) -> str:
         return self._orig_part
 
     @property
-    def ext(self):
+    def ext(self) -> str:
         return self._ext
 
-    def increment_name(self, _id=None):
+    def increment_name(self, _id=None) -> 'WaterButlerPathPart':
         self._id = _id
         self._count += 1
         return self
 
-    def renamed(self, name):
-        return self.__class__(self.__class__.ENCODE(name), _id=self._id)
+    def renamed(self, name: str) -> 'WaterButlerPathPart':
+        return self.__class__(self.__class__.ENCODE(name), _id=self._id)  # type: ignore
 
     def __repr__(self):
         return '{}({!r}, count={})'.format(self.__class__.__name__, self._orig_part, self._count)
@@ -103,7 +103,7 @@ class WaterButlerPath:
     PART_CLASS = WaterButlerPathPart
 
     @classmethod
-    def generic_path_validation(cls, path: str):
+    def generic_path_validation(cls, path: str) -> None:
         """Validates a WaterButler specific path, e.g. /folder/file.txt, /folder/
         :param str path: WaterButler path
         """
@@ -121,7 +121,7 @@ class WaterButlerPath:
             raise exceptions.InvalidPathError('Invalid path \'{}\' specified'.format(absolute_path))
 
     @classmethod
-    def validate_folder(cls, path):
+    def validate_folder(cls, path: 'WaterButlerPath') -> None:
         if not path.is_dir:
             raise exceptions.CreateFolderError('Path must be a directory', code=400)
 
@@ -290,11 +290,11 @@ class WaterButlerPath:
             folder=folder, prepend=self._prepend
         )
 
-    def increment_name(self):
+    def increment_name(self) -> 'WaterButlerPath':
         self._parts[-1].increment_name()
         return self
 
-    def rename(self, name):
+    def rename(self, name) -> 'WaterButlerPath':
         self._parts[-1] = self._parts[-1].renamed(name)
         return self
 
