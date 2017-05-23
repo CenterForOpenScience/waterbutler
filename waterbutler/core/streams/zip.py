@@ -5,9 +5,9 @@ import time
 import zipfile
 import zlib
 
-from waterbutler.core.streams import BaseStream
-from waterbutler.core.streams import MultiStream
-from waterbutler.core.streams import StringStream
+from waterbutler.core.streams.base import BaseStream
+from waterbutler.core.streams.base import MultiStream
+from waterbutler.core.streams.base import StringStream
 
 # for some reason python3.5 has this as (1 << 31) - 1, which is 0x7fffffff
 ZIP64_LIMIT = 0xffffffff - 1

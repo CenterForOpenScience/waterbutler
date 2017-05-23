@@ -3,7 +3,7 @@ import asyncio
 
 import agent
 
-from waterbutler.core.streams import BaseStream
+from waterbutler.core.streams.base import BaseStream
 
 
 class FileStreamReader(BaseStream):
