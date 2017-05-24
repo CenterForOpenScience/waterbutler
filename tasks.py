@@ -44,17 +44,18 @@ def install(ctx, develop=False, pty=True):
 
 @task
 def flake(ctx):
+    """
+    Run style and syntax checker. Follows options defined in setup.cfg
+    """
     ctx.run('flake8 .', pty=True)
 
 
 @task
 def mypy(ctx):
     """
-    Check python types using mypy (additional level of linting)
-    These default options are aimed at a newly converted codebase. See:
-      http://mypy.readthedocs.io/en/latest/command_line.html#ignore-missing-imports
+    Check python types using mypy (additional level of linting). Follows options defined in setup.cfg
     """
-    ctx.run('mypy -i --follow-imports silent --ignore-missing-imports --python-version 3.5 waterbutler/', pty=True)
+    ctx.run('mypy waterbutler/', pty=True)
 
 
 @task
