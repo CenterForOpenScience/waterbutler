@@ -250,8 +250,8 @@ class GitLabProvider(provider.BaseProvider):
             raise exceptions.MetadataError('error on fetch metadata from path {0}'
                     .format(path.full_path))
 
-        async def revisions(self, path, sha=None, **kwargs):
-            """Get past versions of the request file.
+    async def revisions(self, path, sha=None, **kwargs):
+        """Get past versions of the request file.
 
         :param str path: The user specified path
         :param str sha: The sha of the revision
