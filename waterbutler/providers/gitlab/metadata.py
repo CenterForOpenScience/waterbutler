@@ -114,20 +114,20 @@ class GitLabRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def version_identifier(self):
-        return 'ref'
+        return 'commitSha'
 
     @property
     def modified(self):
-        return self.raw['commit']['author']['date']
+        return self.raw['committed_date']
 
     @property
     def version(self):
-        return self.file_sha
+        return self.raw['id']
 
     @property
     def extra(self):
         return {
                 'user': {
-                    'name': self.raw['commit']['committer']['name']
+                    'name': self.raw['author_name'],
                     },
                 }

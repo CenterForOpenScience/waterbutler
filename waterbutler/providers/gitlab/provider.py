@@ -56,7 +56,7 @@ class GitLabProvider(provider.BaseProvider):
 
         :rtype: :class:`dict` with `PRIVATE-TOKEN` token
         """
-        return {'PRIVATE-TOKEN': str(self.token), 'Accept': 'text/json'}
+        return {'PRIVATE-TOKEN': str(self.token)}
 
     @property
     def committer(self):
@@ -87,7 +87,10 @@ class GitLabProvider(provider.BaseProvider):
 
     async def _fetch_tree_contents(self, path):
 
-        url = self.build_repo_url('repository', 'tree', path=path.raw_path, ref=path.branch_name)
+        if path.is_root:
+            url = self.build_repo_url('repository', 'tree', ref=path.branch_name)
+        else:
+            url = self.build_repo_url('repository', 'tree', path=path.raw_path, ref=path.branch_name)
 
         resp = await self.make_request(
                 'GET',
@@ -136,10 +139,7 @@ class GitLabProvider(provider.BaseProvider):
         file_sha = kwargs.get('fileSha')
 
         if not branch_name and not file_sha:
-            if 'revisions' in kwargs:
-                branch_name = kwargs['revisions']
-            else:
-                branch_name = await self._fetch_default_branch()
+            branch_name = await self._fetch_default_branch()
 
         if str_path == '/':
             return GitLabPath(str_path, _ids=[(branch_name, file_sha)])
@@ -259,10 +259,9 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: :class:`list` of :class:`GitLabRevision`
         :raises: :class:`waterbutler.core.exceptions.RevisionsError`
         """
-        #TODO:
         resp = await self.make_request(
                 'GET',
-                self.build_repo_url('commits', path=path.path, sha=sha or path.identifier),
+                self.build_repo_url('commits', path=path.path),
                 expects=(200,),
                 throws=exceptions.RevisionsError
                 )
@@ -290,9 +289,7 @@ class GitLabProvider(provider.BaseProvider):
 
     async def _metadata_file(self, path, **kwargs):
 
-        resp = await self._fetch_file_contents(path)
-
-        data = await resp.json()
+        data = await self._fetch_file_contents(path)
 
         if not data:
             raise exceptions.NotFoundError(str(path))
