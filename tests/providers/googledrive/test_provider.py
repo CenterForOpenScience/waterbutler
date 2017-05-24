@@ -199,67 +199,7 @@ class TestValidatePath:
         assert wb_path_v1 == wb_path_v0
 
 
-class TestCRUD:
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_download_drive(self, provider):
-        body = b'we love you conrad'
-        item = fixtures.list_file['items'][0]
-        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
-
-        download_file_url = item['downloadUrl']
-        metadata_url = provider.build_url('files', path.identifier)
-
-        aiohttpretty.register_json_uri('GET', metadata_url, body=item)
-        aiohttpretty.register_uri('GET', download_file_url, body=body, auto_length=True)
-
-        result = await provider.download(path)
-
-        content = await result.read()
-        assert content == body
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_download_drive_revision(self, provider):
-        revision = 'oldest'
-        body = b'we love you conrad'
-        item = fixtures.list_file['items'][0]
-        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
-
-        download_file_url = item['downloadUrl']
-        metadata_url = provider.build_url('files', path.identifier)
-        revision_url = provider.build_url('files', item['id'], 'revisions', revision)
-
-        aiohttpretty.register_json_uri('GET', revision_url, body=item)
-        aiohttpretty.register_json_uri('GET', metadata_url, body=item)
-        aiohttpretty.register_uri('GET', download_file_url, body=body, auto_length=True)
-
-        result = await provider.download(path, revision=revision)
-        content = await result.read()
-
-        assert content == body
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_download_docs(self, provider):
-        body = b'we love you conrad'
-        item = fixtures.docs_file_metadata
-        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
-
-        metadata_url = provider.build_url('files', path.identifier)
-        revisions_url = provider.build_url('files', item['id'], 'revisions')
-        download_file_url = item['exportLinks']['application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-
-        aiohttpretty.register_json_uri('GET', metadata_url, body=item)
-        aiohttpretty.register_uri('GET', download_file_url, body=body, auto_length=True)
-        aiohttpretty.register_json_uri('GET', revisions_url, body={'items': [{'id': 'foo'}]})
-
-        result = await provider.download(path)
-        assert result.name == 'version-test.docx'
-
-        content = await result.read()
-        assert content == body
+class TestUpload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -347,6 +287,9 @@ class TestCRUD:
         expected = GoogleDriveFileMetadata(item, path)
         assert result == expected
 
+
+class TestDelete:
+
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_delete(self, provider):
@@ -387,6 +330,69 @@ class TestCRUD:
     async def test_delete_not_existing(self, provider):
         with pytest.raises(exceptions.NotFoundError):
             await provider.delete(WaterButlerPath('/foobar/'))
+
+
+class TestDownload:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_drive(self, provider):
+        body = b'we love you conrad'
+        item = fixtures.list_file['items'][0]
+        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
+
+        download_file_url = item['downloadUrl']
+        metadata_url = provider.build_url('files', path.identifier)
+
+        aiohttpretty.register_json_uri('GET', metadata_url, body=item)
+        aiohttpretty.register_uri('GET', download_file_url, body=body, auto_length=True)
+
+        result = await provider.download(path)
+
+        content = await result.read()
+        assert content == body
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_drive_revision(self, provider):
+        revision = 'oldest'
+        body = b'we love you conrad'
+        item = fixtures.list_file['items'][0]
+        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
+
+        download_file_url = item['downloadUrl']
+        metadata_url = provider.build_url('files', path.identifier)
+        revision_url = provider.build_url('files', item['id'], 'revisions', revision)
+
+        aiohttpretty.register_json_uri('GET', revision_url, body=item)
+        aiohttpretty.register_json_uri('GET', metadata_url, body=item)
+        aiohttpretty.register_uri('GET', download_file_url, body=body, auto_length=True)
+
+        result = await provider.download(path, revision=revision)
+        content = await result.read()
+
+        assert content == body
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_docs(self, provider):
+        body = b'we love you conrad'
+        item = fixtures.docs_file_metadata
+        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
+
+        metadata_url = provider.build_url('files', path.identifier)
+        revisions_url = provider.build_url('files', item['id'], 'revisions')
+        download_file_url = item['exportLinks']['application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+
+        aiohttpretty.register_json_uri('GET', metadata_url, body=item)
+        aiohttpretty.register_uri('GET', download_file_url, body=body, auto_length=True)
+        aiohttpretty.register_json_uri('GET', revisions_url, body={'items': [{'id': 'foo'}]})
+
+        result = await provider.download(path)
+        assert result.name == 'version-test.docx'
+
+        content = await result.read()
+        assert content == body
 
 
 class TestMetadata:
