@@ -1,16 +1,13 @@
+import os
+import json
+import typing
 import aiohttp
 from http import HTTPStatus
-import json
-import os
-import typing
 
-
-from waterbutler.core import exceptions
-from waterbutler.core import provider
 from waterbutler.core import streams
-
+from waterbutler.core import provider
+from waterbutler.core import exceptions
 from waterbutler.core import path as wb_path
-
 from waterbutler.providers.box import settings
 from waterbutler.providers.box.metadata import (BaseBoxMetadata,
                                                 BoxFileMetadata,

@@ -1,11 +1,10 @@
-from http import HTTPStatus
 import json
 import typing
+from http import HTTPStatus
 
-from waterbutler.core import exceptions
-from waterbutler.core import provider
 from waterbutler.core import streams
-
+from waterbutler.core import provider
+from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.dropbox import settings

@@ -1,8 +1,9 @@
-import itertools
 import os
+import itertools
 import typing  # noqa
 
-from waterbutler.core import exceptions, metadata
+from waterbutler.core import metadata
+from waterbutler.core import exceptions
 
 
 class WaterButlerPathPart:

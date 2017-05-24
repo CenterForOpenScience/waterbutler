@@ -1,16 +1,16 @@
-import functools
-from http import HTTPStatus
-import json
 import os
+import json
 import typing
+import functools
 from urllib import parse
+from http import HTTPStatus
 
 import furl
 
+from waterbutler.core import streams
+from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core import path as wb_path
-from waterbutler.core import provider
-from waterbutler.core import streams
 
 from waterbutler.providers.googledrive import settings
 from waterbutler.providers.googledrive import utils as drive_utils
