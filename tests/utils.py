@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 import copy
 import shutil
 import tempfile
@@ -16,6 +17,10 @@ from waterbutler.core.path import WaterButlerPath
 
 
 class MockCoroutine(mock.Mock):
+
+    if sys.version_info >= (3, 5, 3):
+        _is_coroutine = asyncio.coroutines._is_coroutine
+
     async def __call__(self, *args, **kwargs):
         return super().__call__(*args, **kwargs)
 

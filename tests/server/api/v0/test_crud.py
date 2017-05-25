@@ -208,7 +208,7 @@ class TestCrudHandler(utils.HandlerTestCase):
         assert len(calls) == 1
         args, kwargs = calls[0]
         assert isinstance(args[0], streams.RequestStreamReader)
-        streamed = asyncio.new_event_loop().run_until_complete(args[0].read())
+        streamed = yield args[0].read()
         assert streamed == data
         assert kwargs['action'] == 'upload'
         assert str(kwargs['path']) == '/roger.png'
