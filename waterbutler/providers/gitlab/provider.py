@@ -259,9 +259,10 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: :class:`list` of :class:`GitLabRevision`
         :raises: :class:`waterbutler.core.exceptions.RevisionsError`
         """
+        url = self.build_repo_url('repository', 'commits', path=path.path)
         resp = await self.make_request(
                 'GET',
-                self.build_repo_url('commits', path=path.path),
+                url,
                 expects=(200,),
                 throws=exceptions.RevisionsError
                 )
@@ -294,7 +295,14 @@ class GitLabProvider(provider.BaseProvider):
         if not data:
             raise exceptions.NotFoundError(str(path))
 
-        data = {'name': data['file_name'], 'id': data['blob_id'],
+        file_name = data['file_name']
+
+        data = {'name': file_name, 'id': data['blob_id'],
                 'path': data['file_path'], 'size': data['size']}
+
+        mimetype = mimetypes.guess_type(file_name)[0]
+
+        if mimetype:
+            data['mimetype'] = mimetype
 
         return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)

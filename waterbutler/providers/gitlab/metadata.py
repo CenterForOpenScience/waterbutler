@@ -62,9 +62,8 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
         self.host = host
         self.owner = owner
         self.repo = repo
-        self.file_size = 0
-        if 'size' in raw:
-            self.file_size = raw['size']
+        self.file_size = raw.get('size', 0)
+        self.mimetype = raw.get('mimetype', 'text/plain')
 
     @property
     def modified(self):
@@ -76,7 +75,7 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
     @property
     def content_type(self):
-        return None
+        return self.mimetype
 
     @property
     def size(self):
