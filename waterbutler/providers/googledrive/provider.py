@@ -73,6 +73,10 @@ class GoogleDriveProvider(provider.BaseProvider):
     BASE_URL = settings.BASE_URL
     FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 
+    # https://developers.google.com/drive/v2/web/about-permissions#roles
+    # 'reader' and 'commenter' are not authorized to access the revisions list
+    ROLES_ALLOWING_REVISIONS = ['owner', 'organizer', 'writer']
+
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
@@ -667,7 +671,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         user_role = data['userPermission']['role']
         self.metrics.add('_file_metadata.user_role', user_role)
-        can_access_revisions = user_role in ('owner')
+        can_access_revisions = user_role in self.ROLES_ALLOWING_REVISIONS
         if drive_utils.is_docs_file(data):
             if can_access_revisions:
                 return await self._handle_docs_versioning(path, data, raw=raw)
