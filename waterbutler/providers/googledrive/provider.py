@@ -627,6 +627,9 @@ class GoogleDriveProvider(provider.BaseProvider):
         ``_file_metadata.revision_is_valid``: if a revision was given, was it valid? A revision is
         "valid" if it doesn't end with our sentinal string (`settings.DRIVE_IGNORE_VERSION`).
 
+        ``_file_metadata.user_role``: What role did the user possess? Helps identify other roles
+        for which revision information isn't available.
+
         :param GoogleDrivePath path: the path of the file whose metadata is being requested
         :param str revision: a string representing the ID of the revision (default: `None`)
         :param bool raw: should we return the raw response object from the GDrive API?
@@ -662,6 +665,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         if revision and valid_revision:
             return GoogleDriveFileRevisionMetadata(data, path)
 
+        self.metrics.add('_file_metadata.user_role', data['userPermission']['role'])
         can_access_revisions = data['userPermission']['role'] not in ('reader', 'commenter')
         if drive_utils.is_docs_file(data):
             if can_access_revisions:
