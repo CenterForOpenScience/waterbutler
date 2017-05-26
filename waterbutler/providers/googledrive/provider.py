@@ -665,8 +665,9 @@ class GoogleDriveProvider(provider.BaseProvider):
         if revision and valid_revision:
             return GoogleDriveFileRevisionMetadata(data, path)
 
-        self.metrics.add('_file_metadata.user_role', data['userPermission']['role'])
-        can_access_revisions = data['userPermission']['role'] not in ('reader', 'commenter')
+        user_role = data['userPermission']['role']
+        self.metrics.add('_file_metadata.user_role', user_role)
+        can_access_revisions = user_role in ('owner')
         if drive_utils.is_docs_file(data):
             if can_access_revisions:
                 return await self._handle_docs_versioning(path, data, raw=raw)
