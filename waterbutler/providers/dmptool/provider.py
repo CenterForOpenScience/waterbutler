@@ -37,9 +37,9 @@ class DmptoolProvider(provider.BaseProvider):
         plans = await self._dmptool_plans()
         return [DmptoolFileMetadata(plan) for plan in plans]
 
-    async def _file_metadata(self, path):
+    async def _file_metadata(self, plan_id):
 
-        plan_md = await self._dmptool_plan(path)
+        plan_md = await self._dmptool_plan(plan_id)
         return DmptoolFileMetadata(plan_md)
 
     async def metadata(self, path, **kwargs):
@@ -85,7 +85,9 @@ class DmptoolProvider(provider.BaseProvider):
 
         stream = streams.StringStream(pdf)
         stream.content_type = 'application/pdf'
-        stream.name = '{}.pdf'.format(plan_id)
+
+        plan_file_md = await self._file_metadata(plan_id)
+        stream.name = plan_file_md.name
 
         return stream
 
@@ -100,7 +102,10 @@ class DmptoolProvider(provider.BaseProvider):
         else:
             try:
                 plan_id = int(path[1:])
-                wbpath = WaterButlerPath('/Plan_{}.pdf'.format(plan_id), _ids=('/', plan_id))
+                plan_file_md = await self._file_metadata(plan_id)
+
+                print("validate_path.plan_file_md.name: {}".format(plan_file_md.name))
+                wbpath = WaterButlerPath("/" + plan_file_md.name, _ids=('/', plan_id))
             except Exception as e:
                 raise exceptions.NotFoundError(path)
 
