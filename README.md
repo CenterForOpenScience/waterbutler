@@ -4,6 +4,7 @@
 
 [![Documentation Status](https://readthedocs.org/projects/waterbutler/badge/?version=latest)](http://waterbutler.readthedocs.org/en/latest/?badge=latest)
 [![Code Climate](https://codeclimate.com/github/CenterForOpenScience/waterbutler/badges/gpa.svg)](https://codeclimate.com/github/CenterForOpenScience/waterbutler)
+[![Coverage Status](https://coveralls.io/repos/github/CenterForOpenScience/waterbutler/badge.svg)](https://coveralls.io/github/CenterForOpenScience/waterbutler)
 
 `master` Build Status: [![Build Status](https://travis-ci.org/CenterForOpenScience/waterbutler.svg?branch=master)](https://travis-ci.org/CenterForOpenScience/waterbutler)
 
