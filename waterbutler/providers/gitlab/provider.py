@@ -136,7 +136,7 @@ class GitLabProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
 
-        branch_name = kwargs.get('ref') or kwargs.get('branch')
+        branch_name = kwargs.get('ref') or kwargs.get('branch') or kwargs.get('revision')
         file_sha = kwargs.get('fileSha')
         commit_sha = kwargs.get('commitSha')
 
@@ -265,7 +265,7 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: :class:`list` of :class:`GitLabRevision`
         :raises: :class:`waterbutler.core.exceptions.RevisionsError`
         """
-        url = self.build_repo_url('repository', 'commits', path=path.path)
+        url = self.build_repo_url('repository', 'commits', path=path.path, ref_name=path.branch_name)
         resp = await self.make_request(
                 'GET',
                 url,
