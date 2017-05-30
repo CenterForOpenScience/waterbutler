@@ -77,29 +77,30 @@ class GitHubProvider(provider.BaseProvider):
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
-        branch_ref, ref_from = None, None
+        branch_ref, ref_from = None, []
         if kwargs.get('ref'):
             branch_ref = kwargs.get('ref')
-            ref_from = 'query_ref'
-        elif kwargs.get('branch'):
+            ref_from += ['query_ref']
+
+        if kwargs.get('branch'):
             branch_ref = kwargs.get('branch')
-            ref_from = 'query_branch'
+            ref_from += ['query_branch']
         else:
             branch_ref = self.default_branch
-            ref_from = 'default_branch'
+            ref_from += ['default_branch']
         if isinstance(branch_ref, list):
             raise exceptions.InvalidParameters('Only one ref or branch may be given.')
-        self.metrics.add('branch_ref_from', ref_from)
+        self.metrics.add('branch_ref_from', ','.join(ref_from))
 
         if path == '/':
             return GitHubPath(path, _ids=[(branch_ref, '')])
 
         branch_data = await self._fetch_branch(branch_ref)
-
         # throws Not Found if path not in tree
         await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
 
         path = GitHubPath(path)
+        print(self.default_branch)
         for part in path.parts:
             part._id = (branch_ref, None)
 
