@@ -79,9 +79,12 @@ class GitHubProvider(provider.BaseProvider):
 
         branch_ref, ref_from = None, None
         if kwargs.get('ref'):
-            branch_ref = kwargs.get('ref')
+            ref = kwargs.get('ref')
             ref_from = 'query_ref'
-        elif kwargs.get('branch'):
+            if isinstance(ref, list):
+                raise exceptions.InvalidParameters('Only one ref or branch may be given.')
+
+        if kwargs.get('branch'):
             branch_ref = kwargs.get('branch')
             ref_from = 'query_branch'
         else:
