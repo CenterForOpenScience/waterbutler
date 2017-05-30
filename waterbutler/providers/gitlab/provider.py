@@ -135,18 +135,20 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: GitLabPath
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
+
         branch_name = kwargs.get('ref') or kwargs.get('branch')
         file_sha = kwargs.get('fileSha')
+        commit_sha = kwargs.get('commitSha')
 
         if not branch_name and not file_sha:
             branch_name = await self._fetch_default_branch()
 
         if str_path == '/':
-            return GitLabPath(str_path, _ids=[(branch_name, file_sha)])
+            return GitLabPath(str_path, _ids=[(branch_name, file_sha, commit_sha)])
 
-        path = GitLabPath(str_path, _ids=[(branch_name, file_sha)])
+        path = GitLabPath(str_path, _ids=[(branch_name, file_sha, commit_sha)])
         for part in path.parts:
-            part._id = (branch_name, file_sha)
+            part._id = (branch_name, file_sha, commit_sha)
 
         data = await self._fetch_tree_contents(path.parent)
 
@@ -189,16 +191,20 @@ class GitLabProvider(provider.BaseProvider):
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
 
-    async def download(self, path, revision=None, **kwargs):
+    async def download(self, path, **kwargs):
         """Get the stream to the specified file on gitlab.
 
         :param str path: The path to the file on gitlab
-        :param str revision: The revision of the file on gitlab
-        :param dict kwargs: Must have `branch`
+        :param dict kwargs: Ignored
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
-        url = self.build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
+        url = ""
+
+        if path.commit_sha:
+            url = self.build_repo_url('repository', 'files', path.full_path, ref=path.commit_sha)
+        else:
+            url = self.build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
 
         resp = await self.make_request(
                 'GET',

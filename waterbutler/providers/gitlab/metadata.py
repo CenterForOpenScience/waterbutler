@@ -27,9 +27,14 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
         return self._path_obj.branch_name
 
     @property
+    def commit_sha(self):
+        return self._path_obj.commit_sha
+
+    @property
     def extra(self):
         return {
-                'ref': self.branch_name
+                'ref': self.branch_name,
+                'commitSha': self.commit_sha,
                 }
 
     def build_path(self):
@@ -39,9 +44,11 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
         """Update JSON-API links to add branch, if available"""
         links = super()._json_api_links(resource)
 
-        ref = None
+        ref = {}
         if self.branch_name is not None:
-            ref = {'branch': self.branch_name}
+            ref['branch'] = self.branch_name
+        if self.commit_sha is not None:
+            ref['commitSha'] = self.commit_sha
 
         if ref is not None:
             for action, link in links.items():
