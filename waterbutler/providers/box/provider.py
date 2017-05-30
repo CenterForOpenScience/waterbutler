@@ -17,12 +17,23 @@ class BoxProvider(provider.BaseProvider):
     """Provider for the Box.com cloud storage service.
 
     API docs: https://box-content.readme.io/reference
+
     """
 
     NAME = 'box'
     BASE_URL = settings.BASE_URL
 
     def __init__(self, auth, credentials, settings):
+        """
+        Credentials::
+
+            * ``token``: api access token
+
+        Settings::
+
+            * ``folder``: id of the folder to use as root.  Box account root is always 0.
+
+        """
         super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
@@ -430,6 +441,7 @@ class BoxProvider(provider.BaseProvider):
                 page_count += 1
                 if page_total is None:
                     page_total = ((resp_json['total_count'] - 1) // limit) + 1  # ceiling div
+        self.metrics.add('metadata.folder.pages', page_total)
         return full_resp
 
     def _serialize_item(self, item, path):

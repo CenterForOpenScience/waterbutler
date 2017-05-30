@@ -24,6 +24,16 @@ QUERY_METHODS = ('GET', 'DELETE')
 
 
 class OSFStorageProvider(provider.BaseProvider):
+    """Provider for the Open Science Framework's cloud storage service.
+
+    ``osfstorage`` is actually a pair of providers.  One is the metadata provider, the other is the
+    actual storage provider, where the data is kept.  The OSF is the metadata provider.  Any
+    metadata queries about objects in ``osfstorage`` are routed to the OSF to be answered.  For
+    https://osf.io, the storage provider is ``cloudfiles``. For local testing the ``filesystem``
+    provider is used instead.  Uploads and downloads are routed to and from the storage provider,
+    with additional queries to the metadata provider to set and get metadata about the object.
+    """
+
     __version__ = '0.0.1'
 
     NAME = 'osfstorage'
@@ -136,7 +146,9 @@ class OSFStorageProvider(provider.BaseProvider):
         return isinstance(other, self.__class__)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
+        created = True
         if dest_path.identifier:
+            created = False
             await dest_provider.delete(dest_path)
 
         async with self.signed_request(
@@ -159,10 +171,16 @@ class OSFStorageProvider(provider.BaseProvider):
         if data['kind'] == 'file':
             return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
 
-        return OsfStorageFolderMetadata(data, str(dest_path)), dest_path.identifier is None
+        folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
+        dest_path = await dest_provider.validate_v1_path(data['path'])
+        folder_meta.children = await dest_provider._children_metadata(dest_path)
+
+        return folder_meta, created
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
+        created = True
         if dest_path.identifier:
+            created = False
             await dest_provider.delete(dest_path)
 
         async with self.signed_request(
@@ -185,7 +203,11 @@ class OSFStorageProvider(provider.BaseProvider):
         if data['kind'] == 'file':
             return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
 
-        return OsfStorageFolderMetadata(data, str(dest_path)), dest_path.identifier is None
+        folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
+        dest_path = await dest_provider.validate_v1_path(data['path'])
+        folder_meta.children = await dest_provider._children_metadata(dest_path)
+
+        return folder_meta, created
 
     def build_signed_url(self, method, url, data=None, params=None, ttl=100, **kwargs):
         signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
@@ -216,6 +238,11 @@ class OSFStorageProvider(provider.BaseProvider):
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
+        self.metrics.add('download', {
+            'mode_provided': mode is not None,
+            'version_from': 'revision' if version is None else 'version',
+            'user_logged_in': self.auth.get('id', None) is not None,
+        })
         if version is None:
             # TODO Clean this up
             # version could be 0 here
@@ -246,6 +273,38 @@ class OSFStorageProvider(provider.BaseProvider):
         return await provider.download(**download_kwargs)
 
     async def upload(self, stream, path, **kwargs):
+        """Upload a new file to osfstorage
+
+        When a file is uploaded to osfstorage, WB does a bit of a dance to make sure it gets there
+        reliably.  First we take the stream and add several hash calculators that can determine the
+        hash of the file as it streams through.  We then tee the file so that it's written to a
+        "pending" directory on both local disk and the remote storage provider.  Once that's
+        complete, we determine the file's final location, which will be in another directory (by
+        default called 'complete'), and renamed to its sha256 hash.   We then check to see if a
+        file already exists at that path on the remote storage provider.  If it does, we can skip
+        moving the file (since its already been uploaded) and instead delete the pending file. If
+        it does not, we move the file on the remote storage provider from the pending path to its
+        final path.
+
+        Once this is done the local copy of the file is moved from the pending directory to the
+        complete directory.  The file metadata is sent back to the metadata provider to be recorded.
+        Finally, we schedule two futures to archive the locally complete file.  One copies the file
+        into Amazon Glacier, the other calculates a parity archive, so that the file can be
+        reconstructed if any on-disk corruption happens.  These tasks are scheduled via celery and
+        don't need to complete for the request to finish.
+
+        Finally, WB constructs its metadata response and sends that back to the original request
+        issuer.
+
+        The local file sitting in complete will be archived by the celery tasks at some point in
+        the future.  The archivers do not signal when they have finished their task, so for the time
+        being the local complete files are allowed to accumulate and must be deleted by some
+        external process.  COS currently uses a cron job to delete files older than X days.  If the
+        system is being heavily used, it's possible that the files may be deleted before the
+        archivers are able to run.  To get around this we have another script in the osf.io
+        repository that can audit our files on the remote storage and initiate any missing archives.
+
+        """
         self._create_paths()
 
         pending_name = str(uuid.uuid4())
@@ -330,6 +389,8 @@ class OSFStorageProvider(provider.BaseProvider):
             'version': data['data']['version'],
             'downloads': data['data']['downloads'],
             'checkout': data['data']['checkout'],
+            'modified': data['data']['modified'],
+            'modified_utc': utils.normalize_datetime(data['data']['modified']),
         })
 
         path._parts[-1]._id = metadata['path'].strip('/')
@@ -344,7 +405,9 @@ class OSFStorageProvider(provider.BaseProvider):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
+        self.metrics.add('delete.is_root_delete', path.is_root)
         if path.is_root:
+            self.metrics.add('delete.root_delete_confirmed', confirm_delete == 1)
             if confirm_delete == 1:
                 await self._delete_folder_contents(path)
                 return
@@ -372,6 +435,8 @@ class OSFStorageProvider(provider.BaseProvider):
     async def revisions(self, path, view_only=None, **kwargs):
         if path.identifier is None:
             raise exceptions.MetadataError('File not found', code=404)
+
+        self.metrics.add('revisions', {'got_view_only': view_only is not None})
 
         async with self.signed_request(
             'GET',

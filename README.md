@@ -1,23 +1,22 @@
-<img src=/docs/waterbutler.png?raw=true" width="25%" style="float:left;">
+<img src="/docs/waterbutler.png?raw=true" width="25%" style="float:left;">
+
 # WaterButler
 
 [![Documentation Status](https://readthedocs.org/projects/waterbutler/badge/?version=latest)](http://waterbutler.readthedocs.org/en/latest/?badge=latest)
 [![Code Climate](https://codeclimate.com/github/CenterForOpenScience/waterbutler/badges/gpa.svg)](https://codeclimate.com/github/CenterForOpenScience/waterbutler)
+[![Coverage Status](https://coveralls.io/repos/github/CenterForOpenScience/waterbutler/badge.svg)](https://coveralls.io/github/CenterForOpenScience/waterbutler)
 
 `master` Build Status: [![Build Status](https://travis-ci.org/CenterForOpenScience/waterbutler.svg?branch=master)](https://travis-ci.org/CenterForOpenScience/waterbutler)
 
 `develop` Build Status: [![Build Status](https://travis-ci.org/CenterForOpenScience/waterbutler.svg?branch=develop)](https://travis-ci.org/CenterForOpenScience/waterbutler)
 
+### Compatibility
+
+WaterButler is compatible with Python 3.5 (tested up to 3.5.3) and 3.6.
+
 ### Documentation
 
-*Note: https://readthedocs.org/ is currently unable to build documentation for Python 3.5 projects.*  The documentation available at https://waterbutler.readthedocs.io/en/latest/ is outdated (v0.15.1). For the most up-to-date documentation, build locally. Within your checkout, run:
-
-```bash
-pip install -r doc-requirements.txt
-cd docs
-make
-open _build/html/index.html
-```
+Documentation available at https://waterbutler.readthedocs.io/en/latest/
 
 ### Setting up
 
@@ -41,7 +40,8 @@ After completing the installation of Python 3.5, you must create a virtual envir
 pip install virtualenv
 pip install virtualenvwrapper
 mkvirtualenv --python=python3.5 waterbutler
-pip install invoke==0.11.1
+pip install setuptools==30.4.0
+pip install invoke==0.13.0
 invoke install
 invoke server
 ```
@@ -51,6 +51,21 @@ The above code will get the virtualenv up and running for the first time.  After
 ```bash
 workon waterbutler
 invoke server
+```
+
+Some tasks also require a running celery worker.  You will need to install `rabbitmq` and run a server:
+
+```bash
+brew install rabbitmq
+# on Ubuntu:
+# apt-get install rabbitmq-server
+rabbitmq-server
+```
+
+Then in your WaterButler virtualenv:
+
+```bash
+invoke celery
 ```
 
 ### Configuring
@@ -114,9 +129,15 @@ invoke install --develop
 invoke test
 ```
 
+### Known issues
+
+- Running `invoke install -d` with setuptools v31 or greater can break WaterButler.  The symptom error message is: `"AttributeError: module 'waterbutler' has no attribute '__version__'"`.  If you encounter this, you will need to remove the file `waterbutler-nspkg.pth` from your virtualenv directory, run `pip install setuptools==30.4.0`, then re-run `invoke install -d`.
+
+- `invoke $command` results in `'$command' did not receive all required positional arguments!`: this error message occurs when trying to run WB v0.30.0+ with `invoke<0.13.0`.  Run `pip install invoke==0.13.0`, then retry your command.
+
 ### License
 
-Copyright 2013-2016 Center for Open Science
+Copyright 2013-2017 Center for Open Science
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -132,4 +153,4 @@ limitations under the License.
 
 ### COS is hiring!
 
-Want to help save science? Want to get paid to develop free, open source software? [Check out our openings!](https://cos.io/jobs/)
+Want to help save science? Want to get paid to develop free, open source software? [Check out our openings!](https://cos.io/our-communities/jobs/)
