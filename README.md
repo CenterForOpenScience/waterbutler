@@ -70,6 +70,8 @@ invoke celery
 
 ### Configuring
 
+### For Docker setup use 192.168.168.167 instead of localhost
+
 WaterButler configuration is done through a JSON file (`waterbutler-test.json`) that lives in the `.cos` directory of your home directory.  If this is your first time setting up WaterButler or its sister project, [MFR](https://github.com/CenterForOpenScience/modular-file-renderer/), you probably do not have this directory and will need to create it:
 
 ```bash
