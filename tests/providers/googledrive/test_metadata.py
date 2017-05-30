@@ -63,7 +63,7 @@ def test_file_metadata_docs(basepath):
     assert parsed.name == item['title'] + '.gdoc'
     assert parsed.extra == {'revisionId': item['version'], 'downloadExt': '.docx', 'webView': item['alternateLink']}
     assert parsed.is_google_doc == True
-    assert parsed.export_name == item['title'] + '.docx'
+    assert parsed.export_name == parsed.name + '.docx'
 
 
 def test_folder_metadata():

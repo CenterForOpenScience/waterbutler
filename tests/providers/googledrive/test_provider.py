@@ -384,7 +384,7 @@ class TestDownload:
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path)
-        assert result.name == 'editable_gdoc.docx'
+        assert result.name == 'editable_gdoc.gdoc.docx'
 
         content = await result.read()
         assert content == file_content
@@ -411,7 +411,7 @@ class TestDownload:
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path, revision=self.GDOC_GOOD_REVISION)
-        assert result.name == 'editable_gdoc.docx'
+        assert result.name == 'editable_gdoc.gdoc.docx'
 
         content = await result.read()
         assert content == file_content
@@ -459,7 +459,7 @@ class TestDownload:
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path, revision=self.MAGIC_REVISION)
-        assert result.name == 'editable_gdoc.docx'
+        assert result.name == 'editable_gdoc.gdoc.docx'
 
         content = await result.read()
         assert content == file_content
@@ -485,7 +485,7 @@ class TestDownload:
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path)
-        assert result.name == 'viewable_gdoc.docx'
+        assert result.name == 'viewable_gdoc.gdoc.docx'
 
         content = await result.read()
         assert content == file_content
@@ -529,7 +529,7 @@ class TestDownload:
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path, revision=self.MAGIC_REVISION)
-        assert result.name == 'viewable_gdoc.docx'
+        assert result.name == 'viewable_gdoc.gdoc.docx'
 
         content = await result.read()
         assert content == file_content
