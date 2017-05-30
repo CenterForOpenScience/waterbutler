@@ -69,9 +69,6 @@ class MoveCopyMixin:
             if 'path' not in self.json:
                 raise exceptions.InvalidParameters('Path is required for moves or copies')
 
-            if not self.json['path'].endswith('/'):
-                raise exceptions.InvalidParameters('Path requires a trailing slash to indicate it is a folder')
-
             action = self.json['action']
 
             # Note: attached to self so that _send_hook has access to these
