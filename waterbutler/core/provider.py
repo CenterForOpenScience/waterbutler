@@ -666,16 +666,21 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def path_from_metadata(self,
                            parent_path: wb_path.WaterButlerPath,
                            meta_data: wb_metadata.BaseMetadata) -> wb_path.WaterButlerPath:
-        return parent_path.child(meta_data.name, _id=meta_data.path.strip('/'), folder=meta_data.is_folder)
+        return parent_path.child(meta_data.name, _id=meta_data.path.strip('/'),
+                                 folder=meta_data.is_folder)
 
-    def revisions(self, path: wb_path.WaterButlerPath, **kwargs):
+    async def revisions(self, path: wb_path.WaterButlerPath, **kwargs):
+        """Return a list of `metadata.BaseFileRevisionMetadata` objects representing the revisions
+        available for the file at ``path``.
+        """
         return []  # TODO Raise 405 by default h/t @rliebz
 
-    async def create_folder(self, path: wb_path.WaterButlerPath, **kwargs) -> wb_metadata.BaseFolderMetadata:
+    async def create_folder(self, path: wb_path.WaterButlerPath,
+                            **kwargs) -> wb_metadata.BaseFolderMetadata:
         """Create a folder in the current provider at `path`. Returns a `BaseFolderMetadata` object
         if successful.  May throw a 409 Conflict if a directory with the same name already exists.
 
-        :param str path: user-supplied path to create. must be a directory.
+        :param WaterButlerPath path: User-supplied path to create. Must be a directory.
         :rtype: :class:`waterbutler.core.metadata.BaseFolderMetadata`
         :raises: :class:`waterbutler.core.exceptions.FolderCreationError`
         """

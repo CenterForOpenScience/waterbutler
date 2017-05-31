@@ -147,7 +147,8 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def intra_move(self,
                          dest_provider: provider.BaseProvider,
                          src_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[GoogleDriveFileMetadata, bool]:
+                         dest_path: wb_path.WaterButlerPath) \
+                         -> typing.Tuple[GoogleDriveFileMetadata, bool]:
         self.metrics.add('intra_move.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -174,7 +175,8 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def intra_copy(self,
                          dest_provider: provider.BaseProvider,
                          src_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[GoogleDriveFileMetadata, bool]:
+                         dest_path: wb_path.WaterButlerPath) \
+                         -> typing.Tuple[GoogleDriveFileMetadata, bool]:
         self.metrics.add('intra_copy.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -204,7 +206,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         of the file.  See **Revisions** in the class doctring for an explanation of this provider's
         revision handling.   The actual revision handling is done in `_file_metadata()`.
 
-        Quirks::
+        Quirks:
 
         Google docs don't have a size until they're exported, so WB must download them, then
         re-stream them as a StringStream.
@@ -249,7 +251,8 @@ class GoogleDriveProvider(provider.BaseProvider):
             segments = []
 
         upload_metadata = self._build_upload_metadata(path.parent.identifier, path.name)
-        upload_id = await self._start_resumable_upload(not path.identifier, segments, stream.size, upload_metadata)
+        upload_id = await self._start_resumable_upload(not path.identifier, segments, stream.size,
+                                                       upload_metadata)
         data = await self._finish_resumable_upload(segments, stream, upload_id)
 
         return GoogleDriveFileMetadata(data, path), path.identifier is None
@@ -460,7 +463,8 @@ class GoogleDriveProvider(provider.BaseProvider):
                 try:
                     item_id = (await resp.json())['items'][0]['id']
                 except (KeyError, IndexError):
-                    raise exceptions.MetadataError('{} not found'.format(str(path)), code=HTTPStatus.NOT_FOUND)
+                    raise exceptions.MetadataError('{} not found'.format(str(path)),
+                                                   code=HTTPStatus.NOT_FOUND)
 
         return item_id
 
@@ -517,7 +521,8 @@ class GoogleDriveProvider(provider.BaseProvider):
             except (KeyError, IndexError):
                 if parts:
                     # if we can't find an intermediate path part, that's an error
-                    raise exceptions.MetadataError('{} not found'.format(str(path)), code=HTTPStatus.NOT_FOUND)
+                    raise exceptions.MetadataError('{} not found'.format(str(path)),
+                                                   code=HTTPStatus.NOT_FOUND)
                 return ret + [{
                     'id': None,
                     'title': part_name,
@@ -734,7 +739,8 @@ class GoogleDriveProvider(provider.BaseProvider):
         try:
             child_ids = (await resp.json())['items']
         except (KeyError, IndexError):
-            raise exceptions.MetadataError('{} not found'.format(str(path)), code=HTTPStatus.NOT_FOUND)
+            raise exceptions.MetadataError('{} not found'.format(str(path)),
+                                           code=HTTPStatus.NOT_FOUND)
 
         for child in child_ids:
             await self.make_request(

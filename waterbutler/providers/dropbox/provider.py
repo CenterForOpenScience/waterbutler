@@ -12,7 +12,8 @@ from waterbutler.providers.dropbox.metadata import (BaseDropboxMetadata,
                                                     DropboxFileMetadata,
                                                     DropboxFolderMetadata,
                                                     DropboxRevision)
-from waterbutler.providers.dropbox.exceptions import DropboxNamingConflictError, DropboxUnhandledConflictError
+from waterbutler.providers.dropbox.exceptions import (DropboxNamingConflictError,
+                                                      DropboxUnhandledConflictError)
 
 
 class DropboxProvider(provider.BaseProvider):
@@ -194,7 +195,8 @@ class DropboxProvider(provider.BaseProvider):
                          dest_path: WaterButlerPath) -> typing.Tuple[BaseDropboxMetadata, bool]:
         if dest_path.full_path.lower() == src_path.full_path.lower():
             # Dropbox does not support changing the casing in a file name
-            raise exceptions.InvalidPathError('In Dropbox to change case, add or subtract other characters.')
+            raise exceptions.InvalidPathError(
+                'In Dropbox to change case, add or subtract other characters.')
 
         try:
             data = await self.dropbox_request(
@@ -268,7 +270,8 @@ class DropboxProvider(provider.BaseProvider):
             self.dropbox_conflict_error_handler(data, path.path)
         return DropboxFileMetadata(data, self.folder), not exists
 
-    async def delete(self, path: WaterButlerPath, confirm_delete: int=0, **kwargs) -> None:  # type: ignore
+    async def delete(self, path: WaterButlerPath, confirm_delete: int=0,  # type: ignore
+                     **kwargs) -> None:  # type: ignore
         """Delete file, folder, or provider root contents
 
         :param WaterButlerPath path: WaterButlerPath path object for folder
@@ -291,7 +294,8 @@ class DropboxProvider(provider.BaseProvider):
     async def metadata(self,  # type: ignore
                        path: WaterButlerPath,
                        revision: str=None,
-                       **kwargs) -> typing.Union[BaseDropboxMetadata, typing.List[BaseDropboxMetadata]]:
+                       **kwargs) \
+                       -> typing.Union[BaseDropboxMetadata, typing.List[BaseDropboxMetadata]]:
         full_path = path.full_path.rstrip('/')
         url = self.build_url('files', 'get_metadata')
         body = {'path': full_path}
@@ -367,10 +371,12 @@ class DropboxProvider(provider.BaseProvider):
         )
         return DropboxFolderMetadata(data, self.folder)
 
-    def can_intra_copy(self, dest_provider: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
+    def can_intra_copy(self, dest_provider: provider.BaseProvider,
+                       path: WaterButlerPath=None) -> bool:
         return type(self) == type(dest_provider)
 
-    def can_intra_move(self, dest_provider: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
+    def can_intra_move(self, dest_provider: provider.BaseProvider,
+                       path: WaterButlerPath=None) -> bool:
         return self == dest_provider
 
     def _build_content_url(self, *segments, **query):
