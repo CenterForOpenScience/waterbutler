@@ -8,7 +8,7 @@ import xmltodict
 import xml.sax.saxutils
 
 from boto import config as boto_config
-from boto.compat import BytesIO
+from boto.compat import BytesIO  # type: ignore
 from boto.utils import compute_md5
 from boto.auth import get_auth_handler
 from boto.s3.connection import S3Connection
