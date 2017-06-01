@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.31.1 (2017-06-01)
+===================
+- Fix: Fix OwnCloud issue that could result in folder creation outside the base folder.  OwnCloud
+was making assumptions about the formatting of the base folder that were not necessarily true.
+
 0.31.0 (2017-04-07)
 ===================
 - Feature: Stop creating empty commits on GitHub when the requested action doesn't change the tree
