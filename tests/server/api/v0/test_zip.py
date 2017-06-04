@@ -1,16 +1,17 @@
-import asyncio
 import io
 import zipfile
-from unittest import mock
 
 from tornado import testing
 
 from waterbutler.core import streams
+from waterbutler.core.utils import AsyncIterator
 
 from tests import utils
 
 
 class TestZipHandler(utils.HandlerTestCase):
+
+    HOOK_PATH = 'waterbutler.server.api.v0.zip.ZipHandler._send_hook'
 
     @testing.gen_test
     def test_download_stream(self):
@@ -18,7 +19,7 @@ class TestZipHandler(utils.HandlerTestCase):
         stream = streams.StringStream(data)
         stream.content_type = 'application/octet-stream'
 
-        zipstream = streams.ZipStreamReader(('file.txt', stream))
+        zipstream = streams.ZipStreamReader(AsyncIterator([('file.txt', stream)]))
 
         self.mock_provider.zip = utils.MockCoroutine(return_value=zipstream)
 

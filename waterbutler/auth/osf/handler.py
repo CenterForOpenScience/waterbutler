@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 
 import jwe
@@ -41,10 +40,9 @@ class OsfAuthHandler(auth.BaseAuthHandler):
 
         return query_params
 
-    @asyncio.coroutine
-    def make_request(self, params, headers, cookies):
+    async def make_request(self, params, headers, cookies):
         try:
-            response = yield from aiohttp.request(
+            response = await aiohttp.request(
                 'get',
                 settings.API_URL,
                 params=params,
@@ -56,21 +54,20 @@ class OsfAuthHandler(auth.BaseAuthHandler):
 
         if response.status != 200:
             try:
-                data = yield from response.json()
+                data = await response.json()
             except ValueError:
-                data = yield from response.read()
+                data = await response.read()
             raise exceptions.AuthError(data, code=response.status)
 
         try:
-            raw = yield from response.json()
+            raw = await response.json()
             signed_jwt = jwe.decrypt(raw['payload'].encode(), JWE_KEY)
             data = jwt.decode(signed_jwt, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM, options={'require_exp': True})
             return data['data']
         except (jwt.InvalidTokenError, KeyError):
             raise exceptions.AuthError(data, code=response.status)
 
-    @asyncio.coroutine
-    def fetch(self, request, bundle):
+    async def fetch(self, request, bundle):
         """Used for v0"""
         headers = {'Content-Type': 'application/json'}
 
@@ -85,15 +82,26 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         if view_only:
             view_only = view_only[0].decode()
 
-        return (yield from self.make_request(
+        payload = (await self.make_request(
             self.build_payload(bundle, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)
         ))
 
-    @asyncio.coroutine
-    def get(self, resource, provider, request):
+        payload['auth']['callback_url'] = payload['callback_url']
+        return payload
+
+    async def get(self, resource, provider, request):
         """Used for v1"""
+
+        try:
+            action = self.ACTION_MAP[request.method.lower()]
+        except KeyError:
+            raise exceptions.UnsupportedHTTPMethodError(
+                method_used=request.method.lower(),
+                supported_methods=self.ACTION_MAP.keys()
+            )
+
         headers = {'Content-Type': 'application/json'}
 
         if 'Authorization' in request.headers:
@@ -108,12 +116,15 @@ class OsfAuthHandler(auth.BaseAuthHandler):
             # View only must go outside of the jwt
             view_only = view_only[0].decode()
 
-        return (yield from self.make_request(
+        payload = (await self.make_request(
             self.build_payload({
                 'nid': resource,
                 'provider': provider,
-                'action': self.ACTION_MAP[request.method.lower()]
+                'action': action
             }, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)
         ))
+
+        payload['auth']['callback_url'] = payload['callback_url']
+        return payload

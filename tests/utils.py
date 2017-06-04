@@ -1,11 +1,10 @@
 import asyncio
 import os
+import sys
 import copy
 import shutil
 import tempfile
 from unittest import mock
-
-from decorator import decorator
 
 import pytest
 from tornado import testing
@@ -18,24 +17,23 @@ from waterbutler.core.path import WaterButlerPath
 
 
 class MockCoroutine(mock.Mock):
-    @asyncio.coroutine
-    def __call__(self, *args, **kwargs):
+
+    if sys.version_info >= (3, 5, 3):
+        _is_coroutine = asyncio.coroutines._is_coroutine
+
+    async def __call__(self, *args, **kwargs):
         return super().__call__(*args, **kwargs)
 
 
-@decorator
-def async(func, *args, **kwargs):
-    future = func(*args, **kwargs)
-    asyncio.get_event_loop().run_until_complete(future)
-
-
 class MockFileMetadata(metadata.BaseFileMetadata):
-    provider = 'mock'
+    provider = 'MockProvider'
     name = 'Foo.name'
     size = 1337
     etag = 'etag'
     path = '/Foo.name'
     modified = 'never'
+    modified_utc = 'never'
+    created_utc = 'always'
     content_type = 'application/octet-stream'
 
     def __init__(self):
@@ -43,7 +41,7 @@ class MockFileMetadata(metadata.BaseFileMetadata):
 
 
 class MockFolderMetadata(metadata.BaseFolderMetadata):
-    provider = 'mock'
+    provider = 'MockProvider'
     name = 'Bar'
     size = 1337
     etag = 'etag'
@@ -59,6 +57,8 @@ class MockFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
     version = 1
     version_identifier = 'versions'
     modified = 'never'
+    modified_utc = 'never'
+    created_utc = 'always'
 
     def __init__(self):
         super().__init__({})
@@ -77,8 +77,8 @@ class MockProvider(provider.BaseProvider):
     revalidate_path = None
     can_duplicate_names = True
 
-    def __init__(self, auth=None, settings=None, creds=None):
-        super().__init__(auth or {}, settings or {}, creds or {})
+    def __init__(self, auth=None, creds=None, settings=None):
+        super().__init__(auth or {}, creds or {}, settings or {})
         self.copy = MockCoroutine()
         self.move = MockCoroutine()
         self.delete = MockCoroutine()
@@ -93,30 +93,24 @@ class MockProvider1(provider.BaseProvider):
 
     NAME = 'MockProvider1'
 
-    @asyncio.coroutine
-    def validate_v1_path(self, path, **kwargs):
-        return self.validate_path(path, **kwargs)
+    async def validate_v1_path(self, path, **kwargs):
+        return await self.validate_path(path, **kwargs)
 
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
-    @asyncio.coroutine
-    def upload(self, stream, path, **kwargs):
+    async def upload(self, stream, path, **kwargs):
         return MockFileMetadata(), True
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    async def delete(self, path, **kwargs):
         pass
 
-    @asyncio.coroutine
-    def metadata(self, path, throw=None, **kwargs):
+    async def metadata(self, path, throw=None, **kwargs):
         if throw:
             raise throw
         return MockFolderMetadata()
 
-    @asyncio.coroutine
-    def download(self, path, **kwargs):
+    async def download(self, path, **kwargs):
         return b''
 
     def can_duplicate_names(self):
@@ -137,6 +131,11 @@ class MockProvider2(MockProvider1):
 class HandlerTestCase(testing.AsyncHTTPTestCase):
 
     def setUp(self):
+        policy = asyncio.get_event_loop_policy()
+        policy.get_event_loop().close()
+        self.event_loop = policy.new_event_loop()
+        policy.set_event_loop(self.event_loop)
+
         super().setUp()
 
         def get_identity(*args, **kwargs):
@@ -156,13 +155,21 @@ class HandlerTestCase(testing.AsyncHTTPTestCase):
         self.mock_make_provider = mock.Mock(return_value=self.mock_provider)
         self.make_provider_patcher = mock.patch('waterbutler.core.utils.make_provider', self.mock_make_provider)
 
+        if hasattr(self, 'HOOK_PATH'):
+            self.mock_send_hook = mock.Mock()
+            self.send_hook_patcher = mock.patch(self.HOOK_PATH, self.mock_send_hook)
+            self.send_hook_patcher.start()
+
         self.identity_patcher.start()
         self.make_provider_patcher.start()
 
     def tearDown(self):
         super().tearDown()
         self.identity_patcher.stop()
+        if hasattr(self, 'HOOK_PATH'):
+            self.send_hook_patcher.stop()
         self.make_provider_patcher.stop()
+        self.event_loop.close()
 
     def get_app(self):
         return make_app(debug=False)
@@ -178,10 +185,6 @@ class MultiProviderHandlerTestCase(HandlerTestCase):
         self.source_provider = MockProvider2({}, {}, {})
         self.destination_provider = MockProvider2({}, {}, {})
 
-        self.mock_send_hook = mock.Mock()
-        self.send_hook_patcher = mock.patch(self.HOOK_PATH, self.mock_send_hook)
-        self.send_hook_patcher.start()
-
         self.mock_make_provider.return_value = None
         self.mock_make_provider.side_effect = [
             self.source_provider,
@@ -190,7 +193,6 @@ class MultiProviderHandlerTestCase(HandlerTestCase):
 
     def tearDown(self):
         super().tearDown()
-        self.send_hook_patcher.stop()
 
     def payload(self):
         return copy.deepcopy({

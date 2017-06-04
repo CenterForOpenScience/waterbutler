@@ -2,10 +2,363 @@
 ChangeLog
 *********
 
+0.31.1 (2017-06-01)
+===================
+- Fix: Fix OwnCloud issue that could result in folder creation outside the base folder.  OwnCloud
+was making assumptions about the formatting of the base folder that were not necessarily true.
+
+0.31.0 (2017-04-07)
+===================
+- Feature: Stop creating empty commits on GitHub when the requested action doesn't change the tree
+e.g. when updating a file with the exact same content as before.
+- Fix: Moving or copying a folder within osfstorage will now return the metadata for the folder's
+children in the response.
+- Fix: Reject PATCH requests gracefully, instead of 500-ing.
+- Fix: Disallow accessing Google Docs (.gdoc, .gsheet, etc.) without the extension.
+- Fix: Fix poor error handling in Dropbox provider.
+- Fix: Log WaitTimeoutErrors as log level info to Sentry. These are expected and shouldn't be
+considered full errors.
+
+0.30.0 (2017-02-02)
+===================
+- Feature: Support the new London and Central Canada regions in Amazon S3. (thanks, @johnetordoff!)
+- Feature: Include provider-specific metrics in metric logging payloads, including number of
+requests issued.
+- Fix: Don't crash when fetching file revision metadata from Google Drive.
+- Fix: WaterButler docs are once again building on readthedocs.org! (thanks, @johnetordoff!)
+- Code: Update WaterButler to use invoke 0.13.0. If you have an existing checkout, you will need to
+upgrade invoke manually: pip install invoke==0.13.0 (thanks, @johnetordoff!)
+- Code: Postman collections to test file and folder copy behavior for providers have been added to
+tests/postman/.  See docs/testing.rst for instructions on setting up and running them.
+- Docs: WaterButler has been verified to work with python 3.5.3 and 3.6.0. From now on, the docs
+will mention which python versions WB has been verfied to work on. (thanks, @johnetordoff!)
+
+0.29.1 (2017-01-04)
+===================
+- Happy New Year!
+- Fix: Be more ruthless about fixing setuptools breakage in Dockerfile. (thanks, @cwisecarver!)
+
+0.29.0 (2016-12-14)
+===================
+- Feature: WaterButler now uses the V2 APIs for both Dropbox and Figshare.
+- Feature: Add a created timestamp to osfstorage file metadata.
+- Feature: Support the new Mumbai and Ohio regions in Amazon S3. (thanks, @erinspace!)
+- Feature: The server logs a message on startup, instead of just staring blankly at you.
+- Fix: Start appending extensions to Google Doc files to disambiguate identically-named
+files. e.g. foo.docx vs. foo.gsheet
+
+0.28.1 (2016-12-13)
+===================
+- Pin setuptools to v30.4.0 to avoid package-namespace-related breakage.
+
+0.28.0 (2016-10-31)
+===================
+- HALLOWEEN RELEASE! (^ ,–, ^)
+- Feature: Download-as-zip now includes empty directories! (thanks, @darioncassel!)
+- Feature: WaterButler now lists the full contents of Google Drive directories with more than 1,000
+children. (thanks, @TomBaxter!)
+- Feature: WaterButler now lists the full contents of Box.com directories with more than 1,000
+children. (thanks, @TomBaxter!)
+- Fix: Teach ownCloud to be more efficient about moving and copying files with a single provider.
+
+0.27.1 (2016-10-24)
+===================
+- Fix: Fix broken Download-as-zip for GitHub by propagating the target branch during recursive
+traversal.
+- Fix: Fix incorrectly detected self-overwrite when copying a file between the root paths of two
+separate Box.com accounts.
+
+0.27.0 (2016-10-19)
+===================
+- Feature: Attempting to move or copy a file over itself will now fail with a 409 Conflict, even
+across different resources.
+- Fix: Fix bugs in ownCloud provider that were breaking renames.
+- Fix: v1 metadata requests now accept the `version` and `revision` query parameters like v0.
+
+0.26.1 (2016-10-18)
+===================
+- Feature: Dockerized WaterButler can now take a commit sha from the environment to indicate
+version to deploy. (thanks, @icereval!)
+
+0.26.0 (2016-10-11)
+===================
+- Feature: WaterButler now supports ownCloud as a full provider! (thanks, @kwierman!)
+- Feature: WaterButler accepts configuration from the environment, overriding any file-based
+configuration.  This helps WB integrate nicer in a docker-compose environment. (thanks, @icereval!)
+- Fix: Gracefully handle branch-related GitHub errors.
+- Code: Start labeling user-caused errors as level=info in Sentry (thanks, @TomBaxter!)
+- Code: Log redirect-based downloads to analytics.
+- Code: Bump dependencies on Raven and cryptography.  cryptography v1.5.2 now installs on OSX via
+wheel.  This should silence scary-sounding cffi warnings!
+
+0.25.0 (2016-09-22)
+===================
+- Feature: Include user id when requesting files from osfstorage, to allow the OSF to distinguish
+contributing users in download counts. (thanks, @darioncassel!)
+
+0.24.0 (2016-09-14)
+===================
+- Feature: Update the v1 API to passthrough unrecognized query params to the provider.
+- Feature: Teach the GitHub provider to accept branch identifiers in the URL and body of v1
+operations.  You can now do cross-branch move/copies with the v1 API!
+- Feature: The GitHub provider now includes the branch operated on in its callback logs.
+- Fix: Add `--pty` arguments to invoke install and invoke wheelhouse, to support building WB Docker
+images without pseudoterminals. (thanks, @emetsger!)
+
+0.23.3 (2016-08-31)
+===================
+- Fix: Fix flake error in remote_logging. Not at all embarrassing.
+
+0.23.2 (2016-08-31)
+===================
+- Fix: For analytics, convert byte sizes into more convenient units.
+- Code: in sizes.py, call kilobytes "KBs", not "Bs"
+
+0.23.1 (2016-08-31)
+===================
+- Fix: Dataverse changed their API file metadata repsonse format. Update provider to handle both
+formats.
+
+0.23.0 (2016-08-25)
+===================
+- Code: Rewrite public file action logging to sync with MFR.
+- Docs: Document intra_move and intra_copy in core provider.
+
+0.22.1 (2016-08-19)
+===================
+- Fix: Don't try to derive modified_utc for osfstorage files that lack a modified date.
+
+0.22.0 (2016-08-19)
+===================
+- Feature: File metadata now includes a modified_utc field that is the modified timestamp in
+standard ISO-8601 format (YYYY-MM-DDTHH:MM::SS+00:00). (thanks, @TomBaxter!)
+- Feature: Metadata for osfstorage files will contain the file GUID, once the OSF is updated to
+return that information. (thanks, @Johnetordoff!)
+- Feature: WaterButler can now log file actions to Keen.io.
+- Fix: core.utils.async_retry was always intended to be fire-and-forget, but wasn't when await()-ed.
+It will now run until done, instead of executing one retry per await.  The tests have been updated
+to match this behavior.
+- Fix: Update copy and move celery tasks so that a failed logging callback will not make them return
+a 500.  Now they always return the result and metadata of the move/copy action.
+- Fix: Logging callbacks are now retried five times, no matter where they are called from.
+- Fix: Update Dockerfile to register plugins.
+- Fix: Correct minor typos and links to Python and aiohttp in the docs.
+
+0.21.4 (2016-08-02)
+===================
+- Fix: Ask Box not to zip our download requests. (thanks, @caseyrygt!)
+
+0.21.3 (2016-08-01)
+===================
+- Fix: Bump wheel dep to 0.26.0 to fix travis build.
+
+0.21.2 (2016-08-01)
+===================
+- Fix: Pin cryptography to v1.3.4 to avoid v1,4 incompatibilities with OS X's vendor openssl.
+(thanks, @erinspace!)
+
+0.21.1 (2016-07-12)
+===================
+- Fix: Stop duplicating parent folder when searching Google Drive for Google docs.  (thanks,
+@TomBaxter!)
+
+0.21.0 (2016-06-16)
+===================
+- Feature: Allow cross origin requests when an Authorization header is provided without
+cookies.  (thanks, @samchrisinger!)
+- Feature: Don't set any CORS headers if Origin is not provided (e.g. non-browser client)
+- Fix: v0's copy action now checks can_intra_copy instead of can_intra_move.
+- Fix: Stop sending requests to GitHub with the `application/vnd.github.VERSION.raw` media-type.
+Start sending them `application/vnd.github.v3.raw`.
+- Fix: Our API docs had typos in the example URLs.  For shame.
+- Code: Refactor logging callback into one location.  Previously, v0 creates, v0 move/copies, v1
+actions, and the move/copy celery tasks each had their own bespoke code for logging actions to the
+authorizer-provided callback.  All of that has been merged into one method with a common interface.
+This shouldn't have any user-visible changes, but it will make the developers' lives much easier.
+- Code: Remove unused code from googledrive provider
+- Code: WaterButlerPath learned `materialized_path()` (a.k.a its __str__ representation).
+
+0.20.4 (2016-06-16)
+===================
+- Finish support for zipfiles > 4Gb.  Large zipfiles should now be uncompressible by
+double-clicking on the zipfiles in OS X, Windows, and Linux.  On OS X, /usr/bin/ditto and
+The Unarchiver have been confirmed to work. /usr/bin/unzip will *not* work, as the version
+they include does not have Zip64 support.
+- Update the install docs to pin invoke to 0.11.1.
+
+0.20.3 (2016-06-13)
+===================
+- Release fixes for deployment and intermediate DAZ > 4Gb fixes.
+
+0.20.2 (2016-06-13)
+===================
+- Pin invoke to v0.11.1.  Our tasks.py is incompatible with v0.13.
+
+0.20.1 (2016-06-13)
+===================
+- Try fixing Download-As-Zip for resulting zipfiles > 4Gb.  The default zip format only supports
+up to 4Gb files, but the zip64 extension can handle much larger sizes.  WB hand-rolls its zips,
+so the zip64 format has to be constructed manually.  Unfortunately, the fixes applied in 0.20.1
+were not enough.  The remaining updates were added in 0.20.4.
+- Add a Dockerfile to simplify running WaterButler in dev environments.
+- Pin some dependencies and update our travis config to avoid spurious build failures.
+
+0.20.0 (2016-04-29)
+===================
+- Fix Download-As-Zip for Google Drive to set the correct extensions for exported Google Doc
+files.
+- Add 'resource' to V1 response.
+- Minor doc updates: Add urls to external API documentation and note provider quirks.
+
+0.19.5 (2016-04-18)
+===================
+- Brown Paper Bag release: **REALLY** fix syntax error in Github's Unsupported Repo exception.
+The 0.19.4 release fixed nothing.  I (@felliott) am an idiot.
+
+0.19.4 (2016-04-18)
+===================
+- Fix syntax error in Github's Unsupported Repo exception.
+
+0.19.3 (2016-04-15)
+===================
+- Increase number of files returned from a Box directory from 50 to 1000. (thanks, @TomBaxter!)
+- Exclude Google Maps from Google Drive listing.  Google doesn't provide a way to export maps,
+so exclude them from listing / downloading for now.  This is the same behavior as Google Forms.
+
+0.19.2 (2016-04-14)
+===================
+- Make v1 move/copy return file metadata in its logging payload, so the OSF can track files
+across providers.
+
+0.19.1 (2016-04-13)
+===================
+- Update boto dependency to get fixes for large file uploads to Amazon Glacier. (thanks,
+@caileyfitz, for your patient testing!)
+- Increase number of files returned from a GDrive directory listing from 100 to 1000.
+
+0.19.0 (2016-04-04)
+===================
+- Feature: WaterButler now runs on Python 3.5!  A major speed boost should be
+noticeable, especially for zipped folder downloads.  All hail @chrisseto and
+@TomBaxter for seeing this through!
+- Feature: Zipped folder downloads now use the folder name as the zip filename.  If the folder
+is the storage root, the name is `$provider.zip` (e.g. `googledrive.zip`).
+- Code: WaterButlerPath has a new `is_folder` method. It's the same as `is_dir`.
+- Code: waterbutler.core.BaseProvider learned `path_from_metadata`.
+
+0.18.4 (2016-04-01)
+===================
+- Fix: Bump PyJWE dependency to 1.0.0 to match with OSF v0.66.0
+
+0.18.3 (2016-03-28)
+===================
+- Fix: Renaming a Google doc (.gdoc, .gsheet) file should not and no longer truncates the new
+filename to just the first letter.
+
+0.18.2 (2016-03-17)
+===================
+- The "Leprechauns Ate My Blob" emergency release!
+- Fix: Don't throw an error if the github file being requested is larger than 1Mb.  There will
+be a more correct fix in the next minor release.
+
+0.18.1 (2016-03-15)
+===================
+- Fix: Stop crashing if the `Content-Length` header is not set on a v1 folder create request.
+A missing `Content-Length` is fine for folder create requests.
+
+0.18.0 (2016-03-09)
+===================
+- BREAKING v1 API CHANGE (sortof):  Updating a file by issuing a PUT to its parent folder and
+passing its name as a query parameter is no longer supported and will now throw a 409 Conflict.
+This is still the correct way to create a file, but updating must be done by issuing the PUT to
+the file's own endpoint.  This was supposed to be fixed back in December, but I (@felliott) did
+a **very** poor job of it, meaning some providers still allowed it.  The API documentation has
+been updated to match.  If you use the `/links/upload` action from the JSON-API response, you
+**DO NOT** need to update your code,  That link is already correct.
+- Feature: DELETEing a file or folder in the GDrive provider now sends it to the trash instead
+or hard-deleting it.
+- Feature: Issuing a DELETE to the storage root of a provider will now clear out its content,
+but not delete the storage root itself.  This was undefined behavior before.  Some providers
+would disallow it, some would crash, others would do the right thing.  This is now officially
+supported.  To make sure the file contents are not wiped out on accident, the query parameter
+`confirm_delete=1` must be passed when clearing the contents.  Otherwise, WB will return a 400.
+- Fix: GoogleDrive provider now returns 201 Created when creating and 200 OK when overwriting
+during copy operations.
+- Fix: Copying / moving empty folders into a directory with a similarly named folder with 'keep
+both' semantics no longer overwrites old folder and properly increments the new file name.
+- Fix: Always set `kind` parameter for files and folders in v1 logging callback to avoid crashing
+the OSF waterbutler logging endpoint.
+- Fix: For 'keep both' conflict semantics when more than one incremented version already exists.
+- Fix: Github move/copy folder requests with 'replace' semantics now correctly overwrites the
+target folder, rather than merging the contents.
+- Docs: @TomBaxter++ has added more docstrings to the base provider and has started documenting
+the quirks of our existing providers.
+- Docs: v0.18.0 WaterButler DO NOT work with python 3.5.  3.4 is required.  Mention this.
+- Docs: The Center for Open Science is hiring! (thanks, @andrewsallans!)
+
+0.17.0 (2016-02-29)
+===================
+- LEAP DAY RELEASE!
+- Feature: Add throttling to make_request!   Some hosts don't like it when we fire off too many
+requests at once.  Now we limit it to 10 requests / second and a maximum of 5 concurrently.  To
+adjust the rates, update the REQUEST_LIMIT and OP_CONCURRENCY attributes in settings.py. (thanks
+@chrisseto!)
+- Fix: Update dropbox API urls.
+
+0.16.5 (2016-02-22)
+===================
+- No changes. Applied and reverted throttling patches.
+
+0.16.4 (2016-02-18)
+===================
+- Fix: Add semaphore to make_request to limit concurrent outgoing requests to 25.
+
+0.16.3 (2016-02-14)
+===================
+- Fix: Apply certificate fix in proper scope.
+
+0.16.2 (2016-02-14)
+===================
+- Fix: Patch to prevent certification verification failure w/ rackspace services.
+
+0.16.1 (2016-02-11)
+===================
+- Fix: Properly freeze time in tests to avoid spurious test failures.
+- Update Sentry Raven client now that it has core asyncio support.
+
+0.16.0 (2016-02-03)
+===================
+- Feature: Support S3 buckets with periods in their name for non-US East
+regions.
+- Feature: Started filling out and reorganizng the dev docs!  The v1 API is
+now documented, and waterbutler.core.metadata, waterbutler.core.path have
+a lot more docstrings.  A skeleton overview of WaterButler is available.  More
+to come...
+- Fix: Make the filesystem provider declare timezones for their modified date.
+- Fix: Update FigShare's web view URL for viewing unpublished files.
+
+0.15.1 (2016-01-21)
+===================
+- Fix incorrect logging of paths for move/copy task and v0 deletes
+- Fix incorrect path calculation for cross-resource move/copys via Dropbox
+- Properly encode googledrive path in log payloads
+
+0.15.0 (2016-01-15)
+===================
+- Enforce V1 path semantics. Folders must have trailing slash, files must NOT
+have trailing slash.  Failing to abide results in a 404
+- Allow creating a file or folder in a directory with an identically-named
+entity of the opposite type, but only for those providers that allow it.
+- Fix recursive delete via s3 when folder name has special characters
+- Fix multiple 500s on github provider
+- Fix many v1 logging issues
+- Clarify install instructions, (thanks @rafaeldelucena!)
+- Add `clean` task to remove old .pyc files
+
 0.14.0 (2015-11-05)
 ===================
 - Update to a python3.5 compliant version of invoke
-- Raise proper exceptions for github repos with too many fiels
+- Raise proper exceptions for github repos with too many fields
 - Updates for OSFStorage file checkout
 - Clean up JSON API Responses
 

@@ -14,6 +14,8 @@ from tests import utils
 
 class TestCrudHandler(utils.HandlerTestCase):
 
+    HOOK_PATH = 'waterbutler.server.api.v0.crud.CRUDHandler._send_hook'
+
     @testing.gen_test
     def test_download_redirect(self):
         redirect_url = 'http://queen.com/freddie.png'
@@ -206,7 +208,7 @@ class TestCrudHandler(utils.HandlerTestCase):
         assert len(calls) == 1
         args, kwargs = calls[0]
         assert isinstance(args[0], streams.RequestStreamReader)
-        streamed = asyncio.new_event_loop().run_until_complete(args[0].read())
+        streamed = yield args[0].read()
         assert streamed == data
         assert kwargs['action'] == 'upload'
         assert str(kwargs['path']) == '/roger.png'

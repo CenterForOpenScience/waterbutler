@@ -1,9 +1,9 @@
 import asyncio
 import uuid
 
-from waterbutler.core.streams import BaseStream
-from waterbutler.core.streams import MultiStream
-from waterbutler.core.streams import StringStream
+from waterbutler.core.streams.base import BaseStream
+from waterbutler.core.streams.base import MultiStream
+from waterbutler.core.streams.base import StringStream
 
 
 class FormDataStream(MultiStream):
@@ -90,11 +90,10 @@ class FormDataStream(MultiStream):
             'Content-Type': 'multipart/form-data; boundary={}'.format(self.boundary)
         }
 
-    @asyncio.coroutine
-    def read(self, n=-1):
+    async def read(self, n=-1):
         if self.can_add_more:
             self.finalize()
-        return (yield from super().read(n=n))
+        return (await super().read(n=n))
 
     def finalize(self):
         assert self.stream, 'Must add at least one stream to finalize'
@@ -173,12 +172,12 @@ class ResponseStreamReader(BaseStream):
     def size(self):
         return self._size
 
-    @asyncio.coroutine
-    def _read(self, size):
-        chunk = (yield from self.response.content.read(size))
+    async def _read(self, size):
+        chunk = (await self.response.content.read(size))
 
         if not chunk:
             self.feed_eof()
+            await self.response.release()
 
         return chunk
 
@@ -197,13 +196,12 @@ class RequestStreamReader(BaseStream):
     def at_eof(self):
         return self.inner.at_eof()
 
-    @asyncio.coroutine
-    def _read(self, size):
+    async def _read(self, size):
         if self.inner.at_eof():
             return b''
         if size < 0:
-            return (yield from self.inner.read(size))
+            return (await self.inner.read(size))
         try:
-            return (yield from self.inner.readexactly(size))
+            return (await self.inner.readexactly(size))
         except asyncio.IncompleteReadError as e:
             return e.partial

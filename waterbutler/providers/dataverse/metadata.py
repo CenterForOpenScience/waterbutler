@@ -24,7 +24,7 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
 
     @property
     def name(self):
-        return self.raw['name']
+        return self.raw.get('name', None) or self.raw.get('filename', None)
 
     @property
     def path(self):
@@ -44,6 +44,10 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
 
     @property
     def modified(self):
+        return None
+
+    @property
+    def created_utc(self):
         return None
 
     @property
@@ -67,7 +71,10 @@ class DataverseDatasetMetadata(BaseDataverseMetadata, metadata.BaseFolderMetadat
         self.doi = doi
 
         files = self.raw['files']
-        self.contents = [DataverseFileMetadata(f['datafile'], version) for f in files]
+        self.contents = []
+        for f in files:
+            datafile = f.get('datafile', None) or f.get('dataFile', None)
+            self.contents.append(DataverseFileMetadata(datafile, version))
 
     @property
     def name(self):

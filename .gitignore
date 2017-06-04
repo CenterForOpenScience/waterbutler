@@ -1,5 +1,6 @@
 # Created by .gitignore support plugin (hsz.mobi)
 
+.autoenv
 .env
 .git
 .idea
@@ -15,3 +16,5 @@ src/
 env/
 dist/
 build/
+.cache
+.mypy_cache

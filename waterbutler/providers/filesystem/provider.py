@@ -1,6 +1,5 @@
 import os
 import shutil
-import asyncio
 import datetime
 import mimetypes
 
@@ -15,6 +14,11 @@ from waterbutler.providers.filesystem.metadata import FileSystemFolderMetadata
 
 
 class FileSystemProvider(provider.BaseProvider):
+    """Provider using the local filesystem as a backend-store
+
+    This provider is used for local testing.  Files are stored by hash, preserving
+    case-sensitivity on case-insensitive host filesystems.
+    """
     NAME = 'filesystem'
 
     def __init__(self, auth, credentials, settings):
@@ -22,8 +26,7 @@ class FileSystemProvider(provider.BaseProvider):
         self.folder = self.settings['folder']
         os.makedirs(self.folder, exist_ok=True)
 
-    @asyncio.coroutine
-    def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path, **kwargs):
         if not os.path.exists(self.folder + path):
             raise exceptions.NotFoundError(str(path))
 
@@ -34,27 +37,23 @@ class FileSystemProvider(provider.BaseProvider):
 
         return WaterButlerPath(path, prepend=self.folder)
 
-    @asyncio.coroutine
-    def validate_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path, prepend=self.folder)
 
     def can_duplicate_names(self):
         return False
 
-    @asyncio.coroutine
-    def intra_copy(self, dest_provider, src_path, dest_path):
-        exists = yield from self.exists(dest_path)
+    async def intra_copy(self, dest_provider, src_path, dest_path):
+        exists = await self.exists(dest_path)
         shutil.copy(src_path.full_path, dest_path.full_path)
-        return (yield from dest_provider.metadata(dest_path)), not exists
+        return (await dest_provider.metadata(dest_path)), not exists
 
-    @asyncio.coroutine
-    def intra_move(self, dest_provider, src_path, dest_path):
-        exists = yield from self.exists(dest_path)
+    async def intra_move(self, dest_provider, src_path, dest_path):
+        exists = await self.exists(dest_path)
         shutil.move(src_path.full_path, dest_path.full_path)
-        return (yield from dest_provider.metadata(dest_path)), not exists
+        return (await dest_provider.metadata(dest_path)), not exists
 
-    @asyncio.coroutine
-    def download(self, path, revision=None, **kwargs):
+    async def download(self, path, revision=None, **kwargs):
         # TODO implement range requests
         if not os.path.exists(path.full_path):
             raise exceptions.DownloadError(
@@ -65,23 +64,21 @@ class FileSystemProvider(provider.BaseProvider):
         file_pointer = open(path.full_path, 'rb')
         return streams.FileStreamReader(file_pointer)
 
-    @asyncio.coroutine
-    def upload(self, stream, path, **kwargs):
-        created = not (yield from self.exists(path))
+    async def upload(self, stream, path, **kwargs):
+        created = not (await self.exists(path))
 
         os.makedirs(os.path.split(path.full_path)[0], exist_ok=True)
 
         with open(path.full_path, 'wb') as file_pointer:
-            chunk = yield from stream.read(settings.CHUNK_SIZE)
+            chunk = await stream.read(settings.CHUNK_SIZE)
             while chunk:
                 file_pointer.write(chunk)
-                chunk = yield from stream.read(settings.CHUNK_SIZE)
+                chunk = await stream.read(settings.CHUNK_SIZE)
 
-        metadata = yield from self.metadata(path)
+        metadata = await self.metadata(path)
         return metadata, created
 
-    @asyncio.coroutine
-    def delete(self, path, **kwargs):
+    async def delete(self, path, **kwargs):
         if path.is_file:
             os.remove(path.full_path)
         else:
@@ -89,8 +86,7 @@ class FileSystemProvider(provider.BaseProvider):
             if path.is_root:
                 os.makedirs(self.folder, exist_ok=True)
 
-    @asyncio.coroutine
-    def metadata(self, path, **kwargs):
+    async def metadata(self, path, **kwargs):
         if path.is_dir:
             if not os.path.exists(path.full_path) or not os.path.isdir(path.full_path):
                 raise exceptions.MetadataError(
@@ -119,11 +115,12 @@ class FileSystemProvider(provider.BaseProvider):
 
     def _metadata_file(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
-        modified = datetime.datetime.fromtimestamp(os.path.getmtime(full_path))
+        modified = datetime.datetime.utcfromtimestamp(os.path.getmtime(full_path)).replace(tzinfo=datetime.timezone.utc)
         return {
             'path': full_path,
             'size': os.path.getsize(full_path),
             'modified': modified.strftime('%a, %d %b %Y %H:%M:%S %z'),
+            'modified_utc': modified.isoformat(),
             'mime_type': mimetypes.guess_type(full_path)[0],
         }
 

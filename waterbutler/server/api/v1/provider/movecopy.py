@@ -1,10 +1,10 @@
 import json
-import asyncio
 
 from waterbutler import tasks
 from waterbutler.sizes import MBs
 from waterbutler.core import exceptions
 from waterbutler.server import settings
+from waterbutler.core import remote_logging
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.utils import make_provider
 from waterbutler.constants import DEFAULT_CONFLICT
@@ -47,12 +47,11 @@ class MoveCopyMixin:
             'nid': self.dest_resource,
             'path': self.dest_path,
             'provider': self.dest_provider.serialized()
-        }, self.auth['callback_url'], self.auth)
+        })
 
-    @asyncio.coroutine
-    def move_or_copy(self):
+    async def move_or_copy(self):
         # Force the json body to load into memory
-        yield self.request.body
+        await self.request.body
 
         if self.json.get('action') not in ('copy', 'move', 'rename'):
             # Note: null is used as the default to avoid python specific error messages
@@ -76,7 +75,7 @@ class MoveCopyMixin:
             self.dest_resource = self.json.get('resource', self.resource)
 
             # TODO optimize for same provider and resource
-            self.dest_auth = yield from auth_handler.get(
+            self.dest_auth = await auth_handler.get(
                 self.dest_resource,
                 self.json.get('provider', self.provider.NAME),
                 self.request
@@ -89,19 +88,21 @@ class MoveCopyMixin:
                 self.dest_auth['settings']
             )
 
-            self.dest_path = yield from self.dest_provider.validate_path(self.json['path'])
+            self.dest_path = await self.dest_provider.validate_path(**self.json)
 
         if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
             # this weird signature syntax courtesy of py3.4 not liking trailing commas on kwargs
-            result = yield from getattr(tasks, action).adelay(
+            conflict = self.json.get('conflict', DEFAULT_CONFLICT)
+            result = await getattr(tasks, action).adelay(
                 rename=self.json.get('rename'),
-                conflict=self.json.get('conflict', DEFAULT_CONFLICT),
+                conflict=conflict,
+                request=remote_logging._serialize_request(self.request),
                 *self.build_args()
             )
-            metadata, created = yield from tasks.wait_on_celery(result)
+            metadata, created = await tasks.wait_on_celery(result)
         else:
             metadata, created = (
-                yield from tasks.backgrounded(
+                await tasks.backgrounded(
                     getattr(self.provider, action),
                     self.dest_provider,
                     self.path,

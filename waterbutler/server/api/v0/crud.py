@@ -13,7 +13,6 @@ from waterbutler.server import utils
 from waterbutler.server.api.v0 import core
 from waterbutler.core.streams import RequestStreamReader
 
-
 TRUTH_MAP = {
     'true': True,
     'false': False,
@@ -31,36 +30,32 @@ class CRUDHandler(core.BaseProviderHandler):
     }
     STREAM_METHODS = ('PUT', )
 
-    @tornado.gen.coroutine
-    def prepare(self):
-        yield super().prepare()
-        yield from self.prepare_stream()
+    async def prepare(self):
+        await super().prepare()
+        await self.prepare_stream()
 
-    @asyncio.coroutine
-    def prepare_stream(self):
+    async def prepare_stream(self):
         if self.request.method in self.STREAM_METHODS:
             self.rsock, self.wsock = socket.socketpair()
 
-            self.reader, _ = yield from asyncio.open_unix_connection(sock=self.rsock)
-            _, self.writer = yield from asyncio.open_unix_connection(sock=self.wsock)
+            self.reader, _ = await asyncio.open_unix_connection(sock=self.rsock)
+            _, self.writer = await asyncio.open_unix_connection(sock=self.wsock)
 
             self.stream = RequestStreamReader(self.request, self.reader)
 
-            self.uploader = asyncio.async(
-                self.provider.upload(self.stream, **self.arguments)
-            )
+            self.uploader = asyncio.ensure_future(self.provider.upload(self.stream,
+                                                 **self.arguments))
         else:
             self.stream = None
 
-    @tornado.gen.coroutine
-    def data_received(self, chunk):
+    async def data_received(self, chunk):
         """Note: Only called during uploads."""
+        self.bytes_uploaded += len(chunk)
         if self.stream:
             self.writer.write(chunk)
-            yield from self.writer.drain()
+            await self.writer.drain()
 
-    @tornado.gen.coroutine
-    def get(self):
+    async def get(self):
         """Download a file."""
         try:
             self.arguments['accept_url'] = TRUTH_MAP[self.arguments.get('accept_url', 'true').lower()]
@@ -72,10 +67,12 @@ class CRUDHandler(core.BaseProviderHandler):
         else:
             request_range = None
 
-        result = yield from self.provider.download(range=request_range, **self.arguments)
+        result = await self.provider.download(range=request_range, **self.arguments)
 
         if isinstance(result, str):
-            return self.redirect(result)
+            self.redirect(result)
+            self._send_hook('download_file', path=self.path)
+            return
 
         if getattr(result, 'partial', None):
             # Use getattr here as not all stream may have a partial attribute
@@ -100,29 +97,27 @@ class CRUDHandler(core.BaseProviderHandler):
         if ext in mime_types:
             self.set_header('Content-Type', mime_types[ext])
 
-        yield self.write_stream(result)
+        await self.write_stream(result)
+        self._send_hook('download_file', path=self.path)
 
-    @tornado.gen.coroutine
-    def post(self):
+    async def post(self):
         """Create a folder"""
-        metadata = (yield from self.provider.create_folder(**self.arguments)).serialized()
+        metadata = await self.provider.create_folder(**self.arguments)
 
         self.set_status(201)
-        self.write(metadata)
+        self.write(metadata.serialized())
 
         self._send_hook('create_folder', metadata)
 
-    @tornado.gen.coroutine
-    def put(self):
+    async def put(self):
         """Upload a file."""
         self.writer.write_eof()
 
-        metadata, created = yield from self.uploader
-        metadata = metadata.serialized()
+        metadata, created = await self.uploader
 
         if created:
             self.set_status(201)
-        self.write(metadata)
+        self.write(metadata.serialized())
 
         self.writer.close()
         self.wsock.close()
@@ -132,17 +127,10 @@ class CRUDHandler(core.BaseProviderHandler):
             metadata,
         )
 
-    @tornado.gen.coroutine
-    def delete(self):
+    async def delete(self):
         """Delete a file."""
 
-        yield from self.provider.delete(**self.arguments)
-        self.set_status(http.client.NO_CONTENT)
+        await self.provider.delete(**self.arguments)
+        self.set_status(int(http.client.NO_CONTENT))
 
-        self._send_hook(
-            'delete',
-            {
-                'path': str(self.arguments['path']),
-                'materialized': str(self.arguments['path'])
-            }
-        )
+        self._send_hook('delete', path=self.path)

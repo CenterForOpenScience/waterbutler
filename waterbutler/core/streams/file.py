@@ -1,7 +1,9 @@
 import os
 import asyncio
 
-from waterbutler.core.streams import BaseStream
+import agent
+
+from waterbutler.core.streams.base import BaseStream
 
 
 class FileStreamReader(BaseStream):
@@ -25,22 +27,22 @@ class FileStreamReader(BaseStream):
         self.file_pointer.close()
         self.feed_eof()
 
-    def read_as_gen(self):
+    @agent.async_generator
+    def chunk_reader(self):
         self.file_pointer.seek(0)
         while True:
-            data = self.file_pointer.read(self.read_size)
-            if not data:
-                break
-            yield data
+            chunk = self.file_pointer.read(self.read_size)
+            if not chunk:
+                self.feed_eof()
+                yield b''
 
-    @asyncio.coroutine
-    def _read(self, size):
-        self.file_gen = self.file_gen or self.read_as_gen()
-        # add sleep of 0 so read will yield and continue in next io loop iteration
-        yield from asyncio.sleep(0)
+            yield chunk
+
+    async def _read(self, size):
+        self.file_gen = self.file_gen or self.chunk_reader()
         self.read_size = size
-        try:
-            return next(self.file_gen)
-        except StopIteration:
-            self.feed_eof()
-            return b''
+        # add sleep of 0 so read will yield and continue in next io loop iteration
+        # asyncio.sleep(0) yields None by default, which displeases tornado
+        await asyncio.sleep(0.001)
+        async for chunk in self.file_gen:
+            return chunk
