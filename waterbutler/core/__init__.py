@@ -4,4 +4,8 @@
 mime_types = {
     '.csv': 'text/csv',
     '.md': 'text/x-markdown',
+    '.mp4': 'video/mp4',
+    '.m4v': 'video/m4v',
+    '.webm': 'video/webm',
+    '.ogv': 'video/ogv',
 }
