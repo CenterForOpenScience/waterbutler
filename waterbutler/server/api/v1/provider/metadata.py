@@ -77,7 +77,6 @@ class MetadataMixin:
             request_range = tornado.httputil._parse_request_range(range_header)
 
         size = stream.size
-        print(request_range)
         if request_range:
             start, end = request_range
             if (start is not None and start >= size) or end == 0:
@@ -127,8 +126,6 @@ class MetadataMixin:
         # override the content type to fix issues with safari shoving in new file extensions
         if ext in mime_types:
             self.set_header('Content-Type', mime_types[ext])
-
-        print(size, request_range)
 
         await self.write_stream(stream, request_range)
 
