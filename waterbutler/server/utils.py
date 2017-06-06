@@ -82,20 +82,23 @@ class UtilMixin:
     def set_status(self, code, reason=None):
         return super().set_status(code, reason or HTTP_REASONS.get(code))
 
-    async def write_stream(self, stream):
-        try:
-            while True:
-                chunk = await stream.read(settings.CHUNK_SIZE)
-                if not chunk:
-                    break
-                # Temp fix, write does not accept bytearrays currently
-                if isinstance(chunk, bytearray):
-                    chunk = bytes(chunk)
-                self.write(chunk)
-                self.bytes_downloaded += len(chunk)
-                del chunk
+    async def write_stream(self, stream, request_range=None):
+
+        if request_range:
+            start, end = request_range
+            content = (await stream.read(end))[start:]
+        else:
+            content = await stream.read()
+
+        if isinstance(content, bytearray):
+            content = bytes(content)
+
+        chunks = [content[i:i + settings.CHUNK_SIZE] for i in range(0, len(content), settings.CHUNK_SIZE)]
+
+        for chunk in chunks:
+            self.write(chunk)
+            try:
                 await self.flush()
-        except tornado.iostream.StreamClosedError:
-            # Client has disconnected early.
-            # No need for any exception to be raised
-            return
+            except tornado.iostream.StreamClosedError:
+                # No need to panic the client just closed the stream
+                return
