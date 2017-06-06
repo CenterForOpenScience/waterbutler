@@ -113,7 +113,6 @@ class MetadataMixin:
         else:
             content_length = size
 
-
         self.set_header("Content-Length", content_length)
 
         # Build `Content-Disposition` header from `displayName` override,
