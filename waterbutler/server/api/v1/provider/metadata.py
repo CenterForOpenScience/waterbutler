@@ -69,17 +69,53 @@ class MetadataMixin:
         if isinstance(stream, str):
             return self.redirect(stream)
 
-        if getattr(stream, 'partial', None):
-            # Use getattr here as not all stream may have a partial attribute
-            # Plus it fixes tests
-            self.set_status(206)
-            self.set_header('Content-Range', stream.content_range)
+        request_range = None
+        range_header = self.request.headers.get("Range")
+        if range_header:
+            # As per RFC 2616 14.16, if an invalid Range header is specified,
+            # the request will be treated as if the header didn't exist.
+            request_range = tornado.httputil._parse_request_range(range_header)
 
-        if stream.content_type is not None:
-            self.set_header('Content-Type', stream.content_type)
+        size = stream.size
+        print(request_range)
+        if request_range:
+            start, end = request_range
+            if (start is not None and start >= size) or end == 0:
+                # As per RFC 2616 14.35.1, a range is not satisfiable only: if
+                # the first requested byte is equal to or greater than the
+                # content, or when a suffix with length 0 is specified
+                self.set_status(416)  # Range Not Satisfiable
+                self.set_header("Content-Type", "text/plain")
+                self.set_header("Content-Range", "bytes */%s" % (size,))
+                return
+            if start is not None and start < 0:
+                start += size
+            if end is not None and end > size:
+                # Clients sometimes blindly use a large range to limit their
+                # download size; cap the endpoint at the actual file size.
+                end = size
+            # Note: only return HTTP 206 if less than the entire range has been
+            # requested. Not only is this semantically correct, but Chrome
+            # refuses to play audio if it gets an HTTP 206 in response to
+            # ``Range: bytes=0-``.
+            if size != (end or size) - (start or 0):
+                self.set_status(206)  # Partial Content
+                self.set_header("Content-Range",
+                                tornado.httputil._get_content_range(start, end, size))
+        else:
+            start = end = None
 
-        if stream.size is not None:
-            self.set_header('Content-Length', str(stream.size))
+        if start is not None and end is not None:
+            content_length = end - start
+        elif end is not None:
+            content_length = end
+        elif start is not None:
+            content_length = size - start
+        else:
+            content_length = size
+
+
+        self.set_header("Content-Length", content_length)
 
         # Build `Content-Disposition` header from `displayName` override,
         # headers of provider response, or file path, whichever is truthy first
@@ -92,7 +128,9 @@ class MetadataMixin:
         if ext in mime_types:
             self.set_header('Content-Type', mime_types[ext])
 
-        await self.write_stream(stream)
+        print(size, request_range)
+
+        await self.write_stream(stream, request_range)
 
     async def file_metadata(self):
         version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
