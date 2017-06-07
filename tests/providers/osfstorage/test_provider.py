@@ -9,7 +9,7 @@ import aiohttpretty
 from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.osfstorage.settings import FILE_PATH_COMPLETE
+from waterbutler.providers.osfstorage.settings import FILE_PATH_COMPLETE, FILE_PATH_PENDING
 from waterbutler.providers.osfstorage.metadata import (OsfStorageFileMetadata,
                                                        OsfStorageFolderMetadata,
                                                        OsfStorageRevisionMetadata)
@@ -742,3 +742,22 @@ class TestUploads:
         inner_provider.metadata.assert_called_once_with(expected_path)
         inner_provider.move.assert_called_once_with(inner_provider, WaterButlerPath('/uniquepath'),
                                                     expected_path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_fails(self, monkeypatch, provider_and_mock, file_stream, upload_response, mock_time):
+        self.patch_tasks(monkeypatch)
+
+        path = WaterButlerPath('/newfile', _ids=('rootId', None))
+        url = 'https://waterbutler.io/{}/children/'.format(path.parent.identifier)
+        aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
+
+        provider, inner_provider = provider_and_mock
+        inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())
+        inner_provider.upload.side_effect = Exception()
+
+        with pytest.raises(Exception):
+            await provider.upload(file_stream, path)
+
+        assert not os.path.isfile(FILE_PATH_PENDING + '/uniquepath')
+        inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'), check_created=False, fetch_metadata=False)
