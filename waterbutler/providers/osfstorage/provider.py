@@ -316,9 +316,13 @@ class OSFStorageProvider(provider.BaseProvider):
         stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
         stream.add_writer('sha256', streams.HashStreamWriter(hashlib.sha256))
 
-        with open(local_pending_path, 'wb') as file_pointer:
-            stream.add_writer('file', file_pointer)
-            await provider.upload(stream, remote_pending_path, check_created=False, fetch_metadata=False, **kwargs)
+        try:
+            with open(local_pending_path, 'wb') as file_pointer:
+                stream.add_writer('file', file_pointer)
+                await provider.upload(stream, remote_pending_path, check_created=False, fetch_metadata=False, **kwargs)
+        except Exception as ex:
+            os.remove(local_pending_path)
+            raise ex
 
         complete_name = stream.writers['sha256'].hexdigest
         local_complete_path = os.path.join(settings.FILE_PATH_COMPLETE, complete_name)
