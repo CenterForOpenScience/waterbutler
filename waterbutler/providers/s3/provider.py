@@ -419,8 +419,9 @@ class S3Provider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
+        resp_headers = resp.headers
         await resp.release()
-        return S3FileMetadataHeaders(path.path, resp.headers)
+        return S3FileMetadataHeaders(path.path, resp_headers)
 
     async def _metadata_folder(self, path):
         await self._check_region()
