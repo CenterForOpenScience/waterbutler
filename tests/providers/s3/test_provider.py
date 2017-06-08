@@ -443,7 +443,7 @@ class TestCRUD:
         )
         aiohttpretty.register_uri('GET', url, body=b'delicious', auto_length=True)
 
-        result = await provider.download(path, version='someversion')
+        result = await provider.download(path, revision='someversion')
         content = await result.read()
 
         assert content == b'delicious'
