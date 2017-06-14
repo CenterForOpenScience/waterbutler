@@ -5,9 +5,11 @@ colorlog==2.5.0
 flake8==3.0.4
 ipdb
 ipython
+mypy==0.511
 pydevd==0.0.6
 pyflakes
 pytest==2.8.2
 pytest-asyncio==0.3.0
 pytest-cov==2.2.0
+python-coveralls
 redis
