@@ -5,8 +5,9 @@ from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.tasks.core import backgroundify
 
-from .metadata import EvernoteFileMetadata
+from .metadata import EvernoteFileMetadata, EvernoteFileRevisionMetadata
 from .utils import get_evernote_client, get_note, notes_metadata, timestamp_iso, OSFMediaStore
+
 import ENML2HTML
 
 
@@ -261,3 +262,7 @@ class EvernoteProvider(provider.BaseProvider):
             `waterbutler.core.exceptions.ReadOnlyProviderError` Always
         """
         return False
+
+    async def revisions(self, path, **kwargs):
+        metadata = await self.metadata(path)
+        return [EvernoteFileRevisionMetadata.from_metadata(metadata)]

@@ -52,3 +52,25 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
     def etag(self):
         # TO DO: implement
         return "[ETAG]"
+
+
+class EvernoteFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
+
+    def __init__(self, modified):
+        self._modified = modified
+
+    @classmethod
+    def from_metadata(cls, metadata):
+        return EvernoteFileRevisionMetadata(modified=metadata.modified)
+
+    @property
+    def version_identifier(self):
+        return 'revision'
+
+    @property
+    def version(self):
+        return 'latest'
+
+    @property
+    def modified(self):
+        return self._modified
