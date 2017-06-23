@@ -32,7 +32,7 @@ class BaseDryadMetadata(metadata.BaseMetadata):
         if len(el) > 0:
             return el[0].firstChild.wholeText
         else:
-            return ''
+            return None
 
     def _get_element_list_(self, name):
         """
@@ -114,7 +114,7 @@ class DryadFileMetadata(BaseDryadMetadata, metadata.BaseFileMetadata):
         if len(el) > 0:
             return el[0].firstChild.wholeText
         else:
-            return ''
+            return None
 
     def _get_file_element_list_(self, name):
         return [i.firstChild.wholeText for i in self.raw_file.getElementsByTagName(name)]
