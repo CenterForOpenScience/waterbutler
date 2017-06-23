@@ -90,10 +90,11 @@ class BaseDryadMetadata(metadata.BaseMetadata):
         return 0
 
     def _json_api_links(self, resource):
-        """Removes the delete and upload links"""
+        """Removes the delete, upload, and new_folder links (provider is read-only)."""
         links = super()._json_api_links(resource)
-        for action in ['delete', 'upload']:
-            links[action] = None
+        for action in ['delete', 'upload', 'new_folder']:
+            if action in links:
+                links[action] = None
         return links
 
 
