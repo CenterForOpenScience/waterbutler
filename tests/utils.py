@@ -14,6 +14,7 @@ from waterbutler.core import metadata
 from waterbutler.core import provider
 from waterbutler.server.app import make_app
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.streams.file import FileStreamReader
 
 
 class MockCoroutine(mock.Mock):
@@ -59,6 +60,13 @@ class MockFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
     modified = 'never'
     modified_utc = 'never'
     created_utc = 'always'
+
+    def __init__(self):
+        super().__init__({})
+
+class MockStream(FileStreamReader):
+    content_type = 'application/octet-stream'
+    size = 1334
 
     def __init__(self):
         super().__init__({})
