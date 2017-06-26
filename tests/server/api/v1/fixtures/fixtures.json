@@ -1,0 +1,89 @@
+{
+    "hander_auth": {
+        "callback_url": "http://192.168.168.167:5000/api/v1/project/fmsaw/waterbutler/logs/",
+        "credentials": {
+            "storage": {}
+        },
+        "settings": {
+            "rootId": "5a4be6acfc93fd00108dab0c",
+            "nid": "fmsaw",
+            "storage": {
+                "folder": "/code/website/osfstoragecache",
+                "provider": "test"
+            },
+            "folder": "/folder/",
+            "baseUrl": "http://192.168.168.167:5000/api/v1/project/fmsaw/osfstorage/"
+        },
+        "auth": {
+            "callback_url": "http://192.168.168.167:5000/api/v1/project/fmsaw/waterbutler/logs/",
+            "name": "fake",
+            "id": "3jc7m",
+            "email": "3jc7m@osf.io"
+        }
+    },
+    "serialized_metadata": {
+        "data": {
+            "attributes": {
+                "contentType": "application/octet-stream",
+                "materialized": "/Foo.name",
+                "created_utc": "always",
+                "etag": "4ac022b0d4aa61eca8f5e114013a740f784b7d72f237fce49b305d5c95278f64",
+                "modified": "9/25/2017",
+                "extra": {},
+                "modified_utc": "1991-09-25T19:20:30.45+01:00",
+                "kind": "file",
+                "resource": "test_source_resource",
+                "size": 1337,
+                "sizeInt": 1337,
+                "name": "Foo.name",
+                "path": "/Foo.name",
+                "provider": "MockProvider"
+            },
+            "id": "MockProvider/Foo.name",
+            "links": {
+                "download": "http://localhost:7777/v1/resources/test_source_resource/providers/MockProvider/Foo.name",
+                "delete": "http://localhost:7777/v1/resources/test_source_resource/providers/MockProvider/Foo.name",
+                "upload": "http://localhost:7777/v1/resources/test_source_resource/providers/MockProvider/Foo.name?kind=file",
+                "move": "http://localhost:7777/v1/resources/test_source_resource/providers/MockProvider/Foo.name"
+            },
+            "type": "files"
+        }
+    },
+    "serialized_request": {
+        "referrer": {
+            "url": null
+        },
+        "tech": {
+            "ip": null,
+            "ua": "test"
+        },
+        "request": {
+            "headers": {},
+            "method": "GET",
+            "url": "http://127.0.0.1/v1/resources/test/providers/test/path/mock",
+            "time": 10
+        }
+    },
+    "move_copy_args": [
+        {
+            "nid": "test_source_resource",
+            "provider": {
+                "credentials": {},
+                "name": "MockProvider",
+                "auth": {},
+                "settings": {}
+            },
+            "path": "/test_path"
+        },
+        {
+            "nid": "test_dest_resource",
+            "provider": {
+                "credentials": {},
+                "name": "MockProvider",
+                "auth": {},
+                "settings": {}
+            },
+            "path": "/test_dest_path"
+        }
+    ]
+}
