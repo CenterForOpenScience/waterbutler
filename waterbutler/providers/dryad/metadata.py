@@ -81,10 +81,6 @@ class BaseDryadMetadata(metadata.BaseMetadata):
     def etag(self):
         return '{}::{}'.format(self.name, self.dryad_doi)
 
-    @property
-    def size(self):
-        return 0
-
     def _json_api_links(self, resource):
         """Removes the delete, upload, and new_folder links (provider is read-only)."""
         links = super()._json_api_links(resource)
