@@ -113,19 +113,18 @@ class DryadProvider(provider.BaseProvider):
         :returns:  `list` A list of metadata
         :raises: `urllib.error.HTTPError`
         """
+        if not path.is_dir:
+            return await self._file_metadata(path.path)
+
         package = await self._package_metadata()
 
         if path.is_root:
             return [package]
 
-        if not path.is_dir:
-            return (await self._file_metadata(path.path))
-
         children = []
         for child in package.file_parts:
             # convert from the identifier format listed in the metadata to a path
-            child_doi = child
-            child_doi = child_doi.split(".")[-1]
+            child_doi = child.split(".")[-1]
             children.append((await self._file_metadata(child_doi)))
         return children
 
