@@ -10,27 +10,33 @@ from .metadata import DryadPackageMetadata, DryadFileMetadata
 
 
 class DryadProvider(provider.BaseProvider):
-    """
-        Read_only provider for Dryad packages.
-        Within the Dryad API, packages are accessed via the following format:
-            `<API ACCESS POINT>/doi:10.5061/dryad.XXXX`
-        Where `XXXX` denotes the packages-specific DOI suffix.
-        Similarly, files are accessed with the following format:
-            `<API ACCESS POINT>/doi:10.5061/dryad.XXXX/Y`
-        Where `Y` is an index number assigned to each file.
+    """Read-only provider for Dryad packages.
 
-        In Waterbutler, this is translated to the following table:
+    Within the Dryad API, packages are accessed via the following format::
 
-        ========== ================================
-        WB Path    Object
-        ========== ================================
-        `/`        Dryad repository (unimplemented)
-        `/XXXX/`   Dryad Package
-        `/XXXX/YY` Package File
-        ========== ================================
+        `<API ACCESS POINT>/doi:10.5061/dryad.XXXX`
 
-        Paths need to follow this scheme or will :class:`waterbutler.core.exceptions.NotFoundError`
-        when validated through :func:`waterbutler.providers.dryad.provider.DryadProvider.validate_path`
+    Where ``XXXX`` denotes the package-specific DOI suffix.
+
+    Similarly, files are accessed with the following format::
+
+        `<API ACCESS POINT>/doi:10.5061/dryad.XXXX/Y`
+
+    Where ``Y`` is an index number assigned to each file.
+
+    In WaterButler, this is translated to the following table:
+
+        ========  ================================
+        WB Path     Object
+        ========  ================================
+        /         Dryad repository (unimplemented)
+        /XXXX/    Dryad Package
+        /XXXX/YY  Package File
+        ========  ================================
+
+    Paths need to follow this scheme or will raise a
+    :class:`waterbutler.core.exceptions.NotFoundError` when validated through
+    :func:`waterbutler.providers.dryad.provider.DryadProvider.validate_path`
     """
 
     NAME = 'dryad'
@@ -41,11 +47,17 @@ class DryadProvider(provider.BaseProvider):
 
     async def validate_v1_path(self, path, **kwargs):
         """See :func:`waterbutler.providers.dryad.provider.DryadProvider.validate_path`.
-            Additionally queries the Dryad API to check if the package exists.
+
+        Additionally queries the Dryad API to check if the package exists.
+
+        :param str path: string path to either a package or file.
+        :rtype: `DryadPath`
+        :return: A `DryadPath` object representing the requested entity
         """
         wbpath = await self.validate_path(path, **kwargs)
         if wbpath.is_root:
             return wbpath
+
         full_url = DRYAD_META_URL + wbpath.package_doi
         if wbpath.is_file:
             full_url += '/' + wbpath.file_id
@@ -63,12 +75,12 @@ class DryadProvider(provider.BaseProvider):
         return wbpath
 
     async def validate_path(self, path, **kwargs):
-        """Returns WaterButlerPath if the string `path` is valid, else raises
-        not found error. See :class:`waterbutler.providers.dryad.provider.DryadProvider`
-        for details on path formatting.
+        """Returns DryadPath if the string ``path`` is valid, else raises a NotFoundError. See
+        :class:`waterbutler.providers.dryad.provider.DryadProvider` for details on path formatting.
 
-        :param path: Path to either a package or file.
-        :type path: `str`
+        :param str path: string path to either a package or file.
+        :rtype: `DryadPath`
+        :return: A `DryadPath` object representing the requested entity
         """
         wbpath = DryadPath(path)
         if wbpath.is_root:
@@ -145,48 +157,36 @@ class DryadProvider(provider.BaseProvider):
         return ret
 
     def can_duplicate_names(self):
-        """Dryad write access is not allowed.
-
-        :raises: `waterbutler.core.exceptions.ReadOnlyProviderError` Always
-        """
+        """Dryad packages and files always have different IDs"""
         return False
 
     def can_intra_move(self, other, path=None):
-        """Moves are not allowed. Only Copies from Dryad to another provider.
-
-            :raises: `waterbutler.core.exceptions.ReadOnlyProviderError` Always
-        """
         raise exceptions.ReadOnlyProviderError(self)
 
     def can_intra_copy(self, other, path=None):
-        """All files in Dryad are able to be copied out (if accessible).
-
-            :returns: `False` Always
-        """
         return False
 
     async def upload(self, stream, **kwargs):
-        """Uploads are not allowed.
+        """Read-only provider, uploads are not allowed.
 
-        :raises:`waterbutler.core.exceptions.ReadOnlyProviderError` Always
+        :raises: `waterbutler.core.exceptions.ReadOnlyProviderError` always
         """
         raise exceptions.ReadOnlyProviderError(self)
 
     async def delete(self, **kwargs):
-        """Deletions are not allowed.
+        """Read-only provider, deletions are not allowed.
 
-        :raises: `exceptions.ReadOnlyProviderError`: Always
+        :raises: `waterbutler.core.exceptions.ReadOnlyProviderError` always
         """
         raise exceptions.ReadOnlyProviderError(self)
 
+
     async def _package_metadata(self):
-        """ Interface to file and package metadata from Dryad
+        """Retrieves package metadata from Dryad using the configured doi.
 
-        :param path: Path mapping to waterbutler interpretation of Dryad package
-        :type path: `waterbutler.core.path.WaterButlerPath`
-        :returns:  `list` -- A list of metadata
-        :raises: `urllib.error.HTTPError`
-
+        :rtype: `DryadPackageMetadata`
+        :return: Metadata about the package
+        :raises: `exceptions.MetadataError`
         """
         resp = await self.make_request(
             'GET',
@@ -197,13 +197,13 @@ class DryadProvider(provider.BaseProvider):
         return DryadPackageMetadata(body_text, self.doi)
 
     async def _file_metadata(self, path):
-        """ Interface to file and package metadata from Dryad
+        """Retrieve file metadata from Dryad.
 
-        :param path: Path mapping to waterbutler interpretation of Dryad file
-        :type path: `waterbutler.core.path.WaterButlerPath`
-        :returns:  `list` A list of metadata
-        :raises: `urllib.error.HTTPError`
-
+        :param DryadPath path: DryadPath object mapping Dryad file to WB interpretation
+        :rtype: `DryadFileMetadata`
+        :return:  Metadata for the Dryad file.
+        :raises: `exceptions.MetadataError`
+        :raises: `exceptions.DownloadError`
         """
 
         metadata_resp = await self.make_request(
@@ -222,8 +222,8 @@ class DryadProvider(provider.BaseProvider):
             'GET',
             DRYAD_META_URL + path.strip('/') + '/bitstream',
             expects=(200, 206),
-            throws=exceptions.DownloadError,
-        )
+            throws=exceptions.DownloadError)
+
         content = file_stream.headers.get('CONTENT-DISPOSITION', '')
         _, params = cgi.parse_header(content)
         file_stream.close()
