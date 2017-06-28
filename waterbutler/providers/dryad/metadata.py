@@ -10,23 +10,21 @@ class BaseDryadMetadata(metadata.BaseMetadata):
     """
 
     def __init__(self, raw, doi):
-        """
-        :param raw: Source metadata generated from Dryad API. Must be parseable by xml.dom.minidom
-        :type raw: str
-        :param doi: Dryad DOI. Format: doi:10.5061/dryad.XXXX
-        :type doi: str.
+        """Base class for Package and File Metadata classes.
+
+        :param str raw: Source metadata from Dryad API. Must be parseable by `xml.dom.minidom`
+        :param str doi: Dryad DOI. Format: doi:10.5061/dryad.XXXX
         """
         super().__init__(xml.dom.minidom.parseString(raw))
         self.dryad_doi = doi
 
     def _get_element_(self, name):
-        """
-            Helper function for retrieving metadata fields from source document
-            by name. Returns first element found
+        """Helper function for retrieving metadata fields from source document by name. Returns
+        first element found.
 
-            :param name: Element tag.
-            :type name: string or unicode
-            :returns String contents of element
+        :param str name: Element tag.
+        :rtype: str
+        :return: String contents of element or None
         """
         el = self.raw.getElementsByTagName(name)
         if len(el) > 0:
@@ -35,13 +33,11 @@ class BaseDryadMetadata(metadata.BaseMetadata):
             return None
 
     def _get_element_list_(self, name):
-        """
-            Helper function for retrieving metadata fields from source document
-            by name.
+        """Helper function for retrieving metadata fields from source document by name.
 
-            :param name: Element tag.
-            :type name: string or unicode
-            :returns String contents of element
+        :param str name: Element tag.
+        :rtype: str
+        :return: string contents of element
         """
         return [i.firstChild.wholeText for i in self.raw.getElementsByTagName(name)]
 
