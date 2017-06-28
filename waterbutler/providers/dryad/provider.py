@@ -183,6 +183,18 @@ class DryadProvider(provider.BaseProvider):
         """
         raise exceptions.ReadOnlyProviderError(self.NAME)
 
+    async def move(self, *args, **kwargs):
+        """Read-only provider, moves are not allowed.
+
+        :raises: `waterbutler.core.exceptions.ReadOnlyProviderError` always
+        """
+        raise exceptions.ReadOnlyProviderError(self.NAME)
+
+    # copy is okay if source is dryad and destination is not
+    async def copy(self, dest_provider, *args, **kwargs):
+        if dest_provider.NAME == self.NAME:
+            raise exceptions.ReadOnlyProviderError(self.NAME)
+        return await super().copy(dest_provider, *args, **kwargs)
 
     async def _package_metadata(self):
         """Retrieves package metadata from Dryad using the configured doi.
