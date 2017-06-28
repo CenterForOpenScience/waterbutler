@@ -174,14 +174,14 @@ class DryadProvider(provider.BaseProvider):
 
         :raises: `waterbutler.core.exceptions.ReadOnlyProviderError` always
         """
-        raise exceptions.ReadOnlyProviderError(self)
+        raise exceptions.ReadOnlyProviderError(self.NAME)
 
     async def delete(self, **kwargs):
         """Read-only provider, deletions are not allowed.
 
         :raises: `waterbutler.core.exceptions.ReadOnlyProviderError` always
         """
-        raise exceptions.ReadOnlyProviderError(self)
+        raise exceptions.ReadOnlyProviderError(self.NAME)
 
 
     async def _package_metadata(self):
