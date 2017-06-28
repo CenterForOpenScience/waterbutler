@@ -164,7 +164,7 @@ class DryadProvider(provider.BaseProvider):
         return False
 
     def can_intra_move(self, other, path=None):
-        raise exceptions.ReadOnlyProviderError(self)
+        return False
 
     def can_intra_copy(self, other, path=None):
         return False
