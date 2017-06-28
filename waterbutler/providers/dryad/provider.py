@@ -102,6 +102,9 @@ class DryadProvider(provider.BaseProvider):
         """
         return base.child(path, folder=folder)
 
+    def path_from_metadata(self, parent_path, metadata):
+        return parent_path.child(metadata.name, folder=metadata.is_folder)
+
     async def metadata(self, path, **kwargs):
         """ Interface to file and package metadata from Dryad
 
