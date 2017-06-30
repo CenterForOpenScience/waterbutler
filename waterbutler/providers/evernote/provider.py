@@ -254,6 +254,22 @@ class EvernoteProvider(provider.BaseProvider):
         """
         raise exceptions.ReadOnlyProviderError(self)
 
+    async def move(self, *args, **kwargs):
+
+        print("evernote.provider.move: ", args, kwargs)
+
+        raise exceptions.ReadOnlyProviderError(self.NAME)
+
+    # copy is okay if source is evernote and destination is not
+    async def copy(self, dest_provider, *args, **kwargs):
+
+        print("evernote.provider.copy: ", args, kwargs)
+
+        if dest_provider.NAME == 'evernote':
+            raise exceptions.ReadOnlyProviderError(self.NAME)
+        return await super().copy(dest_provider, *args, **kwargs)
+
+
     def can_duplicate_names(self):
         """
             Evernote write access is not allowed.
