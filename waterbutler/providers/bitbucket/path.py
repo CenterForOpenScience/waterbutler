@@ -9,7 +9,8 @@ class BitbucketPathPart(path.WaterButlerPathPart):
     bitbucket_safe_chars = '~`!@$^&*()_-+={}|[];:,<.>"\' '
 
     DECODE = parse.unquote
-    ENCODE = functools.partial(parse.quote, safe=bitbucket_safe_chars)
+    # TODO: mypy lacks a syntax to define kwargs for callables
+    ENCODE = functools.partial(parse.quote, safe=bitbucket_safe_chars)  # type: ignore
 
     def increment_name(self, _id=None):
         """Overridden to preserve branch from _id upon incrementing"""

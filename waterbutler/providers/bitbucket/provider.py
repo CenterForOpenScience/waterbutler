@@ -127,10 +127,12 @@ class BitbucketProvider(provider.BaseProvider):
 
         return path_obj
 
-    def path_from_metadata(self, parent_path: BitbucketPath, metadata) -> BitbucketPath:
+    def path_from_metadata(self,  # type: ignore
+                           parent_path: BitbucketPath,
+                           metadata) -> BitbucketPath:
         return parent_path.child(metadata.name, folder=metadata.is_folder)
 
-    async def metadata(self, path: BitbucketPath, **kwargs):
+    async def metadata(self, path: BitbucketPath, **kwargs):  # type: ignore
         """Get metadata about the requested file or folder.
 
         :param BitbucketPath path: A Bitbucket path object for the file or folder
@@ -142,7 +144,7 @@ class BitbucketProvider(provider.BaseProvider):
         else:
             return (await self._metadata_file(path, **kwargs))
 
-    async def revisions(self, path: BitbucketPath, **kwargs) -> list:
+    async def revisions(self, path: BitbucketPath, **kwargs) -> list:  # type: ignore
         """Returns a list of revisions for a file.  As a VCS, Bitbucket doesn't have a single
         canonical history for a file.  The revisions returned will be those of the file starting
         with the reference supplied to or inferred by validate_v1_path().
@@ -174,7 +176,7 @@ class BitbucketProvider(provider.BaseProvider):
             for item in valid_revisions
         ]
 
-    async def download(self, path: BitbucketPath, **kwargs):
+    async def download(self, path: BitbucketPath, **kwargs):  # type: ignore
         '''Get the stream to the specified file on bitbucket
         :param str path: The path to the file on bitbucket
         '''
@@ -256,7 +258,8 @@ class BitbucketProvider(provider.BaseProvider):
 
         for item in this_dir['files']:
             name = self.bitbucket_path_to_name(item['path'], this_dir['path'])
-            ret.append(BitbucketFileMetadata(
+            # TODO: mypy doesn't like the mix of File & Folder Metadata objects
+            ret.append(BitbucketFileMetadata(  # type: ignore
                 item,
                 folder.child(name, folder=False),
                 owner=self.owner,
