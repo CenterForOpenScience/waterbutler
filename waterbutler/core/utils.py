@@ -141,9 +141,9 @@ class ZipStreamGenerator:
                 ])
                 return await self.__anext__()
             else:
-                return path.path.replace(self.parent_path.path, ''), EmptyStream()
+                return path.path.replace(self.parent_path.path, '', 1), EmptyStream()
 
-        return path.path.replace(self.parent_path.path, ''), await self.provider.download(path)
+        return path.path.replace(self.parent_path.path, '', 1), await self.provider.download(path)
 
 
 class RequestHandlerContext:
