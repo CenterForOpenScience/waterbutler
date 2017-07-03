@@ -148,7 +148,29 @@ class DryadPackageMetadata(BaseDryadMetadata, metadata.BaseFolderMetadata):
         })
 
 
-class DryadFileRevisionMetadata(BaseDryadMetadata, metadata.BaseFileRevisionMetadata):
+class DryadFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
+
+    def __init__(self, raw):
+        """Base class for Package and File Metadata classes.
+
+        :param str raw: Source metadata from Dryad API. Must be parseable by `xml.dom.minidom`
+        :param str doi: Dryad DOI. Format: doi:10.5061/dryad.XXXX
+        """
+        super().__init__(xml.dom.minidom.parseString(raw))
+
+    def _get_element_(self, name):
+        """Helper function for retrieving metadata fields from source document by name. Returns
+        first element found.
+
+        :param str name: Element tag.
+        :rtype: str
+        :return: String contents of element or None
+        """
+        el = self.raw.getElementsByTagName(name)
+        if len(el) > 0:
+            return el[0].firstChild.wholeText
+        else:
+            return None
 
     @property
     def version(self):
@@ -157,3 +179,7 @@ class DryadFileRevisionMetadata(BaseDryadMetadata, metadata.BaseFileRevisionMeta
     @property
     def version_identifier(self):
         return 'reference'
+
+    @property
+    def modified(self):
+        return self._get_element_("dcterms:dateSubmitted")
