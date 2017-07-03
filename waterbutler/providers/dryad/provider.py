@@ -12,31 +12,62 @@ from .metadata import DryadPackageMetadata, DryadFileMetadata
 class DryadProvider(provider.BaseProvider):
     """Read-only provider for Dryad packages.
 
-    Within the Dryad API, packages are accessed via the following format::
+    **Paths**
 
-        `<API ACCESS POINT>/doi:10.5061/dryad.XXXX`
+    Within the Dryad API packages are accessed via the following format::
 
-    Where ``XXXX`` denotes the package-specific DOI suffix.
+        <API ACCESS POINT>/doi:10.5061/dryad.XXXX
+
+    Where ``XXXX`` denotes the package-specific DOI suffix, henceforth called the "package ID".
 
     Similarly, files are accessed with the following format::
 
-        `<API ACCESS POINT>/doi:10.5061/dryad.XXXX/Y`
+        <API ACCESS POINT>/doi:10.5061/dryad.XXXX/Y
 
-    Where ``Y`` is an index number assigned to each file.
+    Where ``Y`` is an index number assigned to each file, henceforth called the "file ID".
 
-    In WaterButler, this is translated to the following table:
+    In WaterButler, this is translated to the following table::
 
-        ========  ================================
-        WB Path     Object
-        ========  ================================
-        /         Dryad repository (unimplemented)
-        /XXXX/    Dryad Package
-        /XXXX/YY  Package File
-        ========  ================================
+        ========  =================================
+        WB Path   Object
+        ========  =================================
+        /         List of configured Dryad packages
+        /XXXX/    Dryad package
+        /XXXX/Y   Package file
+        ========  =================================
+
+    The auth provider returns a settings object that contains a ``doi`` key.  This DOI will
+    determine what package metadata is returned when querying the root. The Dryad package ID given
+    in the path is redundant with the package specified by the auth provider. Asking for the root
+    path metadata will **always** return a one-element list containing the metadata of the
+    configured package.  If the package ID does not match the settings DOI, the provider will
+    return a 404.
 
     Paths need to follow this scheme or will raise a
     :class:`waterbutler.core.exceptions.NotFoundError` when validated through
     :func:`waterbutler.providers.dryad.provider.DryadProvider.validate_path`
+
+    **Settings**
+
+    * ``doi``: The DOI of the package currently attached to the auth provider.  Unlike the url
+      path, this will be the full DOI, e.g. ``10.5061/dryad.XXXX``.
+
+    **Quirks**
+
+    * Dryad does not (as of July 2017) support authentication, so this provider does not do any
+      auth checking beyond asserting that the package DOI in the path matches the DOI given in
+      the settings from the auth provider.
+
+    * The redundancy of the configured base DOI and the package ID in the path is deliberate. It
+      was chosen to maintain structural parity with a possible future where the provider may be
+      updated to support a list of connected packages or a list of user-owned packages.
+
+    **API Documentation**
+
+    * Dryad's RESTful API: http://wiki.datadryad.org/DataONE_RESTful_API
+
+    * DOI usage: http://wiki.datadryad.org/DOI_Usage
+
     """
 
     NAME = 'dryad'
@@ -46,13 +77,15 @@ class DryadProvider(provider.BaseProvider):
         self.doi = dryad_settings['doi']
 
     async def validate_v1_path(self, path, **kwargs):
-        """See :func:`waterbutler.providers.dryad.provider.DryadProvider.validate_path`.
+        """Verify that the requested file or folder exists and that it conforms to the v1 path
+        semantics. Unusually, the v1 path semantics checking is a side effect of the code in
+        :func:`waterbutler.providers.dryad.provider.DryadProvider.validate_path`.
 
         Additionally queries the Dryad API to check if the package exists.
 
-        :param str path: string path to either a package or file.
-        :rtype: `DryadPath`
-        :return: A `DryadPath` object representing the requested entity
+        :param str path: string path to either a package or file
+        :rtype: :class:`waterbutler.providers.dryad.path.DryadPath`
+        :return: a DryadPath object representing the requested entity
         """
         wbpath = await self.validate_path(path, **kwargs)
         if wbpath.is_root:
@@ -75,11 +108,11 @@ class DryadProvider(provider.BaseProvider):
         return wbpath
 
     async def validate_path(self, path, **kwargs):
-        """Returns DryadPath if the string ``path`` is valid, else raises a NotFoundError. See
+        """Returns `DryadPath` if the string ``path`` is valid, else raises a `NotFoundError`. See
         :class:`waterbutler.providers.dryad.provider.DryadProvider` for details on path formatting.
 
-        :param str path: string path to either a package or file.
-        :rtype: `DryadPath`
+        :param str path: string path to either a package or file
+        :rtype: :class:`waterbutler.providers.dryad.path.DryadPath`
         :return: A `DryadPath` object representing the requested entity
         """
         wbpath = DryadPath(path)
@@ -100,7 +133,7 @@ class DryadProvider(provider.BaseProvider):
         """Take a path and a base path and build a WaterButlerPath representing `/base/path`.  For
         id-based providers, this will need to lookup the id of the new child object.
 
-        :param WaterButlerPath base: The base folder to look under
+        :param DryadPath base: The base folder to look under
         :param str path: the path of a child of `base`, relative to `base`
         :param bool folder: whether the returned WaterButlerPath should represent a folder
         :rtype: WaterButlerPath

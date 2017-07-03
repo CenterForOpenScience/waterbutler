@@ -2,8 +2,7 @@ from waterbutler.core import path
 
 
 class DryadPath(path.WaterButlerPath):
-    """Dryad paths consist primarily of two parts, the package doi
-    and the file id within the doi.
+    """Dryad paths consist of two parts, the package doi and the file id within the doi.
     """
 
     @property
