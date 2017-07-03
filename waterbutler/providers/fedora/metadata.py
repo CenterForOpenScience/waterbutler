@@ -53,6 +53,11 @@ class BaseFedoraMetadata(metadata.BaseMetadata):
     def created_utc(self):
         return utils.normalize_datetime(self._get_property(settings.CREATED_PROPERTY_URI, None))
 
+    # In extras add all of the statements about this object under the 'fedora' key.
+    @property
+    def extra(self):
+        return {'fedora': self._get_resource(self.fedora_id)}
+
     # Return an resource from index
     def _get_resource(self, resource_id):
         resource_id = resource_id.rstrip('/')
