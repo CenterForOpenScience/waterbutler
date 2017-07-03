@@ -5,7 +5,7 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 
 from .path import DryadPath
-from .settings import DRYAD_META_URL, DRYAD_FILE_URL
+from .settings import DRYAD_META_URL, DRYAD_FILE_URL, DRYAD_DOI_BASE
 from .metadata import DryadPackageMetadata, DryadFileMetadata
 
 
@@ -85,10 +85,15 @@ class DryadProvider(provider.BaseProvider):
         wbpath = DryadPath(path)
         if wbpath.is_root:
             return wbpath
+
         if len(wbpath.parts) == 2 and not wbpath.is_dir:
-                raise exceptions.NotFoundError(path)
+            raise exceptions.NotFoundError(path)
         elif len(wbpath.parts) == 3 and not wbpath.is_file:
             raise exceptions.NotFoundError(path)
+
+        if 'doi:{}'.format(self.doi) != '{}{}'.format(DRYAD_DOI_BASE, wbpath.package_doi):
+            raise exceptions.NotFoundError(path)
+
         return wbpath
 
     async def revalidate_path(self, base, path, folder=False):

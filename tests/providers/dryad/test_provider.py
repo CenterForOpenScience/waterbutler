@@ -19,7 +19,7 @@ def credentials():
 
 @pytest.fixture
 def settings():
-    return {'doi': 'doi:10.5061/dryad.1850'}
+    return {'doi': '10.5061/dryad.1850'}
 
 @pytest.fixture
 def provider(auth, credentials, settings):
