@@ -1,4 +1,5 @@
 import cgi
+import xml.dom.minidom
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -6,7 +7,9 @@ from waterbutler.core import exceptions
 
 from .path import DryadPath
 from .settings import DRYAD_META_URL, DRYAD_FILE_URL, DRYAD_DOI_BASE
-from .metadata import DryadPackageMetadata, DryadFileMetadata
+from .metadata import (DryadPackageMetadata,
+                       DryadFileMetadata,
+                       DryadFileRevisionMetadata)
 
 
 class DryadProvider(provider.BaseProvider):
@@ -87,25 +90,37 @@ class DryadProvider(provider.BaseProvider):
         :rtype: :class:`waterbutler.providers.dryad.path.DryadPath`
         :return: a DryadPath object representing the requested entity
         """
-        wbpath = await self.validate_path(path, **kwargs)
-        if wbpath.is_root:
-            return wbpath
 
-        full_url = DRYAD_META_URL + wbpath.package_doi
-        if wbpath.is_file:
-            full_url += '/' + wbpath.file_id
+        if path == '/':
+            return DryadPath('/', _ids=[self.doi], folder=True)
 
-        resp = await self.make_request(
-            'GET',
-            full_url,
-            expects=(200, 404),
-            throws=exceptions.MetadataError,
-        )
-        await resp.release()
-        if resp.status == 404:
-            raise exceptions.NotFoundError(str(path))
+        names = ['']
+        ids = path.rstrip('/').split('/')
+        looks_like_dir = path.endswith('/')
+        if len(ids) == 2 and not looks_like_dir:
+            raise exceptions.NotFoundError(path)
+        elif len(ids) == 3 and looks_like_dir:
+            raise exceptions.NotFoundError(path)
+        elif len(ids) > 3:
+            raise exceptions.NotFoundError(path)
 
-        return wbpath
+        package_id = ids[1]
+        if 'doi:{}'.format(self.doi) != '{}{}'.format(DRYAD_DOI_BASE, package_id):
+            raise exceptions.NotFoundError(path)
+
+        # TODO: this should probably cached or the function memoized
+        package_science_meta = await self._get_scientific_metadata_for_package(package_id)
+        package_name = package_science_meta.getElementsByTagName('dcterms:title')[0]\
+                                           .firstChild.wholeText
+        names.append(package_name)
+
+        if not looks_like_dir:
+            file_id = ids[2]
+            file_name = await self._get_filename_for_file(package_id, file_id)
+            names.append(file_name)
+
+        wb_path = DryadPath('/'.join(names), _ids=ids, folder=looks_like_dir)
+        return wb_path
 
     async def validate_path(self, path, **kwargs):
         """Returns `DryadPath` if the string ``path`` is valid, else raises a `NotFoundError`. See
@@ -115,33 +130,60 @@ class DryadProvider(provider.BaseProvider):
         :rtype: :class:`waterbutler.providers.dryad.path.DryadPath`
         :return: A `DryadPath` object representing the requested entity
         """
-        wbpath = DryadPath(path)
-        if wbpath.is_root:
-            return wbpath
 
-        if len(wbpath.parts) == 2 and not wbpath.is_dir:
-            raise exceptions.NotFoundError(path)
-        elif len(wbpath.parts) == 3 and not wbpath.is_file:
-            raise exceptions.NotFoundError(path)
+        if path == '/':
+            return DryadPath('/', _ids=[self.doi], folder=True)
 
-        if 'doi:{}'.format(self.doi) != '{}{}'.format(DRYAD_DOI_BASE, wbpath.package_doi):
+        names = ['']
+        ids = path.rstrip('/').split('/')
+        if len(ids) > 3:
             raise exceptions.NotFoundError(path)
 
-        return wbpath
+        is_file = len(ids) == 3
+
+        package_id = ids[1]
+        if 'doi:{}'.format(self.doi) != '{}{}'.format(DRYAD_DOI_BASE, package_id):
+            raise exceptions.NotFoundError(path)
+
+        # TODO: this should probably cached or the function memoized
+        package_science_meta = await self._get_scientific_metadata_for_package(package_id)
+        package_name = package_science_meta.getElementsByTagName('dcterms:title')[0]\
+                                           .firstChild.wholeText.strip(" \n")
+        names.append(package_name)
+
+        if is_file:
+            file_id = ids[2]
+            file_name = await self._get_filename_for_file(package_id, file_id)
+            names.append(file_name)
+
+        wb_path = DryadPath('/'.join(names), _ids=ids, folder=not is_file)
+
+        return wb_path
 
     async def revalidate_path(self, base, path, folder=False):
-        """Take a path and a base path and build a WaterButlerPath representing `/base/path`.  For
-        id-based providers, this will need to lookup the id of the new child object.
+        # if path is root, return package metadata in one-element list
+        if base.is_root:
+            package_id = self.doi.replace(DRYAD_DOI_BASE.replace('doi:', ''), '')
+            package_science_meta = await self._get_scientific_metadata_for_package(package_id)
+            package_name = package_science_meta.getElementsByTagName('dcterms:title')[0]\
+                                               .firstChild.wholeText
+            package_path = base.child(package_name, _id=package_id, folder=True)
+            return package_path
 
-        :param DryadPath base: The base folder to look under
-        :param str path: the path of a child of `base`, relative to `base`
-        :param bool folder: whether the returned WaterButlerPath should represent a folder
-        :rtype: WaterButlerPath
-        """
-        return base.child(path, folder=folder)
+        package_science_meta = await self._get_scientific_metadata_for_package(base.package_id)
+        package = DryadPackageMetadata(base, package_science_meta)
+        for child in package.file_parts:
+            # convert from the identifier format listed in the metadata to a path
+            child_file_id = child.split('/')[-1]
+            child_path = await self._get_child_for_parent(base, child_file_id)
+            if child_path.name == path:
+                return child_path
+
+        # couldn't find it
+        raise exceptions.NotFoundError(path)
 
     def path_from_metadata(self, parent_path, metadata):
-        return parent_path.child(metadata.name, folder=metadata.is_folder)
+        return parent_path.child(metadata.name, _id=metadata.id, folder=metadata.is_folder)
 
     async def metadata(self, path, **kwargs):
         """ Interface to file and package metadata from Dryad
@@ -152,25 +194,34 @@ class DryadProvider(provider.BaseProvider):
         :raises: `urllib.error.HTTPError`
         """
         if not path.is_dir:
-            return await self._file_metadata(path.path)
+            return await self._file_metadata(path)
 
-        package = await self._package_metadata()
-
+        # if path is root, return package metadata in one-element list
         if path.is_root:
-            return [package]
+            package_id = self.doi.replace(DRYAD_DOI_BASE.replace('doi:', ''), '')
+            package_science_meta = await self._get_scientific_metadata_for_package(package_id)
+            package_name = package_science_meta.getElementsByTagName('dcterms:title')[0]\
+                                               .firstChild.wholeText
+            package_path = path.child(package_name, _id=package_id, folder=True)
+            return [DryadPackageMetadata(package_path, package_science_meta)]
 
+        # if path is package, return list of children's metadata
+        package_science_meta = await self._get_scientific_metadata_for_package(path.package_id)
+        package = DryadPackageMetadata(path, package_science_meta)
         children = []
         for child in package.file_parts:
             # convert from the identifier format listed in the metadata to a path
-            child_doi = child.split(".")[-1]
-            children.append((await self._file_metadata(child_doi)))
+            child_file_id = child.split('/')[-1]
+            child_path = await self._get_child_for_parent(path, child_file_id)
+            children.append(await self._file_metadata(child_path))
+
         return children
 
-    def revisions(self, **kwargs):
+    async def revisions(self, path, **kwargs):
         """Currently, there are no revisions in dryad
-            :raises: `waterbutler.core.exceptions.UnsupportedHTTPMethodError` always
         """
-        raise exceptions.UnsupportedHTTPMethodError()
+        science_meta = await self._get_scientific_metadata_for_file(path.package_id, path.file_id)
+        return [DryadFileRevisionMetadata({}, science_meta)]
 
     async def download(self, path, **kwargs):
         """ Interface to downloading files from Dryad
@@ -183,17 +234,17 @@ class DryadProvider(provider.BaseProvider):
 
         resp = await self.make_request(
             'GET',
-            DRYAD_META_URL + path.path + '/bitstream',
+            '{}{}/bitstream'.format(DRYAD_META_URL, path.full_identifier),
             expects=(200, 206),
             throws=exceptions.DownloadError,
         )
 
-        file_metadata = await self._file_metadata(path.path)
+        system_meta = await self._get_system_metadata_for_file(path.package_id, path.file_id)
+        size = system_meta.getElementsByTagName('size')[0].firstChild.wholeText
+
         # This is a kludge in place to fix a bug in the Dryad API.
-        ret = streams.ResponseStreamReader(resp,
-            size=file_metadata.size,
-            name=file_metadata.name)
-        ret._size = file_metadata.size
+        ret = streams.ResponseStreamReader(resp, size=size, name=path.name)
+        ret._size = size
         return ret
 
     def can_duplicate_names(self):
@@ -233,21 +284,6 @@ class DryadProvider(provider.BaseProvider):
             raise exceptions.ReadOnlyProviderError(self.NAME)
         return await super().copy(dest_provider, *args, **kwargs)
 
-    async def _package_metadata(self):
-        """Retrieves package metadata from Dryad using the configured doi.
-
-        :rtype: `DryadPackageMetadata`
-        :return: Metadata about the package
-        :raises: `exceptions.MetadataError`
-        """
-        resp = await self.make_request(
-            'GET',
-            DRYAD_META_URL + self.doi.split('.')[-1],
-            expects=(200, 206),
-            throws=exceptions.MetadataError)
-        body_text = await resp.text()
-        return DryadPackageMetadata(body_text, self.doi)
-
     async def _file_metadata(self, path):
         """Retrieve file metadata from Dryad.
 
@@ -257,30 +293,69 @@ class DryadProvider(provider.BaseProvider):
         :raises: `exceptions.MetadataError`
         :raises: `exceptions.DownloadError`
         """
+        science_meta = await self._get_scientific_metadata_for_file(path.package_id, path.file_id)
+        system_meta = await self._get_system_metadata_for_file(path.package_id, path.file_id)
 
-        metadata_resp = await self.make_request(
+        return DryadFileMetadata(path, science_meta, system_meta)
+
+    async def _get_scientific_metadata_for_package(self, package_id):
+        url = '{}{}'.format(DRYAD_META_URL, package_id)
+        resp = await self.make_request(
             'GET',
-            DRYAD_META_URL + path.strip('/'),
-            expects=(200, 206),
-            throws=exceptions.MetadataError)
+            url,
+            expects=(200, 404),
+            throws=exceptions.MetadataError,
+        )
+        if resp.status == 404:
+            await resp.release()
+            raise exceptions.NotFoundError('/{}/'.format(package_id))
 
-        file_metadata_resp = await self.make_request(
+        return xml.dom.minidom.parseString(await resp.read())
+
+    async def _get_scientific_metadata_for_file(self, package_id, file_id):
+        url = '{}{}/{}'.format(DRYAD_META_URL, package_id, file_id)
+        resp = await self.make_request(
             'GET',
-            DRYAD_FILE_URL + path.strip('/') + "/bitstream",
-            expects=(200, 206),
-            throws=exceptions.MetadataError)
+            url,
+            expects=(200, 404),
+            throws=exceptions.MetadataError,
+        )
+        if resp.status == 404:
+            await resp.release()
+            raise exceptions.NotFoundError('/{}/{}'.format(package_id, file_id))
 
+        return xml.dom.minidom.parseString(await resp.text())
+
+    async def _get_system_metadata_for_file(self, package_id, file_id):
+        url = '{}{}/{}/bitstream'.format(DRYAD_FILE_URL, package_id, file_id)
+        resp = await self.make_request(
+            'GET',
+            url,
+            expects=(200, 206),
+            throws=exceptions.MetadataError
+        )
+        return xml.dom.minidom.parseString(await resp.text())
+
+    async def _get_filename_for_file(self, package_id, file_id):
+        """Dryad doesn't make the file name (as given when downloading the package) available in
+        either the scientific or system metadata.  To get it, we must start a download of the file
+        and read the Content-Disposition header.
+        """
+
+        url = '{}{}/{}/bitstream'.format(DRYAD_META_URL, package_id, file_id)
         file_stream = await self.make_request(
             'GET',
-            DRYAD_META_URL + path.strip('/') + '/bitstream',
+            url,
             expects=(200, 206),
-            throws=exceptions.DownloadError)
+            throws=exceptions.MetadataError,  # MetadataError b/c we only want the name
+        )
 
         content = file_stream.headers.get('CONTENT-DISPOSITION', '')
         _, params = cgi.parse_header(content)
         file_stream.close()
-        file_name = params['filename']
-        metadata_text = await metadata_resp.text()
-        file_metadata = await file_metadata_resp.text()
+        file_name = params['filename'].strip('"')
+        return file_name
 
-        return DryadFileMetadata(metadata_text, path.strip('/'), file_metadata, file_name)
+    async def _get_child_for_parent(self, parent_path, file_id):
+        file_name = await self._get_filename_for_file(parent_path.package_id, file_id)
+        return parent_path.child(file_name, _id=file_id, folder=False)
