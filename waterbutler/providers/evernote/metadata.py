@@ -4,7 +4,10 @@ from waterbutler.core import metadata
 class EvernoteFileMetadata(metadata.BaseFileMetadata):
 
     def __init__(self, raw):
-        metadata.BaseFileMetadata.__init__(self, raw)
+
+        # print('++++++++++++++++++++++++++++++ EvernoteFileMetadata.__init__')
+        # print('+++++ raw: {}'.format(raw))
+        super().__init__(raw)
 
     @property
     def content_type(self):
@@ -46,6 +49,7 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
 
     @property
     def path(self):
+        print('EvernoteFileMetadata.path: self.raw', self.raw)
         return "/" + self.raw["guid"]
 
     @property

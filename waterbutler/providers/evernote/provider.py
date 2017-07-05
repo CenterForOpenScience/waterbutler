@@ -85,7 +85,7 @@ class EvernoteProvider(provider.BaseProvider):
 
     async def _file_metadata(self, path):
 
-        # print("_file_metadata -> path: ", path)
+        print("EvernoteProvider._file_metadata -> path: ", path)
 
         token = self.credentials['token']
         note_md = await _evernote_note(path, token, withContent=False)
@@ -94,23 +94,12 @@ class EvernoteProvider(provider.BaseProvider):
 
     async def metadata(self, path, **kwargs):
 
-        # TO DO: IMPORTANT
-        """
-        responds to a GET request for the url you posted.
-        If the `path` query arg refers to a particular file/note, it should return the metadata for that file/note.
-        If `path` is just `/`, it should return a list of metadata objects for all file/notes in the root directory.
-         IIRC, Evernote doesn’t have a hierarchy, so the root directory is just a collection of all available notes.
-        """
-
-        # print("metadata: path: {}".format(path), type(path), path.is_dir)
-
         if str(path) == u'/':
             package = await self._package_metadata()
             return package
 
         if not path.is_dir:
-            print("metdata path.path:", path.path)
-            return (await self._file_metadata(path.path))
+            return (await self._file_metadata(path.identifier))
 
     async def download(self, path, **kwargs):
         """ Interface to downloading files from Evernote
@@ -121,16 +110,16 @@ class EvernoteProvider(provider.BaseProvider):
         :raises:   `waterbutler.core.exceptions.DownloadError`
         """
 
-        print("evernote provider download: starting")
+        print("EvernoteProvider.download: path, kwargs", type(path), str(path), path.identifier, kwargs)
         token = self.credentials['token']
         client = get_evernote_client(token)
 
-        note_guid = path.parts[1].raw
-        note_metadata = await _evernote_note(note_guid, token, withContent=True)
+        note_guid = path.identifier
+        note = await _evernote_note(note_guid, token, withContent=True)
 
         # convert to HTML
         mediaStore = OSFMediaStore(client.get_note_store(), note_guid)
-        html = ENML2HTML.ENMLToHTML(note_metadata["content"], pretty=True, header=False,
+        html = ENML2HTML.ENMLToHTML(note["content"], pretty=True, header=False,
               media_store=mediaStore)
 
         # HACK -- let me write markdown
@@ -155,19 +144,21 @@ class EvernoteProvider(provider.BaseProvider):
 
         print("in Evernote.validate_path. path: {}".format(path))
 
-        wbpath = WaterButlerPath(path)
+        if path == '/':
+            wbpath = WaterButlerPath(path='/', _ids=['/'])
+        else:
+            try:
+                note_guid = path[1:]
+                print('evernote.provider.validate_path.note_guid', note_guid)
+                note_metadata = await self._file_metadata(note_guid)
+                print('evernote.provider.validate_path.note_metadata', note_metadata)
 
-        print("wbpath.is_root: {}".format(wbpath.is_root))
-        print("wbpath.is_dir: {}".format(wbpath.is_dir))
-        print("len(wbpath.parts): {}".format(len(wbpath.parts)))
-
-        if wbpath.is_root:
-            return wbpath
-        if len(wbpath.parts) == 2 and wbpath.is_dir:
+                print("validate_path.note_metadata.name: {}".format(note_metadata.name))
+                wbpath = WaterButlerPath("/" + note_metadata.name, _ids=('/', note_guid))
+            except Exception as e:
                 raise exceptions.NotFoundError(path)
-        if len(wbpath.parts) > 2:
-            raise exceptions.NotFoundError(path)
 
+        print("evernote.provider.validate_path.wbpath: ", str(wbpath), type(wbpath), wbpath.identifier)
         return wbpath
 
     async def validate_v1_path(self, path, **kwargs):
@@ -184,18 +175,16 @@ class EvernoteProvider(provider.BaseProvider):
         if wbpath.is_root:
             return wbpath
 
-        token = self.credentials['token']
-        print("wbpath.parts[1].raw", wbpath.parts[1].raw)
-        note = await _evernote_note(wbpath.parts[1].raw, token, withContent=False)
-        if isinstance(note, Exception):
-            print("validate_v1_path. could not get Note", note)
+        note_metadata = await self._file_metadata(wbpath.identifier)
+
+        if isinstance(note_metadata, Exception):
             raise exceptions.NotFoundError(str(path))
         else:
-            print("validate_v1_path. note is not None")
-            if note['notebook_guid'] == self.settings['folder']:
+            # TO: actually validate the plan
+            # for now just return wbpath
+            if True:
                 return wbpath
             else:
-                print('notebook_guid {} does not match folder {}'.format(note['notebook_guid'], self.settings['folder']))
                 raise exceptions.NotFoundError(str(path))
 
     def can_intra_move(self, other, path=None):
@@ -268,7 +257,6 @@ class EvernoteProvider(provider.BaseProvider):
         if dest_provider.NAME == 'evernote':
             raise exceptions.ReadOnlyProviderError(self.NAME)
         return await super().copy(dest_provider, *args, **kwargs)
-
 
     def can_duplicate_names(self):
         """
