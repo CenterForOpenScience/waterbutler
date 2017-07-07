@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+0.32.1 (2017-07-07)
+===================
+- Fix: Correctly format the Last-Modified header returned from v1 HEAD requests. WB had been
+setting it to the datetime format used by the provider, but we should be following the format laid
+out by RFC 7232, S2.2.  (thanks, @icereval and @luizirber!)
+
 0.32.0 (2017-06-14)
 ===================
 - Fix: Send back the correct modified date when uploading a file to osfstorage. osfstorage had
