@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.32.2 (2017-07-09)
+===================
+- Fix: Fix hanging figshare uploads by replacing a StreamReader.readexactly call with a
+StreamReader.read.  The underlying cause of this problem is still unknown.
+
 0.32.1 (2017-07-07)
 ===================
 - Fix: Correctly format the Last-Modified header returned from v1 HEAD requests. WB had been
