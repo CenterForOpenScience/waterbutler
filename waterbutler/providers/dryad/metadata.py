@@ -2,6 +2,7 @@ from waterbutler.core import utils
 from waterbutler.core import metadata
 
 from .settings import DRYAD_DOI_BASE
+from .utils import get_xml_element, get_xml_element_list
 
 
 class BaseDryadMetadata(metadata.BaseMetadata):
@@ -18,29 +19,6 @@ class BaseDryadMetadata(metadata.BaseMetadata):
         self._path = path
         self._science_meta = science_meta
         self.dryad_doi = '{}{}'.format(DRYAD_DOI_BASE, self._path.package_id)
-
-    def _get_element(self, name):
-        """Helper function for retrieving metadata fields from source document by name. Returns
-        first element found.
-
-        :param str name: Element tag.
-        :rtype: str
-        :return: String contents of element or None
-        """
-        el = self._science_meta.getElementsByTagName(name)
-        if len(el) > 0:
-            return el[0].firstChild.wholeText
-        else:
-            return None  # TESTME
-
-    def _get_element_list(self, name):
-        """Helper function for retrieving metadata fields from source document by name.
-
-        :param str name: Element tag.
-        :rtype: str
-        :return: string contents of element
-        """
-        return [i.firstChild.wholeText for i in self._science_meta.getElementsByTagName(name)]
 
     @property
     def path(self):
@@ -65,14 +43,14 @@ class BaseDryadMetadata(metadata.BaseMetadata):
     @property
     def extra(self):
         return {'doi': self.dryad_doi,
-                'spatial': self._get_element('dcterms:spatial'),
-                'available': self._get_element('dcterms:available'),
-                'scientificName': self._get_element_list('dwc:scientificName'),
-                'subject': self._get_element_list('dcterms:subject'),
-                'description': self._get_element('dcterms:description'),
-                'rights': self._get_element('dcterms:rights'),
-                'id': self._get_element('dcterms:identifier'),
-                'creators': self._get_element_list('dcterms:creator')}
+                'spatial': get_xml_element(self._science_meta, 'dcterms:spatial'),
+                'available': get_xml_element(self._science_meta, 'dcterms:available'),
+                'scientificName': get_xml_element_list(self._science_meta, 'dwc:scientificName'),
+                'subject': get_xml_element_list(self._science_meta, 'dcterms:subject'),
+                'description': get_xml_element(self._science_meta, 'dcterms:description'),
+                'rights': get_xml_element(self._science_meta, 'dcterms:rights'),
+                'id': get_xml_element(self._science_meta, 'dcterms:identifier'),
+                'creators': get_xml_element_list(self._science_meta, 'dcterms:creator')}
 
     @property
     def etag(self):
@@ -97,38 +75,28 @@ class DryadFileMetadata(BaseDryadMetadata, metadata.BaseFileMetadata):
         BaseDryadMetadata.__init__(self, path, science_meta)
         self._system_meta = system_meta
 
-    def _get_file_element(self, name):
-        el = self._system_meta.getElementsByTagName(name)
-        if len(el) > 0:
-            return el[0].firstChild.wholeText
-        else:
-            return None
-
-    def _get_file_element_list(self, name):
-        return [i.firstChild.wholeText for i in self._system_meta.getElementsByTagName(name)]
-
     @property
     def modified(self):
-        return self._get_element('dcterms:dateSubmitted')
+        return get_xml_element(self._science_meta, 'dcterms:dateSubmitted')
 
     @property
     def created_utc(self):
-        return utils.normalize_datetime(self._get_element('dcterms:dateSubmitted'))
+        return utils.normalize_datetime(get_xml_element(self._science_meta, 'dcterms:dateSubmitted'))
 
     @property
     def content_type(self):
-        return self._get_file_element('formatId')
+        return get_xml_element(self._system_meta, 'formatId')
 
     @property
     def size(self):
-        size = self._get_file_element('size')
+        size = get_xml_element(self._system_meta, 'size')
         return None if size is None else int(size)
 
     @property
     def extra(self):
         extra = super().extra
         extra.update({
-            'part_of': self._get_element('dcterms:isPartOf')
+            'part_of': get_xml_element(self._science_meta, 'dcterms:isPartOf')
         })
         return extra
 
@@ -137,17 +105,17 @@ class DryadPackageMetadata(BaseDryadMetadata, metadata.BaseFolderMetadata):
 
     @property
     def content_type(self):
-        return self._get_element('dcterms:type')
+        return get_xml_element(self._science_meta, 'dcterms:type')
 
     @property
     def file_parts(self):
-        return self._get_element_list('dcterms:hasPart')
+        return get_xml_element_list(self._science_meta, 'dcterms:hasPart')
 
     @property
     def extra(self):
         extra = super().extra
         extra.update({
-            'references': self._get_element('dcterms:references'),
+            'references': get_xml_element(self._science_meta, 'dcterms:references'),
             'file_parts': self.file_parts
         })
         return extra
@@ -157,21 +125,7 @@ class DryadFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
 
     def __init__(self, raw, science_meta):
         super().__init__(raw)
-        self.science_metadata = science_meta
-
-    def _get_element(self, name):
-        """Helper function for retrieving metadata fields from source document by name. Returns
-        first element found.
-
-        :param str name: Element tag.
-        :rtype: str
-        :return: String contents of element or None
-        """
-        el = self.science_metadata.getElementsByTagName(name)
-        if len(el) > 0:
-            return el[0].firstChild.wholeText
-        else:
-            return None
+        self._science_meta = science_meta
 
     @property
     def version(self):
@@ -183,4 +137,4 @@ class DryadFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
 
     @property
     def modified(self):
-        return self._get_element('dcterms:dateSubmitted')
+        return get_xml_element(self._science_meta, 'dcterms:dateSubmitted')

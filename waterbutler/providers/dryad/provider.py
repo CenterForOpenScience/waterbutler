@@ -6,10 +6,11 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 
 from .path import DryadPath
-from .settings import DRYAD_META_URL, DRYAD_FILE_URL, DRYAD_DOI_BASE
+from .utils import get_xml_element
 from .metadata import (DryadPackageMetadata,
                        DryadFileMetadata,
                        DryadFileRevisionMetadata)
+from .settings import DRYAD_META_URL, DRYAD_FILE_URL, DRYAD_DOI_BASE
 
 
 class DryadProvider(provider.BaseProvider):
@@ -110,8 +111,7 @@ class DryadProvider(provider.BaseProvider):
 
         # TODO: this should probably cached or the function memoized
         package_science_meta = await self._get_scientific_metadata_for_package(package_id)
-        package_name = package_science_meta.getElementsByTagName('dcterms:title')[0]\
-                                           .firstChild.wholeText.strip(" \n")
+        package_name = get_xml_element(package_science_meta, 'dcterms:title').strip(" \n")
         names.append(package_name)
 
         if not looks_like_dir:
@@ -147,8 +147,7 @@ class DryadProvider(provider.BaseProvider):
 
         # TODO: this should probably cached or the function memoized
         package_science_meta = await self._get_scientific_metadata_for_package(package_id)
-        package_name = package_science_meta.getElementsByTagName('dcterms:title')[0]\
-                                           .firstChild.wholeText.strip(" \n")
+        package_name = get_xml_element(package_science_meta, 'dcterms:title').strip(" \n")
         names.append(package_name)
 
         if is_file:
@@ -165,8 +164,7 @@ class DryadProvider(provider.BaseProvider):
         if base.is_root:
             package_id = self.doi.replace(DRYAD_DOI_BASE.replace('doi:', ''), '')
             package_science_meta = await self._get_scientific_metadata_for_package(package_id)
-            package_name = package_science_meta.getElementsByTagName('dcterms:title')[0]\
-                                               .firstChild.wholeText.strip(" \n")
+            package_name = get_xml_element(package_science_meta, 'dcterms:title').strip(" \n")
             package_path = base.child(package_name, _id=package_id, folder=True)
             return package_path
 
@@ -200,8 +198,7 @@ class DryadProvider(provider.BaseProvider):
         if path.is_root:
             package_id = self.doi.replace(DRYAD_DOI_BASE.replace('doi:', ''), '')
             package_science_meta = await self._get_scientific_metadata_for_package(package_id)
-            package_name = package_science_meta.getElementsByTagName('dcterms:title')[0]\
-                                               .firstChild.wholeText.strip(" \n")
+            package_name = get_xml_element(package_science_meta, 'dcterms:title').strip(" \n")
             package_path = path.child(package_name, _id=package_id, folder=True)
             return [DryadPackageMetadata(package_path, package_science_meta)]
 
@@ -240,7 +237,7 @@ class DryadProvider(provider.BaseProvider):
         )
 
         system_meta = await self._get_system_metadata_for_file(path.package_id, path.file_id)
-        size = system_meta.getElementsByTagName('size')[0].firstChild.wholeText
+        size = get_xml_element(system_meta, 'size')
 
         # This is a kludge in place to fix a bug in the Dryad API.
         ret = streams.ResponseStreamReader(resp, size=size, name=path.name)
