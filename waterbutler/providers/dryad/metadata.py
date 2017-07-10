@@ -104,10 +104,6 @@ class DryadFileMetadata(BaseDryadMetadata, metadata.BaseFileMetadata):
 class DryadPackageMetadata(BaseDryadMetadata, metadata.BaseFolderMetadata):
 
     @property
-    def content_type(self):
-        return get_xml_element(self._science_meta, 'dcterms:type')
-
-    @property
     def file_parts(self):
         return get_xml_element_list(self._science_meta, 'dcterms:hasPart')
 
