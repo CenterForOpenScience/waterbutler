@@ -11,6 +11,7 @@ from .utils import get_evernote_client, get_note, notes_metadata, timestamp_iso,
 import ENML2HTML
 
 
+@provider.throttle(concurrency=10, interval=1)
 @backgroundify
 def _evernote_notes(notebook_guid, token):
 
@@ -36,6 +37,7 @@ def _evernote_notes(notebook_guid, token):
     return results
 
 
+@provider.throttle(concurrency=10, interval=1)
 @backgroundify
 def _evernote_note(note_guid, token, withContent=False):
 
@@ -46,7 +48,8 @@ def _evernote_note(note_guid, token, withContent=False):
                 withContent=withContent,
                 withResourcesData=withContent)
     except Exception as e:
-        return e
+        # TO DO reraise with the proper exceptions
+        raise e
     else:
         result = {'title': note.title,
             'guid': note.guid,
@@ -128,7 +131,7 @@ class EvernoteProvider(provider.BaseProvider):
 
         stream = streams.StringStream(html)
         stream.content_type = "text/html"
-        stream.name = "{}.html".format(note_guid)
+        stream.name = "{}.html".format(note['title'])
 
         # modeling after gdoc provider
         # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185

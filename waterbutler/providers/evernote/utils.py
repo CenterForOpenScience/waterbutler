@@ -1,13 +1,49 @@
 import datetime
+import time
 from evernote.api.client import EvernoteClient
+from evernote.edam.error.ttypes import (EDAMSystemException, EDAMErrorCode)
 from evernote.edam.notestore.ttypes import (NoteFilter, NotesMetadataResultSpec)
 
 from ENML2HTML import MediaStore
 import base64
 
 
+def evernote_wait_try_again(f):
+    """
+    Wait until mandated wait and try again
+    http://dev.evernote.com/doc/articles/rate_limits.php
+    """
+
+    def f2(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except EDAMSystemException as e:
+            if e.errorCode == EDAMErrorCode.RATE_LIMIT_REACHED:
+                print("Evernote rate limit: {0} s. wait".format(e.rateLimitDuration))
+                time.sleep(e.rateLimitDuration)
+                print("Evernote: wait over")
+                return f(*args, **kwargs)
+            else:
+                # don't swallow other exceptions
+                raise e
+
+    return f2
+
+
+class RateLimitingEvernoteProxy(object):
+    __slots__ = ["_obj"]
+
+    def __init__(self, obj):
+        object.__setattr__(self, "_obj", obj)
+
+    def __getattribute__(self, name):
+        return evernote_wait_try_again(
+            getattr(object.__getattribute__(self, "_obj"), name))
+
+
 def get_evernote_client(token, sandbox=False):
-    return EvernoteClient(token=token, sandbox=sandbox)
+    _client = EvernoteClient(token=token, sandbox=sandbox)
+    return RateLimitingEvernoteProxy(_client)
 
 
 def get_notebooks(client):
