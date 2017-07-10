@@ -111,7 +111,7 @@ class DryadProvider(provider.BaseProvider):
         # TODO: this should probably cached or the function memoized
         package_science_meta = await self._get_scientific_metadata_for_package(package_id)
         package_name = package_science_meta.getElementsByTagName('dcterms:title')[0]\
-                                           .firstChild.wholeText
+                                           .firstChild.wholeText.strip(" \n")
         names.append(package_name)
 
         if not looks_like_dir:
@@ -166,7 +166,7 @@ class DryadProvider(provider.BaseProvider):
             package_id = self.doi.replace(DRYAD_DOI_BASE.replace('doi:', ''), '')
             package_science_meta = await self._get_scientific_metadata_for_package(package_id)
             package_name = package_science_meta.getElementsByTagName('dcterms:title')[0]\
-                                               .firstChild.wholeText
+                                               .firstChild.wholeText.strip(" \n")
             package_path = base.child(package_name, _id=package_id, folder=True)
             return package_path
 
@@ -201,7 +201,7 @@ class DryadProvider(provider.BaseProvider):
             package_id = self.doi.replace(DRYAD_DOI_BASE.replace('doi:', ''), '')
             package_science_meta = await self._get_scientific_metadata_for_package(package_id)
             package_name = package_science_meta.getElementsByTagName('dcterms:title')[0]\
-                                               .firstChild.wholeText
+                                               .firstChild.wholeText.strip(" \n")
             package_path = path.child(package_name, _id=package_id, folder=True)
             return [DryadPackageMetadata(package_path, package_science_meta)]
 
