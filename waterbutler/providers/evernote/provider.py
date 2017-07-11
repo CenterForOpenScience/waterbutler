@@ -11,7 +11,7 @@ from .utils import get_evernote_client, get_note, notes_metadata, timestamp_iso,
 import ENML2HTML
 
 
-@provider.throttle(concurrency=10, interval=1)
+@provider.throttle(concurrency=1, interval=1)
 @backgroundify
 def _evernote_notes(notebook_guid, token):
 
@@ -20,12 +20,16 @@ def _evernote_notes(notebook_guid, token):
     # will want to pick up notes for the notebook
     # start with calculating the number of notes in nb
 
-    notes = notes_metadata(client,
-                    notebookGuid=notebook_guid,
-                    includeTitle=True,
-                    includeUpdated=True,
-                    includeCreated=True,
-                    includeContentLength=True)
+    try:
+        notes = notes_metadata(client,
+                        notebookGuid=notebook_guid,
+                        includeTitle=True,
+                        includeUpdated=True,
+                        includeCreated=True,
+                        includeContentLength=True)
+    except Exception as e:
+        print('_evernote_notes.e:', e)
+        raise e
 
     results = [{'title': note.title,
               'guid': note.guid,
@@ -37,7 +41,7 @@ def _evernote_notes(notebook_guid, token):
     return results
 
 
-@provider.throttle(concurrency=10, interval=1)
+@provider.throttle(concurrency=1, interval=1)
 @backgroundify
 def _evernote_note(note_guid, token, withContent=False):
 
@@ -49,6 +53,7 @@ def _evernote_note(note_guid, token, withContent=False):
                 withResourcesData=withContent)
     except Exception as e:
         # TO DO reraise with the proper exceptions
+        print('_evernote_note.e:', e)
         raise e
     else:
         result = {'title': note.title,
