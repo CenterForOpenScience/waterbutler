@@ -5,12 +5,14 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 
-from .path import DryadPath
-from .utils import get_xml_element
-from .metadata import (DryadPackageMetadata,
-                       DryadFileMetadata,
-                       DryadFileRevisionMetadata)
-from .settings import DRYAD_META_URL, DRYAD_FILE_URL, DRYAD_DOI_BASE
+from waterbutler.providers.dryad.path import DryadPath
+from waterbutler.providers.dryad.utils import get_xml_element
+from waterbutler.providers.dryad.settings import (DRYAD_META_URL,
+                                                  DRYAD_FILE_URL,
+                                                  DRYAD_DOI_BASE)
+from waterbutler.providers.dryad.metadata import (DryadPackageMetadata,
+                                                  DryadFileMetadata,
+                                                  DryadFileRevisionMetadata)
 
 
 class DryadProvider(provider.BaseProvider):
@@ -82,12 +84,10 @@ class DryadProvider(provider.BaseProvider):
 
     async def validate_v1_path(self, path, **kwargs):
         """Verify that the requested file or folder exists and that it conforms to the v1 path
-        semantics. Unusually, the v1 path semantics checking is a side effect of the code in
-        :func:`waterbutler.providers.dryad.provider.DryadProvider.validate_path`.
+        semantics. ``path`` is an ID-based path string (e.g. ``"/hs727/1"``). API queries must
+        be issued in order to get the names of the package and file.
 
-        Additionally queries the Dryad API to check if the package exists.
-
-        :param str path: string path to either a package or file
+        :param str path: ID-based path string for either root, a package, or file
         :rtype: :class:`waterbutler.providers.dryad.path.DryadPath`
         :return: a DryadPath object representing the requested entity
         """
@@ -123,10 +123,12 @@ class DryadProvider(provider.BaseProvider):
         return wb_path
 
     async def validate_path(self, path, **kwargs):
-        """Returns `DryadPath` if the string ``path`` is valid, else raises a `NotFoundError`. See
+        """Returns a `DryadPath` if the string ``path`` is valid, else raises a `NotFoundError`.
+        ``path`` is an ID-based path string (e.g. ``"/hs727/1"``). API queries must be issued in
+        order to get the names of the package and file. See
         :class:`waterbutler.providers.dryad.provider.DryadProvider` for details on path formatting.
 
-        :param str path: string path to either a package or file
+        :param str path: ID-based path string for either root, a package, or file
         :rtype: :class:`waterbutler.providers.dryad.path.DryadPath`
         :return: A `DryadPath` object representing the requested entity
         """
@@ -160,6 +162,17 @@ class DryadProvider(provider.BaseProvider):
         return wb_path
 
     async def revalidate_path(self, base, path, folder=False):
+        """Takes a `DryadPath`, ``base``, and a stringy name-based path, and build a `DryadPath`
+        object representing the child of ``base`` named ``path``.  Throws a `NotFoundError` if
+        no child named ``path`` exists under ``base``.
+
+        :param DryadPath base: DryadPath object represent a base folder
+        :param str path: the name (NOT ID) of a child file or folder to lookup
+        :param bool folder: whether the thing being looked up is a file or folder
+        :rtype: :class:`waterbutler.providers.dryad.path.DryadPath`
+        :return: a `DryadPath` representing child named ``path`` of ``base``
+        """
+
         # if path is root, return package metadata in one-element list
         if base.is_root:
             package_id = self.doi.replace(DRYAD_DOI_BASE.replace('doi:', ''), '')
@@ -181,15 +194,22 @@ class DryadProvider(provider.BaseProvider):
         raise exceptions.NotFoundError(path)
 
     def path_from_metadata(self, parent_path, metadata):
+        """Takes a `DryadPath` object representing a parent path and a metadata object representing
+        a child of ``parent_path``, and returns a `DryadPath` object representing the child.
+
+        :param DryadPath parent_path: DryadPath object representing a package
+        :param DryadFileMetadata metadata: A metadata object representing a child of the parent.
+        :rtype: :class:`waterbutler.providers.dryad.path.DryadPath`
+        :return: a `DryadPath` representing a child of ``parent_path``
+        """
         return parent_path.child(metadata.name, _id=metadata.id, folder=metadata.is_folder)
 
     async def metadata(self, path, **kwargs):
-        """ Interface to file and package metadata from Dryad
+        """Interface to file and package metadata from Dryad
 
-        :param path: Path mapping to waterbutler interpretation of Dryad file
-        :type path: `waterbutler.core.path.WaterButlerPath`
-        :returns:  `list` A list of metadata
-        :raises: `urllib.error.HTTPError`
+        :param DryadPath path: Path mapping to waterbutler interpretation of Dryad file
+        :rtype: `list`
+        :return: A list of metadata objects DryadPackageMetadata or DryadFileMetadata
         """
         if not path.is_dir:
             return await self._file_metadata(path)
@@ -215,18 +235,18 @@ class DryadProvider(provider.BaseProvider):
         return children
 
     async def revisions(self, path, **kwargs):
-        """Currently, there are no revisions in dryad
+        """Dryad doesn't support revisions, so always return current version as latest.
         """
         science_meta = await self._get_scientific_metadata_for_file(path.package_id, path.file_id)
         return [DryadFileRevisionMetadata({}, science_meta)]
 
     async def download(self, path, **kwargs):
-        """ Interface to downloading files from Dryad
+        """Interface to downloading files from Dryad.
 
-        :param path: Path mapping to waterbutler interpretation of Dryad file
-        :type path: `waterbutler.core.path.WaterButlerPath`
-        :returns:  `waterbutler.core.streams.ResponseStreamReader` Download stream generator
-        :raises:   `waterbutler.core.exceptions.DownloadError`
+        :param DryadPath path: DryadPath representing a root, package, or file
+        :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
+        :return: Download stream generator
+        :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
         resp = await self.make_request(
@@ -257,21 +277,21 @@ class DryadProvider(provider.BaseProvider):
     async def upload(self, stream, **kwargs):
         """Read-only provider, uploads are not allowed.
 
-        :raises: `waterbutler.core.exceptions.ReadOnlyProviderError` always
+        :raises: `waterbutler.core.exceptions.ReadOnlyProviderError`
         """
         raise exceptions.ReadOnlyProviderError(self.NAME)
 
     async def delete(self, **kwargs):
         """Read-only provider, deletions are not allowed.
 
-        :raises: `waterbutler.core.exceptions.ReadOnlyProviderError` always
+        :raises: `waterbutler.core.exceptions.ReadOnlyProviderError`
         """
         raise exceptions.ReadOnlyProviderError(self.NAME)
 
     async def move(self, *args, **kwargs):
         """Read-only provider, moves are not allowed.
 
-        :raises: `waterbutler.core.exceptions.ReadOnlyProviderError` always
+        :raises: `waterbutler.core.exceptions.ReadOnlyProviderError`
         """
         raise exceptions.ReadOnlyProviderError(self.NAME)
 
@@ -284,9 +304,9 @@ class DryadProvider(provider.BaseProvider):
     async def _file_metadata(self, path):
         """Retrieve file metadata from Dryad.
 
-        :param DryadPath path: DryadPath object mapping Dryad file to WB interpretation
+        :param DryadPath path: DryadPath object representing a file
         :rtype: `DryadFileMetadata`
-        :return:  Metadata for the Dryad file.
+        :return: a metadata object for the file
         :raises: `exceptions.MetadataError`
         :raises: `exceptions.DownloadError`
         """
@@ -296,6 +316,15 @@ class DryadProvider(provider.BaseProvider):
         return DryadFileMetadata(path, science_meta, system_meta)
 
     async def _get_scientific_metadata_for_package(self, package_id):
+        """Retrieve the scientific metadata for a package with ID ``package_id``. Queries the
+        ``object`` endpoint of the Dryad API.
+
+        :param str package_id: ID of a package (the suffix of the DOI)
+        :rtype: `xml.dom.minidom.Document`
+        :return: XML document containing the scientific metadata for the package
+        :raises: `exceptions.MetadataError`
+        :raises: `exceptions.NotFoundError`
+        """
         url = '{}{}'.format(DRYAD_META_URL, package_id)
         resp = await self.make_request(
             'GET',
@@ -310,6 +339,16 @@ class DryadProvider(provider.BaseProvider):
         return xml.dom.minidom.parseString(await resp.read())
 
     async def _get_scientific_metadata_for_file(self, package_id, file_id):
+        """Retrieve the scientific metadata for a file with ID ``file_id`` in the package with
+        ID ``package_id``. Queries the ``object`` endpoint of the Dryad API.
+
+        :param str package_id: ID of a package (the suffix of the DOI)
+        :param str file_id: ID of a file (its index within the package)
+        :rtype: `xml.dom.minidom.Document`
+        :return: XML document containing the scientific metadata for the file
+        :raises: `exceptions.MetadataError`
+        :raises: `exceptions.NotFoundError`
+        """
         url = '{}{}/{}'.format(DRYAD_META_URL, package_id, file_id)
         resp = await self.make_request(
             'GET',
@@ -324,6 +363,17 @@ class DryadProvider(provider.BaseProvider):
         return xml.dom.minidom.parseString(await resp.text())
 
     async def _get_system_metadata_for_file(self, package_id, file_id):
+        """Retrieve the system metadata for a file with ID ``file_id`` in the package with ID
+        ``package_id``. Queries the ``meta`` endpoint of the Dryad API.  This endpoint contains
+        the file size and content type.
+
+        :param str package_id: ID of a package (the suffix of the DOI)
+        :param str file_id: ID of a file (its index within the package)
+        :rtype: `xml.dom.minidom.Document`
+        :return: XML document containing the system metadata for the file
+        :raises: `exceptions.MetadataError`
+        :raises: `exceptions.NotFoundError`
+        """
         url = '{}{}/{}/bitstream'.format(DRYAD_FILE_URL, package_id, file_id)
         resp = await self.make_request(
             'GET',
@@ -334,9 +384,16 @@ class DryadProvider(provider.BaseProvider):
         return xml.dom.minidom.parseString(await resp.text())
 
     async def _get_filename_for_file(self, package_id, file_id):
-        """Dryad doesn't make the file name (as given when downloading the package) available in
+        """Retrieve the name of the file with ID ``file_id`` in the package with ID ``package_id``.
+        Dryad doesn't make the file name (as given when downloading the package) available in
         either the scientific or system metadata.  To get it, we must start a download of the file
         and read the Content-Disposition header.
+
+        :param str package_id: ID of a package (the suffix of the DOI)
+        :param str file_id: ID of a file (its index within the package)
+        :rtype: `str`
+        :return: the name of the file as if it was downloaded directly from Dryad.
+        :raises: `exceptions.MetadataError`
         """
 
         url = '{}{}/{}/bitstream'.format(DRYAD_META_URL, package_id, file_id)
@@ -354,5 +411,14 @@ class DryadProvider(provider.BaseProvider):
         return file_name
 
     async def _get_child_for_parent(self, parent_path, file_id):
+        """Given a `DryadPath` object representing a package and the ID of a file within it
+        (``file_id``), looks up the name of the file and constructs a new `DryadPath` object
+        representing it.
+
+        :param DryadPath parent_path: `DryadPath` object representing a package
+        :param str file_id: ID of a file (its index within the package)
+        :rtype: :class:`waterbutler.providers.dryad.path.DryadPath`
+        :return: a `DryadPath` object representing the child
+        """
         file_name = await self._get_filename_for_file(parent_path.package_id, file_id)
         return parent_path.child(file_name, _id=file_id, folder=False)

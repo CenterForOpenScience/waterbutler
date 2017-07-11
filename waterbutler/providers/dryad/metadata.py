@@ -6,14 +6,15 @@ from .utils import get_xml_element, get_xml_element_list
 
 
 class BaseDryadMetadata(metadata.BaseMetadata):
-    """ Translation from Dryad Metadata format to Waterbutler Metadata
+    """Base class for objects representing metadata about packages, files, and file revisions in
+    Dryad.
     """
 
     def __init__(self, path, science_meta):
         """Base class for Package and File Metadata classes.
 
-        :param xml.dom.minidom raw: Source metadata from Dryad API. Must be parseable by `xml.dom.minidom`
-        :param str doi: Dryad DOI. Format: doi:10.5061/dryad.XXXX
+        :param DryadPath path: `DryadPath` object representing the entity
+        :param xml.dom.Document science_meta: XML document with scientific metadata about the entity
         """
         super().__init__({})
         self._path = path
@@ -22,6 +23,7 @@ class BaseDryadMetadata(metadata.BaseMetadata):
 
     @property
     def path(self):
+        """ID-based path to the entity"""
         return '/' + self._path.full_identifier + ('/' if self._path.is_dir else '')
 
     @property
@@ -30,6 +32,7 @@ class BaseDryadMetadata(metadata.BaseMetadata):
 
     @property
     def materialized_path(self):
+        """Materialized name of the entity"""
         return self._path.materialized_path
 
     @property
@@ -66,12 +69,16 @@ class BaseDryadMetadata(metadata.BaseMetadata):
 
 
 class DryadFileMetadata(BaseDryadMetadata, metadata.BaseFileMetadata):
-    """
-        DryadFileMetadata needs to be instantiated with the same metadata from
-        the raw API call that normal packages do, AND with metadata from the file
-        metadata API and information that is only found in the bit stream.
+    """DryadFileMetadata needs to be instantiated with both the scientific metadata and the
+    system metadata. The system metadata contains the file size and content type.
     """
     def __init__(self, path, science_meta, system_meta):
+        """Base class for metadata about files in Dryad.
+
+        :param DryadPath path: `DryadPath` object representing the entity
+        :param xml.dom.Document science_meta: XML document with scientific metadata about the entity
+        :param xml.dom.Document system_meta: XML document with system metadata about the entity
+        """
         BaseDryadMetadata.__init__(self, path, science_meta)
         self._system_meta = system_meta
 
@@ -81,7 +88,8 @@ class DryadFileMetadata(BaseDryadMetadata, metadata.BaseFileMetadata):
 
     @property
     def created_utc(self):
-        return utils.normalize_datetime(get_xml_element(self._science_meta, 'dcterms:dateSubmitted'))
+        return utils.normalize_datetime(get_xml_element(self._science_meta,
+                                                        'dcterms:dateSubmitted'))
 
     @property
     def content_type(self):
@@ -105,6 +113,7 @@ class DryadPackageMetadata(BaseDryadMetadata, metadata.BaseFolderMetadata):
 
     @property
     def file_parts(self):
+        """List of files in the package."""
         return get_xml_element_list(self._science_meta, 'dcterms:hasPart')
 
     @property
@@ -118,6 +127,9 @@ class DryadPackageMetadata(BaseDryadMetadata, metadata.BaseFolderMetadata):
 
 
 class DryadFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
+    """Dryad does not have a concept of file revisions, so there is always one revision, called
+    "latest".
+    """
 
     def __init__(self, raw, science_meta):
         super().__init__(raw)
