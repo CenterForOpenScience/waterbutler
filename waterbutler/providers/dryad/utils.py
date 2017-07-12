@@ -1,6 +1,5 @@
 
-
-def get_xml_element(xml, name):
+def get_xml_element(xml, name: str):
     """Helper function for retrieving metadata fields from source document by name. Returns the text
     of the first tag named ``name`` or `None` if no such tag is found.
 
@@ -16,7 +15,7 @@ def get_xml_element(xml, name):
         return None
 
 
-def get_xml_element_list(xml, name):
+def get_xml_element_list(xml, name: str):
     """Helper function for retrieving metadata fields from source document by name. Returns a list
     containing the text of all tags named ``name``.
 
