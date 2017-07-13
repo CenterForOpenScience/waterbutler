@@ -7,8 +7,8 @@ from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.gitlab import GitLabProvider
 from waterbutler.providers.gitlab import settings as gitlab_settings
-from waterbutler.providers.gitlab.metadata import GitLabFileContentMetadata
-from waterbutler.providers.gitlab.metadata import GitLabFolderContentMetadata
+from waterbutler.providers.gitlab.metadata import GitLabFileMetadata
+from waterbutler.providers.gitlab.metadata import GitLabFolderMetadata
 
 
 @pytest.fixture
