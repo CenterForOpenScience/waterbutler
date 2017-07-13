@@ -146,7 +146,8 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: :class:`list` of :class:`GitLabRevision`
         :raises: :class:`waterbutler.core.exceptions.RevisionsError`
         """
-        url = self.build_repo_url('repository', 'commits', path=path.path, ref_name=path.branch_name)
+        url = self._build_repo_url('repository', 'commits', path=path.path,
+                                   ref_name=path.branch_name)
         resp = await self.make_request(
             'GET',
             url,
@@ -167,9 +168,9 @@ class GitLabProvider(provider.BaseProvider):
         url = ""
 
         if path.commit_sha:
-            url = self.build_repo_url('repository', 'files', path.full_path, ref=path.commit_sha)
+            url = self._build_repo_url('repository', 'files', path.full_path, ref=path.commit_sha)
         else:
-            url = self.build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
+            url = self._build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
 
         resp = await self.make_request(
             'GET',
@@ -200,17 +201,28 @@ class GitLabProvider(provider.BaseProvider):
     def can_duplicate_names(self):
         return False
 
-    async def upload(self, stream, path, message=None, branch=None, **kwargs):
-        raise NotImplementedError
+    def can_intra_move(self, other, path=None):
+        return False
 
-    async def delete(self, path, sha=None, message=None, branch=None,
-            confirm_delete=0, **kwargs):
-        raise NotImplementedError
+    def can_intra_copy(self, other, path=None):
+        return False
 
-    async def create_folder(self, path, branch=None, message=None, **kwargs):
-        raise NotImplementedError
+    async def upload(self, *args, **kwargs):
+        raise exceptions.ReadOnlyProviderError(self.NAME)
 
-    def build_repo_url(self, *segments, **query):
+    async def delete(self, *args, **kwargs):
+        raise exceptions.ReadOnlyProviderError(self.NAME)
+
+    async def move(self, *args, **kwargs):
+        raise exceptions.ReadOnlyProviderError(self.NAME)
+
+    # copy is okay if source is gitlab and destination is not
+    async def copy(self, dest_provider, *args, **kwargs):
+        if dest_provider.NAME == self.NAME:
+            raise exceptions.ReadOnlyProviderError(self.NAME)
+        return await super().copy(dest_provider, *args, **kwargs)
+
+    def _build_repo_url(self, *segments, **query):
         """Build the repository url with the params, retuning the complete repository url.
 
         :param list segments: The list of child paths
@@ -222,7 +234,7 @@ class GitLabProvider(provider.BaseProvider):
 
     async def _fetch_file_contents(self, path):
 
-        url = self.build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
+        url = self._build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
 
         resp = await self.make_request(
             'GET',
@@ -236,9 +248,10 @@ class GitLabProvider(provider.BaseProvider):
     async def _fetch_tree_contents(self, path):
 
         if path.is_root:
-            url = self.build_repo_url('repository', 'tree', ref=path.branch_name)
+            url = self._build_repo_url('repository', 'tree', ref=path.branch_name)
         else:
-            url = self.build_repo_url('repository', 'tree', path=path.raw_path, ref=path.branch_name)
+            url = self._build_repo_url('repository', 'tree',
+                                       path=path.raw_path, ref=path.branch_name)
 
         resp = await self.make_request(
             'GET',
@@ -260,7 +273,7 @@ class GitLabProvider(provider.BaseProvider):
         return data
 
     async def _fetch_default_branch(self):
-        url = self.build_repo_url()
+        url = self._build_repo_url()
 
         resp = await self.make_request(
             'GET',
@@ -288,7 +301,8 @@ class GitLabProvider(provider.BaseProvider):
                 ret.append(GitLabFolderMetadata(item, folder_path))
             else:
                 file_path = path.child(name, folder=False)
-                ret.append(GitLabFileMetadata(item, file_path, host=self.VIEW_URL, owner=self.owner, repo=self.repo))
+                ret.append(GitLabFileMetadata(item, file_path, host=self.VIEW_URL,
+                                              owner=self.owner, repo=self.repo))
 
         return ret
 
