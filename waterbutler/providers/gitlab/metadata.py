@@ -1,4 +1,3 @@
-import os
 from furl import furl
 
 from waterbutler.core import metadata
@@ -33,9 +32,9 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
     @property
     def extra(self):
         return {
-                'ref': self.branch_name,
-                'commitSha': self.commit_sha,
-                }
+            'ref': self.branch_name,
+            'commitSha': self.commit_sha,
+        }
 
     def build_path(self):
         return super().build_path(self._path_obj.raw_path)
@@ -54,7 +53,7 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
             for action, link in links.items():
                 links[action] = furl(link).add(ref).url
 
-    # Read-only version
+        # Read-only version
         for action in ['delete', 'upload']:
             links[action] = None
 
@@ -101,12 +100,11 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
         return dict(super().extra, **{
             'fileSha': self.file_sha,
             'webView': self.web_view
-            })
+        })
 
     @property
     def web_view(self):
         return '{}/{}/{}/blob/{}{}'.format(self.host, self.owner, self.repo, self.branch_name, self.path)
-
 
 
 class GitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
@@ -133,7 +131,7 @@ class GitLabRevision(metadata.BaseFileRevisionMetadata):
     @property
     def extra(self):
         return {
-                'user': {
-                    'name': self.raw['author_name'],
-                    },
-                }
+            'user': {
+                'name': self.raw['author_name'],
+            },
+        }

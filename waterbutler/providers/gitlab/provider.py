@@ -5,13 +5,11 @@ import mimetypes
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
-from waterbutler.core.path import WaterButlerPath
 
-from waterbutler.providers.gitlab import settings
+from waterbutler.providers.gitlab.path import GitLabPath
 from waterbutler.providers.gitlab.metadata import GitLabRevision
 from waterbutler.providers.gitlab.metadata import GitLabFileMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFolderMetadata
-from waterbutler.providers.gitlab.path import GitLabPath
 
 
 class GitLabProvider(provider.BaseProvider):
@@ -65,9 +63,9 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: :class:`dict` with `name` and `email` of the author
         """
         return {
-                'name': self.name,
-                'email': self.email,
-                }
+            'name': self.name,
+            'email': self.email,
+        }
 
     async def revalidate_path(self, base, path, folder=False):
         return base.child(path, _id=((base.branch_name, None)), folder=folder)
@@ -77,11 +75,11 @@ class GitLabProvider(provider.BaseProvider):
         url = self.build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
 
         resp = await self.make_request(
-                'GET',
-                url,
-                expects=(200,),
-                throws=exceptions.NotFoundError(path.full_path)
-                )
+            'GET',
+            url,
+            expects=(200,),
+            throws=exceptions.NotFoundError(path.full_path)
+        )
 
         return await resp.json()
 
@@ -93,11 +91,11 @@ class GitLabProvider(provider.BaseProvider):
             url = self.build_repo_url('repository', 'tree', path=path.raw_path, ref=path.branch_name)
 
         resp = await self.make_request(
-                'GET',
-                url,
-                expects=(200, 404),
-                throws=exceptions.NotFoundError(path.full_path)
-                )
+            'GET',
+            url,
+            expects=(200, 404),
+            throws=exceptions.NotFoundError(path.full_path)
+        )
 
         data = await resp.json()
 
@@ -115,11 +113,11 @@ class GitLabProvider(provider.BaseProvider):
         url = self.build_repo_url()
 
         resp = await self.make_request(
-                'GET',
-                url,
-                expects=(200,),
-                throws=exceptions.NotFoundError,
-                )
+            'GET',
+            url,
+            expects=(200,),
+            throws=exceptions.NotFoundError,
+        )
 
         data = await resp.json()
 
@@ -207,11 +205,11 @@ class GitLabProvider(provider.BaseProvider):
             url = self.build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
 
         resp = await self.make_request(
-                'GET',
-                url,
-                expects=(200,),
-                throws=exceptions.DownloadError,
-                )
+            'GET',
+            url,
+            expects=(200,),
+            throws=exceptions.DownloadError,
+        )
 
         data = await resp.json()
         raw = base64.b64decode(data['content'])
@@ -267,11 +265,11 @@ class GitLabProvider(provider.BaseProvider):
         """
         url = self.build_repo_url('repository', 'commits', path=path.path, ref_name=path.branch_name)
         resp = await self.make_request(
-                'GET',
-                url,
-                expects=(200,),
-                throws=exceptions.RevisionsError
-                )
+            'GET',
+            url,
+            expects=(200,),
+            throws=exceptions.RevisionsError
+        )
 
         return [GitLabRevision(item) for item in (await resp.json())]
 
