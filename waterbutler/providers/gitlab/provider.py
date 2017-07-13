@@ -36,18 +36,6 @@ class GitLabProvider(provider.BaseProvider):
         self.BASE_URL = self.settings['host'] + '/api/v4'
         self.VIEW_URL = self.settings['host']
 
-    @staticmethod
-    def is_sha(ref):
-        # sha1 is always 40 characters in length
-        try:
-            if len(ref) != 40:
-                return False
-            # sha1 is always base 16 (hex)
-            int(ref, 16)
-        except (TypeError, ValueError, ):
-            return False
-        return True
-
     @property
     def default_headers(self):
         """ Headers to be included with every request.
@@ -78,7 +66,6 @@ class GitLabProvider(provider.BaseProvider):
         branch_name = kwargs.get('ref') or kwargs.get('branch') or kwargs.get('revision')
         file_sha = kwargs.get('fileSha')
         commit_sha = kwargs.get('commitSha')
-
         if not branch_name and not file_sha:
             branch_name = await self._fetch_default_branch()
 
@@ -92,7 +79,6 @@ class GitLabProvider(provider.BaseProvider):
         data = await self._fetch_tree_contents(path.parent)
 
         data_list = []
-
         if path.is_dir:
             data_list = list(filter(lambda x: x['type'] == 'tree', data))
         else:
@@ -104,9 +90,7 @@ class GitLabProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(path.full_path)
 
         file_sha = data_found[0]['id']
-
         path.set_file_sha(file_sha)
-
         return path
 
     async def validate_path(self, path, **kwargs):
@@ -165,8 +149,7 @@ class GitLabProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
-        url = ""
-
+        url = None
         if path.commit_sha:
             url = self._build_repo_url('repository', 'files', path.full_path, ref=path.commit_sha)
         else:
@@ -182,17 +165,13 @@ class GitLabProvider(provider.BaseProvider):
         data = await resp.json()
         raw = base64.b64decode(data['content'])
 
-        mdict = aiohttp.multidict.MultiDict(resp.headers)
-
-        mimetype = mimetypes.guess_type(path.full_path)[0]
-
         mdict_options = {}
-
+        mimetype = mimetypes.guess_type(path.full_path)[0]
         if mimetype is not None:
             mdict_options['CONTENT-TYPE'] = mimetype
 
+        mdict = aiohttp.multidict.MultiDict(resp.headers)
         mdict.update(mdict_options)
-
         resp.headers = mdict
         resp.content = streams.StringStream(raw)
 
@@ -233,20 +212,16 @@ class GitLabProvider(provider.BaseProvider):
         return self.build_url(*segments, **query)
 
     async def _fetch_file_contents(self, path):
-
         url = self._build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
-
         resp = await self.make_request(
             'GET',
             url,
             expects=(200,),
             throws=exceptions.NotFoundError(path.full_path)
         )
-
         return await resp.json()
 
     async def _fetch_tree_contents(self, path):
-
         if path.is_root:
             url = self._build_repo_url('repository', 'tree', ref=path.branch_name)
         else:
@@ -274,14 +249,12 @@ class GitLabProvider(provider.BaseProvider):
 
     async def _fetch_default_branch(self):
         url = self._build_repo_url()
-
         resp = await self.make_request(
             'GET',
             url,
             expects=(200,),
             throws=exceptions.NotFoundError,
         )
-
         data = await resp.json()
 
         if 'default_branch' not in data:
@@ -290,7 +263,6 @@ class GitLabProvider(provider.BaseProvider):
         return data['default_branch']
 
     async def _metadata_folder(self, path, **kwargs):
-
         data = await self._fetch_tree_contents(path)
 
         ret = []
@@ -307,19 +279,15 @@ class GitLabProvider(provider.BaseProvider):
         return ret
 
     async def _metadata_file(self, path, **kwargs):
-
-        data = await self._fetch_file_contents(path)
-
-        if not data:
+        file_contents = await self._fetch_file_contents(path)
+        if not file_contents:
             raise exceptions.NotFoundError(str(path))
 
-        file_name = data['file_name']
-
-        data = {'name': file_name, 'id': data['blob_id'],
-                'path': data['file_path'], 'size': data['size']}
+        file_name = file_contents['file_name']
+        data = {'name': file_name, 'id': file_contents['blob_id'],
+                'path': file_contents['file_path'], 'size': file_contents['size']}
 
         mimetype = mimetypes.guess_type(file_name)[0]
-
         if mimetype:
             data['mimetype'] = mimetype
 
