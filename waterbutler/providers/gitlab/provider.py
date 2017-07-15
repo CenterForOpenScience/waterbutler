@@ -55,43 +55,27 @@ class GitLabProvider(provider.BaseProvider):
             'email': self.email,
         }
 
-    async def validate_v1_path(self, str_path, **kwargs):
+    async def validate_v1_path(self, path, **kwargs):
         """Ensure path is in Waterbutler v1 format.
 
-        :param str str_path: The path to a file/folder
+        :param str path: The path to a file/folder
         :rtype: GitLabPath
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
 
-        branch_name = kwargs.get('ref') or kwargs.get('branch') or kwargs.get('revision')
-        file_sha = kwargs.get('fileSha')
-        commit_sha = kwargs.get('commitSha')
-        if not branch_name and not file_sha:
-            branch_name = await self._fetch_default_branch()
+        gl_path = await self.validate_path(path, **kwargs)
+        if gl_path.is_root:
+            return gl_path
 
-        if str_path == '/':
-            return GitLabPath(str_path, _ids=[(branch_name, file_sha, commit_sha)])
+        data = await self._fetch_tree_contents(gl_path.parent)
 
-        path = GitLabPath(str_path, _ids=[(branch_name, file_sha, commit_sha)])
-        for part in path.parts:
-            part._id = (branch_name, file_sha, commit_sha)
+        type_needed = 'tree' if gl_path.is_dir else 'blob'
+        found = [x for x in data if x['type'] == type_needed and x['name'] == gl_path.name]
 
-        data = await self._fetch_tree_contents(path.parent)
+        if not found:
+            raise exceptions.NotFoundError(str(gl_path))
 
-        data_list = []
-        if path.is_dir:
-            data_list = list(filter(lambda x: x['type'] == 'tree', data))
-        else:
-            data_list = list(filter(lambda x: x['type'] == 'blob', data))
-
-        data_found = list(filter(lambda x: x['name'] == path.name, data_list))
-
-        if not data_found:
-            raise exceptions.NotFoundError(path.full_path)
-
-        file_sha = data_found[0]['id']
-        path.set_file_sha(file_sha)
-        return path
+        return gl_path
 
     async def validate_path(self, path, **kwargs):
         """Ensure path is in Waterbutler format.
@@ -99,10 +83,36 @@ class GitLabProvider(provider.BaseProvider):
         :param str path: The path to a file
         :rtype: GitLabPath
         """
-        return GitLabPath(path)
+        commit_sha = kwargs.get('commitSha')
+        branch_name = kwargs.get('branch')
 
-    async def revalidate_path(self, base, path, folder=False):
-        return base.child(path, _id=((base.branch_name, None)), folder=folder)
+        # revision query param could be commit sha OR branch
+        # take a guess which one it will be.
+        revision = kwargs.get('revision', None)
+        if revision is not None:
+            try:
+                int(revision, 16)  # is revision valid hex?
+            except (TypeError, ValueError):
+                branch_name = revision
+            else:
+                commit_sha = revision
+
+        if not commit_sha and not branch_name:
+            branch_name = await self._fetch_default_branch()
+
+        if path == '/':
+            return GitLabPath(path, _ids=[(commit_sha, branch_name)])
+
+        gl_path = GitLabPath(path)
+        for part in gl_path.parts:
+            part._id = (commit_sha, branch_name)
+
+        return gl_path
+
+    def path_from_metadata(self,  # type: ignore
+                           parent_path: GitLabPath,
+                           metadata) -> GitLabPath:
+        return parent_path.child(metadata.name, folder=metadata.is_folder)
 
     async def metadata(self, path, **kwargs):
         """Get Metadata about the requested file or folder.

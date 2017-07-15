@@ -32,8 +32,8 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
     @property
     def extra(self):
         return {
-            'ref': self.branch_name,
             'commitSha': self.commit_sha,
+            'branch': self.branch_name,  # may be None if revision id is a sha
         }
 
     def build_path(self):
@@ -43,19 +43,19 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
         """Update JSON-API links to add branch, if available"""
         links = super()._json_api_links(resource)
 
-        ref = {}
-        if self.branch_name is not None:
-            ref['branch'] = self.branch_name
+        ref = None
         if self.commit_sha is not None:
-            ref['commitSha'] = self.commit_sha
+            ref = {'commitSha': self.commit_sha}
+        elif self.branch_name is not None:
+            ref = {'branch': self.branch_name}
 
         if ref is not None:
             for action, link in links.items():
                 links[action] = furl(link).add(ref).url
 
-        # Read-only version
-        for action in ['delete', 'upload']:
-            links[action] = None
+        for action in ['delete', 'upload', 'new_folder']:
+            if action in links:
+                links[action] = None
 
         return links
 
@@ -88,17 +88,12 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
         return self.file_size
 
     @property
-    def file_sha(self):
-        return self._path_obj.file_sha
-
-    @property
     def etag(self):
-        return '{}::{}'.format(self.path, self.file_sha)
+        return '{}::{}'.format(self.path, self.commit_sha or self.branch_name)
 
     @property
     def extra(self):
         return dict(super().extra, **{
-            'fileSha': self.file_sha,
             'webView': self.web_view
         })
 
