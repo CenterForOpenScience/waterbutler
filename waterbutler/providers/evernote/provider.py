@@ -278,3 +278,7 @@ class EvernoteProvider(provider.BaseProvider):
     async def revisions(self, path, **kwargs):
         metadata = await self.metadata(path)
         return [EvernoteFileRevisionMetadata.from_metadata(metadata)]
+
+    def path_from_metadata(self, parent_path, metadata):
+        """ Unfortunately-named method, currently only used to get path name for zip archives. """
+        return parent_path.child(metadata.export_name, _id=metadata.id, folder=metadata.is_folder)

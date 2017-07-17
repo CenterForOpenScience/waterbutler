@@ -10,6 +10,10 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
         super().__init__(raw)
 
     @property
+    def id(self):
+        return self.raw['guid']
+
+    @property
     def content_type(self):
         # TO DO: Implement
         return 'text/html'
@@ -56,6 +60,10 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
     def etag(self):
         # TO DO: implement
         return "[ETAG]"
+
+    @property
+    def export_name(self):
+        return self.raw['title'] + ".html"
 
 
 class EvernoteFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
