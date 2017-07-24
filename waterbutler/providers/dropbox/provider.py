@@ -54,7 +54,7 @@ class DropboxProvider(provider.BaseProvider):
     BASE_URL = settings.BASE_URL
 
     def __init__(self, auth, credentials, settings):
-        super().__init__(auth, credentials, settings)
+        super().__init__(auth, credentials, settings, retry_on={408, 502, 503, 504, 429})
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
         self.metrics.add('folder_is_root', self.folder == '/')
