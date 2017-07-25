@@ -254,7 +254,7 @@ class GitLabProvider(provider.BaseProvider):
             'GET',
             url,
             expects=(200,),
-            throws=exceptions.NotFoundError(path.full_path)
+            throws=exceptions.NotFoundError,
         )
         return await resp.json()
 
@@ -269,9 +269,8 @@ class GitLabProvider(provider.BaseProvider):
             'GET',
             url,
             expects=(200, 404),
-            throws=exceptions.NotFoundError(path.full_path)
+            throws=exceptions.NotFoundError,
         )
-
         data = await resp.json()
 
         if isinstance(data, dict):
