@@ -249,7 +249,7 @@ class GitLabProvider(provider.BaseProvider):
         return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
 
     async def _fetch_file_contents(self, path):
-        url = self._build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
+        url = self._build_repo_url('repository', 'files', path.raw_path, ref=path.branch_name)
         resp = await self.make_request(
             'GET',
             url,
