@@ -20,8 +20,9 @@ class GitLabProvider(provider.BaseProvider):
 
     Quirks:
 
-    * git doesn't have a concept of empty folders, so this provider creates 0-byte ``.gitkeep``
-      files in the requested folder.
+    * Metadata for files will change depending on the path used to fetch it.  If the file metadata
+      comes from a listing of the parent folder, the ``size`` and
+
 
     """
     NAME = 'gitlab'
@@ -209,7 +210,7 @@ class GitLabProvider(provider.BaseProvider):
         return await super().copy(dest_provider, *args, **kwargs)
 
     def _build_repo_url(self, *segments, **query):
-        """Build the repository url with the params, retuning the complete repository url.
+        """Build the repository url with the params, returning the complete repository url.
 
         :param list segments: The list of child paths
         :param dict query: The query used to append the parameters on url
@@ -250,6 +251,15 @@ class GitLabProvider(provider.BaseProvider):
         return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
 
     async def _fetch_file_contents(self, path):
+        """
+
+        Modified date is available by looking up `last_commit_id`.
+
+        Created date is not available.
+
+        API docs: https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
+
+        """
         url = self._build_repo_url('repository', 'files', path.raw_path, ref=path.branch_name)
         resp = await self.make_request(
             'GET',
@@ -267,6 +277,11 @@ class GitLabProvider(provider.BaseProvider):
         return data
 
     async def _fetch_tree_contents(self, path):
+        """
+
+        API docs: https://docs.gitlab.com/ce/api/repositories.html#list-repository-tree
+
+        """
         if path.is_root:
             url = self._build_repo_url('repository', 'tree', ref=path.branch_name)
         else:
