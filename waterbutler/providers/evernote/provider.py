@@ -1,18 +1,56 @@
+import asyncio
+from concurrent import futures
+import functools
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
-from waterbutler.tasks.core import backgroundify
+# from waterbutler.tasks.core import backgroundify
+from waterbutler.tasks.core import __coroutine_unwrapper
 
 from .metadata import EvernoteFileMetadata, EvernoteFileRevisionMetadata
 from .utils import get_evernote_client, get_note, notes_metadata, timestamp_iso, OSFMediaStore
 
 import ENML2HTML
 
+# a ThreadPoolExecutor for enforcing a single job at a time for Evernote
+_executor = futures.ThreadPoolExecutor(max_workers=1)
 
-@provider.throttle(concurrency=1, interval=1)
-@backgroundify
+# https://stackoverflow.com/a/26151604
+
+
+def parametrized(dec):
+    def layer(*args, **kwargs):
+        def repl(f):
+            return dec(f, *args, **kwargs)
+        return repl
+    return layer
+
+
+async def backgrounded(func, executor, *args, **kwargs):
+    """Runs the given function with the given arguments in
+    a background thread
+    """
+    loop = asyncio.get_event_loop()
+    if asyncio.iscoroutinefunction(func):
+        func = __coroutine_unwrapper(func)
+
+    return (await loop.run_in_executor(
+        executor,
+        functools.partial(func, *args, **kwargs)
+    ))
+
+
+@parametrized
+def backgroundify(func, executor):
+    @functools.wraps(func)
+    async def wrapped(*args, **kwargs):
+        return (await backgrounded(func, executor, *args, **kwargs))
+    return wrapped
+
+
+@backgroundify(_executor)
 def _evernote_notes(notebook_guid, token):
 
     client = get_evernote_client(token)
@@ -41,8 +79,7 @@ def _evernote_notes(notebook_guid, token):
     return results
 
 
-@provider.throttle(concurrency=1, interval=1)
-@backgroundify
+@backgroundify(_executor)
 def _evernote_note(note_guid, token, withContent=False):
 
     client = get_evernote_client(token)
