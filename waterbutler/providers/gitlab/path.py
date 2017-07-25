@@ -1,8 +1,15 @@
+import functools
+from urllib import parse
+
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.path import WaterButlerPathPart
 
 
 class GitLabPathPart(WaterButlerPathPart):
+    DECODE = parse.unquote
+    # TODO: mypy lacks a syntax to define kwargs for callables
+    ENCODE = functools.partial(parse.quote, safe='')  # type: ignore
+
     def increment_name(self, _id=None):
         """Overridden to preserve branch from _id upon incrementing"""
         self._id = _id or (self._id[0], self._id[1])
