@@ -221,6 +221,37 @@ class GitLabProvider(provider.BaseProvider):
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
 
+    async def _metadata_folder(self, path, **kwargs):
+        data = await self._fetch_tree_contents(path)
+
+        ret = []
+        for item in data:
+            name = item['name']
+            if item['type'] == 'tree':
+                folder_path = path.child(name, folder=True)
+                ret.append(GitLabFolderMetadata(item, folder_path))
+            else:
+                file_path = path.child(name, folder=False)
+                ret.append(GitLabFileMetadata(item, file_path, host=self.VIEW_URL,
+                                              owner=self.owner, repo=self.repo))
+
+        return ret
+
+    async def _metadata_file(self, path, **kwargs):
+        file_contents = await self._fetch_file_contents(path)
+        if not file_contents:
+            raise exceptions.NotFoundError(str(path))
+
+        file_name = file_contents['file_name']
+        data = {'name': file_name, 'id': file_contents['blob_id'],
+                'path': file_contents['file_path'], 'size': file_contents['size']}
+
+        mimetype = mimetypes.guess_type(file_name)[0]
+        if mimetype:
+            data['mimetype'] = mimetype
+
+        return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
+
     async def _fetch_file_contents(self, path):
         url = self._build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
         resp = await self.make_request(
@@ -272,33 +303,3 @@ class GitLabProvider(provider.BaseProvider):
 
         return data['default_branch']
 
-    async def _metadata_folder(self, path, **kwargs):
-        data = await self._fetch_tree_contents(path)
-
-        ret = []
-        for item in data:
-            name = item['name']
-            if item['type'] == 'tree':
-                folder_path = path.child(name, folder=True)
-                ret.append(GitLabFolderMetadata(item, folder_path))
-            else:
-                file_path = path.child(name, folder=False)
-                ret.append(GitLabFileMetadata(item, file_path, host=self.VIEW_URL,
-                                              owner=self.owner, repo=self.repo))
-
-        return ret
-
-    async def _metadata_file(self, path, **kwargs):
-        file_contents = await self._fetch_file_contents(path)
-        if not file_contents:
-            raise exceptions.NotFoundError(str(path))
-
-        file_name = file_contents['file_name']
-        data = {'name': file_name, 'id': file_contents['blob_id'],
-                'path': file_contents['file_path'], 'size': file_contents['size']}
-
-        mimetype = mimetypes.guess_type(file_name)[0]
-        if mimetype:
-            data['mimetype'] = mimetype
-
-        return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
