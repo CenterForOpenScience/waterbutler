@@ -1,3 +1,4 @@
+import json
 import base64
 import aiohttp
 import mimetypes
@@ -256,7 +257,14 @@ class GitLabProvider(provider.BaseProvider):
             expects=(200,),
             throws=exceptions.NotFoundError,
         )
-        return await resp.json()
+        raw_data = (await resp.read()).decode("utf-8")
+        data = None
+        try:
+            data = json.loads(raw_data)
+        except json.decoder.JSONDecodeError:
+            data = self._convert_ruby_hash_to_dict(raw_data)
+
+        return data
 
     async def _fetch_tree_contents(self, path):
         if path.is_root:
@@ -298,3 +306,9 @@ class GitLabProvider(provider.BaseProvider):
 
         return data['default_branch']
 
+    def _convert_ruby_hash_to_dict(self, ruby_hash):
+        """Adopted from: https://stackoverflow.com/a/19322785"""
+        dict_str = ruby_hash.replace(":", '"')     # Remove the ruby object key prefix
+        dict_str = dict_str.replace("=>", '" : ')  # swap the k => v notation, and close any unshut quotes
+        dict_str = dict_str.replace('""', '"')     # strip back any double quotes we created to sinlges
+        return json.loads(dict_str)
