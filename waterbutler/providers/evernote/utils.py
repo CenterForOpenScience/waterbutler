@@ -1,5 +1,6 @@
 import datetime
 import time
+import functools
 from evernote.api.client import EvernoteClient
 from evernote.edam.error.ttypes import (EDAMSystemException, EDAMErrorCode)
 from evernote.edam.notestore.ttypes import (NoteFilter, NotesMetadataResultSpec)
@@ -14,6 +15,7 @@ def evernote_wait_try_again(f):
     http://dev.evernote.com/doc/articles/rate_limits.php
     """
 
+    @functools.wraps(f)
     def f2(*args, **kwargs):
         try:
             return f(*args, **kwargs)
@@ -46,6 +48,7 @@ def get_evernote_client(token, sandbox=False):
     return RateLimitingEvernoteProxy(_client)
 
 
+@evernote_wait_try_again
 def get_notebooks(client):
 
     noteStore = client.get_note_store()
@@ -57,6 +60,7 @@ def get_notebooks(client):
 # https://dev.evernote.com/doc/reference/NoteStore.html#Fn_NoteStore_getNotebook
 
 
+@evernote_wait_try_again
 def get_notebook(client, nb_guid):
     noteStore = client.get_note_store()
     notebook = noteStore.getNotebook(nb_guid)
@@ -66,6 +70,7 @@ def get_notebook(client, nb_guid):
              'defaultNotebook': notebook.defaultNotebook}
 
 
+@evernote_wait_try_again
 def notes_metadata(client, **input_kw):
     """ """
     # http://dev.evernote.com/documentation/reference/NoteStore.html#Fn_NoteStore_findNotesMetadata
@@ -115,7 +120,9 @@ def notes_metadata(client, **input_kw):
     while more_nm:
 
         # grab a page of data
-        note_meta = noteStore.findNotesMetadata(NoteFilter(**filter_kw), offset, page_size,
+
+        f2 = evernote_wait_try_again(noteStore.findNotesMetadata)
+        note_meta = f2(NoteFilter(**filter_kw), offset, page_size,
                                     NotesMetadataResultSpec(**include_kw))
 
         # yield each individually
@@ -129,6 +136,7 @@ def notes_metadata(client, **input_kw):
             more_nm = False
 
 
+@evernote_wait_try_again
 def get_note(client, guid,
             withContent=False,
             withResourcesData=False,

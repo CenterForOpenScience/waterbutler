@@ -103,6 +103,13 @@ def _evernote_note(note_guid, token, withContent=False):
         return result
 
 
+@backgroundify(_executor)
+def _evernote_note_store(token):
+
+    client = get_evernote_client(token)
+    return client.get_note_store()
+
+
 class EvernoteProvider(provider.BaseProvider):
 
     NAME = 'evernote'
@@ -155,31 +162,36 @@ class EvernoteProvider(provider.BaseProvider):
         :raises:   `waterbutler.core.exceptions.DownloadError`
         """
 
-        print("EvernoteProvider.download: path, kwargs", type(path), str(path), path.identifier, kwargs)
-        token = self.credentials['token']
-        client = get_evernote_client(token)
+        print("EvernoteProvider.download: path, kwargs", type(path), str(path), path.identifier, kwargs, self.credentials)
 
-        note_guid = path.identifier
-        note = await _evernote_note(note_guid, token, withContent=True)
+        try:
+            token = self.credentials['token']
 
-        # convert to HTML
-        mediaStore = OSFMediaStore(client.get_note_store(), note_guid)
-        html = ENML2HTML.ENMLToHTML(note["content"], pretty=True, header=False,
-              media_store=mediaStore)
+            note_guid = path.identifier
+            note = await _evernote_note(note_guid, token, withContent=True)
 
-        # HACK -- let me write markdown
-        # html = "**Hello World**"
-        # html = """<b>Hello world</b>. Go read the <a href="http://nytimes.com">NYT</a>"""
+            # convert to HTML
+            note_store = await _evernote_note_store(token)
+            mediaStore = OSFMediaStore(note_store, note_guid)
+            html = ENML2HTML.ENMLToHTML(note["content"], pretty=True, header=False,
+                  media_store=mediaStore)
 
-        stream = streams.StringStream(html)
-        stream.content_type = "text/html"
-        stream.name = "{}.html".format(note['title'])
+            # HACK -- let me write markdown
+            # html = "**Hello World**"
+            # html = """<b>Hello world</b>. Go read the <a href="http://nytimes.com">NYT</a>"""
 
-        # modeling after gdoc provider
-        # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
+            stream = streams.StringStream(html)
+            stream.content_type = "text/html"
+            stream.name = "{}.html".format(note['title'])
 
-        print("evernote provider download: finishing")
-        return stream
+            # modeling after gdoc provider
+            # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
+        except Exception as e:
+            print('download: Exception ', str(e))
+            raise exceptions.DownloadError(str(e), code=500, log_message=str(e), is_user_error=False)
+        else:
+            print("evernote provider download: finishing")
+            return stream
 
     async def validate_path(self, path, **kwargs):
         """
