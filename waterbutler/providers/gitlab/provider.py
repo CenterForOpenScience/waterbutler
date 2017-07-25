@@ -159,12 +159,8 @@ class GitLabProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
-        url = None
-        if path.commit_sha:
-            url = self._build_repo_url('repository', 'files', path.full_path, ref=path.commit_sha)
-        else:
-            url = self._build_repo_url('repository', 'files', path.full_path, ref=path.branch_name)
-
+        ref = path.commit_sha or path.branch_name
+        url = self._build_repo_url('repository', 'files', path.full_path, ref=ref)
         resp = await self.make_request(
             'GET',
             url,
