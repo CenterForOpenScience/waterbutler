@@ -148,7 +148,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                          dest_provider: provider.BaseProvider,
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) \
-                         -> typing.Tuple[GoogleDriveFileMetadata, bool]:
+                         -> typing.Tuple[BaseGoogleDriveMetadata, bool]:
         self.metrics.add('intra_move.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -170,13 +170,14 @@ class GoogleDriveProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
+        metadata_class = GoogleDriveFolderMetadata if dest_path.is_dir else GoogleDriveFileMetadata
+        return metadata_class(data, dest_path), dest_path.identifier is None
 
     async def intra_copy(self,
                          dest_provider: provider.BaseProvider,
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) \
-                         -> typing.Tuple[GoogleDriveFileMetadata, bool]:
+                         -> typing.Tuple[BaseGoogleDriveMetadata, bool]:
         self.metrics.add('intra_copy.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -195,7 +196,9 @@ class GoogleDriveProvider(provider.BaseProvider):
             throws=exceptions.IntraMoveError,
         ) as resp:
             data = await resp.json()
-        return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
+
+        metadata_class = GoogleDriveFolderMetadata if dest_path.is_dir else GoogleDriveFileMetadata
+        return metadata_class(data, dest_path), dest_path.identifier is None
 
     async def download(self,  # type: ignore
                        path: GoogleDrivePath,
