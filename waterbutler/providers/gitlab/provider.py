@@ -128,16 +128,11 @@ class GitLabProvider(provider.BaseProvider):
         :param GitLabPath path: The path to a file or folder
         :rtype: :class:`GitLabFileMetadata`
         :rtype: :class:`list` of :class:`GitLabFileMetadata` or :class:`GitLabFolderMetadata`
-        :raises: :class:`waterbutler.core.exceptions.MetadataError`
         """
-        try:
-            if path.is_dir:
-                return (await self._metadata_folder(path, **kwargs))
-            else:
-                return (await self._metadata_file(path, **kwargs))
-        except:
-            raise exceptions.MetadataError('error on fetch metadata from path {0}'
-                    .format(path.full_path))
+        if path.is_dir:
+            return (await self._metadata_folder(path, **kwargs))
+        else:
+            return (await self._metadata_file(path, **kwargs))
 
     async def revisions(self, path, sha=None, **kwargs):
         """Get past versions of the request file.
