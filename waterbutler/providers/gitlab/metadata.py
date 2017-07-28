@@ -61,6 +61,16 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
 
 
 class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
+    """Metadata for files stored on GitLab.
+
+    GitLabFileMetadata objects constructed from tree listings (i.e. metadata objects constructed
+    as part of listing the parent folder's contents) will have the ``size`` property set to `None`.
+    When metadata for the file is requested directly, the ``size`` will be present.
+
+    The GitLab provider does not support ``modified``, ``modified_utc``, or ``created_utc`` for
+    any files.  GitLab also does not do content-type detection, so the content-type is guess in WB
+    from the file extension.
+    """
 
     def __init__(self, raw, path, host=None, owner=None, repo=None):
         super().__init__(raw, path)
@@ -79,7 +89,7 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
     @property
     def content_type(self):
-        return self.raw.get('mimetype', None)
+        return self.raw.get('mime_type', None)
 
     @property
     def size(self):

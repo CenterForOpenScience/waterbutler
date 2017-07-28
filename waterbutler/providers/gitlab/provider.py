@@ -21,9 +21,13 @@ class GitLabProvider(provider.BaseProvider):
     Quirks:
 
     * Metadata for files will change depending on the path used to fetch it.  If the file metadata
-      comes from a listing of the parent folder, the ``size`` and
+      comes from a listing of the parent folder, the ``size`` property will be `None`.
 
+    * The GitLab provider cannot determine the ``modified``, ``modified_utc``, or ``created_utc``
+      for metadata properties for any files.
 
+    * GitLab does not do content-type detection, so the ``contentType`` property is inferred in WB
+      from the file extension.
     """
     NAME = 'gitlab'
 
@@ -232,6 +236,7 @@ class GitLabProvider(provider.BaseProvider):
                 ret.append(GitLabFolderMetadata(item, folder_path))
             else:
                 file_path = path.child(name, folder=False)
+                item['mime_type'] = mimetypes.guess_type(name)[0]
                 ret.append(GitLabFileMetadata(item, file_path, host=self.VIEW_URL,
                                               owner=self.owner, repo=self.repo))
 
@@ -246,9 +251,7 @@ class GitLabProvider(provider.BaseProvider):
         data = {'name': file_name, 'id': file_contents['blob_id'],
                 'path': file_contents['file_path'], 'size': file_contents['size']}
 
-        mimetype = mimetypes.guess_type(file_name)[0]
-        if mimetype:
-            data['mimetype'] = mimetype
+        data['mime_type'] = mimetypes.guess_type(file_name)[0]
 
         return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
 
