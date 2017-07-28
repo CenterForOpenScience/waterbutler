@@ -203,6 +203,9 @@ class GitLabProvider(provider.BaseProvider):
     async def upload(self, *args, **kwargs):
         raise exceptions.ReadOnlyProviderError(self.NAME)
 
+    async def create_folder(self, *args, **kwargs):
+        raise exceptions.ReadOnlyProviderError(self.NAME)
+
     async def delete(self, *args, **kwargs):
         raise exceptions.ReadOnlyProviderError(self.NAME)
 
