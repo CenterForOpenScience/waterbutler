@@ -315,6 +315,12 @@ class GitLabProvider(provider.BaseProvider):
                 elif resp.status == 404:  # True Not Found
                     raise exceptions.NotFoundError(path.full_path)
 
+            # GitLab currently returns 200 OK for nonexistent directories
+            # See: https://gitlab.com/gitlab-org/gitlab-ce/issues/34016
+            # Fallback: empty directories shouldn't exist in git,
+            if page_nbr == 1 and len(data_page) == 0:
+                raise exceptions.NotFoundError(path.full_path)
+
             data.extend(data_page)
             page_nbr = resp.headers.get('X-Next-Page', None)
 
