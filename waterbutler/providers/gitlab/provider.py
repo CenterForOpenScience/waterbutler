@@ -27,6 +27,8 @@ class GitLabProvider(provider.BaseProvider):
     """
     NAME = 'gitlab'
 
+    MAX_PAGE_SIZE = 100
+
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
         self.name = self.auth.get('name', None)
@@ -281,28 +283,35 @@ class GitLabProvider(provider.BaseProvider):
 
         API docs: https://docs.gitlab.com/ce/api/repositories.html#list-repository-tree
 
+        Pagination: https://docs.gitlab.com/ce/api/README.html#pagination
+
         """
-        if path.is_root:
-            url = self._build_repo_url('repository', 'tree', ref=path.branch_name)
-        else:
-            url = self._build_repo_url('repository', 'tree',
-                                       path=path.raw_path, ref=path.branch_name)
 
-        resp = await self.make_request(
-            'GET',
-            url,
-            expects=(200, 404),
-            throws=exceptions.NotFoundError,
-        )
-        data = await resp.json()
+        data, page_nbr = [], 1
+        while page_nbr:
+            path_args = ['repository', 'tree']
+            path_kwargs = {'ref': path.branch_name, 'page': page_nbr,
+                           'per_page': self.MAX_PAGE_SIZE}
+            if not path.is_root:
+                path_kwargs['path'] = path.full_path
 
-        if isinstance(data, dict):
-            # Empty Project
-            if data['message'] == '404 Tree Not Found':
-                return []
-            # True Not Found
-        elif resp.status == 404:
-            raise exceptions.NotFoundError(path.full_path)
+            url = self._build_repo_url(*path_args, **path_kwargs)
+            resp = await self.make_request(
+                'GET',
+                url,
+                expects=(200, 404),
+                throws=exceptions.NotFoundError,
+            )
+            data_page = await resp.json()
+
+            if isinstance(data_page, dict):
+                if data_page['message'] == '404 Tree Not Found':  # Empty Project
+                    break
+                elif resp.status == 404:  # True Not Found
+                    raise exceptions.NotFoundError(path.full_path)
+
+            data.extend(data_page)
+            page_nbr = resp.headers.get('X-Next-Page', None)
 
         return data
 
