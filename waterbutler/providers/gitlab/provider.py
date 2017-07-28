@@ -157,6 +157,11 @@ class GitLabProvider(provider.BaseProvider):
     async def download(self, path, **kwargs):
         """Get the stream to the specified file on gitlab.
 
+        There is an endpoint for downloading the raw file directly, but we cannot use it because
+        GitLab requires periods in the file path to be encoded.  Python and aiohttp make this
+        difficult, though their behavior is arguably correct. See
+        https://gitlab.com/gitlab-org/gitlab-ce/issues/31470 for details.
+
         :param str path: The path to the file on gitlab
         :param dict kwargs: Ignored
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
@@ -272,6 +277,8 @@ class GitLabProvider(provider.BaseProvider):
         try:
             data = json.loads(raw_data)
         except json.decoder.JSONDecodeError:
+            # GitLab API sometimes returns ruby hashes instead of json
+            # see: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790
             data = self._convert_ruby_hash_to_dict(raw_data)
 
         return data
