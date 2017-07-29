@@ -111,10 +111,7 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
 
 class GitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
-
-    @property
-    def modified(self):
-        return None
+    pass
 
 
 class GitLabRevision(metadata.BaseFileRevisionMetadata):
