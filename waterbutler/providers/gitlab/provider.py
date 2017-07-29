@@ -28,6 +28,9 @@ class GitLabProvider(provider.BaseProvider):
 
     * GitLab does not do content-type detection, so the ``contentType`` property is inferred in WB
       from the file extension.
+
+    * If a path is given with ``commit_sha``, ``branch_name``, and ``revision`` parameters, then
+      ``revision`` will overwrite whichever of the other two it is determined to be.
     """
     NAME = 'gitlab'
 
@@ -330,6 +333,11 @@ class GitLabProvider(provider.BaseProvider):
         return data
 
     async def _fetch_default_branch(self):
+        """
+
+        Docs: https://docs.gitlab.com/ce/api/projects.html#get-single-project
+
+        """
         url = self._build_repo_url()
         resp = await self.make_request(
             'GET',
