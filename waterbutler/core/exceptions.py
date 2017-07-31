@@ -137,7 +137,7 @@ class NamingConflict(ProviderError):
 
 
 class NotFoundError(ProviderError):
-    def __init__(self, path, is_user_error=True):
+    def __init__(self, path, is_user_error=True, **kwargs):
         super().__init__(
             'Could not retrieve file or directory {}'.format(path),
             code=http.client.NOT_FOUND,
