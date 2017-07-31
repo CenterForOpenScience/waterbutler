@@ -218,6 +218,30 @@ class TestValidatePath:
         assert root_path.commit_sha == 'a1b2c3d4'
         assert root_path.branch_name == 'master'
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_no_such_repository(self, provider):
+        provider.repo_id = '456'
+        path = '/'
+        default_branch_url = 'http://base.url/api/v4/projects/456'
+        aiohttpretty.register_json_uri('GET', default_branch_url, body={}, status=404)
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            root_path = await provider.validate_v1_path(path)
+        assert exc.value.code == 404
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_uninitialized_repository(self, provider):
+        provider.repo_id = '456'
+        path = '/'
+        default_branch_url = 'http://base.url/api/v4/projects/456'
+        aiohttpretty.register_json_uri('GET', default_branch_url, body={"default_branch": None})
+
+        with pytest.raises(exceptions.UninitializedRepositoryError) as exc:
+            root_path = await provider.validate_v1_path(path)
+        assert exc.value.code == 400
+
 
 class TestMetadata:
 
@@ -392,7 +416,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_folder_no_such_folder(self, provider):
+    async def test_metadata_folder_no_such_folder_200(self, provider):
         path = '/folder1/folder2/folder3/'
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
 
@@ -408,7 +432,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_folder_no_such_folder(self, provider):
+    async def test_metadata_folder_no_such_folder_404(self, provider):
         path = '/folder1/folder2/folder3/'
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
 
@@ -423,6 +447,46 @@ class TestMetadata:
         assert exc.value.code == 404
 
 
+class TestRevisions:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revisions(self, provider):
+        path = '/folder1/folder2/file'
+        gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
+
+        url = ('http://base.url/api/v4/projects/123/repository/commits'
+               '?path=folder1/folder2/file&ref_name=master')
+        aiohttpretty.register_json_uri('GET', url, body=fixtures.revisions_for_file())
+
+        revisions = await provider.revisions(gl_path)
+        assert len(revisions) == 3
+
+        assert revisions[0].serialized() == {
+            'version': '931aece9275c0d084dfa7f6e0b3b2bb250e4b089',
+            'modified': '2017-07-24T16:02:17.000-04:00',
+            'modified_utc': '2017-07-24T20:02:17+00:00',
+            'versionIdentifier': 'commitSha',
+            'extra': {
+                'user': {
+                    'name': 'Fitz Elliott',
+                },
+            },
+        }
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_no_such_revision(self, provider):
+        path = '/folder1/folder2/file'
+        gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
+
+        url = ('http://base.url/api/v4/projects/123/repository/commits'
+               '?path=folder1/folder2/file&ref_name=master')
+        aiohttpretty.register_json_uri('GET', url, body=[])
+
+        with pytest.raises(exceptions.RevisionsError) as exc:
+            await provider.revisions(gl_path)
+        assert exc.value.code == 404
 
 class TestDownload:
 

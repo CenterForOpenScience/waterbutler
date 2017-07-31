@@ -96,6 +96,59 @@ def subfolder_tree():
         ]
 
 @pytest.fixture
+def revisions_for_file():
+    return [
+        {
+            "id": "931aece9275c0d084dfa7f6e0b3b2bb250e4b089",
+            "short_id": "931aece9",
+            "title": "deepi",
+            "created_at": "2017-07-24T16:02:17.000-04:00",
+            "parent_ids": [
+                "d9901e83728f5aa034ef1c6193be89f7b644729f"
+            ],
+            "message": "deepi\n",
+            "author_name": "Fitz Elliott",
+            "author_email": "fitz@cos.io",
+            "authored_date": "2017-07-24T16:02:17.000-04:00",
+            "committer_name": "Fitz Elliott",
+            "committer_email": "fitz@cos.io",
+            "committed_date": "2017-07-24T16:02:17.000-04:00"
+        },
+        {
+            "id": "b993ab399b22986a298efa509ca3a6bd605a62c4",
+            "short_id": "b993ab39",
+            "title": "morp",
+            "created_at": "2017-07-24T15:57:24.000-04:00",
+            "parent_ids": [
+                "3f6f31fcbf0f70e8a59298fdccfd15f7c5f3cb2e"
+            ],
+            "message": "morp\n",
+            "author_name": "Fitz Elliott",
+            "author_email": "fitz@cos.io",
+            "authored_date": "2017-07-24T15:57:24.000-04:00",
+            "committer_name": "Fitz Elliott",
+            "committer_email": "fitz@cos.io",
+            "committed_date": "2017-07-24T15:57:24.000-04:00"
+        },
+        {
+            "id": "d5aac723529e81761c95c71315ac2c747ed50b96",
+            "short_id": "d5aac723",
+            "title": "save WIP",
+            "created_at": "2016-11-30T13:30:23.000-05:00",
+            "parent_ids": [
+                "ed7af40927525e92ef5b55720e6af32be1dba4ba"
+            ],
+            "message": "save WIP\n",
+            "author_name": "Fitz Elliott",
+            "author_email": "fitz@cos.io",
+            "authored_date": "2016-11-30T13:30:23.000-05:00",
+            "committer_name": "Fitz Elliott",
+            "committer_email": "fitz@cos.io",
+            "committed_date": "2016-11-30T13:30:23.000-05:00"
+        }
+    ]
+
+@pytest.fixture
 def weird_ruby_response():
     """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
     return ('{:file_name=>"file", :file_path=>"file", :size=>5, '
