@@ -129,6 +129,10 @@ class GitLabProvider(provider.BaseProvider):
     async def revisions(self, path, sha=None, **kwargs):
         """Get past versions of the request file.
 
+        Docs: https://docs.gitlab.com/ce/api/commits.html#list-repository-commits
+
+        Note: `path` is not a documented parameter of this endpoint, but seems to work.
+
         :param str path: The user specified path
         :param str sha: The sha of the revision
         :param dict kwargs: Ignored
@@ -143,8 +147,11 @@ class GitLabProvider(provider.BaseProvider):
             expects=(200,),
             throws=exceptions.RevisionsError
         )
+        data = await resp.json()
+        if len(data) == 0:
+            raise exceptions.RevisionsError('No revisions found', code=404)
 
-        return [GitLabRevision(item) for item in (await resp.json())]
+        return [GitLabRevision(item) for item in data]
 
     async def download(self, path, **kwargs):
         """Get the stream to the specified file on gitlab.
@@ -331,8 +338,8 @@ class GitLabProvider(provider.BaseProvider):
         )
         data = await resp.json()
 
-        if 'default_branch' not in data:
-            raise exceptions.NotFoundError
+        if data['default_branch'] is None:
+            raise exceptions.UninitializedRepositoryError('{}/{}'.format(self.owner, self.repo))
 
         return data['default_branch']
 
