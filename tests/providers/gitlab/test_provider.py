@@ -151,10 +151,10 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_path_v1_file(self, provider):
+    async def test_validate_v1_path_file(self, provider):
         path = '/folder1/file1'
         url = ('http://base.url/api/v4/projects/123/repository/tree'
-               '?path=folder1/&page=1&per_page={}&ref=master'.format(provider.MAX_PAGE_SIZE))
+               '?path=folder1/&page=1&per_page={}&ref=a1b2c3d4'.format(provider.MAX_PAGE_SIZE))
         aiohttpretty.register_json_uri('GET', url, body=fixtures.simple_tree())
 
         try:
@@ -189,14 +189,14 @@ class TestValidatePath:
         }
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path(path + '/', branch='master')
+            await provider.validate_v1_path(path + '/', commitSha='a1b2c3d4')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_path_v1_folder(self, provider):
+    async def test_validate_v1_path_folder(self, provider):
         path = '/files/lfs/'
         url = ('http://base.url/api/v4/projects/123/repository/tree'
-               '?path=files/&page=1&per_page={}&ref=master'.format(provider.MAX_PAGE_SIZE))
+               '?path=files/&page=1&per_page={}&ref=a1b2c3d4'.format(provider.MAX_PAGE_SIZE))
         aiohttpretty.register_json_uri('GET', url, body=fixtures.subfolder_tree())
 
         try:
@@ -248,12 +248,11 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_metadata_file_with_default_ref(self, provider):
-        # FIXME: this one needs work
         path = '/folder1/folder2/file'
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
 
         url = ('http://base.url/api/v4/projects/123/repository/files/'
-               'folder1%2Ffolder2%2Ffile?ref=master')
+               'folder1%2Ffolder2%2Ffile?ref=a1b2c3d4')
         aiohttpretty.register_json_uri('GET', url, body={
                 'file_name': 'file',
                 'blob_id': 'abc123',
@@ -292,27 +291,6 @@ class TestMetadata:
                          '/folder1/folder2/file?commitSha=a1b2c3d4'),
             'delete': None,
         }
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_metadata_file_with_ref(self, provider):
-        path = '/folder1/folder2/file'
-        gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'my-branch')] * 4))
-
-        url = ('http://base.url/api/v4/projects/123/repository/files/'
-               'folder1%2Ffolder2%2Ffile?ref=my-branch')
-        aiohttpretty.register_json_uri('GET', url, body={
-                'file_name': 'file',
-                'blob_id': 'abc123',
-                'commit_id': 'xxxyyy',
-                'file_path': '/folder1/folder2/file',
-                'size': 123
-            }
-        )
-
-        result = await provider.metadata(gl_path)
-        assert result.name == 'file'
-        assert result.size == 123
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -364,7 +342,7 @@ class TestMetadata:
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
 
         url = ('http://base.url/api/v4/projects/123/repository/files/'
-               'folder1%2Ffolder2%2Ffile?ref=master')
+               'folder1%2Ffolder2%2Ffile?ref=a1b2c3d4')
         aiohttpretty.register_json_uri('GET', url, body={}, status=404)
 
         with pytest.raises(exceptions.NotFoundError) as exc:
@@ -379,7 +357,7 @@ class TestMetadata:
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
 
         url = ('http://base.url/api/v4/projects/123/repository/tree'
-               '?path=folder1/folder2/folder3/&ref=master&page=1'
+               '?path=folder1/folder2/folder3/&ref=a1b2c3d4&page=1'
                '&per_page={}'.format(provider.MAX_PAGE_SIZE))
         aiohttpretty.register_json_uri('GET', url, body=[
             {
@@ -421,7 +399,7 @@ class TestMetadata:
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
 
         url = ('http://base.url/api/v4/projects/123/repository/tree'
-               '?path=folder1/folder2/folder3/&ref=master&page=1'
+               '?path=folder1/folder2/folder3/&ref=a1b2c3d4&page=1'
                '&per_page={}'.format(provider.MAX_PAGE_SIZE))
         aiohttpretty.register_json_uri('GET', url, body=[])
 
@@ -437,7 +415,7 @@ class TestMetadata:
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
 
         url = ('http://base.url/api/v4/projects/123/repository/tree'
-               '?path=folder1/folder2/folder3/&ref=master&page=1'
+               '?path=folder1/folder2/folder3/&ref=a1b2c3d4&page=1'
                '&per_page={}'.format(provider.MAX_PAGE_SIZE))
         aiohttpretty.register_json_uri('GET', url, body={}, status=404)
 
@@ -456,7 +434,7 @@ class TestRevisions:
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
 
         url = ('http://base.url/api/v4/projects/123/repository/commits'
-               '?path=folder1/folder2/file&ref_name=master')
+               '?path=folder1/folder2/file&ref_name=a1b2c3d4')
         aiohttpretty.register_json_uri('GET', url, body=fixtures.revisions_for_file())
 
         revisions = await provider.revisions(gl_path)
@@ -481,12 +459,13 @@ class TestRevisions:
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
 
         url = ('http://base.url/api/v4/projects/123/repository/commits'
-               '?path=folder1/folder2/file&ref_name=master')
+               '?path=folder1/folder2/file&ref_name=a1b2c3d4')
         aiohttpretty.register_json_uri('GET', url, body=[])
 
         with pytest.raises(exceptions.RevisionsError) as exc:
             await provider.revisions(gl_path)
         assert exc.value.code == 404
+
 
 class TestDownload:
 
