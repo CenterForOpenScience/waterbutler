@@ -406,6 +406,23 @@ class TestMetadata:
 
         assert exc.value.code == 404
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata_folder_no_such_folder(self, provider):
+        path = '/folder1/folder2/folder3/'
+        gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
+
+        url = ('http://base.url/api/v4/projects/123/repository/tree'
+               '?path=folder1/folder2/folder3/&ref=master&page=1'
+               '&per_page={}'.format(provider.MAX_PAGE_SIZE))
+        aiohttpretty.register_json_uri('GET', url, body={}, status=404)
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.metadata(gl_path)
+
+        assert exc.value.code == 404
+
+
 
 class TestDownload:
 
