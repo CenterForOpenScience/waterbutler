@@ -55,17 +55,6 @@ class GitLabProvider(provider.BaseProvider):
         """
         return {'PRIVATE-TOKEN': str(self.token)}
 
-    @property
-    def committer(self):
-        """ Information about the commit author.
-
-        :rtype: :class:`dict` with `name` and `email` of the author
-        """
-        return {
-            'name': self.name,
-            'email': self.email,
-        }
-
     async def validate_v1_path(self, path, **kwargs):
         """Ensure path is in Waterbutler v1 format.
 
@@ -250,8 +239,6 @@ class GitLabProvider(provider.BaseProvider):
 
     async def _metadata_file(self, path, **kwargs):
         file_contents = await self._fetch_file_contents(path)
-        if not file_contents:
-            raise exceptions.NotFoundError(str(path))
 
         file_name = file_contents['file_name']
         data = {'name': file_name, 'id': file_contents['blob_id'],
