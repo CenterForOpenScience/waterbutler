@@ -49,14 +49,10 @@ class GitLabProvider(provider.BaseProvider):
 
     @property
     def default_headers(self):
-        """ Headers to be included with every request.
-
-        :rtype: :class:`dict` with `PRIVATE-TOKEN` token
-        """
         return {'PRIVATE-TOKEN': str(self.token)}
 
     async def validate_v1_path(self, path, **kwargs):
-        """Ensure path is in Waterbutler v1 format.
+        """Ensure path is in WaterButler v1 format.
 
         :param str path: The path to a file/folder
         :rtype: GitLabPath
@@ -140,7 +136,7 @@ class GitLabProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.RevisionsError`
         """
         url = self._build_repo_url('repository', 'commits', path=path.path,
-                                   ref_name=path.branch_name)
+                                   ref_name=path.ref)
         resp = await self.make_request(
             'GET',
             url,
@@ -166,8 +162,7 @@ class GitLabProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
-        ref = path.commit_sha or path.branch_name
-        url = self._build_repo_url('repository', 'files', path.full_path, ref=ref)
+        url = self._build_repo_url('repository', 'files', path.full_path, ref=path.ref)
         resp = await self.make_request(
             'GET',
             url,
@@ -249,9 +244,8 @@ class GitLabProvider(provider.BaseProvider):
 
         file_name = file_contents['file_name']
         data = {'name': file_name, 'id': file_contents['blob_id'],
-                'path': file_contents['file_path'], 'size': file_contents['size']}
-
-        data['mime_type'] = mimetypes.guess_type(file_name)[0]
+                'path': file_contents['file_path'], 'size': file_contents['size'],
+                'mime_type': mimetypes.guess_type(file_name)[0]}
 
         return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
 
@@ -265,7 +259,7 @@ class GitLabProvider(provider.BaseProvider):
         API docs: https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
 
         """
-        url = self._build_repo_url('repository', 'files', path.raw_path, ref=path.branch_name)
+        url = self._build_repo_url('repository', 'files', path.raw_path, ref=path.ref)
         resp = await self.make_request(
             'GET',
             url,
@@ -291,11 +285,10 @@ class GitLabProvider(provider.BaseProvider):
         Pagination: https://docs.gitlab.com/ce/api/README.html#pagination
 
         """
-
         data, page_nbr = [], 1
         while page_nbr:
             path_args = ['repository', 'tree']
-            path_kwargs = {'ref': path.branch_name, 'page': page_nbr,
+            path_kwargs = {'ref': path.ref, 'page': page_nbr,
                            'per_page': self.MAX_PAGE_SIZE}
             if not path.is_root:
                 path_kwargs['path'] = path.full_path
