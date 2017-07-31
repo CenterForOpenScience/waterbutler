@@ -300,13 +300,10 @@ class GitLabProvider(provider.BaseProvider):
                 expects=(200, 404),
                 throws=exceptions.NotFoundError,
             )
-            data_page = await resp.json()
+            if resp.status == 404:
+                raise exceptions.NotFoundError(path.full_path)
 
-            if isinstance(data_page, dict):
-                if data_page['message'] == '404 Tree Not Found':  # Empty Project
-                    break
-                elif resp.status == 404:  # True Not Found
-                    raise exceptions.NotFoundError(path.full_path)
+            data_page = await resp.json()
 
             # GitLab currently returns 200 OK for nonexistent directories
             # See: https://gitlab.com/gitlab-org/gitlab-ce/issues/34016
