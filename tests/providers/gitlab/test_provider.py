@@ -482,8 +482,21 @@ class TestDownload:
         })
 
         result = await provider.download(gl_path, branch='master')
-
         assert await result.read() == b'hello'
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_file_ruby_response(self, provider):
+        """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
+        path = '/folder1/folder2/file'
+        gl_path = GitLabPath(path, _ids=([(None, 'my-branch')] * 4))
+
+        url = ('http://base.url/api/v4/projects/123/repository/files/'
+               'folder1%2Ffolder2%2Ffile?ref=my-branch')
+        aiohttpretty.register_uri('GET', url, body=fixtures.weird_ruby_response())
+
+        result = await provider.download(gl_path)
+        assert await result.read() == b'rolf\n'
 
 
 class TestReadOnlyProvider:

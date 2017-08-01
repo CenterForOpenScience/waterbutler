@@ -170,7 +170,15 @@ class GitLabProvider(provider.BaseProvider):
             throws=exceptions.DownloadError,
         )
 
-        data = await resp.json()
+        raw_data = (await resp.read()).decode("utf-8")
+        data = None
+        try:
+            data = json.loads(raw_data)
+        except json.decoder.JSONDecodeError:
+            # GitLab API sometimes returns ruby hashes instead of json
+            # see: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790
+            data = self._convert_ruby_hash_to_dict(raw_data)
+
         raw = base64.b64decode(data['content'])
 
         mdict_options = {}
