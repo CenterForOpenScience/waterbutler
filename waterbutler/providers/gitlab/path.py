@@ -19,22 +19,22 @@ class GitLabPath(WaterButlerPath):
     PART_CLASS = GitLabPathPart
 
     @property
-    def commit_sha(self):
+    def commit_sha(self) -> str:
         """Commit SHA-1"""
         return self.identifier[0]
 
     @property
-    def branch_name(self):
+    def branch_name(self) -> str:
         """Branch name in which this file exists"""
         return self.identifier[1]
 
     @property
-    def ref(self):
+    def ref(self) -> str:
         """commit sha or branch name on which this file exists"""
         return self.commit_sha or self.branch_name
 
     @property
-    def extra(self):
+    def extra(self) -> dict:
         return dict(super().extra, **{
             'commitSha': self.commit_sha,
             'branchName': self.branch_name
