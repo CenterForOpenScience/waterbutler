@@ -11,36 +11,36 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
         self._path_obj = path
 
     @property
-    def provider(self):
+    def provider(self) -> str:
         return 'gitlab'
 
     @property
-    def path(self):
+    def path(self) -> str:
         return self.build_path()
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._path_obj.name
 
     @property
-    def branch_name(self):
+    def branch_name(self) -> str:
         return self._path_obj.branch_name
 
     @property
-    def commit_sha(self):
+    def commit_sha(self) -> str:
         return self._path_obj.commit_sha
 
     @property
-    def extra(self):
+    def extra(self) -> dict:
         return {
             'commitSha': self.commit_sha,
             'branch': self.branch_name,  # may be None if revision id is a sha
         }
 
-    def build_path(self):
+    def build_path(self, *args) -> str:
         return super().build_path(self._path_obj.raw_path)
 
-    def _json_api_links(self, resource):
+    def _json_api_links(self, resource) -> dict:
         """Update JSON-API links to add branch, if available"""
         links = super()._json_api_links(resource)
 
@@ -81,34 +81,35 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
         self.repo = repo
 
     @property
-    def modified(self):
+    def modified(self) -> str:
         return self.raw['modified']
 
     @property
-    def created_utc(self):
+    def created_utc(self) -> str:
         return utils.normalize_datetime(self.raw['created'])
 
     @property
-    def content_type(self):
+    def content_type(self) -> str:
         return self.raw.get('mime_type', None)
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self.raw.get('size', None)
 
     @property
-    def etag(self):
+    def etag(self) -> str:
         return '{}::{}'.format(self.path, self.commit_sha or self.branch_name)
 
     @property
-    def extra(self):
+    def extra(self) -> dict:
         return dict(super().extra, **{
             'webView': self.web_view
         })
 
     @property
-    def web_view(self):
-        return '{}/{}/{}/blob/{}{}'.format(self.host, self.owner, self.repo, self.branch_name, self.path)
+    def web_view(self) -> str:
+        return '{}/{}/{}/blob/{}{}'.format(self.host, self.owner, self.repo,
+                                           self.branch_name, self.path)
 
 
 class GitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
@@ -118,19 +119,19 @@ class GitLabFolderMetadata(BaseGitLabMetadata, metadata.BaseFolderMetadata):
 class GitLabRevision(metadata.BaseFileRevisionMetadata):
 
     @property
-    def version_identifier(self):
+    def version_identifier(self) -> str:
         return 'commitSha'
 
     @property
-    def modified(self):
+    def modified(self) -> str:
         return self.raw['committed_date']
 
     @property
-    def version(self):
+    def version(self) -> str:
         return self.raw['id']
 
     @property
-    def extra(self):
+    def extra(self) -> dict:
         return {
             'user': {
                 'name': self.raw['author_name'],

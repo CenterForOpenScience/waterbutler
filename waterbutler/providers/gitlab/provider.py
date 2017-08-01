@@ -1,5 +1,6 @@
 import json
 import base64
+import typing
 import aiohttp
 import mimetypes
 
@@ -8,9 +9,10 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 
 from waterbutler.providers.gitlab.path import GitLabPath
-from waterbutler.providers.gitlab.metadata import GitLabRevision
-from waterbutler.providers.gitlab.metadata import GitLabFileMetadata
-from waterbutler.providers.gitlab.metadata import GitLabFolderMetadata
+from waterbutler.providers.gitlab.metadata import (BaseGitLabMetadata,
+                                                   GitLabRevision,
+                                                   GitLabFileMetadata,
+                                                   GitLabFolderMetadata)
 
 
 class GitLabProvider(provider.BaseProvider):
@@ -54,10 +56,10 @@ class GitLabProvider(provider.BaseProvider):
         self.VIEW_URL = self.settings['host']
 
     @property
-    def default_headers(self):
+    def default_headers(self) -> dict:
         return {'PRIVATE-TOKEN': str(self.token)}
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path: str, **kwargs) -> GitLabPath:
         """Turns the string ``path`` into a `GitLabPath` object. See `validate_path` for details.
         This method does much the same as `validate_path`, but does two extra validation steps.
         First it checks to see if the object identified by ``path`` already exists in the repo,
@@ -83,7 +85,7 @@ class GitLabProvider(provider.BaseProvider):
 
         return gl_path
 
-    async def validate_path(self, path, **kwargs):
+    async def validate_path(self, path: str, **kwargs) -> GitLabPath:
         """Turn the string ``path`` into a `GitLabPath` object. Will infer the branch/commit
         information from the query params or from the default branch for the repo if those are
         not provided.  Does no validation to ensure that the entity described by ``path`` actually
@@ -131,7 +133,8 @@ class GitLabProvider(provider.BaseProvider):
         """Build a GitLabPath for a the child of ``parent_path`` described by ``metadata``."""
         return parent_path.child(metadata.name, folder=metadata.is_folder)
 
-    async def metadata(self, path, **kwargs):
+    async def metadata(self,  # type: ignore
+                       path: GitLabPath, **kwargs):
         """Returns file metadata if ``path`` is a file, or a list of metadata objects of the
         children of ``path`` if it is a folder.
 
@@ -140,11 +143,12 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: :class:`list` of :class:`GitLabFileMetadata` or :class:`GitLabFolderMetadata`
         """
         if path.is_dir:
-            return (await self._metadata_folder(path, **kwargs))
+            return await self._metadata_folder(path)
         else:
-            return (await self._metadata_file(path, **kwargs))
+            return await self._metadata_file(path)
 
-    async def revisions(self, path, **kwargs):
+    async def revisions(self,  # type: ignore
+                        path: GitLabPath, **kwargs) -> typing.List[GitLabRevision]:
         """Get the revision history for the file at ``path``.  Returns a list of `GitLabRevision`
         objects representing each version of the file where the file was modified.
 
@@ -171,7 +175,8 @@ class GitLabProvider(provider.BaseProvider):
 
         return [GitLabRevision(item) for item in data]
 
-    async def download(self, path, **kwargs):
+    async def download(self,  # type: ignore
+                       path: GitLabPath, **kwargs):
         """Return a stream to the specified file on GitLab.
 
         There is an endpoint for downloading the raw file directly, but we cannot use it because
@@ -258,7 +263,7 @@ class GitLabProvider(provider.BaseProvider):
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
 
-    async def _metadata_folder(self, path, **kwargs):
+    async def _metadata_folder(self, path: GitLabPath) -> typing.List[BaseGitLabMetadata]:
         """Fetch metadata for the contents of the folder at ``path`` and return a `list` of
         `GitLabFileMetadata` and `GitLabFolderMetadata` objects.
 
@@ -267,7 +272,7 @@ class GitLabProvider(provider.BaseProvider):
         """
         data = await self._fetch_tree_contents(path)
 
-        ret = []
+        ret = []  # type: typing.List[BaseGitLabMetadata]
         for item in data:
             name = item['name']
             if item['type'] == 'tree':
@@ -281,7 +286,7 @@ class GitLabProvider(provider.BaseProvider):
 
         return ret
 
-    async def _metadata_file(self, path, **kwargs):
+    async def _metadata_file(self, path: GitLabPath) -> GitLabFileMetadata:
         """Fetch metadata for the file at ``path`` and build a `GitLabFileMetadata` object for it.
 
         :param GitLabPath path: the file to get metadata for
@@ -327,7 +332,7 @@ class GitLabProvider(provider.BaseProvider):
 
         return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
 
-    async def _fetch_file_contents(self, path):
+    async def _fetch_file_contents(self, path: GitLabPath) -> dict:
         """Fetch and return the metadata for the file represented by ``path``.  Metadata returned
         includes the file name, size, and base64-encoded content.
 
@@ -355,7 +360,7 @@ class GitLabProvider(provider.BaseProvider):
 
         return data
 
-    async def _fetch_tree_contents(self, path):
+    async def _fetch_tree_contents(self, path: GitLabPath) -> list:
         """Looks up the contents of the folder represented by ``path``.  The GitLab API is
         paginated and all pages will be fetched and returned.  Each entry in the list is a simple
         `dict` containing ``id``, ``name``, ``type``, ``path``, and ``mode``.
@@ -368,7 +373,7 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: `list`
         :return: list of `dict`s representing the tree's children
         """
-        data, page_nbr = [], 1
+        data, page_nbr = [], 1  # type: ignore
         while page_nbr:
             path_args = ['repository', 'tree']
             path_kwargs = {'ref': path.ref, 'page': page_nbr,
@@ -399,7 +404,7 @@ class GitLabProvider(provider.BaseProvider):
 
         return data
 
-    async def _fetch_default_branch(self):
+    async def _fetch_default_branch(self) -> str:
         """Get the default branch configured for the repository.  Uninitialized repos do not have
         this property and throw an `UninitializedRepositoryError` if encountered.
 
@@ -422,7 +427,7 @@ class GitLabProvider(provider.BaseProvider):
 
         return data['default_branch']
 
-    def _convert_ruby_hash_to_dict(self, ruby_hash):
+    def _convert_ruby_hash_to_dict(self, ruby_hash: str) -> dict:
         """Adopted from https://stackoverflow.com/a/19322785 as a workaround for
         https://gitlab.com/gitlab-org/gitlab-ce/issues/34016.
 
