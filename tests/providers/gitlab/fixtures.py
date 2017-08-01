@@ -96,6 +96,16 @@ def subfolder_tree():
         ]
 
 @pytest.fixture
+def simple_file_metadata():
+    return {
+        'file_name': 'file',
+        'blob_id': 'abc123',
+        'commit_id': 'xxxyyy',
+        'file_path': '/folder1/folder2/file',
+        'size': 123
+    }
+
+@pytest.fixture
 def revisions_for_file():
     return [
         {

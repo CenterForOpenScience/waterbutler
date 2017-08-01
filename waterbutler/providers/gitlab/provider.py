@@ -29,10 +29,8 @@ class GitLabProvider(provider.BaseProvider):
       at a later date.
 
     * Metadata for files will change depending on the path used to fetch it.  If the file metadata
-      comes from a listing of the parent folder, the ``size`` property will be `None`.
-
-    * The GitLab provider cannot determine the ``modified``, ``modified_utc``, or ``created_utc``
-      for metadata properties for any files.
+      comes from a listing of the parent folder, the ``size``, ``modified``, ``modified_utc``, and
+      ``created_utc`` properties will be `None`.
 
     * GitLab does not do content-type detection, so the ``contentType`` property is inferred in WB
       from the file extension.
@@ -291,18 +289,47 @@ class GitLabProvider(provider.BaseProvider):
         """
         file_contents = await self._fetch_file_contents(path)
 
+        # go to commit history to get modified and created dates
+        last_commit, first_commit, page_nbr = None, None, 1
+        while page_nbr:
+            url = self._build_repo_url('repository', 'commits', path=path.path,
+                                       ref_name=path.ref, page=page_nbr,
+                                       per_page=self.MAX_PAGE_SIZE)
+            resp = await self.make_request(
+                'GET',
+                url,
+                expects=(200, 404),
+                throws=exceptions.NotFoundError,
+            )
+            if resp.status == 404:
+                raise exceptions.NotFoundError(path.full_path)
+
+            data_page = await resp.json()
+
+            # GitLab currently returns 200 OK for nonexistent directories
+            # See: https://gitlab.com/gitlab-org/gitlab-ce/issues/34016
+            # Fallback: empty directories shouldn't exist in git,
+            if page_nbr == 1 and len(data_page) == 0:
+                raise exceptions.NotFoundError(path.full_path)
+
+            if page_nbr == 1:
+                last_commit = data_page[0]
+
+            first_commit = data_page[-1]
+            page_nbr = resp.headers.get('X-Next-Page', None)
+
         file_name = file_contents['file_name']
         data = {'name': file_name, 'id': file_contents['blob_id'],
                 'path': file_contents['file_path'], 'size': file_contents['size'],
-                'mime_type': mimetypes.guess_type(file_name)[0]}
+                'mime_type': mimetypes.guess_type(file_name)[0],
+                'modified': last_commit['committed_date'],
+                'created': first_commit['committed_date'], }
 
         return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
 
     async def _fetch_file_contents(self, path):
         """Fetch and return the metadata for the file represented by ``path``.  Metadata returned
-        includes the file name, size, and base64-encoded content. The modified date is available by
-        looking up the commit given in ``last_commit_id``, but that is not currently implemented.
-        Created date is not available from this endpoint.
+        includes the file name, size, and base64-encoded content.
 
         API docs: https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
 
