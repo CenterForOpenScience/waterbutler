@@ -253,14 +253,12 @@ class TestMetadata:
 
         url = ('http://base.url/api/v4/projects/123/repository/files/'
                'folder1%2Ffolder2%2Ffile?ref=a1b2c3d4')
-        aiohttpretty.register_json_uri('GET', url, body={
-                'file_name': 'file',
-                'blob_id': 'abc123',
-                'commit_id': 'xxxyyy',
-                'file_path': '/folder1/folder2/file',
-                'size': 123
-            }
-        )
+        aiohttpretty.register_json_uri('GET', url, body=fixtures.simple_file_metadata())
+
+        history_url = ('http://base.url/api/v4/projects/123/repository/commits'
+                       '?path=folder1/folder2/file&ref_name=a1b2c3d4&page=1'
+                       '&per_page={}'.format(provider.MAX_PAGE_SIZE))
+        aiohttpretty.register_json_uri('GET', history_url, body=fixtures.revisions_for_file())
 
         etag = hashlib.sha256('{}::{}::{}'.format('gitlab', path, 'a1b2c3d4').encode('utf-8'))\
                       .hexdigest()
@@ -272,9 +270,9 @@ class TestMetadata:
             'provider':'gitlab',
             'path': path,
             'materialized': path,
-            'modified': None,
-            'modified_utc': None,
-            'created_utc': None,
+            'modified': '2017-07-24T16:02:17.000-04:00',
+            'modified_utc': '2017-07-24T20:02:17+00:00',
+            'created_utc': '2016-11-30T18:30:23+00:00',
             'contentType': None,
             'etag': etag,
             'extra': {
@@ -300,14 +298,12 @@ class TestMetadata:
 
         url = ('http://base.url/api/v4/projects/123/repository/files/'
                'folder1%2Ffolder2%2Ffile?ref=my-branch')
-        aiohttpretty.register_json_uri('GET', url, body={
-                'file_name': 'file',
-                'blob_id': 'abc123',
-                'commit_id': 'xxxyyy',
-                'file_path': '/folder1/folder2/file',
-                'size': 123
-            }
-        )
+        aiohttpretty.register_json_uri('GET', url, body=fixtures.simple_file_metadata())
+
+        history_url = ('http://base.url/api/v4/projects/123/repository/commits'
+                       '?path=folder1/folder2/file&ref_name=my-branch&page=1'
+                       '&per_page={}'.format(provider.MAX_PAGE_SIZE))
+        aiohttpretty.register_json_uri('GET', history_url, body=fixtures.revisions_for_file())
 
         result = await provider.metadata(gl_path)
         assert result.json_api_serialized('mst3k')['links'] == {
@@ -329,6 +325,11 @@ class TestMetadata:
         url = ('http://base.url/api/v4/projects/123/repository/files/'
                'folder1%2Ffolder2%2Ffile?ref=my-branch')
         aiohttpretty.register_uri('GET', url, body=fixtures.weird_ruby_response())
+
+        history_url = ('http://base.url/api/v4/projects/123/repository/commits'
+                       '?path=folder1/folder2/file&ref_name=my-branch&page=1'
+                       '&per_page={}'.format(provider.MAX_PAGE_SIZE))
+        aiohttpretty.register_json_uri('GET', history_url, body=fixtures.revisions_for_file())
 
         result = await provider.metadata(gl_path)
         assert result.name == 'file'

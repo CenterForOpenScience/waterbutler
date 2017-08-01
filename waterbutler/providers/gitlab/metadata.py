@@ -1,5 +1,6 @@
 from furl import furl
 
+from waterbutler.core import utils
 from waterbutler.core import metadata
 
 
@@ -81,11 +82,11 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
     @property
     def modified(self):
-        return None
+        return self.raw['modified']
 
     @property
     def created_utc(self):
-        return None
+        return utils.normalize_datetime(self.raw['created'])
 
     @property
     def content_type(self):
