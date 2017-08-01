@@ -14,11 +14,19 @@ from waterbutler.providers.gitlab.metadata import GitLabFolderMetadata
 
 
 class GitLabProvider(provider.BaseProvider):
-    """Provider for GitLab repositories.
+    """Provider for GitLab repositories.  GitLab is an open-source GitHub clone that can be hosted
+    personally or externally. This provider consumes the v4 GitLab API and uses Personal Access
+    Tokens for auth.  A valid host must support those two features to be useable.
 
     API docs: https://docs.gitlab.com/ce/api/
 
+    Personal access tokens: https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html
+
     Quirks:
+
+    * This provider is currently read-only, meaning it supports metadata, download, download-as-zip,
+      revision, and copy-to-external-provider requests.  Write support is possible and will be added
+      at a later date.
 
     * Metadata for files will change depending on the path used to fetch it.  If the file metadata
       comes from a listing of the parent folder, the ``size`` property will be `None`.
@@ -52,7 +60,11 @@ class GitLabProvider(provider.BaseProvider):
         return {'PRIVATE-TOKEN': str(self.token)}
 
     async def validate_v1_path(self, path, **kwargs):
-        """Ensure path is in WaterButler v1 format.
+        """Turns the string ``path`` into a `GitLabPath` object. See `validate_path` for details.
+        This method does much the same as `validate_path`, but does two extra validation steps.
+        First it checks to see if the object identified by ``path`` already exists in the repo,
+        throwing a 404 if not.  It then checks to make sure the v1 file/folder semantics are
+        respected.
 
         :param str path: The path to a file/folder
         :rtype: GitLabPath
@@ -74,7 +86,17 @@ class GitLabProvider(provider.BaseProvider):
         return gl_path
 
     async def validate_path(self, path, **kwargs):
-        """Ensure path is in Waterbutler format.
+        """Turn the string ``path`` into a `GitLabPath` object. Will infer the branch/commit
+        information from the query params or from the default branch for the repo if those are
+        not provided.  Does no validation to ensure that the entity described by ``path`` actually
+        exists.
+
+        Valid kwargs are ``commitSha``, ``branch``, and ``revision``.  If ``revision`` is given,
+        its value will be assigned to the commit SHA if it is a valid base-16 number, or branch
+        otherwise.  ``revision`` will override ``commitSha`` or ``branch``.  If both a commit SHA
+        and branch name are given, both will be associated with the new GitLabPath object.  No
+        effort is made to ensure that they point to the same thing.  `GitLabPath` objects default
+        to commit SHAs over branch names when building API calls, as a commit SHA is more specific.
 
         :param str path: The path to a file
         :rtype: GitLabPath
@@ -108,10 +130,12 @@ class GitLabProvider(provider.BaseProvider):
     def path_from_metadata(self,  # type: ignore
                            parent_path: GitLabPath,
                            metadata) -> GitLabPath:
+        """Build a GitLabPath for a the child of ``parent_path`` described by ``metadata``."""
         return parent_path.child(metadata.name, folder=metadata.is_folder)
 
     async def metadata(self, path, **kwargs):
-        """Get Metadata about the requested file or folder.
+        """Returns file metadata if ``path`` is a file, or a list of metadata objects of the
+        children of ``path`` if it is a folder.
 
         :param GitLabPath path: The path to a file or folder
         :rtype: :class:`GitLabFileMetadata`
@@ -122,17 +146,17 @@ class GitLabProvider(provider.BaseProvider):
         else:
             return (await self._metadata_file(path, **kwargs))
 
-    async def revisions(self, path, sha=None, **kwargs):
-        """Get past versions of the request file.
+    async def revisions(self, path, **kwargs):
+        """Get the revision history for the file at ``path``.  Returns a list of `GitLabRevision`
+        objects representing each version of the file where the file was modified.
 
-        Docs: https://docs.gitlab.com/ce/api/commits.html#list-repository-commits
+        API docs: https://docs.gitlab.com/ce/api/commits.html#list-repository-commits
 
-        Note: `path` is not a documented parameter of this endpoint, but seems to work.
+        Note: ``path`` is not a documented parameter of the above GL endpoint, but seems to work.
 
-        :param str path: The user specified path
-        :param str sha: The sha of the revision
-        :param dict kwargs: Ignored
-        :rtype: :class:`list` of :class:`GitLabRevision`
+        :param GitLabPath path: The file to fetch revision history for
+        :param dict \*\*kwargs: ignored
+        :rtype: `list` of :class:`GitLabRevision`
         :raises: :class:`waterbutler.core.exceptions.RevisionsError`
         """
         url = self._build_repo_url('repository', 'commits', path=path.path,
@@ -150,15 +174,21 @@ class GitLabProvider(provider.BaseProvider):
         return [GitLabRevision(item) for item in data]
 
     async def download(self, path, **kwargs):
-        """Get the stream to the specified file on gitlab.
+        """Return a stream to the specified file on GitLab.
 
         There is an endpoint for downloading the raw file directly, but we cannot use it because
         GitLab requires periods in the file path to be encoded.  Python and aiohttp make this
         difficult, though their behavior is arguably correct. See
         https://gitlab.com/gitlab-org/gitlab-ce/issues/31470 for details.
 
-        :param str path: The path to the file on gitlab
-        :param dict kwargs: Ignored
+        API docs: https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
+
+        This uses the same endpoint as `_fetch_file_contents`, but relies on the response headers,
+        which are not returned by that method.  It may also be replaced when the above bug is
+        fixed.
+
+        :param str path: The path to the file on GitLab
+        :param dict \*\*kwargs: Ignored
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
@@ -223,14 +253,20 @@ class GitLabProvider(provider.BaseProvider):
     def _build_repo_url(self, *segments, **query):
         """Build the repository url with the params, returning the complete repository url.
 
-        :param list segments: The list of child paths
-        :param dict query: The query used to append the parameters on url
+        :param list \*segments: a list of child paths
+        :param dict \*\*query: query parameters to append to the url
         :rtype: str
         """
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
 
     async def _metadata_folder(self, path, **kwargs):
+        """Fetch metadata for the contents of the folder at ``path`` and return a `list` of
+        `GitLabFileMetadata` and `GitLabFolderMetadata` objects.
+
+        :param GitLabPath path: `GitLabPath` representing a folder
+        :rtype: `list`
+        """
         data = await self._fetch_tree_contents(path)
 
         ret = []
@@ -248,6 +284,11 @@ class GitLabProvider(provider.BaseProvider):
         return ret
 
     async def _metadata_file(self, path, **kwargs):
+        """Fetch metadata for the file at ``path`` and build a `GitLabFileMetadata` object for it.
+
+        :param GitLabPath path: the file to get metadata for
+        :rtype: `GitLabFileMetadata`
+        """
         file_contents = await self._fetch_file_contents(path)
 
         file_name = file_contents['file_name']
@@ -258,14 +299,16 @@ class GitLabProvider(provider.BaseProvider):
         return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
 
     async def _fetch_file_contents(self, path):
-        """
-
-        Modified date is available by looking up `last_commit_id`.
-
-        Created date is not available.
+        """Fetch and return the metadata for the file represented by ``path``.  Metadata returned
+        includes the file name, size, and base64-encoded content. The modified date is available by
+        looking up the commit given in ``last_commit_id``, but that is not currently implemented.
+        Created date is not available from this endpoint.
 
         API docs: https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
 
+        :param GitLabPath path: the file to get metadata for
+        :rtype: `dict`
+        :return: file metadata from the GitLab endpoint
         """
         url = self._build_repo_url('repository', 'files', path.raw_path, ref=path.ref)
         resp = await self.make_request(
@@ -286,12 +329,17 @@ class GitLabProvider(provider.BaseProvider):
         return data
 
     async def _fetch_tree_contents(self, path):
-        """
+        """Looks up the contents of the folder represented by ``path``.  The GitLab API is
+        paginated and all pages will be fetched and returned.  Each entry in the list is a simple
+        `dict` containing ``id``, ``name``, ``type``, ``path``, and ``mode``.
 
         API docs: https://docs.gitlab.com/ce/api/repositories.html#list-repository-tree
 
         Pagination: https://docs.gitlab.com/ce/api/README.html#pagination
 
+        :param GitLabPath path: the tree whose contents should be returned
+        :rtype: `list`
+        :return: list of `dict`s representing the tree's children
         """
         data, page_nbr = [], 1
         while page_nbr:
@@ -325,10 +373,13 @@ class GitLabProvider(provider.BaseProvider):
         return data
 
     async def _fetch_default_branch(self):
-        """
+        """Get the default branch configured for the repository.  Uninitialized repos do not have
+        this property and throw an `UninitializedRepositoryError` if encountered.
 
-        Docs: https://docs.gitlab.com/ce/api/projects.html#get-single-project
+        API docs: https://docs.gitlab.com/ce/api/projects.html#get-single-project
 
+        :rtype: `str`
+        :return: the name of the default branch for the repository.
         """
         url = self._build_repo_url()
         resp = await self.make_request(
@@ -345,7 +396,13 @@ class GitLabProvider(provider.BaseProvider):
         return data['default_branch']
 
     def _convert_ruby_hash_to_dict(self, ruby_hash):
-        """Adopted from: https://stackoverflow.com/a/19322785"""
+        """Adopted from https://stackoverflow.com/a/19322785 as a workaround for
+        https://gitlab.com/gitlab-org/gitlab-ce/issues/34016.
+
+        :param str ruby_hash: serialized Ruby hash
+        :rtype: `dict`
+        :return: the data structure represented by the hash
+        """
         dict_str = ruby_hash.replace(":", '"')     # Remove the ruby object key prefix
         dict_str = dict_str.replace("=>", '" : ')  # swap the k => v notation, and close any unshut quotes
         dict_str = dict_str.replace('""', '"')     # strip back any double quotes we created to sinlges
