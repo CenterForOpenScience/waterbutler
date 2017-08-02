@@ -145,7 +145,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         # gdrive doesn't support intra-copy on folders
         return self == other and (path and path.is_file)
 
-    async def intra_move(self,
+    async def intra_move(self,  # type: ignore
                          dest_provider: provider.BaseProvider,
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) \
@@ -171,7 +171,12 @@ class GoogleDriveProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        metadata_class = GoogleDriveFolderMetadata if dest_path.is_dir else GoogleDriveFileMetadata
+        metadata_class = None
+        if dest_path.is_dir:
+            metadata_class = GoogleDriveFolderMetadata  # type: ignore
+        else:
+            metadata_class = GoogleDriveFileMetadata  # type: ignore
+
         return metadata_class(data, dest_path), dest_path.identifier is None
 
     async def intra_copy(self,
