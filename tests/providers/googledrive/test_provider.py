@@ -818,8 +818,10 @@ class TestMetadata:
 
         query = provider._build_query(path.identifier)
         url = provider.build_url('files', q=query, alt='json', maxResults=1000)
+        url_children = provider.build_url('files', q="'{}' in parents".format(path.identifier))
 
         aiohttpretty.register_json_uri('GET', url, body=body)
+        aiohttpretty.register_json_uri('GET', url_children, body={'items': []})
 
         result = await provider.metadata(path)
 
