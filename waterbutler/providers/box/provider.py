@@ -485,10 +485,15 @@ class BoxProvider(provider.BaseProvider):
                         path: wb_path.WaterButlerPath) \
                         -> typing.Union[BoxFileMetadata, BoxFolderMetadata]:
         if item['type'] == 'folder':
-            serializer = BoxFolderMetadata  # type: ignore
+            folder = BoxFolderMetadata(item, path)  # type: ignore
+            if item.get('item_collection'):
+                folder._children = []
+                for child in item['item_collection']['entries']:
+                    child_serializer = BoxFolderMetadata if child['type'] == 'folder' else BoxFileMetadata
+                    folder._children.append(child_serializer(child, path.child(child['name'])))
+            return folder
         else:
-            serializer = BoxFileMetadata  # type: ignore
-        return serializer(item, path)
+            return BoxFileMetadata(item, path)  # type: ignore
 
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
