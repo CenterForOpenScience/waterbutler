@@ -5,8 +5,18 @@ from evernote.api.client import EvernoteClient
 from evernote.edam.error.ttypes import (EDAMSystemException, EDAMErrorCode)
 from evernote.edam.notestore.ttypes import (NoteFilter, NotesMetadataResultSpec)
 
-from ENML2HTML import MediaStore
+import ENML_PY as enml
 import base64
+
+
+def hex_decode(s):
+    # http://stackoverflow.com/a/10619257/7782
+
+    try:
+        import binascii
+        return binascii.unhexlify(s)
+    except:
+        return s.decode('hex')
 
 
 def evernote_wait_try_again(f):
@@ -144,6 +154,7 @@ def get_note(client, guid,
             withResourcesAlternateData=False):
 
     # https://dev.evernote.com/doc/reference/NoteStore.html#Fn_NoteStore_getNote
+    print('utils.get_note guid, withContent, withResourcesData: ', guid, withContent, withResourcesData)
     noteStore = client.get_note_store()
     return noteStore.getNote(guid, withContent, withResourcesData,
                                  withResourcesRecognition, withResourcesAlternateData)
@@ -156,9 +167,25 @@ def timestamp_iso(ts):
     return datetime.datetime.utcfromtimestamp(ts / 1000.).isoformat()
 
 
-class OSFMediaStore(MediaStore):
-    def __init__(self, note_store, note_guid):
-        super(OSFMediaStore, self).__init__(note_store, note_guid)
+class OSFMediaStore(enml.MediaStore):
+    def __init__(self, note_store, note_guid, note_resources=None):
+        super().__init__(note_store, note_guid)
+        self.note_resources = note_resources if note_resources is not None else {}
+
+    def _get_resource_by_hash(self, hash_str):
+        """
+        get resource by its hash
+        """
+
+        hash_bin = hex_decode(hash_str)
+
+        if hash_bin in self.note_resources:
+            body = self.note_resources[hash_bin]
+        else:
+            resource = self.note_store.getResourceByHash(self.note_guid, hash_bin, True, False, False)
+            body = resource.data.body
+
+        return body
 
     def save(self, hash_str, mime_type):
         # hash_str is the hash digest string of the resource file

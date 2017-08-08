@@ -12,7 +12,7 @@ from waterbutler.tasks.core import __coroutine_unwrapper
 from .metadata import EvernoteFileMetadata, EvernoteFileRevisionMetadata
 from .utils import get_evernote_client, get_note, notes_metadata, timestamp_iso, OSFMediaStore
 
-import ENML2HTML
+import ENML_PY as enml
 
 # a ThreadPoolExecutor for enforcing a single job at a time for Evernote
 _executor = futures.ThreadPoolExecutor(max_workers=1)
@@ -53,6 +53,7 @@ def backgroundify(func, executor):
 @backgroundify(_executor)
 def _evernote_notes(notebook_guid, token):
 
+    print('_evernote_notes.notebook_guid ', notebook_guid)
     client = get_evernote_client(token)
 
     # will want to pick up notes for the notebook
@@ -80,26 +81,34 @@ def _evernote_notes(notebook_guid, token):
 
 
 @backgroundify(_executor)
-def _evernote_note(note_guid, token, withContent=False):
+def _evernote_note(note_guid, token, withContent=False, withResourcesData=False):
 
+    print('_evernote_note (note_guid, withContent, withResourcesData): ', note_guid, withContent, withResourcesData)
     client = get_evernote_client(token)
 
     try:
         note = get_note(client, note_guid,
                 withContent=withContent,
-                withResourcesData=withContent)
+                withResourcesData=withResourcesData)
     except Exception as e:
         # TO DO reraise with the proper exceptions
-        print('_evernote_note.e:', e)
+        print('_evernote_note._evernote_note.e:', e)
         raise e
     else:
+
+        if note.resources is not None:
+            resources = dict([(resource.data.bodyHash, resource.data.body) for resource in note.resources])
+        else:
+            resources = dict()
+
         result = {'title': note.title,
             'guid': note.guid,
             'created': timestamp_iso(note.created),
             'updated': timestamp_iso(note.updated),
             'length': note.contentLength,
             'notebook_guid': note.notebookGuid,
-            'content': note.content}
+            'content': note.content,
+            'resources': resources}
         return result
 
 
@@ -108,6 +117,12 @@ def _evernote_note_store(token):
 
     client = get_evernote_client(token)
     return client.get_note_store()
+
+
+@backgroundify(_executor)
+def _enml_to_html(content, pretty, header, media_store, note_resources=None):
+    return enml.ENMLToHTML(content, pretty=pretty, header=header,
+        media_store=media_store, note_resources=note_resources)
 
 
 class EvernoteProvider(provider.BaseProvider):
@@ -128,6 +143,8 @@ class EvernoteProvider(provider.BaseProvider):
 
         """
 
+        # print("in EvernoteProvider._package_metadata")
+
         token = self.credentials['token']
         notebook_guid = self.settings['folder']
 
@@ -137,7 +154,7 @@ class EvernoteProvider(provider.BaseProvider):
 
     async def _file_metadata(self, path):
 
-        print("EvernoteProvider._file_metadata -> path: ", path)
+        # print("EvernoteProvider._file_metadata -> path: ", path)
 
         token = self.credentials['token']
         note_md = await _evernote_note(path, token, withContent=False)
@@ -162,19 +179,21 @@ class EvernoteProvider(provider.BaseProvider):
         :raises:   `waterbutler.core.exceptions.DownloadError`
         """
 
-        print("EvernoteProvider.download: path, kwargs", type(path), str(path), path.identifier, kwargs, self.credentials)
+        # print("EvernoteProvider.download: path, kwargs", type(path), str(path), path.identifier, kwargs, self.credentials)
 
         try:
             token = self.credentials['token']
 
             note_guid = path.identifier
-            note = await _evernote_note(note_guid, token, withContent=True)
+            note = await _evernote_note(note_guid, token, withContent=True, withResourcesData=True)
 
             # convert to HTML
             note_store = await _evernote_note_store(token)
-            mediaStore = OSFMediaStore(note_store, note_guid)
-            html = ENML2HTML.ENMLToHTML(note["content"], pretty=True, header=False,
+            mediaStore = OSFMediaStore(note_store, note_guid, note_resources=note['resources'])
+            html = await _enml_to_html(note["content"], pretty=True, header=False,
                   media_store=mediaStore)
+            # html = ENML2HTML.ENMLToHTML(note["content"], pretty=True, header=False,
+            #      media_store=mediaStore)
 
             # HACK -- let me write markdown
             # html = "**Hello World**"
@@ -199,18 +218,18 @@ class EvernoteProvider(provider.BaseProvider):
         :type path: `str`
         """
 
-        print("in Evernote.validate_path. path: {}".format(path))
+        # print("in Evernote.validate_path. path: {}".format(path))
 
         if path == '/':
             wbpath = WaterButlerPath(path='/', _ids=['/'])
         else:
             try:
                 note_guid = path[1:]
-                print('evernote.provider.validate_path.note_guid', note_guid)
+                # print('evernote.provider.validate_path.note_guid', note_guid)
                 note_metadata = await self._file_metadata(note_guid)
-                print('evernote.provider.validate_path.note_metadata', note_metadata)
+                # print('evernote.provider.validate_path.note_metadata', note_metadata)
 
-                print("validate_path.note_metadata.name: {}".format(note_metadata.name))
+                # print("validate_path.note_metadata.name: {}".format(note_metadata.name))
                 wbpath = WaterButlerPath("/" + note_metadata.name, _ids=('/', note_guid))
             except Exception as e:
                 raise exceptions.NotFoundError(path)
@@ -224,8 +243,8 @@ class EvernoteProvider(provider.BaseProvider):
             Additionally queries the Evernote API to check if the package exists.
         """
 
-        print("in Evernote.validate_v1_path. path: {}".format(path),
-               "kwargs: ", kwargs)
+        # print("in Evernote.validate_v1_path. path: {}".format(path),
+        #       "kwargs: ", kwargs)
 
         wbpath = await self.validate_path(path, **kwargs)
 
@@ -302,14 +321,14 @@ class EvernoteProvider(provider.BaseProvider):
 
     async def move(self, *args, **kwargs):
 
-        print("evernote.provider.move: ", args, kwargs)
+        # print("evernote.provider.move: ", args, kwargs)
 
         raise exceptions.ReadOnlyProviderError(self.NAME)
 
     # copy is okay if source is evernote and destination is not
     async def copy(self, dest_provider, *args, **kwargs):
 
-        print("evernote.provider.copy: ", args, kwargs)
+        # print("evernote.provider.copy: ", args, kwargs)
 
         if dest_provider.NAME == 'evernote':
             raise exceptions.ReadOnlyProviderError(self.NAME)

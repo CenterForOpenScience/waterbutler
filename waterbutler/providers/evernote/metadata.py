@@ -53,7 +53,7 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
 
     @property
     def path(self):
-        print('EvernoteFileMetadata.path: self.raw', self.raw)
+        # print('EvernoteFileMetadata.path: self.raw', self.raw)
         return "/" + self.raw["guid"]
 
     @property
