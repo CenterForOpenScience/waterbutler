@@ -1,0 +1,166 @@
+{
+    "filehistory_complex": [
+        {
+            "branch" : "master",
+            "timestamp" : "2017-06-05 22:12:32",
+            "parents" : [
+                "968ec6898502"
+            ],
+            "raw_author" : "Fitz Elliott <fitz@cos.io>",
+            "utctimestamp" : "2017-06-05T20:12:32+00:00",
+            "revision" : null,
+            "message" : "add back aaa-01.txt\n",
+            "author" : {
+                "is_staff" : false,
+                "first_name" : "fitz_cos",
+                "username" : "fitz_cos",
+                "is_team" : false,
+                "resource_uri" : "/1.0/users/fitz_cos",
+                "avatar" : "https://bitbucket.org/account/fitz_cos/avatar/32/?ts=1496679706",
+                "last_name" : "",
+                "display_name" : "fitz_cos"
+            },
+            "raw_node" : "5e4718bd52874cf373dad0e9ca602a9a36f87e5c",
+            "files" : [
+                {
+                    "type" : "added",
+                    "file" : "aaa-01.txt"
+                }
+            ],
+            "node" : "5e4718bd5287",
+            "size" : -1
+        },
+        {
+            "branch" : null,
+            "timestamp" : "2017-06-05 22:12:32",
+            "parents" : [
+                "077eee4350a7"
+            ],
+            "raw_author" : "Fitz Elliott <fitz@cos.io>",
+            "branches" : [],
+            "revision" : null,
+            "utctimestamp" : "2017-06-05T20:12:32+00:00",
+            "author" : {
+                "is_team" : false,
+                "is_staff" : false,
+                "first_name" : "fitz_cos",
+                "username" : "fitz_cos",
+                "display_name" : "fitz_cos",
+                "last_name" : "",
+                "resource_uri" : "/1.0/users/fitz_cos",
+                "avatar" : "https://bitbucket.org/account/fitz_cos/avatar/32/?ts=1496679706"
+            },
+            "message" : "remove aaa-01.txt\n",
+            "raw_node" : "968ec68985026fc54e9b96ba835b7bcb345dc09d",
+            "files" : [
+                {
+                    "file" : "aaa-01.txt",
+                    "type" : "removed"
+                }
+            ],
+            "size" : -1,
+            "node" : "968ec6898502"
+        },
+        {
+            "parents" : [
+                "e17c14f8be76"
+            ],
+            "raw_author" : "Fitz Elliott <fitz@cos.io>",
+            "branch" : null,
+            "timestamp" : "2017-02-20 19:03:56",
+            "files" : [
+                {
+                    "type" : "modified",
+                    "file" : "aaa-01.txt"
+                }
+            ],
+            "raw_node" : "600a43886e0fa3841d0f09331eebed32c6af3d37",
+            "node" : "600a43886e0f",
+            "size" : -1,
+            "branches" : [],
+            "revision" : null,
+            "utctimestamp" : "2017-02-20T18:03:56+00:00",
+            "message" : "here's a commit\n",
+            "author" : {
+                "last_name" : "",
+                "display_name" : "fitz_cos",
+                "avatar" : "https://bitbucket.org/account/fitz_cos/avatar/32/?ts=1496679706",
+                "resource_uri" : "/1.0/users/fitz_cos",
+                "is_team" : false,
+                "username" : "fitz_cos",
+                "first_name" : "fitz_cos",
+                "is_staff" : false
+            }
+        },
+        {
+            "branch" : null,
+            "timestamp" : "2016-10-17 21:14:15",
+            "parents" : [
+                "aeb10e96d59c"
+            ],
+            "raw_author" : "Fitz Elliott <fitz@cos.io>",
+            "branches" : [],
+            "revision" : null,
+            "utctimestamp" : "2016-10-17T19:14:15+00:00",
+            "author" : "Fitz Elliott",
+            "message" : "File uploaded on behalf of WaterButler",
+            "raw_node" : "898e4c60f8740c08ceb30bf1fb1f8b82573835ad",
+            "size" : -1,
+            "files" : [
+                {
+                    "type" : "added",
+                    "file" : "aaa-01.txt"
+                }
+            ],
+            "node" : "898e4c60f874"
+        },
+        {
+            "raw_node" : "b5f6a882fd98c5bc5616281b45f624d4a5f7d377",
+            "size" : -1,
+            "files" : [
+                {
+                    "file" : "aaa-01.txt",
+                    "type" : "removed"
+                },
+                {
+                    "type" : "added",
+                    "file" : "baslic/aaa-01.txt"
+                }
+            ],
+            "node" : "b5f6a882fd98",
+            "branches" : [],
+            "revision" : null,
+            "utctimestamp" : "2016-09-28T18:51:32+00:00",
+            "author" : "Fitz Elliott",
+            "message" : "Moved on behalf of WaterButler",
+            "parents" : [
+                "749dc4bebad0"
+            ],
+            "raw_author" : "Fitz Elliott <fitz@cos.io>",
+            "branch" : null,
+            "timestamp" : "2016-09-28 20:51:32"
+        },
+        {
+            "raw_node" : "0e4d00507f10f7f29104a06a5a42a476e2be1c1c",
+            "node" : "0e4d00507f10",
+            "files" : [
+                {
+                    "file" : "aaa-01.txt",
+                    "type" : "added"
+                }
+            ],
+            "size" : -1,
+            "branches" : [],
+            "message" : "File uploaded on behalf of WaterButler",
+            "author" : "Fitz Elliott",
+            "utctimestamp" : "2016-09-13T15:22:18+00:00",
+            "revision" : null,
+            "raw_author" : "Fitz Elliott <fitz@cos.io>",
+            "parents" : [
+                "5e06e9d40a54"
+            ],
+            "timestamp" : "2016-09-13 17:22:18",
+            "branch" : null
+        }
+    ]
+}

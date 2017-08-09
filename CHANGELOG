@@ -2,6 +2,21 @@
 ChangeLog
 *********
 
+0.33.0 (2017-08-09)
+===================
+- ANNOUNCEMENT!  The WaterButler v0 API is DEPRECATED!  COS no longer uses it and has moved
+entirely to the v1 API.  It will be removed in the first release after October 1.  If you depend on
+v0, please get in contact with us (contact@cos.io) before then, and let us know.
+- Feature: WaterButler now supports Bitbucket as a read-only provider!  As a read-only provider,
+you can browse, download, download-as-zip, get file revision history, and copy out of your
+connected Bitbucket repository.
+- Feature: Sentry errors now include provider and resource as searchable parameters. (thanks,
+@abought!)
+- Fix: Correctly describe the response of folder intra-move actions in GoogleDrive as folders,
+rather than files.
+- Fix: WaterButler now correctly throttles multiple parallel requests.  The maximum number of
+simultaneous requests is set by the waterbutler.settings.OP_CONCURRENCY config variable.
+
 0.32.3 (2017-07-20)
 ===================
 - Fix: Quiet some overly-verbose error logging.
