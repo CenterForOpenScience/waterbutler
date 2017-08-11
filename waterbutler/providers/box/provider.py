@@ -59,6 +59,7 @@ class BoxProvider(provider.BaseProvider):
         )
 
         if response.status == 404:
+            await response.release()
             raise exceptions.NotFoundError(str(path))
 
         data = await response.json()
@@ -98,6 +99,7 @@ class BoxProvider(provider.BaseProvider):
             response = None  # Ugly but easiest
 
         if response is None or response.status in (404, 405):
+            await response.release()
             if new_name is not None:
                 raise exceptions.MetadataError('Could not find {}'.format(path), code=404)
 
