@@ -82,11 +82,14 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
     @property
     def modified(self) -> str:
-        return self.raw['modified']
+        return self.raw.get('modified', None)
 
     @property
     def created_utc(self) -> str:
-        return utils.normalize_datetime(self.raw['created'])
+        created = self.raw.get('created', None)
+        if created is not None:
+            created = utils.normalize_datetime(created)
+        return created
 
     @property
     def content_type(self) -> str:
