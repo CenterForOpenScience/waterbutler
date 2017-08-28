@@ -214,7 +214,7 @@ class EvernoteProvider(provider.BaseProvider):
 
             stream = streams.StringStream(html)
             stream.content_type = "text/html"
-            stream.name = "{}.html".format(note['title'])
+            stream.name = "{}.html".format(parse.quote(note['title'], safe=""))
 
             # modeling after gdoc provider
             # https://github.com/CenterForOpenScience/waterbutler/blob/develop/waterbutler/providers/googledrive/provider.py#L181-L185
