@@ -1,10 +1,12 @@
 import asyncio
 from concurrent import futures
 import functools
+from urllib import parse
+
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
-from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
 
 # from waterbutler.tasks.core import backgroundify
 from waterbutler.tasks.core import __coroutine_unwrapper
@@ -125,6 +127,16 @@ def _enml_to_html(content, pretty, header, media_store, note_resources=None):
         media_store=media_store, note_resources=note_resources)
 
 
+class EvernotePathPart(WaterButlerPathPart):
+    DECODE = parse.unquote
+    # TODO: mypy lacks a syntax to define kwargs for callables
+    ENCODE = functools.partial(parse.quote, safe='')  # type: ignore
+
+
+class EvernotePath(WaterButlerPath):
+    PART_CLASS = EvernotePathPart
+
+
 class EvernoteProvider(provider.BaseProvider):
 
     NAME = 'evernote'
@@ -137,13 +149,13 @@ class EvernoteProvider(provider.BaseProvider):
         """ Interface to file and package metadata from Evernote
 
         :param path: Path mapping to waterbutler interpretation of Evernote package
-        :type path: `waterbutler.core.path.WaterButlerPath`
+        :type path: `EvernotePathPart`
         :returns:  `list` -- A list of metadata
         :raises: `urllib.error.HTTPError`
 
         """
 
-        # print("in EvernoteProvider._package_metadata")
+        print("in EvernoteProvider._package_metadata")
 
         token = self.credentials['token']
         notebook_guid = self.settings['folder']
@@ -154,7 +166,7 @@ class EvernoteProvider(provider.BaseProvider):
 
     async def _file_metadata(self, path):
 
-        # print("EvernoteProvider._file_metadata -> path: ", path)
+        print("EvernoteProvider._file_metadata -> path: ", path)
 
         token = self.credentials['token']
         note_md = await _evernote_note(path, token, withContent=False)
@@ -163,6 +175,7 @@ class EvernoteProvider(provider.BaseProvider):
 
     async def metadata(self, path, **kwargs):
 
+        print("EvernoteProvider.metadata -> path: ", path)
         if str(path) == u'/':
             package = await self._package_metadata()
             return package
@@ -174,12 +187,12 @@ class EvernoteProvider(provider.BaseProvider):
         """ Interface to downloading files from Evernote
 
         :param path: Path mapping to waterbutler interpretation of Evernote file
-        :type path: `waterbutler.core.path.WaterButlerPath`
+        :type path: `EvernotePath`
         :returns:  `waterbutler.core.streams.ResponseStreamReader` Download stream generator
         :raises:   `waterbutler.core.exceptions.DownloadError`
         """
 
-        # print("EvernoteProvider.download: path, kwargs", type(path), str(path), path.identifier, kwargs, self.credentials)
+        print("EvernoteProvider.download: path, kwargs", type(path), str(path), path.identifier, kwargs, self.credentials)
 
         try:
             token = self.credentials['token']
@@ -218,10 +231,10 @@ class EvernoteProvider(provider.BaseProvider):
         :type path: `str`
         """
 
-        # print("in Evernote.validate_path. path: {}".format(path))
+        print("Evernote.validate_path. path: {}".format(path))
 
         if path == '/':
-            wbpath = WaterButlerPath(path='/', _ids=['/'])
+            wbpath = EvernotePath(path='/', _ids=['/'])
         else:
             try:
                 note_guid = path[1:]
@@ -230,7 +243,7 @@ class EvernoteProvider(provider.BaseProvider):
                 # print('evernote.provider.validate_path.note_metadata', note_metadata)
 
                 # print("validate_path.note_metadata.name: {}".format(note_metadata.name))
-                wbpath = WaterButlerPath("/" + note_metadata.name, _ids=('/', note_guid))
+                wbpath = EvernotePath("/" + parse.quote(note_metadata.name, safe=''), _ids=('/', note_guid))
             except Exception as e:
                 raise exceptions.NotFoundError(path)
 
@@ -243,8 +256,8 @@ class EvernoteProvider(provider.BaseProvider):
             Additionally queries the Evernote API to check if the package exists.
         """
 
-        # print("in Evernote.validate_v1_path. path: {}".format(path),
-        #       "kwargs: ", kwargs)
+        print("in Evernote.validate_v1_path. path: {}".format(path),
+              "kwargs: ", kwargs)
 
         wbpath = await self.validate_path(path, **kwargs)
 
