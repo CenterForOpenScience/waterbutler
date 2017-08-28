@@ -34,3 +34,6 @@ before_cache:
 
 notifications:
   flowdock: 9f8a6baf3feafdb62e515718698d06d0
+
+after_success:
+  coveralls

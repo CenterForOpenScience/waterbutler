@@ -85,6 +85,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             return self.set_status(int(http.client.NOT_IMPLEMENTED))  # Metadata on the folder itself TODO
         return (await self.header_file_metadata())
 
+    def get_sentry_data_from_request(self):
+        payload = super(ProviderHandler, self).get_sentry_data_from_request()
+        tags = payload.setdefault('tags', {})
+        tags['resource.id'] = self.resource
+        tags['src_provider'] = self.path_kwargs['provider']
+        return payload
+
     async def get(self, **_):
         """Download a file
         Will redirect to a signed URL if possible and accept_url is not False
