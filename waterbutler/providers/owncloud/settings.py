@@ -1,6 +1,6 @@
 try:
     from waterbutler import settings
 except ImportError:
-    settings = {}
+    settings = {}  # type: ignore
 
-config = settings.get('OWNCLOUD_PROVIDER_CONFIG', {})
+config = settings.get('OWNCLOUD_PROVIDER_CONFIG', {})  # type: ignore
