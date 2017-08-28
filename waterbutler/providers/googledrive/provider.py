@@ -142,13 +142,14 @@ class GoogleDriveProvider(provider.BaseProvider):
     def can_intra_copy(self,
                        other: provider.BaseProvider,
                        path=None) -> bool:
+        # gdrive doesn't support intra-copy on folders
         return self == other and (path and path.is_file)
 
-    async def intra_move(self,
+    async def intra_move(self,  # type: ignore
                          dest_provider: provider.BaseProvider,
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) \
-                         -> typing.Tuple[GoogleDriveFileMetadata, bool]:
+                         -> typing.Tuple[BaseGoogleDriveMetadata, bool]:
         self.metrics.add('intra_move.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -170,7 +171,13 @@ class GoogleDriveProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
+        metadata_class = None
+        if dest_path.is_dir:
+            metadata_class = GoogleDriveFolderMetadata  # type: ignore
+        else:
+            metadata_class = GoogleDriveFileMetadata  # type: ignore
+
+        return metadata_class(data, dest_path), dest_path.identifier is None
 
     async def intra_copy(self,
                          dest_provider: provider.BaseProvider,
@@ -195,6 +202,9 @@ class GoogleDriveProvider(provider.BaseProvider):
             throws=exceptions.IntraMoveError,
         ) as resp:
             data = await resp.json()
+
+        # GoogleDrive doesn't support intra-copy for folders, so dest_path will always
+        # be a file.  See can_intra_copy() for type check.
         return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None
 
     async def download(self,  # type: ignore

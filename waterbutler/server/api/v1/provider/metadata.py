@@ -2,7 +2,9 @@ import os
 import json
 import asyncio
 
+import pytz
 import tornado.httputil
+from dateutil.parser import parse as datetime_parser
 
 from waterbutler.core import mime_types
 from waterbutler.server import utils
@@ -21,10 +23,15 @@ class MetadataMixin:
 
         # Not setting etag for the moment
         # self.set_header('Etag', data.etag)  # This may not be appropriate
+
         if data.size is not None:
             self.set_header('Content-Length', data.size)
-        if data.modified is not None:
-            self.set_header('Last-Modified', data.modified)
+
+        if data.modified_utc is not None:
+            last_modified = datetime_parser(data.modified_utc)
+            last_modified_gmt = last_modified.astimezone(pytz.timezone('GMT'))
+            self.set_header('Last-Modified', last_modified_gmt.strftime('%a, %d %b %Y %H:%M:%S %Z'))
+
         self.set_header('Content-Type', data.content_type or 'application/octet-stream')
         self.set_header('X-Waterbutler-Metadata', json.dumps(data.json_api_serialized(self.resource)))
 
