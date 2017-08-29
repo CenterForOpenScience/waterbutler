@@ -1,0 +1,56 @@
+{
+    "root_id": "F4D50E400DFE7D4E!103",
+    "file_id": "F4D50E400DFE7D4E!291",
+    "file_revisions": {
+        "value" : [
+            {
+                "@content.downloadUrl" : "https://kdqyaa.bn1303.livefilestore.com/y4pIg3zgkmcBaQ_b2CpkxiYLihuF-GaqI-zBWermrthafHBogxMCjK6Q2qA_DoELVL0-oogK2WBYfx_CKyjynFBkRe61e6OsMDAfn0NEo4fSLSXamfrMRZ0-Pyf8ZgUujCNHpaihbkj2hwIlvnNJez0ZDerAEdfA7jos7JQnVfEAU2GNXGnsyx9Yrn9VC72xLmeMdDh676UTL9gpG-2xj4BX1AI2Ro7phbbB1n2kwnwNRZOaK1tusL8cyUfjs7joD4X",
+                "createdDateTime" : "2017-08-17T17:49:39.613Z",
+                "fileSystemInfo" : {
+                    "lastModifiedDateTime" : "2017-08-17T17:49:50.363Z",
+                    "createdDateTime" : "2017-08-17T17:49:39.613Z"
+                },
+                "name" : "toes.txt",
+                "size" : 11,
+                "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTEuMg",
+                "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5MS4yNTg",
+                "createdBy" : {
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    },
+                    "application" : {
+                        "id" : "481710a4"
+                    }
+                },
+                "lastModifiedDateTime" : "2017-08-17T17:49:50.38Z",
+                "file" : {
+                    "mimeType" : "text/plain",
+                    "hashes" : {
+                        "sha1Hash" : "D6FAC576DCF80198874C9C9476F021AF3F12688C"
+                    }
+                },
+                "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giM",
+                "id" : "F4D50E400DFE7D4E!291",
+                "parentReference" : {
+                    "id" : "F4D50E400DFE7D4E!103",
+                    "name" : "root:",
+                    "path" : "/drive/root:",
+                    "driveId" : "f4d50e400dfe7d4e"
+                },
+                "lastModifiedBy" : {
+                    "user" : {
+                        "id" : "f4d50e400dfe7d4e",
+                        "displayName" : "Fitz Elliott"
+                    },
+                    "application" : {
+                        "id" : "481710a4"
+                    }
+                }
+            }
+        ],
+        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items",
+        "@odata.deltaLink" : "https://api.onedrive.com/v1.0/drives('me')/items('F4D50E400DFE7D4E!291')/view.delta?$top=250&token=aTE09NjM2Mzg1OTM3MTAzMzc7SUQ9RjRENTBFNDAwREZFN0Q0RSEyOTE7TFI9NjM2Mzg5MTk0MDUyMTA7RVA9MTY7U0k9ODA7U0c9MTtTTz0yO1BJPTM",
+        "@delta.token" : "aTE09NjM2Mzg1OTM3MTAzMzc7SUQ9RjRENTBFNDAwREZFN0Q0RSEyOTE7TFI9NjM2Mzg5MTk0MDUyMTA7RVA9MTY7U0k9ODA7U0c9MTtTTz0yO1BJPTM"
+    }
+}

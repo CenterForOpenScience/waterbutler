@@ -1,12 +1,14 @@
+from waterbutler.core import utils
 from waterbutler.core import metadata
 
 
 class BaseOneDriveMetadata(metadata.BaseMetadata):
 
     def __init__(self, raw, path_obj):
-        print('++++++++++++++++++++++++++++++ BaseOneDriveMetadata.__init__')
-        print('+++++ raw: {}'.format(raw))
-        print('+++++ path_obj: {}'.format(path_obj))
+        """Figuring out the materialized path for a OneDrive entity can be a bit tricky. If the
+        base folder is not the provider root, we need to make sure to scrub out everything up to
+        and including the base folder.  All this has been done already in building the
+        OneDrivePath object, so we'll just pass that in and save ourselves some trouble."""
         super().__init__(raw)
         self._path_obj = path_obj
 
@@ -16,21 +18,23 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
 
     @property
     def materialized_path(self):
-        return '/{}/{}'.format(
-            self.raw['parentReference']['path'].replace('/drive/root:/', ''),
-            self.raw['name']
-        )
+        return str(self._path_obj)
 
     @property
     def extra(self):
         return {
-            'id': self.raw['id'],
-            'parentReference': self.raw['parentReference']['path']
+            'id': self.raw.get('id'),
+            'etag': self.raw.get('eTag'),
+            'webView': self.raw.get('webUrl'),
         }
 
-    @property
-    def created_utc(self):
-        return None
+    def _json_api_links(self, resource) -> dict:
+        """Update JSON-API links to remove mutation actions"""
+        links = super()._json_api_links(resource)
+        for action in ['delete', 'upload', 'new_folder']:
+            if action in links:
+                links[action] = None
+        return links
 
 
 class OneDriveFolderMetadata(BaseOneDriveMetadata, metadata.BaseFolderMetadata):
@@ -47,6 +51,24 @@ class OneDriveFolderMetadata(BaseOneDriveMetadata, metadata.BaseFolderMetadata):
     def etag(self):
         return self.raw.get('eTag')
 
+    @property
+    def extra(self):
+        """OneDrive provides modified and creation times for folders.  Most providers do not
+        so we'll stuff this into the ``extra`` properties."""
+
+        modified = self.raw.get('lastModifiedDateTime', None)
+        if modified is not None:
+            modified = utils.normalize_datetime(modified)
+
+        created = self.raw.get('createdDateTime', None)
+        if created is not None:
+            created = utils.normalize_datetime(created)
+
+        return dict(super().extra, **{
+            'modified_utc': modified,
+            'created_utc': created,
+        })
+
 
 class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
 
@@ -60,7 +82,7 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
 
     @property
     def size(self):
-        return self.raw.get('size')
+        return int(self.raw.get('size'))
 
     @property
     def modified(self):
@@ -73,16 +95,15 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
         return 'application/octet-stream'
 
     @property
-    def extra(self):
-        return {
-            'id': self.raw.get('id'),
-            'etag': self.raw.get('eTag'),
-            'webView': self.raw.get('webUrl'),
-        }
-
-    @property
     def etag(self):
         return self.raw['eTag']
+
+    @property
+    def created_utc(self):
+        created = self.raw.get('createdDateTime', None)
+        if created is not None:
+            created = utils.normalize_datetime(created)
+        return created
 
 
 class OneDriveRevisionMetadata(metadata.BaseFileRevisionMetadata):
