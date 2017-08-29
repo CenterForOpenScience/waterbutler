@@ -13,6 +13,7 @@ Providers
    provider.github
    provider.gitlab
    provider.googledrive
+   provider.onedrive
    provider.osfstorage
    provider.owncloud
    provider.cloudfiles
