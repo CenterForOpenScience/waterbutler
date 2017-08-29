@@ -107,6 +107,72 @@ def folder_metadata():
         </d:response>
      </d:multistatus>'''
 
+
+@pytest.fixture
+def folder_contents_metadata():
+    return b'''<?xml version="1.0"?>
+      <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:s="http://sabredav.org/ns">
+        <d:response>
+          <d:href>/remote.php/webdav/Documents/</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:getlastmodified>Thu, 01 Jun 2017 15:53:13 GMT</d:getlastmodified>
+              <d:resourcetype>
+                <d:collection/>
+              </d:resourcetype>
+              <d:quota-used-bytes>36227</d:quota-used-bytes>
+              <d:quota-available-bytes>-3</d:quota-available-bytes>
+              <d:getetag>&quot;5930386978ae6&quot;</d:getetag>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+        <d:response>
+          <d:href>/remote.php/webdav/Documents/Example.odt</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:getlastmodified>Fri, 12 May 2017 20:37:35 GMT</d:getlastmodified>
+              <d:getcontentlength>36227</d:getcontentlength>
+              <d:resourcetype/>
+              <d:getetag>&quot;95db455e6e33d57d521c0d4e93496747&quot;</d:getetag>
+              <d:getcontenttype>application/vnd.oasis.opendocument.text</d:getcontenttype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+        <d:response>
+          <d:href>/remote.php/webdav/Documents/pumpkin/</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:getlastmodified>Thu, 01 Jun 2017 15:28:10 GMT</d:getlastmodified>
+              <d:resourcetype>
+                <d:collection/>
+              </d:resourcetype>
+              <d:quota-used-bytes>0</d:quota-used-bytes>
+              <d:quota-available-bytes>-3</d:quota-available-bytes>
+              <d:getetag>&quot;5930328a6f9da&quot;</d:getetag>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+        <d:response>
+          <d:href>/remote.php/webdav/Documents/squash/</d:href>
+          <d:propstat>
+            <d:prop>
+              <d:getlastmodified>Thu, 01 Jun 2017 15:53:13 GMT</d:getlastmodified>
+              <d:resourcetype>
+                <d:collection/>
+              </d:resourcetype>
+              <d:quota-used-bytes>0</d:quota-used-bytes>
+              <d:quota-available-bytes>-3</d:quota-available-bytes>
+              <d:getetag>&quot;59303869582b4&quot;</d:getetag>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+          </d:propstat>
+        </d:response>
+      </d:multistatus>'''
+
+
 @pytest.fixture
 def file_metadata():
     return b'''<?xml version="1.0"?>
@@ -137,6 +203,17 @@ def file_like(file_content):
 @pytest.fixture
 def file_stream(file_like):
     return streams.FileStreamReader(file_like)
+
+
+class TestProviderConstruction:
+
+    def test_base_folder_no_slash(self, auth, credentials):
+        provider = OwnCloudProvider(auth, credentials, {'folder': '/foo', 'verify_ssl': False})
+        assert provider.folder == '/foo/'
+
+    def test_base_folder_with_slash(self, auth, credentials):
+        provider = OwnCloudProvider(auth, credentials, {'folder': '/foo/', 'verify_ssl': False})
+        assert provider.folder == '/foo/'
 
 
 class TestValidatePath:
@@ -211,6 +288,22 @@ class TestCRUD:
         url = provider._webdav_url_ + path.full_path
         aiohttpretty.register_uri('DELETE', url, status=204)
         await provider.delete(path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_folder(self, provider, folder_contents_metadata):
+        path = WaterButlerPath('/pumpkin/', prepend=provider.folder)
+        folder_url = provider._webdav_url_ + path.full_path
+        aiohttpretty.register_uri('MKCOL', folder_url, status=201)
+
+        parent_url = provider._webdav_url_ + path.parent.full_path
+        aiohttpretty.register_uri('PROPFIND', parent_url, body=folder_contents_metadata,
+                                  auto_length=True, status=207)
+
+        folder_metadata = await provider.create_folder(path)
+        assert folder_metadata.name == 'pumpkin'
+        assert folder_metadata.path == '/pumpkin/'
+
 
 class TestMetadata:
 

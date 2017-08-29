@@ -163,6 +163,11 @@ class UnsupportedOperationError(ProviderError):
         super().__init__(message, code=http.client.FORBIDDEN, is_user_error=is_user_error)
 
 
+class ReadOnlyProviderError(ProviderError):
+    def __init__(self, provider):
+        super().__init__('Provider "{}" is read-only'.format(provider), code=501)
+
+
 async def exception_from_response(resp, error=ProviderError, **kwargs):
     """Build and return, not raise, an exception from a response object
 
