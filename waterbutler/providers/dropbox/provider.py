@@ -1,5 +1,6 @@
 import json
-import http
+import typing
+from http import HTTPStatus
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -7,11 +8,12 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.dropbox import settings
-from waterbutler.providers.dropbox.metadata import DropboxRevision
-from waterbutler.providers.dropbox.metadata import DropboxFileMetadata
-from waterbutler.providers.dropbox.metadata import DropboxFolderMetadata
-from waterbutler.providers.dropbox.exceptions import DropboxNamingConflictError
-from waterbutler.providers.dropbox.exceptions import DropboxUnhandledConflictError
+from waterbutler.providers.dropbox.metadata import (BaseDropboxMetadata,
+                                                    DropboxFileMetadata,
+                                                    DropboxFolderMetadata,
+                                                    DropboxRevision)
+from waterbutler.providers.dropbox.exceptions import (DropboxNamingConflictError,
+                                                      DropboxUnhandledConflictError)
 
 
 class DropboxProvider(provider.BaseProvider):
@@ -57,7 +59,12 @@ class DropboxProvider(provider.BaseProvider):
         self.folder = self.settings['folder']
         self.metrics.add('folder_is_root', self.folder == '/')
 
-    async def dropbox_request(self, url, body, expects=(200, 409,), *args, **kwargs):
+    async def dropbox_request(self,
+                              url: str,
+                              body: dict,
+                              expects: typing.Tuple=(200, 409,),
+                              *args,
+                              **kwargs) -> dict:
         """Convenience wrapper around ``BaseProvider.request`` for simple Dropbox API calls. Sets
         the method to ``POST``, jsonifies the ``body`` param, and provides default error handling
         for Dropbox's standard 409 error response structure.
@@ -81,7 +88,7 @@ class DropboxProvider(provider.BaseProvider):
                 self.dropbox_conflict_error_handler(data, body.get('path', ''))
             return data
 
-    def dropbox_conflict_error_handler(self, data, error_path=''):
+    def dropbox_conflict_error_handler(self, data: dict, error_path: str='') -> None:
         """Takes a standard Dropbox error response and an optional path and tries to throw a
         meaningful error based on it.
 
@@ -107,7 +114,7 @@ class DropboxProvider(provider.BaseProvider):
                                                                          error_path))
         raise DropboxUnhandledConflictError(str(data))
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
         if path == '/':
             return WaterButlerPath(path, prepend=self.folder)
         implicit_folder = path.endswith('/')
@@ -121,13 +128,13 @@ class DropboxProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
         return WaterButlerPath(path, prepend=self.folder)
 
-    async def validate_path(self, path, **kwargs):
+    async def validate_path(self, path: str, **kwargs) -> WaterButlerPath:
         return WaterButlerPath(path, prepend=self.folder)
 
-    def can_duplicate_names(self):
+    def can_duplicate_names(self) -> bool:
         return False
 
-    def shares_storage_root(self, other):
+    def shares_storage_root(self, other: provider.BaseProvider) -> bool:
         """Dropbox settings only include the root folder. If a cross-resource move occurs
         between two dropbox providers that are on different accounts but have the same folder
         base name, the parent method could incorrectly think the action is a self-overwrite.
@@ -135,11 +142,15 @@ class DropboxProvider(provider.BaseProvider):
         return super().shares_storage_root(other) and self.credentials == other.credentials
 
     @property
-    def default_headers(self):
+    def default_headers(self) -> dict:
         return {'Authorization': 'Bearer {}'.format(self.token),
                 'Content-Type': 'application/json'}
 
-    async def intra_copy(self, dest_provider, src_path, dest_path):
+    async def intra_copy(self,  # type: ignore
+                         dest_provider: 'DropboxProvider',
+                         src_path: WaterButlerPath,
+                         dest_path: WaterButlerPath) \
+            -> typing.Tuple[typing.Union[DropboxFileMetadata, DropboxFolderMetadata], bool]:
         dest_folder = dest_provider.folder
         try:
             if self == dest_provider:
@@ -175,13 +186,17 @@ class DropboxProvider(provider.BaseProvider):
         if data['.tag'] == 'file':
             return DropboxFileMetadata(data, dest_folder), True
         folder = DropboxFolderMetadata(data, dest_folder)
-        folder.children = [item for item in await dest_provider.metadata(dest_path)]
+        folder.children = [item for item in await dest_provider.metadata(dest_path)]  # type: ignore
         return folder, True
 
-    async def intra_move(self, dest_provider, src_path, dest_path):
+    async def intra_move(self,  # type: ignore
+                         dest_provider: 'DropboxProvider',
+                         src_path: WaterButlerPath,
+                         dest_path: WaterButlerPath) -> typing.Tuple[BaseDropboxMetadata, bool]:
         if dest_path.full_path.lower() == src_path.full_path.lower():
             # Dropbox does not support changing the casing in a file name
-            raise exceptions.InvalidPathError('In Dropbox to change case, add or subtract other characters.')
+            raise exceptions.InvalidPathError(
+                'In Dropbox to change case, add or subtract other characters.')
 
         try:
             data = await self.dropbox_request(
@@ -202,10 +217,14 @@ class DropboxProvider(provider.BaseProvider):
         if data['.tag'] == 'file':
             return DropboxFileMetadata(data, dest_folder), True
         folder = DropboxFolderMetadata(data, dest_folder)
-        folder.children = [item for item in await dest_provider.metadata(dest_path)]
+        folder.children = [item for item in await dest_provider.metadata(dest_path)]  # type: ignore
         return folder, True
 
-    async def download(self, path, revision=None, range=None, **kwargs):
+    async def download(self,  # type: ignore
+                       path: WaterButlerPath,
+                       revision: str=None,
+                       range: typing.Tuple[int, int]=None,
+                       **kwargs) -> streams.ResponseStreamReader:
         path_arg = {"path": ("rev:" + revision if revision else path.full_path)}
         resp = await self.make_request(
             'POST',
@@ -224,7 +243,11 @@ class DropboxProvider(provider.BaseProvider):
             size = None
         return streams.ResponseStreamReader(resp, size=size)
 
-    async def upload(self, stream, path, conflict='replace', **kwargs):
+    async def upload(self,  # type: ignore
+                     stream: streams.BaseStream,
+                     path: WaterButlerPath,
+                     conflict: str='replace',
+                     **kwargs) -> typing.Tuple[DropboxFileMetadata, bool]:
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         path_arg = {"path": path.full_path}
         if conflict == 'replace':
@@ -247,7 +270,8 @@ class DropboxProvider(provider.BaseProvider):
             self.dropbox_conflict_error_handler(data, path.path)
         return DropboxFileMetadata(data, self.folder), not exists
 
-    async def delete(self, path, confirm_delete=0, **kwargs):
+    async def delete(self, path: WaterButlerPath, confirm_delete: int=0,  # type: ignore
+                     **kwargs) -> None:  # type: ignore
         """Delete file, folder, or provider root contents
 
         :param WaterButlerPath path: WaterButlerPath path object for folder
@@ -267,7 +291,11 @@ class DropboxProvider(provider.BaseProvider):
             throws=exceptions.DeleteError,
         )
 
-    async def metadata(self, path, revision=None, **kwargs):
+    async def metadata(self,  # type: ignore
+                       path: WaterButlerPath,
+                       revision: str=None,
+                       **kwargs) \
+                       -> typing.Union[BaseDropboxMetadata, typing.List[BaseDropboxMetadata]]:
         full_path = path.full_path.rstrip('/')
         url = self.build_url('files', 'get_metadata')
         body = {'path': full_path}
@@ -277,7 +305,7 @@ class DropboxProvider(provider.BaseProvider):
             url = self.build_url('files', 'list_folder')
 
         if path.is_folder:
-            ret = []
+            ret = []  # type: typing.List[BaseDropboxMetadata]
             has_more = True
             page_count = 0
             while has_more:
@@ -301,19 +329,19 @@ class DropboxProvider(provider.BaseProvider):
         if data['.tag'] == 'deleted':
             raise exceptions.MetadataError(
                 "Could not retrieve '{}'".format(path),
-                code=http.client.NOT_FOUND,
+                code=HTTPStatus.NOT_FOUND,
             )
 
         # Dropbox will match a file or folder by name within the requested path
         if path.is_file and data['.tag'] == 'folder':
             raise exceptions.MetadataError(
                 "Could not retrieve file '{}'".format(path),
-                code=http.client.NOT_FOUND,
+                code=HTTPStatus.NOT_FOUND,
             )
 
         return DropboxFileMetadata(data, self.folder)
 
-    async def revisions(self, path, **kwargs):
+    async def revisions(self, path: WaterButlerPath, **kwargs) -> typing.List[DropboxRevision]:
         # Dropbox v2 API limits the number of revisions returned to a maximum
         # of 100, default 10. Previously we had set the limit to 250.
 
@@ -325,13 +353,13 @@ class DropboxProvider(provider.BaseProvider):
         if data['is_deleted'] is True:
             raise exceptions.RevisionsError(
                 "Could not retrieve '{}'".format(path),
-                code=http.client.NOT_FOUND,
+                code=HTTPStatus.NOT_FOUND,
             )
         if data['is_deleted']:
             return []
         return [DropboxRevision(item) for item in data['entries']]
 
-    async def create_folder(self, path, **kwargs):
+    async def create_folder(self, path: WaterButlerPath, **kwargs) -> DropboxFolderMetadata:
         """
         :param str path: The path to create a folder at
         """
@@ -343,21 +371,23 @@ class DropboxProvider(provider.BaseProvider):
         )
         return DropboxFolderMetadata(data, self.folder)
 
-    def can_intra_copy(self, dest_provider, path=None):
+    def can_intra_copy(self, dest_provider: provider.BaseProvider,
+                       path: WaterButlerPath=None) -> bool:
         return type(self) == type(dest_provider)
 
-    def can_intra_move(self, dest_provider, path=None):
+    def can_intra_move(self, dest_provider: provider.BaseProvider,
+                       path: WaterButlerPath=None) -> bool:
         return self == dest_provider
 
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
 
-    async def _delete_folder_contents(self, path, **kwargs):
+    async def _delete_folder_contents(self, path: WaterButlerPath, **kwargs) -> None:
         """Delete the contents of a folder. For use against provider root.
 
         :param WaterButlerPath path: WaterButlerPath path object for folder
         """
         meta = (await self.metadata(path))
-        for child in meta:
+        for child in meta:  # type: ignore
             dropbox_path = await self.validate_path(child.path)
             await self.delete(dropbox_path)

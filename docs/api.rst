@@ -13,7 +13,7 @@ TODO: v0 api docs
 v1 API
 ------
 
-The version 1 WaterButler API tries to conform to RESTful principals. A v1 url takes the form:
+The version 1 WaterButler API tries to conform to RESTful principles. A v1 url takes the form:
 
 ::
 

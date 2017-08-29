@@ -3,8 +3,12 @@ from waterbutler.core.path import WaterButlerPath
 
 class FigsharePath(WaterButlerPath):
 
-    def __init__(self, path, folder: bool, is_public=False, parent_is_folder=True, _ids=(),
-                 prepend=None):
+    def __init__(self, path,
+                 folder: bool,
+                 is_public=False,
+                 parent_is_folder=True,
+                 _ids=(),
+                 prepend=None) -> None:
         super().__init__(path, _ids=_ids, prepend=prepend, folder=folder)
         self.is_public = is_public
         self.parent_is_folder = parent_is_folder

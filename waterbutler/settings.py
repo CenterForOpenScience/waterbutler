@@ -146,7 +146,6 @@ def child(key):
 
 
 DEBUG = config.get_bool('DEBUG', True)
-REQUEST_LIMIT = int(config.get('REQUEST_LIMIT', 10))
 OP_CONCURRENCY = int(config.get('OP_CONCURRENCY', 5))
 
 logging_config = config.get('LOGGING', DEFAULT_LOGGING_CONFIG)

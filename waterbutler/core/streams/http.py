@@ -1,9 +1,9 @@
 import asyncio
 import uuid
 
-from waterbutler.core.streams import BaseStream
-from waterbutler.core.streams import MultiStream
-from waterbutler.core.streams import StringStream
+from waterbutler.core.streams.base import BaseStream
+from waterbutler.core.streams.base import MultiStream
+from waterbutler.core.streams.base import StringStream
 
 
 class FormDataStream(MultiStream):
