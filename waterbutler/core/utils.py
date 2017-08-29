@@ -25,7 +25,7 @@ sentry_dsn = config.get_nullable('SENTRY_DSN', None)
 client = Client(sentry_dsn) if sentry_dsn else None
 
 
-def make_provider(name, auth, credentials, settings, **kwargs):
+def make_provider(name: str, auth: dict, credentials: dict, settings: dict, **kwargs):
     """Returns an instance of :class:`waterbutler.core.provider.BaseProvider`
 
     :param str name: The name of the provider to instantiate. (s3, box, etc)
@@ -141,9 +141,9 @@ class ZipStreamGenerator:
                 ])
                 return await self.__anext__()
             else:
-                return path.path.replace(self.parent_path.path, ''), EmptyStream()
+                return path.path.replace(self.parent_path.path, '', 1), EmptyStream()
 
-        return path.path.replace(self.parent_path.path, ''), await self.provider.download(path)
+        return path.path.replace(self.parent_path.path, '', 1), await self.provider.download(path)
 
 
 class RequestHandlerContext:
