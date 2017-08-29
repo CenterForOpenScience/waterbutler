@@ -2,6 +2,56 @@
 ChangeLog
 *********
 
+0.33.0 (2017-08-09)
+===================
+- ANNOUNCEMENT!  The WaterButler v0 API is DEPRECATED!  COS no longer uses it and has moved
+entirely to the v1 API.  It will be removed in the first release after October 1.  If you depend on
+v0, please get in contact with us (contact@cos.io) before then, and let us know.
+- Feature: WaterButler now supports Bitbucket as a read-only provider!  As a read-only provider,
+you can browse, download, download-as-zip, get file revision history, and copy out of your
+connected Bitbucket repository.
+- Feature: Sentry errors now include provider and resource as searchable parameters. (thanks,
+@abought!)
+- Fix: Correctly describe the response of folder intra-move actions in GoogleDrive as folders,
+rather than files.
+- Fix: WaterButler now correctly throttles multiple parallel requests.  The maximum number of
+simultaneous requests is set by the waterbutler.settings.OP_CONCURRENCY config variable.
+
+0.32.3 (2017-07-20)
+===================
+- Fix: Quiet some overly-verbose error logging.
+
+0.32.2 (2017-07-09)
+===================
+- Fix: Fix hanging figshare uploads by replacing a StreamReader.readexactly call with a
+StreamReader.read.  The underlying cause of this problem is still unknown.
+
+0.32.1 (2017-07-07)
+===================
+- Fix: Correctly format the Last-Modified header returned from v1 HEAD requests. WB had been
+setting it to the datetime format used by the provider, but we should be following the format laid
+out by RFC 7232, S2.2.  (thanks, @icereval and @luizirber!)
+
+0.32.0 (2017-06-14)
+===================
+- Fix: Send back the correct modified date when uploading a file to osfstorage. osfstorage had
+been sending back the modified date of the stored blob rather than the metadata from the OSF.
+- Fix: Support metadata and revisions for files shared on Google Drive with view- or comment-only
+permissions. Google Drive forbids access to the version-listing endpoint for these sorts of files,
+and WaterButler was not coping with that gracefully.
+- Fix: Update WaterButler tests to work on Python >= v3.5.3. A change to coroutine function
+detection in Python v3.5.3 and v3.6.0 was causing tests to fail, as the mocked coroutines were not
+being properly unwrapped.
+- Code: Add type annotations and a mypy test to the core WaterButler provider and the box, dropbox,
+googledrive, and figshare providers!  And lo, a new era of type-safety, strictness, and peace was
+ushered in, and its name was `inv mypy`. (thanks, @abought!)
+- Code: Add support for code-coverage checking via coveralls.io. (thanks, @abought!)
+
+0.31.1 (2017-06-01)
+===================
+- Fix: Fix OwnCloud issue that could result in folder creation outside the base folder.  OwnCloud
+was making assumptions about the formatting of the base folder that were not necessarily true.
+
 0.31.0 (2017-04-07)
 ===================
 - Feature: Stop creating empty commits on GitHub when the requested action doesn't change the tree
