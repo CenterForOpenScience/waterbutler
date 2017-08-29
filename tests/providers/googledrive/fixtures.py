@@ -1,3 +1,6 @@
+import os
+import json
+
 list_file = {
     'etag': '"zWM2D6PBtLRQKuDNbaQNSNEy5BE/MrSD7Al_zGPN4CKisJpWLDC3cyY"',
     'kind': 'drive#fileList',
@@ -321,3 +324,46 @@ revisions_list_empty = {
     'selfLink': 'https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/revisions',
     'items': []
 }
+
+
+# fixtures for testing files under unusual sharing regimes
+with open(os.path.join(os.path.dirname(__file__), 'fixtures/sharing.json'), 'r') as fp:
+    sharing = json.load(fp)
+
+
+def make_no_such_revision_error(revision_id):
+    message = 'Revision not found: {}'.format(revision_id)
+    return json.dumps({
+        "error": {
+            "errors": [
+                {
+                    "reason": "notFound",
+                    "locationType": "other",
+                    "message": message,
+                    "location": "revision",
+                    "domain": "global"
+                }
+            ],
+            "message": message,
+            "code": 404
+        }
+    })
+
+def make_unauthorized_file_access_error(file_id):
+    message = ('The authenticated user does not have the required access '
+               'to the file {}'.format(file_id))
+    return json.dumps({
+        "error": {
+            "errors": [
+                {
+                    "reason": "userAccess",
+                    "locationType": "header",
+                    "message": message,
+                    "location": "Authorization",
+                    "domain": "global"
+                }
+            ],
+            "message": message,
+            "code": 403
+        }
+    })
