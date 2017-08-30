@@ -1,0 +1,55 @@
+{
+    "default_branch": {"name": "develop"},
+    "root_dir_listing": {
+        "node": "bbe4fa427641",
+        "path": "/",
+        "directories": [
+            "foo-dir",
+            "bar-dir"
+        ],
+        "files": [
+            {
+                "size": 13,
+                "path": "foo-file.txt",
+                "timestamp": "2016-10-17T19:14:15Z",
+                "utctimestamp": "2016-10-17 19:14:15+00:00",
+                "revision": "898e4c60f874"
+            },
+            {
+                "size": 15,
+                "path": "bar-file.txt",
+                "timestamp": "2017-02-14T23:44:51Z",
+                "utctimestamp": "2017-02-14 23:44:51+00:00",
+                "revision": "bbe4fa427641"
+            }
+        ]
+    },
+    "subfolder_dir_listing": {
+        "node": "bbe4fa427641",
+        "path": "subfolder/",
+        "directories": [],
+        "files": [
+            {
+                "size": 0,
+                "path": "subfolder/.gitkeep",
+                "timestamp": "2016-10-14T00:34:52Z",
+                "utctimestamp": "2016-10-14 00:34:52+00:00",
+                "revision": "2fab3db05b45"
+            },
+            {
+                "size": 13,
+                "path": "subfolder/aaa-01-2.txt",
+                "timestamp": "2016-10-14T00:37:55Z",
+                "utctimestamp": "2016-10-14 00:37:55+00:00",
+                "revision": "90c8f7eef948"
+            },
+            {
+                "size": 97,
+                "path": "subfolder/aaa-01-3.txt",
+                "timestamp": "2016-10-14T00:37:51Z",
+                "utctimestamp": "2016-10-14 00:37:51+00:00",
+                "revision": "bf12b79d4fbb"
+            }
+        ]
+    }
+}

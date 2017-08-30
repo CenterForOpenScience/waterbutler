@@ -117,7 +117,7 @@ class BaseFigshareProvider(provider.BaseProvider):
             'Authorization': 'token {}'.format(self.token),
         }
 
-    def build_url(self, is_public: bool, *segments, **query):
+    def build_url(self, is_public: bool, *segments, **query) -> str:  # type: ignore
         """A nice wrapper around furl, builds urls based on self.BASE_URL
 
         :param bool is_public: ``True`` if addressing public resource
@@ -287,7 +287,7 @@ class BaseFigshareProvider(provider.BaseProvider):
             upload_response = await self.make_request(
                 'PUT',
                 upload_url + '/' + str(part_number),
-                data=stream.readexactly(size),
+                data=stream.read(size),
                 expects=(200, ),
             )
             await upload_response.release()
@@ -835,7 +835,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
         await resp.release()
         return FigsharePath('/' + file_id, _ids=('', ''), folder=False, is_public=False)
 
-    async def revalidate_path(self, parent_path, child_name, folder: bool):
+    async def revalidate_path(self, parent_path, child_name, folder: bool=False):
         """Attempt to get child's id and return FigsharePath of child.
 
         ``revalidate_path`` is used to check for the existance of a child_name/folder

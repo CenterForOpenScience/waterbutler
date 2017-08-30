@@ -42,7 +42,7 @@ class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.Re
         actual method, to be interpreted as the specified method.
     """
 
-    ACTION_MAP = {}
+    ACTION_MAP = {}  # type: dict
 
     def write_error(self, status_code, exc_info):
         self.captureException(exc_info)

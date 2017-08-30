@@ -1,4 +1,5 @@
 import abc
+import typing
 import hashlib
 
 import furl
@@ -26,10 +27,10 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         }
     """
 
-    def __init__(self, raw):
+    def __init__(self, raw: dict) -> None:
         self.raw = raw
 
-    def serialized(self):
+    def serialized(self) -> dict:
         """Returns a dict of primitives suitable for serializing into JSON.
 
         .. note::
@@ -48,7 +49,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
             'etag': hashlib.sha256('{}::{}'.format(self.provider, self.etag).encode('utf-8')).hexdigest(),
         }
 
-    def json_api_serialized(self, resource):
+    def json_api_serialized(self, resource: str) -> dict:
         """Returns a dict of primitives suitable for serializing into a JSON-API -compliant
         response.  Sets the `id` and `type` attributes required by JSON-API, and stores the
         metadata under the `attributes` key.  A `links` object provides a dict of actions and the
@@ -66,10 +67,11 @@ class BaseMetadata(metaclass=abc.ABCMeta):
             'attributes': self.serialized(),
             'links': self._json_api_links(resource),
         }
-        json_api['attributes']['resource'] = resource
+        # Typing: skip "unsupported target for indexed assignment" errors for nested dict from method
+        json_api['attributes']['resource'] = resource  # type: ignore
         return json_api
 
-    def _json_api_links(self, resource):
+    def _json_api_links(self, resource: str) -> dict:
         """ Returns a dict of action names and the endpoints where those actions are performed.
 
         :rtype: dict
@@ -83,7 +85,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
 
         return actions
 
-    def _entity_url(self, resource):
+    def _entity_url(self, resource: str) -> str:
         """ Utility method for constructing the base url for actions. """
         url = furl.furl(settings.DOMAIN)
         segments = ['v1', 'resources', resource, 'providers', self.provider]
@@ -96,7 +98,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
 
         return url.url
 
-    def build_path(self, path):
+    def build_path(self, path) -> str:
         if not path.startswith('/'):
             path = '/' + path
         if self.kind == 'folder' and not path.endswith('/'):
@@ -104,7 +106,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         return path
 
     @property
-    def is_folder(self):
+    def is_folder(self) -> bool:
         """ Does this object describe a folder?
 
         :rtype: bool
@@ -112,25 +114,28 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         return self.kind == 'folder'
 
     @property
-    def is_file(self):
+    def is_file(self) -> bool:
         """ Does this object describe a file?
 
         :rtype: bool
         """
         return self.kind == 'file'
 
-    @abc.abstractproperty
-    def provider(self):
+    @property
+    @abc.abstractmethod
+    def provider(self) -> str:
         """ The provider from which this resource originated. """
         raise NotImplementedError
 
-    @abc.abstractproperty
-    def kind(self):
+    @property
+    @abc.abstractmethod
+    def kind(self) -> str:
         """ `file` or `folder` """
         raise NotImplementedError
 
-    @abc.abstractproperty
-    def name(self):
+    @property
+    @abc.abstractmethod
+    def name(self) -> str:
         """ The user-facing name of the entity, excluding parent folder(s).
         ::
 
@@ -139,8 +144,9 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
 
-    @abc.abstractproperty
-    def path(self):
+    @property
+    @abc.abstractmethod
+    def path(self) -> str:
         """ The canonical string representation of a waterbutler file or folder.  For providers
         that track entities with unique IDs, this will be the ID.  For providers that do not, this
         will usually be the full unix-style path of the file or folder.
@@ -154,7 +160,11 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @property
-    def materialized_path(self):
+    def etag(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def materialized_path(self) -> str:
         """ The unix-style path of the file relative the the root of the provider.  Encoded
         entities should be decoded.
 
@@ -177,7 +187,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         return self.path
 
     @property
-    def extra(self):
+    def extra(self) -> dict:
         """A dict of optional metdata from the provider.  Non-mandatory metadata should be stored
         in this property.
 
@@ -187,17 +197,17 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         """
         return {}
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'BaseMetadata') -> bool:  # type: ignore
         return isinstance(other, self.__class__) and self.serialized() == other.serialized()
 
 
 class BaseFileMetadata(BaseMetadata):
     """ The base class for WaterButler metadata objects for files.  In addition to the properties
     required by `BaseMetadata`, `BaseFileMetadata` requires the consumer to implement the
-    `content_type`, `modified`, and `size` properties.  The `etag` may be added, but defaults to `None`.
+    `content_type`, `modified`, and `size` properties.  The `etag` may be added in a subclass.
     """
 
-    def serialized(self):
+    def serialized(self) -> dict:
         """ Returns a dict representing the file's metadata suitable to be serialized into JSON.
 
         :rtype: dict
@@ -210,7 +220,7 @@ class BaseFileMetadata(BaseMetadata):
             'size': self.size,
         })
 
-    def _json_api_links(self, resource):
+    def _json_api_links(self, resource: str) -> dict:
         """ Adds the `download` link to the JSON-API repsonse `links` field.
 
         :rtype: dict
@@ -220,50 +230,48 @@ class BaseFileMetadata(BaseMetadata):
         return ret
 
     @property
-    def kind(self):
+    def kind(self) -> str:
         """ File objects have `kind == 'file'` """
         return 'file'
 
-    @abc.abstractproperty
-    def content_type(self):
+    @property
+    @abc.abstractmethod
+    def content_type(self) -> str:
         """ MIME-type of the file (if available) """
         raise NotImplementedError
 
-    @abc.abstractproperty
-    def modified(self):
+    @property
+    @abc.abstractmethod
+    def modified(self) -> str:
         """ Date the file was last modified, as reported by the provider, in
         the format used by the provider. """
         raise NotImplementedError
 
     @property
-    def modified_utc(self):
+    def modified_utc(self) -> str:
         """ Date the file was last modified, as reported by the provider,
         converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
         return utils.normalize_datetime(self.modified)
 
     @property
-    def created_utc(self):
+    def created_utc(self) -> str:
         """ Date the file was created, as reported by the provider,
         converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
         raise NotImplementedError
 
-    @abc.abstractproperty
-    def size(self):
-        """ Size of the file in bytes. """
-        raise NotImplementedError
-
     @property
-    def etag(self):
-        """ FIXME: An etag? """
+    @abc.abstractmethod
+    def size(self) -> int:
+        """ Size of the file in bytes. """
         raise NotImplementedError
 
 
 class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
 
-    def __init__(self, raw):
+    def __init__(self, raw: dict) -> None:
         self.raw = raw
 
-    def serialized(self):
+    def serialized(self) -> dict:
         return {
             'extra': self.extra,
             'version': self.version,
@@ -272,7 +280,7 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
             'versionIdentifier': self.version_identifier,
         }
 
-    def json_api_serialized(self):
+    def json_api_serialized(self) -> dict:
         """The JSON API serialization of revision metadata from WaterButler.
 
         .. note::
@@ -285,29 +293,32 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
             'attributes': self.serialized(),
         }
 
-    @abc.abstractproperty
-    def modified(self):
+    @property
+    @abc.abstractmethod
+    def modified(self) -> str:
         raise NotImplementedError
 
     @property
-    def modified_utc(self):
+    def modified_utc(self) -> str:
         """ Date the revision was last modified, as reported by the provider,
         converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
         return utils.normalize_datetime(self.modified)
 
-    @abc.abstractproperty
-    def version(self):
-        raise NotImplementedError
-
-    @abc.abstractproperty
-    def version_identifier(self):
+    @property
+    @abc.abstractmethod
+    def version(self) -> str:
         raise NotImplementedError
 
     @property
-    def extra(self):
+    @abc.abstractmethod
+    def version_identifier(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def extra(self) -> dict:
         return {}
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'BaseFileRevisionMetadata') -> bool:  # type: ignore
         return isinstance(other, self.__class__) and self.serialized() == other.serialized()
 
 
@@ -319,11 +330,11 @@ class BaseFolderMetadata(BaseMetadata):
     children, which should be a list of file metadata objects that inherit from `BaseFileMetadata`.
     """
 
-    def __init__(self, raw):
+    def __init__(self, raw: dict) -> None:
         super().__init__(raw)
-        self._children = None
+        self._children = None  # type: list
 
-    def serialized(self):
+    def serialized(self) -> dict:
         """ Returns a dict representing the folder's metadata suitable to be serialized
         into JSON. If the `children` property has not been set, it will be excluded from
         the dict.
@@ -335,7 +346,7 @@ class BaseFolderMetadata(BaseMetadata):
             ret['children'] = [c.serialized() for c in self.children]
         return ret
 
-    def json_api_serialized(self, resource):
+    def json_api_serialized(self, resource: str) -> dict:
         """ Return a JSON-API compliant serializable dict, suitable for the WB v1 API.  Sets the
         `size` attribute to `None`, as folders do no have a size.
 
@@ -345,7 +356,7 @@ class BaseFolderMetadata(BaseMetadata):
         ret['attributes']['size'] = None
         return ret
 
-    def _json_api_links(self, resource):
+    def _json_api_links(self, resource: str) -> dict:
         """ Adds the `new_folder` link to the JSON-API repsonse `links` field.
 
         :rtype: dict
@@ -355,16 +366,16 @@ class BaseFolderMetadata(BaseMetadata):
         return ret
 
     @property
-    def children(self):
+    def children(self) -> typing.List[BaseMetadata]:
         """ (Optional) A list of child entities of the folder.  Each entity should be either a
         file or folder metadata object.  Will be `None` if the presence of children is unknown.
 
-        :rtype: None or list of Metdata objects
+        :rtype: None or list of Metadata objects
         """
         return self._children
 
     @children.setter
-    def children(self, kids):
+    def children(self, kids: typing.List[BaseMetadata]):
         """ Assigns the given list to the children property.  The affirmative absence of child
         entities should be indicated by passing an empty list.
 
@@ -373,11 +384,11 @@ class BaseFolderMetadata(BaseMetadata):
         self._children = kids
 
     @property
-    def kind(self):
+    def kind(self) -> str:
         """ Folder metadata objects have `kind == 'folder'` """
         return 'folder'
 
     @property
-    def etag(self):
+    def etag(self) -> typing.Union[str, None]:
         """ FIXME: An etag? """
         return None

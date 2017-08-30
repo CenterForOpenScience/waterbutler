@@ -45,6 +45,7 @@ setup(
             'figshare = waterbutler.providers.figshare:FigshareProvider',
             'filesystem = waterbutler.providers.filesystem:FileSystemProvider',
             'github = waterbutler.providers.github:GitHubProvider',
+            'bitbucket = waterbutler.providers.bitbucket:BitbucketProvider',
             'osfstorage = waterbutler.providers.osfstorage:OSFStorageProvider',
             'owncloud = waterbutler.providers.owncloud:OwnCloudProvider',
             's3 = waterbutler.providers.s3:S3Provider',
