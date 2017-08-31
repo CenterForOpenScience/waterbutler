@@ -173,11 +173,10 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         if dest_path.is_dir:
             metadata = GoogleDriveFolderMetadata(data, dest_path)
-            metadata.children = await self._folder_metadata(src_path)
+            metadata.children = await self._folder_metadata(dest_path)
             return metadata, dest_path.identifier is None
         else:
             return GoogleDriveFileMetadata(data, dest_path), dest_path.identifier is None  # type: ignore
-
 
     async def intra_copy(self,
                          dest_provider: provider.BaseProvider,
