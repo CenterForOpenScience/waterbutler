@@ -366,21 +366,14 @@ class TestMetadata:
         assert result.kind == 'file'
         assert result.name == 'Getting_Started.pdf'
         assert result.path == '/Getting_Started.pdf'
+        assert result.extra == {
+            'revisionId': '2ba1017a0c1e',
+            'id': 'id:8y8sAJlrhuAAAAAAAAAAAQ',
+            'hashes': {
+                'dropbox': 'meow'
+            },
+        }
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_metadata_root_file(self, provider, root_provider_fixtures):
-        path = WaterButlerPath('/pfile', prepend=provider.folder)
-        url = provider.build_url('files', 'get_metadata')
-        data = {'path': path.full_path}
-        aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=root_provider_fixtures['file_metadata'])
-        result = await provider.metadata(path)
-
-        assert isinstance(result, metadata.BaseMetadata)
-        assert result.kind == 'file'
-        assert result.name == 'Getting_Started.pdf'
-        assert result.path == '/Getting_Started.pdf'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

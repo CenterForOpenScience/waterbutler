@@ -63,7 +63,7 @@ def native_file_metadata():
     'description': '',
     'filename': '%2Fusr%2Flocal%2Fglassfish4%2Fglassfish%2Fdomains%2Fdomain1%2Ffiles%2F10.5072%2FFK2%2F232XYH%2F14c7a73d734-8383551cc713',
     'id': 20,
-    'md5': 'acbd18db4cc2f85cedef654fccc4a4d8',
+    'md5': '6b50249f91258397fc5cb7d5a4127e15',
     'name': 'thefile.txt',
     'originalFormatLabel': 'UNKNOWN'},
    'datasetVersionId': 5,
@@ -91,7 +91,7 @@ def native_dataset_metadata():
     'description': '',
     'filename': '%2Fusr%2Flocal%2Fglassfish4%2Fglassfish%2Fdomains%2Fdomain1%2Ffiles%2F10.5072%2FFK2%2F232XYH%2F14c7a73d734-8383551cc713',
     'id': 20,
-    'md5': 'acbd18db4cc2f85cedef654fccc4a4d8',
+    'md5': '6b50249f91258397fc5cb7d5a4127e15',
     'name': 'thefile.txt',
     'originalFormatLabel': 'UNKNOWN'},
    'datasetVersionId': 5,
@@ -165,6 +165,94 @@ def empty_native_dataset_metadata():
     return {'data': {'createTime': '2015-04-02T13:21:59Z',
  'distributionDate': 'Distribution Date',
  'files': [],
+ 'id': 5,
+ 'lastUpdateTime': '2015-04-02T15:26:21Z',
+ 'metadataBlocks': {'citation': {'displayName': 'Citation Metadata',
+   'fields': [{'multiple': False,
+     'typeClass': 'primitive',
+     'typeName': 'title',
+     'value': 'A look at wizards'},
+    {'multiple': True,
+     'typeClass': 'compound',
+     'typeName': 'author',
+     'value': [{'authorName': {'multiple': False,
+        'typeClass': 'primitive',
+        'typeName': 'authorName',
+        'value': 'Baggins, Bilbo'}}]},
+    {'multiple': True,
+     'typeClass': 'compound',
+     'typeName': 'datasetContact',
+     'value': [{'datasetContactEmail': {'multiple': False,
+        'typeClass': 'primitive',
+        'typeName': 'datasetContactEmail',
+        'value': 'email@email.com'},
+       'datasetContactName': {'multiple': False,
+        'typeClass': 'primitive',
+        'typeName': 'datasetContactName',
+        'value': 'Baggins, Bilbo'}}]},
+    {'multiple': True,
+     'typeClass': 'compound',
+     'typeName': 'dsDescription',
+     'value': [{'dsDescriptionValue': {'multiple': False,
+        'typeClass': 'primitive',
+        'typeName': 'dsDescriptionValue',
+        'value': 'desc'}}]},
+    {'multiple': True,
+     'typeClass': 'controlledVocabulary',
+     'typeName': 'subject',
+     'value': ['Other']},
+    {'multiple': False,
+     'typeClass': 'primitive',
+     'typeName': 'depositor',
+     'value': 'Baggins, Bilbo'},
+    {'multiple': False,
+     'typeClass': 'primitive',
+     'typeName': 'dateOfDeposit',
+     'value': '2015-04-02'}]}},
+ 'productionDate': 'Production Date',
+ 'releaseTime': '2015-04-02T15:26:21Z',
+ 'versionMinorNumber': 0,
+ 'versionNumber': 1,
+ 'versionState': 'RELEASED'}}
+
+
+@pytest.fixture
+def checksum_mismatch_dataset_metadata():
+    return {'data': {'createTime': '2015-04-02T13:21:59Z',
+ 'distributionDate': 'Distribution Date',
+ 'files': [{'datafile': {'contentType': 'text/plain; charset=US-ASCII',
+    'description': '',
+    'filename': '%2Fusr%2Flocal%2Fglassfish4%2Fglassfish%2Fdomains%2Fdomain1%2Ffiles%2F10.5072%2FFK2%2F232XYH%2F14c7a73c684-4b22a1757aed',
+    'id': 19,
+    'md5': '2243b9249ca96f7cca9f58f7584b5ddb',
+    'name': 'UnZip.java',
+    'originalFormatLabel': 'UNKNOWN'},
+   'datasetVersionId': 5,
+   'description': '',
+   'label': 'UnZip.java',
+   'version': 1},
+  {'datafile': {'contentType': 'text/plain; charset=US-ASCII',
+    'description': '',
+    'filename': '%2Fusr%2Flocal%2Fglassfish4%2Fglassfish%2Fdomains%2Fdomain1%2Ffiles%2F10.5072%2FFK2%2F232XYH%2F14c7a73d734-8383551cc713',
+    'id': 20,
+    'md5': 'this is a bad md5',
+    'name': 'thefile.txt',
+    'originalFormatLabel': 'UNKNOWN'},
+   'datasetVersionId': 5,
+   'description': '',
+   'label': 'thefile.txt',
+   'version': 1},
+  {'datafile': {'contentType': 'application/octet-stream',
+    'description': '',
+    'filename': '%2Fusr%2Flocal%2Fglassfish4%2Fglassfish%2Fdomains%2Fdomain1%2Ffiles%2F10.5072%2FFK2%2F232XYH%2F14c7a73e419-b578b719b05c',
+    'id': 21,
+    'md5': 'ee5a34fe861617916acde862d4206280',
+    'name': 'UnZip.class',
+    'originalFormatLabel': 'UNKNOWN'},
+   'datasetVersionId': 5,
+   'description': '',
+   'label': 'UnZip.class',
+   'version': 1}],
  'id': 5,
  'lastUpdateTime': '2015-04-02T15:26:21Z',
  'metadataBlocks': {'citation': {'displayName': 'Citation Metadata',
@@ -310,12 +398,19 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_create(self, provider, file_stream, native_file_metadata, empty_native_dataset_metadata, native_dataset_metadata):
+    async def test_upload_create(self, provider, file_stream, native_file_metadata,
+                                 empty_native_dataset_metadata, native_dataset_metadata):
         path = '/thefile.txt'
         url = provider.build_url(dvs.EDIT_MEDIA_BASE_URL, 'study', provider.doi)
         aiohttpretty.register_uri('POST', url, status=201)
-        latest_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
-        latest_published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
+        latest_url = provider.build_url(
+            dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+            key=provider.token
+        )
+        latest_published_url = provider.build_url(
+            dvs.JSON_BASE_URL.format(provider._id, 'latest-published'),
+            key=provider.token
+        )
 
         aiohttpretty.register_json_uri('GET', latest_published_url, body={'data': {'files': []}})
         aiohttpretty.register_uri('GET', latest_url, responses=[
@@ -367,6 +462,47 @@ class TestCRUD:
         assert created is False
         assert aiohttpretty.has_call(method='POST', uri=url)
         assert aiohttpretty.has_call(method='GET', uri=published_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_checksum_mismatch(self, provider, file_stream,
+                                            empty_native_dataset_metadata,
+                                            checksum_mismatch_dataset_metadata):
+        path = '/thefile.txt'
+        url = provider.build_url(dvs.EDIT_MEDIA_BASE_URL, 'study', provider.doi)
+        aiohttpretty.register_uri('POST', url, status=201)
+        latest_url = provider.build_url(
+            dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+            key=provider.token
+        )
+        latest_published_url = provider.build_url(
+            dvs.JSON_BASE_URL.format(provider._id, 'latest-published'),
+            key=provider.token
+        )
+
+        aiohttpretty.register_json_uri('GET', latest_published_url, body={'data': {'files': []}})
+        aiohttpretty.register_uri('GET', latest_url, responses=[
+            {
+                'status': 200,
+                'body': json.dumps(empty_native_dataset_metadata).encode('utf-8'),
+                'headers': {'Content-Type': 'application/json'},
+            },
+            {
+                'status': 200,
+                'body': json.dumps(checksum_mismatch_dataset_metadata).encode('utf-8'),
+                'headers': {'Content-Type': 'application/json'},
+            },
+        ])
+
+        path = await provider.validate_path(path)
+        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+            await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='POST', uri=url)
+        assert aiohttpretty.has_call(method='GET', uri=latest_url)
+        assert aiohttpretty.has_call(method='GET', uri=latest_published_url)
+
+
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

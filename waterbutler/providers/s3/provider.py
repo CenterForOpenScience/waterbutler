@@ -215,8 +215,8 @@ class S3Provider(provider.BaseProvider):
             throws=exceptions.UploadError,
         )
         # md5 is returned as ETag header as long as server side encryption is not used.
-        # TODO: nice assertion error goes here
-        assert resp.headers['ETag'].replace('"', '') == stream.writers['md5'].hexdigest
+        if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
+            raise exceptions.UploadChecksumMismatchError()
 
         await resp.release()
         return (await self.metadata(path, **kwargs)), not exists

@@ -1,6 +1,7 @@
 import os
 import json
 import typing
+import hashlib
 import functools
 from urllib import parse
 from http import HTTPStatus
@@ -262,10 +263,15 @@ class GoogleDriveProvider(provider.BaseProvider):
         else:
             segments = []
 
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+
         upload_metadata = self._build_upload_metadata(path.parent.identifier, path.name)
         upload_id = await self._start_resumable_upload(not path.identifier, segments, stream.size,
                                                        upload_metadata)
         data = await self._finish_resumable_upload(segments, stream, upload_id)
+
+        if data['md5Checksum'] != stream.writers['md5'].hexdigest:
+            raise exceptions.UploadChecksumMismatchError()
 
         return GoogleDriveFileMetadata(data, path), path.identifier is None
 

@@ -29,6 +29,9 @@ class TestGitHubMetadata:
         assert metadata.extra == {
             'fileSha': 'd863d70539aa9fcb6b44b057221706f2ab18e341',
             'webView': None,
+            'hashes': {
+                'git': 'd863d70539aa9fcb6b44b057221706f2ab18e341',
+            },
         }
         assert metadata.provider == 'github'
 
@@ -51,6 +54,9 @@ class TestGitHubMetadata:
         assert metadata.extra == {
             'fileSha': 'bd4fb614678f544acb22bac6861a21108f1e5d10',
             'webView': None,
+            'hashes': {
+                'git': 'bd4fb614678f544acb22bac6861a21108f1e5d10',
+            },
         }
         assert metadata.provider == 'github'
 
@@ -102,6 +108,10 @@ class TestGitHubMetadata:
             'fileSha': 'd863d70539aa9fcb6b44b057221706f2ab18e341',
             'webView': None,
             'ref': 'some-branch',
+            'hashes': {
+                'git': 'd863d70539aa9fcb6b44b057221706f2ab18e341',
+            },
+
         }
         assert metadata.provider == 'github'
 

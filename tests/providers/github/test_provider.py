@@ -343,7 +343,7 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_upload_create(self, provider, root_provider_fixtures,
-            crud_fixtures, file_content, file_stream):
+                                 crud_fixtures, file_content, file_stream):
         message = 'so hungry'
         item = root_provider_fixtures['upload_response']
         path = GitHubPath(
@@ -390,7 +390,7 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_upload_update(self, provider, root_provider_fixtures,
-            crud_fixtures, file_content, file_stream):
+                                 crud_fixtures, file_content, file_stream):
         message = 'so hungry'
         path = GitHubPath('/file.txt', _ids=[(provider.default_branch, ''), ('master', '')])
         tree_meta = root_provider_fixtures['repo_tree_metadata_root']
@@ -406,7 +406,6 @@ class TestCRUD:
         sha_url = provider.build_repo_url('git', 'refs', 'heads', path.branch_ref)
         blob_url = provider.build_repo_url('git', 'blobs')
         create_tree_url = provider.build_repo_url('git', 'trees')
-        create_commit_url = provider.build_repo_url('git', 'commits')
         blob_tree_url = provider.build_repo_url(
             'git', 'trees') + '/{}:?recursive=99999'.format(path.branch_ref)
 
@@ -442,7 +441,7 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_upload_empty_repo(self, provider, root_provider_fixtures,
-            crud_fixtures, file_content, file_stream):
+                                     crud_fixtures, file_content, file_stream):
         message = 'so hungry'
         item = root_provider_fixtures['upload_response']
         path = GitHubPath(
@@ -498,6 +497,33 @@ class TestCRUD:
         }, commit=root_provider_fixtures['new_head_commit_metadata'], ref=path.branch_ref), True
 
         assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_checksum_mismatch(self, provider, root_provider_fixtures,
+                                            crud_fixtures, file_content, file_stream):
+        item = root_provider_fixtures['upload_response']
+        path = GitHubPath(
+            '/' + item['content']['path'],
+            _ids=[(provider.default_branch, ''), ('master', ''), ('master', '')]
+        )
+
+        commit_url = provider.build_repo_url('commits', path=path.path, sha=path.branch_ref)
+        sha_url = provider.build_repo_url('git', 'refs', 'heads', path.branch_ref)
+        blob_url = provider.build_repo_url('git', 'blobs')
+
+        aiohttpretty.register_json_uri('GET', commit_url, status=404)
+        aiohttpretty.register_json_uri('GET', sha_url, body=crud_fixtures['latest_sha_metadata'])
+        aiohttpretty.register_json_uri(
+            'POST', blob_url, body=crud_fixtures['checksum_mismatch_blob_data'], status=201
+        )
+
+        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+            await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='GET', uri=commit_url)
+        assert aiohttpretty.has_call(method='GET', uri=sha_url)
+        assert aiohttpretty.has_call(method='POST', uri=blob_url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
