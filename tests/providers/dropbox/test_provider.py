@@ -719,7 +719,7 @@ class TestIntra:
     @pytest.mark.aiohttpretty
     async def test_intra_move_casing_change(self, provider):
         src_path = WaterButlerPath('/pfile/', prepend=provider.folder)
-        dest_path = WaterButlerPath('/pfile/', prepend=provider.folder)
+        dest_path = WaterButlerPath('/PFile/', prepend=provider.folder)
 
         with pytest.raises(exceptions.InvalidPathError) as e:
             await provider.intra_move(provider, src_path, dest_path)
@@ -732,8 +732,14 @@ class TestOperations:
     def test_can_intra_copy(self, provider):
         assert provider.can_intra_copy(provider)
 
+    def test_can_intra_copy_other(self, provider, other_provider):
+        assert provider.can_intra_copy(other_provider)
+
     def test_can_intra_move(self, provider):
         assert provider.can_intra_move(provider)
+
+    def test_cannot_intra_move_other(self, provider, other_provider):
+        assert provider.can_intra_move(other_provider) == False
 
     def test_conflict_error_handler_not_found(self, provider, error_fixtures):
         error_path = '/Photos/folder/file'
