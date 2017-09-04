@@ -13,6 +13,11 @@ from waterbutler.providers.box import BoxProvider
 from waterbutler.providers.box.metadata import BoxRevision
 from waterbutler.providers.box.metadata import BoxFileMetadata
 from waterbutler.providers.box.metadata import BoxFolderMetadata
+from tests.providers.box.fixtures import(
+    root_provider_fixtures,
+    revision_fixtures,
+    intra_fixtures
+)
 
 
 @pytest.fixture
@@ -29,6 +34,11 @@ def credentials():
 
 
 @pytest.fixture
+def other_credentials():
+    return {'token': 'wrote lord of the rings'}
+
+
+@pytest.fixture
 def settings():
     return {'folder': '11446498'}
 
@@ -36,6 +46,11 @@ def settings():
 @pytest.fixture
 def provider(auth, credentials, settings):
     return BoxProvider(auth, credentials, settings)
+
+
+@pytest.fixture
+def other_provider(auth, other_credentials, settings):
+    return BoxProvider(auth, other_credentials, settings)
 
 
 @pytest.fixture
@@ -52,234 +67,18 @@ def file_like(file_content):
 def file_stream(file_like):
     return streams.FileStreamReader(file_like)
 
-@pytest.fixture
-def folder_object_metadata():
-    return {
-        "type": "folder",
-        "id": "11446498",
-        "sequence_id": "1",
-        "etag": "1",
-        "name": "Pictures",
-        "created_at": "2012-12-12T10:53:43-08:00",
-        "modified_at": "2012-12-12T11:15:04-08:00",
-        "description": "Some pictures I took",
-        "size": 629644,
-        "path_collection": {
-            "total_count": 1,
-            "entries": [
-                {
-                    "type": "folder",
-                    "id": "0",
-                    "sequence_id": None,
-                    "etag": None,
-                    "name": "All Files"
-                }
-            ]
-        },
-        "created_by": {
-            "type": "user",
-            "id": "17738362",
-            "name": "sean rose",
-            "login": "sean@box.com"
-        },
-        "modified_by": {
-            "type": "user",
-            "id": "17738362",
-            "name": "sean rose",
-            "login": "sean@box.com"
-        },
-        "owned_by": {
-            "type": "user",
-            "id": "17738362",
-            "name": "sean rose",
-            "login": "sean@box.com"
-        },
-        "shared_link": {
-            "url": "https://www.box.com/s/vspke7y05sb214wjokpk",
-            "download_url": None,
-            "vanity_url": None,
-            "is_password_enabled": False,
-            "unshared_at": None,
-            "download_count": 0,
-            "preview_count": 0,
-            "access": "open",
-            "permissions": {
-                "can_download": True,
-                "can_preview": True
-            }
-        },
-        "folder_upload_email": {
-            "access": "open",
-            "email": "upload.Picture.k13sdz1@u.box.com"
-        },
-        "parent": {
-            "type": "folder",
-            "id": "0",
-            "sequence_id": None,
-            "etag": None,
-            "name": "All Files"
-        },
-        "item_status": "active",
-        "item_collection": {
-            "total_count": 1,
-            "entries": [
-                {
-                    "type": "file",
-                    "id": "5000948880",
-                    "sequence_id": "3",
-                    "etag": "3",
-                    "sha1": "134b65991ed521fcfe4724b7d814ab8ded5185dc",
-                    "name": "tigers.jpeg"
-                }
-            ],
-            "offset": 0,
-            "limit": 100
-        },
-        "tags": [
-            "approved",
-            "ready to publish"
-        ]
-    }
-
-
-@pytest.fixture
-def folder_list_metadata():
-    return {
-        "total_count": 24,
-        "entries": [
-            {
-                "type": "folder",
-                "id": "192429928",
-                "sequence_id": "1",
-                "etag": "1",
-                "name": "Stephen Curry Three Pointers"
-            },
-            {
-                "type": "file",
-                "id": "818853862",
-                "modified_at": "2012-12-12T11:04:26-08:00",
-                "sequence_id": "0",
-                "etag": "0",
-                "name": "Warriors.jpg"
-            }
-        ],
-        "offset": 0,
-        "limit": 2,
-        "order": [
-            {
-                "by": "type",
-                "direction": "ASC"
-            },
-            {
-                "by": "name",
-                "direction": "ASC"
-            }
-        ]
-    }
-
-
-@pytest.fixture
-def file_metadata():
-    return {
-        'entries': [
-            {
-                "type": "file",
-                "id": "5000948880",
-                "sequence_id": "3",
-                "etag": "3",
-                "sha1": "134b65991ed521fcfe4724b7d814ab8ded5185dc",
-                "name": "tigers.jpeg",
-                "description": "a picture of tigers",
-                "size": 629644,
-                "path_collection": {
-                    "total_count": 2,
-                    "entries": [
-                        {
-                            "type": "folder",
-                            "id": "0",
-                            "sequence_id": None,
-                            "etag": None,
-                            "name": "All Files"
-                        },
-                        {
-                            "type": "folder",
-                            "id": "11446498",
-                            "sequence_id": "1",
-                            "etag": "1",
-                            "name": "Pictures"
-                        }
-                    ]
-                },
-                "created_at": "2012-12-12T10:55:30-08:00",
-                "modified_at": "2012-12-12T11:04:26-08:00",
-                "created_by": {
-                    "type": "user",
-                    "id": "17738362",
-                    "name": "sean rose",
-                    "login": "sean@box.com"
-                },
-                "modified_by": {
-                    "type": "user",
-                    "id": "17738362",
-                    "name": "sean rose",
-                    "login": "sean@box.com"
-                },
-                "owned_by": {
-                    "type": "user",
-                    "id": "17738362",
-                    "name": "sean rose",
-                    "login": "sean@box.com"
-                },
-                "shared_link": {
-                    "url": "https://www.box.com/s/rh935iit6ewrmw0unyul",
-                    "download_url": "https://www.box.com/shared/static/rh935iit6ewrmw0unyul.jpeg",
-                    "vanity_url": None,
-                    "is_password_enabled": False,
-                    "unshared_at": None,
-                    "download_count": 0,
-                    "preview_count": 0,
-                    "access": "open",
-                    "permissions": {
-                        "can_download": True,
-                        "can_preview": True
-                    }
-                },
-                "parent": {
-                    "type": "folder",
-                    "id": "11446498",
-                    "sequence_id": "1",
-                    "etag": "1",
-                    "name": "Pictures"
-                },
-                "item_status": "active"
-            }
-        ]
-    }
-
-
-@pytest.fixture
-def revisions_list_metadata():
-    return {
-        'entries': [
-            {'name': 'lode.txt', 'modified_by': {'login': 'jmcarp@umich.edu', 'id': '183920511', 'type': 'user', 'name': 'Joshua Carp'}, 'modified_at': '2015-02-24T09:26:02-08:00', 'size': 1620, 'id': '25065971851', 'sha1': 'f313795ea4184ddbb7d12d3691d1850b83fe9b3c', 'type': 'file_version', 'created_at': '2015-02-24T09:26:02-08:00'},
-        ],
-        'limit': 1000,
-        'offset': 0,
-        'total_count': 1,
-    }
-
 
 class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, file_metadata):
+    async def test_validate_v1_path_file(self, provider, root_provider_fixtures):
         file_id = '5000948880'
 
         good_url = provider.build_url('files', file_id, fields='id,name,path_collection')
         bad_url = provider.build_url('folders', file_id, fields='id,name,path_collection')
 
-        aiohttpretty.register_json_uri('get', good_url, body=file_metadata['entries'][0], status=200)
+        aiohttpretty.register_json_uri('get', good_url, body=root_provider_fixtures['file_metadata']['entries'][0], status=200)
         aiohttpretty.register_uri('get', bad_url, status=404)
 
         try:
@@ -298,14 +97,14 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider, folder_object_metadata):
+    async def test_validate_v1_path_folder(self, provider, root_provider_fixtures):
         provider.folder = '0'
         folder_id = '11446498'
 
         good_url = provider.build_url('folders', folder_id, fields='id,name,path_collection')
         bad_url = provider.build_url('files', folder_id, fields='id,name,path_collection')
 
-        aiohttpretty.register_json_uri('get', good_url, body=folder_object_metadata, status=200)
+        aiohttpretty.register_json_uri('get', good_url, body=root_provider_fixtures['folder_object_metadata'], status=200)
         aiohttpretty.register_uri('get', bad_url, status=404)
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + folder_id + '/')
@@ -321,13 +120,61 @@ class TestValidatePath:
 
         assert wb_path_v1 == wb_path_v0
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_path_root(self, provider):
+        path = await provider.validate_path('/')
+        assert path.is_dir
+        assert len(path.parts) == 1
+        assert path.name == ''
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v1_path_root(self, provider):
+        path = await provider.validate_v1_path('/')
+        assert path.is_dir
+        assert len(path.parts) == 1
+        assert path.name == ''
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v1_path_bad_path(self, provider):
+
+        with pytest.raises(exceptions.NotFoundError) as e:
+            await provider.validate_v1_path('/bulbasaur')
+
+        assert e.value.message == 'Could not retrieve file or directory /bulbasaur'
+        assert e.value.code == 404
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_path_bad_path(self, provider):
+
+        with pytest.raises(exceptions.MetadataError) as e:
+            await provider.validate_path('/bulbasaur/charmander')
+
+        assert e.value.message == 'Could not find /bulbasaur/charmander'
+        assert e.value.code == 404
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_path(self, provider, root_provider_fixtures):
+        provider.folder = '0'
+        folder_id = '0'
+
+        good_url = provider.build_url('folders', folder_id, 'items', fields='id,name,type', limit=1000)
+        aiohttpretty.register_json_uri('GET', good_url, body=root_provider_fixtures['revalidate_metadata'], status=200)
+
+        result = await provider.validate_path('/bulbasaur')
+        assert result == WaterButlerPath('/bulbasaur', folder=False)
+
 
 class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download(self, provider, file_metadata):
-        item = file_metadata['entries'][0]
+    async def test_download(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
         path = WaterButlerPath('/triangles.txt', _ids=(provider.folder, item['id']))
 
         metadata_url = provider.build_url('files', item['id'])
@@ -343,8 +190,26 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_not_found(self, provider, file_metadata):
-        item = file_metadata['entries'][0]
+    async def test_download_revision(self, provider, root_provider_fixtures):
+        revision = '21753842'
+        item = root_provider_fixtures['file_metadata']['entries'][0]
+        path = WaterButlerPath('/triangles.txt', _ids=(provider.folder, item['id']))
+
+        metadata_url = provider.build_url('files', item['id'])
+        content_url = provider.build_url('files', item['id'], 'content', **{'version': revision})
+
+        aiohttpretty.register_json_uri('GET', metadata_url, body=item)
+        aiohttpretty.register_uri('GET', content_url, body=b'better', auto_length=True)
+
+        result = await provider.download(path, revision)
+        content = await result.read()
+
+        assert content == b'better'
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_not_found(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
         path = WaterButlerPath('/vectors.txt', _ids=(provider.folder, None))
         metadata_url = provider.build_url('files', item['id'])
         aiohttpretty.register_uri('GET', metadata_url, status=404)
@@ -359,18 +224,17 @@ class TestUpload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_create(self, provider, folder_object_metadata, folder_list_metadata, file_metadata, file_stream, settings):
+    async def test_upload_create(self, provider, root_provider_fixtures, file_stream, settings):
         path = WaterButlerPath('/newfile', _ids=(provider.folder, None))
 
         upload_url = provider._build_upload_url('files', 'content')
         folder_object_url = provider.build_url('folders', path.parent.identifier)
         folder_list_url = provider.build_url('folders', path.parent.identifier, 'items')
 
-        aiohttpretty.register_json_uri('POST', upload_url, status=201, body=file_metadata)
+        aiohttpretty.register_json_uri('POST', upload_url, status=201, body=root_provider_fixtures['file_metadata'])
 
         metadata, created = await provider.upload(file_stream, path)
-
-        expected = BoxFileMetadata(file_metadata['entries'][0], path).serialized()
+        expected = BoxFileMetadata(root_provider_fixtures['file_metadata']['entries'][0], path).serialized()
 
         assert metadata.serialized() == expected
         assert created is True
@@ -379,15 +243,41 @@ class TestUpload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_update(self, provider, folder_object_metadata, folder_list_metadata, file_metadata, file_stream, settings):
-        item = folder_list_metadata['entries'][0]
+    async def test_upload_conflict_keep(self, provider, root_provider_fixtures, file_stream, settings):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
+        path = WaterButlerPath('/newfile', _ids=(provider.folder, item['id']))
+
+        upload_url = provider._build_upload_url('files', 'content')
+        folder_object_url = provider.build_url('folders', path.parent.identifier)
+        folder_list_url = provider.build_url('folders', path.parent.identifier, 'items')
+        aiohttpretty.register_json_uri('POST', upload_url, status=201, body=root_provider_fixtures['file_metadata'])
+
+        metadata_url = provider.build_url('files', path.identifier)
+        aiohttpretty.register_json_uri('GET', metadata_url, body=root_provider_fixtures['file_metadata'])
+
+        list_url = provider.build_url('folders', item['path_collection']['entries'][1]['id'], 'items',
+                                      fields='id,name,type', limit=1000)
+        aiohttpretty.register_json_uri('GET', list_url, body=root_provider_fixtures['folder_list_metadata'])
+
+        metadata, created = await provider.upload(file_stream, path, conflict='keep')
+        expected = BoxFileMetadata(root_provider_fixtures['file_metadata']['entries'][0], path).serialized()
+
+        # since the metadata for the renamed conflict file isnt actually saved, this one is odd to test.
+        assert metadata.serialized() == expected
+        assert created is True
+        assert path.identifier_path == metadata.path
+        assert aiohttpretty.has_call(method='POST', uri=upload_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_update(self, provider, root_provider_fixtures, file_stream, settings):
+        item = root_provider_fixtures['folder_list_metadata']['entries'][0]
         path = WaterButlerPath('/newfile', _ids=(provider.folder, item['id']))
         upload_url = provider._build_upload_url('files', item['id'], 'content')
-        aiohttpretty.register_json_uri('POST', upload_url, status=201, body=file_metadata)
+        aiohttpretty.register_json_uri('POST', upload_url, status=201, body=root_provider_fixtures['file_metadata'])
 
         metadata, created = await provider.upload(file_stream, path)
-
-        expected = BoxFileMetadata(file_metadata['entries'][0], path).serialized()
+        expected = BoxFileMetadata(root_provider_fixtures['file_metadata']['entries'][0], path).serialized()
 
         assert metadata.serialized() == expected
         assert created is False
@@ -398,8 +288,8 @@ class TestDelete:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_file(self, provider, file_metadata):
-        item = file_metadata['entries'][0]
+    async def test_delete_file(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
         path = WaterButlerPath('/{}'.format(item['name']), _ids=(provider.folder, item['id']))
         url = provider.build_url('files', path.identifier)
 
@@ -411,8 +301,8 @@ class TestDelete:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_folder(self, provider, folder_object_metadata):
-        item = folder_object_metadata
+    async def test_delete_folder(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['folder_object_metadata']
         path = WaterButlerPath('/{}/'.format(item['name']), _ids=(provider.folder, item['id']))
         url = provider.build_url('folders', path.identifier, recursive=True)
 
@@ -432,6 +322,36 @@ class TestDelete:
         assert e.value.code == 404
         assert str(path) in e.value.message
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_root_no_confirm(self, provider, root_provider_fixtures):
+        path = WaterButlerPath('/', _ids=('0'))
+
+        with pytest.raises(exceptions.DeleteError) as e:
+            await provider.delete(path)
+
+        assert e.value.message == 'confirm_delete=1 is required for deleting root provider folder'
+        assert e.value.code == 400
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_root(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
+        path = WaterButlerPath('/newfile', _ids=(provider.folder, item['id']))
+        root_path = WaterButlerPath('/', _ids=('0'))
+
+        url = provider.build_url('folders', root_path.identifier, 'items', fields='id,name,size,modified_at,etag,total_count', offset=(0), limit=1000)
+        aiohttpretty.register_json_uri('GET', url, body=root_provider_fixtures['one_entry_folder_list_metadata'])
+
+        url = provider.build_url('files', item['id'], fields='id,name,path_collection')
+        delete_url = provider.build_url('files', path.identifier)
+        aiohttpretty.register_json_uri('get', url, body=root_provider_fixtures['file_metadata']['entries'][0])
+        aiohttpretty.register_json_uri('DELETE', delete_url, status=204)
+
+        await provider.delete(root_path, 1)
+
+        assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
+
 
 class TestMetadata:
 
@@ -447,20 +367,80 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata(self, provider, folder_object_metadata, folder_list_metadata):
+    async def test_revision_metadata(self, provider, root_provider_fixtures, revision_fixtures):
+        item = revision_fixtures['revisions_list_metadata']['entries'][0]
+
+        path = WaterButlerPath('/goats', _ids=(provider.folder, item['id']))
+        url = provider.build_url('files', path.identifier, 'versions')
+
+        aiohttpretty.register_json_uri('GET', url, body=revision_fixtures['revisions_list_metadata'])
+
+        result = await provider.metadata(path, revision=item['id'])
+        expected = BoxFileMetadata(item, path)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revision_metadata_error(self, provider, root_provider_fixtures, revision_fixtures):
+        item = revision_fixtures['revisions_list_metadata']['entries'][0]
+
+        path = WaterButlerPath('/goats', _ids=(provider.folder, item['id']))
+        url = provider.build_url('files', path.identifier, 'versions')
+
+        aiohttpretty.register_json_uri('GET', url, body=revision_fixtures['revisions_list_metadata'])
+
+        with pytest.raises(exceptions.NotFoundError) as e:
+            await provider.metadata(path, revision='this is a bad revision id')
+
+        assert e.value.code == 404
+        assert str(path) in e.value.message
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata_bad_response(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
+
+        path = WaterButlerPath('/goats', _ids=(provider.folder, item['id']))
+        url = provider.build_url('files', path.identifier)
+
+        aiohttpretty.register_json_uri('GET', url, body=None)
+
+        with pytest.raises(exceptions.NotFoundError) as e:
+            await provider.metadata(path)
+
+        assert e.value.code == 404
+        assert str(path) in e.value.message
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_folder_metadata(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['folder_object_metadata']
+        path = WaterButlerPath('/goats/', _ids=(provider.folder, item['id']))
+        url = provider.build_url('folders', path.identifier)
+
+        aiohttpretty.register_json_uri('GET', url, body=root_provider_fixtures['folder_object_metadata'])
+
+        result = await provider.metadata(path, raw=True, folder=True)
+
+        assert result == item
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata(self, provider, root_provider_fixtures):
         path = WaterButlerPath('/', _ids=(provider.folder, ))
 
         list_url = provider.build_url('folders', provider.folder, 'items',
                                       fields='id,name,size,modified_at,etag,total_count',
                                       offset=0, limit=1000)
 
-        aiohttpretty.register_json_uri('GET', list_url, body=folder_list_metadata)
+        aiohttpretty.register_json_uri('GET', list_url, body=root_provider_fixtures['folder_list_metadata'])
 
         result = await provider.metadata(path)
 
         expected = []
 
-        for x in folder_list_metadata['entries']:
+        for x in root_provider_fixtures['folder_list_metadata']['entries']:
             if x['type'] == 'file':
                 expected.append(BoxFileMetadata(x, path.child(x['name'])))
             else:
@@ -468,13 +448,29 @@ class TestMetadata:
 
         assert result == expected
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata_raw(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['folder_list_metadata']
+        path = WaterButlerPath('/', _ids=(provider.folder, ))
+
+        list_url = provider.build_url('folders', provider.folder, 'items',
+                                      fields='id,name,size,modified_at,etag,total_count',
+                                      offset=0, limit=1000)
+
+        aiohttpretty.register_json_uri('GET', list_url, body=item)
+
+        result = await provider.metadata(path, raw=True)
+
+        assert result == item
+
     # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
-    # async def test_metadata_not_child(self, provider, folder_object_metadata):
+    # async def test_metadata_not_child(self, provider, root_provider_fixtures['folder_object_metadata']):
     #     provider.folder += 'yourenotmydad'
     #     path = BoxPath('/' + provider.folder + '/')
     #     object_url = provider.build_url('folders', provider.folder)
-    #     aiohttpretty.register_json_uri('GET', object_url, body=folder_object_metadata)
+    #     aiohttpretty.register_json_uri('GET', object_url, body=root_provider_fixtures['folder_object_metadata'])
 
     #     with pytest.raises(exceptions.MetadataError) as exc_info:
     #         await provider.metadata(str(path))
@@ -482,10 +478,10 @@ class TestMetadata:
 
     # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
-    # async def test_metadata_root_file(self, provider, file_metadata):
+    # async def test_metadata_root_file(self, provider, root_provider_fixtures['file_metadata']):
     #     path = BoxPath('/' + provider.folder + '/pfile')
     #     url = provider.build_url('files', path._id)
-    #     aiohttpretty.register_json_uri('GET', url, body=file_metadata['entries'][0])
+    #     aiohttpretty.register_json_uri('GET', url, body=root_provider_fixtures['file_metadata']['entries'][0])
     #     result = await provider.metadata(str(path))
 
     #     assert isinstance(result, dict)
@@ -495,8 +491,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_nested(self, provider, file_metadata):
-        item = file_metadata['entries'][0]
+    async def test_metadata_nested(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
         path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
 
         file_url = provider.build_url('files', path.identifier)
@@ -523,8 +519,8 @@ class TestRevisions:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_get_revisions(self, provider, file_metadata, revisions_list_metadata):
-        item = file_metadata['entries'][0]
+    async def test_get_revisions(self, provider, root_provider_fixtures, revision_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
 
         path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
 
@@ -532,13 +528,13 @@ class TestRevisions:
         revisions_url = provider.build_url('files', path.identifier, 'versions')
 
         aiohttpretty.register_json_uri('GET', file_url, body=item)
-        aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_list_metadata)
+        aiohttpretty.register_json_uri('GET', revisions_url, body=revision_fixtures['revisions_list_metadata'])
 
         result = await provider.revisions(path)
 
         expected = [
             BoxRevision(each)
-            for each in [item] + revisions_list_metadata['entries']
+            for each in [item] + revision_fixtures['revisions_list_metadata']['entries']
         ]
 
         assert result == expected
@@ -547,8 +543,8 @@ class TestRevisions:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_get_revisions_free_account(self, provider, file_metadata):
-        item = file_metadata['entries'][0]
+    async def test_get_revisions_free_account(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
         path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
 
         file_url = provider.build_url('files', path.identifier)
@@ -562,6 +558,142 @@ class TestRevisions:
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=file_url)
         assert aiohttpretty.has_call(method='GET', uri=revisions_url)
+
+
+class TestIntraCopy:
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_copy_file(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
+        src_path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
+        dest_path = WaterButlerPath('/charmander/name.txt', _ids=(provider, item['id']))
+
+        file_url = provider.build_url('files', src_path.identifier, 'copy')
+        aiohttpretty.register_json_uri('POST', file_url, body=item)
+
+        result = await provider.intra_copy(provider, src_path, dest_path)
+        expected = (BoxFileMetadata(item, dest_path), True)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_copy_file_replace(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
+        src_path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
+        dest_path = WaterButlerPath('/charmander/name.txt', _ids=(provider, item['id'], item['id']))
+
+        file_url = provider.build_url('files', src_path.identifier, 'copy')
+        delete_url = provider.build_url('files', dest_path.identifier)
+        aiohttpretty.register_uri('DELETE', delete_url, status=204)
+        aiohttpretty.register_json_uri('POST', file_url, body=item)
+
+        result = await provider.intra_copy(provider, src_path, dest_path)
+        expected = (BoxFileMetadata(item, dest_path), False)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_copy_folder(self, provider, intra_fixtures):
+        item = intra_fixtures['intra_folder_metadata']
+        src_path = WaterButlerPath('/name/', _ids=(provider, item['id']))
+        dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id']))
+
+        file_url = provider.build_url('folders', src_path.identifier, 'copy')
+        aiohttpretty.register_json_uri('POST', file_url, body=item)
+
+        result = await provider.intra_copy(provider, src_path, dest_path)
+        expected = (BoxFolderMetadata(item, dest_path), True)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_copy_folder_replace(self, provider, intra_fixtures):
+        item = intra_fixtures['intra_folder_metadata']
+        src_path = WaterButlerPath('/name/', _ids=(provider, item['id']))
+        dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id'], item['id']))
+
+        file_url = provider.build_url('folders', src_path.identifier, 'copy')
+        delete_url = provider.build_url('folders', dest_path.identifier, recursive=True)
+        aiohttpretty.register_uri('DELETE', delete_url, status=204)
+        aiohttpretty.register_json_uri('POST', file_url, body=item)
+
+        result = await provider.intra_copy(provider, src_path, dest_path)
+        expected = (BoxFolderMetadata(item, dest_path), False)
+
+        assert result == expected
+        assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
+
+
+class TestIntraMove:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_move_file(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
+        src_path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
+        dest_path = WaterButlerPath('/charmander/name.txt', _ids=(provider, item['id']))
+
+        file_url = provider.build_url('files', src_path.identifier)
+        aiohttpretty.register_json_uri('PUT', file_url, body=item)
+
+        result = await provider.intra_move(provider, src_path, dest_path)
+        expected = (BoxFileMetadata(item, dest_path), True)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_move_file_replace(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
+        src_path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
+        dest_path = WaterButlerPath('/charmander/name.txt', _ids=(provider, item['id'], item['id']))
+
+        file_url = provider.build_url('files', src_path.identifier)
+        delete_url = provider.build_url('files', dest_path.identifier)
+        aiohttpretty.register_uri('DELETE', delete_url, status=204)
+        aiohttpretty.register_json_uri('PUT', file_url, body=item)
+
+        result = await provider.intra_move(provider, src_path, dest_path)
+        expected = (BoxFileMetadata(item, dest_path), False)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_move_folder(self, provider, intra_fixtures):
+        item = intra_fixtures['intra_folder_metadata']
+        src_path = WaterButlerPath('/name/', _ids=(provider, item['id']))
+        dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id']))
+
+        file_url = provider.build_url('folders', src_path.identifier)
+        aiohttpretty.register_json_uri('PUT', file_url, body=item)
+
+        result = await provider.intra_move(provider, src_path, dest_path)
+        expected = (BoxFolderMetadata(item, dest_path), True)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_move_folder_replace(self, provider, intra_fixtures):
+        item = intra_fixtures['intra_folder_metadata']
+        src_path = WaterButlerPath('/name/', _ids=(provider, item['id']))
+        dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id'], item['id']))
+
+        file_url = provider.build_url('folders', src_path.identifier)
+        delete_url = provider.build_url('folders', dest_path.identifier, recursive=True)
+
+        aiohttpretty.register_uri('DELETE', delete_url, status=204)
+        aiohttpretty.register_json_uri('PUT', file_url, body=item)
+
+        result = await provider.intra_move(provider, src_path, dest_path)
+        expected = (BoxFolderMetadata(item, dest_path), False)
+
+        assert result == expected
+        assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
 
 
 class TestCreateFolder:
@@ -615,17 +747,43 @@ class TestCreateFolder:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_returns_metadata(self, provider, folder_object_metadata):
+    async def test_returns_metadata(self, provider, root_provider_fixtures):
         url = provider.build_url('folders')
-        folder_object_metadata['name'] = '50 shades of nope'
+        root_provider_fixtures['folder_object_metadata']['name'] = '50 shades of nope'
         path = WaterButlerPath('/50 shades of nope/', _ids=(provider.folder, None))
 
-        aiohttpretty.register_json_uri('POST', url, status=201, body=folder_object_metadata)
+        aiohttpretty.register_json_uri('POST', url, status=201, body=root_provider_fixtures['folder_object_metadata'])
 
         resp = await provider.create_folder(path)
 
         assert resp.kind == 'folder'
         assert resp.name == '50 shades of nope'
-        assert resp.path == '/{}/'.format(folder_object_metadata['id'])
+        assert resp.path == '/{}/'.format(root_provider_fixtures['folder_object_metadata']['id'])
         assert isinstance(resp, BoxFolderMetadata)
-        assert path.identifier_path == '/' + folder_object_metadata['id'] + '/'
+        assert path.identifier_path == '/' + root_provider_fixtures['folder_object_metadata']['id'] + '/'
+
+
+class TestOperations:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_can_duplicate_names(self, provider):
+        assert provider.can_duplicate_names() is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_shares_storage_root(self, provider, other_provider):
+        assert provider.shares_storage_root(other_provider) is False
+        assert provider.shares_storage_root(provider) is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_can_intra_move(self, provider, other_provider):
+        assert provider.can_intra_move(other_provider) is False
+        assert provider.can_intra_move(provider) is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_can_intra_copy(self, provider, other_provider):
+        assert provider.can_intra_copy(other_provider) is False
+        assert provider.can_intra_copy(provider) is True
