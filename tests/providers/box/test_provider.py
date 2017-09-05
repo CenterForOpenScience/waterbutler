@@ -594,33 +594,61 @@ class TestIntraCopy:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_folder(self, provider, intra_fixtures):
+    async def test_intra_copy_folder(self, provider, intra_fixtures, root_provider_fixtures):
         item = intra_fixtures['intra_folder_metadata']
+        list_metadata = root_provider_fixtures['folder_list_metadata']
+
         src_path = WaterButlerPath('/name/', _ids=(provider, item['id']))
         dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id']))
 
         file_url = provider.build_url('folders', src_path.identifier, 'copy')
+        list_url = provider.build_url('folders', item['id'], 'items',
+                                      fields='id,name,size,modified_at,etag,total_count',
+                                      offset=0, limit=1000)
+
+        aiohttpretty.register_json_uri('GET', list_url, body=list_metadata)
         aiohttpretty.register_json_uri('POST', file_url, body=item)
 
+        expected_folder = BoxFolderMetadata(item, dest_path)
+        expected_folder._children = []
+        for child_item in list_metadata['entries']:
+            child_path = dest_path.child(child_item['name'], folder=(child_item['type'] == 'folder'))
+            serialized_child = provider._serialize_item(child_item, child_path)
+            expected_folder._children.append(serialized_child)
+        expected = (expected_folder, True)
+
         result = await provider.intra_copy(provider, src_path, dest_path)
-        expected = (BoxFolderMetadata(item, dest_path), True)
 
         assert result == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_folder_replace(self, provider, intra_fixtures):
+    async def test_intra_copy_folder_replace(self, provider, intra_fixtures, root_provider_fixtures):
         item = intra_fixtures['intra_folder_metadata']
+        list_metadata = root_provider_fixtures['folder_list_metadata']
+
         src_path = WaterButlerPath('/name/', _ids=(provider, item['id']))
         dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id'], item['id']))
 
         file_url = provider.build_url('folders', src_path.identifier, 'copy')
         delete_url = provider.build_url('folders', dest_path.identifier, recursive=True)
+        list_url = provider.build_url('folders', item['id'], 'items',
+                                      fields='id,name,size,modified_at,etag,total_count',
+                                      offset=0, limit=1000)
+
+        aiohttpretty.register_json_uri('GET', list_url, body=list_metadata)
         aiohttpretty.register_uri('DELETE', delete_url, status=204)
         aiohttpretty.register_json_uri('POST', file_url, body=item)
 
+        expected_folder = BoxFolderMetadata(item, dest_path)
+        expected_folder._children = []
+        for child_item in list_metadata['entries']:
+            child_path = dest_path.child(child_item['name'], folder=(child_item['type'] == 'folder'))
+            serialized_child = provider._serialize_item(child_item, child_path)
+            expected_folder._children.append(serialized_child)
+        expected = (expected_folder, False)
+
         result = await provider.intra_copy(provider, src_path, dest_path)
-        expected = (BoxFolderMetadata(item, dest_path), False)
 
         assert result == expected
         assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
@@ -662,34 +690,62 @@ class TestIntraMove:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_move_folder(self, provider, intra_fixtures):
+    async def test_intra_move_folder(self, provider, intra_fixtures, root_provider_fixtures):
         item = intra_fixtures['intra_folder_metadata']
+        list_metadata = root_provider_fixtures['folder_list_metadata']
+
         src_path = WaterButlerPath('/name/', _ids=(provider, item['id']))
         dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id']))
 
         file_url = provider.build_url('folders', src_path.identifier)
+        list_url = provider.build_url('folders', item['id'], 'items',
+                                      fields='id,name,size,modified_at,etag,total_count',
+                                      offset=0, limit=1000)
+
         aiohttpretty.register_json_uri('PUT', file_url, body=item)
+        aiohttpretty.register_json_uri('GET', list_url, body=list_metadata)
+
+        expected_folder = BoxFolderMetadata(item, dest_path)
+        expected_folder._children = []
+        for child_item in list_metadata['entries']:
+            child_path = dest_path.child(child_item['name'], folder=(child_item['type'] == 'folder'))
+            serialized_child = provider._serialize_item(child_item, child_path)
+            expected_folder._children.append(serialized_child)
+        expected = (expected_folder, True)
 
         result = await provider.intra_move(provider, src_path, dest_path)
-        expected = (BoxFolderMetadata(item, dest_path), True)
 
         assert result == expected
 
+
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_move_folder_replace(self, provider, intra_fixtures):
+    async def test_intra_move_folder_replace(self, provider, intra_fixtures, root_provider_fixtures):
         item = intra_fixtures['intra_folder_metadata']
+        list_metadata = root_provider_fixtures['folder_list_metadata']
+
         src_path = WaterButlerPath('/name/', _ids=(provider, item['id']))
         dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id'], item['id']))
 
         file_url = provider.build_url('folders', src_path.identifier)
         delete_url = provider.build_url('folders', dest_path.identifier, recursive=True)
+        list_url = provider.build_url('folders', item['id'], 'items',
+                                      fields='id,name,size,modified_at,etag,total_count',
+                                      offset=0, limit=1000)
 
-        aiohttpretty.register_uri('DELETE', delete_url, status=204)
         aiohttpretty.register_json_uri('PUT', file_url, body=item)
+        aiohttpretty.register_uri('DELETE', delete_url, status=204)
+        aiohttpretty.register_json_uri('GET', list_url, body=list_metadata)
+
+        expected_folder = BoxFolderMetadata(item, dest_path)
+        expected_folder._children = []
+        for child_item in list_metadata['entries']:
+            child_path = dest_path.child(child_item['name'], folder=(child_item['type'] == 'folder'))
+            serialized_child = provider._serialize_item(child_item, child_path)
+            expected_folder._children.append(serialized_child)
+        expected = (expected_folder, False)
 
         result = await provider.intra_move(provider, src_path, dest_path)
-        expected = (BoxFolderMetadata(item, dest_path), False)
 
         assert result == expected
         assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
