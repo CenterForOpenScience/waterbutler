@@ -59,6 +59,7 @@ class BoxProvider(provider.BaseProvider):
         )
 
         if response.status == 404:
+            await response.release()
             raise exceptions.NotFoundError(str(path))
 
         data = await response.json()
@@ -87,6 +88,7 @@ class BoxProvider(provider.BaseProvider):
             files_or_folders = 'files'
 
         # Box file ids must be a valid base10 number
+        response = None
         if obj_id.isdecimal():
             response = await self.make_request(
                 'get',
@@ -94,10 +96,11 @@ class BoxProvider(provider.BaseProvider):
                 expects=(200, 404, 405),
                 throws=exceptions.MetadataError,
             )
-        else:
-            response = None  # Ugly but easiest
+            if response.status in (404, 405):
+                await response.release()
+                response = None
 
-        if response is None or response.status in (404, 405):
+        if response is None:
             if new_name is not None:
                 raise exceptions.MetadataError('Could not find {}'.format(path), code=404)
 
