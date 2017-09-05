@@ -20,6 +20,13 @@ class TestGitHubPath:
         assert gh_child.branch_ref == 'master'
         assert gh_child.file_sha is None
 
+    def test_increment_name(self):
+        gh_path = GitHubPath('/foo/', _ids=[('master', None), ('master', 'abcea54as123')])
+        old_id = gh_path.identifier
+        gh_path.increment_name()
+
+        assert old_id[0] == gh_path.identifier[0]
+
     def test_child_given_explicit_branch(self):
         gh_parent = GitHubPath('/foo/', _ids=[('master', None), ('master', 'abcea54as123')])
         gh_child = gh_parent.child('foo', _id=('develop', '413006763'))
