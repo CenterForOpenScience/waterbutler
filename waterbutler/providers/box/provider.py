@@ -59,7 +59,6 @@ class BoxProvider(provider.BaseProvider):
         )
 
         if response.status == 404:
-            await response.release()
             raise exceptions.NotFoundError(str(path))
 
         data = await response.json()
@@ -88,7 +87,6 @@ class BoxProvider(provider.BaseProvider):
             files_or_folders = 'files'
 
         # Box file ids must be a valid base10 number
-        response = None
         if obj_id.isdecimal():
             response = await self.make_request(
                 'get',
@@ -96,11 +94,10 @@ class BoxProvider(provider.BaseProvider):
                 expects=(200, 404, 405),
                 throws=exceptions.MetadataError,
             )
-            if response.status in (404, 405):
-                await response.release()
-                response = None
+        else:
+            response = None  # Ugly but easiest
 
-        if response is None:
+        if response is None or response.status in (404, 405):
             if new_name is not None:
                 raise exceptions.MetadataError('Could not find {}'.format(path), code=404)
 
@@ -187,7 +184,7 @@ class BoxProvider(provider.BaseProvider):
         if dest_path.identifier is not None:
             await dest_provider.delete(dest_path)
 
-        await self.request(
+        async with self.request(
             'POST',
             self.build_url(
                 'files' if src_path.is_file else 'folders',
@@ -203,9 +200,21 @@ class BoxProvider(provider.BaseProvider):
             headers={'Content-Type': 'application/json'},
             expects=(200, 201),
             throws=exceptions.IntraCopyError
-        )
+        ) as resp:
+            data = await resp.json()
 
-        return self.metadata(dest_path), dest_path.identifier is None
+        return (await self.intra_move_copy_metadata(dest_path, data))
+
+
+    async def intra_move_copy_metadata(self, path, data: dict) -> BaseBoxMetadata:
+        if data['type'] == 'file':
+            return self._serialize_item(data, path), path.identifier is None
+        else:
+            folder = self._serialize_item(data, path)
+            path.parts[-1]._id = data['id']
+            folder._children = await self._get_folder_meta(path)
+            return folder, path.identifier is None
+
 
     async def intra_move(self,  # type: ignore
                          dest_provider: provider.BaseProvider,
@@ -214,7 +223,7 @@ class BoxProvider(provider.BaseProvider):
         if dest_path.identifier is not None and str(dest_path).lower() != str(src_path).lower():
             await dest_provider.delete(dest_path)
 
-        await self.request(
+        async with self.request(
             'PUT',
             self.build_url(
                 'files' if src_path.is_file else 'folders',
@@ -229,9 +238,10 @@ class BoxProvider(provider.BaseProvider):
             headers={'Content-Type': 'application/json'},
             expects=(200, 201),
             throws=exceptions.IntraCopyError
-        )
+        ) as resp:
+            data = await resp.json()
 
-        return self.metadata(dest_path), dest_path.identifier is None
+        return (await self.intra_move_copy_metadata(dest_path, data))
 
     @property
     def default_headers(self) -> dict:
@@ -345,7 +355,7 @@ class BoxProvider(provider.BaseProvider):
 
         if path.is_file:
             return await self._get_file_meta(path, revision=revision, raw=raw)
-        return await self._get_folder_meta(path, raw=raw)
+        return await self._get_folder_meta(path, raw=raw, folder=folder)
 
     async def revisions(self, path: wb_path.WaterButlerPath, **kwargs) -> typing.List[BoxRevision]:
         # from https://developers.box.com/docs/#files-view-versions-of-a-file :
@@ -443,8 +453,17 @@ class BoxProvider(provider.BaseProvider):
 
     async def _get_folder_meta(self,
                                path: wb_path.WaterButlerPath,
-                               raw: bool=False) \
+                               raw: bool=False,
+                               folder: bool=False) \
                                -> typing.Union[dict, typing.List[BoxFolderMetadata]]:
+        if folder:
+            async with self.request(
+                'GET', self.build_url('folders', path.identifier),
+                expects=(200, ), throws=exceptions.MetadataError,
+            ) as resp:
+                data = await resp.json()
+                # FIXME: Usage does not match function call signature!  Dead code or bug?
+                return data if raw else self._serialize_item(data)
 
         # Box maximum limit is 1000
         page_count, page_total, limit = 0, None, 1000
