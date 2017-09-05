@@ -208,7 +208,6 @@ class BoxProvider(provider.BaseProvider):
 
         return (await self.intra_move_copy_metadata(dest_path, data))
 
-
     async def intra_move_copy_metadata(self, path, data: dict) -> BaseBoxMetadata:
         created = path.identifier is None
         if data['type'] == 'file':
