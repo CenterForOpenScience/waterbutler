@@ -64,6 +64,11 @@ class BoxProvider(provider.BaseProvider):
 
         data = await response.json()
 
+        if self.folder != '0':  # don't allow files outside project root
+            path_ids = [entry['id'] for entry in data['path_collection']['entries']]
+            if self.folder not in path_ids:
+                raise exceptions.NotFoundError(path)
+
         names, ids = zip(*[
             (x['name'], x['id'])
             for x in
@@ -111,6 +116,12 @@ class BoxProvider(provider.BaseProvider):
             )
         else:
             data = await response.json()  # .json releases the response
+
+            if self.folder != '0':  # don't allow files outside project root
+                path_ids = [entry['id'] for entry in data['path_collection']['entries']]
+                if self.folder not in path_ids:
+                    raise exceptions.NotFoundError(path)
+
             names, ids = zip(*[
                 (x['name'], x['id'])
                 for x in
