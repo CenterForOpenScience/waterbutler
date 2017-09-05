@@ -63,6 +63,11 @@ class BoxProvider(provider.BaseProvider):
 
         data = await response.json()
 
+        if self.folder != '0':
+            path_ids = [entry['id'] for entry in data['path_collection']['entries']]
+            if self.folder not in path_ids:
+                raise exceptions.NotFoundError(path)
+
         names, ids = zip(*[
             (x['name'], x['id'])
             for x in
