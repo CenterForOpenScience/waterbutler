@@ -1020,8 +1020,10 @@ class TestMetadata:
 
         query = provider._build_query(path.identifier)
         url = provider.build_url('files', q=query, alt='json', maxResults=1000)
+        url_children = provider.build_url('files', q="'{}' in parents".format(path.identifier))
 
         aiohttpretty.register_json_uri('GET', url, body=body)
+        aiohttpretty.register_json_uri('GET', url_children, body={'items': []})
 
         result = await provider.metadata(path)
 
@@ -1509,8 +1511,17 @@ class TestIntraFunctions:
         del_url_body = json.dumps({'labels': {'trashed': 'true'}})
         aiohttpretty.register_uri('PUT', delete_url, body=del_url_body, status=200)
 
+        children_query = provider._build_query(dest_path.identifier)
+        children_url = provider.build_url('files', q=children_query, alt='json', maxResults=1000)
+        children_list = generate_list(3, **root_provider_fixtures['folder_metadata'])
+        aiohttpretty.register_json_uri('GET', children_url, body=children_list)
+
         result, created = await provider.intra_move(provider, src_path, dest_path)
         expected = GoogleDriveFolderMetadata(item, dest_path)
+        expected.children = [
+            provider._serialize_item(dest_path.child(item['title']), item)
+            for item in children_list['items']
+        ]
 
         assert result == expected
         assert aiohttpretty.has_call(method='PUT', uri=delete_url)
