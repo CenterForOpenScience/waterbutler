@@ -1,4 +1,3 @@
-import os
 import json
 import typing
 import aiohttp
@@ -405,28 +404,6 @@ class BoxProvider(provider.BaseProvider):
         path._parts[-1]._id = resp_json['id']
         return BoxFolderMetadata(resp_json, path)
 
-    def _assert_child(self, paths: typing.List[dict], target: str=None) -> bool:
-        if self.folder == 0:
-            return True
-        if target == self.folder:
-            return True
-        if not paths:
-            raise exceptions.MetadataError('Not found', code=HTTPStatus.NOT_FOUND)
-        if paths[0]['id'] == self.folder:
-            return True
-        return self._assert_child(paths[1:])
-
-    async def _assert_child_folder(self, path):
-        # TODO: This method and the one above may be totally unused
-        async with self.request(
-            'GET',
-            self.build_url('folders', path._id),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        ) as response:
-            data = await response.json()
-        self._assert_child(data['path_collection']['entries'], target=data['id'])
-
     async def _get_file_meta(self,
                              path: wb_path.WaterButlerPath,
                              raw: bool=False,
@@ -506,17 +483,6 @@ class BoxProvider(provider.BaseProvider):
 
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
-
-    def _build_full_path(self, entries, filename):
-        # TODO: Method may be totally unused
-        path = []
-        for entry in reversed(entries):
-            if self.folder == entry['id']:
-                break
-            path.append(entry['name'])
-
-        base_path = '/'.join(reversed(path))
-        return '/' + os.path.join(base_path, filename)
 
     async def _delete_folder_contents(self, path: wb_path.WaterButlerPath, **kwargs) -> None:
         """Delete the contents of a folder. For use against provider root.
