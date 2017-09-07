@@ -71,10 +71,7 @@ class BoxRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def version(self):
-        try:
-            return self.raw['id']
-        except KeyError:
-            return self.raw['path'].split('/')[1]
+        return self.raw['id']
 
     @property
     def version_identifier(self):
@@ -82,14 +79,8 @@ class BoxRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def path(self):
-        try:
-            return '/{0}/{1}'.format(self.raw['id'], self.raw['name'])
-        except KeyError:
-            return self.raw.get('path')
+        return '/{0}/{1}'.format(self.raw['id'], self.raw['name'])
 
     @property
     def modified(self):
-        try:
-            return self.raw['modified_at']
-        except KeyError:
-            return self.raw.get('modified')
+        return self.raw['modified_at']
