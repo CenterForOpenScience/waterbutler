@@ -240,7 +240,7 @@ class DropboxProvider(provider.BaseProvider):
         if 'Content-Length' not in resp.headers:
             size = json.loads(resp.headers['dropbox-api-result'])['size']
         else:
-            size = None
+            size = None  # ResponseStreamReader will extract it from the resp
         return streams.ResponseStreamReader(resp, size=size)
 
     async def upload(self,  # type: ignore
@@ -377,7 +377,7 @@ class DropboxProvider(provider.BaseProvider):
 
     def can_intra_move(self, dest_provider: provider.BaseProvider,
                        path: WaterButlerPath=None) -> bool:
-        return self == dest_provider
+        return self == dest_provider  # dropbox can only intra move on same account
 
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
