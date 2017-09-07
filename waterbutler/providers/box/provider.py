@@ -217,7 +217,7 @@ class BoxProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        return self._serialize_item(data, dest_path), dest_path.identifier is None
+        return await self._intra_move_copy_metadata(dest_path, data)
 
     async def intra_move(self,  # type: ignore
                          dest_provider: provider.BaseProvider,
@@ -244,7 +244,7 @@ class BoxProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        return self._serialize_item(data, dest_path), dest_path.identifier is None
+        return await self._intra_move_copy_metadata(dest_path, data)
 
     @property
     def default_headers(self) -> dict:
@@ -527,3 +527,16 @@ class BoxProvider(provider.BaseProvider):
         for child in meta:  # type: ignore
             box_path = await self.validate_path(child.path)
             await self.delete(box_path)
+
+    async def _intra_move_copy_metadata(self, path, data: dict) -> BaseBoxMetadata:
+        """Return appropriate metadata from intra_copy/intra_move actions. If `data` respresents
+        a folder, will fetch and include `data`'s children.
+        """
+        created = path.identifier is None
+        path.parts[-1]._id = data['id']
+        if data['type'] == 'file':
+            return self._serialize_item(data, path), created
+        else:
+            folder = self._serialize_item(data, path)
+            folder._children = await self._get_folder_meta(path)
+            return folder, created
