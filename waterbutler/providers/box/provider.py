@@ -217,7 +217,17 @@ class BoxProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        return self._serialize_item(data, dest_path), dest_path.identifier is None
+        return (await self.intra_move_copy_metadata(dest_path, data))
+
+    async def intra_move_copy_metadata(self, path, data: dict) -> BaseBoxMetadata:
+        created = path.identifier is None
+        if data['type'] == 'file':
+            return self._serialize_item(data, path), created
+        else:
+            folder = self._serialize_item(data, path)
+            path.parts[-1]._id = data['id']
+            folder._children = await self._get_folder_meta(path)
+            return folder, created
 
     async def intra_move(self,  # type: ignore
                          dest_provider: provider.BaseProvider,
@@ -244,7 +254,7 @@ class BoxProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        return self._serialize_item(data, dest_path), dest_path.identifier is None
+        return (await self.intra_move_copy_metadata(dest_path, data))
 
     @property
     def default_headers(self) -> dict:
