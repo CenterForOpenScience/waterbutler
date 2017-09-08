@@ -16,10 +16,10 @@ Quickstart for Newman:
 
 | copy_files:
 | copy_folders:
-| move_files:
-| move_folders:
+| crud_cases
 |
-| *copy_files, copy_folders, move_files, and move_folders can all share the same setup and environment.*
+| *copy_files, crud_cases and copy_folders can share the same setup and environment.*
+| *crud_cases only requires the first PID to be valid, and does not use the second one.*
 |
 
 Setup:
@@ -39,10 +39,7 @@ Environment file:
 
 Testing:
 
-1. Import the \*.json collections files from ``tests/postman/collections`` and the sample environment file you just updated into the Postman App.
+1. Import the collection you would like to run from ``tests/postman/collections`` and the environment file you just updated into the Postman App.
+#. **Note:** Importing your environment may give a few errors. It is most likely fine and should still run.
 #. Run the imported collections using the imported environment.
-
-Notes:
-
-1. A failed run may leave files and/or folders behind. You will need to manually remove these before starting another run.
-#. Some provider actions may take longer then the default 15 second timeout. It is recommended that you set the WAIT_TIMEOUT variable in waterbutler/tasks/settings.py to 600 instead to the default 15. Otherwise your tests may fail.
+#. **Note:** A failed run may leave files and/or folders behind. You will need to manually remove these before starting another run.
