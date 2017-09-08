@@ -17,8 +17,8 @@ def revision_fixtures():
 
 
 @pytest.fixture
-def sharing_fixtures():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/sharing.json'), 'r') as fp:
+def intra_copy_fixtures():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/intra_copy.json'), 'r') as fp:
         return json.load(fp)
 
 
