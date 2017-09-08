@@ -1,8 +1,8 @@
 {
 	"variables": [],
 	"info": {
-		"name": "CRUD",
-		"_postman_id": "15b7e4a8-60d0-dfa3-f463-6dd6c4bc04d6",
+		"name": "CRUD tests",
+		"_postman_id": "6d260b95-5b21-6571-53b0-864fcb8c096d",
 		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
 	},
@@ -130,7 +130,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -320,7 +323,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -329,8 +332,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -464,7 +466,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -620,7 +625,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -629,8 +634,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -686,7 +690,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -695,8 +699,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
@@ -885,7 +888,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -1106,7 +1112,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -1135,7 +1144,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -1286,7 +1298,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -1399,7 +1414,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -1428,7 +1446,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -1584,7 +1605,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -1593,8 +1614,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -1846,7 +1866,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -1875,7 +1898,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -2062,7 +2088,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -2071,8 +2097,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -2125,7 +2150,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -2134,8 +2159,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
@@ -2441,7 +2465,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -2470,7 +2497,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -2759,16 +2789,16 @@
 											],
 											"query": [
 												{
-													"key": "kind",
-													"value": "folder",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "kind",
+													"value": "folder"
 												},
 												{
-													"key": "name",
-													"value": "folder1",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "name",
+													"value": "folder1"
 												}
 											],
 											"variable": []
@@ -2776,9 +2806,9 @@
 										"method": "PUT",
 										"header": [
 											{
+												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}",
-												"description": ""
+												"value": "Basic {{basic_auth}}"
 											}
 										],
 										"body": {
@@ -2909,7 +2939,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -2918,8 +2948,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -3079,7 +3108,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -3088,21 +3117,20 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
-													"key": "kind",
-													"value": "folder",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "kind",
+													"value": "folder"
 												},
 												{
-													"key": "name",
-													"value": "folder2",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "name",
+													"value": "folder2"
 												}
 											],
 											"variable": []
@@ -3110,9 +3138,9 @@
 										"method": "PUT",
 										"header": [
 											{
+												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}",
-												"description": ""
+												"value": "Basic {{basic_auth}}"
 											}
 										],
 										"body": {
@@ -3274,7 +3302,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -3283,8 +3311,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -3337,7 +3364,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -3346,8 +3373,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
@@ -3536,7 +3562,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -3557,7 +3586,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -3566,21 +3595,20 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
-													"key": "kind",
-													"value": "folder",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "kind",
+													"value": "folder"
 												},
 												{
-													"key": "name",
-													"value": "folder3",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "name",
+													"value": "folder3"
 												}
 											],
 											"variable": []
@@ -3588,9 +3616,9 @@
 										"method": "PUT",
 										"header": [
 											{
+												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}",
-												"description": ""
+												"value": "Basic {{basic_auth}}"
 											}
 										],
 										"body": {
@@ -3720,7 +3748,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file1_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file1_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -3784,7 +3811,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file1_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file1_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -3824,7 +3850,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -3856,7 +3885,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -4067,7 +4099,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -4084,7 +4119,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file2_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file2_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file2_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -4147,7 +4181,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file2_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file2_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -4187,7 +4220,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -4217,7 +4253,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -4432,7 +4471,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -4441,8 +4480,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -4598,7 +4636,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file3_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file3_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file3_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -4661,7 +4698,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file3_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file3_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -4701,7 +4737,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -4731,7 +4770,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -4977,7 +5019,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -4986,8 +5028,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -5040,7 +5081,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -5049,8 +5090,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
@@ -5260,7 +5300,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file4_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file4_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file4_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -5323,7 +5362,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file4_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file4_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -5363,7 +5401,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -5393,7 +5434,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -5625,10 +5669,10 @@
 											],
 											"query": [
 												{
-													"key": "kind",
-													"value": "folder",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "kind",
+													"value": "folder"
 												}
 											],
 											"variable": []
@@ -5636,9 +5680,9 @@
 										"method": "PUT",
 										"header": [
 											{
+												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}",
-												"description": ""
+												"value": "Basic {{basic_auth}}"
 											}
 										],
 										"body": {
@@ -5735,7 +5779,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -5744,15 +5788,14 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
-													"key": "kind",
-													"value": "folder",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "kind",
+													"value": "folder"
 												}
 											],
 											"variable": []
@@ -5760,9 +5803,9 @@
 										"method": "PUT",
 										"header": [
 											{
+												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}",
-												"description": ""
+												"value": "Basic {{basic_auth}}"
 											}
 										],
 										"body": {
@@ -5893,7 +5936,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -5902,8 +5945,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -5953,7 +5995,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -5962,15 +6004,14 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
-													"key": "kind",
-													"value": "folder",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "kind",
+													"value": "folder"
 												}
 											],
 											"variable": []
@@ -5978,9 +6019,9 @@
 										"method": "PUT",
 										"header": [
 											{
+												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}",
-												"description": ""
+												"value": "Basic {{basic_auth}}"
 											}
 										],
 										"body": {
@@ -6097,10 +6138,10 @@
 											],
 											"query": [
 												{
-													"key": "kind",
-													"value": "file",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "kind",
+													"value": "file"
 												}
 											],
 											"variable": []
@@ -6108,9 +6149,9 @@
 										"method": "PUT",
 										"header": [
 											{
+												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}",
-												"description": ""
+												"value": "Basic {{basic_auth}}"
 											}
 										],
 										"body": {
@@ -6236,7 +6277,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -6270,10 +6314,10 @@
 											],
 											"query": [
 												{
-													"key": "kind",
-													"value": "file",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "kind",
+													"value": "file"
 												}
 											],
 											"variable": []
@@ -6281,9 +6325,9 @@
 										"method": "PUT",
 										"header": [
 											{
+												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}",
-												"description": ""
+												"value": "Basic {{basic_auth}}"
 											}
 										],
 										"body": {
@@ -6414,7 +6458,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -6423,8 +6467,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -6597,10 +6640,10 @@
 											],
 											"query": [
 												{
-													"key": "kind",
-													"value": "file",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "kind",
+													"value": "file"
 												}
 											],
 											"variable": []
@@ -6608,9 +6651,9 @@
 										"method": "PUT",
 										"header": [
 											{
+												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}",
-												"description": ""
+												"value": "Basic {{basic_auth}}"
 											}
 										],
 										"body": {
@@ -6772,7 +6815,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -6781,8 +6824,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -6835,7 +6877,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -6844,8 +6886,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
@@ -7072,10 +7113,10 @@
 											],
 											"query": [
 												{
-													"key": "kind",
-													"value": "file",
+													"description": "",
 													"equals": true,
-													"description": ""
+													"key": "kind",
+													"value": "file"
 												}
 											],
 											"variable": []
@@ -7083,9 +7124,9 @@
 										"method": "PUT",
 										"header": [
 											{
+												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}",
-												"description": ""
+												"value": "Basic {{basic_auth}}"
 											}
 										],
 										"body": {
@@ -7541,7 +7582,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -7550,8 +7591,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -7843,7 +7883,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -7937,7 +7980,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -7946,8 +7989,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -8000,7 +8042,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -8009,8 +8051,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
@@ -8261,7 +8302,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -8383,7 +8427,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -8414,7 +8461,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file1_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file1_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -8478,7 +8524,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file1_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file1_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -8518,7 +8563,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -8550,7 +8598,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -8701,7 +8752,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -8718,7 +8772,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file2_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file2_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file2_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -8781,7 +8834,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file2_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file2_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -8821,7 +8873,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -8851,7 +8906,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -9007,7 +9065,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -9016,8 +9074,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -9173,7 +9230,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file3_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file3_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file3_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -9236,7 +9292,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file3_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file3_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -9276,7 +9331,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -9306,7 +9364,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -9493,7 +9554,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -9502,8 +9563,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -9556,7 +9616,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -9565,8 +9625,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
@@ -9776,7 +9835,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file4_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file4_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file4_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -9839,7 +9897,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file4_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file4_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -9879,7 +9936,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -9909,7 +9969,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -10180,6 +10243,8 @@
 												"exec": [
 													"tests[\"Status code is 201\"] = responseCode.code === 201;",
 													"var data = JSON.parse(responseBody);",
+													"postman.setEnvironmentVariable(\"prov_folder1_path\", data.data.attributes.path);",
+													"postman.setEnvironmentVariable(\"prov_folder1_move_path\", data.data.links.move);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';",
 													"tests[\"confirm name\"] = data.data.attributes.name === 'newfolder1';"
@@ -10192,14 +10257,14 @@
 										"method": "POST",
 										"header": [
 											{
-												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}"
+												"value": "Basic {{basic_auth}}",
+												"description": ""
 											},
 											{
-												"description": "",
 												"key": "Content-Type",
-												"value": "application/json"
+												"value": "application/json",
+												"description": ""
 											}
 										],
 										"body": {
@@ -10314,7 +10379,6 @@
 													"postman.setEnvironmentVariable(\"prov_file2_path\", data.data.attributes.path);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"postman.setEnvironmentVariable(\"file2_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file2_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
 											}
@@ -10376,7 +10440,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file2_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file2_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -10416,7 +10479,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -10496,7 +10562,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -10591,7 +10660,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -10600,8 +10669,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -10680,7 +10748,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -10750,6 +10821,8 @@
 												"exec": [
 													"tests[\"Status code is 201\"] = responseCode.code === 201;",
 													"var data = JSON.parse(responseBody);",
+													"postman.setEnvironmentVariable(\"prov_folder2_path\", data.data.attributes.path);",
+													"postman.setEnvironmentVariable(\"prov_folder2_move_path\", data.data.links.move);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';",
 													"tests[\"confirm name\"] = data.data.attributes.name === 'newfolder2';"
@@ -10762,14 +10835,14 @@
 										"method": "POST",
 										"header": [
 											{
-												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}"
+												"value": "Basic {{basic_auth}}",
+												"description": ""
 											},
 											{
-												"description": "",
 												"key": "Content-Type",
-												"value": "application/json"
+												"value": "application/json",
+												"description": ""
 											}
 										],
 										"body": {
@@ -10862,7 +10935,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -10879,7 +10955,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file3_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file3_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file3_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -10942,7 +11017,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file2_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file2_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -10982,7 +11056,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -11171,7 +11248,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -11180,8 +11257,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -11235,7 +11311,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -11244,8 +11320,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
@@ -11324,7 +11399,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -11375,7 +11453,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -11427,7 +11508,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -11442,6 +11526,8 @@
 												"exec": [
 													"tests[\"Status code is 201\"] = responseCode.code === 201;",
 													"var data = JSON.parse(responseBody);",
+													"postman.setEnvironmentVariable(\"prov_folder3_path\", data.data.attributes.path);",
+													"postman.setEnvironmentVariable(\"prov_folder3_move_path\", data.data.links.move);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'folder';",
 													"tests[\"confirm name\"] = data.data.attributes.name === 'newfolder3';"
@@ -11454,14 +11540,14 @@
 										"method": "POST",
 										"header": [
 											{
-												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}"
+												"value": "Basic {{basic_auth}}",
+												"description": ""
 											},
 											{
-												"description": "",
 												"key": "Content-Type",
-												"value": "application/json"
+												"value": "application/json",
+												"description": ""
 											}
 										],
 										"body": {
@@ -11555,7 +11641,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -11572,7 +11661,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file4_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file4_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file4_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -11635,7 +11723,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file4_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file4_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -11675,7 +11762,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -11798,7 +11888,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -11829,7 +11922,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file1_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file1_hash\", data.data.attributes.extra.hashes.sha256);",
 													"postman.setEnvironmentVariable(\"prov_file1_upload_path\", data.data.links.upload);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
@@ -11894,7 +11986,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file1_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 === environment.file1_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -11934,7 +12025,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -11966,7 +12060,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -11982,9 +12079,10 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"file1_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file1_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
-													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+													"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
+													"postman.setEnvironmentVariable(\"prov_file1_upload_path\", data.data.links.upload);"
 												]
 											}
 										}
@@ -11994,9 +12092,9 @@
 										"method": "PUT",
 										"header": [
 											{
-												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}"
+												"value": "Basic {{basic_auth}}",
+												"description": ""
 											}
 										],
 										"body": {
@@ -12018,7 +12116,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file1_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 === environment.file1_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -12058,7 +12155,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -12089,7 +12189,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -12263,7 +12366,6 @@
 													"postman.setEnvironmentVariable(\"prov_file2_path\", data.data.attributes.path);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"postman.setEnvironmentVariable(\"file2_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file2_hash\", data.data.attributes.extra.hashes.sha256);",
 													"postman.setEnvironmentVariable(\"prov_file2_upload_path\", data.data.links.upload);",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -12326,7 +12428,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file2_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 === environment.file2_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -12366,7 +12467,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -12398,7 +12502,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -12414,9 +12521,10 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"file2_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file2_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
-													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+													"postman.setEnvironmentVariable(\"prov_file2_path\", data.data.attributes.path);",
+													"postman.setEnvironmentVariable(\"prov_file2_upload_path\", data.data.links.upload);"
 												]
 											}
 										}
@@ -12426,9 +12534,9 @@
 										"method": "PUT",
 										"header": [
 											{
-												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}"
+												"value": "Basic {{basic_auth}}",
+												"description": ""
 											}
 										],
 										"body": {
@@ -12450,7 +12558,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file2_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 === environment.file2_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -12490,7 +12597,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -12521,7 +12631,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -12679,7 +12792,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -12688,8 +12801,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -12845,7 +12957,6 @@
 													"postman.setEnvironmentVariable(\"prov_file3_path\", data.data.attributes.path);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"postman.setEnvironmentVariable(\"file3_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file3_hash\", data.data.attributes.extra.hashes.sha256);",
 													"postman.setEnvironmentVariable(\"prov_file3_upload_path\", data.data.links.upload);",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -12908,7 +13019,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file3_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file3_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -12948,7 +13058,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -12980,7 +13093,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -12996,9 +13112,10 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"file3_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file3_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
-													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+													"postman.setEnvironmentVariable(\"prov_file3_path\", data.data.attributes.path);",
+													"postman.setEnvironmentVariable(\"prov_file3_upload_path\", data.data.links.upload);"
 												]
 											}
 										}
@@ -13008,9 +13125,9 @@
 										"method": "PUT",
 										"header": [
 											{
-												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}"
+												"value": "Basic {{basic_auth}}",
+												"description": ""
 											}
 										],
 										"body": {
@@ -13032,7 +13149,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file3_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 === environment.file3_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -13072,7 +13188,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -13103,7 +13222,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -13290,7 +13412,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -13299,8 +13421,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -13353,7 +13474,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -13362,8 +13483,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
@@ -13442,7 +13562,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -13492,7 +13615,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -13544,7 +13670,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -13561,7 +13690,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file4_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file4_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file4_hash\", data.data.attributes.extra.hashes.sha256);",
 													"postman.setEnvironmentVariable(\"prov_file4_upload_path\", data.data.links.upload);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
@@ -13625,7 +13753,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file4_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file4_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -13665,7 +13792,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -13697,7 +13827,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -13713,9 +13846,10 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"file4_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file4_hash\", data.data.attributes.extra.hashes.sha256);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
-													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
+													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
+													"postman.setEnvironmentVariable(\"prov_file4_path\", data.data.attributes.path);",
+													"postman.setEnvironmentVariable(\"prov_file4_upload_path\", data.data.links.upload);"
 												]
 											}
 										}
@@ -13725,9 +13859,9 @@
 										"method": "PUT",
 										"header": [
 											{
-												"description": "",
 												"key": "Authorization",
-												"value": "Basic {{basic_auth}}"
+												"value": "Basic {{basic_auth}}",
+												"description": ""
 											}
 										],
 										"body": {
@@ -13749,7 +13883,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file4_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 === environment.file4_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -13789,7 +13922,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -13820,7 +13956,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -14157,7 +14296,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -14282,7 +14424,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -14291,8 +14433,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -14371,7 +14512,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -14507,7 +14651,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -14663,7 +14810,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -14672,8 +14819,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -14726,7 +14872,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -14735,8 +14881,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
@@ -14815,7 +14960,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -14865,7 +15013,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -14917,7 +15068,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -14998,7 +15152,10 @@
 												"value": "Basic {{basic_auth}}"
 											}
 										],
-										"body": {},
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
 										"description": ""
 									},
 									"response": []
@@ -15122,7 +15279,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file1_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file1_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file1_hash\", data.data.attributes.extra.hashes.sha256);",
 													"postman.setEnvironmentVariable(\"prov_file1_upload_path\", data.data.links.upload);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
@@ -15187,7 +15343,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file1_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 === environment.file1_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -15523,7 +15678,6 @@
 													"postman.setEnvironmentVariable(\"prov_file2_path\", data.data.attributes.path);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"postman.setEnvironmentVariable(\"file2_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file2_hash\", data.data.attributes.extra.hashes.sha256);",
 													"postman.setEnvironmentVariable(\"prov_file2_upload_path\", data.data.links.upload);",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -15586,7 +15740,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file2_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 === environment.file2_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -15906,7 +16059,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -15915,8 +16068,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -16072,7 +16224,6 @@
 													"postman.setEnvironmentVariable(\"prov_file3_path\", data.data.attributes.path);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"postman.setEnvironmentVariable(\"file3_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file3_hash\", data.data.attributes.extra.hashes.sha256);",
 													"postman.setEnvironmentVariable(\"prov_file3_upload_path\", data.data.links.upload);",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
 												]
@@ -16135,7 +16286,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file3_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file3_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
@@ -16484,7 +16634,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}/?kind=folder&name=folder2",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder1_path}}?kind=folder&name=folder2",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -16493,8 +16643,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder1_path}}",
-												""
+												"{{provider}}{{prov_folder1_path}}"
 											],
 											"query": [
 												{
@@ -16547,7 +16696,7 @@
 									],
 									"request": {
 										"url": {
-											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}/?kind=folder&name=folder3",
+											"raw": "{{protocol}}{{host}}{{port}}/v1/resources/{{PID}}/providers/{{provider}}{{prov_folder2_path}}?kind=folder&name=folder3",
 											"host": [
 												"{{protocol}}{{host}}{{port}}"
 											],
@@ -16556,8 +16705,7 @@
 												"resources",
 												"{{PID}}",
 												"providers",
-												"{{provider}}{{prov_folder2_path}}",
-												""
+												"{{provider}}{{prov_folder2_path}}"
 											],
 											"query": [
 												{
@@ -16764,7 +16912,6 @@
 													"var data = JSON.parse(responseBody);",
 													"postman.setEnvironmentVariable(\"prov_file4_path\", data.data.attributes.path);",
 													"postman.setEnvironmentVariable(\"file4_size\", data.data.attributes.size);",
-													"postman.setEnvironmentVariable(\"file4_hash\", data.data.attributes.extra.hashes.sha256);",
 													"postman.setEnvironmentVariable(\"prov_file4_upload_path\", data.data.links.upload);",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';"
@@ -16828,7 +16975,6 @@
 													"tests[\"Status code is 200\"] = responseCode.code === 200;",
 													"var data = JSON.parse(responseBody);",
 													"tests[\"confirm size\"] = data.data.attributes.size === parseInt(environment.file4_size);",
-													"tests[\"confirm sha256 hash\"] = data.data.attributes.extra.hashes.sha256 = environment.file4_hash",
 													"tests[\"confirm resource\"] = data.data.attributes.resource === environment.PID;",
 													"tests[\"confirm kind\"] = data.data.attributes.kind === 'file';",
 													"",
