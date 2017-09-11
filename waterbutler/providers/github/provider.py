@@ -72,14 +72,61 @@ class GitHubProvider(provider.BaseProvider):
         self.repo = self.settings['repo']
         self.metrics.add('repo', {'repo': self.repo, 'owner': self.owner})
 
+    async def _get_comparison(self, ref, ref2):
+        """
+        Compares two 'refs' (branch names or commits shas) and gives you lots of potentially useful
+        metadata about there relationship.
+
+        :param ref: a branch name or commit sha
+        :param ref2: a branch name or commit sha
+        :return dict: json metadata of the comparison.
+        """
+
+        resp = await self.make_request('GET', self.build_repo_url('compare', '{}...{}'.format(ref, ref2)))
+        return await resp.json()
+
+    async def _fetch_branch_from_commit_sha(self, commit_sha):
+        """
+        This will give you the metadata for the branch a particular commit is/was on.
+
+        :param commit_sha:
+        :return dict: this the json metadata for the branch the commit is/was on.
+        """
+
+        resp = await self.make_request('GET', self.build_repo_url('branches'))
+        branches = await resp.json()
+        for branch in branches:
+            comparison = await self._get_comparison(branch['name'], commit_sha)
+            if comparison['status'] in ('behind', 'identical'):
+                return branch
+
+        raise exceptions.NotFoundError(str(commit_sha))
+
     async def validate_v1_path(self, path, **kwargs):
+        """
+        There are two methods of path validation used here, one for paths with query params that
+        give branch name and one for commit shas or 'refs'. This is necessary because revisions
+        cannot be validated strictly by branch once a revision is made the old tree is unstuck from
+        the branch and cannot be found by iterating through every tree in the current branch
+        because the old data isn't connected to the branch anymore, it only exsists in some prior
+        commit. So to validate revisions we compare the commit sha to all the branches in the repo,
+        if it's status is 'behind' on a branch that's where it's a revision, we then make sure the path
+        still exists in the current tree and which gives us all the infomation we need for a fully
+        validated path.
+
+        :param path: The path given to be validated
+        :param kwargs: query params give in the url
+        :return:
+        """
         if not getattr(self, '_repo', None):
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
-        branch_ref, ref_from = None, None
+        if isinstance(kwargs.get('ref'), list) or isinstance(kwargs.get('branch'), list):
+            raise exceptions.InvalidParameters('Only one ref or branch may be given.')
+
         if kwargs.get('ref'):
-            branch_ref = kwargs.get('ref')
+            branch_ref = (await self._fetch_branch_from_commit_sha(kwargs.get('ref')))['name']
             ref_from = 'query_ref'
         elif kwargs.get('branch'):
             branch_ref = kwargs.get('branch')
@@ -87,8 +134,6 @@ class GitHubProvider(provider.BaseProvider):
         else:
             branch_ref = self.default_branch
             ref_from = 'default_branch'
-        if isinstance(branch_ref, list):
-            raise exceptions.InvalidParameters('Only one ref or branch may be given.')
         self.metrics.add('branch_ref_from', ref_from)
 
         if path == '/':
