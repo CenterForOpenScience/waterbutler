@@ -2,6 +2,7 @@ import os
 import json
 import typing
 import aiohttp
+import hashlib
 from http import HTTPStatus
 
 from waterbutler.core import streams
@@ -290,6 +291,8 @@ class BoxProvider(provider.BaseProvider):
             path, _ = await self.handle_name_conflict(path, conflict=conflict, kind='folder')
             path._parts[-1]._id = None
 
+        stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
+
         data_stream = streams.FormDataStream(
             attributes=json.dumps({
                 'name': path.name,
@@ -311,9 +314,13 @@ class BoxProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
+        entry = data['entries'][0]
+        if stream.writers['sha1'].hexdigest != entry['sha1']:
+            raise exceptions.UploadChecksumMismatchError()
+
         created = path.identifier is None
-        path._parts[-1]._id = data['entries'][0]['id']
-        return BoxFileMetadata(data['entries'][0], path), created
+        path._parts[-1]._id = entry['id']
+        return BoxFileMetadata(entry, path), created
 
     async def delete(self,  # type: ignore
                      path: wb_path.WaterButlerPath,

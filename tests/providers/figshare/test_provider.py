@@ -13,6 +13,8 @@ from waterbutler.providers.figshare import provider
 from waterbutler.providers.figshare.settings import PRIVATE_IDENTIFIER, MAX_PAGE_SIZE
 
 
+EMPTY_MD5 = 'd41d8cd98f00b204e9800998ecf8427e'  # hack to work around bug in aiohttpretty
+
 @pytest.fixture
 def auth():
     return {
@@ -284,20 +286,21 @@ def get_file_metadata():
         "upload_token": "c9d1a465-f3f6-402c-8106-db3493942303",
         "upload_url": "https://fup100310.figshare.com/upload/c9d1a465-f3f6-402c-8106-db3493942303",
         "id": 6530715,
-        "size": 7}
+        "size": 6}
 
 @pytest.fixture
 def get_upload_metadata():
     return {
         "token": "c9d1a465-f3f6-402c-8106-db3493942303",
-        "md5": "",
-        "size": 1071709,
+        "md5": EMPTY_MD5,
+        # "md5": "13365d367683301ee26d9d76d25c518b",
+        "size": 6,
         "name": "6530715/barricade.gif",
         "status": "PENDING",
         "parts": [{
             "partNo": 1,
             "startOffset": 0,
-            "endOffset": 6,
+            "endOffset": 5,
             "status": "PENDING",
             "locked": False}]}
 
@@ -329,12 +332,78 @@ def upload_article_metadata():
             "viewer_type": "",
             "preview_state": "preview_not_supported",
             "download_url": "https://ndownloader.figshare.com/files/6530715",
-            "supplied_md5": "b3e656f8b0828a31f3ed396a1c868786",
-            "computed_md5": "b3e656f8b0828a31f3ed396a1c868786",
+            "supplied_md5": EMPTY_MD5,
+            "computed_md5": EMPTY_MD5,
+            # "supplied_md5": "13365d367683301ee26d9d76d25c518b",
+            # "computed_md5": "13365d367683301ee26d9d76d25c518b",
             "upload_token": "878068bf-8cdb-40c9-bcf4-5d8065ac2f7d",
             "upload_url": "",
             "id": 6530715,
-            "size": 7
+            "size": 6
+        }],
+        "description": "",
+        "tags": [],
+        "created_date": "2016-10-18T12:55:44Z",
+        "is_active": True,
+        "authors": [{
+            "url_name": "_",
+            "is_active": True,
+            "id": 2665435,
+            "full_name": "Thomas Baxter",
+            "orcid_id": ""
+        }],
+        "is_public": False,
+        "categories": [],
+        "modified_date": "2016-10-18T12:56:27Z",
+        "is_confidential": False,
+        "doi": "",
+        "license": {
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "name": "CC-BY",
+            "value": 1
+        },
+        "has_linked_file": False,
+        "url": "https://api.figshare.com/v2/account/projects/13423/articles/4037952",
+        "resource_title": None,
+        "status": "draft",
+        "published_date": None,
+        "is_metadata_record": False
+    }
+
+@pytest.fixture
+def checksum_mismatch_article_metadata():
+    return {
+        "group_resource_id": None,
+        "embargo_date": None,
+        "citation": "Baxter, Thomas (): barricade.gif. figshare.\n \n Retrieved: 19 20, Oct 19, 2016 (GMT)",
+        "embargo_reason": "",
+        "references": [],
+        "id": 4055568,
+        "custom_fields": [],
+        "size": 0,
+        "metadata_reason": "",
+        "funding": "",
+        "figshare_url": "https://figshare.com/articles/_/4037952",
+        "embargo_type": None,
+        "title": "barricade.gif",
+        "defined_type": 3,
+        "is_embargoed": False,
+        "version": 0,
+        "resource_doi": None,
+        "confidential_reason": "",
+        "files": [{
+            "status": "available",
+            "is_link_only": False,
+            "name": "barricade.gif",
+            "viewer_type": "",
+            "preview_state": "preview_not_supported",
+            "download_url": "https://ndownloader.figshare.com/files/6530715",
+            "supplied_md5": "super-duper-bogus",
+            "computed_md5": "super-duper-bogus",
+            "upload_token": "878068bf-8cdb-40c9-bcf4-5d8065ac2f7d",
+            "upload_url": "",
+            "id": 6530715,
+            "size": 6
         }],
         "description": "",
         "tags": [],
@@ -393,8 +462,74 @@ def upload_folder_article_metadata():
             "viewer_type": "",
             "preview_state": "preview_not_supported",
             "download_url": "https://ndownloader.figshare.com/files/6530715",
-            "supplied_md5": "b3e656f8b0828a31f3ed396a1c868786",
-            "computed_md5": "b3e656f8b0828a31f3ed396a1c868786",
+            "supplied_md5": EMPTY_MD5,
+            "computed_md5": EMPTY_MD5,
+            # "supplied_md5": "13365d367683301ee26d9d76d25c518b",
+            # "computed_md5": "13365d367683301ee26d9d76d25c518b",
+            "upload_token": "878068bf-8cdb-40c9-bcf4-5d8065ac2f7d",
+            "upload_url": "",
+            "id": 6530715,
+            "size": 7
+        }],
+        "description": "",
+        "tags": [],
+        "created_date": "2016-10-18T12:55:44Z",
+        "is_active": True,
+        "authors": [{
+            "url_name": "_",
+            "is_active": True,
+            "id": 2665435,
+            "full_name": "Thomas Baxter",
+            "orcid_id": ""
+        }],
+        "is_public": False,
+        "categories": [],
+        "modified_date": "2016-10-18T12:56:27Z",
+        "is_confidential": False,
+        "doi": "",
+        "license": {
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "name": "CC-BY",
+            "value": 1
+        },
+        "has_linked_file": False,
+        "url": "https://api.figshare.com/v2/account/projects/13423/articles/4040019",
+        "resource_title": None,
+        "status": "draft",
+        "published_date": None,
+        "is_metadata_record": False
+    }
+
+@pytest.fixture
+def checksum_mismatch_folder_article_metadata():
+    return {
+        "group_resource_id": None,
+        "embargo_date": None,
+        "citation": "Baxter, Thomas (): barricade.gif. figshare.\n \n Retrieved: 19 20, Oct 19, 2016 (GMT)",
+        "embargo_reason": "",
+        "references": [],
+        "id": 4040019,
+        "custom_fields": [],
+        "size": 0,
+        "metadata_reason": "",
+        "funding": "",
+        "figshare_url": "https://figshare.com/articles/_/4040019",
+        "embargo_type": None,
+        "title": "barricade.gif",
+        "defined_type": 4,
+        "is_embargoed": False,
+        "version": 0,
+        "resource_doi": None,
+        "confidential_reason": "",
+        "files": [{
+            "status": "available",
+            "is_link_only": False,
+            "name": "barricade.gif",
+            "viewer_type": "",
+            "preview_state": "preview_not_supported",
+            "download_url": "https://ndownloader.figshare.com/files/6530715",
+            "supplied_md5": "mismatch-invalid",
+            "computed_md5": "mismatch-invalid",
             "upload_token": "878068bf-8cdb-40c9-bcf4-5d8065ac2f7d",
             "upload_url": "",
             "id": 6530715,
@@ -564,6 +699,7 @@ class TestMetadata:
         assert result.article_name == article_name
         assert result.size == folder_file_metadata['size']
         assert result.is_public == (PRIVATE_IDENTIFIER not in folder_article_metadata['url'])
+        assert result.extra['hashes']['md5'] == '03dee7cf60f17a8453ccd2f51cbbbd86'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -603,6 +739,11 @@ class TestMetadata:
 
 
 class TestCRUD:
+    """Due to a bug in aiohttpretty, the file stream is not being read from on file upload for the
+    Figshare provider.  Because the file stream isn't read, the stream hash calculator never gets
+    any data, and the computed md5sum is always that of the empty string.  To work around this, the
+    fixtures currently include the empty md5 in the metadata.  Once aiohttpretty is fixed, the
+    metadata can be reverted to deliver the actual content hash."""
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -639,6 +780,7 @@ class TestCRUD:
         aiohttpretty.register_uri('POST', file_url, status=202)
         aiohttpretty.register_json_uri('GET', get_article_url, body=upload_article_metadata)
 
+        # md5 hash calculation is being hacked around.  see test class docstring
         result, created = await project_provider.upload(file_stream, path)
         expected = metadata.FigshareFileMetadata(
             upload_article_metadata,
@@ -654,6 +796,60 @@ class TestCRUD:
         assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
         assert aiohttpretty.has_call(method='POST', uri=create_file_url)
         assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_project_upload_checksum_mismatch(self, project_provider, list_project_articles,
+                                                    create_article_metadata, create_file_metadata,
+                                                    get_file_metadata, get_upload_metadata,
+                                                    file_stream,
+                                                    checksum_mismatch_article_metadata):
+        file_name = 'barricade.gif'
+
+        root_parts = project_provider.root_path_parts
+        list_articles_url = project_provider.build_url(False, *root_parts, 'articles')
+        validate_article_url = project_provider.build_url(False, *root_parts, 'articles', file_name)
+
+        aiohttpretty.register_json_uri('GET', list_articles_url, body=list_project_articles,
+                                       params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
+        aiohttpretty.register_json_uri('GET', list_articles_url, body=[],
+                                       params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
+        aiohttpretty.register_uri('GET', validate_article_url, status=404)
+        path = await project_provider.validate_path('/' + file_name)
+
+        article_id = str(checksum_mismatch_article_metadata['id'])
+        create_article_url = project_provider.build_url(False, *root_parts, 'articles')
+        create_file_url = project_provider.build_url(False, 'articles', article_id, 'files')
+        file_url = project_provider.build_url(False, 'articles', article_id, 'files',
+                                              str(get_file_metadata['id']))
+        get_article_url = project_provider.build_url(False, *root_parts, 'articles', article_id)
+        upload_url = get_file_metadata['upload_url']
+
+        aiohttpretty.register_json_uri('POST', create_article_url, body=create_article_metadata, status=201)
+        aiohttpretty.register_json_uri('POST', create_file_url, body=create_file_metadata, status=201)
+        aiohttpretty.register_json_uri('GET', file_url, body=get_file_metadata)
+        aiohttpretty.register_json_uri('GET', upload_url, body=get_upload_metadata)
+        aiohttpretty.register_uri('PUT', '{}/1'.format(upload_url), status=200)
+        aiohttpretty.register_uri('POST', file_url, status=202)
+        aiohttpretty.register_json_uri('GET', get_article_url,
+                                       body=checksum_mismatch_article_metadata)
+
+        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+             await project_provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(
+            method='POST',
+            uri=create_article_url,
+            data=json.dumps({
+                'title': 'barricade.gif',
+            })
+        )
+        assert aiohttpretty.has_call(method='POST', uri=create_file_url)
+        assert aiohttpretty.has_call(method='GET', uri=file_url)
+        assert aiohttpretty.has_call(method='GET', uri=upload_url)
+        assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
+        assert aiohttpretty.has_call(method='POST', uri=file_url)
+        assert aiohttpretty.has_call(method='GET', uri=get_article_url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -692,6 +888,7 @@ class TestCRUD:
         aiohttpretty.register_uri('POST', file_url, status=202)
         aiohttpretty.register_json_uri('GET', get_article_url, body=upload_folder_article_metadata)
 
+        # md5 hash calculation is being hacked around.  see test class docstring
         result, created = await project_provider.upload(file_stream, path)
         expected = metadata.FigshareFileMetadata(
             upload_folder_article_metadata,
@@ -727,6 +924,7 @@ class TestCRUD:
         aiohttpretty.register_uri('POST', file_url, status=202)
         aiohttpretty.register_json_uri('GET', get_article_url, body=upload_folder_article_metadata)
 
+        # md5 hash calculation is being hacked around.  see test class docstring
         result, created = await article_provider.upload(file_stream, path)
         expected = metadata.FigshareFileMetadata(
             upload_folder_article_metadata,
@@ -735,6 +933,45 @@ class TestCRUD:
         assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
         assert aiohttpretty.has_call(method='POST', uri=create_file_url)
         assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_article_upload_checksum_mismatch(self, file_stream, article_provider,
+                                                    checksum_mismatch_folder_article_metadata,
+                                                    get_file_metadata, create_file_metadata,
+                                                    get_upload_metadata):
+
+        file_name = 'barricade.gif'
+        file_id = str(get_file_metadata['id'])
+        root_parts = article_provider.root_path_parts
+
+        validate_file_url = article_provider.build_url(False, *root_parts, 'files', file_name)
+
+        aiohttpretty.register_uri('GET', validate_file_url, status=404)
+        path = await article_provider.validate_path('/' + file_name)
+
+        create_file_url = article_provider.build_url(False, *root_parts, 'files')
+        file_url = article_provider.build_url(False, *root_parts, 'files', file_id)
+        get_article_url = article_provider.build_url(False, *root_parts)
+        upload_url = get_file_metadata['upload_url']
+
+        aiohttpretty.register_json_uri('POST', create_file_url, body=create_file_metadata, status=201)
+        aiohttpretty.register_json_uri('GET', file_url, body=get_file_metadata)
+        aiohttpretty.register_json_uri('GET', get_file_metadata['upload_url'], body=get_upload_metadata)
+        aiohttpretty.register_uri('PUT', '{}/1'.format(upload_url), status=200)
+        aiohttpretty.register_uri('POST', file_url, status=202)
+        aiohttpretty.register_json_uri('GET', get_article_url,
+                                       body=checksum_mismatch_folder_article_metadata)
+
+        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+            await article_provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='POST', uri=create_file_url)
+        assert aiohttpretty.has_call(method='GET', uri=file_url)
+        assert aiohttpretty.has_call(method='GET', uri=get_file_metadata['upload_url'])
+        assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
+        assert aiohttpretty.has_call(method='POST', uri=file_url)
+        assert aiohttpretty.has_call(method='GET', uri=get_article_url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

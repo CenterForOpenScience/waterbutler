@@ -16,7 +16,8 @@
             "client_modified": "2016-06-13T19:08:17Z",
             "server_modified": "2016-06-13T19:08:17Z",
             "rev": "38af1b183490",
-            "size": 124778}
+            "size": 124778,
+            "content_hash": "woof-woof"}
         ],
         "cursor": "AAGFHXqUgavlrBd2TBDxKNdV2rnu48QeThbxccGEvaSwiAAIt5-iho9P8EJIIVdSh6RKRNHq-An2lyyjJ34yCOhyBcIa6Gh6tYOko_okZgZTP_Ga0-kqHtm1HaQOQNdOmPPoNwiXB_rflzSLwq6AXi_F",
         "has_more": false
@@ -30,7 +31,8 @@
         "client_modified": "2016-06-13T19:08:17Z",
         "server_modified": "2016-06-13T19:08:17Z",
         "rev": "2ba1017a0c1e",
-        "size": 124778
+        "size": 124778,
+        "content_hash": "meow"
     },
 
     "folder_with_subdirectory_metadata": {

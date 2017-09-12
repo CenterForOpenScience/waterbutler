@@ -109,6 +109,13 @@ class UploadError(ProviderError):
     pass
 
 
+class UploadChecksumMismatchError(ProviderError):
+    def __init__(self, message=None, code=500):
+        if message is None:
+            message = "Calculated and received hashes don't match"
+        super().__init__(message, code=code)
+
+
 class MetadataError(ProviderError):
     pass
 

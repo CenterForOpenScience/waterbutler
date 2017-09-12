@@ -184,7 +184,7 @@
                     "starred": false
                 },
                 "version": "143933",
-                "md5Checksum": "43c5a01efeaea6bfd0433fa516a0d71f",
+                "md5Checksum": "6b50249f91258397fc5cb7d5a4127e15",
                 "userPermission": {
                     "type": "user",
                     "kind": "drive#permission",
@@ -286,6 +286,82 @@
 
     "revalidate_path_folder_metadata_1": {"items": [{"id": "0BwZjL1zsLzNbNG5zVzJFYXF4bm8"}]},
 
-    "revalidate_path_folder_metadata_2": {"title": "inception folder yo", "id": "0BwZjL1zsLzNbNG5zVzJFYXF4bm8", "mimeType": "application/vnd.google-apps.folder"}
+    "revalidate_path_folder_metadata_2": {"title": "inception folder yo", "id": "0BwZjL1zsLzNbNG5zVzJFYXF4bm8", "mimeType": "application/vnd.google-apps.folder"},
 
+    "checksum_mismatch_metadata": {
+        "etag": "\"zWM2D6PBtLRQKuDNbaQNSNEy5BE/MTQyMDEzMTI5ODkyOQ\"",
+        "owners": [
+            {
+                "picture": {
+                    "url": "https://lh3.googleusercontent.com/-ndG-yHyqonM/AAAAAAAAAAI/AAAAAAAAADs/wUR8YhDe3vY/s64/photo.jpg"
+                },
+                "kind": "drive#user",
+                "permissionId": "07992110234966807597",
+                "displayName": "Joshua Carp",
+                "emailAddress": "jm.carp@gmail.com",
+                "isAuthenticatedUser": true
+            }
+        ],
+        "parents": [
+            {
+                "parentLink": "https://www.googleapis.com/drive/v2/files/0ABtc_QrXguAwUk9PVA",
+                "isRoot": true,
+                "kind": "drive#parentReference",
+                "id": "0ABtc_QrXguAwUk9PVA",
+                "selfLink": "https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/parents/0ABtc_QrXguAwUk9PVA"
+            }
+        ],
+        "ownerNames": [
+            "Joshua Carp"
+        ],
+        "downloadUrl": "https://doc-0g-5k-docs.googleusercontent.com/docs/securesc/6l6ti67c1gnej8b4rr55nfimce1282lr/0sr833dlhh6p7ukpt3f4940se41ornad/1424880000000/07992110234966807597/07992110234966807597/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR?e=download&gd=true",
+        "writersCanShare": true,
+        "title": "PART_1420130849837.pdf",
+        "editable": true,
+        "lastModifyingUser": {
+            "picture": {
+                "url": "https://lh3.googleusercontent.com/-ndG-yHyqonM/AAAAAAAAAAI/AAAAAAAAADs/wUR8YhDe3vY/s64/photo.jpg"
+            },
+            "kind": "drive#user",
+            "permissionId": "07992110234966807597",
+            "displayName": "Joshua Carp",
+            "emailAddress": "jm.carp@gmail.com",
+            "isAuthenticatedUser": true
+        },
+        "quotaBytesUsed": "918668",
+        "mimeType": "application/pdf",
+        "createdDate": "2015-01-01T16:54:58.929Z",
+        "alternateLink": "https://docs.google.com/file/d/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/edit?usp=drivesdk",
+        "headRevisionId": "1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA",
+        "id": "1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR",
+        "modifiedDate": "2015-01-01T16:54:58.929Z",
+        "kind": "drive#file",
+        "fileExtension": "pdf",
+        "iconLink": "https://ssl.gstatic.com/docs/doclist/images/icon_11_pdf_list.png",
+        "appDataContents": false,
+        "lastModifyingUserName": "Joshua Carp",
+        "webContentLink": "https://docs.google.com/uc?id=1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR&export=download",
+        "selfLink": "https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR",
+        "copyable": true,
+        "fileSize": "918668",
+        "labels": {
+            "viewed": false,
+            "trashed": false,
+            "restricted": false,
+            "hidden": false,
+            "starred": false
+        },
+        "version": "143933",
+        "md5Checksum": "nopenopenopenopenope",
+        "userPermission": {
+            "type": "user",
+            "kind": "drive#permission",
+            "etag": "\"zWM2D6PBtLRQKuDNbaQNSNEy5BE/2RVviHZ60Y5d9plBp5dBdmj2r70\"",
+            "id": "me",
+            "selfLink": "https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/permissions/me",
+            "role": "owner"
+        },
+        "shared": false,
+        "markedViewedByMeDate": "1970-01-01T00:00:00.000Z"
+    }
 }
