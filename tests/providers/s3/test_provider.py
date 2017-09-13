@@ -108,6 +108,31 @@ def folder_metadata():
             </CommonPrefixes>
         </ListBucketResult>'''
 
+@pytest.fixture
+def folder_single_thing_metadata():
+    return b'''<?xml version="1.0" encoding="UTF-8"?>
+        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <Name>bucket</Name>
+            <Prefix/>
+            <Marker/>
+            <MaxKeys>1000</MaxKeys>
+            <IsTruncated>false</IsTruncated>
+            <Contents>
+                <Key>my-image.jpg</Key>
+                <LastModified>2009-10-12T17:50:30.000Z</LastModified>
+                <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
+                <Size>434234</Size>
+                <StorageClass>STANDARD</StorageClass>
+                <Owner>
+                    <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
+                    <DisplayName>mtd@amazon.com</DisplayName>
+                </Owner>
+            </Contents>
+            <CommonPrefixes>
+                <Prefix>   photos/</Prefix>
+            </CommonPrefixes>
+        </ListBucketResult>'''
+
 
 @pytest.fixture
 def just_a_folder_metadata():
@@ -252,6 +277,32 @@ def version_metadata():
         </Version>
     </ListVersionsResult>'''
 
+@pytest.fixture
+def single_version_metadata():
+    return b'''<?xml version="1.0" encoding="UTF-8"?>
+
+    <ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01">
+        <Name>bucket</Name>
+        <Prefix>my</Prefix>
+        <KeyMarker/>
+        <VersionIdMarker/>
+        <MaxKeys>5</MaxKeys>
+        <IsTruncated>false</IsTruncated>
+        <Version>
+            <Key>single-version.file</Key>
+            <VersionId>3/L4kqtJl40Nr8X8gdRQBpUMLUo</VersionId>
+            <IsLatest>true</IsLatest>
+            <LastModified>2009-10-12T17:50:30.000Z</LastModified>
+            <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
+            <Size>434234</Size>
+            <StorageClass>STANDARD</StorageClass>
+            <Owner>
+                <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
+                <DisplayName>mtd@amazon.com</DisplayName>
+            </Owner>
+        </Version>
+    </ListVersionsResult>'''
+
 def location_response(location):
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -347,6 +398,8 @@ class TestValidatePath:
         bad_metadata_url = provider.bucket.generate_url(100)
         aiohttpretty.register_uri('HEAD', good_metadata_url, headers=file_metadata)
         aiohttpretty.register_uri('GET', bad_metadata_url, params=params, status=404)
+
+        assert WaterButlerPath('/') == await provider.validate_v1_path('/')
 
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + file_path)
@@ -534,6 +587,38 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_delete_comfirm_delete(self, provider, contents_and_self, mock_time):
+        path = WaterButlerPath('/')
+
+        query_url = provider.bucket.generate_url(100, 'GET')
+        aiohttpretty.register_uri(
+            'GET',
+            query_url,
+            params={'prefix': ''},
+            body=contents_and_self,
+            status=200,
+        )
+
+        (payload, headers) = bulk_delete_body(
+            ['thisfolder/', 'thisfolder/item1', 'thisfolder/item2']
+        )
+        delete_url = provider.bucket.generate_url(
+            100,
+            'POST',
+            query_parameters={'delete': ''},
+            headers=headers,
+        )
+        aiohttpretty.register_uri('POST', delete_url, status=204)
+
+        with pytest.raises(exceptions.DeleteError):
+            await provider.delete(path)
+
+        await provider.delete(path, confirm_delete=1)
+
+        assert aiohttpretty.has_call(method='POST', uri=delete_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_folder_delete(self, provider, contents_and_self, mock_time):
         path = WaterButlerPath('/some-folder/')
 
@@ -564,6 +649,59 @@ class TestCRUD:
 
         assert aiohttpretty.has_call(method='GET', uri=query_url, params=params)
         assert aiohttpretty.has_call(method='POST', uri=delete_url)
+
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_single_thing_folder_delete(self, provider, folder_single_thing_metadata, mock_time):
+        path = WaterButlerPath('/single-thing-folder/')
+
+        params = {'prefix': 'single-thing-folder/'}
+        query_url = provider.bucket.generate_url(100, 'GET')
+        aiohttpretty.register_uri(
+            'GET',
+            query_url,
+            params=params,
+            body=folder_single_thing_metadata,
+            status=200,
+        )
+
+        (payload, headers) = bulk_delete_body(
+            ['my-image.jpg']
+        )
+        delete_url = provider.bucket.generate_url(
+            100,
+            'POST',
+            query_parameters={'delete': ''},
+            headers=headers,
+        )
+        aiohttpretty.register_uri('POST', delete_url, status=204)
+
+
+        await provider.delete(path)
+        assert aiohttpretty.has_call(method='GET', uri=query_url, params=params)
+        aiohttpretty.register_uri('POST', delete_url, status=204)
+
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_empty_folder_delete(self, provider, folder_empty_metadata, mock_time):
+        path = WaterButlerPath('/empty-folder/')
+
+        params = {'prefix': 'empty-folder/'}
+        query_url = provider.bucket.generate_url(100, 'GET')
+        aiohttpretty.register_uri(
+            'GET',
+            query_url,
+            params=params,
+            body=folder_empty_metadata,
+            status=200,
+        )
+
+        with pytest.raises(exceptions.NotFoundError):
+            await provider.delete(path)
+
+        assert aiohttpretty.has_call(method='GET', uri=query_url, params=params)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -683,11 +821,26 @@ class TestMetadata:
         assert len(result) == 1
         assert result[0].kind == 'folder'
 
-    # @pytest.mark.asyncio
-    # @pytest.mark.aiohttpretty
-    # async def test_must_have_slash(self, provider, just_a_folder_metadata, mock_time):
-    #     with pytest.raises(exceptions.InvalidPathError):
-    #         await provider.metadata('')
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_empty_metadata_folder(self, provider, folder_empty_metadata, mock_time):
+        path = WaterButlerPath('/this-is-not-the-root/')
+        metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
+
+        url = provider.bucket.generate_url(100)
+        params = build_folder_params(path)
+        aiohttpretty.register_uri('GET', url, params=params, body=folder_empty_metadata,
+                                  headers={'Content-Type': 'application/xml'})
+
+
+        aiohttpretty.register_uri('HEAD', metadata_url, header=folder_empty_metadata,
+                                  headers={'Content-Type': 'application/xml'})
+
+        result = await provider.metadata(path)
+
+        assert isinstance(result, list)
+        assert len(result) == 0
+
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -697,6 +850,21 @@ class TestMetadata:
         aiohttpretty.register_uri('HEAD', url, headers=file_metadata)
 
         result = await provider.metadata(path)
+
+        assert isinstance(result, metadata.BaseFileMetadata)
+        assert result.path == str(path)
+        assert result.name == 'my-image.jpg'
+        assert result.extra['md5'] == 'fba9dede5f27731c9771645a39863328'
+        assert result.extra['hashes']['md5'] == 'fba9dede5f27731c9771645a39863328'
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata_file_lastest_revision(self, provider, file_metadata, mock_time):
+        path = WaterButlerPath('/Foo/Bar/my-image.jpg')
+        url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
+        aiohttpretty.register_uri('HEAD', url, headers=file_metadata)
+
+        result = await provider.metadata(path, revision='Latest')
 
         assert isinstance(result, metadata.BaseFileMetadata)
         assert result.path == str(path)
@@ -839,25 +1007,35 @@ class TestCreateFolder:
 
 class TestOperations:
 
-    # @pytest.mark.asyncio
-    # @pytest.mark.aiohttpretty
-    # async def test_copy(self, provider, file_metadata, mock_time):
-    #     dest_path = WaterButlerPath('/dest')
-    #     source_path = WaterButlerPath('/source')
-    #     headers = {'x-amz-copy-source': '/{}/{}'.format(provider.settings['bucket'], source_path.path)}
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_copy(self, provider, file_metadata, mock_time):
 
-    #     metadata_url = provider.bucket.new_key(dest_path.path).generate_url(100, 'HEAD')
-    #     url = provider.bucket.new_key(dest_path.path).generate_url(100, 'PUT', headers=headers)
+        source_path = WaterButlerPath('/source')
+        dest_path = WaterButlerPath('/dest')
+        metadata_url = provider.bucket.new_key(dest_path.path).generate_url(100, 'HEAD')
+        aiohttpretty.register_uri('HEAD', metadata_url, headers=file_metadata)
 
-    #     aiohttpretty.register_uri('PUT', url, status=200)
-    #     aiohttpretty.register_uri('HEAD', metadata_url, headers=file_metadata)
+        from urllib import parse
 
-    #     resp = await provider.copy(provider, source_path, dest_path)
+        import os
 
-    #     # TODO: matching url content for request
-    #     assert resp['kind'] == 'file'
-    #     assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
-    #     assert aiohttpretty.has_call(method='PUT', uri=url, headers=headers)
+        #params = {'x-amz-copy-source': '/{}/{}'.format(provider.settings['bucket'], source_path.path)}
+        header_path = '/' + os.path.join(provider.settings['bucket'], source_path.path)
+        headers = {'x-amz-copy-source': parse.quote(header_path)}
+
+        url = provider.bucket.new_key(dest_path.path).generate_url(100, 'PUT', headers=headers)
+        aiohttpretty.register_uri('PUT', url, status=200)
+
+        metadata, exists = await provider.intra_copy(provider, source_path, dest_path)
+
+
+        assert provider._check_region.called
+
+        assert metadata.kind == 'file'
+        assert not exists
+        assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
+        assert aiohttpretty.has_call(method='PUT', uri=url, headers=headers)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -879,6 +1057,50 @@ class TestOperations:
 
         assert aiohttpretty.has_call(method='GET', uri=url, params=params)
 
-    async def test_equality(self, provider, mock_time):
-        assert provider.can_intra_copy(provider)
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_single_version_metadata(self, provider, single_version_metadata, mock_time):
+        path = WaterButlerPath('/single-version.file')
+        url = provider.bucket.generate_url(100, 'GET', query_parameters={'versions': ''})
+        params = build_folder_params(path)
+
+        aiohttpretty.register_uri('GET', url, params=params, status=200, body=single_version_metadata)
+
+        data = await provider.revisions(path)
+
+        assert isinstance(data, list)
+        assert len(data) == 1
+
+        for item in data:
+            assert hasattr(item, 'extra')
+            assert hasattr(item, 'version')
+            assert hasattr(item, 'version_identifier')
+
+        assert aiohttpretty.has_call(method='GET', uri=url, params=params)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_can_intra_move(self, provider):
+
+        file_path = WaterButlerPath('/my-image.jpg')
+        folder_path = WaterButlerPath('/folder/', folder=True)
+
         assert provider.can_intra_move(provider)
+        assert provider.can_intra_move(provider, file_path)
+        assert not provider.can_intra_move(provider, folder_path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_can_intra_copy(self, provider):
+
+        file_path = WaterButlerPath('/my-image.jpg')
+        folder_path = WaterButlerPath('/folder/', folder=True)
+
+        assert provider.can_intra_copy(provider)
+        assert provider.can_intra_copy(provider, file_path)
+        assert not provider.can_intra_copy(provider, folder_path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_can_duplicate_names(self, provider):
+        assert provider.can_duplicate_names()
