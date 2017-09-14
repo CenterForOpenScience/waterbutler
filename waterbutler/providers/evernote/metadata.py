@@ -4,9 +4,7 @@ from waterbutler.core import metadata
 class EvernoteFileMetadata(metadata.BaseFileMetadata):
 
     def __init__(self, raw):
-
-        # print('++++++++++++++++++++++++++++++ EvernoteFileMetadata.__init__')
-        # print('+++++ raw: {}'.format(raw))
+        print('EvernoteFileMetadata.__init__ raw:', raw)
         super().__init__(raw)
 
     @property
@@ -15,14 +13,10 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
 
     @property
     def content_type(self):
-        # TO DO: Implement
         return 'text/html'
 
     @property
     def modified(self):
-        """ Date the file was last modified, as reported by the provider, in
-        the format used by the provider. """
-
         return self.raw['updated']
 
     @property
@@ -31,8 +25,6 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
 
     @property
     def name(self):
-
-        # print("EvernoteFileMetadata.name: self.raw['title']", self.raw['title'])
         return self.raw['title'] + ".enml"
 
     @property
@@ -41,25 +33,21 @@ class EvernoteFileMetadata(metadata.BaseFileMetadata):
 
     @property
     def size(self):
-        # TO DO
-
         return self.raw['length']
 
     @property
     def extra(self):
         return super(EvernoteFileMetadata, self).extra.update({
-
         })
 
     @property
     def path(self):
-        # print('EvernoteFileMetadata.path: self.raw', self.raw)
         return "/" + self.raw["guid"]
 
     @property
     def etag(self):
-        # TO DO: implement
-        return "[ETAG]"
+        _etag = '{}::{}'.format(self.raw["guid"], self.raw.get('updateSequenceNum', ''))
+        return _etag
 
     @property
     def export_name(self):

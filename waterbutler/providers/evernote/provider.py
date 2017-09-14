@@ -1,6 +1,7 @@
 import asyncio
-from concurrent import futures
+import base64
 import functools
+from concurrent import futures
 from urllib import parse
 
 from waterbutler.core import streams
@@ -8,7 +9,6 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
 
-# from waterbutler.tasks.core import backgroundify
 from waterbutler.tasks.core import __coroutine_unwrapper
 
 from .metadata import EvernoteFileMetadata, EvernoteFileRevisionMetadata
@@ -16,10 +16,14 @@ from .utils import get_evernote_client, get_note, notes_metadata, timestamp_iso,
 
 import ENML_PY as enml
 
+# this module generalizes `waterbutler.tasks.core.backgroundify`
+# to take an executor (which I use to enforce one job at time for Evernote)
+
 # a ThreadPoolExecutor for enforcing a single job at a time for Evernote
 _executor = futures.ThreadPoolExecutor(max_workers=1)
 
-# https://stackoverflow.com/a/26151604
+# code to write parameterized decorates
+# borrowed from https://stackoverflow.com/a/26151604
 
 
 def parametrized(dec):
@@ -29,11 +33,9 @@ def parametrized(dec):
         return repl
     return layer
 
-
 async def backgrounded(func, executor, *args, **kwargs):
     """Runs the given function with the given arguments in
-    a background thread
-    """
+    a background thread."""
     loop = asyncio.get_event_loop()
     if asyncio.iscoroutinefunction(func):
         func = __coroutine_unwrapper(func)
@@ -55,7 +57,6 @@ def backgroundify(func, executor):
 @backgroundify(_executor)
 def _evernote_notes(notebook_guid, token):
 
-    print('_evernote_notes.notebook_guid ', notebook_guid)
     client = get_evernote_client(token)
 
     # will want to pick up notes for the notebook
@@ -67,7 +68,8 @@ def _evernote_notes(notebook_guid, token):
                         includeTitle=True,
                         includeUpdated=True,
                         includeCreated=True,
-                        includeContentLength=True)
+                        includeContentLength=True,
+                        includeUpdateSequenceNum=True)
     except Exception as e:
         print('_evernote_notes.e:', e)
         raise e
@@ -76,7 +78,8 @@ def _evernote_notes(notebook_guid, token):
               'guid': note.guid,
               'created': timestamp_iso(note.created),
               'updated': timestamp_iso(note.updated),
-              'length': note.contentLength}
+              'length': note.contentLength,
+              'updateSequenceNum': note.updateSequenceNum}
               for note in notes]
 
     return results
@@ -85,7 +88,6 @@ def _evernote_notes(notebook_guid, token):
 @backgroundify(_executor)
 def _evernote_note(note_guid, token, withContent=False, withResourcesData=False):
 
-    print('_evernote_note (note_guid, withContent, withResourcesData): ', note_guid, withContent, withResourcesData)
     client = get_evernote_client(token)
 
     try:
@@ -110,6 +112,7 @@ def _evernote_note(note_guid, token, withContent=False, withResourcesData=False)
             'length': note.contentLength,
             'notebook_guid': note.notebookGuid,
             'content': note.content,
+            'content_hash': base64.b64encode(note.contentHash),
             'resources': resources}
         return result
 
