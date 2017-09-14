@@ -144,7 +144,7 @@ class NamingConflict(ProviderError):
 
 
 class NotFoundError(ProviderError):
-    def __init__(self, path, is_user_error=True):
+    def __init__(self, path, is_user_error=True, **kwargs):
         super().__init__(
             'Could not retrieve file or directory {}'.format(path),
             code=http.client.NOT_FOUND,
@@ -173,6 +173,16 @@ class UnsupportedOperationError(ProviderError):
 class ReadOnlyProviderError(ProviderError):
     def __init__(self, provider):
         super().__init__('Provider "{}" is read-only'.format(provider), code=501)
+
+
+class UninitializedRepositoryError(ProviderError):
+    """Error for providers that wrap VCS systems (GitHub, Bitbucket, GitLab, etc). Indicates that
+    the user has not yet initialized their repository, and that WB cannot operate on it until it
+    has been initialized"""
+    def __init__(self, repo_name, is_user_error=True, **kwargs):
+        super().__init__(('The "{}" repository has not yet been initialized. Please do so before '
+                         'attempting to access it.'.format(repo_name)), code=400,
+                         is_user_error=is_user_error)
 
 
 async def exception_from_response(resp, error=ProviderError, **kwargs):
