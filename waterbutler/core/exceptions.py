@@ -125,36 +125,36 @@ class RevisionsError(ProviderError):
 
 
 class FolderNamingConflict(ProviderError):
-    def __init__(self, path, name=None, is_user_error=True):
+    def __init__(self, path, code=409, name=None, is_user_error=True):
         super().__init__(
             'Cannot create folder "{name}" because a file or folder already exists at path "{path}"'.format(
                 path=path,
                 name=name or os.path.split(path.strip('/'))[1]
-            ), code=409, is_user_error=is_user_error,
+            ), code=code, is_user_error=is_user_error,
         )
 
 
 class NamingConflict(ProviderError):
-    def __init__(self, path, name=None, is_user_error=True):
+    def __init__(self, path, code=409, name=None, is_user_error=True):
         super().__init__(
             'Cannot complete action: file or folder "{name}" already exists in this location'.format(
                 name=name or path.name
-            ), code=409, is_user_error=is_user_error,
+            ), code=code, is_user_error=is_user_error,
         )
 
 
 class NotFoundError(ProviderError):
-    def __init__(self, path, is_user_error=True):
+    def __init__(self, path, code=http.client.NOT_FOUND, is_user_error=True):
         super().__init__(
             'Could not retrieve file or directory {}'.format(path),
-            code=http.client.NOT_FOUND,
+            code=code,
             is_user_error=is_user_error,
         )
 
 
 class InvalidPathError(ProviderError):
-    def __init__(self, message, is_user_error=True):
-        super().__init__(message, code=http.client.BAD_REQUEST, is_user_error=is_user_error)
+    def __init__(self, message, code=http.client.BAD_REQUEST, is_user_error=True):
+        super().__init__(message, code=code, is_user_error=is_user_error)
 
 
 class OverwriteSelfError(InvalidParameters):
@@ -164,15 +164,15 @@ class OverwriteSelfError(InvalidParameters):
 
 
 class UnsupportedOperationError(ProviderError):
-    def __init__(self, message, is_user_error=True):
+    def __init__(self, message, code=http.client.FORBIDDEN, is_user_error=True):
         if not message:
             message = 'The requested operation is not supported by WaterButler.'
-        super().__init__(message, code=http.client.FORBIDDEN, is_user_error=is_user_error)
+        super().__init__(message, code=code, is_user_error=is_user_error)
 
 
 class ReadOnlyProviderError(ProviderError):
-    def __init__(self, provider):
-        super().__init__('Provider "{}" is read-only'.format(provider), code=501)
+    def __init__(self, provider, code=501):
+        super().__init__('Provider "{}" is read-only'.format(provider), code=code)
 
 
 async def exception_from_response(resp, error=ProviderError, **kwargs):
