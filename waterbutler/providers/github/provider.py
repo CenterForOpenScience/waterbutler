@@ -725,12 +725,6 @@ class GitHubProvider(provider.BaseProvider):
         except StopIteration:
             raise exceptions.NotFoundError(str(path))
 
-        if isinstance(data, list):
-            raise exceptions.MetadataError(
-                'Could not retrieve file "{0}"'.format(str(path)),
-                code=404,
-            )
-
         return GitHubFileTreeMetadata(
             data, commit=latest['commit'], web_view=self._web_view(path),
             ref=path.branch_ref
