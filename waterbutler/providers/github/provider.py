@@ -352,9 +352,6 @@ class GitHubProvider(provider.BaseProvider):
         else:
             sha = (await self.metadata(path)).extra['fileSha']
 
-        if not sha:
-            raise exceptions.MetadataError('A sha is required for deleting')
-
         data = {
             'sha': sha,
             'branch': path.branch_ref,
