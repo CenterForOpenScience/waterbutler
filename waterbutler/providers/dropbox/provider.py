@@ -200,7 +200,7 @@ class DropboxProvider(provider.BaseProvider):
 
         try:
             data = await self.dropbox_request(
-                self.build_url('files', 'move'),
+                self.build_url('files', 'move_v2'),
                 {
                     'from_path': src_path.full_path.rstrip('/'),
                     'to_path': dest_path.full_path.rstrip('/'),
@@ -208,6 +208,7 @@ class DropboxProvider(provider.BaseProvider):
                 expects=(200, 201, 409),
                 throws=exceptions.IntraMoveError,
             )
+            data = data['metadata']
         except DropboxNamingConflictError:
             await dest_provider.delete(dest_path)
             resp, _ = await self.intra_move(dest_provider, src_path, dest_path)
