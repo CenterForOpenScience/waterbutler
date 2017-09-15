@@ -12,6 +12,7 @@ Providers
    provider.filesystem
    provider.github
    provider.googledrive
+   provider.onedrive
    provider.osfstorage
    provider.owncloud
    provider.cloudfiles
