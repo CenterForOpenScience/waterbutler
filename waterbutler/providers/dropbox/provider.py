@@ -286,7 +286,7 @@ class DropboxProvider(provider.BaseProvider):
                     code=400
                 )
         await self.dropbox_request(
-            self.build_url('files', 'delete'),
+            self.build_url('files', 'delete_v2'),
             {'path': self.folder.rstrip('/') + '/' + path.path.rstrip('/')},
             throws=exceptions.DeleteError,
         )

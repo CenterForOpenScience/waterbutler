@@ -209,7 +209,7 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_delete_file(self, provider):
-        url = provider.build_url('files', 'delete')
+        url = provider.build_url('files', 'delete_v2')
         path = await provider.validate_path('/The past')
         data = {'path': path.full_path}
 
@@ -222,7 +222,7 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_delete_root_bad(self, provider):
-        url = provider.build_url('files', 'delete')
+        url = provider.build_url('files', 'delete_v2')
         path = await provider.validate_path('/')
         data = {'path': path.full_path}
 
@@ -242,7 +242,7 @@ class TestCRUD:
         aiohttpretty.register_json_uri('POST', url, data=data,
                                        body=root_provider_fixtures['folder_children'], status=200)
         path2 = await provider.validate_path('/photos/flower.jpg')
-        url = provider.build_url('files', 'delete')
+        url = provider.build_url('files', 'delete_v2')
         data = {'path': provider.folder.rstrip('/') + '/' + path2.path.rstrip('/')}
         aiohttpretty.register_json_uri('POST', url, data=data, status=200)
 
@@ -528,7 +528,7 @@ class TestIntra:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_intra_copy_replace_file(self, provider, intra_copy_fixtures, error_fixtures):
-        url = provider.build_url('files', 'delete')
+        url = provider.build_url('files', 'delete_v2')
         path = await provider.validate_path('/The past')
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data, status=200)
@@ -632,7 +632,7 @@ class TestIntra:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_intra_move_replace_file(self, provider, root_provider_fixtures, error_fixtures):
-        url = provider.build_url('files', 'delete')
+        url = provider.build_url('files', 'delete_v2')
         path = await provider.validate_path('/The past')
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data, status=200)
@@ -668,7 +668,7 @@ class TestIntra:
     @pytest.mark.aiohttpretty
     async def test_intra_move_replace_folder(self, provider, root_provider_fixtures,
                                              error_fixtures):
-        url = provider.build_url('files', 'delete')
+        url = provider.build_url('files', 'delete_v2')
         path = await provider.validate_path('/newfolder/')
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data, status=200)
