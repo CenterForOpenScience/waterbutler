@@ -572,9 +572,6 @@ class GitHubProvider(provider.BaseProvider):
         """
         tree = await self._fetch_tree(tree_sha, recursive=True)
 
-        if tree['truncated']:
-            raise GitHubUnsupportedRepoError
-
         implicit_type = 'tree' if path.endswith('/') else 'blob'
 
         for entity in tree['tree']:
