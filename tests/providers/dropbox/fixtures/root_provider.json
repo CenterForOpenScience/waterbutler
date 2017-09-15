@@ -35,6 +35,31 @@
         "content_hash": "meow"
     },
 
+    "folder_metadata_v2": {
+        "metadata": {
+            "name": "newfolder",
+            "id": "id:a4ayc_80_OEAAAAAAAAAXz",
+            "path_lower": "/newfolder",
+            "path_display": "/newfolder",
+            "sharing_info": {
+                "read_only": false,
+                "parent_shared_folder_id": "84528192421",
+                "traverse_only": false,
+                "no_access": false
+            },
+            "property_groups": [
+                {
+                    "template_id": "ptid:1a5n2i6d3OYEAAAAAAAAAYa",
+                    "fields": [
+                        {
+                            "name": "Security Policy",
+                            "value": "Confidential"
+                        }
+                    ]
+                }
+            ]
+        }
+    },
     "folder_with_subdirectory_metadata": {
         "has_more": false,
         "entries": [
