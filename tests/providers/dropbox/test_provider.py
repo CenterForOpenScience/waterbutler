@@ -420,7 +420,7 @@ class TestCreateFolder:
     @pytest.mark.aiohttpretty
     async def test_already_exists(self, provider):
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
-        url = provider.build_url('files', 'create_folder')
+        url = provider.build_url('files', 'create_folder_v2')
         data = build_folder_metadata_data(path)
         body = {
             "error_summary": "path/conflict/folder/...",
@@ -447,7 +447,7 @@ class TestCreateFolder:
     async def test_already_exists_unhandled_conflict(self, provider, root_provider_fixtures):
         # This test is just to hit the last line of dropbox_conflict_error_handler and not much else
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
-        url = provider.build_url('files', 'create_folder')
+        url = provider.build_url('files', 'create_folder_v2')
         data = build_folder_metadata_data(path)
 
         aiohttpretty.register_json_uri('POST', url, data=data, status=409,
@@ -462,7 +462,7 @@ class TestCreateFolder:
     @pytest.mark.aiohttpretty
     async def test_forbidden(self, provider):
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
-        url = provider.build_url('files', 'create_folder')
+        url = provider.build_url('files', 'create_folder_v2')
         data = build_folder_metadata_data(path)
 
         aiohttpretty.register_json_uri('POST', url, data=data, status=403,
@@ -478,7 +478,7 @@ class TestCreateFolder:
     @pytest.mark.aiohttpretty
     async def test_raises_on_errors(self, provider):
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
-        url = provider.build_url('files', 'create_folder')
+        url = provider.build_url('files', 'create_folder_v2')
         data = build_folder_metadata_data(path)
 
         aiohttpretty.register_json_uri('POST', url, data=data, status=418, body={})
@@ -492,11 +492,11 @@ class TestCreateFolder:
     @pytest.mark.aiohttpretty
     async def test_returns_metadata(self, provider, root_provider_fixtures):
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
-        url = provider.build_url('files', 'create_folder')
+        url = provider.build_url('files', 'create_folder_v2')
         data = build_folder_metadata_data(path)
 
         aiohttpretty.register_json_uri('POST', url, data=data, status=200,
-                                       body=root_provider_fixtures['folder_metadata'])
+                                       body=root_provider_fixtures['folder_metadata_v2'])
 
         resp = await provider.create_folder(path)
 

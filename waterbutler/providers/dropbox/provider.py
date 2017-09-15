@@ -364,11 +364,11 @@ class DropboxProvider(provider.BaseProvider):
         """
         WaterButlerPath.validate_folder(path)
         data = await self.dropbox_request(
-            self.build_url('files', 'create_folder'),
+            self.build_url('files', 'create_folder_v2'),
             {'path': path.full_path.rstrip('/')},
             throws=exceptions.CreateFolderError,
         )
-        return DropboxFolderMetadata(data, self.folder)
+        return DropboxFolderMetadata(data['metadata'], self.folder)
 
     def can_intra_copy(self, dest_provider: provider.BaseProvider,
                        path: WaterButlerPath=None) -> bool:
