@@ -52,18 +52,6 @@ class GitHubProvider(provider.BaseProvider):
     BASE_URL = settings.BASE_URL
     VIEW_URL = settings.VIEW_URL
 
-    @staticmethod
-    def is_sha(ref):
-        # sha1 is always 40 characters in length
-        try:
-            if len(ref) != 40:
-                return False
-            # sha1 is always base 16 (hex)
-            int(ref, 16)
-        except (TypeError, ValueError, ):
-            return False
-        return True
-
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
         self.name = self.auth.get('name', None)
@@ -657,17 +645,6 @@ class GitHubProvider(provider.BaseProvider):
             raise exceptions.UploadChecksumMismatchError()
 
         return blob_metadata
-
-    def _is_sha(self, ref):
-        # sha1 is always 40 characters in length
-        try:
-            if len(ref) != 40:
-                return False
-            # sha1 is always base 16 (hex)
-            int(ref, 16)
-        except (TypeError, ValueError, ):
-            return False
-        return True
 
     def _web_view(self, path):
         segments = (self.owner, self.repo, 'blob', path.branch_ref, path.path)
