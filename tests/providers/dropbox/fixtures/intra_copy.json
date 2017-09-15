@@ -15,7 +15,7 @@
     "expires": "2047-08-22T15:34:03Z",
     "copy_reference": "AAAAAFuyfRE5aWhyemZmaTJzZXc"
     },
-   "intra_copy_file_metadata_v2": {
+   "intra_move_copy_file_metadata_v2": {
       "metadata": {
           ".tag": "file",
           "name": "Prime_Numbers.txt",
@@ -46,7 +46,7 @@
           "content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       }
    },
-   "intra_copy_folder_metadata_v2": {
+   "intra_move_copy_folder_metadata_v2": {
       "metadata": {
           ".tag": "folder",
           "name": "testfolder",
