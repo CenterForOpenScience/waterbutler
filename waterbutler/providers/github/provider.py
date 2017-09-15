@@ -414,27 +414,24 @@ class GitHubProvider(provider.BaseProvider):
         # The last tree's structure is rewritten w/o the target folder, all others
         # in the hierarchy are simply updated to reflect this change.
         tree = trees.pop()
-        if tree['target'] == '':
-            # Git Empty SHA
-            tree_sha = GIT_EMPTY_SHA
-        else:
-            # Delete the folder from the tree cast to list iterator over all values
-            current_tree = tree['tree']
-            tree['tree'] = list(filter(lambda x: x['path'] != tree['target'], tree['tree']))
-            if current_tree == tree['tree']:
-                raise exceptions.NotFoundError(str(path))
 
+        # Delete the folder from the tree cast to list iterator over all values
+        current_tree = tree['tree']
+        tree['tree'] = list(filter(lambda x: x['path'] != tree['target'], tree['tree']))
+        if current_tree == tree['tree']:
+            raise exceptions.NotFoundError(str(path))
+
+        tree_data = await self._create_tree({'tree': tree['tree']})
+        tree_sha = tree_data['sha']
+
+        # Update parent tree(s)
+        for tree in reversed(trees):
+            for item in tree['tree']:
+                if item['path'] == tree['target']:
+                    item['sha'] = tree_sha
+                    break
             tree_data = await self._create_tree({'tree': tree['tree']})
             tree_sha = tree_data['sha']
-
-            # Update parent tree(s)
-            for tree in reversed(trees):
-                for item in tree['tree']:
-                    if item['path'] == tree['target']:
-                        item['sha'] = tree_sha
-                        break
-                tree_data = await self._create_tree({'tree': tree['tree']})
-                tree_sha = tree_data['sha']
 
         # Create a new commit which references our top most tree change.
         message = message or settings.DELETE_FOLDER_MESSAGE
