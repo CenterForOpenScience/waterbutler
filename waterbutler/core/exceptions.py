@@ -1,6 +1,6 @@
 import os
-import http
 import json
+from http import HTTPStatus
 
 
 DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request to {response.url}'
@@ -12,7 +12,7 @@ class WaterButlerError(Exception):
     to HTTPResponses.
     """
 
-    def __init__(self, message, code=500, log_message=None, is_user_error=False):
+    def __init__(self, message, code=HTTPStatus.INTERNAL_SERVER_ERROR, log_message=None, is_user_error=False):
         super().__init__(code)
         self.code = code
         self.log_message = log_message
@@ -35,7 +35,7 @@ class InvalidParameters(WaterButlerError):
     """Errors regarding incorrect data being sent to a method should raise either this
     Exception or a subclass thereof
     """
-    def __init__(self, message, code=400):
+    def __init__(self, message, code=HTTPStatus.BAD_REQUEST):
         super().__init__(message, code=code)
 
 
@@ -61,7 +61,7 @@ class UnsupportedHTTPMethodError(PluginError):
             'Method "{method_used}" not supported, currently supported methods '
             'are {supported_methods}'.format(method_used=method_used,
                                              supported_methods=supported_methods),
-            code=405,
+            code=HTTPStatus.METHOD_NOT_ALLOWED,
         )
 
 
@@ -74,7 +74,7 @@ class ProviderError(PluginError):
 
 class ProviderNotFound(ProviderError):
     def __init__(self, provider):
-        super().__init__('Provider "{}" not found'.format(provider), code=404)
+        super().__init__('Provider "{}" not found'.format(provider), code=HTTPStatus.NOT_FOUND)
 
 
 class CopyError(ProviderError):
@@ -110,7 +110,7 @@ class UploadError(ProviderError):
 
 
 class UploadChecksumMismatchError(ProviderError):
-    def __init__(self, message=None, code=500):
+    def __init__(self, message=None, code=HTTPStatus.INTERNAL_SERVER_ERROR):
         if message is None:
             message = "Calculated and received hashes don't match"
         super().__init__(message, code=code)
@@ -125,26 +125,23 @@ class RevisionsError(ProviderError):
 
 
 class FolderNamingConflict(ProviderError):
-    def __init__(self, path, code=409, name=None, is_user_error=True):
-        super().__init__(
-            'Cannot create folder "{name}" because a file or folder already exists at path "{path}"'.format(
-                path=path,
-                name=name or os.path.split(path.strip('/'))[1]
-            ), code=code, is_user_error=is_user_error,
-        )
+    def __init__(self, path, code=HTTPStatus.CONFLICT, name=None, is_user_error=True):
+        super().__init__('Cannot create folder "{name}" because a file or folder already exists '
+                         'at path "{path}"'.format(
+                             path=path,
+                             name=name or os.path.split(path.strip('/'))[1]
+                         ), code=code, is_user_error=is_user_error)
 
 
 class NamingConflict(ProviderError):
-    def __init__(self, path, code=409, name=None, is_user_error=True):
-        super().__init__(
-            'Cannot complete action: file or folder "{name}" already exists in this location'.format(
-                name=name or path.name
-            ), code=code, is_user_error=is_user_error,
-        )
+    def __init__(self, path, code=HTTPStatus.CONFLICT, name=None, is_user_error=True):
+        super().__init__('Cannot complete action: file or folder "{name}" already exists in this '
+                         'location'.format(name=name or path.name), code=code,
+                         is_user_error=is_user_error)
 
 
 class NotFoundError(ProviderError):
-    def __init__(self, path, code=http.client.NOT_FOUND, is_user_error=True):
+    def __init__(self, path, code=HTTPStatus.NOT_FOUND, is_user_error=True):
         super().__init__(
             'Could not retrieve file or directory {}'.format(path),
             code=code,
@@ -153,7 +150,7 @@ class NotFoundError(ProviderError):
 
 
 class InvalidPathError(ProviderError):
-    def __init__(self, message, code=http.client.BAD_REQUEST, is_user_error=True):
+    def __init__(self, message, code=HTTPStatus.BAD_REQUEST, is_user_error=True):
         super().__init__(message, code=code, is_user_error=is_user_error)
 
 
@@ -164,7 +161,7 @@ class OverwriteSelfError(InvalidParameters):
 
 
 class UnsupportedOperationError(ProviderError):
-    def __init__(self, message, code=http.client.FORBIDDEN, is_user_error=True):
+    def __init__(self, message, code=HTTPStatus.FORBIDDEN, is_user_error=True):
         if not message:
             message = 'The requested operation is not supported by WaterButler.'
         super().__init__(message, code=code, is_user_error=is_user_error)
