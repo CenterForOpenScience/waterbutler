@@ -7,12 +7,11 @@ DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request 
 
 
 class WaterButlerError(Exception):
-    """The base exception that all other are a subclass of.
-    Provides str repr and additional helper to convert exceptions
-    to HTTPResponses.
+    """The base exception that all others are subclasses of. Provides ``__str__`` and ``__repr__``.
     """
 
-    def __init__(self, message, code=HTTPStatus.INTERNAL_SERVER_ERROR, log_message=None, is_user_error=False):
+    def __init__(self, message, code=HTTPStatus.INTERNAL_SERVER_ERROR, log_message=None,
+                 is_user_error=False):
         super().__init__(code)
         self.code = code
         self.log_message = log_message
@@ -33,27 +32,14 @@ class WaterButlerError(Exception):
 
 class InvalidParameters(WaterButlerError):
     """Errors regarding incorrect data being sent to a method should raise either this
-    Exception or a subclass thereof
+    Exception or a subclass thereof.  Defaults status code to 400, Bad Request.
     """
     def __init__(self, message, code=HTTPStatus.BAD_REQUEST):
         super().__init__(message, code=code)
 
 
-class PluginError(WaterButlerError):
-    """WaterButler related errors raised
-    from a plugins should inherit from PluginError
-    """
-
-
-class AuthError(PluginError):
-    """WaterButler related errors raised
-    from a :class:`waterbutler.core.auth` should
-    inherit from AuthError
-    """
-
-
-class UnsupportedHTTPMethodError(PluginError):
-    """An unsupported HTTP method was used
+class UnsupportedHTTPMethodError(WaterButlerError):
+    """An unsupported HTTP method was used.
     """
     def __init__(self, method_used, supported_methods):
         supported_methods = ', '.join(list(supported_methods)).upper()
@@ -65,62 +51,75 @@ class UnsupportedHTTPMethodError(PluginError):
         )
 
 
-class ProviderError(PluginError):
-    """The WaterButler related errors raised
-    from a :class:`waterbutler.core.provider` should
-    inherit from ProviderError
+class PluginError(WaterButlerError):
+    """WaterButler-related errors raised from a plugin, such as an auth handler or provider, should
+    inherit from `PluginError`.
     """
-
-
-class ProviderNotFound(ProviderError):
-    def __init__(self, provider):
-        super().__init__('Provider "{}" not found'.format(provider), code=HTTPStatus.NOT_FOUND)
-
-
-class CopyError(ProviderError):
     pass
 
 
-class CreateFolderError(ProviderError):
+class AuthError(PluginError):
+    """WaterButler-related errors raised from :class:`waterbutler.core.auth.BaseAuthHandler`
+    should inherit from AuthError.
+    """
     pass
 
 
-class DeleteError(ProviderError):
+class ProviderError(PluginError):
+    """WaterButler-related errors raised from :class:`waterbutler.core.provider.BaseProvider`
+    should inherit from ProviderError.
+    """
     pass
 
 
-class DownloadError(ProviderError):
+class UnhandledProviderError(ProviderError):
+    """Errors inheriting from UnhandledProviderError represent unanticipated status codes received
+    from the provider's API.  These are the only ones that should be passed to the ``throws``
+    argument of `make_request`.  All have the same signature, ``(message, code: int=500)`` and are
+    instantiated by the `exception_from_response` method at the end of this module.
+
+    Developer-defined errors should **not** inherit from `UnhandledProviderError`.
+    """
     pass
 
 
-class IntraCopyError(ProviderError):
+class CopyError(UnhandledProviderError):
     pass
 
 
-class IntraMoveError(ProviderError):
+class CreateFolderError(UnhandledProviderError):
     pass
 
 
-class MoveError(ProviderError):
+class DeleteError(UnhandledProviderError):
     pass
 
 
-class UploadError(ProviderError):
+class DownloadError(UnhandledProviderError):
     pass
 
 
-class UploadChecksumMismatchError(ProviderError):
-    def __init__(self, message=None, code=HTTPStatus.INTERNAL_SERVER_ERROR):
-        if message is None:
-            message = "Calculated and received hashes don't match"
-        super().__init__(message, code=code)
-
-
-class MetadataError(ProviderError):
+class IntraCopyError(UnhandledProviderError):
     pass
 
 
-class RevisionsError(ProviderError):
+class IntraMoveError(UnhandledProviderError):
+    pass
+
+
+class MoveError(UnhandledProviderError):
+    pass
+
+
+class MetadataError(UnhandledProviderError):
+    pass
+
+
+class RevisionsError(UnhandledProviderError):
+    pass
+
+
+class UploadError(UnhandledProviderError):
     pass
 
 
@@ -138,6 +137,18 @@ class NamingConflict(ProviderError):
         super().__init__('Cannot complete action: file or folder "{name}" already exists in this '
                          'location'.format(name=name or path.name), code=code,
                          is_user_error=is_user_error)
+
+
+class ProviderNotFound(ProviderError):
+    def __init__(self, provider):
+        super().__init__('Provider "{}" not found'.format(provider), code=HTTPStatus.NOT_FOUND)
+
+
+class UploadChecksumMismatchError(ProviderError):
+    def __init__(self, message=None, code=HTTPStatus.INTERNAL_SERVER_ERROR):
+        if message is None:
+            message = "Calculated and received hashes don't match"
+        super().__init__(message, code=code)
 
 
 class NotFoundError(ProviderError):
@@ -172,7 +183,7 @@ class ReadOnlyProviderError(ProviderError):
         super().__init__('Provider "{}" is read-only'.format(provider), code=code)
 
 
-async def exception_from_response(resp, error=ProviderError, **kwargs):
+async def exception_from_response(resp, error=UnhandledProviderError, **kwargs):
     """Build and return, not raise, an exception from a response object
 
     :param Response resp: An aiohttp.Response stream with a non 200 range status

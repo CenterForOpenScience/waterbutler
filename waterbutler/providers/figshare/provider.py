@@ -592,7 +592,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
             'GET',
             self.build_url(False, *self.root_path_parts, 'articles', article_id),
             expects=(200, ),
-            throws=exceptions.NotFoundError,
+            throws=exceptions.CreateFolderError,
         )
         article_json = await get_article_response.json()
 
