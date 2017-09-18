@@ -1,4 +1,3 @@
-import os
 import json
 from http import HTTPStatus
 
@@ -8,6 +7,30 @@ DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request 
 
 class WaterButlerError(Exception):
     """The base exception that all others are subclasses of. Provides ``__str__`` and ``__repr__``.
+
+    Exceptions in WaterButler need to be able to survive a pickling/unpickling process.  Because of
+    a quirk in the implementation of exceptions, an unpickled exception will have its ``__init__``
+    method called with the same positional arguments that ``Exception.__init__()`` is called with.
+    Since WaterButlerError calls ``Exception.__init__()`` with the integer status code, all of its
+    children must handle being initialized with a single integer positional argument.  IOW,
+    ``ChildOfWaterButlerError.__init__(999)`` must always succeed, even if the result error message
+    is nonsense.  After calling ``__init__``, the unpickling process will update the exception's
+    internal ``__dict__`` to the same state as before pickling, so the exception will end up being
+    accurate/meaningful/sensible.
+
+    **In summary:**
+
+    * No child of WaterButlerError can have a signature with anything other than one positional
+      argument.
+
+    * It must not perform any methods on the positional arg that are not compatible with integers.
+
+    * kwargs are not passed as part of the faux __init__ call, so a class must be able to be
+      instantiated with defaults only.
+
+    * It is not necessary that the exception be meaningful when called this way.  It will be made
+      consistent after initialization.
+
     """
 
     def __init__(self, message, code=HTTPStatus.INTERNAL_SERVER_ERROR, log_message=None,
@@ -41,14 +64,16 @@ class InvalidParameters(WaterButlerError):
 class UnsupportedHTTPMethodError(WaterButlerError):
     """An unsupported HTTP method was used.
     """
-    def __init__(self, method_used, supported_methods):
-        supported_methods = ', '.join(list(supported_methods)).upper()
-        super().__init__(
-            'Method "{method_used}" not supported, currently supported methods '
-            'are {supported_methods}'.format(method_used=method_used,
-                                             supported_methods=supported_methods),
-            code=HTTPStatus.METHOD_NOT_ALLOWED,
-        )
+    def __init__(self, method, supported=None):
+
+        if supported is None:
+            supported_methods = 'unspecified'
+        else:
+            supported_methods = ', '.join(list(supported)).upper()
+
+        super().__init__('Method "{}" not supported, currently supported methods '
+                         'are {}'.format(method, supported_methods),
+                         code=HTTPStatus.METHOD_NOT_ALLOWED, is_user_error=True)
 
 
 class PluginError(WaterButlerError):
@@ -124,19 +149,16 @@ class UploadError(UnhandledProviderError):
 
 
 class FolderNamingConflict(ProviderError):
-    def __init__(self, path, code=HTTPStatus.CONFLICT, name=None, is_user_error=True):
-        super().__init__('Cannot create folder "{name}" because a file or folder already exists '
-                         'at path "{path}"'.format(
-                             path=path,
-                             name=name or os.path.split(path.strip('/'))[1]
-                         ), code=code, is_user_error=is_user_error)
+    def __init__(self, name):
+        super().__init__('Cannot create folder "{}", because a file or folder already exists '
+                         'with that name'.format(name), code=HTTPStatus.CONFLICT,
+                         is_user_error=True)
 
 
 class NamingConflict(ProviderError):
-    def __init__(self, path, code=HTTPStatus.CONFLICT, name=None, is_user_error=True):
-        super().__init__('Cannot complete action: file or folder "{name}" already exists in this '
-                         'location'.format(name=name or path.name), code=code,
-                         is_user_error=is_user_error)
+    def __init__(self, name):
+        super().__init__('Cannot complete action: file or folder "{}" already exists in this '
+                         'location'.format(name), code=HTTPStatus.CONFLICT, is_user_error=True)
 
 
 class ProviderNotFound(ProviderError):

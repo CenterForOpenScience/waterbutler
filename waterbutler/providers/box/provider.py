@@ -390,7 +390,7 @@ class BoxProvider(provider.BaseProvider):
 
         if folder_precheck:
             if path.identifier is not None:
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
 
         async with self.request(
             'POST',
@@ -406,7 +406,7 @@ class BoxProvider(provider.BaseProvider):
         ) as resp:
             # Catch 409s to avoid race conditions
             if resp.status == 409:
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
             resp_json = await resp.json()
         # save new folder's id into the WaterButlerPath object. logs will need it later.
         path._parts[-1]._id = resp_json['id']

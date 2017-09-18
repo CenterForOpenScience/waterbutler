@@ -388,7 +388,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         if folder_precheck:
             if path.identifier:
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
 
         async with self.request(
             'POST',

@@ -514,7 +514,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if (not exists and not exists == []) or conflict == 'replace':
             return path, exists  # type: ignore
         if conflict == 'warn':
-            raise exceptions.NamingConflict(path)
+            raise exceptions.NamingConflict(path.name)
 
         while True:
             path.increment_name()
