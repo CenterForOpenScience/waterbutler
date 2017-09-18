@@ -60,6 +60,7 @@ setup(
             'googlecloud = waterbutler.providers.googlecloud:GoogleCloudProvider',
             'swift = waterbutler.providers.swift:SwiftProvider',
             'azureblobstorage = waterbutler.providers.azureblobstorage:AzureBlobStorageProvider',
+            'weko = waterbutler.providers.weko:WEKOProvider',
         ],
     },
 )
