@@ -392,7 +392,7 @@ class S3Provider(provider.BaseProvider):
 
         if folder_precheck:
             if (await self.exists(path)):
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
 
         async with self.request(
             'PUT',

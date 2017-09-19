@@ -333,7 +333,7 @@ class GitHubProvider(provider.BaseProvider):
 
         if resp.status in (422, 409):
             if resp.status == 409 or data.get('message') == 'Invalid request.\n\n"sha" wasn\'t supplied.':
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
             raise exceptions.CreateFolderError(data, code=resp.status)
 
         data['content']['name'] = path.name
@@ -544,7 +544,7 @@ class GitHubProvider(provider.BaseProvider):
         tree = await resp.json()
 
         if tree['truncated']:
-            raise GitHubUnsupportedRepoError
+            raise GitHubUnsupportedRepoError('')
 
         return tree
 
