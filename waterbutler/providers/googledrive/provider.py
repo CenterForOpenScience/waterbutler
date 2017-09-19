@@ -388,7 +388,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         if folder_precheck:
             if path.identifier:
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
 
         async with self.request(
             'POST',
@@ -708,7 +708,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         async with self.request(
             'GET', url,
             expects=(200, 403, 404, ),
-            throws=exceptions.NotFoundError,
+            throws=exceptions.MetadataError,
         ) as resp:
             try:
                 data = await resp.json()
