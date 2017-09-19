@@ -1,7 +1,7 @@
 import os
-import http
-import asyncio
 import socket
+import asyncio
+from http import HTTPStatus
 
 import tornado.web
 import tornado.gen
@@ -131,6 +131,6 @@ class CRUDHandler(core.BaseProviderHandler):
         """Delete a file."""
 
         await self.provider.delete(**self.arguments)
-        self.set_status(int(http.client.NO_CONTENT))
+        self.set_status(int(HTTPStatus.NO_CONTENT))
 
         self._send_hook('delete', path=self.path)
