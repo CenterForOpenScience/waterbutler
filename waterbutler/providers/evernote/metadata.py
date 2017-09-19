@@ -4,7 +4,6 @@ from waterbutler.core import metadata
 class EvernoteFileMetadata(metadata.BaseFileMetadata):
 
     def __init__(self, raw):
-        print('EvernoteFileMetadata.__init__ raw:', raw)
         super().__init__(raw)
 
     @property

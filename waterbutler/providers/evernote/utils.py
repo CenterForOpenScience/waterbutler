@@ -10,7 +10,9 @@ import base64
 
 
 def hex_decode(s):
-    # http://stackoverflow.com/a/10619257/7782
+    """hex decode that works for both Python 3 or 2
+    from http://stackoverflow.com/a/10619257/7782
+    """
 
     try:
         import binascii
@@ -21,7 +23,8 @@ def hex_decode(s):
 
 def evernote_wait_try_again(f):
     """
-    Wait until mandated wait and try again
+    decorator to implement mandated wait and try again for
+    Evernote rate limiting
     http://dev.evernote.com/doc/articles/rate_limits.php
     """
 
@@ -60,14 +63,14 @@ def get_evernote_client(token, sandbox=False):
 
 @evernote_wait_try_again
 def get_notebooks(client):
+    """return metadata on all the notebooks for the user
+    """
 
     noteStore = client.get_note_store()
     return [{'name': notebook.name,
              'guid': notebook.guid,
              'stack': notebook.stack,
              'defaultNotebook': notebook.defaultNotebook} for notebook in noteStore.listNotebooks()]
-
-# https://dev.evernote.com/doc/reference/NoteStore.html#Fn_NoteStore_getNotebook
 
 
 @evernote_wait_try_again
@@ -81,9 +84,24 @@ def get_notebook(client, nb_guid):
 
 
 @evernote_wait_try_again
+def get_note(client, guid,
+            withContent=False,
+            withResourcesData=False,
+            withResourcesRecognition=False,
+            withResourcesAlternateData=False):
+
+    # https://dev.evernote.com/doc/reference/NoteStore.html#Fn_NoteStore_getNote
+    noteStore = client.get_note_store()
+    return noteStore.getNote(guid, withContent, withResourcesData,
+                                 withResourcesRecognition, withResourcesAlternateData)
+
+
+@evernote_wait_try_again
 def notes_metadata(client, **input_kw):
-    """ """
-    # http://dev.evernote.com/documentation/reference/NoteStore.html#Fn_NoteStore_findNotesMetadata
+    """
+    return metadata for notes that pass filter (denoted by filter-related keywords)
+    relevant documentation at http://dev.evernote.com/documentation/reference/NoteStore.html#Fn_NoteStore_findNotesMetadata
+    """
 
     noteStore = client.get_note_store()
 
@@ -146,23 +164,9 @@ def notes_metadata(client, **input_kw):
             more_nm = False
 
 
-@evernote_wait_try_again
-def get_note(client, guid,
-            withContent=False,
-            withResourcesData=False,
-            withResourcesRecognition=False,
-            withResourcesAlternateData=False):
-
-    # https://dev.evernote.com/doc/reference/NoteStore.html#Fn_NoteStore_getNote
-    print('utils.get_note guid, withContent, withResourcesData: ', guid, withContent, withResourcesData)
-    noteStore = client.get_note_store()
-    return noteStore.getNote(guid, withContent, withResourcesData,
-                                 withResourcesRecognition, withResourcesAlternateData)
-
-
 def timestamp_iso(ts):
     """
-    ts in ms since 1970
+    for the timestamp ts (expressed in ms since 1970), return the ISO-8601 format
     """
     return datetime.datetime.utcfromtimestamp(ts / 1000.).isoformat()
 
