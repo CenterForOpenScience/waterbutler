@@ -2,10 +2,13 @@ import pytest
 
 from tests.utils import MockCoroutine
 
+
+import os
 import io
 import time
 import base64
 import hashlib
+from urllib import parse
 from http import client
 from unittest import mock
 
@@ -17,9 +20,6 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.s3 import S3Provider
-from waterbutler.providers.s3.metadata import S3FileMetadata
-from waterbutler.providers.s3.metadata import S3FolderMetadata
-
 
 @pytest.fixture
 def auth():
@@ -215,12 +215,12 @@ def folder_empty_metadata():
 
 
 @pytest.fixture
-def file_metadata():
+def file_header_metadata():
     return {
-        'Content-Length': 9001,
-        'Last-Modified': 'SomeTime',
-        'Content-Type': 'binary/octet-stream',
-        'ETag': '"fba9dede5f27731c9771645a39863328"',
+        'CONTENT-LENGTH': 9001,
+        'LAST-MODIFIED': 'SomeTime',
+        'CONTENT-TYPE': 'binary/octet-stream',
+        'ETAG': '"fba9dede5f27731c9771645a39863328"',
         'X-AMZ-SERVER-SIDE-ENCRYPTION': 'AES256'
     }
 
@@ -390,13 +390,13 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, file_metadata, mock_time):
+    async def test_validate_v1_path_file(self, provider, file_header_metadata):
         file_path = 'foobah'
 
         params = {'prefix': '/' + file_path + '/', 'delimiter': '/'}
         good_metadata_url = provider.bucket.new_key('/' + file_path).generate_url(100, 'HEAD')
         bad_metadata_url = provider.bucket.generate_url(100)
-        aiohttpretty.register_uri('HEAD', good_metadata_url, headers=file_metadata)
+        aiohttpretty.register_uri('HEAD', good_metadata_url, headers=file_header_metadata)
         aiohttpretty.register_uri('GET', bad_metadata_url, params=params, status=404)
 
         assert WaterButlerPath('/') == await provider.validate_v1_path('/')
@@ -532,12 +532,12 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_update(self, provider, file_content, file_stream, file_metadata, mock_time):
+    async def test_upload_update(self, provider, file_content, file_stream, file_header_metadata):
         path = WaterButlerPath('/foobah')
         content_md5 = hashlib.md5(file_content).hexdigest()
         url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
         metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
-        aiohttpretty.register_uri('HEAD', metadata_url, headers=file_metadata)
+        aiohttpretty.register_uri('HEAD', metadata_url, headers=file_header_metadata)
         aiohttpretty.register_uri('PUT', url, status=201, headers={'ETag': '"{}"'.format(content_md5)})
 
         metadata, created = await provider.upload(file_stream, path)
@@ -549,7 +549,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_encrypted(self, provider, file_content, file_stream, file_metadata, mock_time):
+    async def test_upload_encrypted(self, provider, file_content, file_stream, file_header_metadata):
         # Set trigger for encrypt_key=True in s3.provider.upload
         provider.encrypt_uploads = True
         path = WaterButlerPath('/foobah')
@@ -561,7 +561,7 @@ class TestCRUD:
             metadata_url,
             responses=[
                 {'status': 404},
-                {'headers': file_metadata},
+                {'headers': file_header_metadata},
             ],
         )
         aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"{}"'.format(content_md5)})
@@ -653,7 +653,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_single_thing_folder_delete(self, provider, folder_single_thing_metadata, mock_time):
+    async def test_single_thing_folder_delete(self, provider, folder_single_thing_metadata):
         path = WaterButlerPath('/single-thing-folder/')
 
         params = {'prefix': 'single-thing-folder/'}
@@ -844,10 +844,10 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file(self, provider, file_metadata, mock_time):
+    async def test_metadata_file(self, provider, file_header_metadata):
         path = WaterButlerPath('/Foo/Bar/my-image.jpg')
         url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
-        aiohttpretty.register_uri('HEAD', url, headers=file_metadata)
+        aiohttpretty.register_uri('HEAD', url, headers=file_header_metadata)
 
         result = await provider.metadata(path)
 
@@ -859,10 +859,10 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file_lastest_revision(self, provider, file_metadata, mock_time):
+    async def test_metadata_file_lastest_revision(self, provider, file_header_metadata):
         path = WaterButlerPath('/Foo/Bar/my-image.jpg')
         url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
-        aiohttpretty.register_uri('HEAD', url, headers=file_metadata)
+        aiohttpretty.register_uri('HEAD', url, headers=file_header_metadata)
 
         result = await provider.metadata(path, revision='Latest')
 
@@ -884,7 +884,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload(self, provider, file_content, file_stream, file_metadata, mock_time):
+    async def test_upload(self, provider, file_content, file_stream, file_header_metadata):
         path = WaterButlerPath('/foobah')
         content_md5 = hashlib.md5(file_content).hexdigest()
         url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
@@ -894,7 +894,7 @@ class TestMetadata:
             metadata_url,
             responses=[
                 {'status': 404},
-                {'headers': file_metadata},
+                {'headers': file_header_metadata},
             ],
         )
         aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"{}"'.format(content_md5)}),
@@ -908,7 +908,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_checksum_mismatch(self, provider, file_stream, file_metadata, mock_time):
+    async def test_upload_checksum_mismatch(self, provider, file_stream, file_header_metadata):
         path = WaterButlerPath('/foobah')
         url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
         metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
@@ -917,7 +917,7 @@ class TestMetadata:
             metadata_url,
             responses=[
                 {'status': 404},
-                {'headers': file_metadata},
+                {'headers': file_header_metadata},
             ],
         )
         aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"bad hash"'})
@@ -960,7 +960,7 @@ class TestCreateFolder:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_errors_out(self, provider, mock_time):
+    async def test_errors_out(self, provider):
         path = WaterButlerPath('/alreadyexists/')
         url = provider.bucket.generate_url(100, 'GET')
         params = build_folder_params(path)
@@ -1010,18 +1010,13 @@ class TestOperations:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy(self, provider, file_metadata, mock_time):
+    async def test_intra_copy(self, provider, file_header_metadata):
 
         source_path = WaterButlerPath('/source')
         dest_path = WaterButlerPath('/dest')
         metadata_url = provider.bucket.new_key(dest_path.path).generate_url(100, 'HEAD')
-        aiohttpretty.register_uri('HEAD', metadata_url, headers=file_metadata)
+        aiohttpretty.register_uri('HEAD', metadata_url, headers=file_header_metadata)
 
-        from urllib import parse
-
-        import os
-
-        #params = {'x-amz-copy-source': '/{}/{}'.format(provider.settings['bucket'], source_path.path)}
         header_path = '/' + os.path.join(provider.settings['bucket'], source_path.path)
         headers = {'x-amz-copy-source': parse.quote(header_path)}
 
