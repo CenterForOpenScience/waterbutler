@@ -219,12 +219,7 @@ class EvernoteProvider(provider.BaseProvider):
         if isinstance(note_metadata, Exception):
             raise exceptions.NotFoundError(str(path))
         else:
-            # TO: actually validate the plan
-            # for now just return wbpath
-            if True:
-                return wbpath
-            else:
-                raise exceptions.NotFoundError(str(path))
+            return wbpath
 
     def can_intra_move(self, other, path=None):
         """
