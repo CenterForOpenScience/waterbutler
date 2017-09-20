@@ -1,7 +1,7 @@
-import http
 import json
 import asyncio
 import hashlib
+from http import HTTPStatus
 
 import aiohttp
 
@@ -176,13 +176,13 @@ class BaseFigshareProvider(provider.BaseProvider):
         file_metadata = await self.metadata(path)
         download_url = file_metadata.extra['downloadUrl']
         if download_url is None:
-            raise exceptions.DownloadError('Download not available', code=http.client.FORBIDDEN)
+            raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)
 
         params = {} if file_metadata.is_public else {'token': self.token}
         resp = await aiohttp.request('GET', download_url, params=params)
         if resp.status == 404:
             await resp.release()
-            raise exceptions.DownloadError('Download not available', code=http.client.FORBIDDEN)
+            raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)
 
         return streams.ResponseStreamReader(resp)
 
@@ -592,7 +592,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
             'GET',
             self.build_url(False, *self.root_path_parts, 'articles', article_id),
             expects=(200, ),
-            throws=exceptions.NotFoundError,
+            throws=exceptions.CreateFolderError,
         )
         article_json = await get_article_response.json()
 

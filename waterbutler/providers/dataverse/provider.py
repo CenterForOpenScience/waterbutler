@@ -1,6 +1,6 @@
-import http
 import hashlib
 import tempfile
+from http import HTTPStatus
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -225,7 +225,7 @@ class DataverseProvider(provider.BaseProvider):
         except StopIteration:
             raise exceptions.MetadataError(
                 "Could not retrieve file '{}'".format(path),
-                code=http.client.NOT_FOUND,
+                code=HTTPStatus.NOT_FOUND,
             )
 
     async def revisions(self, path, **kwargs):
