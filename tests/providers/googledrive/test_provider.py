@@ -1,11 +1,12 @@
-import copy
-import pytest
-
 import io
+import os
+import copy
+import json
 from http import client
+from urllib import parse
 
+import pytest
 import aiohttpretty
-from json import dumps
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
@@ -13,13 +14,17 @@ from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.googledrive import settings as ds
 from waterbutler.providers.googledrive import GoogleDriveProvider
+from waterbutler.providers.googledrive import utils as drive_utils
 from waterbutler.providers.googledrive.provider import GoogleDrivePath
-from waterbutler.providers.googledrive.metadata import GoogleDriveRevision
-from waterbutler.providers.googledrive.metadata import GoogleDriveFileMetadata
-from waterbutler.providers.googledrive.metadata import GoogleDriveFolderMetadata
-from waterbutler.providers.googledrive.metadata import GoogleDriveFileRevisionMetadata
+from waterbutler.providers.googledrive.metadata import (GoogleDriveRevision,
+                                                        GoogleDriveFileMetadata,
+                                                        GoogleDriveFolderMetadata,
+                                                        GoogleDriveFileRevisionMetadata)
 
-from tests.providers.googledrive import fixtures
+from tests.providers.googledrive.fixtures import(error_fixtures,
+                                                 sharing_fixtures,
+                                                 revision_fixtures,
+                                                 root_provider_fixtures)
 
 
 @pytest.fixture
@@ -51,6 +56,11 @@ def credentials():
 
 
 @pytest.fixture
+def other_credentials():
+    return {'token': 'hugoandprobablynotkim'}
+
+
+@pytest.fixture
 def settings():
     return {
         'folder': {
@@ -66,6 +76,11 @@ def provider(auth, credentials, settings):
 
 
 @pytest.fixture
+def other_provider(auth, other_credentials, settings):
+    return GoogleDriveProvider(auth, other_credentials, settings)
+
+
+@pytest.fixture
 def search_for_file_response():
     return {
         'items': [
@@ -73,11 +88,13 @@ def search_for_file_response():
         ]
     }
 
+
 @pytest.fixture
 def no_file_response():
     return {
         'items': []
     }
+
 
 @pytest.fixture
 def actual_file_response():
@@ -87,6 +104,7 @@ def actual_file_response():
         'title': 'B.txt',
     }
 
+
 @pytest.fixture
 def search_for_folder_response():
     return {
@@ -95,11 +113,13 @@ def search_for_folder_response():
         ]
     }
 
+
 @pytest.fixture
 def no_folder_response():
     return {
         'items': []
     }
+
 
 @pytest.fixture
 def actual_folder_response():
@@ -109,20 +129,75 @@ def actual_folder_response():
         'title': 'A',
     }
 
+
+def make_unauthorized_file_access_error(file_id):
+    message = ('The authenticated user does not have the required access '
+               'to the file {}'.format(file_id))
+    return json.dumps({
+        "error": {
+            "errors": [
+                {
+                    "reason": "userAccess",
+                    "locationType": "header",
+                    "message": message,
+                    "location": "Authorization",
+                    "domain": "global"
+                }
+            ],
+            "message": message,
+            "code": 403
+        }
+    })
+
+
+def make_no_such_revision_error(revision_id):
+    message = 'Revision not found: {}'.format(revision_id)
+    return json.dumps({
+        "error": {
+            "errors": [
+                {
+                    "reason": "notFound",
+                    "locationType": "other",
+                    "message": message,
+                    "location": "revision",
+                    "domain": "global"
+                }
+            ],
+            "message": message,
+            "code": 404
+        }
+    })
+
+
+def clean_query(query: str):
+    # Replace \ with \\ and ' with \'
+    # Note only single quotes need to be escaped
+    return query.replace('\\', r'\\').replace("'", r"\'")
+
+
 def _build_title_search_query(provider, entity_name, is_folder=True):
     return "title = '{}' " \
-            "and trashed = false " \
-            "and mimeType != 'application/vnd.google-apps.form' " \
-            "and mimeType != 'application/vnd.google-apps.map' " \
-            "and mimeType != 'application/vnd.google-apps.document' " \
-            "and mimeType != 'application/vnd.google-apps.drawing' " \
-            "and mimeType != 'application/vnd.google-apps.presentation' " \
-            "and mimeType != 'application/vnd.google-apps.spreadsheet' " \
-            "and mimeType {} '{}'".format(
-                entity_name,
-                '=' if is_folder else '!=',
-                provider.FOLDER_MIME_TYPE
-            )
+        "and trashed = false " \
+        "and mimeType != 'application/vnd.google-apps.form' " \
+        "and mimeType != 'application/vnd.google-apps.map' " \
+        "and mimeType != 'application/vnd.google-apps.document' " \
+        "and mimeType != 'application/vnd.google-apps.drawing' " \
+        "and mimeType != 'application/vnd.google-apps.presentation' " \
+        "and mimeType != 'application/vnd.google-apps.spreadsheet' " \
+        "and mimeType {} '{}'".format(
+            entity_name,
+            '=' if is_folder else '!=',
+            provider.FOLDER_MIME_TYPE
+        )
+
+
+def generate_list(child_id, **kwargs):
+    item = {}
+    item.update(root_provider_fixtures()['list_file']['items'][0])
+    item.update(kwargs)
+    item['id'] = str(child_id)
+    return {'items': [item]}
+
 
 class TestValidatePath:
 
@@ -200,21 +275,116 @@ class TestValidatePath:
 
         assert wb_path_v1 == wb_path_v0
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v1_path_root(self, provider):
+        path = '/'
+
+        result = await provider.validate_v1_path(path)
+        expected = GoogleDrivePath('/', _ids=[provider.folder['id']], folder=True)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revalidate_path_file(self, provider, root_provider_fixtures):
+        file_name = '/Gear1.stl'
+        revalidate_path_metadata = root_provider_fixtures['revalidate_path_file_metadata_1']
+        file_id = revalidate_path_metadata['items'][0]['id']
+        path = GoogleDrivePath(file_name, _ids=['0', file_id])
+
+        parts = [[parse.unquote(x), True] for x in file_name.strip('/').split('/')]
+        parts[-1][1] = False
+
+        current_part = parts.pop(0)
+        part_name, part_is_folder = current_part[0], current_part[1]
+        name, ext = os.path.splitext(part_name)
+        query = _build_title_search_query(provider, file_name.strip('/'), False)
+
+        url = provider.build_url('files', file_id, 'children', q=query, fields='items(id)')
+        aiohttpretty.register_json_uri('GET', url, body=revalidate_path_metadata)
+
+        url = provider.build_url('files', file_id, fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', url,
+                                       body=root_provider_fixtures['revalidate_path_file_metadata_2'])
+
+        result = await provider.revalidate_path(path, file_name)
+
+        assert result.name in path.name
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revalidate_path_file_gdoc(self, provider, root_provider_fixtures):
+        file_name = '/Gear1.gdoc'
+        file_id = root_provider_fixtures['revalidate_path_file_metadata_1']['items'][0]['id']
+        path = GoogleDrivePath(file_name, _ids=['0', file_id])
+
+        parts = [[parse.unquote(x), True] for x in file_name.strip('/').split('/')]
+        parts[-1][1] = False
+
+        current_part = parts.pop(0)
+        part_name, part_is_folder = current_part[0], current_part[1]
+        name, ext = os.path.splitext(part_name)
+        gd_ext = drive_utils.get_mimetype_from_ext(ext)
+        query = "title = '{}' " \
+                "and trashed = false " \
+                "and mimeType = '{}'".format(clean_query(name), gd_ext)
+
+        url = provider.build_url('files', file_id, 'children', q=query, fields='items(id)')
+        aiohttpretty.register_json_uri('GET', url,
+                                       body=root_provider_fixtures['revalidate_path_file_metadata_1'])
+
+        url = provider.build_url('files', file_id, fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', url,
+                                       body=root_provider_fixtures['revalidate_path_gdoc_file_metadata'])
+
+        result = await provider.revalidate_path(path, file_name)
+
+        assert result.name in path.name
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revalidate_path_folder(self, provider, root_provider_fixtures):
+        file_name = "/inception folder yo/"
+        file_id = root_provider_fixtures['revalidate_path_folder_metadata_1']['items'][0]['id']
+        path = GoogleDrivePath(file_name, _ids=['0', file_id])
+
+        parts = [[parse.unquote(x), True] for x in file_name.strip('/').split('/')]
+        parts[-1][1] = False
+
+        current_part = parts.pop(0)
+        part_name, part_is_folder = current_part[0], current_part[1]
+        name, ext = os.path.splitext(part_name)
+        query = _build_title_search_query(provider, file_name.strip('/') + '/', True)
+
+        folder_one_url = provider.build_url('files', file_id, 'children', q=query, fields='items(id)')
+        aiohttpretty.register_json_uri('GET', folder_one_url,
+                                       body=root_provider_fixtures['revalidate_path_folder_metadata_1'])
+
+        folder_two_url = provider.build_url('files', file_id, fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', folder_two_url,
+                                       body=root_provider_fixtures['revalidate_path_folder_metadata_2'])
+
+        result = await provider.revalidate_path(path, file_name, True)
+        assert result.name in path.name
+
 
 class TestUpload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_create(self, provider, file_stream):
+    async def test_upload_create(self, provider, file_stream, root_provider_fixtures):
         upload_id = '7'
-        item = fixtures.list_file['items'][0]
+        item = root_provider_fixtures['list_file']['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
 
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
-        finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                       upload_id=upload_id)
 
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
-        aiohttpretty.register_uri('POST', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
 
         result, created = await provider.upload(file_stream, path)
 
@@ -227,16 +397,18 @@ class TestUpload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_doesnt_unquote(self, provider, file_stream):
+    async def test_upload_doesnt_unquote(self, provider, file_stream, root_provider_fixtures):
         upload_id = '7'
-        item = fixtures.list_file['items'][0]
+        item = root_provider_fixtures['list_file']['items'][0]
         path = GoogleDrivePath('/birdie%2F %20".jpg', _ids=(provider.folder['id'], None))
 
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
-        finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                       upload_id=upload_id)
 
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
-        aiohttpretty.register_uri('POST', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
 
         result, created = await provider.upload(file_stream, path)
 
@@ -249,16 +421,19 @@ class TestUpload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_update(self, provider, file_stream):
+    async def test_upload_update(self, provider, file_stream, root_provider_fixtures):
         upload_id = '7'
-        item = fixtures.list_file['items'][0]
+        item = root_provider_fixtures['list_file']['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
 
-        start_upload_url = provider._build_upload_url('files', path.identifier, uploadType='resumable')
-        finish_upload_url = provider._build_upload_url('files', path.identifier, uploadType='resumable', upload_id=upload_id)
+        start_upload_url = provider._build_upload_url('files', path.identifier,
+                                                      uploadType='resumable')
+        finish_upload_url = provider._build_upload_url('files', path.identifier,
+                                                       uploadType='resumable', upload_id=upload_id)
 
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
-        aiohttpretty.register_uri('PUT', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+        aiohttpretty.register_uri('PUT', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
         result, created = await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='PUT', uri=start_upload_url)
@@ -269,17 +444,19 @@ class TestUpload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_create_nested(self, provider, file_stream):
+    async def test_upload_create_nested(self, provider, file_stream, root_provider_fixtures):
         upload_id = '7'
-        item = fixtures.list_file['items'][0]
+        item = root_provider_fixtures['list_file']['items'][0]
         path = WaterButlerPath(
             '/ed/sullivan/show.mp3',
             _ids=[str(x) for x in range(3)]
         )
 
         start_upload_url = provider._build_upload_url('files', uploadType='resumable')
-        finish_upload_url = provider._build_upload_url('files', uploadType='resumable', upload_id=upload_id)
-        aiohttpretty.register_uri('POST', start_upload_url, headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                       upload_id=upload_id)
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         result, created = await provider.upload(file_stream, path)
 
@@ -289,16 +466,37 @@ class TestUpload:
         expected = GoogleDriveFileMetadata(item, path)
         assert result == expected
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_checksum_mismatch(self, provider, file_stream, root_provider_fixtures):
+        upload_id = '7'
+        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
+
+        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                       upload_id=upload_id)
+
+        aiohttpretty.register_json_uri('PUT', finish_upload_url,
+                                       body=root_provider_fixtures['checksum_mismatch_metadata'])
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+
+        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+            await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
+        assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
+
 
 class TestDelete:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete(self, provider):
-        item = fixtures.list_file['items'][0]
+    async def test_delete(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['list_file']['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(None, item['id']))
         delete_url = provider.build_url('files', item['id'])
-        del_url_body = dumps({'labels': {'trashed': 'true'}})
+        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
         aiohttpretty.register_uri('PUT',
                                   delete_url,
                                   body=del_url_body,
@@ -311,10 +509,10 @@ class TestDelete:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_folder(self, provider):
-        item = fixtures.folder_metadata
+    async def test_delete_folder(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['folder_metadata']
         del_url = provider.build_url('files', item['id'])
-        del_url_body = dumps({'labels': {'trashed': 'true'}})
+        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
 
         path = WaterButlerPath('/foobar/', _ids=('doesntmatter', item['id']))
 
@@ -332,6 +530,35 @@ class TestDelete:
     async def test_delete_not_existing(self, provider):
         with pytest.raises(exceptions.NotFoundError):
             await provider.delete(WaterButlerPath('/foobar/'))
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_root_no_confirm(self, provider):
+        path = WaterButlerPath('/', _ids=('0'))
+
+        with pytest.raises(exceptions.DeleteError) as e:
+            await provider.delete(path)
+
+        assert e.value.message == 'confirm_delete=1 is required for deleting root provider folder'
+        assert e.value.code == 400
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_root(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['delete_contents_metadata']['items'][0]
+        root_path = WaterButlerPath('/', _ids=('0'))
+
+        url = provider.build_url('files', q="'{}' in parents".format('0'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', url,
+                                       body=root_provider_fixtures['delete_contents_metadata'])
+
+        delete_url = provider.build_url('files', item['id'])
+        data = json.dumps({'labels': {'trashed': 'true'}}),
+        aiohttpretty.register_json_uri('PUT', delete_url, data=data, status=200)
+
+        await provider.delete(root_path, 1)
+
+        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
 
 
 class TestDownload:
@@ -364,8 +591,8 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_editable_gdoc_no_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_gdoc']['metadata']
+    async def test_download_editable_gdoc_no_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_gdoc',
             _ids=['1', '2', metadata_body['id']]
@@ -375,7 +602,7 @@ class TestDownload:
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
-        revisions_body = fixtures.sharing['editable_gdoc']['revisions']
+        revisions_body = sharing_fixtures['editable_gdoc']['revisions']
         revisions_url = provider.build_url('files', metadata_body['id'], 'revisions')
         aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_body)
 
@@ -394,14 +621,14 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_editable_gdoc_good_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_gdoc']['metadata']
+    async def test_download_editable_gdoc_good_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_gdoc',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        revision_body = fixtures.sharing['editable_gdoc']['revision']
+        revision_body = sharing_fixtures['editable_gdoc']['revision']
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.GDOC_GOOD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, body=revision_body)
@@ -420,14 +647,14 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_editable_gdoc_bad_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_gdoc']['metadata']
+    async def test_download_editable_gdoc_bad_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_gdoc',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        no_such_revision_error = fixtures.make_no_such_revision_error(self.GDOC_BAD_REVISION)
+        no_such_revision_error = make_no_such_revision_error(self.GDOC_BAD_REVISION)
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.GDOC_BAD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, status=404, body=no_such_revision_error)
@@ -439,8 +666,8 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_editable_gdoc_magic_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_gdoc']['metadata']
+    async def test_download_editable_gdoc_magic_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_gdoc',
             _ids=['1', '2', metadata_body['id']]
@@ -450,7 +677,7 @@ class TestDownload:
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
-        revisions_body = fixtures.sharing['editable_gdoc']['revisions']
+        revisions_body = sharing_fixtures['editable_gdoc']['revisions']
         revisions_url = provider.build_url('files', metadata_body['id'], 'revisions')
         aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_body)
 
@@ -469,8 +696,8 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_viewable_gdoc_no_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_gdoc']['metadata']
+    async def test_download_viewable_gdoc_no_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewaable_gdoc',
             _ids=['1', '2', metadata_body['id']]
@@ -494,14 +721,14 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_viewable_gdoc_bad_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_gdoc']['metadata']
+    async def test_download_viewable_gdoc_bad_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewable_gdoc',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        unauthorized_error = fixtures.make_unauthorized_file_access_error(metadata_body['id'])
+        unauthorized_error = make_unauthorized_file_access_error(metadata_body['id'])
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.GDOC_BAD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, status=404, body=unauthorized_error)
@@ -513,8 +740,8 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_viewable_gdoc_magic_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_gdoc']['metadata']
+    async def test_download_viewable_gdoc_magic_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewable_gdoc',
             _ids=['1', '2', metadata_body['id']]
@@ -538,8 +765,8 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_editable_jpeg_no_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_jpeg']['metadata']
+    async def test_download_editable_jpeg_no_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
@@ -562,14 +789,14 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_editable_jpeg_good_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_jpeg']['metadata']
+    async def test_download_editable_jpeg_good_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        revision_body = fixtures.sharing['editable_jpeg']['revision']
+        revision_body = sharing_fixtures['editable_jpeg']['revision']
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.JPEG_GOOD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, body=revision_body)
@@ -587,14 +814,14 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_editable_jpeg_bad_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_jpeg']['metadata']
+    async def test_download_editable_jpeg_bad_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        no_such_revision_error = fixtures.make_no_such_revision_error(self.JPEG_BAD_REVISION)
+        no_such_revision_error = make_no_such_revision_error(self.JPEG_BAD_REVISION)
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.JPEG_BAD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, status=404, body=no_such_revision_error)
@@ -606,8 +833,8 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_editable_jpeg_magic_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_jpeg']['metadata']
+    async def test_download_editable_jpeg_magic_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
@@ -630,8 +857,8 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_viewable_jpeg_no_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_jpeg']['metadata']
+    async def test_download_viewable_jpeg_no_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewaable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
@@ -654,14 +881,14 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_viewable_jpeg_bad_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_jpeg']['metadata']
+    async def test_download_viewable_jpeg_bad_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        unauthorized_error = fixtures.make_unauthorized_file_access_error(metadata_body['id'])
+        unauthorized_error = make_unauthorized_file_access_error(metadata_body['id'])
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.JPEG_BAD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, status=404, body=unauthorized_error)
@@ -673,8 +900,8 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_viewable_jpeg_magic_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_jpeg']['metadata']
+    async def test_download_viewable_jpeg_magic_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
@@ -726,16 +953,34 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file_root(self, provider):
-        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], fixtures.list_file['items'][0]['id']))
+    async def test_metadata_file_root(self, provider, root_provider_fixtures):
+        file_metadata = root_provider_fixtures['list_file']['items'][0]
+        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], file_metadata['id']))
 
         list_file_url = provider.build_url('files', path.identifier)
-        aiohttpretty.register_json_uri('GET', list_file_url, body=fixtures.list_file['items'][0])
+        aiohttpretty.register_json_uri('GET', list_file_url, body=file_metadata)
 
         result = await provider.metadata(path)
 
-        expected = GoogleDriveFileMetadata(fixtures.list_file['items'][0], path)
+        expected = GoogleDriveFileMetadata(file_metadata, path)
         assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata_string_error_response(self, provider, root_provider_fixtures):
+        path = WaterButlerPath('/birdie.jpg',
+                               _ids=(provider.folder['id'],
+                                     root_provider_fixtures['list_file']['items'][0]['id']))
+
+        list_file_url = provider.build_url('files', path.identifier)
+        aiohttpretty.register_uri('GET', list_file_url, headers={'Content-Type': 'text/html'},
+            body='this is an error message string with a 404... or is it?', status=404)
+
+        with pytest.raises(exceptions.NotFoundError) as e:
+            await provider.metadata(path)
+
+        assert e.value.code == 404
+        assert e.value.message == 'Could not retrieve file or directory {}'.format('/' + path.path)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -755,7 +1000,7 @@ class TestMetadata:
             _ids=[str(x) for x in range(4)]
         )
 
-        item = fixtures.generate_list(3)['items'][0]
+        item = generate_list(3)['items'][0]
         url = provider.build_url('files', path.identifier)
 
         aiohttpretty.register_json_uri('GET', url, body=item)
@@ -768,17 +1013,18 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_root_folder(self, provider):
+    async def test_metadata_root_folder(self, provider, root_provider_fixtures):
         path = await provider.validate_path('/')
         query = provider._build_query(provider.folder['id'])
         list_file_url = provider.build_url('files', q=query, alt='json', maxResults=1000)
-        aiohttpretty.register_json_uri('GET', list_file_url, body=fixtures.list_file)
+        aiohttpretty.register_json_uri('GET', list_file_url,
+                                       body=root_provider_fixtures['list_file'])
 
         result = await provider.metadata(path)
 
         expected = GoogleDriveFileMetadata(
-            fixtures.list_file['items'][0],
-            path.child(fixtures.list_file['items'][0]['title'])
+            root_provider_fixtures['list_file']['items'][0],
+            path.child(root_provider_fixtures['list_file']['items'][0]['title'])
         )
         assert result == [expected]
 
@@ -790,13 +1036,15 @@ class TestMetadata:
             _ids=[str(x) for x in range(4)]
         )
 
-        body = fixtures.generate_list(3)
+        body = generate_list(3)
         item = body['items'][0]
 
         query = provider._build_query(path.identifier)
         url = provider.build_url('files', q=query, alt='json', maxResults=1000)
+        url_children = provider.build_url('files', q="'{}' in parents".format(path.identifier))
 
         aiohttpretty.register_json_uri('GET', url, body=body)
+        aiohttpretty.register_json_uri('GET', url_children, body={'items': []})
 
         result = await provider.metadata(path)
 
@@ -807,13 +1055,13 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_folder_metadata(self, provider):
+    async def test_folder_metadata(self, provider, root_provider_fixtures):
         path = GoogleDrivePath(
             '/hugo/kim/pins/',
             _ids=[str(x) for x in range(4)]
         )
 
-        body = fixtures.generate_list(3, **fixtures.folder_metadata)
+        body = generate_list(3, **root_provider_fixtures['folder_metadata'])
         item = body['items'][0]
 
         query = provider._build_query(path.identifier)
@@ -830,8 +1078,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_editable_gdoc_no_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_gdoc']['metadata']
+    async def test_metadata_editable_gdoc_no_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_gdoc',
             _ids=['1', '2', metadata_body['id']]
@@ -841,7 +1089,7 @@ class TestMetadata:
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
-        revisions_body = fixtures.sharing['editable_gdoc']['revisions']
+        revisions_body = sharing_fixtures['editable_gdoc']['revisions']
         revisions_url = provider.build_url('files', metadata_body['id'], 'revisions')
         aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_body)
 
@@ -856,14 +1104,14 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_editable_gdoc_good_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_gdoc']['metadata']
+    async def test_metadata_editable_gdoc_good_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_gdoc',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        revision_body = fixtures.sharing['editable_gdoc']['revision']
+        revision_body = sharing_fixtures['editable_gdoc']['revision']
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.GDOC_GOOD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, body=revision_body)
@@ -876,14 +1124,14 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_editable_gdoc_bad_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_gdoc']['metadata']
+    async def test_metadata_editable_gdoc_bad_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_gdoc',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        no_such_revision_error = fixtures.make_no_such_revision_error(self.GDOC_BAD_REVISION)
+        no_such_revision_error = make_no_such_revision_error(self.GDOC_BAD_REVISION)
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.GDOC_BAD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, status=404, body=no_such_revision_error)
@@ -895,8 +1143,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_editable_gdoc_magic_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_gdoc']['metadata']
+    async def test_metadata_editable_gdoc_magic_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_gdoc',
             _ids=['1', '2', metadata_body['id']]
@@ -906,7 +1154,7 @@ class TestMetadata:
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
-        revisions_body = fixtures.sharing['editable_gdoc']['revisions']
+        revisions_body = sharing_fixtures['editable_gdoc']['revisions']
         revisions_url = provider.build_url('files', metadata_body['id'], 'revisions')
         aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_body)
 
@@ -921,8 +1169,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_viewable_gdoc_no_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_gdoc']['metadata']
+    async def test_metadata_viewable_gdoc_no_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewable_gdoc',
             _ids=['1', '2', metadata_body['id']]
@@ -942,14 +1190,14 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_viewable_gdoc_bad_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_gdoc']['metadata']
+    async def test_metadata_viewable_gdoc_bad_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewable_gdoc',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        unauthorized_error = fixtures.make_unauthorized_file_access_error(metadata_body['id'])
+        unauthorized_error = make_unauthorized_file_access_error(metadata_body['id'])
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.GDOC_BAD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, status=404, body=unauthorized_error)
@@ -961,8 +1209,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_viewable_gdoc_magic_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_gdoc']['metadata']
+    async def test_metadata_viewable_gdoc_magic_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_gdoc']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewable_gdoc',
             _ids=['1', '2', metadata_body['id']]
@@ -982,8 +1230,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_editable_jpeg_no_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_jpeg']['metadata']
+    async def test_metadata_editable_jpeg_no_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
@@ -1001,14 +1249,14 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_editable_jpeg_good_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_jpeg']['metadata']
+    async def test_metadata_editable_jpeg_good_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        revision_body = fixtures.sharing['editable_jpeg']['revision']
+        revision_body = sharing_fixtures['editable_jpeg']['revision']
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.JPEG_GOOD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, body=revision_body)
@@ -1021,14 +1269,14 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_editable_jpeg_bad_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_jpeg']['metadata']
+    async def test_metadata_editable_jpeg_bad_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        no_such_revision_error = fixtures.make_no_such_revision_error(self.JPEG_BAD_REVISION)
+        no_such_revision_error = make_no_such_revision_error(self.JPEG_BAD_REVISION)
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.JPEG_BAD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, status=404, body=no_such_revision_error)
@@ -1040,8 +1288,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_editable_jpeg_magic_revision(self, provider):
-        metadata_body = fixtures.sharing['editable_jpeg']['metadata']
+    async def test_metadata_editable_jpeg_magic_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/editable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
@@ -1059,8 +1307,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_viewable_jpeg_no_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_jpeg']['metadata']
+    async def test_metadata_viewable_jpeg_no_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewaable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
@@ -1078,14 +1326,14 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_viewable_jpeg_bad_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_jpeg']['metadata']
+    async def test_metadata_viewable_jpeg_bad_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
         )
 
-        unauthorized_error = fixtures.make_unauthorized_file_access_error(metadata_body['id'])
+        unauthorized_error = make_unauthorized_file_access_error(metadata_body['id'])
         revision_url = provider.build_url('files', metadata_body['id'],
                                           'revisions', self.JPEG_BAD_REVISION)
         aiohttpretty.register_json_uri('GET', revision_url, status=404, body=unauthorized_error)
@@ -1097,8 +1345,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_viewable_jpeg_magic_revision(self, provider):
-        metadata_body = fixtures.sharing['viewable_jpeg']['metadata']
+    async def test_metadata_viewable_jpeg_magic_revision(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['viewable_jpeg']['metadata']
         path = GoogleDrivePath(
             '/sharing/viewable_jpeg.jpeg',
             _ids=['1', '2', metadata_body['id']]
@@ -1119,30 +1367,33 @@ class TestRevisions:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_get_revisions(self, provider):
-        item = fixtures.list_file['items'][0]
+    async def test_get_revisions(self, provider, revision_fixtures, root_provider_fixtures):
+        item = root_provider_fixtures['list_file']['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=('doesntmatter', item['id']))
 
         revisions_url = provider.build_url('files', item['id'], 'revisions')
-        aiohttpretty.register_json_uri('GET', revisions_url, body=fixtures.revisions_list)
+        aiohttpretty.register_json_uri('GET', revisions_url,
+                                       body=revision_fixtures['revisions_list'])
 
         result = await provider.revisions(path)
         expected = [
             GoogleDriveRevision(each)
-            for each in fixtures.revisions_list['items']
+            for each in revision_fixtures['revisions_list']['items']
         ]
         assert result == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_get_revisions_no_revisions(self, provider):
-        item = fixtures.list_file['items'][0]
+    async def test_get_revisions_no_revisions(self, provider, revision_fixtures,
+                                              root_provider_fixtures):
+        item = root_provider_fixtures['list_file']['items'][0]
         metadata_url = provider.build_url('files', item['id'])
         revisions_url = provider.build_url('files', item['id'], 'revisions')
         path = WaterButlerPath('/birdie.jpg', _ids=('doesntmatter', item['id']))
 
         aiohttpretty.register_json_uri('GET', metadata_url, body=item)
-        aiohttpretty.register_json_uri('GET', revisions_url, body=fixtures.revisions_list_empty)
+        aiohttpretty.register_json_uri('GET', revisions_url,
+                                       body=revision_fixtures['revisions_list_empty'])
 
         result = await provider.revisions(path)
         expected = [
@@ -1155,8 +1406,8 @@ class TestRevisions:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_get_revisions_for_uneditable(self, provider):
-        file_fixtures = fixtures.sharing['viewable_gdoc']
+    async def test_get_revisions_for_uneditable(self, provider, sharing_fixtures):
+        file_fixtures = sharing_fixtures['viewable_gdoc']
         item = file_fixtures['metadata']
         metadata_url = provider.build_url('files', item['id'])
         revisions_url = provider.build_url('files', item['id'], 'revisions')
@@ -1193,14 +1444,16 @@ class TestCreateFolder:
             await provider.create_folder(path)
 
         assert e.value.code == 409
-        assert e.value.message == 'Cannot create folder "{}" because a file or folder already exists at path "{}"'.format(path.name, str(path))
+        assert e.value.message == ('Cannot create folder "hugo", because a file or folder '
+                                   'already exists with that name')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_returns_metadata(self, provider):
+    async def test_returns_metadata(self, provider, root_provider_fixtures):
         path = WaterButlerPath('/osf%20test/', _ids=(provider.folder['id'], None))
 
-        aiohttpretty.register_json_uri('POST', provider.build_url('files'), body=fixtures.folder_metadata)
+        aiohttpretty.register_json_uri('POST', provider.build_url('files'),
+                                       body=root_provider_fixtures['folder_metadata'])
 
         resp = await provider.create_folder(path)
 
@@ -1211,7 +1464,8 @@ class TestCreateFolder:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_raises_non_404(self, provider):
-        path = WaterButlerPath('/hugo/kim/pins/', _ids=(provider.folder['id'], 'something', 'something', None))
+        path = WaterButlerPath('/hugo/kim/pins/', _ids=(provider.folder['id'],
+                                                        'something', 'something', None))
 
         url = provider.build_url('files')
         aiohttpretty.register_json_uri('POST', url, status=418)
@@ -1226,3 +1480,167 @@ class TestCreateFolder:
     async def test_must_be_folder(self, provider, monkeypatch):
         with pytest.raises(exceptions.CreateFolderError) as e:
             await provider.create_folder(WaterButlerPath('/carp.fish', _ids=('doesnt', 'matter')))
+
+
+class TestIntraFunctions:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_move_file(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['docs_file_metadata']
+        src_path = WaterButlerPath('/unsure.txt', _ids=(provider.folder['id'], item['id']))
+        dest_path = WaterButlerPath('/really/unsure.txt', _ids=(provider.folder['id'],
+                                                                item['id'], item['id']))
+
+        url = provider.build_url('files', src_path.identifier)
+        data = json.dumps({
+            'parents': [{
+                'id': dest_path.parent.identifier
+            }],
+            'title': dest_path.name
+        }),
+        aiohttpretty.register_json_uri('PATCH', url, data=data, body=item)
+
+        delete_url = provider.build_url('files', item['id'])
+        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
+        aiohttpretty.register_uri('PUT', delete_url, body=del_url_body, status=200)
+
+        result, created = await provider.intra_move(provider, src_path, dest_path)
+        expected = GoogleDriveFileMetadata(item, dest_path)
+
+        assert result == expected
+        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_move_folder(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['folder_metadata']
+        src_path = WaterButlerPath('/unsure/', _ids=(provider.folder['id'], item['id']))
+        dest_path = WaterButlerPath('/really/unsure/', _ids=(provider.folder['id'],
+                                                             item['id'], item['id']))
+
+        url = provider.build_url('files', src_path.identifier)
+        data = json.dumps({
+            'parents': [{
+                'id': dest_path.parent.identifier
+            }],
+            'title': dest_path.name
+        }),
+        aiohttpretty.register_json_uri('PATCH', url, data=data, body=item)
+
+        delete_url = provider.build_url('files', item['id'])
+        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
+        aiohttpretty.register_uri('PUT', delete_url, body=del_url_body, status=200)
+
+        children_query = provider._build_query(dest_path.identifier)
+        children_url = provider.build_url('files', q=children_query, alt='json', maxResults=1000)
+        children_list = generate_list(3, **root_provider_fixtures['folder_metadata'])
+        aiohttpretty.register_json_uri('GET', children_url, body=children_list)
+
+        result, created = await provider.intra_move(provider, src_path, dest_path)
+        expected = GoogleDriveFolderMetadata(item, dest_path)
+        expected.children = [
+            provider._serialize_item(dest_path.child(item['title']), item)
+            for item in children_list['items']
+        ]
+
+        assert result == expected
+        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_copy_file(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['docs_file_metadata']
+        src_path = WaterButlerPath('/unsure.txt', _ids=(provider.folder['id'], item['id']))
+        dest_path = WaterButlerPath('/really/unsure.txt', _ids=(provider.folder['id'],
+                                                                item['id'], item['id']))
+
+        url = provider.build_url('files', src_path.identifier, 'copy')
+        data = json.dumps({
+            'parents': [{
+                'id': dest_path.parent.identifier
+            }],
+            'title': dest_path.name
+        }),
+        aiohttpretty.register_json_uri('POST', url, data=data, body=item)
+
+        delete_url = provider.build_url('files', item['id'])
+        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
+        aiohttpretty.register_uri('PUT', delete_url, body=del_url_body, status=200)
+
+        result, created = await provider.intra_copy(provider, src_path, dest_path)
+        expected = GoogleDriveFileMetadata(item, dest_path)
+
+        assert result == expected
+        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
+
+
+class TestOperationsOrMisc:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_can_duplicate_names(self, provider):
+        assert provider.can_duplicate_names() is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_shares_storage_root(self, provider, other_provider):
+        assert provider.shares_storage_root(other_provider) is True
+        assert provider.shares_storage_root(provider) is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_can_intra_move(self, provider, other_provider):
+        assert provider.can_intra_move(other_provider) is False
+        assert provider.can_intra_move(provider) is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test__serialize_item_raw(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['docs_file_metadata']
+
+        assert provider._serialize_item(None, item, True) == item
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_can_intra_copy(self, provider, other_provider, root_provider_fixtures):
+        item = root_provider_fixtures['list_file']['items'][0]
+        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
+
+        assert provider.can_intra_copy(other_provider, path) is False
+        assert provider.can_intra_copy(provider, path) is True
+
+    def test_path_from_metadata(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['docs_file_metadata']
+        src_path = WaterButlerPath('/version-test.docx', _ids=(provider.folder['id'], item['id']))
+
+        metadata = GoogleDriveFileMetadata(item, src_path)
+        child_path = provider.path_from_metadata(src_path.parent, metadata)
+
+        assert child_path.full_path == src_path.full_path
+        assert child_path == src_path
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revalidate_path_file_error(self, provider, root_provider_fixtures,
+                                              error_fixtures):
+        file_name = '/root/whatever/Gear1.stl'
+        file_id = root_provider_fixtures['revalidate_path_file_metadata_1']['items'][0]['id']
+        path = GoogleDrivePath(file_name, _ids=['0', file_id, file_id, file_id])
+
+        parts = [[parse.unquote(x), True] for x in file_name.strip('/').split('/')]
+        parts[-1][1] = False
+        current_part = parts.pop(0)
+        part_name, part_is_folder = current_part[0], current_part[1]
+        query = _build_title_search_query(provider, part_name, True)
+
+        url = provider.build_url('files', provider.folder['id'], 'children',
+                                 q=query, fields='items(id)')
+        aiohttpretty.register_json_uri('GET', url,
+                                       body=error_fixtures['parts_file_missing_metadata'])
+
+        with pytest.raises(exceptions.MetadataError) as e:
+            result = await provider._resolve_path_to_ids(file_name)
+
+        assert e.value.message == '{} not found'.format(str(path))
+        assert e.value.code == 404

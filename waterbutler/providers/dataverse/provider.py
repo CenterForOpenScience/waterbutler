@@ -1,5 +1,6 @@
-import http
+import hashlib
 import tempfile
+from http import HTTPStatus
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -140,21 +141,23 @@ class DataverseProvider(provider.BaseProvider):
         :rtype: dict, bool
         """
 
-        stream = streams.ZipStreamReader(AsyncIterator([(path.name, stream)]))
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+
+        zip_stream = streams.ZipStreamReader(AsyncIterator([(path.name, stream)]))
 
         # Write stream to disk (Necessary to find zip file size)
         f = tempfile.TemporaryFile()
-        chunk = await stream.read()
+        chunk = await zip_stream.read()
         while chunk:
             f.write(chunk)
-            chunk = await stream.read()
-        stream = streams.FileStreamReader(f)
+            chunk = await zip_stream.read()
+        file_stream = streams.FileStreamReader(f)
 
         dv_headers = {
             "Content-Disposition": "filename=temp.zip",
             "Content-Type": "application/zip",
             "Packaging": "http://purl.org/net/sword/package/SimpleZip",
-            "Content-Length": str(stream.size),
+            "Content-Length": str(file_stream.size),
         }
 
         # Delete old file if it exists
@@ -166,7 +169,7 @@ class DataverseProvider(provider.BaseProvider):
             self.build_url(settings.EDIT_MEDIA_BASE_URL, 'study', self.doi),
             headers=dv_headers,
             auth=(self.token, ),
-            data=stream,
+            data=file_stream,
             expects=(201, ),
             throws=exceptions.UploadError
         )
@@ -176,6 +179,9 @@ class DataverseProvider(provider.BaseProvider):
         metadata = await self._get_data('latest')
         files = metadata if isinstance(metadata, list) else []
         file_metadata = next(file for file in files if file.name == path.name)
+
+        if stream.writers['md5'].hexdigest != file_metadata.extra['hashes']['md5']:
+            raise exceptions.UploadChecksumMismatchError()
 
         return file_metadata, path.identifier is None
 
@@ -219,7 +225,7 @@ class DataverseProvider(provider.BaseProvider):
         except StopIteration:
             raise exceptions.MetadataError(
                 "Could not retrieve file '{}'".format(path),
-                code=http.client.NOT_FOUND,
+                code=HTTPStatus.NOT_FOUND,
             )
 
     async def revisions(self, path, **kwargs):

@@ -1,6 +1,7 @@
 import os
 import json
 import typing
+import hashlib
 import functools
 from urllib import parse
 from http import HTTPStatus
@@ -171,13 +172,15 @@ class GoogleDriveProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        metadata_class = None
-        if dest_path.is_dir:
-            metadata_class = GoogleDriveFolderMetadata  # type: ignore
-        else:
-            metadata_class = GoogleDriveFileMetadata  # type: ignore
+        created = dest_path.identifier is None
+        dest_path.parts[-1]._id = data['id']
 
-        return metadata_class(data, dest_path), dest_path.identifier is None
+        if dest_path.is_dir:
+            metadata = GoogleDriveFolderMetadata(data, dest_path)
+            metadata._children = await self._folder_metadata(dest_path)
+            return metadata, created
+        else:
+            return GoogleDriveFileMetadata(data, dest_path), created  # type: ignore
 
     async def intra_copy(self,
                          dest_provider: provider.BaseProvider,
@@ -260,10 +263,15 @@ class GoogleDriveProvider(provider.BaseProvider):
         else:
             segments = []
 
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+
         upload_metadata = self._build_upload_metadata(path.parent.identifier, path.name)
         upload_id = await self._start_resumable_upload(not path.identifier, segments, stream.size,
                                                        upload_metadata)
         data = await self._finish_resumable_upload(segments, stream, upload_id)
+
+        if data['md5Checksum'] != stream.writers['md5'].hexdigest:
+            raise exceptions.UploadChecksumMismatchError()
 
         return GoogleDriveFileMetadata(data, path), path.identifier is None
 
@@ -380,7 +388,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         if folder_precheck:
             if path.identifier:
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
 
         async with self.request(
             'POST',
@@ -700,7 +708,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         async with self.request(
             'GET', url,
             expects=(200, 403, 404, ),
-            throws=exceptions.NotFoundError,
+            throws=exceptions.MetadataError,
         ) as resp:
             try:
                 data = await resp.json()

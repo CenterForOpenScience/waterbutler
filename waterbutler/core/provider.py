@@ -89,10 +89,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
                  settings: dict,
                  retry_on: typing.Set[int]={408, 502, 503, 504}) -> None:
         """
-        :param dict auth: Information about the user this provider will act on the behalf of
-        :param dict credentials: The credentials used to authenticate with the provider,
+        :param auth: ( :class:`dict` ) Information about the user this provider will act on the behalf of
+        :param credentials: ( :class:`dict` ) The credentials used to authenticate with the provider,
             ofter an OAuth 2 token
-        :param dict settings: Configuration settings for this provider,
+        :param settings: ( :class:`dict` ) Configuration settings for this provider,
             often folder or repo
         """
         self._retry_on = retry_on
@@ -129,9 +129,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def build_url(self, *segments, **query) -> str:
         """A nice wrapper around furl, builds urls based on self.BASE_URL
 
-        :param tuple \*segments: A tuple of strings joined into /foo/bar/..
-        :param dict \*\*query: A dictionary that will be turned into query parameters ?foo=bar
-        :rtype: str
+        :param \*segments: ( :class:`tuple` ) A tuple of strings joined into /foo/bar/..
+        :param \*\*query: ( :class:`dict` ) A dictionary that will be turned into query parameters ?foo=bar
+        :rtype: :class:`str`
         """
         return build_url(self.BASE_URL, *segments, **query)
 
@@ -155,23 +155,23 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def make_request(self, method: str, url: str, *args, **kwargs) -> aiohttp.client.ClientResponse:
         """A wrapper around :func:`aiohttp.request`. Inserts default headers.
 
-        :param str method: The HTTP method
-        :param str url: The url to send the request to
+        :param method: ( :class:`str` ) The HTTP method
+        :param url: ( :class:`str` ) The url to send the request to
         :keyword range: An optional tuple (start, end) that is transformed into a Range header
         :keyword expects: An optional tuple of HTTP status codes as integers raises an exception
             if the returned status code is not in it.
         :type expects: tuple of ints
-        :param Exception throws: The exception to be raised from expects
-        :param tuple \*args: args passed to :func:`aiohttp.request`
-        :param dict \*\*kwargs: kwargs passed to :func:`aiohttp.request`
-        :rtype: :class:`aiohttp.Response`
-        :raises ProviderError: Raised if expects is defined
+        :param throws: ( :class:`Exception` ) The exception to be raised from expects
+        :param \*args: ( :class:`tuple` )args passed to :func:`aiohttp.request`
+        :param \*\*kwargs:  ( :class:`dict` ) kwargs passed to :func:`aiohttp.request`
+        :rtype: :class:`aiohttp.ClientResponse`
+        :raises: :class:`.UnhandledProviderError` Raised if expects is defined
         """
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
         retry = _retry = kwargs.pop('retry', 2)
         range = kwargs.pop('range', None)
         expects = kwargs.pop('expects', None)
-        throws = kwargs.pop('throws', exceptions.ProviderError)
+        throws = kwargs.pop('throws', exceptions.UnhandledProviderError)
         if range:
             kwargs['headers']['Range'] = self._build_range_header(range)
 
@@ -207,12 +207,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
         Performs a copy and then a delete.
         Calls :func:`BaseProvider.intra_move` if possible.
 
-        :param BaseProvider dest_provider: The provider to move to
-        :param wb_path.WaterButlerPath src_path: Path to where the resource can be found
-        :param wb_path.WaterButlerPath dest_path: Path to where the resource will be moved
-        :param str rename: The desired name of the resulting path, may be incremented
-        :param str conflict: What to do in the event of a name conflict, ``replace`` or ``keep``
-        :param bool handle_naming: If a naming conflict is detected, should it be automatically handled?
+        :param dest_provider: ( :class:`.BaseProvider` ) The provider to move to
+        :param src_path: ( :class:`.WaterButlerPath` ) Path to where the resource can be found
+        :param dest_path: ( :class:`.WaterButlerPath` ) Path to where the resource will be moved
+        :param rename: ( :class:`str` ) The desired name of the resulting path, may be incremented
+        :param conflict: ( :class:`str` ) What to do in the event of a name conflict, ``replace`` or ``keep``
+        :param handle_naming: ( :class:`bool` ) If a naming conflict is detected, should it be automatically handled?
         """
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict}
@@ -373,21 +373,25 @@ class BaseProvider(metaclass=abc.ABCMeta):
                             dest_path: wb_path.WaterButlerPath,
                             rename: str=None,
                             conflict: str='replace') -> wb_path.WaterButlerPath:
-        """Given a WaterButlerPath and the desired name, handle any potential naming issues.
+        """Given a :class:`.WaterButlerPath` and the desired name, handle any potential naming issues.
 
         i.e.:
-            cp /file.txt /folder/ -> /folder/file.txt
-            cp /folder/ /folder/ -> /folder/folder/
-            cp /file.txt /folder/file.txt -> /folder/file.txt
-            cp /file.txt /folder/file.txt -> /folder/file (1).txt
-            cp /file.txt /folder/doc.txt -> /folder/doc.txt
 
-        :param WaterButlerPath src_path: The object that is being copied
-        :param WaterButlerPath dest_path: The path that is being copied to or into
-        :param str rename: The desired name of the resulting path, may be incremented
-        :param str conflict: The conflict resolution strategy, ``replace`` or ``keep``
+        ::
 
-        Returns: WaterButlerPath dest_path: The path of the desired result.
+            cp /file.txt /folder/           ->    /folder/file.txt
+            cp /folder/ /folder/            ->    /folder/folder/
+            cp /file.txt /folder/file.txt   ->    /folder/file.txt
+            cp /file.txt /folder/file.txt   ->    /folder/file (1).txt
+            cp /file.txt /folder/doc.txt    ->    /folder/doc.txt
+
+
+        :param src_path: ( :class:`.WaterButlerPath` ) The object that is being copied
+        :param dest_path: ( :class:`.WaterButlerPath` ) The path that is being copied to or into
+        :param rename: ( :class:`str` ) The desired name of the resulting path, may be incremented
+        :param conflict: ( :class:`str` ) The conflict resolution strategy, ``replace`` or ``keep``
+
+        :rtype: :class:`.WaterButlerPath`
         """
         if src_path.is_dir and dest_path.is_file:
             # Cant copy a directory to a file
@@ -414,9 +418,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         .. note::
             Defaults to False
 
-        :param waterbutler.core.provider.BaseProvider other: The provider to check against
-        :param waterbutler.core.path.WaterButlerPath path: The path of the desired resource
-        :rtype: bool
+        :param other: ( :class:`.BaseProvider` ) The provider to check against
+        :param  path: ( :class:`.WaterButlerPath` ) The path of the desired resource
+        :rtype: :class:`bool`
         """
         return False
 
@@ -428,9 +432,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         .. note::
             Defaults to False
 
-        :param waterbutler.core.provider.BaseProvider other: The provider to check against
-        :param waterbutler.core.path.WaterButlerPath path: The path of the desired resource
-        :rtype: bool
+        :param other: ( :class:`.BaseProvider` ) The provider to check against
+        :param path: ( :class:`.WaterButlerPath` ) The path of the desired resource
+        :rtype: :class:`bool`
         """
         return False
 
@@ -445,10 +449,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         whether the copied entity is completely new (``True``) or overwrote a previously-existing
         file (``False``).
 
-        :param BaseProvider dest_provider: a provider instance for the destination
-        :param WaterButlerPath source_path: the Path of the entity being copied
-        :param WaterButlerPath dest_path: the Path of the destination being copied to
-        :rtype: (:class:`waterbutler.core.metadata.BaseFileMetadata`, :class:`bool`)
+        :param  dest_provider: ( :class:`.BaseProvider` )  a provider instance for the destination
+        :param  src_path: ( :class:`.WaterButlerPath` )  the Path of the entity being copied
+        :param  dest_path: ( :class:`.WaterButlerPath` ) the Path of the destination being copied to
+        :rtype: (:class:`.BaseFileMetadata`, :class:`bool`)
         """
         raise NotImplementedError
 
@@ -463,10 +467,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         whether the moved entity is completely new (``True``) or overwrote a previously-existing
         file (``False``).
 
-        :param BaseProvider dest_provider: a provider instance for the destination
-        :param WaterButlerPath src_path: the Path of the entity being moved
-        :param WaterButlerPath dest_path: the Path of the destination being moved to
-        :rtype: (:class:`waterbutler.core.metadata.BaseFileMetadata`, :class:`bool`)
+        :param  dest_provider: ( :class:`.BaseProvider` ) a provider instance for the destination
+        :param  src_path: ( :class:`.WaterButlerPath` ) the Path of the entity being moved
+        :param  dest_path: ( :class:`.WaterButlerPath` ) the Path of the destination being moved to
+        :rtype: (:class:`.BaseFileMetadata`, :class:`bool`)
         """
         data, created = await self.intra_copy(dest_provider, src_path, dest_path)
         await self.delete(src_path)
@@ -480,7 +484,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         successful, will return the result of `self.metadata()` which may be `[]` for empty
         folders.
 
-        :param WaterButlerPath path: path to check for
+        :param  path: ( :class:`.WaterButlerPath` ) path to check for
         :rtype: (`self.metadata()` or False)
         """
         try:
@@ -501,16 +505,16 @@ class BaseProvider(metaclass=abc.ABCMeta):
         Given a WaterButlerPath and a conflict resolution pattern determine
         the correct file path to upload to and indicate if that file exists or not
 
-        :param WaterButlerPath path: Desired path to check for conflict
-        :param str conflict: replace, keep, warn
-        :rtype: (WaterButlerPath or False)
-        :raises: NamingConflict
+        :param  path: ( :class:`.WaterButlerPath` ) Desired path to check for conflict
+        :param conflict: ( :class:`str` ) replace, keep, warn
+        :rtype: (:class:`.WaterButlerPath` or False)
+        :raises: :class:`.NamingConflict`
         """
         exists = await self.exists(path, **kwargs)
         if (not exists and not exists == []) or conflict == 'replace':
             return path, exists  # type: ignore
         if conflict == 'warn':
-            raise exceptions.NamingConflict(path)
+            raise exceptions.NamingConflict(path.name)
 
         while True:
             path.increment_name()
@@ -533,17 +537,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """Take a path and a base path and build a WaterButlerPath representing `/base/path`.  For
         id-based providers, this will need to lookup the id of the new child object.
 
-        :param WaterButlerPath base: The base folder to look under
-        :param str path: the path of a child of `base`, relative to `base`
-        :param bool folder: whether the returned WaterButlerPath should represent a folder
-        :rtype: WaterButlerPath
+        :param  base: ( :class:`.WaterButlerPath` ) The base folder to look under
+        :param path: ( :class:`str`) the path of a child of `base`, relative to `base`
+        :param folder: ( :class:`bool` )whether the returned WaterButlerPath should represent a folder
+        :rtype: :class:`.WaterButlerPath`
         """
         return base.child(path, folder=folder)
 
     async def zip(self, path: wb_path.WaterButlerPath, **kwargs) -> asyncio.StreamReader:
         """Streams a Zip archive of the given folder
 
-        :param WaterButlerPath path: The folder to compress
+        :param  path: ( :class:`.WaterButlerPath` ) The folder to compress
         """
 
         meta_data = await self.metadata(path)  # type: ignore
@@ -559,8 +563,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         providers have enough uniquely identifing information in the settings to detect this,
         but some providers may need to override this to do further detection.
 
-        :param BaseProvider other: another provider instance to compare with
-        :returns bool: True if both providers use the same storage root.
+        :param  other: ( :class:`.BaseProvider`) another provider instance to compare with
+        :rtype: :class:`bool`  (True if both providers use the same storage root)
         """
         return self.NAME == other.NAME and self.settings == other.settings
 
@@ -572,10 +576,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     async def download(self, src_path: wb_path.WaterButlerPath, **kwargs) -> streams.ResponseStreamReader:
         """Download a file from this provider.
-        :param WaterButlerPath src_path: Path to the file to be downloaded
-        :param dict \*\*kwargs: Arguments to be parsed by child classes
-        :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
-        :raises: :class:`waterbutler.core.exceptions.DownloadError`
+
+        :param src_path: ( :class:`.WaterButlerPath` ) Path to the file to be downloaded
+        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        :rtype: :class:`.ResponseStreamReader`
+        :raises: :class:`.DownloadError`
         """
         raise NotImplementedError
 
@@ -586,21 +591,21 @@ class BaseProvider(metaclass=abc.ABCMeta):
         file and a boolean indicating whether the file is completely new (``True``) or overwrote
         a previously-existing file (``False``)
 
-        :param :class:`WaterButlerPath` path: Where to upload the file to
-        :param :class:`waterbutler.core.streams.BaseStream` stream: The content to be uploaded
-        :param dict \*\*kwargs: Arguments to be parsed by child classes
-        :rtype: (:class:`waterbutler.core.metadata.BaseFileMetadata`, :class:`bool`)
-        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        :param path: ( :class:`.WaterButlerPath` ) Where to upload the file to
+        :param  stream: ( :class:`.BaseStream` ) The content to be uploaded
+        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        :rtype: (:class:`.BaseFileMetadata`, :class:`bool`)
+        :raises: :class:`.DeleteError`
         """
         raise NotImplementedError
 
     @abc.abstractmethod
     async def delete(self, src_path: wb_path.WaterButlerPath, **kwargs) -> None:
         """
-        :param WaterButlerPath src_path: Path to be deleted
-        :param dict \*\*kwargs: Arguments to be parsed by child classes
+        :param src_path: ( :class:`.WaterButlerPath` ) Path to be deleted
+        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
         :rtype: :class:`None`
-        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        :raises: :class:`.DeleteError`
         """
         raise NotImplementedError
 
@@ -609,16 +614,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
             -> typing.Union[wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
         """Get metadata about the specified resource from this provider. Will be a :class:`list`
         if the resource is a directory otherwise an instance of
-        :class:`waterbutler.core.metadata.BaseFileMetadata`
+        :class:`.BaseFileMetadata`
 
-        Developer note: Mypy doesn't seem to do very well with functions that can return more than one type of thing.
-        See: https://github.com/python/mypy/issues/1693
+        .. note::
+            Mypy doesn't seem to do very well with functions that can return more than one type of thing.
+            See: https://github.com/python/mypy/issues/1693
 
-        :param WaterButlerPath path: The path to a file or folder
-        :param dict \*\*kwargs: Arguments to be parsed by child classes
-        :rtype: :class:`waterbutler.core.metadata.BaseMetadata`
-        :rtype: :class:`list` of :class:`waterbutler.core.metadata.BaseMetadata`
-        :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        :param path: ( :class:`.WaterButlerPath` ) The path to a file or folder
+        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        :rtype: :class:`.BaseMetadata`
+        :rtype: :class:`list` of :class:`.BaseMetadata`
+        :raises: :class:`.MetadataError`
         """
         raise NotImplementedError
 
@@ -637,9 +643,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         folder and specifying the file name as a query parameter.  If a user attempts to create a
         file by PUTting to its inferred path, validate_v1_path should reject this request with a 404.
 
-        :param str path: user-supplied path to validate
-        :rtype: :class:`waterbutler.core.path.WaterButlerPath`
-        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :param path: ( :class:`str` ) user-supplied path to validate
+        :rtype: :class:`.WaterButlerPath`
+        :raises: :class:`.NotFoundError`
         """
         raise NotImplementedError
 
@@ -658,9 +664,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         The WaterButler v0 API is deprecated and will be removed in a future release.  At that time
         this method will be obsolete and will be removed from all providers.
 
-        :param str path: user-supplied path to validate
-        :rtype: :class:`waterbutler.core.path.WaterButlerPath`
-        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :param path: ( :class:`str` ) user-supplied path to validate
+        :rtype: :class:`.WaterButlerPath`
+        :raises: :class:`.NotFoundError`
         """
         raise NotImplementedError
 
@@ -671,7 +677,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                                  folder=meta_data.is_folder)
 
     async def revisions(self, path: wb_path.WaterButlerPath, **kwargs):
-        """Return a list of `metadata.BaseFileRevisionMetadata` objects representing the revisions
+        """Return a list of :class:`.BaseFileRevisionMetadata` objects representing the revisions
         available for the file at ``path``.
         """
         return []  # TODO Raise 405 by default h/t @rliebz
@@ -681,9 +687,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """Create a folder in the current provider at `path`. Returns a `BaseFolderMetadata` object
         if successful.  May throw a 409 Conflict if a directory with the same name already exists.
 
-        :param WaterButlerPath path: User-supplied path to create. Must be a directory.
-        :rtype: :class:`waterbutler.core.metadata.BaseFolderMetadata`
-        :raises: :class:`waterbutler.core.exceptions.FolderCreationError`
+        :param path: ( :class:`.WaterButlerPath` ) User-supplied path to create. Must be a directory.
+        :rtype: :class:`.BaseFileMetadata`
+        :raises: :class:`.CreateFolderError`
         """
         raise exceptions.ProviderError({'message': 'Folder creation not supported.'}, code=405)
 
