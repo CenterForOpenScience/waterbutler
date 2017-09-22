@@ -224,7 +224,19 @@ class BaseProvider(metaclass=abc.ABCMeta):
             'got_rename': rename is not None,
         })
 
+        # This does not mean the `dest_path` is a folder, at this point it could just be the parent
+        # of the actual dest_path, or have a blank name
+        if not dest_path.is_file:
+            temp_path = await self.revalidate_path(
+                dest_path,
+                rename or src_path.name,
+                folder=src_path.is_dir
+            )
+            if self.will_self_overwrite(dest_provider, src_path, temp_path):
+                raise exceptions.OverwriteSelfError(src_path)
+
         if handle_naming:
+
             dest_path = await dest_provider.handle_naming(
                 src_path,
                 dest_path,
@@ -270,7 +282,20 @@ class BaseProvider(metaclass=abc.ABCMeta):
             'conflict': conflict,
             'got_rename': rename is not None,
         })
+
+        # This does not mean the `dest_path` is a folder, at this point it could just be the parent
+        # of the actual dest_path, or have a blank name
+        if not dest_path.is_file:
+            temp_path = await self.revalidate_path(
+                dest_path,
+                rename or src_path.name,
+                folder=src_path.is_dir
+            )
+            if self.will_self_overwrite(dest_provider, src_path, temp_path):
+                raise exceptions.OverwriteSelfError(src_path)
+
         if handle_naming:
+
             dest_path = await dest_provider.handle_naming(
                 src_path,
                 dest_path,
@@ -394,10 +419,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         :rtype: :class:`.WaterButlerPath`
         """
+
+        # This function can either take a file path, or a parent path to make a file path out of.
+
         if src_path.is_dir and dest_path.is_file:
             # Cant copy a directory to a file
             raise ValueError('Destination must be a directory if the source is')
 
+        # This is confusing. `dest_path` at this point can refer to the parent or root of
+        # the file we want to move/copy. So even if moving/copying a file, this code will run
         if not dest_path.is_file:
             # Directories always are going to be copied into
             # cp /folder1/ /folder2/ -> /folder1/folder2/
@@ -410,6 +440,23 @@ class BaseProvider(metaclass=abc.ABCMeta):
         dest_path, _ = await self.handle_name_conflict(dest_path, conflict=conflict)
 
         return dest_path
+
+    def will_self_overwrite(self,
+                            dest_provider: 'BaseProvider',
+                            src_path: wb_path.WaterButlerPath,
+                            dest_path: wb_path.WaterButlerPath) -> bool:
+        """ Return wether a move or copy operation will result in a self-overwrite.
+
+       .. note::
+            Defaults to False
+            Overridden by providers that need to run this check
+
+        :param dest_provider: ( :class:`.BaseProvider` ) The provider to check against
+        :param  src_path: ( :class:`.WaterButlerPath` ) The move/copy source path
+        :param  dest_path: ( :class:`.WaterButlerPath` ) The move/copy destination path
+        :rtype: :class:`bool`
+        """
+        return False
 
     def can_intra_copy(self,
                        other: 'BaseProvider',
