@@ -195,6 +195,11 @@ class BoxProvider(provider.BaseProvider):
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) \
             -> typing.Tuple[typing.Union[BoxFileMetadata, BoxFolderMetadata], bool]:
+
+        if src_path.identifier == dest_path.identifier:
+            raise exceptions.IntraCopyError("Cannot overwrite a file with itself",
+                                            code=HTTPStatus.CONFLICT)
+
         if dest_path.identifier is not None:
             await dest_provider.delete(dest_path)
 
@@ -223,6 +228,11 @@ class BoxProvider(provider.BaseProvider):
                          dest_provider: provider.BaseProvider,
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) -> typing.Tuple[BaseBoxMetadata, bool]:
+
+        if src_path.identifier == dest_path.identifier:
+            raise exceptions.IntraCopyError("Cannot overwrite a file with itself",
+                                            code=HTTPStatus.CONFLICT)
+
         if dest_path.identifier is not None and str(dest_path).lower() != str(src_path).lower():
             await dest_provider.delete(dest_path)
 
