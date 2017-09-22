@@ -918,6 +918,21 @@ class TestIntraMoveCopy:
 
         assert e.value.code == HTTPStatus.BAD_REQUEST
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_overwrite_error(self, provider):
+        src_path = WaterButlerPath('/pfile.txt', prepend=provider.folder)
+
+        with pytest.raises(exceptions.IntraCopyError) as e:
+            await provider.intra_move(provider, src_path, src_path)
+
+        assert e.value.code == 409
+
+        with pytest.raises(exceptions.IntraCopyError) as e:
+            await provider.intra_copy(provider, src_path, src_path)
+
+        assert e.value.code == 409
+
 
 class TestOperations:
 

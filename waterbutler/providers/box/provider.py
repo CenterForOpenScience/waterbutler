@@ -189,9 +189,22 @@ class BoxProvider(provider.BaseProvider):
     def can_intra_copy(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
         return self == other
 
-    async def intra_copy(self,  # type: ignore
-                         dest_provider: provider.BaseProvider, src_path: WaterButlerPath,
-                         dest_path: WaterButlerPath) -> Tuple[BaseBoxMetadata, bool]:
+    async def intra_copy(
+        self,  # type: ignore
+        dest_provider: provider.BaseProvider,
+        src_path: WaterButlerPath,
+        dest_path: WaterButlerPath
+    ) -> typing.Tuple[typing.Union[BoxFileMetadata, BoxFolderMetadata], bool]:
+        """
+        Copy a file if the src and dest are both on Box.
+        """
+
+        if src_path.identifier == dest_path.identifier:
+            raise exceptions.IntraCopyError(
+                "Cannot overwrite a file with itself",
+                code=HTTPStatus.CONFLICT
+            )
+
         if dest_path.identifier is not None:
             await dest_provider.delete(dest_path)
 
@@ -216,9 +229,19 @@ class BoxProvider(provider.BaseProvider):
 
         return await self._intra_move_copy_metadata(dest_path, data)
 
-    async def intra_move(self,  # type: ignore
-                         dest_provider: provider.BaseProvider, src_path: WaterButlerPath,
-                         dest_path: WaterButlerPath) -> Tuple[BaseBoxMetadata, bool]:
+    async def intra_move(
+        self,  # type: ignore
+        dest_provider: provider.BaseProvider,
+        src_path: WaterButlerPath,
+        dest_path: WaterButlerPath
+    ) -> Tuple[BaseBoxMetadata, bool]:
+
+        if src_path.identifier == dest_path.identifier:
+            raise exceptions.IntraCopyError(
+                "Cannot overwrite a file with itself",
+                code=HTTPStatus.CONFLICT
+            )
+
         if dest_path.identifier is not None and str(dest_path).lower() != str(src_path).lower():
             await dest_provider.delete(dest_path)
 
@@ -258,8 +281,7 @@ class BoxProvider(provider.BaseProvider):
                        path: WaterButlerPath, revision: str=None, range: Tuple[int, int]=None,
                        **kwargs) -> streams.ResponseStreamReader:
         if path.identifier is None:
-            raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
-
+            raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404) 
         query = {}
         if revision and revision != path.identifier:
             query['version'] = revision

@@ -606,10 +606,20 @@ class TestIntraCopy:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_intra_copy_overwrite_error(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
+        src_path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
+        with pytest.raises(exceptions.IntraCopyError) as e:
+            await provider.intra_copy(provider, src_path, src_path)
+
+        assert e.value.code == 409
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_intra_copy_file_replace(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['file_metadata']['entries'][0]
         src_path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
-        dest_path = WaterButlerPath('/charmander/name.txt', _ids=(provider, item['id'], item['id']))
+        dest_path = WaterButlerPath('/charmander/name.txt', _ids=(provider, item['id'], 'cats77831'))
 
         file_url = provider.build_url('files', src_path.identifier, 'copy')
         delete_url = provider.build_url('files', dest_path.identifier)
@@ -657,7 +667,7 @@ class TestIntraCopy:
         list_metadata = root_provider_fixtures['folder_list_metadata']
 
         src_path = WaterButlerPath('/name/', _ids=(provider, item['id']))
-        dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id'], item['id']))
+        dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id'], '4jkmrm4zzerj'))
 
         file_url = provider.build_url('folders', src_path.identifier, 'copy')
         delete_url = provider.build_url('folders', dest_path.identifier, recursive=True)
@@ -702,10 +712,20 @@ class TestIntraMove:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_intra_move_overwrite_error(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
+        src_path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
+        with pytest.raises(exceptions.IntraCopyError) as e:
+            await provider.intra_move(provider, src_path, src_path)
+
+        assert e.value.code == 409
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_intra_move_file_replace(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['file_metadata']['entries'][0]
         src_path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
-        dest_path = WaterButlerPath('/charmander/name.txt', _ids=(provider, item['id'], item['id']))
+        dest_path = WaterButlerPath('/charmander/name.txt', _ids=(provider, item['id'], 'YgzZejrj834j'))
 
         file_url = provider.build_url('files', src_path.identifier)
         delete_url = provider.build_url('files', dest_path.identifier)
@@ -746,7 +766,6 @@ class TestIntraMove:
 
         assert result == expected
 
-
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_intra_move_folder_replace(self, provider, intra_fixtures, root_provider_fixtures):
@@ -754,7 +773,7 @@ class TestIntraMove:
         list_metadata = root_provider_fixtures['folder_list_metadata']
 
         src_path = WaterButlerPath('/name/', _ids=(provider, item['id']))
-        dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id'], item['id']))
+        dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id'], '7759994812'))
 
         file_url = provider.build_url('folders', src_path.identifier)
         delete_url = provider.build_url('folders', dest_path.identifier, recursive=True)

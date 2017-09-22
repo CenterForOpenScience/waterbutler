@@ -336,7 +336,6 @@ class TestIntraMoveCopy:
         assert metadata.name == 'dissertation.aux'
         assert metadata.kind == 'file'
 
-
 class TestMetadata:
 
     @pytest.mark.asyncio

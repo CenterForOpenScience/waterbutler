@@ -141,9 +141,17 @@ class GoogleDriveProvider(provider.BaseProvider):
         return self == other and (path and path.is_file)
 
     async def intra_move(self,  # type: ignore
-                         dest_provider: provider.BaseProvider,
-                         src_path: WaterButlerPath,
-                         dest_path: WaterButlerPath) -> Tuple[BaseGoogleDriveMetadata, bool]:
+         dest_provider: provider.BaseProvider,
+         src_path: WaterButlerPath,
+         dest_path: WaterButlerPath
+    ) -> Tuple[BaseGoogleDriveMetadata, bool]:
+
+        if src_path.identifier == dest_path.identifier:
+            raise exceptions.IntraCopyError(
+                "Cannot overwrite a file with itself",
+                code=HTTPStatus.CONFLICT
+            )
+
         self.metrics.add('intra_move.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -175,11 +183,24 @@ class GoogleDriveProvider(provider.BaseProvider):
         else:
             return GoogleDriveFileMetadata(data, dest_path), created  # type: ignore
 
-    async def intra_copy(self,
-                         dest_provider: provider.BaseProvider,
-                         src_path: WaterButlerPath,
-                         dest_path: WaterButlerPath) -> Tuple[GoogleDriveFileMetadata, bool]:
+    async def intra_copy(
+        self,
+        dest_provider: provider.BaseProvider,
+        src_path: WaterButlerPath,
+        dest_path: WaterButlerPath
+    ) -> Tuple[GoogleDriveFileMetadata, bool]:
+        """
+        Copy file where src and dest are both on Google Drive.
+        """
+
+        if src_path.identifier == dest_path.identifier:
+            raise exceptions.IntraCopyError(
+                "Cannot overwrite a file with itself",
+                code=HTTPStatus.CONFLICT
+            )
+
         self.metrics.add('intra_copy.destination_exists', dest_path.identifier is not None)
+
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
 
