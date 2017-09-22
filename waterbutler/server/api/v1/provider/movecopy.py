@@ -55,7 +55,8 @@ class MoveCopyMixin:
 
         if self.json.get('action') not in ('copy', 'move', 'rename'):
             # Note: null is used as the default to avoid python specific error messages
-            raise exceptions.InvalidParameters('Action must be copy, move or rename, not {}'.format(self.json.get('action', 'null')))
+            raise exceptions.InvalidParameters('Action must be copy, move or rename, '
+                                               'not {}'.format(self.json.get('action', 'null')))
 
         if self.json['action'] == 'rename':
             if not self.json.get('rename'):
@@ -68,6 +69,10 @@ class MoveCopyMixin:
         else:
             if 'path' not in self.json:
                 raise exceptions.InvalidParameters('Path is required for moves or copies')
+
+            if not self.json['path'].endswith('/'):
+                raise exceptions.InvalidParameters('Path requires a trailing slash to indicate '
+                                                   'it is a folder')
 
             action = self.json['action']
 

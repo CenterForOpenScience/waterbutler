@@ -651,6 +651,7 @@ class TestMetadata:
         assert result[0].name == '   photos'
         assert result[1].name == 'my-image.jpg'
         assert result[2].extra['md5'] == '1b2cf535f27731c974343645a3985328'
+        assert result[2].extra['hashes']['md5'] == '1b2cf535f27731c974343645a3985328'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -701,6 +702,7 @@ class TestMetadata:
         assert result.path == str(path)
         assert result.name == 'my-image.jpg'
         assert result.extra['md5'] == 'fba9dede5f27731c9771645a39863328'
+        assert result.extra['hashes']['md5'] == 'fba9dede5f27731c9771645a39863328'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -736,6 +738,28 @@ class TestMetadata:
         assert aiohttpretty.has_call(method='PUT', uri=url)
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_checksum_mismatch(self, provider, file_stream, file_metadata, mock_time):
+        path = WaterButlerPath('/foobah')
+        url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
+        metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
+        aiohttpretty.register_uri(
+            'HEAD',
+            metadata_url,
+            responses=[
+                {'status': 404},
+                {'headers': file_metadata},
+            ],
+        )
+        aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"bad hash"'})
+
+        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+            await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='PUT', uri=url)
+        assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
+
 
 class TestCreateFolder:
 
@@ -752,7 +776,8 @@ class TestCreateFolder:
             await provider.create_folder(path)
 
         assert e.value.code == 409
-        assert e.value.message == 'Cannot create folder "alreadyexists" because a file or folder already exists at path "/alreadyexists/"'
+        assert e.value.message == ('Cannot create folder "alreadyexists", because a file or '
+                                   'folder already exists with that name')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

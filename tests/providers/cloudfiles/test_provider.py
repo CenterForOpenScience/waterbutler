@@ -387,11 +387,34 @@ class TestCRUD:
                 {'headers': file_metadata},
             ]
         )
-        aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"{}"'.format(content_md5)})
+        aiohttpretty.register_uri('PUT', url, status=200,
+                                  headers={'ETag': '"{}"'.format(content_md5)})
         metadata, created = await connected_provider.upload(file_stream, path)
 
         assert created is True
         assert metadata.kind == 'file'
+        assert aiohttpretty.has_call(method='PUT', uri=url)
+        assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_checksum_mismatch(self, connected_provider, file_stream, file_metadata):
+        path = WaterButlerPath('/foo.bar')
+        metadata_url = connected_provider.build_url(path.path)
+        url = connected_provider.sign_url(path, 'PUT')
+        aiohttpretty.register_uri(
+            'HEAD',
+            metadata_url,
+            responses=[
+                {'status': 404},
+                {'headers': file_metadata},
+            ]
+        )
+        aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"Bogus MD5"'})
+
+        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+            await connected_provider.upload(file_stream, path)
+
         assert aiohttpretty.has_call(method='PUT', uri=url)
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
 
@@ -459,7 +482,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_folder_root_level1_level2(self, connected_provider, folder_root_level1_level2):
+    async def test_metadata_folder_root_level1_level2(self, connected_provider,
+                                                      folder_root_level1_level2):
         path = WaterButlerPath('/level1/level2/')
         body = json.dumps(folder_root_level1_level2).encode('utf-8')
         url = connected_provider.build_url('', prefix=path.path, delimiter='/')
@@ -473,7 +497,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file_root_level1_level2_file2_txt(self, connected_provider, file_root_level1_level2_file2_txt):
+    async def test_metadata_file_root_level1_level2_file2_txt(self, connected_provider,
+                                                              file_root_level1_level2_file2_txt):
         path = WaterButlerPath('/level1/level2/file2.txt')
         url = connected_provider.build_url(path.path)
         aiohttpretty.register_uri('HEAD', url, status=200, headers=file_root_level1_level2_file2_txt)
@@ -483,6 +508,7 @@ class TestMetadata:
         assert result.path == '/level1/level2/file2.txt'
         assert result.kind == 'file'
         assert result.content_type == 'text/plain'
+        assert result.extra == {'hashes': {'md5': '44325d4f13b09f3769ede09d7c20a82c'}}
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -508,6 +534,7 @@ class TestMetadata:
         assert result.name == 'similar'
         assert result.path == '/similar'
         assert result.kind == 'file'
+        assert result.extra == {'hashes': {'md5': 'edfa12d00b779b4b37b81fe5b61b2b3f'}}
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -520,6 +547,7 @@ class TestMetadata:
         assert result.name == 'similar.file'
         assert result.path == '/similar.file'
         assert result.kind == 'file'
+        assert result.extra == {'hashes': {'md5': 'edfa12d00b779b4b37b81fe5b61b2b3f'}}
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

@@ -57,6 +57,9 @@ class BoxFileMetadata(BaseBoxMetadata, metadata.BaseFileMetadata):
     def extra(self):
         return {
             'etag': self.raw.get('etag'),
+            'hashes': {
+                'sha1': self.raw.get('sha1')
+            }
         }
 
     @property
