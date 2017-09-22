@@ -151,6 +151,11 @@ class GoogleDriveProvider(provider.BaseProvider):
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) \
                          -> typing.Tuple[BaseGoogleDriveMetadata, bool]:
+
+        if src_path.identifier == dest_path.identifier:
+            raise exceptions.IntraCopyError("Cannot overwrite a file with itself",
+                                            code=HTTPStatus.CONFLICT)
+
         self.metrics.add('intra_move.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -187,6 +192,11 @@ class GoogleDriveProvider(provider.BaseProvider):
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) \
                          -> typing.Tuple[GoogleDriveFileMetadata, bool]:
+
+        if src_path.identifier == dest_path.identifier:
+            raise exceptions.IntraCopyError("Cannot overwrite a file with itself",
+                                            code=HTTPStatus.CONFLICT)
+
         self.metrics.add('intra_copy.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
