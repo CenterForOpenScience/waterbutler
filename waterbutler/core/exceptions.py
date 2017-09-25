@@ -208,6 +208,15 @@ class OverwriteSelfError(InvalidParameters):
                          'folder onto itself is not supported.'.format(path))
 
 
+class OrphanSelfError(InvalidParameters):
+    """Error for conflict=replace sent to methods copy or move, when action would result
+    in removal of a directory containing the file or folder to be copied or moved.
+    """
+    def __init__(self, path):
+        super().__init__('Unable to move or copy \'{}\'. Moving or copying a folder onto parent '
+                         'folder of same name with "replace" is not supported.'.format(path))
+
+
 class UnsupportedOperationError(ProviderError):
     def __init__(self, message, code=HTTPStatus.FORBIDDEN, is_user_error=True):
         if not message:
