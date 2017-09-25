@@ -1,5 +1,4 @@
 import pytest
-
 from tests.utils import MockCoroutine
 
 
@@ -8,41 +7,32 @@ import io
 import time
 import base64
 import hashlib
-from urllib import parse
-from http import client
-from unittest import mock
-
 import aiohttpretty
+from http import client
+from urllib import parse
+from unittest import mock
 
 from waterbutler.core import streams
 from waterbutler.core import metadata
 from waterbutler.core import exceptions
+from waterbutler.providers.s3 import S3Provider
 from waterbutler.core.path import WaterButlerPath
 
-from waterbutler.providers.s3 import S3Provider
+from tests.providers.s3.fixtures.fixtures import (
+    file_header_metadata,
+    folder_metadata,
+    file_content,
+    contents_and_self,
+    folder_single_thing_metadata,
+    just_a_folder_metadata,
+    folder_empty_metadata,
+    version_metadata,
+    single_version_metadata,
+    auth,
+    credentials,
+    settings,
+)
 
-@pytest.fixture
-def auth():
-    return {
-        'name': 'cat',
-        'email': 'cat@cat.com',
-    }
-
-
-@pytest.fixture
-def credentials():
-    return {
-        'access_key': 'Dont dead',
-        'secret_key': 'open inside',
-    }
-
-
-@pytest.fixture
-def settings():
-    return {
-        'bucket': 'that kerning',
-        'encrypt_uploads': False
-    }
 
 @pytest.fixture
 def mock_time(monkeypatch):
@@ -58,11 +48,6 @@ def provider(auth, credentials, settings):
 
 
 @pytest.fixture
-def file_content():
-    return b'sleepy'
-
-
-@pytest.fixture
 def file_like(file_content):
     return io.BytesIO(file_content)
 
@@ -72,243 +57,13 @@ def file_stream(file_like):
     return streams.FileStreamReader(file_like)
 
 
-@pytest.fixture
-def folder_metadata():
-    return b'''<?xml version="1.0" encoding="UTF-8"?>
-        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-            <Name>bucket</Name>
-            <Prefix/>
-            <Marker/>
-            <MaxKeys>1000</MaxKeys>
-            <IsTruncated>false</IsTruncated>
-            <Contents>
-                <Key>my-image.jpg</Key>
-                <LastModified>2009-10-12T17:50:30.000Z</LastModified>
-                <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
-                <Size>434234</Size>
-                <StorageClass>STANDARD</StorageClass>
-                <Owner>
-                    <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
-                    <DisplayName>mtd@amazon.com</DisplayName>
-                </Owner>
-            </Contents>
-            <Contents>
-                <Key>my-third-image.jpg</Key>
-                <LastModified>2009-10-12T17:50:30.000Z</LastModified>
-                <ETag>&quot;1b2cf535f27731c974343645a3985328&quot;</ETag>
-                <Size>64994</Size>
-                <StorageClass>STANDARD</StorageClass>
-                <Owner>
-                    <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
-                    <DisplayName>mtd@amazon.com</DisplayName>
-                </Owner>
-            </Contents>
-            <CommonPrefixes>
-                <Prefix>   photos/</Prefix>
-            </CommonPrefixes>
-        </ListBucketResult>'''
-
-@pytest.fixture
-def folder_single_thing_metadata():
-    return b'''<?xml version="1.0" encoding="UTF-8"?>
-        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-            <Name>bucket</Name>
-            <Prefix/>
-            <Marker/>
-            <MaxKeys>1000</MaxKeys>
-            <IsTruncated>false</IsTruncated>
-            <Contents>
-                <Key>my-image.jpg</Key>
-                <LastModified>2009-10-12T17:50:30.000Z</LastModified>
-                <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
-                <Size>434234</Size>
-                <StorageClass>STANDARD</StorageClass>
-                <Owner>
-                    <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
-                    <DisplayName>mtd@amazon.com</DisplayName>
-                </Owner>
-            </Contents>
-            <CommonPrefixes>
-                <Prefix>   photos/</Prefix>
-            </CommonPrefixes>
-        </ListBucketResult>'''
-
-
-@pytest.fixture
-def just_a_folder_metadata():
-    return b'''<?xml version="1.0" encoding="UTF-8"?>
-        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-            <Name>bucket</Name>
-            <Prefix/>
-            <Marker/>
-            <MaxKeys>1000</MaxKeys>
-            <IsTruncated>false</IsTruncated>
-            <Contents>
-                <Key>naptime/</Key>
-                <LastModified>2009-10-12T17:50:30.000Z</LastModified>
-                <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
-                <Size>0</Size>
-                <StorageClass>STANDARD</StorageClass>
-                <Owner>
-                    <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
-                    <DisplayName>mtd@amazon.com</DisplayName>
-                </Owner>
-            </Contents>
-        </ListBucketResult>'''
-
-
-@pytest.fixture
-def contents_and_self():
-    return b'''<?xml version="1.0" encoding="UTF-8"?>
-        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-            <Name>bucket</Name>
-            <Prefix/>
-            <Marker/>
-            <MaxKeys>1000</MaxKeys>
-            <IsTruncated>false</IsTruncated>
-            <Contents>
-                <Key>thisfolder/</Key>
-                <LastModified>2009-10-12T17:50:30.000Z</LastModified>
-                <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
-                <Size>0</Size>
-                <StorageClass>STANDARD</StorageClass>
-                <Owner>
-                    <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
-                    <DisplayName>mtd@amazon.com</DisplayName>
-                </Owner>
-            </Contents>
-            <Contents>
-                <Key>thisfolder/item1</Key>
-                <LastModified>2009-10-12T17:50:30.000Z</LastModified>
-                <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
-                <Size>0</Size>
-                <StorageClass>STANDARD</StorageClass>
-                <Owner>
-                    <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
-                    <DisplayName>mtd@amazon.com</DisplayName>
-                </Owner>
-            </Contents>
-            <Contents>
-                <Key>thisfolder/item2</Key>
-                <LastModified>2009-10-12T17:50:30.000Z</LastModified>
-                <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
-                <Size>0</Size>
-                <StorageClass>STANDARD</StorageClass>
-                <Owner>
-                    <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
-                    <DisplayName>mtd@amazon.com</DisplayName>
-                </Owner>
-            </Contents>
-        </ListBucketResult>'''
-
-
-@pytest.fixture
-def folder_empty_metadata():
-    return b'''<?xml version="1.0" encoding="UTF-8"?>
-        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-            <Name>bucket</Name>
-            <Prefix/>
-            <Marker/>
-            <MaxKeys>1000</MaxKeys>
-            <IsTruncated>false</IsTruncated>
-        </ListBucketResult>'''
-
-
-@pytest.fixture
-def file_header_metadata():
-    return {
-        'CONTENT-LENGTH': 9001,
-        'LAST-MODIFIED': 'SomeTime',
-        'CONTENT-TYPE': 'binary/octet-stream',
-        'ETAG': '"fba9dede5f27731c9771645a39863328"',
-        'X-AMZ-SERVER-SIDE-ENCRYPTION': 'AES256'
-    }
-
-
-@pytest.fixture
-def version_metadata():
-    return b'''<?xml version="1.0" encoding="UTF-8"?>
-
-    <ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01">
-        <Name>bucket</Name>
-        <Prefix>my</Prefix>
-        <KeyMarker/>
-        <VersionIdMarker/>
-        <MaxKeys>5</MaxKeys>
-        <IsTruncated>false</IsTruncated>
-        <Version>
-            <Key>my-image.jpg</Key>
-            <VersionId>3/L4kqtJl40Nr8X8gdRQBpUMLUo</VersionId>
-            <IsLatest>true</IsLatest>
-            <LastModified>2009-10-12T17:50:30.000Z</LastModified>
-            <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
-            <Size>434234</Size>
-            <StorageClass>STANDARD</StorageClass>
-            <Owner>
-                <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
-                <DisplayName>mtd@amazon.com</DisplayName>
-            </Owner>
-        </Version>
-        <Version>
-            <Key>my-image.jpg</Key>
-            <VersionId>QUpfdndhfd8438MNFDN93jdnJFkdmqnh893</VersionId>
-            <IsLatest>false</IsLatest>
-            <LastModified>2009-10-10T17:50:30.000Z</LastModified>
-            <ETag>&quot;9b2cf535f27731c974343645a3985328&quot;</ETag>
-            <Size>166434</Size>
-            <StorageClass>STANDARD</StorageClass>
-            <Owner>
-                <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
-                <DisplayName>mtd@amazon.com</DisplayName>
-            </Owner>
-        </Version>
-        <Version>
-            <Key>my-image.jpg</Key>
-            <VersionId>UIORUnfndfhnw89493jJFJ</VersionId>
-            <IsLatest>false</IsLatest>
-            <LastModified>2009-10-11T12:50:30.000Z</LastModified>
-            <ETag>&quot;772cf535f27731c974343645a3985328&quot;</ETag>
-            <Size>64</Size>
-            <StorageClass>STANDARD</StorageClass>
-            <Owner>
-                <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
-                <DisplayName>mtd@amazon.com</DisplayName>
-            </Owner>
-        </Version>
-    </ListVersionsResult>'''
-
-@pytest.fixture
-def single_version_metadata():
-    return b'''<?xml version="1.0" encoding="UTF-8"?>
-
-    <ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01">
-        <Name>bucket</Name>
-        <Prefix>my</Prefix>
-        <KeyMarker/>
-        <VersionIdMarker/>
-        <MaxKeys>5</MaxKeys>
-        <IsTruncated>false</IsTruncated>
-        <Version>
-            <Key>single-version.file</Key>
-            <VersionId>3/L4kqtJl40Nr8X8gdRQBpUMLUo</VersionId>
-            <IsLatest>true</IsLatest>
-            <LastModified>2009-10-12T17:50:30.000Z</LastModified>
-            <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
-            <Size>434234</Size>
-            <StorageClass>STANDARD</StorageClass>
-            <Owner>
-                <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
-                <DisplayName>mtd@amazon.com</DisplayName>
-            </Owner>
-        </Version>
-    </ListVersionsResult>'''
-
 def location_response(location):
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<LocationConstraint xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
         '{}</LocationConstraint>'
     ).format(location)
+
 
 def list_objects_response(keys, truncated=False):
     response = '''<?xml version="1.0" encoding="UTF-8"?>
@@ -328,6 +83,7 @@ def list_objects_response(keys, truncated=False):
 
     return response.encode('utf-8')
 
+
 def bulk_delete_body(keys):
     payload = '<?xml version="1.0" encoding="UTF-8"?>'
     payload += '<Delete>'
@@ -346,6 +102,7 @@ def bulk_delete_body(keys):
     }
 
     return (payload, headers)
+
 
 def build_folder_params(path):
     return {'prefix': path.path, 'delimiter': '/'}
@@ -380,7 +137,10 @@ class TestRegionDetection:
             'GET',
             query_parameters={'location': ''},
         )
-        aiohttpretty.register_uri('GET', region_url, status=200, body=location_response(region_name))
+        aiohttpretty.register_uri('GET',
+                                  region_url,
+                                  status=200,
+                                  body=location_response(region_name))
 
         await provider._check_region()
         assert provider.connection.host == host
@@ -390,7 +150,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, file_header_metadata):
+    async def test_validate_v1_path_file(self, provider, file_header_metadata, mock_time):
         file_path = 'foobah'
 
         params = {'prefix': '/' + file_path + '/', 'delimiter': '/'}
@@ -477,7 +237,9 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_download(self, provider, mock_time):
         path = WaterButlerPath('/muhtriangle')
-        url = provider.bucket.new_key(path.path).generate_url(100, response_headers={'response-content-disposition': 'attachment'})
+        response_headers = {'response-content-disposition': 'attachment'}
+        url = provider.bucket.new_key(path.path).generate_url(100,
+                                                              response_headers=response_headers)
         aiohttpretty.register_uri('GET', url, body=b'delicious', auto_length=True)
 
         result = await provider.download(path)
@@ -505,7 +267,9 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_download_display_name(self, provider, mock_time):
         path = WaterButlerPath('/muhtriangle')
-        url = provider.bucket.new_key(path.path).generate_url(100, response_headers={'response-content-disposition': "attachment; filename*=UTF-8''tuna"})
+        response_headers = {'response-content-disposition': "attachment; filename*=UTF-8''tuna"}
+        url = provider.bucket.new_key(path.path).generate_url(100,
+                                                              response_headers=response_headers)
         aiohttpretty.register_uri('GET', url, body=b'delicious', auto_length=True)
 
         result = await provider.download(path, displayName='tuna')
@@ -517,7 +281,9 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_download_not_found(self, provider, mock_time):
         path = WaterButlerPath('/muhtriangle')
-        url = provider.bucket.new_key(path.path).generate_url(100, response_headers={'response-content-disposition': 'attachment'})
+        response_headers = {'response-content-disposition': 'attachment'}
+        url = provider.bucket.new_key(path.path).generate_url(100,
+                                                              response_headers=response_headers)
         aiohttpretty.register_uri('GET', url, status=404)
 
         with pytest.raises(exceptions.DownloadError):
@@ -538,7 +304,8 @@ class TestCRUD:
         url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
         metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
         aiohttpretty.register_uri('HEAD', metadata_url, headers=file_header_metadata)
-        aiohttpretty.register_uri('PUT', url, status=201, headers={'ETag': '"{}"'.format(content_md5)})
+        header = {'ETag': '"{}"'.format(content_md5)}
+        aiohttpretty.register_uri('PUT', url, status=201, headers=header)
 
         metadata, created = await provider.upload(file_stream, path)
 
@@ -549,7 +316,13 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_encrypted(self, provider, file_content, file_stream, file_header_metadata):
+    async def test_upload_encrypted(self,
+                                    provider,
+                                    file_content,
+                                    file_stream,
+                                    file_header_metadata,
+                                    mock_time):
+
         # Set trigger for encrypt_key=True in s3.provider.upload
         provider.encrypt_uploads = True
         path = WaterButlerPath('/foobah')
@@ -564,7 +337,8 @@ class TestCRUD:
                 {'headers': file_header_metadata},
             ],
         )
-        aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"{}"'.format(content_md5)})
+        headers={'ETag': '"{}"'.format(content_md5)}
+        aiohttpretty.register_uri('PUT', url, status=200, headers=headers)
 
         metadata, created = await provider.upload(file_stream, path)
 
@@ -764,7 +538,10 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_accepts_url(self, provider, mock_time):
         path = WaterButlerPath('/my-image')
-        url = provider.bucket.new_key(path.path).generate_url(100, 'GET', response_headers={'response-content-disposition': 'attachment'})
+        response_headers = {'response-content-disposition': 'attachment'}
+        url = provider.bucket.new_key(path.path).generate_url(100,
+                                                              'GET',
+                                                              response_headers=response_headers)
 
         ret_url = await provider.download(path, accept_url=True)
 
@@ -789,7 +566,7 @@ class TestMetadata:
         assert result[0].name == '   photos'
         assert result[1].name == 'my-image.jpg'
         assert result[2].extra['md5'] == '1b2cf535f27731c974343645a3985328'
-        assert result[2].extra['hashes']['md5'] == '1b2cf535f27731c974343645a3985328'
+        assert result[2].extra['hashes']['md5'] == '1b2cf535f27731c974343645a3985328'######################
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -897,7 +674,8 @@ class TestMetadata:
                 {'headers': file_header_metadata},
             ],
         )
-        aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"{}"'.format(content_md5)}),
+        headers = {'ETag': '"{}"'.format(content_md5)}
+        aiohttpretty.register_uri('PUT', url, status=200, headers=headers),
 
         metadata, created = await provider.upload(file_stream, path)
 
@@ -1060,7 +838,11 @@ class TestOperations:
         url = provider.bucket.generate_url(100, 'GET', query_parameters={'versions': ''})
         params = build_folder_params(path)
 
-        aiohttpretty.register_uri('GET', url, params=params, status=200, body=single_version_metadata)
+        aiohttpretty.register_uri('GET',
+                                  url,
+                                  params=params,
+                                  status=200,
+                                  body=single_version_metadata)
 
         data = await provider.revisions(path)
 
@@ -1074,9 +856,7 @@ class TestOperations:
 
         assert aiohttpretty.has_call(method='GET', uri=url, params=params)
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_move(self, provider):
+    def test_can_intra_move(self, provider):
 
         file_path = WaterButlerPath('/my-image.jpg')
         folder_path = WaterButlerPath('/folder/', folder=True)
@@ -1085,9 +865,7 @@ class TestOperations:
         assert provider.can_intra_move(provider, file_path)
         assert not provider.can_intra_move(provider, folder_path)
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_copy(self, provider):
+    def test_can_intra_copy(self, provider):
 
         file_path = WaterButlerPath('/my-image.jpg')
         folder_path = WaterButlerPath('/folder/', folder=True)
@@ -1096,7 +874,5 @@ class TestOperations:
         assert provider.can_intra_copy(provider, file_path)
         assert not provider.can_intra_copy(provider, folder_path)
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_duplicate_names(self, provider):
+    def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names()
