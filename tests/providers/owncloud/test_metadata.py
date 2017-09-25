@@ -1,66 +1,105 @@
 import pytest
 
-from waterbutler.providers.owncloud.metadata import OwnCloudFileMetadata, \
-    OwnCloudFolderMetadata, \
-    OwnCloudFileRevisionMetadata
+from tests.providers.owncloud.fixtures import (
+    file_metadata_object,
+    file_metadata_object_less_info,
+    folder_metadata_object,
+    folder_metadata_object_less_info,
+    revision_metadata_object
+)
 
-@pytest.fixture
-def file_metadata_object():
-    return OwnCloudFileMetadata('dissertation.aux','/owncloud/remote.php/webdav/Documents/phile',
-            {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
-            '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT',
-            '{DAV:}getcontentlength':3011,
-            '{DAV:}getcontenttype': 'test-type'})
+from waterbutler.providers.owncloud.metadata import OwnCloudFileRevisionMetadata
 
-@pytest.fixture
-def file_metadata_object_less_info():
-    return OwnCloudFileMetadata('dissertation.aux','/owncloud/remote.php/webdav/Documents/phile',
-            {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
-            '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT'})
-
-
-@pytest.fixture
-def folder_metadata_object():
-    return OwnCloudFolderMetadata('dissertation.aux','/owncloud/remote.php/webdav/Documents/phile',
-            {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
-            '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT',
-            '{DAV:}getcontentlength':3011,
-            '{DAV:}getcontenttype': 'test-type'})
-
-@pytest.fixture
-def folder_metadata_object_less_info():
-    return OwnCloudFolderMetadata('dissertation.aux','/owncloud/remote.php/webdav/Documents/phile',
-            {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
-            '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT',
-            '{DAV:}getcontentlength':3011})
-
-
-@pytest.fixture
-def revision_metadata_object(file_metadata_object):
-    return OwnCloudFileRevisionMetadata.from_metadata(file_metadata_object)
 
 
 class TestFileMetadata:
 
-    def test_file_metadata(self, file_metadata_object, file_metadata_object_less_info):
-
+    def test_file_metadata(self, file_metadata_object):
         assert file_metadata_object.provider == 'owncloud'
+        assert file_metadata_object.name == 'dissertation.aux'
+        assert file_metadata_object.path == ''
         assert file_metadata_object.size == '3011'
-        assert not file_metadata_object_less_info.size
         assert file_metadata_object.etag == '&quot;a3c411808d58977a9ecd7485b5b7958e&quot;'
         assert not file_metadata_object.created_utc
         assert file_metadata_object.content_type == 'test-type'
+        assert file_metadata_object.extra == {}
+
+        json_api_links = {'delete': 'http://localhost:7777/v1/resources/guid0/providers/owncloud',
+                         'download': 'http://localhost:7777/v1/resources/guid0/providers/owncloud',
+                         'move': 'http://localhost:7777/v1/resources/guid0/providers/owncloud',
+                         'upload': 'http://localhost:7777/v1/resources/guid0/providers/'
+                                   'owncloud?kind=file'}
+
+        assert file_metadata_object._json_api_links('guid0') == json_api_links
+
+    def test_file_metadata_less_info(self, file_metadata_object_less_info):
+        assert file_metadata_object_less_info.provider == 'owncloud'
+        assert file_metadata_object_less_info.name == 'dissertation.aux'
+        assert file_metadata_object_less_info.path == ''
+        assert not file_metadata_object_less_info.size
+        assert file_metadata_object_less_info.etag == '&quot;a3c411808d58977a9ecd7485b5b7958e&quot;'
+        assert not file_metadata_object_less_info.created_utc
         assert not file_metadata_object_less_info.content_type
+        assert file_metadata_object_less_info.extra == {}
+
+        json_api_links = {'delete': 'http://localhost:7777/v1/resources/guid0/providers/owncloud',
+                         'download': 'http://localhost:7777/v1/resources/guid0/providers/owncloud',
+                         'move': 'http://localhost:7777/v1/resources/guid0/providers/owncloud',
+                         'upload': 'http://localhost:7777/v1/resources/guid0/providers/'
+                                   'owncloud?kind=file'}
+
+        assert file_metadata_object_less_info._json_api_links('guid0') == json_api_links
+
 
 class TestFolderMetadata:
 
-    def test_folder_metadata(self, folder_metadata_object, folder_metadata_object_less_info):
-
+    def test_folder_metadata(self, folder_metadata_object):
+        assert folder_metadata_object.provider == 'owncloud'
+        assert folder_metadata_object.name == 'dissertation.aux'
+        assert folder_metadata_object.path == ''
         assert folder_metadata_object.content_type == 'test-type'
+        assert folder_metadata_object.size == '3011'
+        assert folder_metadata_object.etag == '&quot;a3c411808d58977a9ecd7485b5b7958e&quot;'
+        assert folder_metadata_object.extra == {}
+
+        json_api_links = {'delete': 'http://localhost:7777/v1/resources/guid0/providers/owncloud',
+                          'move': 'http://localhost:7777/v1/resources/guid0/providers/owncloud',
+                          'new_folder': 'http://localhost:7777/v1/resources/guid0/providers/'
+                                        'owncloud?kind=folder',
+                          'upload': 'http://localhost:7777/v1/resources/guid0/providers/'
+                                    'owncloud?kind=file'}
+
+        assert folder_metadata_object._json_api_links('guid0') == json_api_links
+
+    def test_folder_metadata_less_info(self, folder_metadata_object_less_info):
+        assert folder_metadata_object_less_info.provider == 'owncloud'
+        assert folder_metadata_object_less_info.name == 'dissertation.aux'
+        assert folder_metadata_object_less_info.path == ''
         assert folder_metadata_object_less_info.content_type == 'httpd/unix-directory'
+        assert folder_metadata_object_less_info.size == '3011'
+        assert folder_metadata_object_less_info.etag == '&quot;a3c411808d58977a9ecd7485b5b7958e' \
+                                                        '&quot;'
+        assert folder_metadata_object_less_info.extra == {}
+
+        json_api_links = {'delete': 'http://localhost:7777/v1/resources/guid0/providers/owncloud',
+                          'move': 'http://localhost:7777/v1/resources/guid0/providers/owncloud',
+                          'new_folder': 'http://localhost:7777/v1/resources/guid0/providers/'
+                                        'owncloud?kind=folder',
+                          'upload': 'http://localhost:7777/v1/resources/guid0/providers/'
+                                    'owncloud?kind=file'}
+
+        assert folder_metadata_object_less_info._json_api_links('guid0') == json_api_links
+
 
 class TestRevisionMetadata:
 
     def test_revision_metadata(self, revision_metadata_object):
-        revision_metadata_object.version_identifier == 'revision'
-        revision_metadata_object.version == 'lasest'
+        assert revision_metadata_object.version_identifier == 'revision'
+        assert revision_metadata_object.version == 'latest'
+        assert revision_metadata_object.modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
+        assert revision_metadata_object.extra == {}
+
+    def test_revision_metadata(self, revision_metadata_object, file_metadata_object):
+
+            revision = OwnCloudFileRevisionMetadata.from_metadata(file_metadata_object)
+            assert revision == revision_metadata_object

@@ -14,294 +14,30 @@ from waterbutler.providers.owncloud.metadata import OwnCloudFileMetadata, OwnClo
 
 from tests import utils
 
-@pytest.fixture
-def auth():
-    return {
-        'name': 'cat',
-        'email': 'cat@cat.com',
-    }
+from waterbutler.providers.owncloud.metadata import (
+    OwnCloudFileMetadata,
+    OwnCloudFolderMetadata,
+    OwnCloudFileRevisionMetadata
+)
 
-@pytest.fixture
-def credentials():
-    return {'username':'cat',
-            'password':'cat',
-            'host':'https://cat/owncloud'}
+from tests.providers.owncloud.fixtures import (
+    provider,
+    provider_different_credentials,
+    auth,
+    settings,
+    credentials,
+    credentials_2,
+    credentials_host_with_trailing_slash,
+    file_content,
+    file_metadata,
+    folder_contents_metadata,
+    folder_list,
+    folder_metadata,
+    file_metadata_unparsable_response,
+    moved_folder_metadata,
+    moved_parent_folder_metadata
+)
 
-@pytest.fixture
-def credentials_2():
-    return {'username':'dog',
-            'password':'dog',
-            'host':'https://dog/owncloud'}
-
-@pytest.fixture
-def credentials_host_with_trailing_slash():
-    return {'username':'cat',
-            'password':'cat',
-            'host':'https://cat/owncloud/'}
-
-@pytest.fixture
-def settings():
-    return {'folder': '/my_folder', 'verify_ssl':False}
-
-@pytest.fixture
-def provider(auth, credentials, settings):
-    return OwnCloudProvider(auth, credentials, settings)
-
-@pytest.fixture
-def provider_different_credentials(auth, credentials_2, settings):
-    return OwnCloudProvider(auth, credentials_2, settings)
-
-@pytest.fixture
-def moved_parent_folder_metadata():
-    return b'''<?xml version="1.0" encoding="UTF-8"?>
-    <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:s="http://sabredav.org/ns">
-       <d:response>
-          <d:href>/owncloud/remote.php/webdav/parent_folder/</d:href>
-          <d:propstat>
-             <d:prop>
-                <d:getlastmodified>Thu, 14 Sep 2017 19:13:44 GMT</d:getlastmodified>
-                <d:resourcetype>
-                   <d:collection />
-                </d:resourcetype>
-                <d:quota-used-bytes>1</d:quota-used-bytes>
-                <d:quota-available-bytes>-3</d:quota-available-bytes>
-                <d:getetag>&amp;quot;59bad4e9c26e7&amp;quot;</d:getetag>
-             </d:prop>
-             <d:status>HTTP/1.1 200 OK</d:status>
-          </d:propstat>
-       </d:response>
-       <d:response>
-          <d:href>/owncloud/remote.php/webdav/parent_folder/moved_folder/</d:href>
-          <d:propstat>
-             <d:prop>
-                <d:getlastmodified>Thu, 14 Sep 2017 19:12:45 GMT</d:getlastmodified>
-                <d:resourcetype>
-                   <d:collection />
-                </d:resourcetype>
-                <d:quota-used-bytes>1</d:quota-used-bytes>
-                <d:quota-available-bytes>-3</d:quota-available-bytes>
-                <d:getetag>&amp;quot;59bad4ad640eb&amp;quot;</d:getetag>
-             </d:prop>
-             <d:status>HTTP/1.1 200 OK</d:status>
-          </d:propstat>
-       </d:response>
-    </d:multistatus>'''
-
-
-@pytest.fixture
-def moved_folder_metadata():
-    return b'''<?xml version="1.0" ?>
-    <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:s="http://sabredav.org/ns">
-       <d:response>
-          <d:href>/owncloud/remote.php/webdav/moved_folder/</d:href>
-          <d:propstat>
-             <d:prop>
-                <d:getlastmodified>Thu, 14 Sep 2017 19:12:45 GMT</d:getlastmodified>
-                <d:resourcetype>
-                   <d:collection />
-                </d:resourcetype>
-                <d:quota-used-bytes>1</d:quota-used-bytes>
-                <d:quota-available-bytes>-3</d:quota-available-bytes>
-                <d:getetag>&amp;quot;59bad4ad640eb&amp;quot;</d:getetag>
-             </d:prop>
-             <d:status>HTTP/1.1 200 OK</d:status>
-          </d:propstat>
-       </d:response>
-       <d:response>
-          <d:href>/owncloud/remote.php/webdav/moved_folder/child_file</d:href>
-          <d:propstat>
-             <d:prop>
-                <d:getlastmodified>Thu, 14 Sep 2017 19:12:45 GMT</d:getlastmodified>
-                <d:getcontentlength>1</d:getcontentlength>
-                <d:resourcetype />
-                <d:getetag>&amp;quot;5cedcd73801ef88766bc32ce712bb1f5&amp;quot;</d:getetag>
-                <d:getcontenttype>application/octet-stream</d:getcontenttype>
-             </d:prop>
-             <d:status>HTTP/1.1 200 OK</d:status>
-          </d:propstat>
-       </d:response>
-    </d:multistatus>
-'''
-
-@pytest.fixture
-def folder_list():
-    return b'''<?xml version="1.0" ?>
-    <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:s="http://sabredav.org/ns">
-        <d:response>
-            <d:href>/owncloud/remote.php/webdav/</d:href>
-            <d:propstat>
-                <d:prop>
-                    <d:getlastmodified>Tue, 21 Jun 2016 00:44:03 GMT</d:getlastmodified>
-                    <d:resourcetype>
-                         <d:collection/>
-                    </d:resourcetype>
-                    <d:quota-used-bytes>714783</d:quota-used-bytes>
-                    <d:quota-available-bytes>-3</d:quota-available-bytes>
-                    <d:getetag>&quot;57688dd358fb7&quot;</d:getetag>
-                </d:prop>
-                <d:status>HTTP/1.1 200 OK</d:status>
-            </d:propstat>
-        </d:response>
-        <d:response>
-            <d:href>/owncloud/remote.php/webdav/Documents/</d:href>
-            <d:propstat>
-                <d:prop>
-                    <d:getlastmodified>Tue, 21 Jun 2016 00:44:03 GMT</d:getlastmodified>
-                    <d:resourcetype>
-                        <d:collection/>
-                    </d:resourcetype>
-                    <d:quota-used-bytes>36227</d:quota-used-bytes>
-                    <d:quota-available-bytes>-3</d:quota-available-bytes>
-                    <d:getetag>&quot;57688dd3584b0&quot;</d:getetag>
-                </d:prop>
-                <d:status>HTTP/1.1 200 OK</d:status>
-            </d:propstat>
-        </d:response>
-        <d:response>
-            <d:href>/owncloud/remote.php/webdav/Photos/</d:href>
-            <d:propstat>
-                <d:prop>
-                    <d:getlastmodified>Wed, 15 Jun 2016 22:49:40 GMT</d:getlastmodified>
-                    <d:resourcetype>
-                        <d:collection/>
-                    </d:resourcetype>
-                    <d:quota-used-bytes>678556</d:quota-used-bytes>
-                    <d:quota-available-bytes>-3</d:quota-available-bytes>
-                    <d:getetag>&quot;5761db8485325&quot;</d:getetag>
-                </d:prop>
-                <d:status>HTTP/1.1 200 OK</d:status>
-            </d:propstat>
-        </d:response>
-     </d:multistatus>'''
-
-
-@pytest.fixture
-def folder_metadata():
-    return b'''<?xml version="1.0" ?>
-    <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:s="http://sabredav.org/ns">
-        <d:response>
-            <d:href>/owncloud/remote.php/webdav/Documents/</d:href>
-            <d:propstat>
-                <d:prop>
-                    <d:getlastmodified>Tue, 21 Jun 2016 00:44:03 GMT</d:getlastmodified>
-                    <d:resourcetype>
-                        <d:collection/>
-                    </d:resourcetype>
-                    <d:quota-used-bytes>36227</d:quota-used-bytes>
-                    <d:quota-available-bytes>-3</d:quota-available-bytes>
-                    <d:getetag>&quot;57688dd3584b0&quot;</d:getetag>
-                </d:prop>
-                <d:status>HTTP/1.1 200 OK</d:status>
-            </d:propstat>
-        </d:response>
-     </d:multistatus>'''
-
-
-@pytest.fixture
-def folder_contents_metadata():
-    return b'''<?xml version="1.0"?>
-      <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:s="http://sabredav.org/ns">
-        <d:response>
-          <d:href>/remote.php/webdav/Documents/</d:href>
-          <d:propstat>
-            <d:prop>
-              <d:getlastmodified>Thu, 01 Jun 2017 15:53:13 GMT</d:getlastmodified>
-              <d:resourcetype>
-                <d:collection/>
-              </d:resourcetype>
-              <d:quota-used-bytes>36227</d:quota-used-bytes>
-              <d:quota-available-bytes>-3</d:quota-available-bytes>
-              <d:getetag>&quot;5930386978ae6&quot;</d:getetag>
-            </d:prop>
-            <d:status>HTTP/1.1 200 OK</d:status>
-          </d:propstat>
-        </d:response>
-        <d:response>
-          <d:href>/remote.php/webdav/Documents/Example.odt</d:href>
-          <d:propstat>
-            <d:prop>
-              <d:getlastmodified>Fri, 12 May 2017 20:37:35 GMT</d:getlastmodified>
-              <d:getcontentlength>36227</d:getcontentlength>
-              <d:resourcetype/>
-              <d:getetag>&quot;95db455e6e33d57d521c0d4e93496747&quot;</d:getetag>
-              <d:getcontenttype>application/vnd.oasis.opendocument.text</d:getcontenttype>
-            </d:prop>
-            <d:status>HTTP/1.1 200 OK</d:status>
-          </d:propstat>
-        </d:response>
-        <d:response>
-          <d:href>/remote.php/webdav/Documents/pumpkin/</d:href>
-          <d:propstat>
-            <d:prop>
-              <d:getlastmodified>Thu, 01 Jun 2017 15:28:10 GMT</d:getlastmodified>
-              <d:resourcetype>
-                <d:collection/>
-              </d:resourcetype>
-              <d:quota-used-bytes>0</d:quota-used-bytes>
-              <d:quota-available-bytes>-3</d:quota-available-bytes>
-              <d:getetag>&quot;5930328a6f9da&quot;</d:getetag>
-            </d:prop>
-            <d:status>HTTP/1.1 200 OK</d:status>
-          </d:propstat>
-        </d:response>
-        <d:response>
-          <d:href>/remote.php/webdav/Documents/squash/</d:href>
-          <d:propstat>
-            <d:prop>
-              <d:getlastmodified>Thu, 01 Jun 2017 15:53:13 GMT</d:getlastmodified>
-              <d:resourcetype>
-                <d:collection/>
-              </d:resourcetype>
-              <d:quota-used-bytes>0</d:quota-used-bytes>
-              <d:quota-available-bytes>-3</d:quota-available-bytes>
-              <d:getetag>&quot;59303869582b4&quot;</d:getetag>
-            </d:prop>
-            <d:status>HTTP/1.1 200 OK</d:status>
-          </d:propstat>
-        </d:response>
-      </d:multistatus>'''
-
-
-@pytest.fixture
-def file_metadata():
-    return b'''<?xml version="1.0"?>
-            <d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:oc="http://owncloud.org/ns">
-                <d:response>
-                    <d:href>/owncloud/remote.php/webdav/Documents/dissertation.aux</d:href>
-                    <d:propstat>
-                        <d:prop>
-                            <d:getlastmodified>Sun, 10 Jul 2016 23:28:31 GMT</d:getlastmodified>
-                            <d:getcontentlength>3011</d:getcontentlength>
-                            <d:resourcetype/>
-                            <d:getetag>&quot;a3c411808d58977a9ecd7485b5b7958e&quot;</d:getetag>
-                            <d:getcontenttype>application/octet-stream</d:getcontenttype>
-                        </d:prop>
-                        <d:status>HTTP/1.1 200 OK</d:status>
-                    </d:propstat>
-                </d:response>
-            </d:multistatus>'''
-
-@pytest.fixture
-def file_metadata_unparsable_response():
-    return b'''<?xml version="1.0"?>
-            <d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:oc="http://owncloud.org/ns">
-                <d:response>
-                    <d:propstat>
-                        <d:prop>
-                            <d:getlastmodified>Sun, 10 Jul 2016 23:28:31 GMT</d:getlastmodified>
-                            <d:getcontentlength>3011</d:getcontentlength>
-                            <d:resourcetype/>
-                            <d:getetag>&quot;a3c411808d58977a9ecd7485b5b7958e&quot;</d:getetag>
-                            <d:getcontenttype>application/octet-stream</d:getcontenttype>
-                        </d:prop>
-                        <d:status>HTTP/1.1 200 OK</d:status>
-                    </d:propstat>
-                </d:response>
-            </d:multistatus>'''
-
-@pytest.fixture
-def file_content():
-    return b'SLEEP IS FOR THE WEAK GO SERVE STREAMS'
 
 @pytest.fixture
 def file_like(file_content):
@@ -326,7 +62,8 @@ class TestProviderConstruction:
 
         provider_host_with_trailing_slash = OwnCloudProvider(auth,
                                                              credentials_host_with_trailing_slash,
-                                                             {'folder': '/foo/', 'verify_ssl': False})
+                                                             {'folder': '/foo/',
+                                                              'verify_ssl': False})
 
         expected = 'https://cat/owncloud/remote.php/webdav/'
         assert expected == provider._webdav_url_
@@ -360,7 +97,11 @@ class TestValidatePath:
     async def test_validate_v1_path_folder(self, provider, folder_metadata):
         path = WaterButlerPath('/myfolder/', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
-        aiohttpretty.register_uri('PROPFIND', url, body=folder_metadata, auto_length=True, status=207)
+        aiohttpretty.register_uri('PROPFIND',
+                                  url,
+                                  body=folder_metadata,
+                                  auto_length=True,
+                                  status=207)
         try:
             wb_path_v1 = await provider.validate_v1_path('/myfolder/')
         except Exception as exc:
@@ -375,7 +116,11 @@ class TestValidatePath:
     async def test_unparsable_dav_response(self, provider, file_metadata_unparsable_response):
         path = WaterButlerPath('/triangles.txt', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
-        aiohttpretty.register_uri('PROPFIND', url, body=file_metadata_unparsable_response, auto_length=True, status=207)
+        aiohttpretty.register_uri('PROPFIND',
+                                  url,
+                                  body=file_metadata_unparsable_response,
+                                  auto_length=True,
+                                  status=207)
 
         with pytest.raises(exceptions.NotFoundError):
             await provider.validate_v1_path('/triangles.txt')
@@ -390,7 +135,11 @@ class TestValidatePath:
     async def test_v1_own_cloud_404(self, provider, file_metadata_unparsable_response):
         path = WaterButlerPath('/triangles.txt', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
-        aiohttpretty.register_uri('PROPFIND', url, body=file_metadata_unparsable_response, auto_length=True, status=404)
+        aiohttpretty.register_uri('PROPFIND',
+                                  url,
+                                  body=file_metadata_unparsable_response,
+                                  auto_length=True,
+                                  status=404)
 
         with pytest.raises(exceptions.NotFoundError):
             await provider.validate_v1_path('/triangles.txt')
@@ -400,7 +149,11 @@ class TestValidatePath:
     async def test_response_different_of_kind_than_path(self, provider, folder_metadata):
         path = WaterButlerPath('/triangles.txt', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
-        aiohttpretty.register_uri('PROPFIND', url, body=folder_metadata, auto_length=True, status=207)
+        aiohttpretty.register_uri('PROPFIND',
+                                  url,
+                                  body=folder_metadata,
+                                  auto_length=True,
+                                  status=207)
 
         with pytest.raises(exceptions.NotFoundError):
             await provider.validate_v1_path('/triangles.txt')
@@ -410,7 +163,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download(self, provider, file_metadata, file_like):
+    async def test_download(self, provider, file_metadata):
         path = WaterButlerPath('/triangles.txt', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
@@ -427,7 +180,8 @@ class TestCRUD:
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
         aiohttpretty.register_uri('PUT', url, body=b'squares', auto_length=True, status=201)
         metadata, created = await provider.upload(file_stream, path)
-        expected = OwnCloudFileMetadata('dissertation.aux','/owncloud/remote.php/webdav/Documents/phile',
+        expected = OwnCloudFileMetadata('dissertation.aux',
+                                        '/owncloud/remote.php/webdav/Documents/phile',
         {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
         '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT',
         '{DAV:}getcontentlength':3011})
@@ -447,9 +201,14 @@ class TestCRUD:
         url = provider._webdav_url_ + renamed_path.full_path
 
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
-        aiohttpretty.register_uri('PUT', provider._webdav_url_ + '/my_folder/phile (1)', body=b'squares', auto_length=True, status=201)
+        aiohttpretty.register_uri('PUT',
+                                  provider._webdav_url_ + '/my_folder/phile (1)',
+                                  body=b'squares',
+                                  auto_length=True,
+                                  status=201)
         metadata, created = await provider.upload(file_stream, path, 'keep')
-        expected = OwnCloudFileMetadata('dissertation.aux','/owncloud/remote.php/webdav/Documents/phile (1)',
+        expected = OwnCloudFileMetadata('dissertation.aux',
+                                        '/owncloud/remote.php/webdav/Documents/phile (1)',
         {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
         '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT',
         '{DAV:}getcontentlength':3011})
@@ -599,25 +358,17 @@ class TestRevisions:
 
 class TestOperations:
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_copy(self, provider, provider_different_credentials):
+    def test_can_intra_copy(self, provider, provider_different_credentials):
         assert provider.can_intra_copy(provider)
         assert not provider.can_intra_copy(provider_different_credentials)
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_move(self, provider, provider_different_credentials):
+    def test_can_intra_move(self, provider, provider_different_credentials):
         assert provider.can_intra_move(provider)
         assert not provider.can_intra_move(provider_different_credentials)
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_shares_storage_root(self, provider, provider_different_credentials):
+    def test_shares_storage_root(self, provider, provider_different_credentials):
         assert provider.shares_storage_root(provider)
         assert not provider.shares_storage_root(provider_different_credentials)
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_duplicate_names(self, provider):
+    def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names()
