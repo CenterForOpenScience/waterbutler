@@ -208,12 +208,12 @@ class BaseProvider(metaclass=abc.ABCMeta):
         Performs a copy and then a delete.
         Calls :func:`BaseProvider.intra_move` if possible.
 
-        :param dest_provider: ( :class:`.BaseProvider` ) The provider to move to
+        :param dest_provider: ( :class:`BaseProvider` ) The provider to move to
         :param src_path: ( :class:`.WaterButlerPath` ) Path to where the resource can be found
         :param dest_path: ( :class:`.WaterButlerPath` ) Path to where the resource will be moved
         :param rename: ( :class:`str` ) The desired name of the resulting path, may be incremented
         :param conflict: ( :class:`str` ) What to do in the event of a name conflict, ``replace`` or ``keep``
-        :param handle_naming: ( :class:`bool` ) If a naming conflict is detected, should it be automatically handled?
+        :param handle_naming: ( :class:`bool` ) If true will be run through handle_naming method, and handled in accordance with conflict parameter.
         """
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict}
@@ -252,6 +252,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
             src_path.materialized_path == dest_path.materialized_path
         ):
             raise exceptions.OverwriteSelfError(src_path)
+
+        if (
+            self == dest_provider and
+            conflict == 'replace' and
+            dest_provider.replace_will_orphan(src_path, dest_path)
+        ):
+            raise exceptions.OrphanSelfError(src_path)
 
         self.provider_metrics.add('move.can_intra_move', False)
         if self.can_intra_move(dest_provider, src_path):
@@ -311,6 +318,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
                 src_path.materialized_path == dest_path.materialized_path
         ):
             raise exceptions.OverwriteSelfError(src_path)
+
+        if (
+            self == dest_provider and
+            conflict == 'replace' and
+            dest_provider.replace_will_orphan(src_path, dest_path)
+        ):
+            raise exceptions.OrphanSelfError(src_path)
 
         self.provider_metrics.add('copy.can_intra_copy', False)
         if self.can_intra_copy(dest_provider, src_path):
@@ -523,6 +537,28 @@ class BaseProvider(metaclass=abc.ABCMeta):
         data, created = await self.intra_copy(dest_provider, src_path, dest_path)
         await self.delete(src_path)
         return data, created
+
+    def replace_will_orphan(self,
+                            src_path: wb_path.WaterButlerPath,
+                            dest_path: wb_path.WaterButlerPath) -> bool:
+        """Check if copy/move conflict=replace will orphan src_path.
+
+        Assumes src_provider == dest_provider and conflict == 'replace' have already been checked.
+        This can be an expensive operation. Should be used as last resort. Should be overridden if
+        provider has a cheaper option.
+        """
+        if not dest_path.kind == 'folder':
+            return False
+        if src_path.name != dest_path.name:
+            return False
+
+        incr_path = src_path
+        while incr_path.materialized_path != '/':
+            incr_path = incr_path.parent
+            if incr_path.materialized_path == dest_path.materialized_path:
+                return True
+
+        return False
 
     async def exists(self, path: wb_path.WaterButlerPath, **kwargs) \
             -> typing.Union[bool, wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
