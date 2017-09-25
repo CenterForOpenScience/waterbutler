@@ -19,18 +19,17 @@ class TestFileMetadataHeaders:
         assert file_metadata_headers_object.materialized_path == '//test-path'
         assert file_metadata_headers_object.kind == 'file'
         assert file_metadata_headers_object.provider == 's3'
-        assert file_metadata_headers_object.size == file_header_metadata['CONTENT-LENGTH']
-        assert file_metadata_headers_object.content_type == file_header_metadata['CONTENT-TYPE']
-        assert file_metadata_headers_object.modified == file_header_metadata['LAST-MODIFIED']
+        assert file_metadata_headers_object.size == 9001
+        assert file_metadata_headers_object.content_type == 'binary/octet-stream'
+        assert file_metadata_headers_object.modified == 'SomeTime'
         assert not file_metadata_headers_object.created_utc
-        assert file_metadata_headers_object.etag == file_header_metadata['ETAG'].replace('"', '')
+        assert file_metadata_headers_object.etag == 'fba9dede5f27731c9771645a39863328'
 
-        md5 = file_metadata_headers_object.raw['ETAG'].replace('"', '')
         extra = {
-            'md5': md5,
-            'encryption': file_metadata_headers_object.raw.get('X-AMZ-SERVER-SIDE-ENCRYPTION', ''),
+            'md5': 'fba9dede5f27731c9771645a39863328',
+            'encryption': 'AES256',
             'hashes': {
-                'md5': md5,
+                'md5': 'fba9dede5f27731c9771645a39863328',
             },
         }
 
@@ -51,15 +50,14 @@ class TestFileMetadata:
         assert file_metadata_object.materialized_path == '/my-image.jpg'
         assert file_metadata_object.size == 434234
         assert file_metadata_object.modified == '2009-10-12T17:50:30.000Z'
-        assert file_metadata_object.etag == "fba9dede5f27731c9771645a39863328".replace('"', '')
+        assert file_metadata_object.etag == 'fba9dede5f27731c9771645a39863328'
         assert not file_metadata_object.created_utc
         assert not file_metadata_object.content_type
 
-        md5 = file_metadata_object.raw['ETag'].replace('"', '')
         extra = {
-            'md5': md5,
+            'md5': 'fba9dede5f27731c9771645a39863328',
             'hashes': {
-                'md5': md5,
+                'md5': 'fba9dede5f27731c9771645a39863328',
             },
         }
 

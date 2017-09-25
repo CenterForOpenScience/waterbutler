@@ -296,9 +296,6 @@ def folder_key_metadata_object():
                           Size='0',
                           StorageClass='STANDARD')
 
-
-    folder = S3FolderKeyMetadata(content)
-    folder
     return S3FolderKeyMetadata(content)
 
 

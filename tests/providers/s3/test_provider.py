@@ -298,7 +298,13 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_update(self, provider, file_content, file_stream, file_header_metadata):
+    async def test_upload_update(self,
+                                 provider,
+                                 file_content,
+                                 file_stream,
+                                 file_header_metadata,
+                                 mock_time):
+
         path = WaterButlerPath('/foobah')
         content_md5 = hashlib.md5(file_content).hexdigest()
         url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
@@ -566,7 +572,7 @@ class TestMetadata:
         assert result[0].name == '   photos'
         assert result[1].name == 'my-image.jpg'
         assert result[2].extra['md5'] == '1b2cf535f27731c974343645a3985328'
-        assert result[2].extra['hashes']['md5'] == '1b2cf535f27731c974343645a3985328'######################
+        assert result[2].extra['hashes']['md5'] == '1b2cf535f27731c974343645a3985328'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -661,7 +667,13 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload(self, provider, file_content, file_stream, file_header_metadata):
+    async def test_upload(self,
+                          provider,
+                          file_content,
+                          file_stream,
+                          file_header_metadata,
+                          mock_time):
+
         path = WaterButlerPath('/foobah')
         content_md5 = hashlib.md5(file_content).hexdigest()
         url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
@@ -686,7 +698,11 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_checksum_mismatch(self, provider, file_stream, file_header_metadata):
+    async def test_upload_checksum_mismatch(self,
+                                            provider,
+                                            file_stream,
+                                            file_header_metadata,
+                                            mock_time):
         path = WaterButlerPath('/foobah')
         url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
         metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
@@ -700,7 +716,7 @@ class TestMetadata:
         )
         aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"bad hash"'})
 
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='PUT', uri=url)
@@ -788,7 +804,7 @@ class TestOperations:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy(self, provider, file_header_metadata):
+    async def test_intra_copy(self, provider, file_header_metadata, mock_time):
 
         source_path = WaterButlerPath('/source')
         dest_path = WaterButlerPath('/dest')
