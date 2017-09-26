@@ -1,0 +1,31 @@
+<?xml version="1.0" ?>
+<d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:s="http://sabredav.org/ns">
+   <d:response>
+      <d:href>/owncloud/remote.php/webdav/moved_folder/</d:href>
+      <d:propstat>
+         <d:prop>
+            <d:getlastmodified>Thu, 14 Sep 2017 19:12:45 GMT</d:getlastmodified>
+            <d:resourcetype>
+               <d:collection />
+            </d:resourcetype>
+            <d:quota-used-bytes>1</d:quota-used-bytes>
+            <d:quota-available-bytes>-3</d:quota-available-bytes>
+            <d:getetag>&amp;quot;59bad4ad640eb&amp;quot;</d:getetag>
+         </d:prop>
+         <d:status>HTTP/1.1 200 OK</d:status>
+      </d:propstat>
+   </d:response>
+   <d:response>
+      <d:href>/owncloud/remote.php/webdav/moved_folder/child_file</d:href>
+      <d:propstat>
+         <d:prop>
+            <d:getlastmodified>Thu, 14 Sep 2017 19:12:45 GMT</d:getlastmodified>
+            <d:getcontentlength>1</d:getcontentlength>
+            <d:resourcetype />
+            <d:getetag>&amp;quot;5cedcd73801ef88766bc32ce712bb1f5&amp;quot;</d:getetag>
+            <d:getcontenttype>application/octet-stream</d:getcontenttype>
+         </d:prop>
+         <d:status>HTTP/1.1 200 OK</d:status>
+      </d:propstat>
+   </d:response>
+</d:multistatus>
