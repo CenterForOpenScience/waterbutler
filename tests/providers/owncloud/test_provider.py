@@ -10,13 +10,11 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.owncloud import OwnCloudProvider
-from waterbutler.providers.owncloud.metadata import OwnCloudFileMetadata, OwnCloudFileRevisionMetadata
 
 from tests import utils
 
 from waterbutler.providers.owncloud.metadata import (
     OwnCloudFileMetadata,
-    OwnCloudFolderMetadata,
     OwnCloudFileRevisionMetadata
 )
 
@@ -68,6 +66,7 @@ class TestProviderConstruction:
         expected = 'https://cat/owncloud/remote.php/webdav/'
         assert expected == provider._webdav_url_
         assert expected == provider_host_with_trailing_slash._webdav_url_
+
 
 class TestValidatePath:
 
@@ -353,7 +352,6 @@ class TestRevisions:
         assert isinstance(result[0], OwnCloudFileRevisionMetadata)
         assert len(result) == 1
         assert result[0].modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
-
 
 
 class TestOperations:
