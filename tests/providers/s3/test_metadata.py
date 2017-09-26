@@ -1,6 +1,6 @@
 import pytest
 
-from tests.providers.s3.fixtures.fixtures import (
+from tests.providers.s3.fixtures import (
     file_metadata_headers_object,
     file_header_metadata,
     file_metadata_object,

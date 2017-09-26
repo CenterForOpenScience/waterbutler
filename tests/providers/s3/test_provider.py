@@ -12,25 +12,31 @@ from http import client
 from urllib import parse
 from unittest import mock
 
+
 from waterbutler.core import streams
 from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.providers.s3 import S3Provider
 from waterbutler.core.path import WaterButlerPath
 
-from tests.providers.s3.fixtures.fixtures import (
-    file_header_metadata,
-    folder_metadata,
-    file_content,
-    contents_and_self,
-    folder_single_thing_metadata,
-    just_a_folder_metadata,
-    folder_empty_metadata,
-    version_metadata,
-    single_version_metadata,
+from tests.providers.s3.fixtures import (
     auth,
     credentials,
     settings,
+    file_content,
+    folder_metadata,
+    folder_single_item_metadata,
+    folder_item_metadata,
+    version_metadata,
+    single_version_metadata,
+    folder_metadata,
+    folder_and_contents,
+    folder_empty_metadata,
+    file_header_metadata,
+    file_metadata_headers_object,
+    file_metadata_object,
+    folder_key_metadata_object,
+    revision_metadata_object
 )
 
 
@@ -367,7 +373,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_comfirm_delete(self, provider, contents_and_self, mock_time):
+    async def test_delete_comfirm_delete(self, provider, folder_and_contents, mock_time):
         path = WaterButlerPath('/')
 
         query_url = provider.bucket.generate_url(100, 'GET')
@@ -375,7 +381,7 @@ class TestCRUD:
             'GET',
             query_url,
             params={'prefix': ''},
-            body=contents_and_self,
+            body=folder_and_contents,
             status=200,
         )
 
@@ -399,7 +405,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_folder_delete(self, provider, contents_and_self, mock_time):
+    async def test_folder_delete(self, provider, folder_and_contents, mock_time):
         path = WaterButlerPath('/some-folder/')
 
         params = {'prefix': 'some-folder/'}
@@ -408,7 +414,7 @@ class TestCRUD:
             'GET',
             query_url,
             params=params,
-            body=contents_and_self,
+            body=folder_and_contents,
             status=200,
         )
 
@@ -433,7 +439,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_single_thing_folder_delete(self, provider, folder_single_thing_metadata):
+    async def test_single_item_folder_delete(self, provider, folder_single_item_metadata):
         path = WaterButlerPath('/single-thing-folder/')
 
         params = {'prefix': 'single-thing-folder/'}
@@ -442,7 +448,7 @@ class TestCRUD:
             'GET',
             query_url,
             params=params,
-            body=folder_single_thing_metadata,
+            body=folder_single_item_metadata,
             status=200,
         )
 
@@ -576,11 +582,11 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_folder_self_listing(self, provider, contents_and_self, mock_time):
+    async def test_metadata_folder_self_listing(self, provider, folder_and_contents, mock_time):
         path = WaterButlerPath('/thisfolder/')
         url = provider.bucket.generate_url(100)
         params = build_folder_params(path)
-        aiohttpretty.register_uri('GET', url, params=params, body=contents_and_self)
+        aiohttpretty.register_uri('GET', url, params=params, body=folder_and_contents)
 
         result = await provider.metadata(path)
 
@@ -591,11 +597,11 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_just_a_folder_metadata_folder(self, provider, just_a_folder_metadata, mock_time):
+    async def test_folder_metadata_folder_item(self, provider, folder_item_metadata, mock_time):
         path = WaterButlerPath('/')
         url = provider.bucket.generate_url(100)
         params = build_folder_params(path)
-        aiohttpretty.register_uri('GET', url, params=params, body=just_a_folder_metadata,
+        aiohttpretty.register_uri('GET', url, params=params, body=folder_item_metadata,
                                   headers={'Content-Type': 'application/xml'})
 
         result = await provider.metadata(path)
@@ -727,11 +733,11 @@ class TestCreateFolder:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_raise_409(self, provider, just_a_folder_metadata, mock_time):
+    async def test_raise_409(self, provider, folder_metadata, mock_time):
         path = WaterButlerPath('/alreadyexists/')
         url = provider.bucket.generate_url(100, 'GET')
         params = build_folder_params(path)
-        aiohttpretty.register_uri('GET', url, params=params, body=just_a_folder_metadata,
+        aiohttpretty.register_uri('GET', url, params=params, body=folder_metadata,
                                   headers={'Content-Type': 'application/xml'})
 
         with pytest.raises(exceptions.FolderNamingConflict) as e:
