@@ -439,7 +439,10 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_single_item_folder_delete(self, provider, folder_single_item_metadata):
+    async def test_single_item_folder_delete(self,
+                                             provider,
+                                             folder_single_item_metadata,
+                                             mock_time):
         path = WaterButlerPath('/single-thing-folder/')
 
         params = {'prefix': 'single-thing-folder/'}
@@ -633,7 +636,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file(self, provider, file_header_metadata):
+    async def test_metadata_file(self, provider, file_header_metadata, mock_time):
         path = WaterButlerPath('/Foo/Bar/my-image.jpg')
         url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
         aiohttpretty.register_uri('HEAD', url, headers=file_header_metadata)
@@ -648,7 +651,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file_lastest_revision(self, provider, file_header_metadata):
+    async def test_metadata_file_lastest_revision(self, provider, file_header_metadata, mock_time):
         path = WaterButlerPath('/Foo/Bar/my-image.jpg')
         url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
         aiohttpretty.register_uri('HEAD', url, headers=file_header_metadata)
