@@ -63,6 +63,13 @@ class TestFileMetadata:
 
         assert file_metadata_object.extra == extra
 
+        links = {'delete': 'http://localhost:7777/v1/resources/guid0/providers/s3/my-image.jpg',
+          'download': 'http://localhost:7777/v1/resources/guid0/providers/s3/my-image.jpg',
+          'move': 'http://localhost:7777/v1/resources/guid0/providers/s3/my-image.jpg',
+          'upload': 'http://localhost:7777/v1/resources/guid0/providers/s3/my-image.jpg?kind=file'}
+
+        assert file_metadata_object._json_api_links('guid0') == links
+
 class TestFolderMetadata:
 
     def test_folder_metadata(self, folder_metadata_object):
@@ -78,6 +85,15 @@ class TestFolderMetadata:
 
         assert not folder_metadata_object.children
 
+        links = {'delete': 'http://localhost:7777/v1/resources/guid0/providers/s3/photos/',
+                 'move': 'http://localhost:7777/v1/resources/guid0/providers/s3/photos/',
+                 'new_folder': 'http://localhost:7777/v1/resources/guid0/providers/s3/photos/'
+                               '?kind=folder',
+                 'upload': 'http://localhost:7777/v1/resources/guid0/providers/s3/photos/'
+                           '?kind=file'}
+
+        assert folder_metadata_object._json_api_links('guid0') == links
+
 class TestFolderKeyMetadata:
 
     def test_folder_key_metadata(self, folder_key_metadata_object):
@@ -89,6 +105,15 @@ class TestFolderKeyMetadata:
         assert folder_key_metadata_object.path == '/naptime/'
 
         assert not folder_key_metadata_object.children
+
+        links = {'delete': 'http://localhost:7777/v1/resources/guid0/providers/s3/naptime/',
+                 'move': 'http://localhost:7777/v1/resources/guid0/providers/s3/naptime/',
+                 'new_folder': 'http://localhost:7777/v1/resources/guid0/providers/s3/naptime/'
+                               '?kind=folder',
+                 'upload': 'http://localhost:7777/v1/resources/guid0/providers/s3/naptime/'
+                           '?kind=file'}
+
+        assert folder_key_metadata_object._json_api_links('guid0') == links
 
 class TestRevisionsMetadata:
 
