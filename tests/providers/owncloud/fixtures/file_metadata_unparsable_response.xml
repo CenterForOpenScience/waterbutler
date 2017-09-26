@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:oc="http://owncloud.org/ns">
+    <d:response>
+        <d:propstat>
+            <d:prop>
+                <d:getlastmodified>Sun, 10 Jul 2016 23:28:31 GMT</d:getlastmodified>
+                <d:getcontentlength>3011</d:getcontentlength>
+                <d:resourcetype/>
+                <d:getetag>&quot;a3c411808d58977a9ecd7485b5b7958e&quot;</d:getetag>
+                <d:getcontenttype>application/octet-stream</d:getcontenttype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+</d:multistatus>
