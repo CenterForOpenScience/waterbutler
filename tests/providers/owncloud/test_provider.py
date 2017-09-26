@@ -29,6 +29,7 @@ from tests.providers.owncloud.fixtures import (
     file_content,
     file_metadata,
     folder_contents_metadata,
+    file_metadata_object,
     folder_list,
     folder_metadata,
     file_metadata_unparsable_response,
@@ -173,25 +174,21 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload(self, provider, file_stream, file_metadata):
+    async def test_upload(self, provider, file_stream, file_metadata, file_metadata_object):
         path = WaterButlerPath('/phile', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
         aiohttpretty.register_uri('PUT', url, body=b'squares', auto_length=True, status=201)
         metadata, created = await provider.upload(file_stream, path)
-        expected = OwnCloudFileMetadata('dissertation.aux',
-                                        '/owncloud/remote.php/webdav/Documents/phile',
-        {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
-        '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT',
-        '{DAV:}getcontentlength':3011})
+
         assert created is True
-        assert metadata.name == expected.name
-        assert metadata.size == expected.size
+        assert metadata.name == file_metadata_object.name
+        assert metadata.size == file_metadata_object.size
         assert aiohttpretty.has_call(method='PUT', uri=url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_keep(self, provider, file_stream, file_metadata):
+    async def test_upload_keep(self, provider, file_stream, file_metadata, file_metadata_object):
         path = WaterButlerPath('/phile', prepend=provider.folder)
         renamed_path = WaterButlerPath('/phile (1)', prepend=provider.folder)
         path._parts[-1]._id = 'fake_id'
@@ -206,14 +203,10 @@ class TestCRUD:
                                   auto_length=True,
                                   status=201)
         metadata, created = await provider.upload(file_stream, path, 'keep')
-        expected = OwnCloudFileMetadata('dissertation.aux',
-                                        '/owncloud/remote.php/webdav/Documents/phile (1)',
-        {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
-        '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT',
-        '{DAV:}getcontentlength':3011})
+
         assert created is True
-        assert metadata.name == expected.name
-        assert metadata.size == expected.size
+        assert metadata.name == file_metadata_object.name
+        assert metadata.size == file_metadata_object.size
         assert aiohttpretty.has_call(method='PUT', uri=url)
 
     @pytest.mark.asyncio

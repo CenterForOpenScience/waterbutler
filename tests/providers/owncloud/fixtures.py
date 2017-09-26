@@ -12,35 +12,39 @@ from waterbutler.providers.owncloud.metadata import (
 
 @pytest.fixture
 def file_metadata_object():
-    return OwnCloudFileMetadata('dissertation.aux','/owncloud/remote.php/webdav/Documents/phile',
-            {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
-            '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT',
-            '{DAV:}getcontentlength':3011,
-            '{DAV:}getcontenttype': 'test-type'})
+    file_attr = {'{DAV:}getcontentlength': '3011',
+     '{DAV:}getcontenttype': 'application/octet-stream',
+     '{DAV:}getetag': '"a3c411808d58977a9ecd7485b5b7958e"',
+     '{DAV:}getlastmodified': 'Sun, 10 Jul 2016 23:28:31 GMT',
+     '{DAV:}resourcetype': None}
+
+    return OwnCloudFileMetadata('/Documents/dissertation.aux', '/', file_attr)
 
 
 @pytest.fixture
 def file_metadata_object_less_info():
-    return OwnCloudFileMetadata('dissertation.aux','/owncloud/remote.php/webdav/Documents/phile',
-            {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
-            '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT'})
+    file_attr = {'{DAV:}getetag': '"a3c411808d58977a9ecd7485b5b7958e"',
+     '{DAV:}getlastmodified': 'Sun, 10 Jul 2016 23:28:31 GMT',}
 
+    return OwnCloudFileMetadata('/Documents/dissertation.aux', '/', file_attr)
 
 @pytest.fixture
 def folder_metadata_object():
-    return OwnCloudFolderMetadata('dissertation.aux','/owncloud/remote.php/webdav/Documents/phile',
-            {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
-            '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT',
-            '{DAV:}getcontentlength':3011,
-            '{DAV:}getcontenttype': 'test-type'})
+    file_attr = {'{DAV:}getetag': '"57688dd3584b0"',
+         '{DAV:}getlastmodified': 'Tue, 21 Jun 2016 00:44:03 GMT',
+         '{DAV:}quota-available-bytes': '-3',
+         '{DAV:}quota-used-bytes': '36227',
+         '{DAV:}resourcetype': '\n                    '}
+
+    return OwnCloudFolderMetadata('/Documents/', '/my_folder/', file_attr)
 
 
 @pytest.fixture
 def folder_metadata_object_less_info():
-    return OwnCloudFolderMetadata('dissertation.aux','/owncloud/remote.php/webdav/Documents/phile',
-            {'{DAV:}getetag':'&quot;a3c411808d58977a9ecd7485b5b7958e&quot;',
-            '{DAV:}getlastmodified':'Sun, 10 Jul 2016 23:28:31 GMT',
-            '{DAV:}getcontentlength':3011})
+    file_attr = {'{DAV:}getetag': '"a3c411808d58977a9ecd7485b5b7958e"',
+     '{DAV:}getlastmodified': 'Sun, 10 Jul 2016 23:28:31 GMT',}
+
+    return OwnCloudFolderMetadata('/Documents/', '/my_folder/', file_attr)
 
 
 @pytest.fixture
