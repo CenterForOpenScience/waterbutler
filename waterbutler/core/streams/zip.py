@@ -130,8 +130,12 @@ class ZipLocalFile(MultiStream):
             filename=filename,
             date_time=time.localtime(time.time())[:6],
         )
+        # If the file is a zip don't zip it again.
+        if self.zinfo.filename.endswith('.zip'):
+            self.zinfo.compress_type = zipfile.ZIP_STORED
+            self.compressor = None
         # If the file is a directory, set the directory flag, turn off compression
-        if self.zinfo.filename[-1] == '/':
+        elif self.zinfo.filename[-1] == '/':
             self.zinfo.external_attr = 0o40775 << 16   # drwxrwxr-x
             self.zinfo.external_attr |= 0x10           # Directory flag
             self.zinfo.compress_type = zipfile.ZIP_STORED
