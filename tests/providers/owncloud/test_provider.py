@@ -256,17 +256,25 @@ class TestIntraMoveCopy:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_folder(self, provider, moved_folder_metadata, moved_parent_folder_metadata):
+    async def test_intra_copy_folder(self,
+                                     provider,
+                                     moved_folder_metadata,
+                                     moved_parent_folder_metadata):
         provider.folder = '/'
         src_path = WaterButlerPath('/moved_folder/', prepend=provider.folder, folder=True)
-        dest_path = WaterButlerPath('/parent_folder/moved_folder/', prepend=provider.folder, folder=True)
+        dest_path = WaterButlerPath('/parent_folder/moved_folder/',
+                                    prepend=provider.folder,
+                                    folder=True)
 
         url = provider._webdav_url_ + src_path.full_path
         metadata_parent_url = provider._webdav_url_ + dest_path.parent.full_path
         metadata_url = provider._webdav_url_ + dest_path.full_path
         aiohttpretty.register_uri('COPY', url, auto_length=True, status=201)
         aiohttpretty.register_uri('PROPFIND', metadata_url, body=moved_folder_metadata, status=207)
-        aiohttpretty.register_uri('PROPFIND', metadata_parent_url, body=moved_parent_folder_metadata, status=207)
+        aiohttpretty.register_uri('PROPFIND',
+                                  metadata_parent_url,
+                                  body=moved_parent_folder_metadata,
+                                  status=207)
 
         metadata, exists = await provider.intra_copy(None, src_path, dest_path)
 
@@ -279,17 +287,25 @@ class TestIntraMoveCopy:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_move_folder(self, provider, moved_folder_metadata, moved_parent_folder_metadata):
+    async def test_intra_move_folder(self,
+                                     provider,
+                                     moved_folder_metadata,
+                                     moved_parent_folder_metadata):
         provider.folder = '/'
         src_path = WaterButlerPath('/moved_folder/', prepend=provider.folder, folder=True)
-        dest_path = WaterButlerPath('/parent_folder/moved_folder/', prepend=provider.folder, folder=True)
+        dest_path = WaterButlerPath('/parent_folder/moved_folder/',
+                                    prepend=provider.folder,
+                                    folder=True)
 
         url = provider._webdav_url_ + src_path.full_path
         metadata_parent_url = provider._webdav_url_ + dest_path.parent.full_path
         metadata_url = provider._webdav_url_ + dest_path.full_path
         aiohttpretty.register_uri('MOVE', url, auto_length=True, status=201)
         aiohttpretty.register_uri('PROPFIND', metadata_url, body=moved_folder_metadata, status=207)
-        aiohttpretty.register_uri('PROPFIND', metadata_parent_url, body=moved_parent_folder_metadata, status=207)
+        aiohttpretty.register_uri('PROPFIND',
+                                  metadata_parent_url,
+                                  body=moved_parent_folder_metadata,
+                                  status=207)
 
         metadata, exists = await provider.intra_move(None, src_path, dest_path)
 
