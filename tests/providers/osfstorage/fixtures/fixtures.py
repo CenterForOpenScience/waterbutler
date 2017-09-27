@@ -1,6 +1,7 @@
 import os
 import io
 import json
+import time
 import pytest
 
 from tests import utils
@@ -200,3 +201,7 @@ def provider_and_mock2(monkeypatch, auth, credentials, settings):
 def provider(auth, credentials, settings):
     return OSFStorageProvider(auth, credentials, settings)
 
+@pytest.fixture
+def mock_time(monkeypatch):
+    mock_time = mock.Mock(return_value=1454684930.0)
+    monkeypatch.setattr(time, 'time', mock_time)

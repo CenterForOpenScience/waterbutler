@@ -43,6 +43,7 @@ from tests.providers.osfstorage.fixtures.fixtures import (
     upload_response,
     upload_path,
     root_path,
+    mock_time
 )
 from waterbutler.providers.osfstorage.settings import FILE_PATH_COMPLETE
 
@@ -68,7 +69,7 @@ class TestCreateFolder:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_create_folder(self, folder_path, provider, folder_metadata):
+    async def test_create_folder(self, folder_path, provider, folder_metadata, mock_time):
 
         data = json.dumps(folder_metadata)
         url, params = build_signed_url_without_auth(provider,
@@ -92,7 +93,12 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_with_auth(self, provider_and_mock, download_response, download_path):
+    async def test_download_with_auth(self,
+                                      provider_and_mock,
+                                      download_response,
+                                      download_path,
+                                      mock_time):
+
         provider, inner_provider = provider_and_mock
 
         uri, params = build_signed_url_with_auth(provider,
@@ -118,7 +124,11 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_without_auth(self, provider_and_mock, download_response, download_path):
+    async def test_download_without_auth(self,
+                                         provider_and_mock,
+                                         download_response,
+                                         download_path,
+                                         mock_time):
         provider, inner_provider = provider_and_mock
 
         provider.auth = {}
@@ -143,7 +153,7 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_without_id(self, provider, download_response, file_path):
+    async def test_download_without_id(self, provider, download_response, file_path, mock_time):
 
         url, params = build_signed_url_without_auth(provider,
                                                     'GET',
@@ -162,7 +172,7 @@ class TestDelete:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete(self, provider, file_path):
+    async def test_delete(self, provider, file_path, mock_time):
 
         url,  params = build_signed_url_with_auth(provider, 'DELETE', file_path.identifier)
         aiohttpretty.register_uri('DELETE', url, status_code=200, params=params)
@@ -173,7 +183,7 @@ class TestDelete:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_without_id(self, provider, file_path):
+    async def test_delete_without_id(self, provider, file_path, mock_time):
 
         url, params = build_signed_url_without_auth(provider, 'DELETE', file_path.identifier)
         aiohttpretty.register_uri('DELETE', url, status_code=200)
@@ -185,7 +195,7 @@ class TestDelete:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_root(self, provider, root_path):
+    async def test_delete_root(self, provider, root_path, mock_time):
 
         provider._delete_folder_contents = utils.MockCoroutine()
 
@@ -206,7 +216,8 @@ class TestDelete:
                                           provider,
                                           file_path,
                                           folder_path,
-                                          folder_children_metadata):
+                                          folder_children_metadata,
+                                          mock_time):
 
         provider.validate_path = utils.MockCoroutine(return_value=file_path)
         provider.delete = utils.MockCoroutine()
@@ -232,7 +243,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_provider_metadata_empty(self, provider, folder_path):
+    async def test_provider_metadata_empty(self, provider, folder_path, mock_time):
 
         url, params = build_signed_url_without_auth(provider,
                                                     'GET',
@@ -247,7 +258,11 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_provider_metadata_folder(self, provider, folder_path, folder_children_metadata):
+    async def test_provider_metadata_folder(self,
+                                            provider,
+                                            folder_path,
+                                            folder_children_metadata,
+                                            mock_time):
 
         url, params = build_signed_url_without_auth(provider,
                                                     'GET',
@@ -273,7 +288,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_provider_metadata_file(self, provider, file_path, file_metadata):
+    async def test_provider_metadata_file(self, provider, file_path, file_metadata, mock_time):
 
         url, params = build_signed_url_without_auth(provider, 'GET', file_path.identifier)
         aiohttpretty.register_json_uri('GET', url, params=params, status=200, body=file_metadata)
@@ -290,7 +305,8 @@ class TestMetadata:
     async def test_provider_metadata_without_id(self,
                                                 provider,
                                                 folder_path,
-                                                folder_children_metadata):
+                                                folder_children_metadata,
+                                                mock_time):
 
         url, params = build_signed_url_without_auth(provider,
                                                     'GET',
@@ -311,7 +327,7 @@ class TestRevisions:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_revisions(self, provider, file_path, revisions_metadata):
+    async def test_revisions(self, provider, file_path, revisions_metadata, mock_time):
         url, params = build_signed_url_without_auth(provider,
                                                     'GET',
                                                     file_path.identifier,
@@ -331,7 +347,7 @@ class TestRevisions:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_revisions_without_id(self, provider, file_path, revisions_metadata):
+    async def test_revisions_without_id(self, provider, file_path, revisions_metadata, mock_time):
 
         url, params = build_signed_url_without_auth(provider,
                                                     'GET',
@@ -356,7 +372,8 @@ class TestIntraCopy:
     async def test_intra_copy_folder(self,
                                      provider_and_mock,
                                      provider_and_mock2,
-                                     folder_children_metadata):
+                                     folder_children_metadata,
+                                     mock_time):
         src_provider, src_mock = provider_and_mock
         src_mock.intra_copy = src_provider.intra_copy
 
@@ -401,7 +418,11 @@ class TestIntraCopy:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_file(self, provider_and_mock, provider_and_mock2, file_metadata):
+    async def test_intra_copy_file(self,
+                                   provider_and_mock,
+                                   provider_and_mock2,
+                                   file_metadata,
+                                   mock_time):
         src_provider, src_mock = provider_and_mock
         src_mock.intra_copy = src_provider.intra_copy
 
@@ -428,11 +449,14 @@ class TestIntraCopy:
         file_meta, created = await src_mock.intra_copy(dest_mock, src_path, dest_path)
         assert created == True
         assert isinstance(file_meta, OsfStorageFileMetadata)
-        assert file_meta.name == file_metadata['name']
+        assert file_meta.name == 'doc.rst'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_file_overwrite(self, provider_and_mock, provider_and_mock2):
+    async def test_intra_copy_file_overwrite(self,
+                                             provider_and_mock,
+                                             provider_and_mock2,
+                                             mock_time):
         src_provider, src_mock = provider_and_mock
         src_mock.intra_copy = src_provider.intra_copy
 
@@ -475,7 +499,8 @@ class TestIntraMove:
     async def test_intra_move_folder(self,
                                      provider_and_mock,
                                      provider_and_mock2,
-                                     folder_children_metadata):
+                                     folder_children_metadata,
+                                     mock_time):
         src_provider, src_mock = provider_and_mock
         assert src_provider.can_duplicate_names()
 
@@ -521,7 +546,7 @@ class TestIntraMove:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_move_file(self, provider_and_mock, provider_and_mock2):
+    async def test_intra_move_file(self, provider_and_mock, provider_and_mock2, mock_time):
         src_provider, src_mock = provider_and_mock
         src_mock.intra_move = src_provider.intra_move
 
@@ -557,9 +582,7 @@ class TestIntraMove:
 
 class TestUtils:
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_move_copy_utils(self, provider):
+    def test_intra_move_copy_utils(self, provider):
         assert provider.can_duplicate_names()
         assert provider.can_intra_copy(provider)
         assert provider.can_intra_move(provider)
@@ -567,23 +590,21 @@ class TestUtils:
         assert not provider.can_intra_copy(str())
         assert not provider.can_intra_move(str())
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_make_provider(self, provider):
+    def test_make_provider(self, provider):
         pass
 
 class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_path_root(self, provider, root_path):
+    async def test_validate_path_root(self, provider, root_path, mock_time):
 
         assert root_path == await provider.validate_path('/')
         assert root_path == await provider.validate_v1_path('/')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_path_file(self, provider, file_lineage):
+    async def test_validate_path_file(self, provider, file_lineage, mock_time):
         file_id = file_lineage['data'][0]['id']
 
         url, params = build_signed_url_without_auth(provider, 'GET', file_id, 'lineage')
@@ -593,7 +614,7 @@ class TestValidatePath:
             await provider.validate_v1_path('/' + file_id + '/')
 
         assert exc.value.code == client.NOT_FOUND
-        
+
         wb_path_v0 = await provider.validate_path('/' + file_id)
         wb_path_v1 = await provider.validate_v1_path('/' + file_id)
 
@@ -603,7 +624,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_path_folder(self, provider, folder_lineage):
+    async def test_validate_path_folder(self, provider, folder_lineage, mock_time):
         folder_id = folder_lineage['data'][0]['id']
 
         url, params = build_signed_url_without_auth(provider, 'GET', folder_id, 'lineage')
@@ -621,7 +642,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_path_404s(self, provider, file_lineage):
+    async def test_validate_path_404s(self, provider, file_lineage, mock_time):
         file_id = file_lineage['data'][0]['id']
 
         url, params = build_signed_url_without_auth(provider, 'GET', file_id, 'lineage')
@@ -636,7 +657,11 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_revalidate_path_new(self, provider, folder_path, folder_children_metadata):
+    async def test_revalidate_path_new(self,
+                                       provider,
+                                       folder_path,
+                                       folder_children_metadata,
+                                       mock_time):
         url, params = build_signed_url_without_auth(provider,
                                                     'GET',
                                                     folder_path.identifier,
@@ -653,7 +678,11 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_revalidate_path_existing(self, provider, folder_path, folder_children_metadata):
+    async def test_revalidate_path_existing(self,
+                                            provider,
+                                            folder_path,
+                                            folder_children_metadata,
+                                            mock_time):
         url, params = build_signed_url_without_auth(provider,
                                                     'GET',
                                                     folder_path.identifier,
@@ -668,11 +697,11 @@ class TestValidatePath:
                                                           folder_children_metadata[1]['name'],
                                                           folder=False)
 
-        assert revalidated_path.name == folder_children_metadata[1]['name']
+        assert revalidated_path.name == 'one'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_path_nested(self, provider, file_lineage, folder_lineage):
+    async def test_validate_path_nested(self, provider, file_lineage, folder_lineage, mock_time):
         file_id = file_lineage['data'][0]['id']
 
         url, params = build_signed_url_without_auth(provider, 'GET', file_id, 'lineage')
@@ -684,7 +713,7 @@ class TestValidatePath:
         wb_path_v0 = await provider.validate_path('New Folder/' + file_id)
 
         assert len(wb_path_v0._parts) == 3
-        assert wb_path_v0.name == file_lineage['data'][0]['id']
+        assert wb_path_v0.name == '59a9b628b7d1c903ab5a8f52'
 
 class TestUploads:
 
@@ -701,7 +730,8 @@ class TestUploads:
                               provider_and_mock,
                               file_stream,
                               upload_response,
-                              upload_path):
+                              upload_path,
+                              mock_time):
         self.patch_tasks(monkeypatch)
 
         url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
@@ -713,10 +743,10 @@ class TestUploads:
         res, created = await provider.upload(file_stream, upload_path)
 
         assert created is True
-        assert res.name == upload_response['data']['name']
-        assert res.extra['version'] == upload_response['data']['version']
+        assert res.name == '[TEST]'
+        assert res.extra['version'] == 8
         assert res.provider == 'osfstorage'
-        assert res.extra['downloads'] == upload_response['data']['downloads']
+        assert res.extra['downloads'] == 0
         assert res.extra['checkout'] is None
         assert upload_path.identifier_path == res.path
 
@@ -735,7 +765,8 @@ class TestUploads:
                                    provider_and_mock,
                                    file_stream,
                                    upload_path,
-                                   upload_response):
+                                   upload_response,
+                                   mock_time):
         self.patch_tasks(monkeypatch)
         provider, inner_provider = provider_and_mock
 
@@ -772,7 +803,8 @@ class TestUploads:
                                                monkeypatch,
                                                provider_and_mock,
                                                file_stream,
-                                               upload_path):
+                                               upload_path,
+                                               mock_time):
         self.patch_tasks(monkeypatch)
         provider, inner_provider = provider_and_mock
 
@@ -792,7 +824,8 @@ class TestUploads:
                                     file_stream,
                                     upload_response,
                                     credentials,
-                                    settings):
+                                    settings,
+                                    mock_time):
         provider, inner_provider = provider_and_mock
         basepath = 'waterbutler.providers.osfstorage.provider.{}'
         path = WaterButlerPath('/' + upload_response['data']['name'],
@@ -814,10 +847,10 @@ class TestUploads:
         res, created = await provider.upload(file_stream, path)
 
         assert created is True
-        assert res.name == upload_response['data']['name']
-        assert res.extra['version'] == upload_response['data']['version']
+        assert res.name == '[TEST]'
+        assert res.extra['version'] == 8
         assert res.provider == 'osfstorage'
-        assert res.extra['downloads'] == upload_response['data']['downloads']
+        assert res.extra['downloads'] == 0
         assert res.extra['checkout'] is None
 
         inner_provider.upload.assert_called_once_with(file_stream,
