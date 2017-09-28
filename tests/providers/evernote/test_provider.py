@@ -13,7 +13,10 @@ def test_hello():
   print (sys.path)
   try:
     # from waterbutler.providers.evernote.provider import EvernoteProvider
-    from evernote.api.client import EvernoteClient
+    #from evernote.api.client import EvernoteClient
+    import evernote
+    print(dir(evernote))
+    print(evernote.__path__)
     print('successful import')
   except Exception as e:
     print (e)
