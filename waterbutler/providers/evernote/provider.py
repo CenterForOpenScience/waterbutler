@@ -11,8 +11,8 @@ from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
 
 from waterbutler.tasks.core import __coroutine_unwrapper
 
-from .metadata import EvernoteFileMetadata, EvernoteFileRevisionMetadata
-from .utils import get_evernote_client, get_note, notes_metadata, timestamp_iso, OSFMediaStore
+from waterbutler.providers.evernote.metadata import EvernoteFileMetadata, EvernoteFileRevisionMetadata
+from waterbutler.providers.evernote.utils import get_evernote_client, get_note, notes_metadata, timestamp_iso, OSFMediaStore
 
 import ENML_PY as enml
 
