@@ -65,7 +65,10 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
     def extra(self):
         return {
             'revisionId': self.raw['rev'],
-            'id': self.raw['id']
+            'id': self.raw['id'],
+            'hashes': {
+                'dropbox': self.raw['content_hash'],
+            },
         }
 
 

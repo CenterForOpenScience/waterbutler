@@ -97,10 +97,8 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         try:
             action = self.ACTION_MAP[request.method.lower()]
         except KeyError:
-            raise exceptions.UnsupportedHTTPMethodError(
-                method_used=request.method.lower(),
-                supported_methods=self.ACTION_MAP.keys()
-            )
+            raise exceptions.UnsupportedHTTPMethodError(request.method.lower(),
+                                                        supported=self.ACTION_MAP.keys())
 
         headers = {'Content-Type': 'application/json'}
 

@@ -140,6 +140,8 @@ Move and copy actions both use the same request structure, a POST to the move ur
 
 Files and folders can also be moved between nodes and providers. The resource parameter is the id of the node under which the file/folder should be moved. It must agree with the path parameter, that is the path must identify a valid folder under the node identified by resource. Likewise, the provider parameter may be used to move the file/folder to another storage provider, but both the resource and path parameters must belong to a node and folder already extant on that provider. Both resource and provider default to the current node and providers.
 
+The return value for a successful move or copy will be the metadata associated with the file or in the case of foldersm the metadata associated with that folder and its immediate children.
+
 If a moved/copied file is overwriting an existing file, a 200 OK response will be returned. Otherwise, a 201 Created will be returned.
 
 **Delete (file, folders)**
