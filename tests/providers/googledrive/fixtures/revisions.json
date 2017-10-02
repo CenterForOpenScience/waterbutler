@@ -1,31 +1,25 @@
 {
     "revision_metadata": {
-        "modifiedDate": "2015-01-01T16:54:58.929Z",
-        "md5Checksum": "43c5a01efeaea6bfd0433fa516a0d71f",
-        "fileSize": "918668",
-        "lastModifyingUser": {"kind": "drive#user", "permissionId": "07992110234966807597", "emailAddress": "jm.carp@gmail.com", "isAuthenticatedUser": true, "displayName": "Joshua Carp", "picture": {"url": "https://lh3.googleusercontent.com/-ndG-yHyqonM/AAAAAAAAAAI/AAAAAAAAADs/wUR8YhDe3vY/s64/photo.jpg"}},
-        "selfLink": "https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/revisions/1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA",
-        "lastModifyingUserName": "Joshua Carp",
-        "downloadUrl": "https://doc-0g-5k-docs.googleusercontent.com/docs/securesc/6l6ti67c1gnej8b4rr55nfimce1282lr/4kr23qf2mtt0g577quhmb7sn41q8t9kl/1424894400000/07992110234966807597/07992110234966807597/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR?rid=1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA&e=download&gd=true",
+        "id": "0BxdmnuT5XpqcOGNTWDl3K044Yi83ZU14aDBzSThoRFJEb25jPQ",
         "mimeType": "application/pdf",
-        "id": "1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA",
-        "kind": "drive#revision",
-        "etag": "\"zWM2D6PBtLRQKuDNbaQNSNEy5BE/58C3fd_BFF2TTwuUg7RCveoALHM\"",
-        "published": false,
-        "pinned": false
+        "modifiedTime": "2017-10-12T13:31:17.922Z",
+        "originalFilename": "xps-13-9343-laptop_Service Manual_en-us.pdf",
+        "md5Checksum": "53141aa6a986e636bcdcef2ff08beece",
+        "size": "8604865"
     },
     "revisions_list": {
-        "kind": "drive#revisionList",
-        "etag": "\"zWM2D6PBtLRQKuDNbaQNSNEy5BE/PeANBe5F3yk-YAzsoQO4pYPA5W8\"",
-        "selfLink": "https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/revisions",
-        "items": [
-            {"selfLink": "https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/revisions/1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA", "md5Checksum": "43c5a01efeaea6bfd0433fa516a0d71f", "pinned": false, "etag": "\"zWM2D6PBtLRQKuDNbaQNSNEy5BE/sdQBhqMbZWHR5JnnXwR2jMjJYa4\"", "id": "1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA", "kind": "drive#revision", "lastModifyingUserName": "Joshua Carp", "mimeType": "application/pdf", "fileSize": "918668", "lastModifyingUser": {"kind": "drive#user", "emailAddress": "jm.carp@gmail.com", "permissionId": "07992110234966807597", "picture": {"url": "https://lh3.googleusercontent.com/-ndG-yHyqonM/AAAAAAAAAAI/AAAAAAAAADs/wUR8YhDe3vY/s64/photo.jpg"}, "displayName": "Joshua Carp", "isAuthenticatedUser": true}, "downloadUrl": "https://doc-0g-5k-docs.googleusercontent.com/docs/securesc/6l6ti67c1gnej8b4rr55nfimce1282lr/nccdohm8rrrqmabek0d1ot5alel2768g/1424959200000/07992110234966807597/07992110234966807597/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR?rid=1DVR6FVQGOSpUrtHjxCKb4-2R0chGVJFG6wVPQwq1o-gay_tqwA&e=download&gd=true", "modifiedDate": "2015-01-01T16:54:58.929Z", "published": false}
+        "revisions": [
+            {
+                "id": "0BxdmnuT5XpqcdFdzM2dtTnB4bnNuUXpmYlZkOUZDV1AvcWFRPQ",
+                "mimeType": "image/jpeg",
+                "modifiedTime": "2017-10-16T13:27:10.965Z",
+                "originalFilename": "sunshine.jpg",
+                "md5Checksum": "2f7be16736648476f22f08e2e3978d08",
+                "size": "3782"
+            }
         ]
     },
     "revisions_list_empty":{
-        "kind": "drive#revisionList",
-        "etag": "\"zWM2D6PBtLRQKuDNbaQNSNEy5BE/PeANBe5F3yk-YAzsoQO4pYPA5W8\"",
-        "selfLink": "https://www.googleapis.com/drive/v2/files/1GwpK7IozbO01RiyC5aPd66v7ShEViqggvT6ur5_pZMFo-ZzQHOgkyoU3ztjf0ytKt0HSdvUg6O2nmoYR/revisions",
-        "items": []
+        "revisions": []
     }
 }

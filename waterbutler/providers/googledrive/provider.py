@@ -22,7 +22,7 @@ from waterbutler.providers.googledrive.metadata import (BaseGoogleDriveMetadata,
                                                         GoogleDriveRevision)
 
 
-def clean_query(query: str):
+def clean_query(query: str) -> str:
     # Replace \ with \\ and ' with \'
     # Note only single quotes need to be escaped
     return query.replace('\\', r'\\').replace("'", r"\'")
@@ -41,10 +41,9 @@ class GoogleDrivePath(wb_path.WaterButlerPath):
 class GoogleDriveProvider(provider.BaseProvider):
     """Provider for Google's Drive cloud storage service.
 
-    This provider uses the v2 Drive API.  A v3 API is available, but this provider has not yet
-    been updated.
+    This provider uses the v3 Drive API.
 
-    API docs: https://developers.google.com/drive/v2/reference/
+    API docs: https://developers.google.com/drive/v3/reference/
 
     Quirks:
 
@@ -75,10 +74,14 @@ class GoogleDriveProvider(provider.BaseProvider):
     NAME = 'googledrive'
     BASE_URL = settings.BASE_URL
     FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
+    FILE_FIELDS = {'fields': 'version, id, name, size, modifiedTime, createdTime, mimeType, \
+                   webViewLink, webContentLink, md5Checksum, capabilities(canDelete, canEdit, \
+                   canTrash, canDownload, canRename, canReadRevisions, canShare, canCopy)'}
+    FOLDER_FIELDS = {'fields': 'files({})'.format(FILE_FIELDS['fields'])}
+    REVISION_FIELDS = {'fields': 'id, originalFilename, size, modifiedTime, mimeType, md5Checksum'}
 
-    # https://developers.google.com/drive/v2/web/about-permissions#roles
+    # https://developers.google.com/drive/v3/web/about-permissions#roles
     # 'reader' and 'commenter' are not authorized to access the revisions list
-    ROLES_ALLOWING_REVISIONS = ['owner', 'organizer', 'writer']
 
     def __init__(self, auth: dict, credentials: dict, settings: dict) -> None:
         super().__init__(auth, credentials, settings)
@@ -95,7 +98,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         if parts[-1]['id'] is None or implicit_folder != explicit_folder:
             raise exceptions.NotFoundError(str(path))
 
-        names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
+        names, ids = zip(*[(parse.quote(x['name'], safe=''), x['id']) for x in parts])
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 
     async def validate_path(self, path: str, **kwargs) -> GoogleDrivePath:
@@ -103,7 +106,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             return GoogleDrivePath('/', _ids=[self.folder['id']], folder=True)
 
         parts = await self._resolve_path_to_ids(path)
-        names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
+        names, ids = zip(*[(parse.quote(x['name'], safe=''), x['id']) for x in parts])
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 
     async def revalidate_path(self,
@@ -121,19 +124,19 @@ class GoogleDriveProvider(provider.BaseProvider):
             name += '/'
 
         parts = await self._resolve_path_to_ids(name, start_at=[{
-            'title': base.name,
+            'name': base.name,
             'mimeType': 'folder',
             'id': base.identifier,
         }])
-        _id, name, mime = list(map(parts[-1].__getitem__, ('id', 'title', 'mimeType')))
+        _id, name, mime = list(map(parts[-1].__getitem__, ('id', 'name', 'mimeType')))
         return base.child(name, _id=_id, folder='folder' in mime)
-
-    def can_duplicate_names(self) -> bool:
-        return True
 
     @property
     def default_headers(self) -> dict:
         return {'authorization': 'Bearer {}'.format(self.token)}
+
+    def can_duplicate_names(self) -> bool:
+        return True
 
     def can_intra_move(self,
                        other: provider.BaseProvider,
@@ -155,17 +158,19 @@ class GoogleDriveProvider(provider.BaseProvider):
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
 
+        request_furl = furl.furl(self.build_url('files', src_path.identifier,
+                                                removeParents=src_path.parent.identifier,
+                                                addParents=dest_path.parent.identifier))
+        request_url = request_furl.add(self.FILE_FIELDS).url
+
         async with self.request(
             'PATCH',
-            self.build_url('files', src_path.identifier),
+            request_url,
             headers={
                 'Content-Type': 'application/json'
             },
             data=json.dumps({
-                'parents': [{
-                    'id': dest_path.parent.identifier
-                }],
-                'title': dest_path.name
+                'name': dest_path.name
             }),
             expects=(200, ),
             throws=exceptions.IntraMoveError,
@@ -191,15 +196,16 @@ class GoogleDriveProvider(provider.BaseProvider):
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
 
+        request_furl = furl.furl(self.build_url('files', src_path.identifier, 'copy'))
+        request_url = request_furl.add(self.FILE_FIELDS).url
+
         async with self.request(
             'POST',
-            self.build_url('files', src_path.identifier, 'copy'),
+            request_url,
             headers={'Content-Type': 'application/json'},
             data=json.dumps({
-                'parents': [{
-                    'id': dest_path.parent.identifier
-                }],
-                'title': dest_path.name
+                'parents': [dest_path.parent.identifier],
+                'name': dest_path.name
             }),
             expects=(200, ),
             throws=exceptions.IntraMoveError,
@@ -232,11 +238,49 @@ class GoogleDriveProvider(provider.BaseProvider):
         :returns: For GDocs, a StringStream.  All others, a ResponseStreamReader.
         """
 
-        metadata = await self.metadata(path, revision=revision)
+        metadata = await self.metadata(path)
+        if revision and revision.endswith(settings.DRIVE_IGNORE_VERSION):
+            revision = None
+        is_docs_file = drive_utils.is_docs_file(metadata.raw)
+        # GoogleDrive v3 API does not allow the download of GoogleDoc revisions
+        # Use v2 API for this functionality
+        if revision and is_docs_file:
+            meta_url = self.build_url('files', path.identifier, 'revisions', revision)
+            meta_url = meta_url.replace('/v3/', '/v2/', 1)
+
+            async with self.request(
+                'GET', meta_url,
+                expects=(200, 403, 404, ),
+                throws=exceptions.MetadataError,
+            ) as resp:
+                try:
+                    data = await resp.json()
+                except:  # some 404s return a string instead of json
+                    data = await resp.read()
+
+            if resp.status != 200:
+                raise exceptions.NotFoundError(path)
+
+            format = drive_utils.get_format(data)
+            url = data['exportLinks'][format['export_mimetype']]
+        # Is a revision but not a Docs file
+        elif revision:
+            url = self.build_url('files', metadata.raw.get('id'),
+                                'revisions', revision, alt='media')
+        # Is neither a revision nor a Docs file
+        elif not is_docs_file:
+            # webContentLink is only available for files with binary content.
+            # e.g. Not GoogleDocs
+            url = metadata.raw.get('webContentLink')
+        # Is a Docs file but not a revision
+        else:
+            ext = os.path.splitext(metadata.name)[-1]
+            mime_type = drive_utils.get_export_mimetype_from_ext(ext)
+            url = self.build_url('files', metadata.raw.get('id'), 'export', mimeType=mime_type)
 
         download_resp = await self.make_request(
             'GET',
-            metadata.raw.get('downloadUrl') or drive_utils.get_export_link(metadata.raw),  # type: ignore
+            url,
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
@@ -307,24 +351,24 @@ class GoogleDriveProvider(provider.BaseProvider):
                 )
 
         async with self.request(
-            'PUT',
+            'PATCH',
             self.build_url('files', path.identifier),
-            data=json.dumps({'labels': {'trashed': 'true'}}),
+            data=json.dumps({'trashed': 'true'}),
             headers={'Content-Type': 'application/json'},
             expects=(200, ),
             throws=exceptions.DeleteError,
         ):
             return
 
-    def _build_query(self, folder_id: str, title: str=None) -> str:
+    def _build_query(self, folder_id: str, name: str=None) -> str:
         queries = [
             "'{}' in parents".format(folder_id),
             'trashed = false',
             "mimeType != 'application/vnd.google-apps.form'",
             "mimeType != 'application/vnd.google-apps.map'",
         ]
-        if title:
-            queries.append("title = '{}'".format(clean_query(title)))
+        if name:
+            queries.append("name = '{}'".format(clean_query(name)))
         return ' and '.join(queries)
 
     async def metadata(self,  # type: ignore
@@ -367,17 +411,20 @@ class GoogleDriveProvider(provider.BaseProvider):
             data = await resp.json()
             has_revisions = resp.status == 200
 
-        if has_revisions and data['items']:
+        if has_revisions and data['revisions']:
             return [
-                GoogleDriveRevision(item)
-                for item in reversed(data['items'])
+                GoogleDriveRevision(revision)
+                for revision in reversed(data['revisions'])
             ]
 
         # Use dummy ID if no revisions found
         metadata = await self.metadata(path, raw=True)
+        # GoogleDrive does not return etag for GoogleDocs
+        etag = metadata.get('etag', None) or '{}::{}'.format(metadata['id'],
+                                                             metadata['modifiedTime'])
         return [GoogleDriveRevision({
-            'modifiedDate': metadata['modifiedDate'],  # type: ignore
-            'id': metadata['etag'] + settings.DRIVE_IGNORE_VERSION,
+            'modifiedTime': metadata['modifiedTime'],  # type: ignore
+            'id': etag + settings.DRIVE_IGNORE_VERSION,
         })]
 
     async def create_folder(self,
@@ -390,17 +437,17 @@ class GoogleDriveProvider(provider.BaseProvider):
             if path.identifier:
                 raise exceptions.FolderNamingConflict(path.name)
 
+        request_furl = furl.furl(self.build_url('files'))
+        request_url = request_furl.add(self.FILE_FIELDS).url
         async with self.request(
             'POST',
-            self.build_url('files'),
+            request_url,
             headers={
                 'Content-Type': 'application/json',
             },
             data=json.dumps({
-                'title': path.name,
-                'parents': [{
-                    'id': path.parent.identifier
-                }],
+                'name': path.name,
+                'parents': [path.parent.identifier],
                 'mimeType': self.FOLDER_MIME_TYPE,
             }),
             expects=(200, ),
@@ -415,25 +462,20 @@ class GoogleDriveProvider(provider.BaseProvider):
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
 
-    def _serialize_item(self,
+    def _serialize_file(self,
                         path: wb_path.WaterButlerPath,
-                        item: dict,
+                        file: dict,
                         raw: bool=False) -> typing.Union[BaseGoogleDriveMetadata, dict]:
         if raw:
-            return item
-        if item['mimeType'] == self.FOLDER_MIME_TYPE:
-            return GoogleDriveFolderMetadata(item, path)
-        return GoogleDriveFileMetadata(item, path)
+            return file
+        if file['mimeType'] == self.FOLDER_MIME_TYPE:
+            return GoogleDriveFolderMetadata(file, path)
+        return GoogleDriveFileMetadata(file, path)
 
     def _build_upload_metadata(self, folder_id: str, name: str) -> dict:
         return {
-            'parents': [
-                {
-                    'kind': 'drive#parentReference',
-                    'id': folder_id,
-                },
-            ],
-            'title': name,
+            'parents': [folder_id],
+            'name': name,
         }
 
     async def _start_resumable_upload(self,
@@ -441,9 +483,16 @@ class GoogleDriveProvider(provider.BaseProvider):
                                       segments: typing.Sequence[str],
                                       size,
                                       metadata: dict) -> str:
+
+        if not created:
+            del metadata['parents']
+
+        request_furl = furl.furl(self._build_upload_url('files', *segments,
+                                                        uploadType='resumable'))
+        request_url = request_furl.add(self.FILE_FIELDS).url
         async with self.request(
-            'POST' if created else 'PUT',
-            self._build_upload_url('files', *segments, uploadType='resumable'),
+            'POST' if created else 'PATCH',
+            request_url,
             headers={
                 'Content-Type': 'application/json',
                 'X-Upload-Content-Length': str(size),
@@ -469,15 +518,15 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def _resolve_path_to_ids(self, path, start_at=None):
         """Takes a path and traverses the file tree (ha!) beginning at ``start_at``, looking for
         something that matches ``path``.  Returns a list of dicts for each part of the path, with
-        ``title``, ``mimeType``, and ``id`` keys.
+        ``name``, ``mimeType``, and ``id`` keys.
         """
         self.metrics.incr('called_resolve_path_to_ids')
         ret = start_at or [{
-            'title': '',
+            'name': '',
             'mimeType': 'folder',
             'id': self.folder['id'],
         }]
-        item_id = ret[0]['id']
+        file_id = ret[0]['id']
         # parts is list of [path_part_name, is_folder]
         parts = [[parse.unquote(x), True] for x in path.strip('/').split('/')]
 
@@ -488,12 +537,13 @@ class GoogleDriveProvider(provider.BaseProvider):
             part_name, part_is_folder = current_part[0], current_part[1]
             name, ext = os.path.splitext(part_name)
             if not part_is_folder and ext in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
-                gd_ext = drive_utils.get_mimetype_from_ext(ext)
-                query = "title = '{}' " \
+                gd_mimetype = drive_utils.get_mimetype_from_ext(ext)
+                query = "name = '{}' " \
                         "and trashed = false " \
-                        "and mimeType = '{}'".format(clean_query(name), gd_ext)
+                        "and '{}' in parents " \
+                        "and mimeType = '{}'".format(clean_query(name), file_id, gd_mimetype)
             else:
-                query = "title = '{}' " \
+                query = "name = '{}' " \
                         "and trashed = false " \
                         "and mimeType != 'application/vnd.google-apps.form' " \
                         "and mimeType != 'application/vnd.google-apps.map' " \
@@ -501,21 +551,23 @@ class GoogleDriveProvider(provider.BaseProvider):
                         "and mimeType != 'application/vnd.google-apps.drawing' " \
                         "and mimeType != 'application/vnd.google-apps.presentation' " \
                         "and mimeType != 'application/vnd.google-apps.spreadsheet' " \
+                        "and '{}' in parents " \
                         "and mimeType {} '{}'".format(
                             clean_query(part_name),
+                            file_id,
                             '=' if part_is_folder else '!=',
                             self.FOLDER_MIME_TYPE
                         )
             async with self.request(
                 'GET',
-                self.build_url('files', item_id, 'children', q=query, fields='items(id)'),
+                self.build_url('files', q=query, fields='files(id)'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             ) as resp:
                 data = await resp.json()
 
             try:
-                item_id = data['items'][0]['id']
+                file_id = data['files'][0]['id']
             except (KeyError, IndexError):
                 if parts:
                     # if we can't find an intermediate path part, that's an error
@@ -523,31 +575,30 @@ class GoogleDriveProvider(provider.BaseProvider):
                                                    code=HTTPStatus.NOT_FOUND)
                 return ret + [{
                     'id': None,
-                    'title': part_name,
+                    'name': part_name,
                     'mimeType': 'folder' if part_is_folder else '',
                 }]
 
             async with self.request(
                 'GET',
-                self.build_url('files', item_id, fields='id,title,mimeType'),
+                self.build_url('files', file_id, fields='id, name, mimeType'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             ) as resp:
                 ret.append(await resp.json())
         return ret
 
-    async def _handle_docs_versioning(self, path: GoogleDrivePath, item: dict, raw: bool=True):
+    async def _handle_docs_versioning(self, path: GoogleDrivePath, file: dict, raw: bool=True):
         """Sends an extra request to GDrive to fetch revision information for Google Docs. Needed
         because Google Docs use a different versioning system from regular files.
 
-        I've been unable to replicate the case where revisions_data['items'] is None.  I'm leaving
-        it in for now and adding a metric to see if we ever actually encounter this case.  If not,
-        we should probably remove it to simplify this method.
+        I've been unable to replicate the case where revisions_data['revisions'] is None.  I'm
+        leaving it in for now and adding a metric to see if we ever actually encounter this case.
+        If not, we should probably remove it to simplify this method.
 
         This method does not handle the case of read-only google docs, which will return a 403.
-        Other methods should check the ``userPermission.role`` field of the file metadata before
-        calling this.  If the value of that field is ``"reader"`` or ``"commenter"``, this method
-        will error.
+        Other methods should check the ``capabilities.canReadRevisions`` field of the file metadata
+        before calling this.  If the value of that field is ``"false"``, this method will error.
 
         :param GoogleDrivePath path: the path of the google doc to get version information for
         :param dict item: a raw response object from the GDrive file metadata endpoint
@@ -558,28 +609,29 @@ class GoogleDriveProvider(provider.BaseProvider):
         """
         async with self.request(
             'GET',
-            self.build_url('files', item['id'], 'revisions'),
+            self.build_url('files', file['id'], 'revisions'),
             expects=(200, ),
             throws=exceptions.RevisionsError,
         ) as resp:
             revisions_data = await resp.json()
-            has_revisions = revisions_data['items'] is not None
+            has_revisions = revisions_data['revisions'] is not None
 
         # Revisions are not available for some sharing configurations. If revisions list is empty,
         # use the etag of the file plus a sentinel string as a dummy revision ID.
         self.metrics.add('handle_docs_versioning.empty_revision_list', not has_revisions)
         if has_revisions:
-            item['version'] = revisions_data['items'][-1]['id']
+            file['version'] = revisions_data['revisions'][-1]['id']
         else:
             # If there are no revisions use etag as vid
-            item['version'] = item['etag'] + settings.DRIVE_IGNORE_VERSION
+            file['version'] = file['etag'] + settings.DRIVE_IGNORE_VERSION
 
-        return self._serialize_item(path, item, raw=raw)
+        return self._serialize_file(path, file, raw=raw)
 
     async def _folder_metadata(self, path: wb_path.WaterButlerPath, raw: bool=False) \
             -> typing.List[typing.Union[BaseGoogleDriveMetadata, dict]]:
         query = self._build_query(path.identifier)
-        built_url = self.build_url('files', q=query, alt='json', maxResults=1000)
+        built_furl = furl.furl(self.build_url('files', q=query, alt='json', pageSize=1000))
+        built_url = built_furl.add(self.FOLDER_FIELDS).url
         full_resp = []
         while built_url:
             async with self.request(
@@ -590,8 +642,8 @@ class GoogleDriveProvider(provider.BaseProvider):
             ) as resp:
                 resp_json = await resp.json()
                 full_resp.extend([
-                    self._serialize_item(path.child(item['title']), item, raw=raw)
-                    for item in resp_json['items']
+                    self._serialize_file(path.child(file['name']), file, raw=raw)
+                    for file in resp_json['files']
                 ])
                 built_url = resp_json.get('nextLink', None)
         return full_resp
@@ -619,8 +671,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         ``_file_metadata.revision_is_valid``: if a revision was given, was it valid? A revision is
         "valid" if it doesn't end with our sentinal string (`settings.DRIVE_IGNORE_VERSION`).
 
-        ``_file_metadata.user_role``: What role did the user possess? Helps identify other roles
-        for which revision information isn't available.
+        ``_file_metadata.capabilities``: What capabilities did the user possess?
 
         :param GoogleDrivePath path: the path of the file whose metadata is being requested
         :param str revision: a string representing the ID of the revision (default: `None`)
@@ -637,12 +688,14 @@ class GoogleDriveProvider(provider.BaseProvider):
             self.metrics.add('_file_metadata.revision_is_valid', valid_revision)
 
         if revision and valid_revision:
-            url = self.build_url('files', path.identifier, 'revisions', revision)
+            meta_furl = furl.furl(self.build_url('files', path.identifier, 'revisions', revision))
+            meta_url = meta_furl.add(self.REVISION_FIELDS).url
         else:
-            url = self.build_url('files', path.identifier)
+            meta_furl = furl.furl(self.build_url('files', path.identifier or ''))
+            meta_url = meta_furl.add(self.FILE_FIELDS).url
 
         async with self.request(
-            'GET', url,
+            'GET', meta_url,
             expects=(200, 403, 404, ),
             throws=exceptions.MetadataError,
         ) as resp:
@@ -657,16 +710,16 @@ class GoogleDriveProvider(provider.BaseProvider):
         if revision and valid_revision:
             return GoogleDriveFileRevisionMetadata(data, path)
 
-        user_role = data['userPermission']['role']
-        self.metrics.add('_file_metadata.user_role', user_role)
-        can_access_revisions = user_role in self.ROLES_ALLOWING_REVISIONS
+        self.metrics.add('_file_metadata.user_capabilities', data['capabilities'])
         if drive_utils.is_docs_file(data):
-            if can_access_revisions:
+            if data.get('capabilities', {}).get('canReadRevisions', None):
                 return await self._handle_docs_versioning(path, data, raw=raw)
             else:
                 # Revisions are not available for some sharing configurations. If revisions list is
                 # empty, use the etag of the file plus a sentinel string as a dummy revision ID.
-                data['version'] = data['etag'] + settings.DRIVE_IGNORE_VERSION
+                # Revision representation does not return md5
+                etag = '{}::{}'.format(data['id'], data['modifiedTime'])
+                data['version'] = etag + settings.DRIVE_IGNORE_VERSION
 
         return data if raw else GoogleDriveFileMetadata(data, path)
 
@@ -685,22 +738,22 @@ class GoogleDriveProvider(provider.BaseProvider):
         resp = await self.make_request(
             'GET',
             self.build_url('files',
-                           q="'{}' in parents".format(file_id),
-                           fields='items(id)'),
+                           q="'{}' in parents and trashed = false".format(file_id),
+                           fields='files(id)'),
             expects=(200, ),
             throws=exceptions.MetadataError)
 
         try:
-            child_ids = (await resp.json())['items']
+            child_ids = (await resp.json())['files']
         except (KeyError, IndexError):
             raise exceptions.MetadataError('{} not found'.format(str(path)),
                                            code=HTTPStatus.NOT_FOUND)
 
         for child in child_ids:
             await self.make_request(
-                'PUT',
+                'PATCH',
                 self.build_url('files', child['id']),
-                data=json.dumps({'labels': {'trashed': 'true'}}),
+                data=json.dumps({'trashed': 'true'}),
                 headers={'Content-Type': 'application/json'},
                 expects=(200, ),
                 throws=exceptions.DeleteError)
