@@ -25,6 +25,8 @@ class TestGitHubMetadata:
         assert metadata.modified is None
         assert metadata.content_type is None
         assert metadata.size == 38
+        assert metadata.size_as_int == 38
+        assert type(metadata.size_as_int) == int
         assert metadata.etag == '/README.md::d863d70539aa9fcb6b44b057221706f2ab18e341'
         assert metadata.extra == {
             'fileSha': 'd863d70539aa9fcb6b44b057221706f2ab18e341',
@@ -50,6 +52,8 @@ class TestGitHubMetadata:
         assert metadata.modified is None
         assert metadata.content_type is None
         assert metadata.size == 15
+        assert metadata.size_as_int == 15
+        assert type(metadata.size_as_int) == int
         assert metadata.etag == '/epsilon::bd4fb614678f544acb22bac6861a21108f1e5d10'
         assert metadata.extra == {
             'fileSha': 'bd4fb614678f544acb22bac6861a21108f1e5d10',
@@ -103,6 +107,8 @@ class TestGitHubMetadata:
         assert metadata.modified is None
         assert metadata.content_type is None
         assert metadata.size == 38
+        assert metadata.size_as_int == 38
+        assert type(metadata.size_as_int) == int
         assert metadata.etag == '/README.md::d863d70539aa9fcb6b44b057221706f2ab18e341'
         assert metadata.extra == {
             'fileSha': 'd863d70539aa9fcb6b44b057221706f2ab18e341',

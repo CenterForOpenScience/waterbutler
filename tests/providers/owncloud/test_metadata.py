@@ -21,6 +21,8 @@ class TestFileMetadata:
         assert file_metadata_object.materialized_path == '/Documents/dissertation.aux'
         assert file_metadata_object.kind == 'file'
         assert file_metadata_object.size == '3011'
+        assert file_metadata_object.size_as_int == 3011
+        assert type(file_metadata_object.size_as_int) == int
         assert file_metadata_object.etag == '"a3c411808d58977a9ecd7485b5b7958e"'
         assert file_metadata_object.modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
         assert file_metadata_object.modified_utc == '2016-07-10T23:28:31+00:00'
@@ -47,6 +49,7 @@ class TestFileMetadata:
         assert file_metadata_object_less_info.materialized_path == '/Documents/dissertation.aux'
         assert file_metadata_object_less_info.kind == 'file'
         assert file_metadata_object_less_info.size is None
+        assert file_metadata_object_less_info.size_as_int is None
         assert file_metadata_object_less_info.etag == '"a3c411808d58977a9ecd7485b5b7958e"'
         assert file_metadata_object_less_info.modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
         assert file_metadata_object_less_info.modified_utc == '2016-07-10T23:28:31+00:00'

@@ -265,6 +265,14 @@ class BaseFileMetadata(BaseMetadata):
         """ Size of the file in bytes. """
         raise NotImplementedError
 
+    @property
+    def size_as_int(self) -> int:
+        """ Size of the file in bytes. """
+        if self.size is not None:
+            return int(self.size)
+        else:
+            return None
+
 
 class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
 

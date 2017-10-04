@@ -20,6 +20,8 @@ class TestBoxMetadata:
         assert data.path == '/5000948880'
         assert data.provider == 'box'
         assert data.size == 629644
+        assert data.size_as_int == 629644
+        assert type(data.size_as_int) == int
         assert data.modified == '2012-12-12T11:04:26-08:00'
         assert data.created_utc == '2012-12-12T18:55:30+00:00'
         assert data.content_type is None

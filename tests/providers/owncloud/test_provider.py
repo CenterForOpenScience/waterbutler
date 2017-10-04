@@ -177,6 +177,7 @@ class TestCRUD:
         assert created is True
         assert metadata.name == file_metadata_object.name
         assert metadata.size == file_metadata_object.size
+        assert metadata.size_as_int == int(file_metadata_object.size)
         assert aiohttpretty.has_call(method='PUT', uri=url)
 
     @pytest.mark.asyncio
@@ -200,6 +201,7 @@ class TestCRUD:
         assert created is True
         assert metadata.name == file_metadata_object.name
         assert metadata.size == file_metadata_object.size
+        assert metadata.size_as_int == int(file_metadata_object.size)
         assert aiohttpretty.has_call(method='PUT', uri=url)
 
     @pytest.mark.asyncio

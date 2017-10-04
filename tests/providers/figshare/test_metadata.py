@@ -24,6 +24,9 @@ class TestFigshareFileMetadata:
         assert data.materialized_path == '/file_article/file'
         assert data.upload_path == '/4037952/6530715'
         assert data.size == 7
+        assert data.size_as_int == 7
+        assert type(data.size_as_int) == int
+
         assert data.content_type is None
         assert data.modified is None
         assert data.modified_utc is None

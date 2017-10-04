@@ -21,6 +21,8 @@ class TestFileMetadataHeaders:
         assert file_metadata_headers_object.kind == 'file'
         assert file_metadata_headers_object.provider == 's3'
         assert file_metadata_headers_object.size == 9001
+        assert file_metadata_headers_object.size_as_int == 9001
+        assert type(file_metadata_headers_object.size_as_int) == int
         assert file_metadata_headers_object.content_type == 'binary/octet-stream'
         assert file_metadata_headers_object.modified == 'SomeTime'
         assert not file_metadata_headers_object.created_utc
@@ -50,6 +52,8 @@ class TestFileMetadata:
         assert file_metadata_object.path == '/my-image.jpg'
         assert file_metadata_object.materialized_path == '/my-image.jpg'
         assert file_metadata_object.size == 434234
+        assert file_metadata_object.size_as_int == 434234
+        assert type(file_metadata_object.size_as_int) == int
         assert file_metadata_object.modified == '2009-10-12T17:50:30.000Z'
         assert file_metadata_object.etag == 'fba9dede5f27731c9771645a39863328'
         assert not file_metadata_object.created_utc

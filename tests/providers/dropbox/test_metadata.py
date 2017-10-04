@@ -20,6 +20,9 @@ class TestDropboxMetadata:
         assert data.name == 'Getting_Started.pdf'
         assert data.path == '/Getting_Started.pdf'
         assert data.size == 124778
+        assert data.size_as_int == 124778
+        assert type(data.size_as_int) == int
+
         assert data.modified == '2016-06-13T19:08:17Z'
         assert data.created_utc is None
         assert data.content_type is None
