@@ -26,6 +26,7 @@ class TestOneDriveMetadata:
         assert metadata.name == 'toes.txt'
         assert metadata.path == '/{}'.format(root_provider_fixtures['file_id'])
         assert metadata.size == 11
+        assert metadata.size_as_int == 11
         assert metadata.modified == '2017-08-17T17:49:50.38Z'
         assert metadata.modified_utc == '2017-08-17T17:49:50+00:00'
         assert metadata.content_type == 'text/plain'

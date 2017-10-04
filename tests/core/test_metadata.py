@@ -38,6 +38,7 @@ class TestBaseMetadata:
             'modified_utc': 'never',
             'created_utc': 'always',
             'size': 1337,
+            'sizeInt': 1337,
             'resource': 'n0d3z',
         }
         assert 'new_folder' not in serialized['links']
@@ -63,6 +64,7 @@ class TestBaseMetadata:
             'materialized': '/Bar/',
             'etag': etag,
             'size': None,
+            'sizeInt': None,
             'resource': 'n0d3z',
         }
         assert serialized['links']['new_folder'].endswith(link_suffix + '?kind=folder')
@@ -92,6 +94,7 @@ class TestBaseMetadata:
             'modified_utc': 'never',
             'created_utc': 'always',
             'size': 1337,
+            'sizeInt': 1337,
         }
 
     def test_file_revision_json_api_serialize(self):

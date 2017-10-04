@@ -17,6 +17,7 @@ class TestFileMetadata:
         assert file_metadata_object.path == '/59a9b628b7d1c903ab5a8f52'
         assert str(file_metadata_object.materialized_path) == '/doc.rst'
         assert file_metadata_object.size == 5596
+        assert file_metadata_object.size_as_int == 5596
         assert file_metadata_object.modified == '2017-09-01T19:34:00.175741+00:00'
         assert file_metadata_object.kind == 'file'
         assert file_metadata_object.content_type == None

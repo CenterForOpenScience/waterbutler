@@ -140,6 +140,7 @@ class TestCRUD:
         assert metadata.name == file_name
         assert metadata.path == file_path
         assert metadata.size == len(file_content)
+        assert metadata.size_as_int == len(file_content)
         assert created is True
 
     @pytest.mark.asyncio
@@ -156,6 +157,7 @@ class TestCRUD:
         assert metadata.name == file_name
         assert metadata.path == file_path
         assert metadata.size == len(file_content)
+        assert metadata.size_as_int == len(file_content)
         assert created is False
 
     @pytest.mark.asyncio
@@ -172,6 +174,7 @@ class TestCRUD:
         assert metadata.name == file_name
         assert metadata.path == file_path
         assert metadata.size == len(file_content)
+        assert metadata.size_as_int == len(file_content)
         assert created is True
 
     @pytest.mark.asyncio
@@ -188,6 +191,7 @@ class TestCRUD:
         assert metadata.name == file_name
         assert metadata.path == file_path
         assert metadata.size == len(file_content)
+        assert metadata.size_as_int == len(file_content)
         assert created is False
 
     @pytest.mark.asyncio

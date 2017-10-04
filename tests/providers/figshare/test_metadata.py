@@ -24,6 +24,9 @@ class TestFigshareFileMetadata:
         assert data.materialized_path == '/file_article/file'
         assert data.upload_path == '/4037952/6530715'
         assert data.size == 7
+        assert data.size_as_int == 7
+        assert type(data.size_as_int) == int
+
         assert data.content_type is None
         assert data.modified is None
         assert data.modified_utc is None
@@ -67,7 +70,8 @@ class TestFigshareFileMetadata:
             'modified': None,
             'modified_utc': None,
             'created_utc': None,
-            'size': 7
+            'size': 7,
+            'sizeInt': 7,
         }
 
         api_url = 'http://localhost:7777/v1/resources/cn42d/providers/figshare/4037952/6530715'
@@ -97,6 +101,7 @@ class TestFigshareFileMetadata:
                 'modified_utc': None,
                 'created_utc': None,
                 'size': 7,
+                'sizeInt': 7,
                 'resource': 'cn42d'
             },
             'links': {
@@ -181,7 +186,8 @@ class TestFigshareFileMetadata:
                 'materialized': '/folder_article/',
                 'etag': '6bef522e6f14597fd939b6b5c29e99091dc0b0badcac332da6e75bec0a69cf5e',
                 'resource': '45hjnz',
-                'size': None
+                'size': None,
+                'sizeInt': None,
             },
             'links': {
                 'move': api_url,

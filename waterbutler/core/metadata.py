@@ -218,6 +218,7 @@ class BaseFileMetadata(BaseMetadata):
             'modified_utc': self.modified_utc,
             'created_utc': self.created_utc,
             'size': self.size,
+            'sizeInt': self.size_as_int,
         })
 
     def _json_api_links(self, resource: str) -> dict:
@@ -261,9 +262,22 @@ class BaseFileMetadata(BaseMetadata):
 
     @property
     @abc.abstractmethod
-    def size(self) -> int:
-        """ Size of the file in bytes. """
+    def size(self) -> typing.Union[int, str]:
+        """ Size of the file in bytes. Should be a int, but some providers return a string and WB
+        never casted it.  The `size_as_int` property was added to enforce this without breaking
+        exisiting code and workarounds.
+        """
         raise NotImplementedError
+
+    @property
+    def size_as_int(self) -> int:
+        """ Size of the file in bytes.  Always an `int` or `None`. Some providers report size as a
+        `str`. Both exist to maintain backwards compatibility.
+        """
+        if self.size is not None:
+            return int(self.size)
+        else:
+            return None
 
 
 class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
@@ -354,6 +368,7 @@ class BaseFolderMetadata(BaseMetadata):
         """
         ret = super().json_api_serialized(resource)
         ret['attributes']['size'] = None
+        ret['attributes']['sizeInt'] = None
         return ret
 
     def _json_api_links(self, resource: str) -> dict:
