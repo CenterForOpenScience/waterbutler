@@ -78,9 +78,5 @@ class BoxRevision(metadata.BaseFileRevisionMetadata):
         return 'revision'
 
     @property
-    def path(self):
-        return '/{0}/{1}'.format(self.raw['id'], self.raw['name'])
-
-    @property
     def modified(self):
         return self.raw['modified_at']
