@@ -100,7 +100,7 @@ class TestMetadata:
     def test_folder_metadata(self, folder_metadata):
         data = FileSystemFolderMetadata(folder_metadata, '/')
         assert data.path == '/folder1/'
-        assert data.name == ''
+        assert data.name == 'folder1'
         assert data.provider == 'filesystem'
         assert data.build_path('') == '/'
         assert data.materialized_path == '/folder1/'
@@ -111,7 +111,7 @@ class TestMetadata:
         assert data.serialized() == {
             'extra': {},
             'kind': 'folder',
-            'name': '',
+            'name': 'folder1',
             'path': '/folder1/',
             'provider': 'filesystem',
             'materialized': '/folder1/',
@@ -124,7 +124,7 @@ class TestMetadata:
             'attributes': {
                 'extra': {},
                 'kind': 'folder',
-                'name': '',
+                'name': 'folder1',
                 'path': '/folder1/',
                 'provider': 'filesystem',
                 'materialized': '/folder1/',
