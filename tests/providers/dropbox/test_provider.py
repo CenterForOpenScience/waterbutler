@@ -520,7 +520,8 @@ class TestIntra:
                                        body=intra_copy_fixtures['intra_move_copy_file_metadata_v2'])
 
         result = await provider.intra_copy(provider, src_path, dest_path)
-        expected = (DropboxFileMetadata(intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
+        expected = (DropboxFileMetadata(
+            intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
                     True)
 
         assert result == expected
@@ -550,12 +551,14 @@ class TestIntra:
                 {
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
-                    'body': json.dumps(intra_copy_fixtures['intra_move_copy_file_metadata_v2']).encode('utf-8')
+                    'body': json.dumps(
+                        intra_copy_fixtures['intra_move_copy_file_metadata_v2']).encode('utf-8')
                 },
             ]})
 
         result = await provider.intra_copy(provider, src_path, dest_path)
-        expected = (DropboxFileMetadata(intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
+        expected = (DropboxFileMetadata(
+            intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
                     False)
 
         assert expected == result
@@ -594,8 +597,11 @@ class TestIntra:
         url = provider.build_url('files', 'copy_v2')
         data = {'from_path': src_path.full_path.rstrip('/'),
                 'to_path': dest_path.full_path.rstrip('/')}
-        aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=intra_copy_fixtures['intra_move_copy_folder_metadata_v2'])
+        aiohttpretty.register_json_uri('POST',
+                                       url,
+                                       data=data,
+                                       body=intra_copy_fixtures
+                                       ['intra_move_copy_folder_metadata_v2'])
 
         url = provider.build_url('files', 'list_folder')
         data = {'path': dest_path.full_path}
@@ -603,7 +609,8 @@ class TestIntra:
                                        body=root_provider_fixtures['folder_children'], status=200)
 
         result = await provider.intra_copy(provider, src_path, dest_path)
-        expected = DropboxFolderMetadata(intra_copy_fixtures['intra_move_copy_folder_metadata_v2']['metadata'], provider.folder)
+        expected = DropboxFolderMetadata(
+            intra_copy_fixtures['intra_move_copy_folder_metadata_v2']['metadata'], provider.folder)
         expected.children = [
             DropboxFileMetadata(item, provider.folder)
             for item in root_provider_fixtures['folder_children']['entries']
@@ -624,7 +631,8 @@ class TestIntra:
                                        body=intra_copy_fixtures['intra_move_copy_file_metadata_v2'])
 
         result = await provider.intra_move(provider, src_path, dest_path)
-        expected = (DropboxFileMetadata(intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
+        expected = (DropboxFileMetadata(
+            intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
                     True)
 
         assert result == expected
@@ -654,12 +662,14 @@ class TestIntra:
                 {
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
-                    'body': json.dumps(intra_copy_fixtures['intra_move_copy_file_metadata_v2']).encode('utf-8')
+                    'body': json.dumps(
+                        intra_copy_fixtures['intra_move_copy_file_metadata_v2']).encode('utf-8')
                 },
             ]})
 
         result = await provider.intra_move(provider, src_path, dest_path)
-        expected = (DropboxFileMetadata(intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
+        expected = (DropboxFileMetadata(
+            intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
                     False)
 
         assert expected == result
@@ -696,20 +706,18 @@ class TestIntra:
                 {
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
-                    'body': json.dumps(intra_copy_fixtures['intra_move_copy_folder_metadata_v2']).encode('utf-8')
+                    'body': json.dumps(
+                        intra_copy_fixtures['intra_move_copy_folder_metadata_v2']).encode('utf-8')
                 },
             ]})
 
         result = await provider.intra_move(provider, src_path, dest_path)
-        expected = DropboxFolderMetadata(intra_copy_fixtures['intra_move_copy_folder_metadata_v2']['metadata'], provider.folder)
+        expected = DropboxFolderMetadata(
+            intra_copy_fixtures['intra_move_copy_folder_metadata_v2']['metadata'], provider.folder)
         expected.children = [
             DropboxFileMetadata(item, provider.folder)
             for item in root_provider_fixtures['folder_children']['entries']
         ]
-        import pprint
-        pprint.pprint(expected.__dict__)
-        pprint.pprint(result[0].__dict__)
-
         assert expected == result[0]
 
     @pytest.mark.asyncio
