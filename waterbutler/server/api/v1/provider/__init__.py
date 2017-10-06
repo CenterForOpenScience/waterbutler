@@ -1,8 +1,9 @@
-import http
 import socket
 import asyncio
 import logging
 import uuid
+
+from http import HTTPStatus
 
 import tornado.gen
 
@@ -84,8 +85,8 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     async def head(self, **_):
         """Get metadata for a folder or file
         """
-        if self.path.is_dir:
-            return self.set_status(int(http.client.NOT_IMPLEMENTED))  # Metadata on the folder itself TODO
+        if self.path.is_dir:  # Metadata on the folder itself TODO
+            return self.set_status(int(HTTPStatus.NOT_IMPLEMENTED))
         return (await self.header_file_metadata())
 
     def get_sentry_data_from_request(self):
@@ -114,11 +115,9 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         return (await self.move_or_copy())
 
     async def delete(self, **_):
-        self.confirm_delete = int(self.get_query_argument('confirm_delete',
-                                                          default=0))
-        await self.provider.delete(self.path,
-                                        confirm_delete=self.confirm_delete)
-        self.set_status(int(http.client.NO_CONTENT))
+        self.confirm_delete = int(self.get_query_argument('confirm_delete', default=0))
+        await self.provider.delete(self.path, confirm_delete=self.confirm_delete)
+        self.set_status(int(HTTPStatus.NO_CONTENT))
 
     async def data_received(self, chunk):
         """Note: Only called during uploads."""
