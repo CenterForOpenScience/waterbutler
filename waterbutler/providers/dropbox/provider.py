@@ -108,10 +108,9 @@ class DropboxProvider(provider.BaseProvider):
                 if error_type['.tag'] == 'not_found':
                     raise exceptions.NotFoundError(error_path)
                 if 'conflict' in error_type:
-                    raise DropboxNamingConflictError(data['error_summary'])
+                    raise DropboxNamingConflictError(error_path)
             if data['error'].get('reason', False) and 'conflict' in data['error']['reason']['.tag']:
-                raise DropboxNamingConflictError('{} for path {}'.format(data['error_summary'],
-                                                                         error_path))
+                raise DropboxNamingConflictError(error_path)
         raise DropboxUnhandledConflictError(str(data))
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:

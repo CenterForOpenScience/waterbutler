@@ -439,8 +439,8 @@ class TestCreateFolder:
             await provider.create_folder(path)
 
         assert e.value.code == 409
-        assert e.value.message == ('Cannot complete action: file or folder already '
-                                   'exists in this location')
+        assert e.value.message == ('Cannot complete action: file or folder already exists at '
+                                   '/newfolder')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
