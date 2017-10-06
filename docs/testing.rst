@@ -16,8 +16,10 @@ Quickstart for Newman:
 
 | copy_files:
 | copy_folders:
+| crud_cases
 |
-| *copy_files and copy_folders can share the same setup and environment.*
+| *copy_files, crud_cases and copy_folders can share the same setup and environment.*
+| *crud_cases only requires the first PID to be valid, and does not use the second one.*
 |
 
 Setup:
@@ -37,6 +39,7 @@ Environment file:
 
 Testing:
 
-1. Import the copy_files.json and copy_folders.json collections files from ``tests/postman/collections`` and the environment file you just updated into the Postman App.
+1. Import the collection you would like to run from ``tests/postman/collections`` and the environment file you just updated into the Postman App.
+#. **Note:** Importing your environment may give a few errors. It is most likely fine and should still run.
 #. Run the imported collections using the imported environment.
 #. **Note:** A failed run may leave files and/or folders behind. You will need to manually remove these before starting another run.

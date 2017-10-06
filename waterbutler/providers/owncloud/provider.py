@@ -258,7 +258,7 @@ class OwnCloudProvider(provider.BaseProvider):
         )
         await resp.release()
         if resp.status == 405:
-            raise exceptions.FolderNamingConflict(path)
+            raise exceptions.FolderNamingConflict(path.name)
         # get the folder metadata
         meta = await self.metadata(path.parent)
         return [m for m in meta if m.path == path.materialized_path][0]

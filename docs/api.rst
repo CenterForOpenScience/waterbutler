@@ -13,7 +13,7 @@ TODO: v0 api docs
 v1 API
 ------
 
-The version 1 WaterButler API tries to conform to RESTful principals. A v1 url takes the form:
+The version 1 WaterButler API tries to conform to RESTful principles. A v1 url takes the form:
 
 ::
 
@@ -139,6 +139,8 @@ To rename a file or folder, issue a POST request to the move link with the actio
 Move and copy actions both use the same request structure, a POST to the move url, but with different values for the action body parameters. The path parameter is also required and should be the OSF path attribute of the folder being written to. The rename and conflict parameters are optional. If you wish to change the name of the file or folder at its destination, set the rename parameter to the new name. The conflict param governs how name clashes are resolved. Possible values are ``replace``, ``keep``, and ``warn``. ``warn`` is the default and will cause WaterButler to throw a 409 Conflict error if the file that already exists in the target folder. ``replace`` will tell WaterButler to overwrite the existing file, if present. ``keep`` will attempt to keep both by adding a suffix to the new file's name until it no longer conflicts. The suffix will be ' (x)' where x is a increasing integer starting from 1. This behavior is intended to mimic that of the OS X Finder. The response will contain either a folder entity or file entity with the new name.
 
 Files and folders can also be moved between nodes and providers. The resource parameter is the id of the node under which the file/folder should be moved. It must agree with the path parameter, that is the path must identify a valid folder under the node identified by resource. Likewise, the provider parameter may be used to move the file/folder to another storage provider, but both the resource and path parameters must belong to a node and folder already extant on that provider. Both resource and provider default to the current node and providers.
+
+The return value for a successful move or copy will be the metadata associated with the file or in the case of foldersm the metadata associated with that folder and its immediate children.
 
 If a moved/copied file is overwriting an existing file, a 200 OK response will be returned. Otherwise, a 201 Created will be returned.
 

@@ -1,0 +1,87 @@
+{    "file_metadata_missing_download_url":{  
+        "status":"available",
+        "is_link_only":false,
+        "name":"file",
+        "viewer_type":"",
+        "preview_state":"preview_not_supported",
+        "supplied_md5":"b3e656f8b0828a31f3ed396a1c868786",
+        "computed_md5":"b3e656f8b0828a31f3ed396a1c868786",
+        "upload_token":"878068bf-8cdb-40c9-bcf4-5d8065ac2f7d",
+        "upload_url":"",
+        "id":6530715,
+        "size":7
+    },
+    "file_article_metadata_missing_download_url":{  
+        "group_resource_id":null,
+        "embargo_date":null,
+        "citation":"Baxter, Thomas (): file_article. figshare.\n \n Retrieved: 19 20, Oct 19, 2016 (GMT)",
+        "embargo_reason":"",
+        "references":[  
+
+        ],
+        "id":4037952,
+        "custom_fields":[  
+
+        ],
+        "size":0,
+        "metadata_reason":"",
+        "funding":"",
+        "figshare_url":"https://figshare.com/articles/_/4037952",
+        "embargo_type":null,
+        "title":"file_article",
+        "defined_type":3,
+        "is_embargoed":false,
+        "version":0,
+        "resource_doi":null,
+        "confidential_reason":"",
+        "files":[  
+            {  
+                "status":"available",
+                "is_link_only":false,
+                "name":"file",
+                "viewer_type":"",
+                "download_url": null,
+                "preview_state":"preview_not_supported",
+                "supplied_md5":"b3e656f8b0828a31f3ed396a1c868786",
+                "computed_md5":"b3e656f8b0828a31f3ed396a1c868786",
+                "upload_token":"878068bf-8cdb-40c9-bcf4-5d8065ac2f7d",
+                "upload_url":"",
+                "id":6530715,
+                "size":7
+            }
+        ],
+        "description":"",
+        "tags":[  
+
+        ],
+        "created_date":"2016-10-18T12:55:44Z",
+        "is_active":true,
+        "authors":[  
+            {  
+                "url_name":"_",
+                "is_active":true,
+                "id":2665435,
+                "full_name":"Thomas Baxter",
+                "orcid_id":""
+            }
+        ],
+        "is_public":false,
+        "categories":[  
+
+        ],
+        "modified_date":"2016-10-18T12:56:27Z",
+        "is_confidential":false,
+        "doi":"",
+        "license":{  
+            "url":"https://creativecommons.org/licenses/by/4.0/",
+            "name":"CC-BY",
+            "value":1
+        },
+        "has_linked_file":false,
+        "url":"https://api.figshare.com/v2/account/projects/13423/articles/4037952",
+        "resource_title":null,
+        "status":"draft",
+        "published_date":null,
+        "is_metadata_record":false
+    }
+}
