@@ -32,8 +32,8 @@ class MockFileMetadata(metadata.BaseFileMetadata):
     size = 1337
     etag = 'etag'
     path = '/Foo.name'
-    modified = 'never'
-    modified_utc = 'never'
+    modified = '9/25/2017'
+    modified_utc = '1991-09-25T19:20:30.45+01:00'
     created_utc = 'always'
     content_type = 'application/octet-stream'
 

@@ -3,7 +3,6 @@ import tornado
 
 from unittest import mock
 
-from waterbutler.server.api.v1.provider.metadata import MetadataMixin
 from waterbutler.server.api.v1.provider import ProviderHandler
 from waterbutler.core.path import WaterButlerPath
 from tests.utils import (HandlerTestCase,
@@ -19,7 +18,9 @@ class TestMetadataMixin(HandlerTestCase):
 
     def setUp(self):
         super().setUp()
-        self.resp = tornado.httputil.HTTPServerRequest(uri='/v1/resources/test/providers/test/path/mock', method='GET')
+        self.resp = tornado.httputil.HTTPServerRequest(
+            uri='/v1/resources/test/providers/test/path/mock',
+            method='GET')
         self.resp.connection = tornado.http1connection.HTTP1ConnectionParameters()
         self.resp.connection.set_close_callback = mock.Mock()
 
@@ -39,10 +40,11 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.header_file_metadata()
 
-        assert self.handler._headers['Content-Length'] == str(metadata.size)
-        assert self.handler._headers['Last-Modified'] == bytes(metadata.modified, 'latin-1')
-        assert self.handler._headers['Content-Type'] == bytes(metadata.content_type, 'latin1')
-        assert self.handler._headers['X-Waterbutler-Metadata'] == bytes(json.dumps(metadata.json_api_serialized(self.handler.resource)), 'latin1')
+        assert self.handler._headers['Content-Length'] == '1337'
+        assert self.handler._headers['Last-Modified'] == b'Wed, 25 Sep 1991 18:20:30 GMT'
+        assert self.handler._headers['Content-Type'] == b'application/octet-stream'
+        expected = bytes(json.dumps(metadata.json_api_serialized(self.handler.resource)), 'latin-1')
+        assert self.handler._headers['X-Waterbutler-Metadata'] == expected
 
     @tornado.testing.gen_test
     async def test_get_folder(self):
@@ -68,6 +70,7 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.get_folder()
 
+        assert self.handler.download_folder_as_zip.call_count == 1
         # self.handler.download_folder_as_zip.assert_called_once() only works with python 3.6
 
     @tornado.testing.gen_test
@@ -77,6 +80,7 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.get_file()
 
+        assert self.handler.file_metadata.call_count == 1
         # self.handler.file_metadata.assert_called_once() only works with python 3.6
 
     @tornado.testing.gen_test
@@ -88,6 +92,7 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.get_file()
 
+        assert self.handler.get_file_revisions.call_count == 1
         # self.handler.get_file_revisions.assert_called_once() only works with python 3.6
 
         self.handler.request.query_arguments.clear()
@@ -96,6 +101,7 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.get_file()
 
+        assert self.handler.get_file_revisions.call_count == 1
         # self.handler.get_file_revisions.assert_called_once() only works with python 3.6
 
     @tornado.testing.gen_test
@@ -104,6 +110,7 @@ class TestMetadataMixin(HandlerTestCase):
         self.handler.download_file = MockCoroutine()
         await self.handler.get_file()
 
+        assert self.handler.download_file.call_count == 1
         # self.handler.download_file.assert_called_once() only works with python 3.6
 
     @tornado.testing.gen_test
@@ -116,9 +123,10 @@ class TestMetadataMixin(HandlerTestCase):
 
         assert self.handler._headers['Content-Length'] == bytes(str(stream.size), 'latin-1')
         assert self.handler._headers['Content-Type'] == bytes(stream.content_type, 'latin-1')
-        assert self.handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'.format(
-            self.handler.path.name), 'latin-1')
+        assert self.handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'
+            .format(self.handler.path.name), 'latin-1')
 
+        assert self.handler.write_stream.call_count == 1
         # self.handler.write_stream.assert_called_once() only works with python 3.6
 
     @tornado.testing.gen_test
@@ -143,7 +151,8 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.file_metadata()
 
-        self.handler.write.assert_called_once_with({'data' : metadata.json_api_serialized(self.handler.resource)})
+        self.handler.write.assert_called_once_with(
+            {'data' : metadata.json_api_serialized(self.handler.resource)})
 
     @tornado.testing.gen_test
     async def test_file_metadata_version(self):
@@ -153,8 +162,10 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.file_metadata()
 
-        self.handler.provider.metadata.assert_called_once_with(self.handler.path, revision='version id')
-        self.handler.write.assert_called_once_with({'data' : metadata.json_api_serialized(self.handler.resource)})
+        self.handler.provider.metadata.assert_called_once_with(self.handler.path,
+                                                               revision='version id')
+        self.handler.write.assert_called_once_with(
+            {'data' : metadata.json_api_serialized(self.handler.resource)})
 
     @tornado.testing.gen_test
     async def test_get_file_revisions_raw(self):
@@ -163,7 +174,8 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.get_file_revisions()
 
-        self.handler.write.assert_called_once_with({'data': [r.json_api_serialized() for r in revision_metadata]})
+        self.handler.write.assert_called_once_with(
+            {'data': [r.json_api_serialized() for r in revision_metadata]})
 
     @tornado.testing.gen_test
     async def test_download_folder_as_zip(self):
@@ -174,7 +186,7 @@ class TestMetadataMixin(HandlerTestCase):
         await self.handler.download_folder_as_zip()
 
         assert self.handler._headers['Content-Type'] == bytes('application/zip', 'latin-1')
-        assert self.handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'.format(
-                self.handler.path.name + '.zip'), 'latin-1')
+        assert self.handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'
+            .format(self.handler.path.name + '.zip'), 'latin-1')
 
         self.handler.write_stream.assert_called_once_with(stream)
