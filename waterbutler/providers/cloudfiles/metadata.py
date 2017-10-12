@@ -56,12 +56,16 @@ class CloudFilesHeaderMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata
         self._path = path
 
     @property
+    def kind(self):
+        return 'folder' if self._path.is_dir else 'file'
+
+    @property
     def name(self):
-        return os.path.split(self._path)[1]
+        return self._path.name
 
     @property
     def path(self):
-        return self.build_path(self._path)
+        return self._path.materialized_path
 
     @property
     def size(self):
@@ -101,3 +105,30 @@ class CloudFilesFolderMetadata(BaseCloudFilesMetadata, metadata.BaseFolderMetada
     @property
     def path(self):
         return self.build_path(self.raw['subdir'])
+
+
+class CloudFilesRevisonMetadata(metadata.BaseFileRevisionMetadata):
+
+    @property
+    def version_identifier(self):
+        return 'revision'
+
+    @property
+    def version(self):
+        return self.raw['name']
+
+    @property
+    def modified(self):
+        return self.raw['last_modified']
+
+    @property
+    def size(self):
+        return self.raw['bytes']
+
+    @property
+    def name(self):
+        return self.raw['name']
+
+    @property
+    def content_type(self):
+        return self.raw['content_type']

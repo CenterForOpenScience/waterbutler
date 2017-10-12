@@ -1,36 +1,16 @@
 import pytest
-import aiohttp
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.cloudfiles.metadata import (CloudFilesFileMetadata,
                                                        CloudFilesHeaderMetadata,
-                                                       CloudFilesFolderMetadata)
+                                                       CloudFilesFolderMetadata,
+                                                       CloudFilesRevisonMetadata)
 
-
-@pytest.fixture
-def file_header_metadata_txt():
-    return aiohttp.multidict.CIMultiDict([
-        ('ORIGIN', 'https://mycloud.rackspace.com'),
-        ('CONTENT-LENGTH', '216945'),
-        ('ACCEPT-RANGES', 'bytes'),
-        ('LAST-MODIFIED', 'Mon, 22 Dec 2014 19:01:02 GMT'),
-        ('ETAG', '44325d4f13b09f3769ede09d7c20a82c'),
-        ('X-TIMESTAMP', '1419274861.04433'),
-        ('CONTENT-TYPE', 'text/plain'),
-        ('X-TRANS-ID', 'tx836375d817a34b558756a-0054987deeiad3'),
-        ('DATE', 'Mon, 22 Dec 2014 20:24:14 GMT')
-    ])
-
-
-@pytest.fixture
-def file_metadata():
-    return {
-        'last_modified': '2014-12-19T23:22:14.728640',
-        'content_type': 'application/x-www-form-urlencoded;charset=utf-8',
-        'hash': 'edfa12d00b779b4b37b81fe5b61b2b3f',
-        'name': 'similar.file',
-        'bytes': 190
-    }
+from tests.providers.cloudfiles.fixtures import (
+    file_header_metadata_txt,
+    file_metadata,
+    revision_list
+)
 
 
 class TestCloudfilesMetadata:
@@ -38,7 +18,7 @@ class TestCloudfilesMetadata:
     def test_header_metadata(self, file_header_metadata_txt):
 
         path = WaterButlerPath('/file.txt')
-        data = CloudFilesHeaderMetadata(file_header_metadata_txt, path.path)
+        data = CloudFilesHeaderMetadata(file_header_metadata_txt, path)
         assert data.name == 'file.txt'
         assert data.path == '/file.txt'
         assert data.provider == 'cloudfiles'
@@ -242,3 +222,13 @@ class TestCloudfilesMetadata:
             'new_folder': ('http://localhost:7777/v1/resources/'
                 'cn42d/providers/cloudfiles/level1/?kind=folder')
         }
+
+    def test_revision_metadata(self, revision_list):
+        data = CloudFilesRevisonMetadata(revision_list[0])
+
+        assert data.version_identifier == 'revision'
+        assert data.name == '007123.csv/1507756317.92019'
+        assert data.version == '007123.csv/1507756317.92019'
+        assert data.size == 90
+        assert data.content_type == 'application/octet-stream'
+        assert data.modified == '2017-10-11T21:24:43.459520'
