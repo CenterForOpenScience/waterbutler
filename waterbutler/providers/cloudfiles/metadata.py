@@ -55,6 +55,14 @@ class CloudFilesHeaderMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata
         super().__init__(raw)
         self._path = path
 
+    def to_revision(self):
+        revison_dict = {'bytes': self.size,
+                        'name': self.name,
+                        'last_modified': self.modified,
+                        'content_type': self.content_type}
+
+        return CloudFilesRevisonMetadata(revison_dict)
+
     @property
     def kind(self):
         return 'folder' if self._path.is_dir else 'file'
@@ -69,11 +77,11 @@ class CloudFilesHeaderMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata
 
     @property
     def size(self):
-        return int(self.raw['Content-Length'])
+        return int(self.raw['CONTENT-LENGTH'])
 
     @property
     def modified(self):
-        return self.raw['Last-Modified']
+        return self.raw['LAST-MODIFIED']
 
     @property
     def created_utc(self):
@@ -81,17 +89,17 @@ class CloudFilesHeaderMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata
 
     @property
     def content_type(self):
-        return self.raw['Content-Type']
+        return self.raw['CONTENT-TYPE']
 
     @property
     def etag(self):
-        return self.raw['etag']
+        return self.raw['ETAG']
 
     @property
     def extra(self):
         return {
             'hashes': {
-                'md5': self.raw['etag'].replace('"', ''),
+                'md5': self.raw['ETAG'],
             },
         }
 

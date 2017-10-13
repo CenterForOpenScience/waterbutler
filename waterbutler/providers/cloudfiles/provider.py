@@ -343,7 +343,7 @@ class CloudFilesProvider(provider.BaseProvider):
                 code=404,
             )
 
-        return CloudFilesHeaderMetadata(resp.headers, path)
+        return CloudFilesHeaderMetadata(dict(resp.headers), path)
 
     async def _metadata_folder(self, path, recursive=False):
         """Get Metadata about the requested folder
@@ -399,7 +399,7 @@ class CloudFilesProvider(provider.BaseProvider):
         return CloudFilesFileMetadata(data)
 
     @ensure_connection
-    async def create_folder(self, path):
+    async def create_folder(self, path, folder_precheck=None):
 
         resp = await self.make_request(
             'PUT',
@@ -443,7 +443,8 @@ class CloudFilesProvider(provider.BaseProvider):
             throws=exceptions.MetadataError,
         )
         json_resp = await resp.json()
-        return [CloudFilesRevisonMetadata(revision_data) for revision_data in json_resp]
+        current = (await self.metadata(path)).to_revision()
+        return [current] + [CloudFilesRevisonMetadata(revision_data) for revision_data in json_resp]
 
     @ensure_connection
     async def get_metadata_revision(self, path, version=None, revision=None):

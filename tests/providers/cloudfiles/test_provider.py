@@ -148,7 +148,6 @@ class TestCRUD:
         path = WaterButlerPath('/foo/', folder=True)
         metadata_url = connected_provider.build_url(path.path)
         url = connected_provider.sign_url(path, 'PUT')
-        print(metadata_url)
         aiohttpretty.register_uri('PUT', url, status=200)
         aiohttpretty.register_uri('HEAD', metadata_url, headers=file_header_metadata)
 
@@ -255,7 +254,8 @@ class TestRevisions:
     async def test_revisions(self,
                              connected_provider,
                              container_header_metadata_with_verision_location,
-                             revision_list):
+                             revision_list,
+                             file_header_metadata):
 
         path = WaterButlerPath('/file.txt')
 
@@ -268,12 +268,17 @@ class TestRevisions:
         revision_url = connected_provider.build_url('', container='versions-container', **query)
         aiohttpretty.register_json_uri('GET', revision_url, body=revision_list)
 
+        metadata_url = connected_provider.build_url(path.path)
+        aiohttpretty.register_uri('HEAD', metadata_url, status=200, headers=file_header_metadata)
+
+
         result = await connected_provider.revisions(path)
 
         assert type(result) == list
-        assert len(result) == 3
+        assert len(result) == 4
         assert type(result[0]) == CloudFilesRevisonMetadata
-        assert result[0].name == '007123.csv/1507756317.92019'
+        assert result[0].name == 'file.txt'
+        assert result[1].name == '007123.csv/1507756317.92019'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -288,10 +293,8 @@ class TestRevisions:
                                   headers=container_header_metadata_with_verision_location)
 
         version_name = '{:03x}'.format(len(path.name)) + path.name + '/'
-        query = {'prefix' : version_name}
         revision_url = connected_provider.build_url(version_name + '1507756317.92019',
                                                     container='versions-container')
-        print(revision_url)
         aiohttpretty.register_json_uri('HEAD', revision_url, body=file_header_metadata)
 
         result = await connected_provider.metadata(path, version=version_name + '1507756317.92019')
