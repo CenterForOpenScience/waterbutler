@@ -67,70 +67,75 @@ class GitHubProvider(provider.BaseProvider):
         self.metrics.add('repo', {'repo': self.repo, 'owner': self.owner})
 
     async def validate_v1_path(self, path, **kwargs):
+        """Validate the path part of the request url, asserting that the path exists, and
+        determining the branch or commit implied by the request.
+
+        **Identifying a branch or commit.**  Unfortunately, we've used a lot of different query
+        parameters over the life of WB to specify the target ref.  We've also been inconsistent
+        about whether each query parameter represents a branch name or a commit sha.  We don't want
+        to break any parameters that are still being used in the wild.  See the documentation for
+        the `_interpret_query_parameters` method for a full explanation of the supported parameters.
+
+        Additional supported kwargs:
+
+        * ``fileSha``: a blob SHA, used to identify a particular version of a file.
+
+        """
         if not getattr(self, '_repo', None):
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
-        branch_ref, ref_from = None, None
-        if kwargs.get('ref'):
-            branch_ref = kwargs.get('ref')
-            ref_from = 'query_ref'
-        elif kwargs.get('branch'):
-            branch_ref = kwargs.get('branch')
-            ref_from = 'query_branch'
-        else:
-            branch_ref = self.default_branch
-            ref_from = 'default_branch'
-        if isinstance(branch_ref, list):
+        ref, ref_type, ref_from = self._interpret_query_parameters(**kwargs)
+        if isinstance(ref, list):
             raise exceptions.InvalidParameters('Only one ref or branch may be given.')
         self.metrics.add('branch_ref_from', ref_from)
+        self.metrics.add('ref_type', ref_type)
 
         if path == '/':
-            return GitHubPath(path, _ids=[(branch_ref, '')])
+            return GitHubPath(path, _ids=[(ref, '')])
 
-        branch_data = await self._fetch_branch(branch_ref)
+        tree_sha = None
+        if ref_type == 'branch_name':
+            branch_data = await self._fetch_branch(ref)
+            tree_sha = branch_data['commit']['commit']['tree']['sha']
+        else:
+            commit_data = await self._fetch_commit(ref)
+            tree_sha = commit_data['tree']['sha']
 
         # throws Not Found if path not in tree
-        await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
+        await self._search_tree_for_path(path, tree_sha)
 
-        path = GitHubPath(path)
-        for part in path.parts:
-            part._id = (branch_ref, None)
+        gh_path = GitHubPath(path)
+        for part in gh_path.parts:
+            part._id = (ref, None)
 
         # TODO Validate that filesha is a valid sha
-        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
+        gh_path.parts[-1]._id = (ref, kwargs.get('fileSha'))
         self.metrics.add('file_sha_given', True if kwargs.get('fileSha') else False)
 
-        return path
+        return gh_path
 
     async def validate_path(self, path, **kwargs):
+        """See ``validate_v1_path`` docstring for details on supported query parameters."""
         if not getattr(self, '_repo', None):
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
-        path = GitHubPath(path)
-        branch_ref, ref_from = None, None
-        if kwargs.get('ref'):
-            branch_ref = kwargs.get('ref')
-            ref_from = 'query_ref'
-        elif kwargs.get('branch'):
-            branch_ref = kwargs.get('branch')
-            ref_from = 'query_branch'
-        else:
-            branch_ref = self.default_branch
-            ref_from = 'default_branch'
-        if isinstance(branch_ref, list):
+        ref, ref_type, ref_from = self._interpret_query_parameters(**kwargs)
+        if isinstance(ref, list):
             raise exceptions.InvalidParameters('Only one ref or branch may be given.')
         self.metrics.add('branch_ref_from', ref_from)
+        self.metrics.add('ref_type', ref_type)
 
-        for part in path.parts:
-            part._id = (branch_ref, None)
+        gh_path = GitHubPath(path)
+        for part in gh_path.parts:
+            part._id = (ref, None)
 
         # TODO Validate that filesha is a valid sha
-        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
+        gh_path.parts[-1]._id = (ref, kwargs.get('fileSha'))
         self.metrics.add('file_sha_given', True if kwargs.get('fileSha') else False)
 
-        return path
+        return gh_path
 
     async def revalidate_path(self, base, path, folder=False):
         return base.child(path, _id=((base.branch_ref, None)), folder=folder)
@@ -518,18 +523,23 @@ class GitHubProvider(provider.BaseProvider):
         )
 
     async def _fetch_branch(self, branch):
-        resp = await self.make_request(
-            'GET',
-            self.build_repo_url('branches', branch)
-        )
+        """Fetch a branch by name
 
+        API docs: https://developer.github.com/v3/repos/branches/#get-branch
+        """
+
+        resp = await self.make_request('GET', self.build_repo_url('branches', branch))
         if resp.status == 404:
             await resp.release()
             raise exceptions.NotFoundError('. No such branch \'{}\''.format(branch))
 
-        return (await resp.json())
+        return await resp.json()
 
     async def _fetch_contents(self, path, ref=None):
+        """Get the metadata and base64-encoded contents for a file.
+
+        API docs: https://developer.github.com/v3/repos/contents/#get-contents
+        """
         url = furl.furl(self.build_repo_url('contents', path.path))
         if ref:
             url.args.update({'ref': ref})
@@ -539,16 +549,33 @@ class GitHubProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError
         )
-        return (await resp.json())
+        return await resp.json()
 
     async def _fetch_repo(self):
+        """Get metadata about the repo.
+
+        API docs: https://developer.github.com/v3/repos/#get
+        """
         resp = await self.make_request(
             'GET',
             self.build_repo_url(),
             expects=(200, ),
             throws=exceptions.MetadataError
         )
-        return (await resp.json())
+        return await resp.json()
+
+    async def _fetch_commit(self, commit_sha):
+        """Get metadata about a specific commit.
+
+        API docs: https://developer.github.com/v3/commits/#get
+        """
+        resp = await self.make_request(
+            'GET',
+            self.build_repo_url('git', 'commits', commit_sha),
+            expects=(200, ),
+            throws=exceptions.MetadataError
+        )
+        return await resp.json()
 
     async def _fetch_tree(self, sha, recursive=False):
         url = furl.furl(self.build_repo_url('git', 'trees', sha))
@@ -955,3 +982,90 @@ class GitHubProvider(provider.BaseProvider):
         await self._update_ref(new_head['sha'], ref=branch_ref)
 
         return new_head
+
+    def _interpret_query_parameters(self, **kwargs):
+        """This one hurts.
+
+        Over the life of WB, the github provider has accepted the following parameters to identify
+        the ref (commit or branch) that the path entity is to be found on: ``ref``, ``branch``,
+        ``version``, ``sha``, ``revision``.  Worse, sometimes the values are commit SHAs and other
+        times are branch names.  Worserer (sic), some queries contain two or three of these
+        parameters at the same time.
+
+        WB strives to maintain backcompat, so the following method tries to divine the user
+        intention as much as possible, using the following heuristics:
+
+        * If both a commit SHA and branch name are provided, the commit SHA should be used, since
+          it is more specific.
+
+        * Each parameter will be checked.  If present and not equal to the empty string, it will be
+          run through the `_looks_like_sha` method to decide whether it is a SHA or branch name.
+
+        * The order in which the query parameters are tested differs for commit SHAs and branches.
+          The order for commit SHAs from highest precedence to lowest precedence is: ``ref``,
+          ``version``, ``sha``, ``revision``.  ``ref`` is returned in the action links for file and
+          folder metadata, and so takes precendence.  ``version`` is the most common parameter, used
+          heavily in the OSF.  ``sha`` occurs occasionally, but despite the name can be either a
+          commit SHA or branch name. ``revision`` does not appear to be in regular use anymore, but
+          has cropped up in development in old metadata entries.
+
+        * The order for branch names from highest priority to lowest priority is: ``branch``,
+          ``ref``, ``version``, ``sha``, ``revision``. ``branch`` is used by fangorn and so far
+          appears to always be a branch name.  The others follow the same priority for commit SHAs.
+
+        * If none of the query parameters are present or contain a valid commit SHA/branch name, WB
+          will fall back to the default branch for the repo.
+
+        This method also returns the type of ref it found (``commit_sha`` or ``branch``) and a
+        string identifying the source of ref.  The former is used to avoid making a branch-specific
+        query during validation.  The latter is used for analytics.
+        """
+
+        possible_params = ['ref', 'version', 'sha', 'revision']
+
+        # empty string values should be made None
+        possible_values = {}
+        for param in possible_params + ['branch']:
+            possible_values[param] = kwargs.get(param, '')
+            if possible_values[param] == '':
+                possible_values[param] = None
+
+        # look for commit SHA likes
+        inferred_ref, ref_from = None, None
+        for param in possible_params:
+            v = possible_values[param]
+            if v is not None and self._looks_like_sha(v):
+                inferred_ref = v
+                ref_from = 'query_{}'.format(param)
+                break
+
+        if inferred_ref is not None:
+            return inferred_ref, 'commit_sha', ref_from  # found a SHA!
+
+        # look for branch names
+        for param in ['branch'] + possible_params:
+            v = possible_values[param]
+            if v is not None:
+                inferred_ref = v
+                ref_from = 'query_{}'.format(param)
+                break
+
+        if inferred_ref is None:
+            inferred_ref = self.default_branch
+            ref_from = 'default_branch'
+
+        return inferred_ref, 'branch_name', ref_from
+
+    def _looks_like_sha(self, ref):
+        """Returns `True` if ``ref`` could be a valid SHA (i.e. is a valid hex number).
+
+        :param str ref: the string to test
+        :rtype: `bool`
+        :returns: whether ``ref`` could be a valid SHA
+        """
+        try:
+            int(ref, 16)  # is revision valid hex?
+        except (TypeError, ValueError):
+            return False
+
+        return True
