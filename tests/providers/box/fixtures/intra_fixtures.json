@@ -1,0 +1,78 @@
+{
+    "intra_folder_metadata":{
+        "type": "folder",
+        "content_created_at": "2017-08-31T08:05:00-07:00",
+        "shared_link": null,
+        "folder_upload_email": null,
+        "owned_by": {
+            "login": "fakeemailat@notreallygmail.com",
+            "id": "2399250408",
+            "name": "Bob Barker",
+            "type": "user"
+        },
+        "modified_at": "2017-08-31T08:05:00-07:00",
+        "parent": {
+            "name": "copy1",
+            "sequence_id": "0",
+            "id": "36735872228",
+            "etag": "0",
+            "type": "folder"
+        },
+        "name": "moveablefolder",
+        "content_modified_at": "2017-08-31T08:05:00-07:00",
+        "created_by": {
+            "login": "fakeemailat@notreallygmail.com",
+            "id": "2399250408",
+            "name": "Bob Barker",
+            "type": "user"
+        },
+        "trashed_at": null,
+        "modified_by": {
+            "login": "fakeemailat@notreallygmail.com",
+            "id": "2399250408",
+            "name": "Bob Barker",
+            "type": "user"
+        },
+        "sequence_id": "0",
+        "item_status": "active",
+        "purged_at": null,
+        "id": "36833297084",
+        "created_at": "2017-08-31T08:05:00-07:00",
+        "description": "",
+        "etag": "0",
+        "size": 0,
+        "item_collection": {
+            "limit": 100,
+            "offset": 0,
+            "entries": [],
+            "order": [
+                {
+                    "by": "type",
+                    "direction": "ASC"
+                },
+                {
+                    "by": "name",
+                    "direction": "ASC"
+                }],
+            "total_count": 0
+        },
+        "path_collection": {
+            "entries": [
+                {
+                    "name": "All Files",
+                    "sequence_id": null,
+                    "id": "0",
+                    "etag": null,
+                    "type": "folder"
+                },
+                {
+                    "name": "copy1",
+                    "sequence_id": "0",
+                    "id": "36735872228",
+                    "etag": "0",
+                    "type": "folder"
+                }],
+                "total_count": 2
+        }
+    }
+}

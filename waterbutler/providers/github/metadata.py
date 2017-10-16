@@ -90,7 +90,10 @@ class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
     def extra(self):
         return dict(super().extra, **{
             'fileSha': self.raw['sha'],
-            'webView': self.web_view
+            'webView': self.web_view,
+            'hashes': {
+                'git': self.raw['sha'],
+            },
         })
 
 

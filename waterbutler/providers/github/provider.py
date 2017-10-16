@@ -1,5 +1,6 @@
 import copy
 import json
+import hashlib
 
 import furl
 
@@ -344,7 +345,7 @@ class GitHubProvider(provider.BaseProvider):
 
         if resp.status in (422, 409):
             if resp.status == 409 or data.get('message') == 'Invalid request.\n\n"sha" wasn\'t supplied.':
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
             raise exceptions.CreateFolderError(data, code=resp.status)
 
         data['content']['name'] = path.name
@@ -562,7 +563,7 @@ class GitHubProvider(provider.BaseProvider):
         tree = await resp.json()
 
         if tree['truncated']:
-            raise GitHubUnsupportedRepoError
+            raise GitHubUnsupportedRepoError('')
 
         return tree
 
@@ -572,7 +573,7 @@ class GitHubProvider(provider.BaseProvider):
         tree = await self._fetch_tree(tree_sha, recursive=True)
 
         if tree['truncated']:
-            raise GitHubUnsupportedRepoError
+            raise GitHubUnsupportedRepoError('')
 
         implicit_type = 'tree' if path.endswith('/') else 'blob'
 
@@ -610,6 +611,11 @@ class GitHubProvider(provider.BaseProvider):
             'content': streams.Base64EncodeStream(stream),
         })
 
+        sha1_calculator = streams.HashStreamWriter(hashlib.sha1)
+        stream.add_writer('sha1', sha1_calculator)
+        git_blob_header = 'blob {}\0'.format(str(stream.size))
+        sha1_calculator.write(git_blob_header.encode('utf-8'))
+
         resp = await self.make_request(
             'POST',
             self.build_repo_url('git', 'blobs'),
@@ -621,7 +627,12 @@ class GitHubProvider(provider.BaseProvider):
             expects=(201, ),
             throws=exceptions.UploadError,
         )
-        return (await resp.json())
+
+        blob_metadata = await resp.json()
+        if stream.writers['sha1'].hexdigest != blob_metadata['sha']:
+            raise exceptions.UploadChecksumMismatchError()
+
+        return blob_metadata
 
     def _is_sha(self, ref):
         # sha1 is always 40 characters in length

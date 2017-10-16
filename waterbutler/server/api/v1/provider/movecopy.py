@@ -57,7 +57,8 @@ class MoveCopyMixin:
 
         if action not in ('copy', 'move', 'rename'):
             # Note: null is used as the default to avoid python specific error messages
-            raise exceptions.InvalidParameters('Action must be copy, move or rename, not {}'.format(self.json.get('action', 'null')))
+            raise exceptions.InvalidParameters('Action must be copy, move or rename, '
+                                               'not {}'.format(self.json.get('action', 'null')))
 
         elif action == 'rename':
 
@@ -72,6 +73,12 @@ class MoveCopyMixin:
         else:
             if 'path' not in self.json:
                 raise exceptions.InvalidParameters('Path is required for moves or copies')
+
+            if not self.json['path'].endswith('/'):
+                raise exceptions.InvalidParameters('Path requires a trailing slash to indicate '
+                                                   'it is a folder')
+
+            action = self.json['action']
 
             # Note: attached to self so that _send_hook has access to these
             self.dest_resource = self.json.get('resource', self.resource)

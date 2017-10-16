@@ -2,7 +2,6 @@ agent==0.1.2
 aiohttp==0.18.2
 git+https://github.com/felliott/boto.git@feature/gen-url-query-params-6#egg=boto
 celery==3.1.17
-cryptography==1.5.2
 furl==0.4.2
 humanfriendly==1.31
 invoke==0.13.0

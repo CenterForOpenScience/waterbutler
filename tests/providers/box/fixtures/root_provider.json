@@ -1,0 +1,402 @@
+{
+    "file_metadata": {
+        "entries": [
+            {
+                "type": "file",
+                "id": "5000948880",
+                "sequence_id": "3",
+                "etag": "3",
+                "sha1": "134b65991ed521fcfe4724b7d814ab8ded5185dc",
+                "name": "tigers.jpeg",
+                "description": "a picture of tigers",
+                "size": 629644,
+                "path_collection": {
+                    "total_count": 2,
+                    "entries": [
+                        {
+                            "type": "folder",
+                            "id": "0",
+                            "sequence_id": null,
+                            "etag": null,
+                            "name": "All Files"
+                        },
+                        {
+                            "type": "folder",
+                            "id": "11446498",
+                            "sequence_id": "1",
+                            "etag": "1",
+                            "name": "Pictures"
+                        }
+                    ]
+                },
+                "created_at": "2012-12-12T10:55:30-08:00",
+                "modified_at": "2012-12-12T11:04:26-08:00",
+                "created_by": {
+                    "type": "user",
+                    "id": "17738362",
+                    "name": "sean rose",
+                    "login": "sean@box.com"
+                },
+                "modified_by": {
+                    "type": "user",
+                    "id": "17738362",
+                    "name": "sean rose",
+                    "login": "sean@box.com"
+                },
+                "owned_by": {
+                    "type": "user",
+                    "id": "17738362",
+                    "name": "sean rose",
+                    "login": "sean@box.com"
+                },
+                "shared_link": {
+                    "url": "https://www.box.com/s/rh935iit6ewrmw0unyul",
+                    "download_url": "https://www.box.com/shared/static/rh935iit6ewrmw0unyul.jpeg",
+                    "vanity_url": null,
+                    "is_password_enabled": false,
+                    "unshared_at": null,
+                    "download_count": 0,
+                    "preview_count": 0,
+                    "access": "open",
+                    "permissions": {
+                        "can_download": true,
+                        "can_preview": true
+                    }
+                },
+                "parent": {
+                    "type": "folder",
+                    "id": "11446498",
+                    "sequence_id": "1",
+                    "etag": "1",
+                    "name": "Pictures"
+                },
+                "item_status": "active"
+            }
+        ]
+    },
+
+    "folder_list_metadata": {
+        "total_count": 24,
+        "entries": [
+            {
+                "type": "folder",
+                "id": "192429928",
+                "sequence_id": "1",
+                "etag": "1",
+                "name": "Stephen Curry Three Pointers"
+            },
+            {
+                "type": "file",
+                "id": "818853862",
+                "modified_at": "2012-12-12T11:04:26-08:00",
+                "sequence_id": "0",
+                "etag": "0",
+                "name": "Warriors.jpg"
+            }
+        ],
+        "offset": 0,
+        "limit": 2,
+        "order": [
+            {
+                "by": "type",
+                "direction": "ASC"
+            },
+            {
+                "by": "name",
+                "direction": "ASC"
+            }
+        ]
+    },
+
+    "one_entry_folder_list_metadata": {
+        "total_count": 24,
+        "entries": [
+            {
+                "type": "file",
+                "id": "5000948880",
+                "modified_at": "2012-12-12T11:04:26-08:00",
+                "sequence_id": "0",
+                "etag": "0",
+                "name": "Warriors.jpg"
+            }
+        ],
+        "offset": 0,
+        "limit": 2,
+        "order": [
+            {
+                "by": "type",
+                "direction": "ASC"
+            },
+            {
+                "by": "name",
+                "direction": "ASC"
+            }
+        ]
+    },
+
+    "folder_object_metadata": {
+        "type": "folder",
+        "id": "11446498",
+        "sequence_id": "1",
+        "etag": "1",
+        "name": "Pictures",
+        "created_at": "2012-12-12T10:53:43-08:00",
+        "modified_at": "2012-12-12T11:15:04-08:00",
+        "description": "Some pictures I took",
+        "size": 629644,
+        "path_collection": {
+            "total_count": 1,
+            "entries": [
+                {
+                    "type": "folder",
+                    "id": "0",
+                    "sequence_id": null,
+                    "etag": null,
+                    "name": "All Files"
+                }
+            ]
+        },
+        "created_by": {
+            "type": "user",
+            "id": "17738362",
+            "name": "sean rose",
+            "login": "sean@box.com"
+        },
+        "modified_by": {
+            "type": "user",
+            "id": "17738362",
+            "name": "sean rose",
+            "login": "sean@box.com"
+        },
+        "owned_by": {
+            "type": "user",
+            "id": "17738362",
+            "name": "sean rose",
+            "login": "sean@box.com"
+        },
+        "shared_link": {
+            "url": "https://www.box.com/s/vspke7y05sb214wjokpk",
+            "download_url": null,
+            "vanity_url": null,
+            "is_password_enabled": false,
+            "unshared_at": null,
+            "download_count": 0,
+            "preview_count": 0,
+            "access": "open",
+            "permissions": {
+                "can_download": true,
+                "can_preview": true
+            }
+        },
+        "folder_upload_email": {
+            "access": "open",
+            "email": "upload.Picture.k13sdz1@u.box.com"
+        },
+        "parent": {
+            "type": "folder",
+            "id": "0",
+            "sequence_id": null,
+            "etag": null,
+            "name": "All Files"
+        },
+        "item_status": "active",
+        "item_collection": {
+            "total_count": 1,
+            "entries": [
+                {
+                    "type": "file",
+                    "id": "5000948880",
+                    "sequence_id": "3",
+                    "etag": "3",
+                    "sha1": "134b65991ed521fcfe4724b7d814ab8ded5185dc",
+                    "name": "tigers.jpeg"
+                }
+            ],
+            "offset": 0,
+            "limit": 100
+        },
+        "tags": [
+            "approved",
+            "ready to publish"
+        ]
+    },
+
+    "revalidate_metadata":{
+        "entries": [{
+            "id": "218050415202",
+            "type": "file",
+            "name": "bulbasaur",
+            "etag": "0"
+        },
+        {
+            "id": "217538428612",
+            "type": "file",
+            "name": "Learn Box Basics.pdf",
+            "etag": "0"
+        }],
+        "total_count": 2,
+        "order": [{
+            "by": "type",
+            "direction": "ASC"
+        },
+        {
+            "by": "name",
+            "direction": "ASC"
+        }],
+        "offset": 0,
+        "limit": 1000
+    },
+
+    "upload_metadata": {
+        "entries": [
+            {
+                "type": "file",
+                "id": "5000948880",
+                "sequence_id": "3",
+                "etag": "3",
+                "sha1": "2ab21cd2c453e842f119cfe85f7859bda6e096d1",
+                "name": "newfile",
+                "description": "file_content from WB box tests",
+                "size": 39,
+                "path_collection": {
+                    "total_count": 2,
+                    "entries": [
+                        {
+                            "type": "folder",
+                            "id": "0",
+                            "sequence_id": null,
+                            "etag": null,
+                            "name": "All Files"
+                        },
+                        {
+                            "type": "folder",
+                            "id": "11446498",
+                            "sequence_id": "1",
+                            "etag": "1",
+                            "name": "Pictures"
+                        }
+                    ]
+                },
+                "created_at": "2012-12-12T10:55:30-08:00",
+                "modified_at": "2012-12-12T11:04:26-08:00",
+                "created_by": {
+                    "type": "user",
+                    "id": "17738362",
+                    "name": "sean rose",
+                    "login": "sean@box.com"
+                },
+                "modified_by": {
+                    "type": "user",
+                    "id": "17738362",
+                    "name": "sean rose",
+                    "login": "sean@box.com"
+                },
+                "owned_by": {
+                    "type": "user",
+                    "id": "17738362",
+                    "name": "sean rose",
+                    "login": "sean@box.com"
+                },
+                "shared_link": {
+                    "url": "https://www.box.com/s/rh935iit6ewrmw0unyul",
+                    "download_url": "https://www.box.com/shared/static/rh935iit6ewrmw0unyul.jpeg",
+                    "vanity_url": null,
+                    "is_password_enabled": false,
+                    "unshared_at": null,
+                    "download_count": 0,
+                    "preview_count": 0,
+                    "access": "open",
+                    "permissions": {
+                        "can_download": true,
+                        "can_preview": true
+                    }
+                },
+                "parent": {
+                    "type": "folder",
+                    "id": "11446498",
+                    "sequence_id": "1",
+                    "etag": "1",
+                    "name": "Pictures"
+                },
+                "item_status": "active"
+            }
+        ]
+    },
+
+    "checksum_mismatch_metadata": {
+        "entries": [
+            {
+                "type": "file",
+                "id": "5000948880",
+                "sequence_id": "3",
+                "etag": "3",
+                "sha1": "9382285f95cceb31374efbe8ccc1ae881a29c1c1",
+                "name": "newfile",
+                "description": "file_content from WB box tests",
+                "size": 39,
+                "path_collection": {
+                    "total_count": 2,
+                    "entries": [
+                        {
+                            "type": "folder",
+                            "id": "0",
+                            "sequence_id": null,
+                            "etag": null,
+                            "name": "All Files"
+                        },
+                        {
+                            "type": "folder",
+                            "id": "11446498",
+                            "sequence_id": "1",
+                            "etag": "1",
+                            "name": "Pictures"
+                        }
+                    ]
+                },
+                "created_at": "2012-12-12T10:55:30-08:00",
+                "modified_at": "2012-12-12T11:04:26-08:00",
+                "created_by": {
+                    "type": "user",
+                    "id": "17738362",
+                    "name": "sean rose",
+                    "login": "sean@box.com"
+                },
+                "modified_by": {
+                    "type": "user",
+                    "id": "17738362",
+                    "name": "sean rose",
+                    "login": "sean@box.com"
+                },
+                "owned_by": {
+                    "type": "user",
+                    "id": "17738362",
+                    "name": "sean rose",
+                    "login": "sean@box.com"
+                },
+                "shared_link": {
+                    "url": "https://www.box.com/s/rh935iit6ewrmw0unyul",
+                    "download_url": "https://www.box.com/shared/static/rh935iit6ewrmw0unyul.jpeg",
+                    "vanity_url": null,
+                    "is_password_enabled": false,
+                    "unshared_at": null,
+                    "download_count": 0,
+                    "preview_count": 0,
+                    "access": "open",
+                    "permissions": {
+                        "can_download": true,
+                        "can_preview": true
+                    }
+                },
+                "parent": {
+                    "type": "folder",
+                    "id": "11446498",
+                    "sequence_id": "1",
+                    "etag": "1",
+                    "name": "Pictures"
+                },
+                "item_status": "active"
+            }
+        ]
+    }
+
+}
