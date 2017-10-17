@@ -192,7 +192,7 @@ class CloudFilesProvider(provider.BaseProvider):
         await resp.release()
 
     @ensure_connection
-    async def metadata(self, path, recursive=False, version=None, revision=None):
+    async def metadata(self, path, recursive=False, version=None, revision=None, **kwargs):
         """Get Metadata about the requested file or folder
         :param str path: The path to a key or folder
         :rtype dict:
