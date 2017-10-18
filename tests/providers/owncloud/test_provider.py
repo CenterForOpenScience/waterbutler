@@ -360,6 +360,14 @@ class TestRevisions:
 
 class TestOperations:
 
+    @pytest.mark.asyncio
+    async def test_construct_path(self, provider, file_metadata):
+        data = OwnCloudFileMetadata(file_metadata, '/')
+        path = WaterButlerPath('/dissertation/', prepend=provider.folder)
+        con_path = await provider.construct_path(path, data)
+        rev_path = await provider.revalidate_path(path, data.name)
+        assert con_path == rev_path
+
     def test_can_intra_copy(self, provider, provider_different_credentials):
         assert provider.can_intra_copy(provider)
         assert not provider.can_intra_copy(provider_different_credentials)

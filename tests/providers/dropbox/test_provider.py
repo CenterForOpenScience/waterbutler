@@ -722,6 +722,18 @@ class TestIntra:
 
 class TestOperations:
 
+    @pytest.mark.asyncio
+    async def test_construct_path(self, provider, root_provider_fixtures):
+        # Construct replaces revalidate_path in some instances, so it should always
+        # be tested against it, even if calls revalidate_path
+        path = WaterButlerPath('/file.txt')
+
+        data = DropboxFileMetadata(root_provider_fixtures['file_metadata'], folder=False)
+
+        rev_path = await provider.revalidate_path(path.parent, data.name)
+        con_path = await provider.construct_path(path.parent, data)
+        assert rev_path == con_path
+
     def test_can_intra_copy(self, provider):
         assert provider.can_intra_copy(provider)
 
@@ -732,7 +744,7 @@ class TestOperations:
         assert provider.can_intra_move(provider)
 
     def test_cannot_intra_move_other(self, provider, other_provider):
-        assert provider.can_intra_move(other_provider) == False
+        assert provider.can_intra_move(other_provider) is False
 
     def test_conflict_error_handler_not_found(self, provider, error_fixtures):
         error_path = '/Photos/folder/file'

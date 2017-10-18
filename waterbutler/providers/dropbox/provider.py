@@ -290,6 +290,11 @@ class DropboxProvider(provider.BaseProvider):
             throws=exceptions.DeleteError,
         )
 
+    async def construct_path(self,
+                           parent_path: WaterButlerPath,
+                           meta_data: BaseDropboxMetadata) -> WaterButlerPath:
+        return await self.revalidate_path(parent_path, meta_data.name, folder=meta_data.is_folder)
+
     async def metadata(self,  # type: ignore
                        path: WaterButlerPath,
                        revision: str=None,

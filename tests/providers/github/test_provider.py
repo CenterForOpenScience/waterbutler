@@ -1349,6 +1349,18 @@ class TestCreateFolder:
 
 class TestOperations:
 
+    @pytest.mark.asyncio
+    async def test_construct_path(self, provider, root_provider_fixtures):
+        path = GitHubPath('/folder/', _ids=[("master", ''), ('whatever', '')])
+        item = root_provider_fixtures['content_repo_metadata_root'][0]
+        data = GitHubFileContentMetadata(
+            item, web_view=item['html_url'], ref=provider.default_branch
+        )
+
+        con_path = await provider.construct_path(path, data)
+        rev_path = await provider.revalidate_path(path, data.name)
+        assert con_path == rev_path
+
     def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names() is False
 

@@ -15,9 +15,10 @@ from waterbutler.core.utils import RequestHandlerContext
 from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.tasks import backup
 from waterbutler.providers.osfstorage.tasks import parity
-from waterbutler.providers.osfstorage.metadata import OsfStorageFileMetadata
-from waterbutler.providers.osfstorage.metadata import OsfStorageFolderMetadata
-from waterbutler.providers.osfstorage.metadata import OsfStorageRevisionMetadata
+from waterbutler.providers.osfstorage.metadata import (OsfStorageFileMetadata,
+                                                        BaseOsfStorageMetadata,
+                                                        OsfStorageFolderMetadata,
+                                                        OsfStorageRevisionMetadata)
 
 
 QUERY_METHODS = ('GET', 'DELETE')
@@ -431,6 +432,11 @@ class OSFStorageProvider(provider.BaseProvider):
         if not path.is_dir:
             return await self._item_metadata(path)
         return await self._children_metadata(path)
+
+    async def construct_path(self,
+                           parent_path: WaterButlerPath,
+                           meta_data: BaseOsfStorageMetadata) -> WaterButlerPath:
+        return self.path_from_metadata(parent_path, meta_data)
 
     async def revisions(self, path, view_only=None, **kwargs):
         if path.identifier is None:

@@ -5,8 +5,8 @@ from http import HTTPStatus
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
-from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.utils import AsyncIterator
+from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.dataverse import settings
 from waterbutler.providers.dataverse.metadata import DataverseRevision
@@ -227,6 +227,13 @@ class DataverseProvider(provider.BaseProvider):
                 "Could not retrieve file '{}'".format(path),
                 code=HTTPStatus.NOT_FOUND,
             )
+
+    async def construct_path(self,
+                           parent_path: WaterButlerPath,
+                           meta_data) -> WaterButlerPath:
+        # This still makes API calls. Was unsure if Dataverse even can copy/move folders
+        # Since I doubt it will hit this ever or often, it should be fine
+        return await self.revalidate_path(parent_path, meta_data.name, folder=meta_data.is_folder)
 
     async def revisions(self, path, **kwargs):
         """Get past versions of the request file. Orders versions based on

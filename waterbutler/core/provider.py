@@ -349,8 +349,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
                     func(
                         dest_provider,
                         # TODO figure out a way to cut down on all the requests made here
-                        (await self.revalidate_path(src_path, item.name, folder=item.is_folder)),
-                        (await dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
+                        (await self.construct_path(src_path, item)),
+                        (await dest_provider.construct_empty_path(dest_path, item)),
                         handle_naming=False,
                     )
                 ))
@@ -669,6 +669,39 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :raises: :class:`.NotFoundError`
         """
         raise NotImplementedError
+
+    async def construct_path(self,
+                           parent_path: wb_path.WaterButlerPath,
+                           meta_data: wb_metadata.BaseMetadata) -> wb_path.WaterButlerPath:
+        """Given a path and metadata, figure out how to return a child path with as few calls as possible.
+        For name based providers, this will usually just return revalidate_path. for ID based providers
+        it will usually return path_from_metadata or something similar.
+
+        Used by folder-file-op to cut down on number of API calls made.
+
+        :param  parent_path: ( :class:`.WaterButlerPath` ) The base parent to create the child from
+        :param meta_data: ( :class:`.BaseMetadata`) the path of a child of `base`, relative to `base`
+        :rtype: :class:`.WaterButlerPath`
+        """
+        # Went with a `NotImplementedError` since a provider should have to determine how to construct path
+        # It can call revalidate path, path_from_metadata, or something else. This is different from
+        # `construct_empty_path` since that one almost always returns the same thing
+        raise NotImplementedError
+
+    async def construct_empty_path(self,
+                           parent_path: wb_path.WaterButlerPath,
+                           meta_data: wb_metadata.BaseMetadata) -> wb_path.WaterButlerPath:
+        """Given a path and  metadata, figure out how to return an empty child path with as few calls as possible.
+        This is called when we need a path but usually the file does not exist yet. We need identifier to be `None`
+        here so other similar functions will not work correctly.
+
+        :param  parent_path: ( :class:`.WaterButlerPath` ) The base parent to create the child from
+        :param meta_data: ( :class:`.BaseMetadata`) the path of a child of `base`, relative to `base`
+        :rtype: :class:`.WaterButlerPath`
+        """
+
+        # Read only providers should never call this function since they can't be a `dest_provider`
+        return parent_path.child(meta_data.name, folder=meta_data.is_folder)
 
     def path_from_metadata(self,
                            parent_path: wb_path.WaterButlerPath,

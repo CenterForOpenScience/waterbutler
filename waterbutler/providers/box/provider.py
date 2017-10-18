@@ -9,10 +9,10 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core import path as wb_path
 from waterbutler.providers.box import settings
-from waterbutler.providers.box.metadata import (BaseBoxMetadata,
+from waterbutler.providers.box.metadata import (BoxRevision,
+                                                BaseBoxMetadata,
                                                 BoxFileMetadata,
-                                                BoxFolderMetadata,
-                                                BoxRevision)
+                                                BoxFolderMetadata)
 
 
 class BoxProvider(provider.BaseProvider):
@@ -141,6 +141,11 @@ class BoxProvider(provider.BaseProvider):
             return await self.revalidate_path(ret, new_name, folder=is_folder)
 
         return ret
+
+    async def construct_path(self,
+                           parent_path: wb_path.WaterButlerPath,
+                           meta_data: BaseBoxMetadata) -> wb_path.WaterButlerPath:
+        return self.path_from_metadata(parent_path, meta_data)
 
     async def revalidate_path(self, base: wb_path.WaterButlerPath, path: str,
                               folder: bool=None) -> wb_path.WaterButlerPath:

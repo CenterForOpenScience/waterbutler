@@ -106,10 +106,15 @@ class GoogleDriveProvider(provider.BaseProvider):
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 
+    async def construct_path(self,
+                           parent_path: wb_path.WaterButlerPath,
+                           meta_data: BaseGoogleDriveMetadata) -> wb_path.WaterButlerPath:
+        return self.path_from_metadata(parent_path, meta_data)
+
     async def revalidate_path(self,
                               base: wb_path.WaterButlerPath,
                               name: str,
-                              folder: bool = None) -> wb_path.WaterButlerPath:
+                              folder: bool=None) -> wb_path.WaterButlerPath:
         # TODO Redo the logic here folders names ending in /s
         # Will probably break
         if '/' in name.lstrip('/') and '%' not in name:

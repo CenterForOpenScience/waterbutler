@@ -25,6 +25,17 @@ def credentials():
 
 
 @pytest.fixture
+def file_metadata():
+    return {
+        'path': '/code/website/osfstoragecache/77094244-aa24-48da-9437-d8ce6f7a94e9',
+        'modified_utc': '2017-09-20T15:16:02.601916+00:00',
+        'mime_type': None,
+        'size': 35981,
+        'modified': 'Wed, 20 Sep 2017 15:16:02 +0000'
+    }
+
+
+@pytest.fixture
 def settings(tmpdir):
     return {'folder': str(tmpdir)}
 
@@ -270,6 +281,14 @@ class TestIntra:
 
 
 class TestOperations:
+
+    @pytest.mark.asyncio
+    async def test_construct_path(self, provider, file_metadata):
+        data = FileSystemFileMetadata(file_metadata, '/')
+        path = await provider.validate_path('/folder/')
+        con_path = await provider.construct_path(path, data)
+        rev_path = await provider.revalidate_path(path, data.name)
+        assert con_path == rev_path
 
     def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names() is False

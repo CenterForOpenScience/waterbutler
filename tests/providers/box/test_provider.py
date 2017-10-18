@@ -834,23 +834,31 @@ class TestOperations:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_can_duplicate_names(self, provider):
+    async def test_construct_path(self, provider, root_provider_fixtures):
+        path = WaterButlerPath('/50 shades of nope/', _ids=(provider.folder, '0'))
+        item = root_provider_fixtures['revalidate_metadata']['entries'][0]
+        data = BoxFileMetadata(item, path)
+
+        url = provider.build_url('folders', path.identifier, 'items',
+                           fields='id,name,type', limit=1000)
+        aiohttpretty.register_json_uri('GET', url, body=root_provider_fixtures['revalidate_metadata'])
+
+        con_metadata = await provider.construct_path(path, data)
+
+        path_metadata = await provider.revalidate_path(path, data.name)
+        assert con_metadata == path_metadata
+
+    def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names() is False
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_shares_storage_root(self, provider, other_provider):
+    def test_shares_storage_root(self, provider, other_provider):
         assert provider.shares_storage_root(other_provider) is False
         assert provider.shares_storage_root(provider) is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_move(self, provider, other_provider):
+    def test_can_intra_move(self, provider, other_provider):
         assert provider.can_intra_move(other_provider) is False
         assert provider.can_intra_move(provider) is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_copy(self, provider, other_provider):
+    def test_can_intra_copy(self, provider, other_provider):
         assert provider.can_intra_copy(other_provider) is False
         assert provider.can_intra_copy(provider) is True

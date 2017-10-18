@@ -14,9 +14,10 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.cloudfiles import settings
-from waterbutler.providers.cloudfiles.metadata import CloudFilesFileMetadata
-from waterbutler.providers.cloudfiles.metadata import CloudFilesFolderMetadata
-from waterbutler.providers.cloudfiles.metadata import CloudFilesHeaderMetadata
+from waterbutler.providers.cloudfiles.metadata import (BaseCloudFilesMetadata,
+                                                        CloudFilesFileMetadata,
+                                                        CloudFilesFolderMetadata,
+                                                        CloudFilesHeaderMetadata)
 
 
 def ensure_connection(func):
@@ -172,6 +173,11 @@ class CloudFilesProvider(provider.BaseProvider):
                 throws=exceptions.DeleteError,
             )
         await resp.release()
+
+    async def construct_path(self,
+                           parent_path: WaterButlerPath,
+                           meta_data: BaseCloudFilesMetadata) -> WaterButlerPath:
+        return await self.revalidate_path(parent_path, meta_data.name, folder=meta_data.is_folder)
 
     @ensure_connection
     async def metadata(self, path, recursive=False, **kwargs):

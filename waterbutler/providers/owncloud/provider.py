@@ -6,7 +6,8 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.owncloud import utils
-from waterbutler.providers.owncloud.metadata import OwnCloudFileRevisionMetadata
+from waterbutler.providers.owncloud.metadata import (BaseOwnCloudMetadata,
+                                                    OwnCloudFileRevisionMetadata)
 
 
 class OwnCloudProvider(provider.BaseProvider):
@@ -200,6 +201,11 @@ class OwnCloudProvider(provider.BaseProvider):
         )
         await delete_resp.release()
         return
+
+    async def construct_path(self,
+                           parent_path: WaterButlerPath,
+                           meta_data: BaseOwnCloudMetadata) -> WaterButlerPath:
+        return await self.revalidate_path(parent_path, meta_data.name, folder=meta_data.is_folder)
 
     async def metadata(self, path, **kwargs):
         """Queries the remote host for metadata and returns metadata objects based on the return

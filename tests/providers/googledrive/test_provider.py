@@ -1579,31 +1579,51 @@ class TestOperationsOrMisc:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_can_duplicate_names(self, provider):
+    async def test_construct_path(self, provider, root_provider_fixtures):
+        file_name = '/Gear1.stl'
+        revalidate_path_metadata = root_provider_fixtures['revalidate_path_file_metadata_1']
+        file_id = revalidate_path_metadata['items'][0]['id']
+        path = GoogleDrivePath(file_name, _ids=['0', file_id])
+
+        parts = [[parse.unquote(x), True] for x in file_name.strip('/').split('/')]
+        parts[-1][1] = False
+
+        current_part = parts.pop(0)
+        part_name = current_part[0]
+        name, ext = os.path.splitext(part_name)
+        query = _build_title_search_query(provider, file_name.strip('/'), False)
+
+        url = provider.build_url('files', file_id, 'children', q=query, fields='items(id)')
+        aiohttpretty.register_json_uri('GET', url, body=revalidate_path_metadata)
+
+        url = provider.build_url('files', file_id, fields='id,title,mimeType')
+        aiohttpretty.register_json_uri('GET', url,
+                                       body=root_provider_fixtures['revalidate_path_file_metadata_2'])
+
+        rev_path = await provider.revalidate_path(path, file_name)
+
+        data = GoogleDriveFileMetadata(root_provider_fixtures['revalidate_path_file_metadata_2'], '/')
+        con_path = await provider.construct_path(path, data)
+        rev_path = await provider.revalidate_path(path, data.name)
+        assert con_path == rev_path
+
+    def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names() is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_shares_storage_root(self, provider, other_provider):
+    def test_shares_storage_root(self, provider, other_provider):
         assert provider.shares_storage_root(other_provider) is True
         assert provider.shares_storage_root(provider) is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_move(self, provider, other_provider):
+    def test_can_intra_move(self, provider, other_provider):
         assert provider.can_intra_move(other_provider) is False
         assert provider.can_intra_move(provider) is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test__serialize_item_raw(self, provider, root_provider_fixtures):
+    def test__serialize_item_raw(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['docs_file_metadata']
 
         assert provider._serialize_item(None, item, True) == item
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_copy(self, provider, other_provider, root_provider_fixtures):
+    def test_can_intra_copy(self, provider, other_provider, root_provider_fixtures):
         item = root_provider_fixtures['list_file']['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
 
