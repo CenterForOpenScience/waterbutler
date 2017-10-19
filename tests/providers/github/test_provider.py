@@ -1392,14 +1392,6 @@ class TestOperations:
 
 class TestUtilities:
 
-    def test_is_sha(self, provider, root_provider_fixtures):
-        sha = root_provider_fixtures['upload_response']['content']['sha']
-        fake_sha = 'not a real sha'
-
-        assert provider.is_sha(sha) is True
-        assert provider.is_sha(fake_sha) is False
-        assert provider.is_sha([i for i in range(40)]) is False
-
     def test__path_exists_in_tree(self, provider, root_provider_fixtures):
         _ids = [('master', '')]
 
