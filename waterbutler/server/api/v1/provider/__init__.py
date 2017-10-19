@@ -62,8 +62,17 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
         self.auth = await auth_handler.get(self.resource, provider, self.request)
         self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
-        self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
 
+        # Find start of provider name, and start of ? marker and pull out file name from between them.
+        provider_index = self.request.uri.index(self.path_kwargs['provider'] + '/')
+        provider_length = (len(self.path_kwargs['provider']))
+        end_of_path_index = self.request.uri.find('?')
+        # If there is no ? in uri, go to end of uri
+        if end_of_path_index == -1:
+            end_of_path_index = len(self.request.uri)
+
+        self.provider.undecoded_path = self.request.uri[provider_index + provider_length: end_of_path_index]
+        self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
         self.target_path = None
 
         # post-validator methods perform validations that expect that the path given in the url has

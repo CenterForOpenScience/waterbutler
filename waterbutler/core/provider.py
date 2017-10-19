@@ -99,6 +99,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         self.auth = auth
         self.credentials = credentials
         self.settings = settings
+        self.undecoded_path = None
 
         self.provider_metrics = MetricsRecord('provider')
         self.provider_metrics.add('auth', auth)
