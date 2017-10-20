@@ -2,12 +2,11 @@ import os
 import io
 import time
 import json
+from unittest import mock
+
 import pytest
 import aiohttp
 import aiohttpretty
-
-from unittest import mock
-
 
 from waterbutler.core import streams
 from waterbutler.providers.cloudfiles import CloudFilesProvider
