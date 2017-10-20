@@ -169,7 +169,6 @@ class CloudFilesProvider(provider.BaseProvider):
                 code=400
             )
 
-
         if path.is_dir:
             metadata = await self._metadata_folder(path, recursive=True)
 
