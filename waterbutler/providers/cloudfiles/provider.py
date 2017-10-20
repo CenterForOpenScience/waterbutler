@@ -5,6 +5,7 @@ import time
 import asyncio
 import hashlib
 import functools
+from urllib.parse import unquote
 
 import furl
 
@@ -35,8 +36,7 @@ def ensure_connection(func):
 class CloudFilesProvider(provider.BaseProvider):
     """Provider for Rackspace CloudFiles.
 
-    API Docs: https://developer.rackspace.com/docs/cloud-files/v1/developer-guide/
-    #document-developer-guide
+    API Docs: https://developer.rackspace.com/docs/cloud-files/v1/developer-guide/document-developer-guide
     """
     NAME = 'cloudfiles'
 
@@ -158,9 +158,18 @@ class CloudFilesProvider(provider.BaseProvider):
     async def delete(self, path, confirm_delete=False):
         """Deletes the key at the specified path
         :param str path: The path of the key to delete
-        :param bool confirm_delete: not used in this provider
+        :param int confirm_delete: Must be 1 to confirm root folder delete, this deletes entire
+        container object.
         :rtype None:
         """
+
+        if path.is_root and not confirm_delete:
+            raise exceptions.DeleteError(
+                'query arguement confirm_delete=1 is required for deleting the entire container.',
+                code=400
+            )
+
+
         if path.is_dir:
             metadata = await self._metadata_folder(path, recursive=True)
 
@@ -232,7 +241,6 @@ class CloudFilesProvider(provider.BaseProvider):
         :param int seconds: Time for the url to live
         :rtype str:
         """
-        from urllib.parse import unquote
 
         method = method.upper()
         expires = str(int(time.time() + seconds))
@@ -399,13 +407,22 @@ class CloudFilesProvider(provider.BaseProvider):
         return CloudFilesFileMetadata(data)
 
     @ensure_connection
-    async def create_folder(self, path, folder_precheck=None):
+    async def create_folder(self, path, **kwargs):
+        """Create a folder in the current provider at `path`. Returns a `BaseFolderMetadata` object
+        if successful.  May throw a 409 Conflict if a directory with the same name already exists.
+        Enpoint information can be found here:
+        https://developer.rackspace.com/docs/cloud-files/v1/general-api-info/pseudo-hierarchical-folders-and-directories/
+        :param path: ( :class:`.WaterButlerPath` )User-supplied path to create. Must be a directory.
+        :param kwargs: dict unused params
+        :rtype: :class:`.BaseFileMetadata`
+        :raises: :class:`.CreateFolderError`
+        """
 
         resp = await self.make_request(
             'PUT',
             functools.partial(self.sign_url, path, 'PUT'),
             expects=(200, 201),
-            throws=exceptions.UploadError,
+            throws=exceptions.CreateFolderError,
             headers={'Content-Type': 'application/directory'}
         )
         await resp.release()
@@ -433,6 +450,18 @@ class CloudFilesProvider(provider.BaseProvider):
 
     @ensure_connection
     async def revisions(self, path):
+        """Get past versions of the request file from special user designated version container,
+        if the user hasn't designated a version_location container in raises an infomative error
+        message. The revision endpoint also doesn't return the current version so that is added to
+        the revision list after other revisions are returned. More info about versioning with Cloud
+        Files here:
+
+        https://developer.rackspace.com/docs/cloud-files/v1/use-cases/additional-object-services-information/#object-versioning
+
+        :param str path: The path to a key
+        :rtype list:
+        """
+
         version_location = await self._get_version_location()
 
         query = {'prefix': '{:03x}'.format(len(path.name)) + path.name + '/'}
