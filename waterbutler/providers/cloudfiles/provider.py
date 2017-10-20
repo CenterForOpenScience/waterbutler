@@ -165,7 +165,7 @@ class CloudFilesProvider(provider.BaseProvider):
 
         if path.is_root and not confirm_delete:
             raise exceptions.DeleteError(
-                'query arguement confirm_delete=1 is required for deleting the entire container.',
+                'query argument confirm_delete=1 is required for deleting the entire container.',
                 code=400
             )
 
