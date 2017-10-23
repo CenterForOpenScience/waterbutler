@@ -19,9 +19,10 @@ class AuthHandler:
                 return credential
         raise AuthHandler('no valid credential found')
 
-    async def get(self, resource, provider, request):
+    async def get(self, resource, provider, request, body_action=None):
+        # body_action should only be used by `MoveCopyMixin`
         for extension in self.manager.extensions:
-            credential = await extension.obj.get(resource, provider, request)
+            credential = await extension.obj.get(resource, provider, request, body_action=body_action)
             if credential:
                 return credential
         raise AuthHandler('no valid credential found')

@@ -34,9 +34,15 @@ class TestOsfAuthHandler(ServerTestCase):
     async def test_supported_and_unsupported_methods(self):
 
         supported_methods = ['put', 'post', 'get', 'head', 'delete']
+        post_actions = ['copy', 'rename', 'move']
         unsupported_methods = ['trace', 'connect', 'patch', 'ma1f0rmed']
 
+        assert all(method in self.handler.POST_ACTION_MAP.keys() for method in post_actions)
         assert all(method in self.handler.ACTION_MAP.keys() for method in supported_methods)
+
+        for action in post_actions:
+            self.request.method = 'post'
+            await self.handler.get("test", "test", self.request, body_action=action)
 
         for method in supported_methods:
             self.request.method = method

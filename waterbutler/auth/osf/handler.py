@@ -17,10 +17,16 @@ class OsfAuthHandler(auth.BaseAuthHandler):
     """Identity lookup via the Open Science Framework"""
     ACTION_MAP = {
         'put': 'upload',
-        'post': 'upload',  # TODO copyfrom
+        'post': 'copyfrom',
         'get': 'download',
         'head': 'metadata',
         'delete': 'delete',
+    }
+
+    POST_ACTION_MAP = {
+        'copy': 'copyfrom',
+        'rename': 'upload',
+        'move': 'upload'
     }
 
     def build_payload(self, bundle, view_only=None, cookie=None):
@@ -91,11 +97,14 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         payload['auth']['callback_url'] = payload['callback_url']
         return payload
 
-    async def get(self, resource, provider, request):
+    async def get(self, resource, provider, request, body_action=None):
         """Used for v1"""
 
         try:
-            action = self.ACTION_MAP[request.method.lower()]
+            if body_action:
+                action = self.POST_ACTION_MAP[body_action.lower()]
+            else:
+                action = self.ACTION_MAP[request.method.lower()]
         except KeyError:
             raise exceptions.UnsupportedHTTPMethodError(request.method.lower(),
                                                         supported=self.ACTION_MAP.keys())

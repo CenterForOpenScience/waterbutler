@@ -62,10 +62,19 @@ class MoveCopyMixin:
             if not self.json.get('rename'):
                 raise exceptions.InvalidParameters('Rename is required for renaming')
             action = 'move'
-            self.dest_auth = self.auth
+            self.dest_resource = self.resource
+
+            # We need to recheck permissions on the source resource with
+            # 'body_action' since auth for 'post' to a public resource will
+            # allow anything through
+            self.dest_auth = await auth_handler.get(
+                self.dest_resource,
+                self.json.get('provider', self.provider.NAME),
+                self.request,
+                body_action=action
+            )
             self.dest_provider = self.provider
             self.dest_path = self.path.parent
-            self.dest_resource = self.resource
         else:
             if 'path' not in self.json:
                 raise exceptions.InvalidParameters('Path is required for moves or copies')
@@ -80,10 +89,22 @@ class MoveCopyMixin:
             self.dest_resource = self.json.get('resource', self.resource)
 
             # TODO optimize for same provider and resource
+
+            # We need to recheck Auth instead of trusting the `prepare` auth value
+            # this is because the permissions on post has changed to 'copyfrom'
+            # `body_action` will determine permissions
+            await auth_handler.get(
+                self.resource,
+                self.path_kwargs['provider'],
+                self.request,
+                body_action=action
+            )
+
             self.dest_auth = await auth_handler.get(
                 self.dest_resource,
                 self.json.get('provider', self.provider.NAME),
-                self.request
+                self.request,
+                body_action=action
             )
 
             self.dest_provider = make_provider(
