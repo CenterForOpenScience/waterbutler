@@ -94,6 +94,10 @@ def connected_provider(provider, token, endpoint, temp_url_key, mock_time):
 def file_content():
     return b'sleepy'
 
+@pytest.fixture
+def file_content_100_bytes():
+    return os.urandom(100)
+
 
 @pytest.fixture
 def file_like(file_content):
@@ -104,6 +108,10 @@ def file_like(file_content):
 def file_stream(file_like):
     return streams.FileStreamReader(file_like)
 
+
+@pytest.fixture
+def file_stream_100_bytes(file_content_100_bytes):
+    return streams.FileStreamReader(io.BytesIO(file_content_100_bytes))
 
 
 @pytest.fixture

@@ -40,6 +40,8 @@ class CloudFilesProvider(provider.BaseProvider):
     """
     NAME = 'cloudfiles'
 
+    SEGMENT_SIZE = 50000  # 5 GB
+
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
         self.token = None
@@ -126,6 +128,11 @@ class CloudFilesProvider(provider.BaseProvider):
         :param bool fetch_metadata: If true upload will return metadata
         :rtype (dict/None, bool):
         """
+        if stream.size > self.SEGMENT_SIZE:
+            return await self.chunked_upload(stream, path,
+                                check_created=check_created,
+                                fetch_metadata=fetch_metadata)
+
         if check_created:
             created = not (await self.exists(path))
         else:
@@ -151,6 +158,36 @@ class CloudFilesProvider(provider.BaseProvider):
         else:
             metadata = None
         self.metrics.add('upload.fetch_metadata', fetch_metadata)
+
+        return metadata, created
+
+    @ensure_connection
+    async def chunked_upload(self, stream, path, check_created=True, fetch_metadata=True):
+
+        created = not (await self.exists(path)) if check_created else None
+
+        for i, _ in enumerate(range(0, stream.size, self.SEGMENT_SIZE)):
+            data = await stream.read(self.SEGMENT_SIZE)
+            resp = await self.make_request(
+                'PUT',
+                functools.partial(self.sign_url, path, 'PUT', segment_num=str(i).zfill(5)),
+                data=data,
+                headers={'Content-Length': str(len(bytearray(data)))},
+                expects=(200, 201),
+                throws=exceptions.UploadError,
+            )
+            await resp.release()
+
+        resp = await self.make_request(
+            'PUT',
+            functools.partial(self.build_url, path.path),
+            headers={'X-Object-Manifest': '{}/{}'.format(self.container, path.path)},
+            expects=(200, 201),
+            throws=exceptions.UploadError,
+        )
+        await resp.release()
+
+        metadata = await self.metadata(path) if fetch_metadata else None
 
         return metadata, created
 
@@ -232,7 +269,7 @@ class CloudFilesProvider(provider.BaseProvider):
     def can_intra_move(self, dest_provider, path=None):
         return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
 
-    def sign_url(self, path, method='GET', endpoint=None, seconds=settings.TEMP_URL_SECS):
+    def sign_url(self, path, method='GET', endpoint=None, segment_num=None, seconds=settings.TEMP_URL_SECS):
         """Sign a temp url for the specified stream
         :param str stream: The requested stream's path
         :param CloudFilesPath path: A path to a file/folder
@@ -243,7 +280,8 @@ class CloudFilesProvider(provider.BaseProvider):
 
         method = method.upper()
         expires = str(int(time.time() + seconds))
-        path_str = path.path
+        path_str = path.path + '/' + segment_num if segment_num else path.path
+
         url = furl.furl(self.build_url(path_str, _endpoint=endpoint))
 
         body = '\n'.join([method, expires])

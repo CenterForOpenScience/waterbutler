@@ -23,7 +23,9 @@ from tests.providers.cloudfiles.fixtures import (
     temp_url_key,
     mock_time,
     file_content,
+    file_content_100_bytes,
     file_stream,
+    file_stream_100_bytes,
     file_like,
     mock_temp_key,
     provider,
@@ -144,6 +146,55 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_chunked_upload(self,
+                          connected_provider,
+                          file_stream_100_bytes,
+                          file_header_metadata):
+        path = WaterButlerPath('/similar.file')
+        metadata_url = connected_provider.build_url(path.path)
+        aiohttpretty.register_uri('HEAD',
+                                  metadata_url,
+                                  responses=[
+                                      {'status': 404},
+                                      {'headers': file_header_metadata}
+                                  ]
+                                  )
+
+        for i in range(0, 10):
+            url = connected_provider.sign_url(path, 'PUT', segment_num=str(i).zfill(5))
+            aiohttpretty.register_uri('PUT', url, status=200)
+
+        url = connected_provider.build_url(path.path)
+        aiohttpretty.register_uri('PUT', url, status=200)
+
+        connected_provider.SEGMENT_SIZE = 10  # for testing
+        metadata, created = await connected_provider.chunked_upload(file_stream_100_bytes, path)
+
+        assert created is True
+        assert metadata.kind == 'file'
+        assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)  # check metadata was called
+        assert aiohttpretty.has_call(method='PUT', uri=url)  # check manifest was uploaded
+        for i in range(0, 10):  # check all 10 segments were uploaded
+            url = connected_provider.sign_url(path, 'PUT', segment_num=str(i).zfill(5))
+            assert aiohttpretty.has_call(method='PUT', uri=url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_chunked_upload_segment_size(self,
+                          connected_provider,
+                          file_stream_100_bytes,
+                          file_header_metadata):
+
+        path = WaterButlerPath('/similar.file')
+
+        connected_provider.chunked_upload = MockCoroutine()
+        connected_provider.SEGMENT_SIZE = 10  # for test, we dont want to load a 5GB fixture.
+        await connected_provider.upload(file_stream_100_bytes, path)
+
+        assert connected_provider.chunked_upload.called_with(file_stream_100_bytes, path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_create_folder(self, connected_provider, file_header_metadata):
         path = WaterButlerPath('/foo/', folder=True)
         metadata_url = connected_provider.build_url(path.path)
@@ -193,6 +244,14 @@ class TestCRUD:
 
         assert aiohttpretty.has_call(method='PUT', uri=url)
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_root_without_confirm(self, connected_provider, folder_root_empty, file_header_metadata):
+        path = WaterButlerPath('/')
+
+        with pytest.raises(exceptions.DeleteError):
+            await connected_provider.delete(path)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
