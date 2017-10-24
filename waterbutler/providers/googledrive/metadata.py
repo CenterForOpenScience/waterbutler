@@ -120,7 +120,7 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
         else:
             if not hasattr(ret, 'hashes'):
                 ret['hashes'] = {}
-            ret['hashes']['md5'] = self.raw['md5Checksum']
+            ret['hashes']['md5'] = self.raw.get('md5Checksum')  # no md5 for non-exportable file
 
         return ret
 
