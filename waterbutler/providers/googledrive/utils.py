@@ -4,6 +4,8 @@ DOCS_FORMATS = [
         'ext': '.gdoc',
         'download_ext': '.docx',
         'type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'alt_download_ext': '.pdf',
+        'alt_type': 'application/pdf',
     },
     {
         'mime_type': 'application/vnd.google-apps.drawing',
@@ -57,6 +59,22 @@ def get_extension(metadata):
 def get_download_extension(metadata):
     format = get_format(metadata)
     return format['download_ext']
+
+
+def get_alt_download_extension(metadata):
+    format = get_format(metadata)
+    try:
+        return format['alt_download_ext']
+    except:
+        return format['download_ext']
+
+
+def get_alt_export_link(metadata):
+    format = get_format(metadata)
+    try:
+        return metadata['exportLinks'][format['alt_type']]
+    except:
+        return metadata['exportLinks'][format['type']]
 
 
 def get_export_link(metadata):

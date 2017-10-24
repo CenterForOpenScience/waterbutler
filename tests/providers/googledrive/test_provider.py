@@ -588,6 +588,7 @@ class TestDownload:
         ds.DRIVE_IGNORE_VERSION)
 
     GDOC_EXPORT_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    GDOC_ALT_EXPORT_MIME_TYPE = 'application/pdf'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -612,6 +613,36 @@ class TestDownload:
 
         result = await provider.download(path)
         assert result.name == 'editable_gdoc.docx'
+
+        content = await result.read()
+        assert content == file_content
+        assert aiohttpretty.has_call(method='GET', uri=metadata_url)
+        assert aiohttpretty.has_call(method='GET', uri=revisions_url)
+        assert aiohttpretty.has_call(method='GET', uri=download_file_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_editable_gdoc_as_mfr(self, provider, sharing_fixtures):
+        metadata_body = sharing_fixtures['editable_gdoc']['metadata']
+        path = GoogleDrivePath(
+            '/sharing/editable_gdoc',
+            _ids=['1', '2', metadata_body['id']]
+        )
+
+        metadata_query = provider._build_query(path.identifier)
+        metadata_url = provider.build_url('files', path.identifier)
+        aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
+
+        revisions_body = sharing_fixtures['editable_gdoc']['revisions']
+        revisions_url = provider.build_url('files', metadata_body['id'], 'revisions')
+        aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_body)
+
+        file_content = b'we love you conrad'
+        download_file_url = metadata_body['exportLinks'][self.GDOC_ALT_EXPORT_MIME_TYPE]
+        aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
+
+        result = await provider.download(path, mfr='true')
+        assert result.name == 'editable_gdoc.pdf'
 
         content = await result.read()
         assert content == file_content
@@ -1576,6 +1607,19 @@ class TestIntraFunctions:
 
 
 class TestOperationsOrMisc:
+
+    def test_misc_utils(self):
+        metadata = {
+            'mimeType': 'application/vnd.google-apps.drawing',
+            'exportLinks': {
+                'image/jpeg': 'badurl.osf.899'
+            }
+        }
+        ext = drive_utils.get_alt_download_extension(metadata)
+        link = drive_utils.get_alt_export_link(metadata)
+
+        assert ext == '.jpg'
+        assert link == 'badurl.osf.899'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
