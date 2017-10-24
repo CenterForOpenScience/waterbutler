@@ -57,6 +57,8 @@ def backgroundify(func, executor):
 @backgroundify(_executor)
 def _evernote_notes(notebook_guid, token):
 
+    print('_evernote_notes:notebook_guid, token ->', notebook_guid, token)
+
     client = get_evernote_client(token)
 
     try:
@@ -78,12 +80,15 @@ def _evernote_notes(notebook_guid, token):
               'updateSequenceNum': note.updateSequenceNum}
               for note in notes]
 
+    print('_evernote_notes:results ->', results)
+
     return results
 
 
 @backgroundify(_executor)
 def _evernote_note(note_guid, token, withContent=False, withResourcesData=False):
 
+    print('_evernote_note:note_guid, token ->', note_guid, token)
     client = get_evernote_client(token)
 
     try:
@@ -108,6 +113,9 @@ def _evernote_note(note_guid, token, withContent=False, withResourcesData=False)
             'content': note.content,
             'content_hash': base64.b64encode(note.contentHash),
             'resources': resources}
+
+        print('_evernote_note:result ->', result)
+
         return result
 
 
@@ -140,6 +148,7 @@ class EvernoteProvider(provider.BaseProvider):
 
     def __init__(self, auth, credentials, evernote_settings):
 
+        print('EvernoteProvider.__init__: auth, credentials, evernote_settings', auth, credentials, evernote_settings)
         super().__init__(auth, credentials, evernote_settings)
 
     async def _package_metadata(self):
@@ -209,6 +218,7 @@ class EvernoteProvider(provider.BaseProvider):
 
     async def validate_v1_path(self, path, **kwargs):
 
+        print('EvernoteProvider.validate_v1_path:path -> ', path)
         wbpath = await self.validate_path(path, **kwargs)
 
         if wbpath.is_root:
