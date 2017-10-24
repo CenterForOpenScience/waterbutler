@@ -11,20 +11,20 @@ from waterbutler.providers.evernote.provider import (EvernoteProvider, _evernote
 from waterbutler.providers.evernote.metadata import EvernoteFileMetadata
 
 
-def test_import():
-  import sys
-  print (sys.path)
-  try:
-    # from waterbutler.providers.evernote.provider import EvernoteProvider
-    #from evernote.api.client import EvernoteClient
-    import evernote
-    print(dir(evernote))
-    print(evernote.__path__)
-    print('successful import')
-  except Exception as e:
-    print (e)
+# def test_import():
+#   import sys
+#   print (sys.path)
+#   try:
+#     # from waterbutler.providers.evernote.provider import EvernoteProvider
+#     #from evernote.api.client import EvernoteClient
+#     import evernote
+#     print(dir(evernote))
+#     print(evernote.__path__)
+#     print('successful import')
+#   except Exception as e:
+#     print (e)
 
-  assert True
+#   assert True
 
 
 @pytest.fixture
@@ -52,35 +52,35 @@ def settings():
 def provider(auth, credentials, settings):
     return EvernoteProvider(auth, credentials, settings)
 
-# content of test_module.py
-import os.path
-def getssh(): # pseudo application code
-    return os.path.join(os.path.expanduser("~admin"), '.ssh')
+# # content of test_module.py
+# import os.path
+# def getssh(): # pseudo application code
+#     return os.path.join(os.path.expanduser("~admin"), '.ssh')
 
-def test_mytest(monkeypatch):
-    def mockreturn(path):
-        return '/abc'
-    monkeypatch.setattr(os.path, 'expanduser', mockreturn)
-    x = getssh()
-    assert x == '/abc/.ssh'
+# def test_mytest(monkeypatch):
+#     def mockreturn(path):
+#         return '/abc'
+#     monkeypatch.setattr(os.path, 'expanduser', mockreturn)
+#     x = getssh()
+#     assert x == '/abc/.ssh'
 
 
-import math
+# import math
 
-def myfac(n):
-  if n == 3:
-    return 6
-  else:
-    raise Exception("I just don't know")
+# def myfac(n):
+#   if n == 3:
+#     return 6
+#   else:
+#     raise Exception("I just don't know")
 
-def test_factorial(monkeypatch):
-  monkeypatch.setattr(math, 'factorial', myfac)
+# def test_factorial(monkeypatch):
+#   monkeypatch.setattr(math, 'factorial', myfac)
 
-  k = math.factorial(3)
-  assert k == 6
+#   k = math.factorial(3)
+#   assert k == 6
 
-  with pytest.raises(Exception):
-    math.factorial(2)
+#   with pytest.raises(Exception):
+#     math.factorial(2)
 
 
 @backgroundify
@@ -101,10 +101,10 @@ def mock_evernote_notes(notebook_guid, token):
   'updateSequenceNum': 97381, 'guid': '71ce96e5-463b-4a72-9fc7-8cdcde7862d4', 'title': 'another note for OSF Notebook', 
   'length': 136, 'created': '2015-12-03T00:34:28'}]
 
-@pytest.mark.asyncio
-async def test_mock_evernote_functions():
-  k = await mock_evernote_note('71ce96e5-463b-4a72-9fc7-8cdcde7862d4', 'xxxxx')
-  assert k['title'] == 'another note for OSF Notebook'
+# @pytest.mark.asyncio
+# async def test_mock_evernote_functions():
+#   k = await mock_evernote_note('71ce96e5-463b-4a72-9fc7-8cdcde7862d4', 'xxxxx')
+#   assert k['title'] == 'another note for OSF Notebook'
 
 class TestValidatePath:
 
@@ -123,11 +123,58 @@ class TestValidatePath:
       with pytest.raises(exceptions.NotFoundError) as exc:
           await provider.validate_v1_path('/' + note_id + '/')
 
-      # assert exc.value.code == client.NOT_FOUND
+      assert exc.value.code == client.NOT_FOUND
 
       wb_path_v0 = await provider.validate_path('/' + note_id)
 
       assert wb_path_v1 == wb_path_v0
 
 
+    @pytest.mark.asyncio
+    async def test_validate_path_root(self, provider, monkeypatch):
+
+        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_notes', mock_evernote_notes)
+        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_note', mock_evernote_note)
+
+        path = await provider.validate_path('/')
+        assert path.is_dir
+        assert len(path.parts) == 1
+        assert path.name == ''
+
+    @pytest.mark.asyncio
+    async def test_validate_v1_path_root(self, provider, monkeypatch):
+
+        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_notes', mock_evernote_notes)
+        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_note', mock_evernote_note)
+
+        path = await provider.validate_v1_path('/')
+        assert path.is_dir
+        assert len(path.parts) == 1
+        assert path.name == ''
+
+    @pytest.mark.asyncio
+    async def test_validate_v1_path_bad_path(self, provider, monkeypatch):
+
+        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_notes', mock_evernote_notes)
+        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_note', mock_evernote_note)
+
+        with pytest.raises(exceptions.NotFoundError) as e:
+            await provider.validate_v1_path('/bulbasaur')
+
+        print(e.value.message, e.value.code)
+        assert e.value.message == 'Could not retrieve file or directory /bulbasaur'
+        assert e.value.code == 404
+
+    @pytest.mark.asyncio
+    async def test_validate_path_bad_path(self, provider, monkeypatch):
+
+        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_notes', mock_evernote_notes)
+        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_note', mock_evernote_note)
+
+        with pytest.raises(exceptions.NotFoundError) as e:
+            await provider.validate_path('/bulbasaur/charmander')
+
+        print(e.value.message, e.value.code)
+        assert e.value.message == 'Could not retrieve file or directory /bulbasaur/charmander'
+        assert e.value.code == 404
 
