@@ -44,6 +44,7 @@ class TestMetadata:
         assert parsed.materialized_path == str(path)
         assert parsed.is_google_doc is False
         assert parsed.export_name == item['title']
+        assert parsed.alt_export_name == 'PART_1420130849837.pdf'
 
     def test_file_metadata_drive_slashes(self, basepath, root_provider_fixtures):
         item = root_provider_fixtures['file_forward_slash']
@@ -66,6 +67,7 @@ class TestMetadata:
         assert parsed.materialized_path == str(path)
         assert parsed.is_google_doc is False
         assert parsed.export_name == item['title']
+        assert parsed.alt_export_name == 'PART_1420130849837.pdf'
 
     def test_file_metadata_docs(self, basepath, root_provider_fixtures):
         item = root_provider_fixtures['docs_file_metadata']
@@ -80,6 +82,7 @@ class TestMetadata:
         }
         assert parsed.is_google_doc is True
         assert parsed.export_name == item['title'] + '.docx'
+        assert parsed.alt_export_name == 'version-test.pdf'
 
     def test_folder_metadata(self, root_provider_fixtures):
         item = root_provider_fixtures['folder_metadata']
