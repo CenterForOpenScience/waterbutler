@@ -106,14 +106,18 @@ def mock_evernote_notes(notebook_guid, token):
 #   k = await mock_evernote_note('71ce96e5-463b-4a72-9fc7-8cdcde7862d4', 'xxxxx')
 #   assert k['title'] == 'another note for OSF Notebook'
 
+@pytest.fixture
+def mock_evernote(monkeypatch):
+  monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_notes', mock_evernote_notes)
+  monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_note', mock_evernote_note)
+
+
 class TestValidatePath:
 
     @pytest.mark.asyncio
-    async def test_validate_v1_path_file(self, provider, monkeypatch):
+    async def test_validate_v1_path_file(self, provider, mock_evernote):
 
       note_id = '71ce96e5-463b-4a72-9fc7-8cdcde7862d4'
-      monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_notes', mock_evernote_notes)
-      monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_note', mock_evernote_note)
 
       try:
           wb_path_v1 = await provider.validate_v1_path('/' + note_id)
@@ -131,10 +135,7 @@ class TestValidatePath:
 
 
     @pytest.mark.asyncio
-    async def test_validate_path_root(self, provider, monkeypatch):
-
-        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_notes', mock_evernote_notes)
-        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_note', mock_evernote_note)
+    async def test_validate_path_root(self, provider, mock_evernote):
 
         path = await provider.validate_path('/')
         assert path.is_dir
@@ -142,10 +143,7 @@ class TestValidatePath:
         assert path.name == ''
 
     @pytest.mark.asyncio
-    async def test_validate_v1_path_root(self, provider, monkeypatch):
-
-        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_notes', mock_evernote_notes)
-        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_note', mock_evernote_note)
+    async def test_validate_v1_path_root(self, provider, mock_evernote):
 
         path = await provider.validate_v1_path('/')
         assert path.is_dir
@@ -153,10 +151,7 @@ class TestValidatePath:
         assert path.name == ''
 
     @pytest.mark.asyncio
-    async def test_validate_v1_path_bad_path(self, provider, monkeypatch):
-
-        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_notes', mock_evernote_notes)
-        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_note', mock_evernote_note)
+    async def test_validate_v1_path_bad_path(self, provider, mock_evernote):
 
         with pytest.raises(exceptions.NotFoundError) as e:
             await provider.validate_v1_path('/bulbasaur')
@@ -166,10 +161,7 @@ class TestValidatePath:
         assert e.value.code == 404
 
     @pytest.mark.asyncio
-    async def test_validate_path_bad_path(self, provider, monkeypatch):
-
-        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_notes', mock_evernote_notes)
-        monkeypatch.setattr(waterbutler.providers.evernote.provider, '_evernote_note', mock_evernote_note)
+    async def test_validate_path_bad_path(self, provider, mock_evernote):
 
         with pytest.raises(exceptions.NotFoundError) as e:
             await provider.validate_path('/bulbasaur/charmander')
