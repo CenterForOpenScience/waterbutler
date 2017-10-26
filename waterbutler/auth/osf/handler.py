@@ -17,16 +17,9 @@ class OsfAuthHandler(auth.BaseAuthHandler):
     """Identity lookup via the Open Science Framework"""
     ACTION_MAP = {
         'put': 'upload',
-        'post': 'copyfrom',
         'get': 'download',
         'head': 'metadata',
         'delete': 'delete',
-    }
-
-    POST_ACTION_MAP = {
-        'copy': 'copyfrom',
-        'rename': 'upload',
-        'move': 'upload'
     }
 
     def build_payload(self, bundle, view_only=None, cookie=None):
@@ -97,17 +90,26 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         payload['auth']['callback_url'] = payload['callback_url']
         return payload
 
-    async def get(self, resource, provider, request, body_action=None):
+    async def get(self, resource, provider, request, action=None, is_source=True):
         """Used for v1"""
+        method = request.method.lower()
 
-        try:
-            if body_action:
-                action = self.POST_ACTION_MAP[body_action.lower()]
-            else:
-                action = self.ACTION_MAP[request.method.lower()]
-        except KeyError:
-            raise exceptions.UnsupportedHTTPMethodError(request.method.lower(),
-                                                        supported=self.ACTION_MAP.keys())
+        if method == 'post' and action:
+            post_action_map = {
+                'copy': 'download' if is_source else 'upload',
+                'rename': 'upload',
+                'move': 'upload',
+            }
+
+            try:
+                osf_action = post_action_map[action.lower()]
+            except KeyError:
+                raise exceptions.UnsupportedActionError(method, supported=post_action_map.keys())
+        else:
+            try:
+                osf_action = self.ACTION_MAP[method]
+            except KeyError:
+                raise exceptions.UnsupportedHTTPMethodError(method, supported=self.ACTION_MAP.keys())
 
         headers = {'Content-Type': 'application/json'}
 
@@ -127,7 +129,7 @@ class OsfAuthHandler(auth.BaseAuthHandler):
             self.build_payload({
                 'nid': resource,
                 'provider': provider,
-                'action': action
+                'action': osf_action
             }, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)

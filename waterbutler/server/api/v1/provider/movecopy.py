@@ -58,23 +58,22 @@ class MoveCopyMixin:
             raise exceptions.InvalidParameters('Action must be copy, move or rename, '
                                                'not {}'.format(self.json.get('action', 'null')))
 
-        if self.json['action'] == 'rename':
+        # Setup of the provider was delayed so the json action could be retrieved from the request body.
+        provider = self.path_kwargs['provider']
+        action = self.json['action']
+
+        self.auth = await auth_handler.get(self.resource, provider, self.request, action=action)
+        self.provider = make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
+        self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
+
+        if action == 'rename':
             if not self.json.get('rename'):
                 raise exceptions.InvalidParameters('Rename is required for renaming')
-            action = 'move'
-            self.dest_resource = self.resource
 
-            # We need to recheck permissions on the source resource with
-            # 'body_action' since auth for 'post' to a public resource will
-            # allow anything through
-            self.dest_auth = await auth_handler.get(
-                self.dest_resource,
-                self.json.get('provider', self.provider.NAME),
-                self.request,
-                body_action=action
-            )
+            self.dest_auth = self.auth
             self.dest_provider = self.provider
             self.dest_path = self.path.parent
+            self.dest_resource = self.resource
         else:
             if 'path' not in self.json:
                 raise exceptions.InvalidParameters('Path is required for moves or copies')
@@ -83,37 +82,23 @@ class MoveCopyMixin:
                 raise exceptions.InvalidParameters('Path requires a trailing slash to indicate '
                                                    'it is a folder')
 
-            action = self.json['action']
+            # TODO optimize for same provider and resource
 
             # Note: attached to self so that _send_hook has access to these
             self.dest_resource = self.json.get('resource', self.resource)
-
-            # TODO optimize for same provider and resource
-
-            # We need to recheck Auth instead of trusting the `prepare` auth value
-            # this is because the permissions on post has changed to 'copyfrom'
-            # `body_action` will determine permissions
-            await auth_handler.get(
-                self.resource,
-                self.path_kwargs['provider'],
-                self.request,
-                body_action=action
-            )
-
             self.dest_auth = await auth_handler.get(
                 self.dest_resource,
                 self.json.get('provider', self.provider.NAME),
                 self.request,
-                body_action=action
+                action=action,
+                is_source=False,
             )
-
             self.dest_provider = make_provider(
                 self.json.get('provider', self.provider.NAME),
                 self.dest_auth['auth'],
                 self.dest_auth['credentials'],
                 self.dest_auth['settings']
             )
-
             self.dest_path = await self.dest_provider.validate_path(**self.json)
 
         if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
