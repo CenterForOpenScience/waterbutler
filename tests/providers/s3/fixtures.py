@@ -102,7 +102,7 @@ def file_header_metadata():
 
 @pytest.fixture
 def file_metadata_headers_object(file_header_metadata):
-    return S3FileMetadataHeaders('/test-path', file_header_metadata)
+    return S3FileMetadataHeaders('test-path', file_header_metadata)
 
 
 @pytest.fixture

@@ -158,4 +158,207 @@ To delete a file or folder send a DELETE request to the delete link. Nothing wil
 Magic Query Parameters
 ----------------------
 
-* ``direct``: issuing a download request with a query parameter named ``direct`` indicates that WB should handle the download, even if a redirect would be possible (e.g. osfstorage and s3).  In this case, WB will act as a middleman, downloading the data from the provider and passing through to the requestor.
+Provider Handler Params
++++++++++++++++++++++++
+
+These query parameters apply to all providers. These are used, along with the request method, to specify what operation to perform, whether to upload, download, move, rename .etc.
+
+
+meta
+****
+
+Indicates that WaterButler should return metadata about the file instead of downloading the contents.  Not necessary for folders, which return metadata by default.
+
+* **Type**: flag
+* **Expected on**: ``GET`` requests for files
+* **Interactions**:
+
+  * ``revisions`` / ``versions``: ``meta`` takes precedence.  File metadata is returned, the revision list is not.
+  * ``revision`` / ``version``: These are honored and passed to the the metadata method.  Metadata for the file at the specified revision is returned.
+
+* **Notes**:
+
+  * The ``meta`` query parameter is not required to fetch folder metadata; a bare ``GET`` folder request suffices. To download a folder, the ``zip`` query parameter should be provided.
+
+
+zip
+***
+
+Tells WaterButler to download a folder's contents as a .zip file.
+
+* **Type**: flag
+* **Expected on**: ``GET`` requests against folder paths
+* **Interactions**:
+
+  * Take precendence over all other query parameters, which will be ignored.
+
+* **Notes**:
+
+  * A ``GET`` request against a folder with no query parameters will return metadata, but the same request on a file will download it.
+
+
+kind
+****
+
+Indicates whether a ``PUT`` request should create a file or a folder.
+
+* **Type**: string, either "``file``" or "``folder``", defaulting to "``file``"
+* **Expected on**: ``PUT`` requests
+* **Interactions**: None
+* **Notes**:
+
+  * Issuing a ``PUT`` request against a file with ``?kind=folder`` will always fail, throwing a ``400 Bad Request``.
+
+
+name
+****
+
+Indicates the name of the file or folder to be created.
+
+* **Type**: string
+* **Expected on**: ``PUT`` requests for folders
+* **Interactions**: None
+* **Notes**:
+
+  * The ``name`` parameter is only valid when creating a new file or folder.  Including it in a ``PUT`` request against a file will result in a ``400 Bad Request``.  Renaming files is done with ``POST`` requests.
+
+
+revisions / versions
+********************
+
+Indicates the user wants a list of metadata for all available file revisions.
+
+* **Type**: flag
+* **Expected on**: ``GET`` for file paths
+* **Interactions**:
+
+  * Both parameters are overridden by the ``meta`` parameter.  Neither should be used with other parameters.
+  * ``revisions`` and ``versions`` are currently used interchangeably, with ``versions`` taking precedence if both are provided.
+
+* **Notes**:
+
+  * The pluralization is vital, ``version`` and ``revision`` are used for identifying particular versions.
+
+
+revision / version
+******************
+
+This is the id of the version or revision of the file or folder which Waterbuter is to return.
+
+* **Type**: int
+* **Expected on**: ``GET`` or ``HEAD`` requests for files or folders
+* **Interactions**:
+
+  * is used as a parameter of the metadata provider function.
+
+* **Notes**:
+
+  * If both are provided, ``version`` takes precendence over ``revision``.
+  * ``revision`` and ``version`` can be used interchangeably. Comments within the code indicate ``version`` is preferred, but no reason is supplied.
+  * Note the lack of pluralization.
+
+
+direct
+******
+
+Issuing a download request with a query parameter named ``direct`` indicates that WB should handle the download, even if a direct download via redirect would be possible (e.g. osfstorage and s3). In this case, WB will act as a middleman, downloading the data from the provider and passing it through to the requestor.
+
+* **Type**: flag
+* **Expected on**: ``GET`` file paths
+* **Interactions**: None
+* **Notes**:
+
+  * Only supported by/relevant to OwnCloud, osfstorage (Cloudfiles), and S3.`
+
+
+displayName
+***********
+
+When downloading a file, sets the name to download it as.  Replaces the original file name in the Content-Disposition header.
+
+* **Type**: string
+* **Expected on**: ``GET`` download requests for files
+* **Interactions**: None
+* **Notes**:
+
+  * Currently only supported by S3.
+
+
+mode
+****
+
+Indicates if a file is being downloaded to be rendered. Outside OSF's MFR this isn't useful.
+
+* **Type**: string
+* **Expected on**: ``GET`` requests for files
+* **Interactions**: None
+* **Notes**:
+
+  * ``mode`` is only used by the osfstorage provider for MFR.
+
+
+confirm_delete
+**************
+
+WaterButler does not permit users to delete the root folder of a provider, as this would break the connection between the resource and the storage provider.  This request has been repurposed to recursively delete the entire contents of the root, leaving the root behind.  For safety, this request requires an additional query parameter ``confirm_delete`` to be present and set to ``1``.
+
+* **Type**: bool
+* **Expected on**: ``DELETE`` requests against a root folder
+* **Interactions**: None
+* **Notes**:
+
+  * Currently supported by: Figshare, Dropbox, Box, Github, S3, Google Drive, and osfstorage
+
+
+Auth Handler Params
++++++++++++++++++++
+
+These query parameters are relayed to the auth handler to support authentication and authorization of the request.
+
+
+cookie
+******
+
+Allows WaterButler to authenticate as a user using a cookie issued by the auth handler.
+
+* **Type**: string
+* **Expected on**: All calls
+* **Notes**: This is a legacy method of authentication and will be discontinued in the future.
+
+
+view_only
+*********
+
+OSF-specific parameter used to identify special "view-only" links that are used to give temporary read access toa protected resource.
+
+* **Type**: string
+* **Expected on**: ``GET`` requests for files or folders
+* **Notes**: Only used internally for the Open Science Framework.
+
+
+GitHub Provider Params
+++++++++++++++++++++++
+
+Query parameters specific to the GitHub provider.
+
+
+*commit / branch identification*
+********************************
+
+Not a single parameter, but rather a class of parameters.  WaterButler has used many different parameters to identify the branch or commit a particular file should be found under.  These parameters can be either a commit SHA or a branch name.  These parameters are ``ref``, ``version``, ``branch``, ``sha``, ``revision``.  All will continue to be supported to maintain back-compatibility, but ``ref`` (for SHAs or branch names) and ``branch`` (branch names only) are preferred.
+
+If both a SHA and a branch name are provided in different parameters, the SHA will be take precedence.  If multiple parameters are given with different SHAs, then the order of precedence will be: ``ref``, ``version``, ``sha``, ``revision``, ``branch``.  If multiple parameters are given with different branches, the order of precedence is: ``branch``, ``ref``, ``version``, ``sha``, ``revision``.
+
+* **Type**: str
+* **Expected on**: Any GitHub provider request
+* **Interactions**: None
+
+
+fileSha
+*******
+
+Identifies a specific revision of a file via its SHA.
+
+* **Type**: str
+* **Expected on**: Any GitHub provider request
+* **Interactions**: The ``fileSha`` is always assumed to be a file revision that is an ancestor of the imputed   commit or branch ref.  Providing a ``fileSha`` for a file version that was committed after the imputed ref will result in a 404.
