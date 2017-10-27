@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.34.1 (2017-10-18)
+===================
+- Fix: Don't crash when a file on Google Drive is missing an md5 in its metadata.  This occurs
+for non-exportable files like Google Maps, Google Forms, etc.
+
 0.34.0 (2017-09-29)
 ===================
 - ANNOUNCEMENT!  Sadly, the WaterButler v0 API is now *undeprecated*.  We've discovered that the
