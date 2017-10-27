@@ -8,7 +8,8 @@ from tests.server.api.v1.utils import ServerTestCase
 
 from waterbutler.auth.osf import settings
 from waterbutler.auth.osf.handler import OsfAuthHandler
-from waterbutler.core.exceptions import UnsupportedHTTPMethodError
+from waterbutler.core.exceptions import (UnsupportedHTTPMethodError,
+                                            UnsupportedActionError)
 
 
 class TestOsfAuthHandler(ServerTestCase):
@@ -35,6 +36,7 @@ class TestOsfAuthHandler(ServerTestCase):
 
         supported_methods = ['put', 'get', 'head', 'delete']
         post_actions = ['copy', 'rename', 'move']
+        unsupported_actions = ['ma1f0rmed', 'put', 'get', 'head', 'delete']
         unsupported_methods = ['post', 'trace', 'connect', 'patch', 'ma1f0rmed']
         resource = 'test'
         provider = 'test'
@@ -54,6 +56,11 @@ class TestOsfAuthHandler(ServerTestCase):
             self.request.method = method
             with pytest.raises(UnsupportedHTTPMethodError):
                 await self.handler.get(resource, provider, self.request)
+
+        for action in unsupported_actions:
+            self.request.method = 'post'
+            with pytest.raises(UnsupportedActionError):
+                await self.handler.get(resource, provider, self.request, action=action)
 
     @tornado.testing.gen_test
     async def test_permissions_post_copy_source_destination(self):
