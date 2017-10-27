@@ -181,6 +181,39 @@
         "git_refs_url":"https://api.github.com/repos/octocat/Hello-World/git/refs{/sha}",
         "events_url":"https://api.github.com/repos/octocat/Hello-World/events"
     },
+    "commit_metadata": {
+        "sha" : "43798985fdb727843a49946b391409086a7021f2",
+        "url" : "https://api.github.com/repos/felliott/wb-testing/git/commits/43798985fdb727843a49946b391409086a7021f2",
+        "tree" : {
+            "sha" : "394164986adbe26c0c7605c6fe627e4fe3b13aa6",
+            "url" : "https://api.github.com/repos/felliott/wb-testing/git/trees/394164986adbe26c0c7605c6fe627e4fe3b13aa6"
+        },
+        "parents" : [
+            {
+                "url" : "https://api.github.com/repos/felliott/wb-testing/git/commits/189ee803576e85487afe4f6fa590e4ff9a791c6b",
+                "sha" : "189ee803576e85487afe4f6fa590e4ff9a791c6b",
+                "html_url" : "https://github.com/felliott/wb-testing/commit/189ee803576e85487afe4f6fa590e4ff9a791c6b"
+            }
+        ],
+        "committer" : {
+            "email" : "3rzwk@osf.io",
+            "name" : "Fitzfork",
+            "date" : "2017-03-14T19:18:51Z"
+        },
+        "author" : {
+            "date" : "2017-03-14T19:18:51Z",
+            "email" : "felliott@fiskur.org",
+            "name" : "Fitz Elliott"
+        },
+        "message" : "File updated on behalf of WaterButler",
+        "html_url" : "https://github.com/felliott/wb-testing/commit/43798985fdb727843a49946b391409086a7021f2",
+        "verification" : {
+            "payload" : null,
+            "verified" : false,
+            "signature" : null,
+            "reason" : "unsigned"
+        }
+    },
     "branch_metadata":{  
         "commit":{  
             "html_url":"https://github.com/octocat/Hello-World/commit/7fd1a60b01f91b314f59955a4e4d4e80d8edf11d",
