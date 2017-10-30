@@ -1,4 +1,5 @@
 import json
+import base64
 import typing
 import aiohttp
 import hashlib
@@ -24,6 +25,7 @@ class BoxProvider(provider.BaseProvider):
 
     NAME = 'box'
     BASE_URL = settings.BASE_URL
+    NONCHUNKED_UPLOAD_LIMIT = 50000000  # 50 MB
 
     def __init__(self, auth, credentials, settings):
         """
@@ -286,6 +288,14 @@ class BoxProvider(provider.BaseProvider):
                      path: wb_path.WaterButlerPath,
                      conflict: str='replace',
                      **kwargs) -> typing.Tuple[BoxFileMetadata, bool]:
+
+        if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
+            data = await stream.read()
+            data_sha = base64.standard_b64encode(hashlib.sha1(data).digest()).decode()
+            session_data = await self._create_upload_session(path, data)
+            parts = await self._upload_parts(data, session_data)
+            return await self._commit_upload(path, session_data, parts, data_sha)
+
         if path.identifier and conflict == 'keep':
             path, _ = await self.handle_name_conflict(path, conflict=conflict, kind='folder')
             path._parts[-1]._id = None
@@ -320,6 +330,76 @@ class BoxProvider(provider.BaseProvider):
         created = path.identifier is None
         path._parts[-1]._id = entry['id']
         return BoxFileMetadata(entry, path), created
+
+    async def _create_upload_session(self,
+                                     path: wb_path.WaterButlerPath,
+                                     data: bytes) -> dict:
+
+        async with self.request(
+            'POST',
+            self._build_upload_url('files', 'upload_sessions'),
+            data=json.dumps({
+                'folder_id': self.folder,
+                'file_size': len(bytearray(data)),
+                'file_name': path.name
+            }),
+            headers={'Content-Type': 'application/json'},
+            expects=(201,),
+            throws=exceptions.UploadError,
+        ) as resp:
+            return (await resp.json())
+
+    async def _upload_parts(self,
+                            data: bytes,
+                            session_data: dict):
+
+        parts = {'parts': []}
+        upload_size = len(bytearray(data))
+
+        for start_bytes in range(0, upload_size, session_data['part_size']):
+            chunk = data[start_bytes: start_bytes + session_data['part_size']]
+            chunk_size = len(bytearray(chunk))  # Final chunk size != session_data['part_size']
+            chunk_sha = base64.standard_b64encode(hashlib.sha1(chunk).digest()).decode()
+
+            byte_range = self._build_range_header((start_bytes, start_bytes + chunk_size - 1))
+            byte_range = str(byte_range).replace('=', ' ') + '/{}'.format(upload_size)
+
+            async with self.request(
+                'PUT',
+                self._build_upload_url('files', 'upload_sessions', session_data['id']),
+                data=chunk,
+                headers={
+                    'Content-Range': byte_range,
+                    'Content-Type:': 'application/octet-stream',
+                    'Digest': 'sha={}'.format(chunk_sha)
+                },
+                expects=(201, 200),
+                throws=exceptions.UploadError,
+            ) as resp:
+                parts['parts'].append((await resp.json())['part'])
+
+        return parts
+
+    async def _commit_upload(self,
+                             path: wb_path.WaterButlerPath,
+                             session_data: dict,
+                             parts: dict,
+                             data_sha: str) -> typing.Tuple[BoxFileMetadata, bool]:
+
+        async with self.request(
+            'POST',
+            self._build_upload_url('files', 'upload_sessions', session_data['id'], 'commit'),
+            data=json.dumps(parts),
+            headers={'Content-Type:': 'application/json',
+                     'Digest': 'sha={}'.format(data_sha)
+                     },
+            expects=(201,),
+            throws=exceptions.UploadError,
+        ) as resp:
+            data = await resp.json()
+
+        created = path.identifier is None
+        return BoxFileMetadata(data['entries'][0], path), created
 
     async def delete(self,  # type: ignore
                      path: wb_path.WaterButlerPath,
