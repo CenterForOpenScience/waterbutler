@@ -1,23 +1,22 @@
-import pytest
-
-from unittest import mock
-
 import io
+import os
 import json
 import time
 import hashlib
+import functools
+from unittest import mock
 
 import furl
+import pytest
 import aiohttp
-import aiohttp.multidict
 import aiohttpretty
+import aiohttp.multidict
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-
-from waterbutler.providers.cloudfiles import settings
 from waterbutler.providers.cloudfiles import CloudFilesProvider
+from waterbutler.providers.cloudfiles import settings as cloud_settings
 
 
 @pytest.fixture
@@ -57,10 +56,10 @@ def auth_json():
                     "type": "object-store",
                     "endpoints": [
                         {
-                            "publicURL": "https://storage101.iad3.clouddrive.com/v1/MossoCloudFS_926294",
-                            "internalURL": "https://snet-storage101.iad3.clouddrive.com/v1/MossoCloudFS_926294",
+                            "publicURL": "https://fakestorage",
+                            "internalURL": "https://internal_fake_storage",
                             "region": "IAD",
-                            "tenantId": "MossoCloudFS_926294"
+                            "tenantId": "someid_123456"
                         },
                     ]
                 }
@@ -70,8 +69,8 @@ def auth_json():
                     "APIKEY"
                 ],
                 "tenant": {
-                    "name": "926294",
-                    "id": "926294"
+                    "name": "12345",
+                    "id": "12345"
                 },
                 "id": "2322f6b2322f4dbfa69802baf50b0832",
                 "expires": "2014-12-17T09:12:26.069Z"
@@ -88,13 +87,13 @@ def auth_json():
                         "name": "compute:default",
                         "description": "A Role that allows a user access to keystone Service methods",
                         "id": "6",
-                        "tenantId": "926294"
+                        "tenantId": "12345"
                     },
                     {
                         "name": "object-store:default",
                         "description": "A Role that allows a user access to keystone Service methods",
                         "id": "5",
-                        "tenantId": "MossoCloudFS_926294"
+                        "tenantId": "some_id_12345"
                     },
                     {
                         "name": "identity:default",
@@ -387,7 +386,8 @@ class TestCRUD:
                 {'headers': file_metadata},
             ]
         )
-        aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"{}"'.format(content_md5)})
+        aiohttpretty.register_uri('PUT', url, status=200,
+                                  headers={'ETag': '"{}"'.format(content_md5)})
         metadata, created = await connected_provider.upload(file_stream, path)
 
         assert created is True
@@ -397,13 +397,102 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete(self, connected_provider):
+    async def test_upload_check_none(self, connected_provider,
+                                    file_content, file_stream, file_metadata):
+        path = WaterButlerPath('/foo.bar')
+        content_md5 = hashlib.md5(file_content).hexdigest()
+        metadata_url = connected_provider.build_url(path.path)
+        url = connected_provider.sign_url(path, 'PUT')
+        aiohttpretty.register_uri(
+            'HEAD',
+            metadata_url,
+            responses=[
+                {'status': 404},
+                {'headers': file_metadata},
+            ]
+        )
+        aiohttpretty.register_uri('PUT', url, status=200,
+                                  headers={'ETag': '"{}"'.format(content_md5)})
+        metadata, created = await connected_provider.upload(
+            file_stream, path, check_created=False, fetch_metadata=False)
+
+        assert created is None
+        assert metadata is None
+        assert aiohttpretty.has_call(method='PUT', uri=url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_checksum_mismatch(self, connected_provider, file_stream, file_metadata):
+        path = WaterButlerPath('/foo.bar')
+        metadata_url = connected_provider.build_url(path.path)
+        url = connected_provider.sign_url(path, 'PUT')
+        aiohttpretty.register_uri(
+            'HEAD',
+            metadata_url,
+            responses=[
+                {'status': 404},
+                {'headers': file_metadata},
+            ]
+        )
+        aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"Bogus MD5"'})
+
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
+            await connected_provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='PUT', uri=url)
+        assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
+
+    # @pytest.mark.asyncio
+    # @pytest.mark.aiohttpretty
+    # async def test_delete_folder(self, connected_provider, folder_root_empty, file_metadata):
+    #     # This test will probably fail on a live
+    #     # version of the provider because build_url is called wrong.
+    #     # Will comment out parts of this test till that is fixed.
+    #     path = WaterButlerPath('/delete/')
+    #     query = {'prefix': path.path}
+    #     url = connected_provider.build_url('', **query)
+    #     body = json.dumps(folder_root_empty).encode('utf-8')
+
+    #     delete_query = {'bulk-delete': ''}
+    #     delete_url = connected_provider.build_url('', **delete_query)
+
+    #     file_url = connected_provider.build_url(path.path)
+
+    #     aiohttpretty.register_uri('GET', url, body=body)
+    #     aiohttpretty.register_uri('HEAD', file_url, headers=file_metadata)
+
+    #     aiohttpretty.register_uri('DELETE', delete_url)
+
+    #     await connected_provider.delete(path)
+
+    #     assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_file(self, connected_provider):
         path = WaterButlerPath('/delete.file')
         url = connected_provider.build_url(path.path)
         aiohttpretty.register_uri('DELETE', url, status=204)
         await connected_provider.delete(path)
 
         assert aiohttpretty.has_call(method='DELETE', uri=url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_copy(self, connected_provider, file_metadata):
+        src_path = WaterButlerPath('/delete.file')
+        dest_path = WaterButlerPath('/folder1/delete.file')
+
+        dest_url = connected_provider.build_url(dest_path.path)
+
+        aiohttpretty.register_uri('HEAD', dest_url, headers=file_metadata)
+        aiohttpretty.register_uri('PUT', dest_url, status=201)
+
+        result = await connected_provider.intra_copy(connected_provider, src_path, dest_path)
+
+        assert result[0].path == '/folder1/delete.file'
+        assert result[0].name == 'delete.file'
+        assert result[0].etag == 'edfa12d00b779b4b37b81fe5b61b2b3f'
 
 
 class TestMetadata:
@@ -459,7 +548,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_folder_root_level1_level2(self, connected_provider, folder_root_level1_level2):
+    async def test_metadata_folder_root_level1_level2(self, connected_provider,
+                                                      folder_root_level1_level2):
         path = WaterButlerPath('/level1/level2/')
         body = json.dumps(folder_root_level1_level2).encode('utf-8')
         url = connected_provider.build_url('', prefix=path.path, delimiter='/')
@@ -473,20 +563,24 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file_root_level1_level2_file2_txt(self, connected_provider, file_root_level1_level2_file2_txt):
+    async def test_metadata_file_root_level1_level2_file2_txt(self, connected_provider,
+                                                              file_root_level1_level2_file2_txt):
         path = WaterButlerPath('/level1/level2/file2.txt')
         url = connected_provider.build_url(path.path)
-        aiohttpretty.register_uri('HEAD', url, status=200, headers=file_root_level1_level2_file2_txt)
+        aiohttpretty.register_uri('HEAD', url, status=200,
+                        headers=file_root_level1_level2_file2_txt)
         result = await connected_provider.metadata(path)
 
         assert result.name == 'file2.txt'
         assert result.path == '/level1/level2/file2.txt'
         assert result.kind == 'file'
         assert result.content_type == 'text/plain'
+        assert result.extra == {'hashes': {'md5': '44325d4f13b09f3769ede09d7c20a82c'}}
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_folder_root_level1_empty(self, connected_provider, folder_root_level1_empty):
+    async def test_metadata_folder_root_level1_empty(self, connected_provider,
+                                                        folder_root_level1_empty):
         path = WaterButlerPath('/level1_empty/')
         folder_url = connected_provider.build_url('', prefix=path.path, delimiter='/')
         folder_body = json.dumps([]).encode('utf-8')
@@ -508,10 +602,12 @@ class TestMetadata:
         assert result.name == 'similar'
         assert result.path == '/similar'
         assert result.kind == 'file'
+        assert result.extra == {'hashes': {'md5': 'edfa12d00b779b4b37b81fe5b61b2b3f'}}
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file_root_similar_name(self, connected_provider, file_root_similar_name):
+    async def test_metadata_file_root_similar_name(self, connected_provider,
+                                                   file_root_similar_name):
         path = WaterButlerPath('/similar.file')
         url = connected_provider.build_url(path.path)
         aiohttpretty.register_uri('HEAD', url, status=200, headers=file_root_similar_name)
@@ -520,6 +616,7 @@ class TestMetadata:
         assert result.name == 'similar.file'
         assert result.path == '/similar.file'
         assert result.kind == 'file'
+        assert result.extra == {'hashes': {'md5': 'edfa12d00b779b4b37b81fe5b61b2b3f'}}
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -542,11 +639,83 @@ class TestMetadata:
         with pytest.raises(exceptions.MetadataError):
             await connected_provider.metadata(path)
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata_file_bad_content_type(self, connected_provider, file_metadata):
+        item = file_metadata
+        item['Content-Type'] = 'application/directory'
+        path = WaterButlerPath('/does_not.exist')
+        url = connected_provider.build_url(path.path)
+        aiohttpretty.register_uri('HEAD', url, headers=item)
+        with pytest.raises(exceptions.MetadataError):
+            await connected_provider.metadata(path)
+
+
+class TestV1ValidatePath:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_v1_validate_path(self, connected_provider):
+        path = '/ab4x3'
+        result = await connected_provider.validate_v1_path(path)
+
+        assert result.path == path.strip('/')
+
 
 class TestOperations:
 
-    async def test_can_intra_copy(self, connected_provider):
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_ensure_connection(self, provider, auth_json, mock_temp_key):
+        token_url = cloud_settings.AUTH_URL
+
+        aiohttpretty.register_json_uri('POST', token_url, body=auth_json)
+
+        await provider._ensure_connection()
+        assert aiohttpretty.has_call(method='POST', uri=token_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_ensure_connection_not_public(self, provider, auth_json, temp_url_key):
+
+        token_url = cloud_settings.AUTH_URL
+        provider.use_public = False
+        internal_endpoint = "https://internal_fake_storage"
+
+        aiohttpretty.register_json_uri('POST', token_url, body=auth_json)
+        aiohttpretty.register_uri(
+            'HEAD',
+            internal_endpoint,
+            status=204,
+            headers={'X-Account-Meta-Temp-URL-Key': temp_url_key},
+        )
+        await provider._ensure_connection()
+        assert aiohttpretty.has_call(method='POST', uri=token_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_ensure_connection_bad_url(self, provider, auth_json, endpoint):
+        token_url = cloud_settings.AUTH_URL
+
+        aiohttpretty.register_json_uri('POST', token_url, body=auth_json)
+        aiohttpretty.register_uri(
+            'HEAD',
+            endpoint,
+            status=204,
+            headers={'bad': 'yes'}
+        )
+        with pytest.raises(exceptions.ProviderError) as e:
+            await provider._ensure_connection()
+
+        assert e.value.code == 503
+        assert aiohttpretty.has_call(method='POST', uri=token_url)
+        assert aiohttpretty.has_call(method='HEAD', uri=endpoint)
+
+    def test_can_duplicate_names(self, connected_provider):
+        assert connected_provider.can_duplicate_names() is False
+
+    def test_can_intra_copy(self, connected_provider):
         assert connected_provider.can_intra_copy(connected_provider)
 
-    async def test_can_intra_move(self, connected_provider):
+    def test_can_intra_move(self, connected_provider):
         assert connected_provider.can_intra_move(connected_provider)

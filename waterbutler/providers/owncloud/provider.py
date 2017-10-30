@@ -41,6 +41,9 @@ class OwnCloudProvider(provider.BaseProvider):
         super().__init__(auth, credentials, settings)
 
         self.folder = settings['folder']
+        if not self.folder.endswith('/'):
+            self.folder += '/'
+
         self.verify_ssl = settings['verify_ssl']
         self.url = credentials['host']
         self._auth = aiohttp.BasicAuth(credentials['username'], credentials['password'])
@@ -247,7 +250,7 @@ class OwnCloudProvider(provider.BaseProvider):
         """
         resp = await self.make_request(
             'MKCOL',
-            self._webdav_url_ + self.folder + path.path,
+            self._webdav_url_ + path.full_path,
             expects=(201, 405),
             throws=exceptions.CreateFolderError,
             auth=self._auth,
@@ -255,7 +258,7 @@ class OwnCloudProvider(provider.BaseProvider):
         )
         await resp.release()
         if resp.status == 405:
-            raise exceptions.FolderNamingConflict(path)
+            raise exceptions.FolderNamingConflict(path.name)
         # get the folder metadata
         meta = await self.metadata(path.parent)
         return [m for m in meta if m.path == path.materialized_path][0]
@@ -290,7 +293,7 @@ class OwnCloudProvider(provider.BaseProvider):
 
         resp = await self.make_request(
             operation,
-            self._webdav_url_ + self.folder + src_path.path,
+            self._webdav_url_ + src_path.full_path,
             expects=(201, 204),  # WebDAV MOVE/COPY: 201 = Created, 204 = Updated existing
             throws=exceptions.IntraCopyError,
             auth=self._auth,

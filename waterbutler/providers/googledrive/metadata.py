@@ -113,9 +113,15 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     @property
     def extra(self):
         ret = super().extra
+        ret['webView'] = self.raw.get('alternateLink')
+
         if self.is_google_doc:
             ret['downloadExt'] = utils.get_download_extension(self.raw)
-        ret['webView'] = self.raw.get('alternateLink')
+        else:
+            if not hasattr(ret, 'hashes'):
+                ret['hashes'] = {}
+            ret['hashes']['md5'] = self.raw.get('md5Checksum')  # no md5 for non-exportable file
+
         return ret
 
     @property

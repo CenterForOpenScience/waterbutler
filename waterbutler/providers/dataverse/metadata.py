@@ -60,6 +60,9 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
             'fileId': self.file_id,
             'datasetVersion': self.dataset_version,
             'hasPublishedVersion': self.has_published_version,
+            'hashes': {
+                'md5': self.raw['md5'],
+            },
         }
 
 

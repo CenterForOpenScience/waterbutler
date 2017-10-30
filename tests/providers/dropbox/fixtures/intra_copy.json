@@ -1,0 +1,34 @@
+{
+   "intra_copy_file_metadata": {
+        "metadata": {
+        "path_lower": "/conflict folder/rename.rtf",
+        "id": "id:jki_ZJstdSAAAAAAAAAACQ",
+        "rev": "3d5bb27d11",
+        "server_modified": "2017-08-29T15:26:16Z",
+        ".tag": "file",
+        "content_hash": "2722228970da1ca23d68d6283a33bf85f7b1dbf909acfbe96a6c44d530bfa0ad",
+        "client_modified": "2017-08-28T19:43:11Z",
+        "size": 372,
+        "path_display": "/conflict folder/rename.rtf",
+        "name": "rename.rtf"
+    },
+    "expires": "2047-08-22T15:34:03Z",
+    "copy_reference": "AAAAAFuyfRE5aWhyemZmaTJzZXc"
+    },
+
+    "intra_copy_other_provider_file_metadata":{
+        "metadata": {
+            "rev": "4f5bb27d11",
+            "content_hash": "2722228970da1ca23d68d6283a33bf85f7b1dbf909acfbe96a6c44d530bfa0ad",
+            "size": 372,
+            "id": "id:jki_ZJstdSAAAAAAAAAAHw",
+            "path_display": "/conflict folder/copy2/asdf/rename.rtf",
+            ".tag": "file",
+            "client_modified": "2017-08-28T19:43:11Z",
+            "path_lower": "/conflict folder/copy2/asdf/rename.rtf",
+            "name": "rename.rtf",
+            "server_modified": "2017-08-29T15:37:04Z"
+        }
+    }
+
+}

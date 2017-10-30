@@ -44,12 +44,26 @@ def install(ctx, develop=False, pty=True):
 
 @task
 def flake(ctx):
+    """
+    Run style and syntax checker. Follows options defined in setup.cfg
+    """
     ctx.run('flake8 .', pty=True)
 
 
 @task
-def test(ctx, verbose=False):
+def mypy(ctx):
+    """
+    Check python types using mypy (additional level of linting). Follows options defined in setup.cfg
+    """
+    ctx.run('mypy waterbutler/', pty=True)
+
+
+@task
+def test(ctx, verbose=False, types=False):
     flake(ctx)
+    if types:
+        mypy(ctx)
+
     cmd = 'py.test --cov-report term-missing --cov waterbutler tests'
     if verbose:
         cmd += ' -v'
