@@ -1,6 +1,7 @@
 import pytest
 
 import io
+import json
 from http import client
 
 import aiohttpretty
@@ -320,6 +321,84 @@ class TestUpload:
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='POST', uri=upload_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_create_upload_session(self, provider, root_provider_fixtures):
+        path = WaterButlerPath('/newfile', _ids=(provider.folder, None))
+        session_url = provider._build_upload_url('files', 'upload_sessions')
+
+        create_session_metadata = root_provider_fixtures['create_session_metadata']
+        aiohttpretty.register_json_uri('POST',
+                                       session_url,
+                                       status=201,
+                                       body=create_session_metadata)
+
+        session_data = await provider._create_upload_session(path, b'DATA')
+
+        assert root_provider_fixtures['create_session_metadata'] == session_data
+        assert aiohttpretty.has_call(method='POST', uri=session_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_parts(self, provider, root_provider_fixtures):
+
+        session_url = provider._build_upload_url('files', 'upload_sessions', 'fake_session_id')
+
+        responses = [{'body': json.dumps(root_provider_fixtures['upload_part_one']),
+                      'status': 201},
+                     {'body': json.dumps(root_provider_fixtures['upload_part_two']),
+                      'status': 201}]
+
+        aiohttpretty.register_json_uri('PUT',
+                                       session_url,
+                                       status=201,
+                                       responses=responses)
+
+        session_metadata = root_provider_fixtures['create_session_metadata']
+        parts_metadata = await provider._upload_parts('tenbytestr'.encode() * 2, session_metadata)
+
+        expected_response = {
+            'parts': [
+                {'offset': 10,
+                'part_id': '37B0FB1B',
+                'sha1': '3ff00d99585b8da363f9f9955e791ed763e111c1',
+                'size': 10
+                 },
+                {'offset': 20,
+                 'part_id': '1872DEDA',
+                 'sha1': '0ae5fc290c5c5414cdda245ab712a8440376284a',
+                 'size': 10}
+            ]
+        }
+
+        assert parts_metadata == expected_response
+
+        assert len(aiohttpretty.calls) == 2
+        for call in aiohttpretty.calls:
+            assert call['method'] == 'PUT'
+            assert call['uri'] == provider._build_upload_url('files',
+                                                             'upload_sessions',
+                                                             'fake_session_id')
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_complete_session(self, provider, root_provider_fixtures):
+        commit_url = provider._build_upload_url('files', 'upload_sessions',
+                                                              'fake_session_id', 'commit')
+
+        aiohttpretty.register_json_uri('POST',
+                                       commit_url,
+                                       status=201,
+                                       body=root_provider_fixtures['upload_commit_metadata'])
+
+        session_metadata = root_provider_fixtures['create_session_metadata']
+        entry = await provider._complete_session(session_metadata,
+                                                          root_provider_fixtures['formated_parts'],
+                                                          'fake_sha')
+
+        assert root_provider_fixtures['upload_commit_metadata']['entries'][0] == entry
+        assert aiohttpretty.has_call(method='POST', uri=commit_url)
 
 
 class TestDelete:
