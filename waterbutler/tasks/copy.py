@@ -18,6 +18,10 @@ async def copy(src_bundle, dest_bundle, request={}, start_time=None, **kwargs):
     src_path, src_provider = src_bundle.pop('path'), utils.make_provider(**src_bundle.pop('provider'))
     dest_path, dest_provider = dest_bundle.pop('path'), utils.make_provider(**dest_bundle.pop('provider'))
 
+    # Save celery task ID. Used to identify provider object running in celery
+    src_provider.task_id = copy.request.id
+    dest_path.task_id = copy.request.id
+
     logger.info('Starting copying {!r}, {!r} to {!r}, {!r}'
                 .format(src_path, src_provider, dest_path, dest_provider))
 
