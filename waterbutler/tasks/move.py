@@ -19,6 +19,10 @@ async def move(src_bundle, dest_bundle, request: dict=None, start_time=None, **k
     src_path, src_provider = src_bundle.pop('path'), utils.make_provider(**src_bundle.pop('provider'))
     dest_path, dest_provider = dest_bundle.pop('path'), utils.make_provider(**dest_bundle.pop('provider'))
 
+    # Save celery task ID. Used to identify provider object running in celery
+    src_provider.task_id = move.request.id
+    dest_path.task_id = move.request.id
+
     logger.info('Starting moving {!r}, {!r} to {!r}, {!r}'
                 .format(src_path, src_provider, dest_path, dest_provider))
 

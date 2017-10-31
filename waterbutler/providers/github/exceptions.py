@@ -1,3 +1,4 @@
+import time
 from http import HTTPStatus
 
 from waterbutler.core.exceptions import ProviderError
@@ -13,3 +14,12 @@ class GitHubUnsupportedRepoError(ProviderError):
                          'without data loss.  To carry out this operation, please perform it in a '
                          'local git repository, then push to the target repository on GitHub.',
                          code=HTTPStatus.NOT_IMPLEMENTED)
+
+
+class GitHubRateLimitExceededError(ProviderError):
+    def __init__(self, retry: int):
+        retry_date = time.gmtime(retry)
+        iso_date = '{}-{}-{}T{}:{}:{}+00:00'.format(retry_date.tm_year, retry_date.tm_mon,
+                                                    retry_date.tm_mday, retry_date.tm_hour,
+                                                    retry_date.tm_min, retry_date.tm_sec)
+        super().__init__('Rate limit exceeded. New quota will be available after {}.'.format(iso_date), code=HTTPStatus.SERVICE_UNAVAILABLE, is_user_error=True)

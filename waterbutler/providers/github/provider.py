@@ -1,7 +1,10 @@
 import copy
 import json
+import time
+import asyncio
 import hashlib
 
+import aiohttp
 import furl
 
 from waterbutler.core import streams
@@ -9,14 +12,13 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 
 from waterbutler.providers.github import settings
+from waterbutler.providers.github import exceptions as gh_exceptions
 from waterbutler.providers.github.path import GitHubPath
 from waterbutler.providers.github.metadata import GitHubRevision
 from waterbutler.providers.github.metadata import GitHubFileContentMetadata
 from waterbutler.providers.github.metadata import GitHubFolderContentMetadata
 from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
 from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
-from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
-
 
 GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 
@@ -51,6 +53,8 @@ class GitHubProvider(provider.BaseProvider):
     NAME = 'github'
     BASE_URL = settings.BASE_URL
     VIEW_URL = settings.VIEW_URL
+    MAX_RATE_LIMIT_TOKENS = 10
+    UPDATE_RATE_LIMIT_INTERVAL = 60
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -60,6 +64,74 @@ class GitHubProvider(provider.BaseProvider):
         self.owner = self.settings['owner']
         self.repo = self.settings['repo']
         self.metrics.add('repo', {'repo': self.repo, 'owner': self.owner})
+        self.rate_limit = 0
+        self.rate_limit_tokens = self.MAX_RATE_LIMIT_TOKENS
+        self.rate_limit_remaining = 0
+        self.rate_limit_reset = 0
+        self.rate_limit_updated = 0
+        self.rate_limit_tokens_updated = time.time()
+
+    async def wait_for_token(self) -> None:
+        while self.rate_limit_tokens <= 1:
+            self.add_new_rate_limit_tokens()
+            await asyncio.sleep(1)
+        self.rate_limit_tokens -= 1
+
+    def add_new_rate_limit_tokens(self) -> None:
+        now = time.time()
+        if self.rate_limit_updated == 0 or \
+                now - self.rate_limit_updated > self.UPDATE_RATE_LIMIT_INTERVAL:
+            self.update_rate_limit()
+        time_since_rate_limit_token_update = now - self.rate_limit_tokens_updated
+        new_tokens = time_since_rate_limit_token_update * self.rate_limit
+        if new_tokens > 1:
+            self.rate_limit_tokens = min(self.rate_limit_tokens + new_tokens,
+                                         self.MAX_RATE_LIMIT_TOKENS)
+            self.rate_limit_tokens_updated = now
+
+    def update_rate_limit(self) -> None:
+        now = time.time()
+        rate_limit_reserve = self.rate_limit_remaining // 10 + 10
+        seconds_till_reset = self.rate_limit_reset - now
+        if rate_limit_reserve > self.rate_limit_remaining:
+            self.rate_limit = 0.01
+        else:
+            self.rate_limit = (self.rate_limit_remaining - rate_limit_reserve) / seconds_till_reset
+        self.rate_limit_updated = now
+
+    async def make_request(self, method: str, url: str, *args, **kwargs) -> aiohttp.client.ClientResponse:
+        if 'expects' in kwargs.keys():
+            expects = list(kwargs['expects'])
+            expects.append(403)
+            kwargs['expects'] = tuple(expects)
+
+        if not getattr(self, 'task_id', None):
+            response = await super().make_request(method, url, **kwargs)
+            if response.status == 403:
+                await self.check_rate_limit_exceeded(response, **kwargs)
+            return response
+
+        await self.wait_for_token()
+
+        response = await super().make_request(method, url, *args, **kwargs)
+
+        self.rate_limit_remaining = int(response.headers['X-RateLimit-Remaining'])
+        self.rate_limit_reset = int(response.headers['X-RateLimit-Reset'])
+
+        if response.status == 403:
+            await self.check_rate_limit_exceeded(response, **kwargs)
+
+        return response
+
+    async def check_rate_limit_exceeded(self, response: aiohttp.client.ClientResponse,
+                                        **kwargs) -> None:
+        response_json = await response.json()
+        if 'API rate limit exceeded' in response_json['message']:
+            rate_limit_reset = int(response.headers['X-RateLimit-Reset'])
+            raise gh_exceptions.GitHubRateLimitExceededError(rate_limit_reset)
+        else:
+            throws = kwargs.get('throws', exceptions.UnhandledProviderError)
+            raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
 
     async def validate_v1_path(self, path, **kwargs):
         if not getattr(self, '_repo', None):
@@ -545,7 +617,7 @@ class GitHubProvider(provider.BaseProvider):
         tree = await resp.json()
 
         if tree['truncated']:
-            raise GitHubUnsupportedRepoError('')
+            raise gh_exceptions.GitHubUnsupportedRepoError('')
 
         return tree
 
