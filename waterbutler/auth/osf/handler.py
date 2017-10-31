@@ -4,16 +4,16 @@ import jwe
 import jwt
 import aiohttp
 
-from waterbutler.core import auth
 from waterbutler.core import exceptions
-
 from waterbutler.auth.osf import settings
+from waterbutler.core.auth import (BaseAuthHandler,
+                                    AuthType)
 
 
 JWE_KEY = jwe.kdf(settings.JWE_SECRET.encode(), settings.JWE_SALT.encode())
 
 
-class OsfAuthHandler(auth.BaseAuthHandler):
+class OsfAuthHandler(BaseAuthHandler):
     """Identity lookup via the Open Science Framework"""
     ACTION_MAP = {
         'put': 'upload',
@@ -90,13 +90,13 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         payload['auth']['callback_url'] = payload['callback_url']
         return payload
 
-    async def get(self, resource, provider, request, action=None, is_source=True):
+    async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE):
         """Used for v1"""
         method = request.method.lower()
 
         if method == 'post' and action:
             post_action_map = {
-                'copy': 'download' if is_source else 'upload',
+                'copy': 'download' if auth_type is AuthType.SOURCE else 'upload',
                 'rename': 'upload',
                 'move': 'upload',
             }

@@ -7,6 +7,7 @@ from tests import utils
 from tests.server.api.v1.utils import ServerTestCase
 
 from waterbutler.auth.osf import settings
+from waterbutler.core.auth import AuthType
 from waterbutler.auth.osf.handler import OsfAuthHandler
 from waterbutler.core.exceptions import (UnsupportedHTTPMethodError,
                                             UnsupportedActionError)
@@ -43,10 +44,11 @@ class TestOsfAuthHandler(ServerTestCase):
 
         assert all(method in self.handler.ACTION_MAP.keys() for method in supported_methods)
 
-        for is_source in [True, False]:
+        for auth_type in AuthType:
             for action in post_actions:
                 self.request.method = 'post'
-                await self.handler.get(resource, provider, self.request, action=action, is_source=is_source)
+                await self.handler.get(resource, provider,
+                                            self.request, action=action, auth_type=auth_type)
 
         for method in supported_methods:
             self.request.method = method
@@ -72,9 +74,9 @@ class TestOsfAuthHandler(ServerTestCase):
 
         self.handler.build_payload = mock.Mock()
 
-        for is_source in [True, False]:
-            await self.handler.get(resource, provider, self.request, action=action, is_source=is_source)
-            if is_source:
+        for auth_type in AuthType:
+            await self.handler.get(resource, provider, self.request, action=action, auth_type=auth_type)
+            if auth_type is AuthType.SOURCE:
                 self.handler.build_payload.assert_called_with({
                     'nid': resource,
                     'provider': provider,
