@@ -1,16 +1,20 @@
 import copy
 import json
+import time
+import asyncio
 import hashlib
 import logging
 from typing import Tuple
 
 import furl
+import aiohttp
 
 from waterbutler.core import exceptions, provider, streams
 
 from waterbutler.providers.github.path import GitHubPath
 from waterbutler.providers.github import settings as pd_settings
-from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
+from waterbutler.providers.github.exceptions import (GitHubUnsupportedRepoError,
+                                                     GitHubRateLimitExceededError, )
 from waterbutler.providers.github.metadata import (GitHubRevision,
                                                    GitHubFileContentMetadata,
                                                    GitHubFolderContentMetadata,
@@ -56,6 +60,8 @@ class GitHubProvider(provider.BaseProvider):
     NAME = 'github'
     BASE_URL = pd_settings.BASE_URL
     VIEW_URL = pd_settings.VIEW_URL
+    MAX_RATE_LIMIT_TOKENS = 10
+    UPDATE_RATE_LIMIT_INTERVAL = 60
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -65,6 +71,91 @@ class GitHubProvider(provider.BaseProvider):
         self.owner = self.settings['owner']
         self.repo = self.settings['repo']
         self.metrics.add('repo', {'repo': self.repo, 'owner': self.owner})
+        # self.rate_limit must be set to an integer
+        # If set to 0, will be recalculated without waiting for UPDATE_RATE_LIMIT_INTERVAL
+        self.rate_limit = 0
+        # Start with a full bag of tokens and set tokens_updated to current time
+        self.rate_limit_tokens = self.MAX_RATE_LIMIT_TOKENS
+        self.rate_limit_tokens_updated = time.time()
+        # Will be set during first call to GitHub
+        self.rate_limit_remaining = 0
+        # Will be set during first call to GitHub
+        self.rate_limit_reset = 0
+        # Will be set during initial rate limit update
+        self.rate_limit_updated = 0
+
+    # TODO: No testing has been done to find optimal sleep time.
+    # In practice, rate limit usually is set between 1 and 2 calls per second.
+    # Therefore it seems like 1 second sleep is optimal for fastest throughput.
+    # However, there may be other considerations.
+    async def wait_for_token(self) -> None:
+        while self.rate_limit_tokens <= 1:
+            self.add_new_rate_limit_tokens()
+            await asyncio.sleep(1)
+        self.rate_limit_tokens -= 1
+
+    def add_new_rate_limit_tokens(self) -> None:
+        now = time.time()
+        if self.rate_limit_updated == 0 or \
+                now - self.rate_limit_updated > self.UPDATE_RATE_LIMIT_INTERVAL:
+            self.update_rate_limit()
+        new_tokens = (now - self.rate_limit_tokens_updated) * self.rate_limit
+        if new_tokens > 1:
+            self.rate_limit_tokens = min(self.rate_limit_tokens + new_tokens,
+                                         self.MAX_RATE_LIMIT_TOKENS)
+            self.rate_limit_tokens_updated = now
+
+    # TODO: No testing has been done to find optimal rate_limit_reserve.
+    # 10% of remaining plus 10 results, in practice, in a rate limit that usually starts
+    # at just over 1 call per second and gradually increases to around 2.
+    # At the very end of the reset period rate limit can get a little larger than 2.
+    # In testing this reserve setting prevents running out of tokens even when additional
+    # calls are being made through osf.io .
+    # In the very unlikely event that the limit remaining falls lower then the reserve limit,
+    # The rate limit is set to 0.01 or 1 call every 100 seconds.
+    def update_rate_limit(self) -> None:
+        now = time.time()
+        rate_limit_reserve = self.rate_limit_remaining // 10 + 10
+        seconds_till_reset = self.rate_limit_reset - now
+        if rate_limit_reserve > self.rate_limit_remaining:
+            self.rate_limit = 0.01
+        else:
+            self.rate_limit = (self.rate_limit_remaining - rate_limit_reserve) / seconds_till_reset
+        self.rate_limit_updated = now
+
+    async def make_request(self, method: str, url: str, *args, **kwargs) -> aiohttp.client.ClientResponse:
+        if 'expects' in kwargs.keys():
+            expects = list(kwargs['expects'])
+            expects.append(403)
+            kwargs['expects'] = tuple(expects)
+
+        if not getattr(self, 'task_id', None):
+            response = await super().make_request(method, url, **kwargs)
+            if response.status == 403:
+                await self.check_rate_limit_exceeded(response, **kwargs)
+            return response
+
+        await self.wait_for_token()
+
+        response = await super().make_request(method, url, *args, **kwargs)
+
+        self.rate_limit_remaining = int(response.headers['X-RateLimit-Remaining'])
+        self.rate_limit_reset = int(response.headers['X-RateLimit-Reset'])
+
+        if response.status == 403:
+            await self.check_rate_limit_exceeded(response, **kwargs)
+
+        return response
+
+    async def check_rate_limit_exceeded(self, response: aiohttp.client.ClientResponse,
+                                        **kwargs) -> None:
+        response_json = await response.json()
+        if 'API rate limit exceeded' in response_json['message']:
+            rate_limit_reset = int(response.headers['X-RateLimit-Reset'])
+            raise GitHubRateLimitExceededError(rate_limit_reset)
+        else:
+            throws = kwargs.get('throws', exceptions.UnhandledProviderError)
+            raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
 
     async def validate_v1_path(self, path, **kwargs):
         """Validate the path part of the request url, asserting that the path exists, and

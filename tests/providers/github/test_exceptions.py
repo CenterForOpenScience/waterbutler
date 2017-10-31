@@ -8,6 +8,7 @@ class TestExceptionSerialization:
 
     @pytest.mark.parametrize('exception_class', [
         (exceptions.GitHubUnsupportedRepoError),
+        (exceptions.GitHubRateLimitExceededError),
     ])
     def test_tolerate_dumb_signature(self, exception_class):
         """In order for WaterButlerError-inheriting exception classes to survive

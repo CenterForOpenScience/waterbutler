@@ -2,6 +2,7 @@ import io
 import os
 import copy
 import json
+import time
 import base64
 import hashlib
 from http import client
@@ -15,14 +16,13 @@ from waterbutler.core import exceptions
 
 from waterbutler.providers.github import GitHubProvider
 from waterbutler.providers.github.path import GitHubPath
+from waterbutler.providers.github import settings as github_settings
+from waterbutler.providers.github import exceptions as github_exceptions
 from waterbutler.providers.github.metadata import (GitHubRevision,
                                                    GitHubFileTreeMetadata,
                                                    GitHubFolderTreeMetadata,
                                                    GitHubFileContentMetadata,
                                                    GitHubFolderContentMetadata)
-from waterbutler.providers.github import settings as github_settings
-from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
-
 
 from tests.providers.github.fixtures import (crud_fixtures,
                                              revision_fixtures,
@@ -100,6 +100,27 @@ def other_provider(other_auth, other_credentials, other_settings, provider_fixtu
     provider._repo = provider_fixtures['repo_metadata']
     provider.default_branch = provider_fixtures['repo_metadata']['default_branch']
     return provider
+
+
+@pytest.fixture
+def rate_limit_provider(provider):
+    provider.task_id = 1234567890
+    provider.rate_limit = 1
+    provider.rate_limit_remaining = 100
+    provider.rate_limit_reset = 200
+    provider.rate_limit_updated = 10
+    provider.rate_limit_tokens = 0
+    provider.rate_limit_tokens_updated = 90
+    return provider
+
+
+@pytest.fixture
+def patch_time(monkeypatch):
+
+    def mytime():
+        return 100
+
+    monkeypatch.setattr(time, 'time', mytime)
 
 
 class TestHelpers:
@@ -1365,6 +1386,134 @@ class TestCreateFolder:
         assert metadata.path == '/i/like/trains/'
 
 
+class TestRateLimit:
+
+    # Test rate_limit() method: within normal parameters
+    def test_update_rate_limit(self, rate_limit_provider, patch_time):
+        provider = rate_limit_provider
+        provider.update_rate_limit()
+        assert provider.rate_limit == 0.8
+        assert provider.rate_limit_updated == 100
+
+    # Test rate_limit() method: when remaining rate limit is less then reserve
+    def test_update_rate_limit_under_reserve_limit(self, rate_limit_provider, patch_time):
+        provider = rate_limit_provider
+        provider.rate_limit_remaining = 10
+        provider.update_rate_limit()
+        assert provider.rate_limit == 0.01
+        assert provider.rate_limit_updated == 100
+
+    # Test add_new_rate_limit_tokens(): within normal parameters
+    def test_add_new_rate_limit_tokens(self, rate_limit_provider, patch_time):
+        provider = rate_limit_provider
+        provider.add_new_rate_limit_tokens()
+        assert provider.rate_limit == 0.8
+        assert provider.rate_limit_updated == 100
+        assert provider.rate_limit_tokens == 8
+        assert provider.rate_limit_tokens_updated == 100
+
+    # Test add_new_rate_limit_tokens(): when calculated tokens is greater then max tokens
+    def test_add_new_rate_limit_tokens_max_tokens_enforced(self, rate_limit_provider, patch_time):
+        provider = rate_limit_provider
+        provider.rate_limit_tokens_updated = 10
+        provider.add_new_rate_limit_tokens()
+        assert provider.rate_limit == 0.8
+        assert provider.rate_limit_updated == 100
+        assert provider.rate_limit_tokens == 10
+        assert provider.rate_limit_tokens_updated == 100
+
+    # Test add_new_rate_limit_tokens(): Not yet time to update rate_limit
+    def test_add_new_rate_limit_tokens_not_time_yet(self, rate_limit_provider, patch_time):
+        provider = rate_limit_provider
+        provider.rate_limit_updated = 90
+        provider.rate_limit = 1
+        provider.add_new_rate_limit_tokens()
+        assert provider.rate_limit == 1
+
+    # Test wait_for_token(): within normal parameters
+    @pytest.mark.asyncio
+    async def test_wait_for_token(self, rate_limit_provider, patch_time):
+        provider = rate_limit_provider
+        await provider.wait_for_token()
+        assert provider.rate_limit_tokens == 7
+        assert provider.rate_limit == 0.8
+        assert provider.rate_limit_updated == 100
+        assert provider.rate_limit_tokens_updated == 100
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_celery(self, rate_limit_provider, patch_time):
+        provider = rate_limit_provider
+        aiohttpretty.register_json_uri('GET', 'dubyas.com', status=200,
+                headers={'X-RateLimit-Remaining': 1234,
+                         'X-RateLimit-Reset': 5678})
+        resp = await provider.make_request(
+            'GET',
+            'dubyas.com',
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
+        assert provider.rate_limit_remaining == 1234
+        assert provider.rate_limit_reset == 5678
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_celery(self, rate_limit_provider, patch_time):
+        provider = rate_limit_provider
+        del provider.task_id
+        aiohttpretty.register_json_uri('GET', 'dubyas.com', status=200,
+                headers={'X-RateLimit-Remaining': 1234,
+                         'X-RateLimit-Reset': 5678})
+        resp = await provider.make_request(
+            'GET',
+            'dubyas.com',
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
+        assert provider.rate_limit_remaining == 100
+        assert provider.rate_limit_reset == 200
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_celery_rate_limit_error(self, rate_limit_provider, patch_time):
+        provider = rate_limit_provider
+        aiohttpretty.register_json_uri('GET', 'dubyas.com', status=403,
+                headers={'X-RateLimit-Remaining': 1234,
+                         'X-RateLimit-Reset': 5678},
+                body={'message': 'API rate limit exceeded'})
+        with pytest.raises(github_exceptions.GitHubRateLimitExceededError) as e:
+            await provider.make_request(
+                'GET',
+                'dubyas.com',
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+
+        assert e.value.code == 503
+        assert e.value.message == 'Rate limit exceeded. New quota will be available after ' \
+                                  '1970-1-1T1:34:38+00:00.'
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_celery_rate_limit_error(self, rate_limit_provider, patch_time):
+        provider = rate_limit_provider
+        del provider.task_id
+        aiohttpretty.register_json_uri('GET', 'dubyas.com', status=403,
+                headers={'X-RateLimit-Remaining': 1234,
+                         'X-RateLimit-Reset': 5678},
+                body={'message': 'API rate limit exceeded'})
+        with pytest.raises(github_exceptions.GitHubRateLimitExceededError) as e:
+            await provider.make_request(
+                'GET',
+                'dubyas.com',
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+
+        assert e.value.code == 503
+        assert e.value.message == 'Rate limit exceeded. New quota will be available after ' \
+                                  '1970-1-1T1:34:38+00:00.'
+
 class TestOperations:
 
     def test_can_duplicate_names(self, provider):
@@ -1397,7 +1546,7 @@ class TestOperations:
         url = furl.furl(provider.build_repo_url('git', 'trees', sha))
         aiohttpretty.register_json_uri('GET', url, body={'truncated': True})
 
-        with pytest.raises(GitHubUnsupportedRepoError) as e:
+        with pytest.raises(github_exceptions.GitHubUnsupportedRepoError) as e:
             await provider._fetch_tree(sha)
 
         assert e.value.code == 501
