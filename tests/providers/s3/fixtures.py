@@ -1,8 +1,11 @@
 import os
+import io
 from collections import OrderedDict
 
 import pytest
+import aiohttp
 
+from waterbutler.core import streams
 from waterbutler.providers.s3.metadata import (
     S3FileMetadataHeaders,
     S3FileMetadata,
@@ -42,6 +45,24 @@ def file_content():
 
 
 @pytest.fixture
+def file_stream_100_bytes():
+    file_like = io.BytesIO(os.urandom(100))
+    return streams.FileStreamReader(file_like)
+
+@pytest.fixture
+def part_headers():
+    return aiohttp.multidict.CIMultiDict(
+        content_length=0,
+        date='Wed, 01 Nov 2017 15:36:09 GMT',
+        etag='"75709cffcf53e40c49c0eaec6ffeffe6"',
+        server='AmazonS3',
+        x_amz_id_2='dFtERAnqGj9XTaYk2CEd5A0ELT/i6Qh6/mcen5emy0oUljtxhahtOlY0FyERd2gPAKv7SDvZioI=',
+        x_amz_request_id='A8A2AA48EF44A1EE',
+        x_server_side_encryption='AES256'
+    )
+
+
+@pytest.fixture
 def folder_metadata():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/folder_metadata.xml'), 'r') as fp:
         return fp.read()
@@ -67,6 +88,12 @@ def folder_and_contents():
                            'fixtures/folder_and_contents.xml'), 'r') as fp:
         return fp.read()
 
+
+@pytest.fixture
+def session_metadata():
+    with open(os.path.join(os.path.dirname(__file__),
+                           'fixtures/initiate_multipart_upload.xml'), 'r') as fp:
+        return fp.read()
 
 @pytest.fixture
 def version_metadata():
@@ -150,5 +177,3 @@ def revision_metadata_object():
     )
 
     return S3Revision(content)
-
-
