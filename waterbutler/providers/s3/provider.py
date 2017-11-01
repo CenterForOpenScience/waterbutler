@@ -44,9 +44,6 @@ class S3Provider(provider.BaseProvider):
     """
     NAME = 's3'
 
-    NONCHUNKED_UPLOAD_LIMIT = 128000000  # 128 MB
-    CHUNK_SIZE = 64000000  # 64 MB
-
     def __init__(self, auth, credentials, settings):
         """
         .. note::
@@ -193,162 +190,36 @@ class S3Provider(provider.BaseProvider):
         await self._check_region()
 
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
 
-        if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
-            await self._chunked_upload(stream, path)
-        else:
-            stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+        headers = {'Content-Length': str(stream.size)}
 
-            headers = {'Content-Length': str(stream.size)}
-
-            # this is usually set in boto.s3.key.generate_url, but do it here
-            # do be explicit about our header payloads for signing purposes
-            if self.encrypt_uploads:
-                headers['x-amz-server-side-encryption'] = 'AES256'
-
-            upload_url = functools.partial(
-                self.bucket.new_key(path.path).generate_url,
-                settings.TEMP_URL_SECS,
-                'PUT',
-                headers=headers,
-            )
-            resp = await self.make_request(
-                'PUT',
-                upload_url,
-                data=stream,
-                skip_auto_headers={'CONTENT-TYPE'},
-                headers=headers,
-                expects=(200, 201, ),
-                throws=exceptions.UploadError,
-            )
-            # md5 is returned as ETag header as long as server side encryption is not used.
-            if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
-                raise exceptions.UploadChecksumMismatchError()
-
-            await resp.release()
-
-        return (await self.metadata(path, **kwargs)), not exists
-
-    async def _chunked_upload(self, stream, path):
-        """Uploads the given stream to S3 over multiple chunks of data, made up of 3 steps.
-
-        :param waterbutler.core.streams.RequestWrapper stream: The stream to put to S3
-        :param waterbutler.path.WaterBulterPath path: The full path of the key to upload to/into
-
-        :rtype: dict, bool
-        """
-
-        # Step 1. Create a multi-part upload session
-        session_data = await self._initiate_multipart_upload(path)
-
-        # Step 2. Break stream into parts and upload them
-        parts_metadata = await self._upload_parts(stream, path, session_data)
-
-        # Step 3. Commit the parts and end the upload session
-        await self._complete_multipart_upload(path, session_data, parts_metadata)
-
-    async def _initiate_multipart_upload(self, path):
-
-        headers = {'x-amz-server-side-encryption': 'AES256'}
-        params = {'uploads': ''}
+        # this is usually set in boto.s3.key.generate_url, but do it here
+        # do be explicit about our header payloads for signing purposes
+        if self.encrypt_uploads:
+            headers['x-amz-server-side-encryption'] = 'AES256'
 
         upload_url = functools.partial(
             self.bucket.new_key(path.path).generate_url,
             settings.TEMP_URL_SECS,
-            'POST',
-            query_parameters=params,
-            headers=headers
+            'PUT',
+            headers=headers,
         )
-
         resp = await self.make_request(
-            'POST',
+            'PUT',
             upload_url,
-            headers=headers,
+            data=stream,
             skip_auto_headers={'CONTENT-TYPE'},
-            params=params,
-            expects=(200, 201,),
-            throws=exceptions.UploadError,
-        )
-        upload_session_metadata = await resp.read()
-        return xmltodict.parse(upload_session_metadata, strip_whitespace=False)
-
-    async def _upload_parts(self, stream, path, session_data):
-
-        data = await stream.read()
-        parts_metadata = []
-
-        for i, start_byte in enumerate(range(0, stream.size, self.CHUNK_SIZE)):
-            chunk = data[start_byte: start_byte + self.CHUNK_SIZE]
-            headers = {'Content-Length': str(len(bytearray(chunk)))}
-
-            params = {'partNumber': str(i + 1),
-                      'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']}
-
-            upload_url = functools.partial(
-                self.bucket.new_key(path.path).generate_url,
-                settings.TEMP_URL_SECS,
-                'PUT',
-                query_parameters=params,
-                headers=headers
-            )
-
-            resp = await self.make_request(
-                'PUT',
-                upload_url,
-                data=chunk,
-                skip_auto_headers={'CONTENT-TYPE'},
-                headers=headers,
-                params=params,
-                expects=(200, 201,),
-                throws=exceptions.UploadError,
-            )
-            await resp.release()
-            parts_metadata.append(resp.headers)
-
-        return parts_metadata
-
-    async def _complete_multipart_upload(self, path, session_data, parts_metadata):
-
-        params = {'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']}
-
-        payload = '<?xml version="1.0" encoding="UTF-8"?>'
-        payload += '<CompleteMultipartUpload>'
-        for i, part in enumerate(parts_metadata):
-            payload += '<Part>'
-            payload += '<PartNumber>{}</PartNumber>'.format(i + 1)  # part number must be >= 1
-            payload += '<ETag>{}</ETag>'.format(xml.sax.saxutils.escape(part['ETAG']))
-            payload += '</Part>'
-        payload += '</CompleteMultipartUpload>'
-        payload = payload.encode('utf-8')
-
-        md5 = compute_md5(BytesIO(payload))
-
-        headers = {
-            'Content-Length': str(len(payload)),
-            'Content-MD5': md5[1],
-            'Content-Type': 'text/xml',
-        }
-
-        complete_url = functools.partial(
-            self.bucket.new_key(path.path).generate_url,
-            settings.TEMP_URL_SECS,
-            'POST',
-            query_parameters=params,
-            headers=headers
-        )
-
-        resp = await self.make_request(
-            'POST',
-            complete_url,
-            data=payload,
             headers=headers,
-            params=params,
-            expects=(200, 201,),
+            expects=(200, 201, ),
             throws=exceptions.UploadError,
         )
-        await resp.release()
+        # md5 is returned as ETag header as long as server side encryption is not used.
+        if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
+            raise exceptions.UploadChecksumMismatchError()
 
-        return resp.headers
+        await resp.release()
+        return (await self.metadata(path, **kwargs)), not exists
 
     async def delete(self, path, confirm_delete=0, **kwargs):
         """Deletes the key at the specified path
