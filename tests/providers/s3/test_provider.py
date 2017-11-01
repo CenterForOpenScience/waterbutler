@@ -1,5 +1,6 @@
 import os
 import io
+import xml
 import time
 import base64
 import hashlib
@@ -9,6 +10,9 @@ from urllib import parse
 from unittest import mock
 
 import pytest
+import xmltodict
+from boto.utils import compute_md5
+from boto.compat import BytesIO  # type: ignore
 
 from waterbutler.core import (streams,
                               metadata,
@@ -34,7 +38,10 @@ from tests.providers.s3.fixtures import (
     file_metadata_headers_object,
     file_metadata_object,
     folder_key_metadata_object,
-    revision_metadata_object
+    revision_metadata_object,
+    session_metadata,
+    stream_200_MB,
+    part_headers
 )
 
 
@@ -107,6 +114,26 @@ def bulk_delete_body(keys):
 
     return (payload, headers)
 
+def complete_multipart_upload_body(parts_metadata):
+    payload = '<?xml version="1.0" encoding="UTF-8"?>'
+    payload += '<CompleteMultipartUpload>'
+    for i, part in enumerate(parts_metadata):
+        payload += '<Part>'
+        payload += '<PartNumber>{}</PartNumber>'.format(i + 1)  # part number must be >= 1
+        payload += '<ETag>{}</ETag>'.format(xml.sax.saxutils.escape(part['ETAG']))
+        payload += '</Part>'
+    payload += '</CompleteMultipartUpload>'
+    payload = payload.encode('utf-8')
+
+    md5 = compute_md5(BytesIO(payload))
+
+    headers = {
+        'Content-Length': str(len(payload)),
+        'Content-MD5': md5[1],
+        'Content-Type': 'text/xml',
+    }
+
+    return payload, headers
 
 def build_folder_params(path):
     return {'prefix': path.path, 'delimiter': '/'}
@@ -372,6 +399,26 @@ class TestCRUD:
         assert created
         assert aiohttpretty.has_call(method='PUT', uri=url)
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_chunked_upload_limit(self,
+                                        provider,
+                                        file_stream,
+                                        mock_time):
+        path = WaterButlerPath('/foobah')
+
+        assert file_stream.size == 6
+
+        provider.NONCHUNKED_UPLOAD_LIMIT = 5
+
+        provider._chunked_upload = MockCoroutine()
+        provider.metadata = MockCoroutine()
+        provider.handle_naming = mock.Mock()
+
+        await provider.upload(file_stream, path)
+
+        assert provider._chunked_upload.called_with(file_stream, path)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -741,6 +788,96 @@ class TestMetadata:
 
         assert aiohttpretty.has_call(method='PUT', uri=url)
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_upload_session(self, provider, session_metadata):
+
+        path = WaterButlerPath('/foobah')
+        headers = {'x-amz-server-side-encryption': 'AES256'}
+        generate_url = provider.bucket.new_key(path.path).generate_url
+
+        url = generate_url(100, 'POST', query_parameters={'uploads': ''}, headers=headers)
+
+        aiohttpretty.register_uri('POST', url, status=200, body=session_metadata, headers=headers)
+
+        response_data = await provider._create_upload_session(path)
+
+        parsed_session_metadata = xmltodict.parse(session_metadata, strip_whitespace=False)
+
+        assert response_data == parsed_session_metadata
+        assert aiohttpretty.has_call(method='POST', uri=url, params={'uploads': ''})
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_parts(self,
+                                provider,
+                                session_metadata,
+                                stream_200_MB,
+                                part_headers):
+        path = WaterButlerPath('/foobah')
+
+        generate_url = provider.bucket.new_key(path.path).generate_url
+
+        parsed_session_metadata = xmltodict.parse(session_metadata, strip_whitespace=False)
+
+        params_part = {
+            'partNumber': None,
+            'uploadId': 'EXAMPLEJZ6e0YupT2h66iePQCc9IEbYbDUy4RTpMeoSMLPRp8Z5o1u8feSRonpvnWsKKG35tI2'
+                        'LB9VDPiCgTy.Gq2VxQLYjrue4Nq.NBdqI-'
+        }
+
+        params_part['partNumber'] = '1'
+        part_1_url = generate_url(100, 'PUT', query_parameters=params_part)
+
+        params_part['partNumber'] = '2'
+        part_2_url = generate_url(100, 'PUT', query_parameters=params_part)
+
+        params_part['partNumber'] = '3'
+        part_3_url = generate_url(100, 'PUT', query_parameters=params_part)
+
+        params_part['partNumber'] = '4'
+        part_4_url = generate_url(100, 'PUT', query_parameters=params_part)
+
+        aiohttpretty.register_uri('PUT', part_1_url, status=200, headers=part_headers)
+        aiohttpretty.register_uri('PUT', part_2_url, status=200, headers=part_headers)
+        aiohttpretty.register_uri('PUT', part_3_url, status=200, headers=part_headers)
+        aiohttpretty.register_uri('PUT', part_4_url, status=200, headers=part_headers)
+
+        parts = await provider._upload_parts(stream_200_MB, path, parsed_session_metadata)
+
+        assert aiohttpretty.has_call(method='PUT', uri=part_1_url)
+        assert aiohttpretty.has_call(method='PUT', uri=part_2_url)
+        assert aiohttpretty.has_call(method='PUT', uri=part_3_url)
+        assert aiohttpretty.has_call(method='PUT', uri=part_4_url)
+
+        assert len(parts) == 4
+        assert parts[0] == part_headers
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_complete_multipart_upload(self, provider, session_metadata, part_headers):
+        path = WaterButlerPath('/foobah')
+        parsed_session_metadata = xmltodict.parse(session_metadata, strip_whitespace=False)
+        parts_metadata = [part_headers] * 2
+
+        params = {'uploadId': parsed_session_metadata['InitiateMultipartUploadResult']['UploadId']}
+
+        payload, headers = complete_multipart_upload_body(parts_metadata)
+
+        complete_url = provider.bucket.new_key(path.path).generate_url(100,
+                                                                       'POST',
+                                                                       headers=headers,
+                                                                       query_parameters=params)
+
+        aiohttpretty.register_uri('POST',
+                                  complete_url,
+                                  status=200,
+                                  headers=headers)
+
+        await provider._complete_multipart_upload(path, parsed_session_metadata, parts_metadata)
+
+        assert aiohttpretty.has_call(method='POST', uri=complete_url, params=params)
 
 
 class TestCreateFolder:

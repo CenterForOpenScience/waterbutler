@@ -1,4 +1,5 @@
 import asyncio
+import aiohttp
 import os
 import sys
 import copy
@@ -16,6 +17,19 @@ from waterbutler.core import provider
 from waterbutler.server.app import make_app
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.streams.file import FileStreamReader
+
+
+class MockStream(aiohttp.streams.StreamReader):
+    def __init__(self, data):
+        super().__init__()
+        if isinstance(data, str):
+            data = data.encode('UTF-8')
+        elif not isinstance(data, bytes):
+            raise TypeError('Data must be either str or bytes, found {!r}'.format(type(data)))
+
+        self.size = len(data)
+        self.feed_data(data)
+        self.feed_eof()
 
 
 class MockCoroutine(mock.Mock):
