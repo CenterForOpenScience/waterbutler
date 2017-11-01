@@ -76,6 +76,21 @@ class UnsupportedHTTPMethodError(WaterButlerError):
                          code=HTTPStatus.METHOD_NOT_ALLOWED, is_user_error=True)
 
 
+class UnsupportedActionError(WaterButlerError):
+    """An unsupported Action was used.
+    """
+    def __init__(self, method, supported=None):
+
+        if supported is None:
+            supported_actions = 'unspecified'
+        else:
+            supported_actions = ', '.join(list(supported)).upper()
+
+        super().__init__('Action "{}" not supported, currently supported actions '
+                         'are {}'.format(method, supported_actions),
+                         code=HTTPStatus.BAD_REQUEST, is_user_error=True)
+
+
 class PluginError(WaterButlerError):
     """WaterButler-related errors raised from a plugin, such as an auth handler or provider, should
     inherit from `PluginError`.
