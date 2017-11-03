@@ -1,6 +1,15 @@
-import pytest
 import os
 import json
+
+import pytest
+
+from tests.utils import MockStream
+
+
+@pytest.fixture
+def stream_10_MB():
+    data = os.urandom(10000000)  # 10 MB
+    return MockStream(data)
 
 
 @pytest.fixture
