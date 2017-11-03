@@ -40,7 +40,7 @@ from tests.providers.s3.fixtures import (
     folder_key_metadata_object,
     revision_metadata_object,
     session_metadata,
-    file_stream_100_bytes,
+    stream_200_MB,
     part_headers
 )
 
@@ -404,7 +404,6 @@ class TestCRUD:
         await provider.upload(file_stream, path)
 
         assert provider._chunked_upload.called_with(file_stream, path)
-
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -777,23 +776,17 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_initiate_multipart_upload(self, provider, file_stream, session_metadata):
+    async def test_create_upload_session(self, provider, session_metadata):
 
         path = WaterButlerPath('/foobah')
         headers = {'x-amz-server-side-encryption': 'AES256'}
+        generate_url = provider.bucket.new_key(path.path).generate_url
 
-        url = provider.bucket.new_key(path.path).generate_url(100,
-                                                              'POST',
-                                                              query_parameters={'uploads': ''},
-                                                              headers=headers)
+        url = generate_url(100, 'POST', query_parameters={'uploads': ''}, headers=headers)
 
-        aiohttpretty.register_uri('POST',
-                                  url,
-                                  status=200,
-                                  body=session_metadata,
-                                  headers=headers)
+        aiohttpretty.register_uri('POST', url, status=200, body=session_metadata, headers=headers)
 
-        response_data = await provider._initiate_multipart_upload(path)
+        response_data = await provider._create_upload_session(path)
 
         parsed_session_metadata = xmltodict.parse(session_metadata, strip_whitespace=False)
 
@@ -805,38 +798,45 @@ class TestMetadata:
     async def test_upload_parts(self,
                                 provider,
                                 session_metadata,
-                                file_stream_100_bytes,
+                                stream_200_MB,
                                 part_headers):
-
-        provider.CHUNK_SIZE = 50  # make sure upload has 2 chunks
         path = WaterButlerPath('/foobah')
+
+        generate_url = provider.bucket.new_key(path.path).generate_url
+
         parsed_session_metadata = xmltodict.parse(session_metadata, strip_whitespace=False)
 
-        params_part_1 = {
-            'partNumber': '1',
+        params_part = {
+            'partNumber': None,
             'uploadId': 'EXAMPLEJZ6e0YupT2h66iePQCc9IEbYbDUy4RTpMeoSMLPRp8Z5o1u8feSRonpvnWsKKG35tI2'
                         'LB9VDPiCgTy.Gq2VxQLYjrue4Nq.NBdqI-'
         }
-        params_part_2 = {'partNumber': '2',
-                  'uploadId': 'EXAMPLEJZ6e0YupT2h66iePQCc9IEbYbDUy4RTpMeoSMLPRp8Z5o1u8feSRonpvnWsKK'
-                              'G35tI2LB9VDPiCgTy.Gq2VxQLYjrue4Nq.NBdqI-'}
 
-        url_part_1 = provider.bucket.new_key(path.path).generate_url(100,
-                                                                     'PUT',
-                                                                     query_parameters=params_part_1)
-        url_part_2 = provider.bucket.new_key(path.path).generate_url(100,
-                                                                     'PUT',
-                                                                     query_parameters=params_part_2)
+        params_part['partNumber'] = '1'
+        part_1_url = generate_url(100, 'PUT', query_parameters=params_part)
 
-        aiohttpretty.register_uri('PUT', url_part_1, status=200, headers=part_headers)
-        aiohttpretty.register_uri('PUT', url_part_2, status=200, headers=part_headers)
+        params_part['partNumber'] = '2'
+        part_2_url = generate_url(100, 'PUT', query_parameters=params_part)
 
-        parts = await provider._upload_parts(file_stream_100_bytes, path, parsed_session_metadata)
+        params_part['partNumber'] = '3'
+        part_3_url = generate_url(100, 'PUT', query_parameters=params_part)
 
-        assert aiohttpretty.has_call(method='PUT', uri=url_part_1, params=params_part_1)
-        assert aiohttpretty.has_call(method='PUT', uri=url_part_2, params=params_part_2)
+        params_part['partNumber'] = '4'
+        part_4_url = generate_url(100, 'PUT', query_parameters=params_part)
 
-        assert len(parts) == 2
+        aiohttpretty.register_uri('PUT', part_1_url, status=200, headers=part_headers)
+        aiohttpretty.register_uri('PUT', part_2_url, status=200, headers=part_headers)
+        aiohttpretty.register_uri('PUT', part_3_url, status=200, headers=part_headers)
+        aiohttpretty.register_uri('PUT', part_4_url, status=200, headers=part_headers)
+
+        parts = await provider._upload_parts(stream_200_MB, path, parsed_session_metadata)
+
+        assert aiohttpretty.has_call(method='PUT', uri=part_1_url)
+        assert aiohttpretty.has_call(method='PUT', uri=part_2_url)
+        assert aiohttpretty.has_call(method='PUT', uri=part_3_url)
+        assert aiohttpretty.has_call(method='PUT', uri=part_4_url)
+
+        assert len(parts) == 4
         assert parts[0] == part_headers
 
     @pytest.mark.asyncio

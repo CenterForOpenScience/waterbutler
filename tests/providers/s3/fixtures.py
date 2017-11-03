@@ -1,11 +1,10 @@
 import os
-import io
 from collections import OrderedDict
 
 import pytest
 import aiohttp
 
-from waterbutler.core import streams
+from tests.utils import MockStream
 from waterbutler.providers.s3.metadata import (
     S3FileMetadataHeaders,
     S3FileMetadata,
@@ -45,9 +44,10 @@ def file_content():
 
 
 @pytest.fixture
-def file_stream_100_bytes():
-    file_like = io.BytesIO(os.urandom(100))
-    return streams.FileStreamReader(file_like)
+def stream_200_MB():
+    data = os.urandom(200000000)  # 200 MB
+    return MockStream(data)
+
 
 @pytest.fixture
 def part_headers():

@@ -229,17 +229,15 @@ class S3Provider(provider.BaseProvider):
 
         return (await self.metadata(path, **kwargs)), not exists
 
-    async def _chunked_upload(self, stream, path):
+    async def _chunked_upload(self, stream, path) -> None:
         """Uploads the given stream to S3 over multiple chunks of data, made up of 3 steps.
 
-        :param waterbutler.core.streams.RequestWrapper stream: The stream to put to S3
+        :param waterbutler.core.streams.RequestWrapper stream: The stream to upload to S3
         :param waterbutler.path.WaterBulterPath path: The full path of the key to upload to/into
-
-        :rtype: dict, bool
         """
 
         # Step 1. Create a multi-part upload session
-        session_data = await self._initiate_multipart_upload(path)
+        session_data = await self._create_upload_session(path)
 
         # Step 2. Break stream into parts and upload them
         parts_metadata = await self._upload_parts(stream, path, session_data)
@@ -247,7 +245,7 @@ class S3Provider(provider.BaseProvider):
         # Step 3. Commit the parts and end the upload session
         await self._complete_multipart_upload(path, session_data, parts_metadata)
 
-    async def _initiate_multipart_upload(self, path):
+    async def _create_upload_session(self, path: WaterButlerPath) -> dict:
 
         headers = {'x-amz-server-side-encryption': 'AES256'}
         params = {'uploads': ''}
@@ -274,12 +272,11 @@ class S3Provider(provider.BaseProvider):
 
     async def _upload_parts(self, stream, path, session_data):
 
-        data = await stream.read()
         parts_metadata = []
 
-        for i, start_byte in enumerate(range(0, stream.size, self.CHUNK_SIZE)):
-            chunk = data[start_byte: start_byte + self.CHUNK_SIZE]
-            headers = {'Content-Length': str(len(bytearray(chunk)))}
+        for i, _ in enumerate(range(0, stream.size, self.CHUNK_SIZE)):
+            chunk = await stream.read(self.CHUNK_SIZE)
+            headers = {'Content-Length': str(len(chunk))}
 
             params = {'partNumber': str(i + 1),
                       'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']}
