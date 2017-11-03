@@ -225,6 +225,7 @@ class TestCRUD:
         session_id = await provider._create_upload_session()
 
         assert session_id == 'test session id'
+        assert aiohttpretty.has_call(method='POST', uri=metadata_url)
         assert aiohttpretty.has_call(method='POST', uri=url)
 
     @pytest.mark.asyncio

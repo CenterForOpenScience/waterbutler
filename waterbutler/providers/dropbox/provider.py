@@ -52,8 +52,8 @@ class DropboxProvider(provider.BaseProvider):
     """
     NAME = 'dropbox'
     BASE_URL = settings.BASE_URL
-    NON_CHUNKED_UPLOAD_LIMIT = 150000000  # 150 MB
-    CHUNKED_SIZE = 150000000  # 150 MB
+    NONCHUNKED_UPLOAD_LIMIT = 150000000  # 150 MB
+    CHUNK_SIZE = 150000000  # 150 MB
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -254,7 +254,7 @@ class DropboxProvider(provider.BaseProvider):
         if conflict == 'replace':
             path_arg['mode'] = 'overwrite'
 
-        if stream.size > self.NON_CHUNKED_UPLOAD_LIMIT:
+        if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
             data = await self._chunked_upload(stream, path_arg)
         else:
             resp = await self.make_request(
@@ -307,7 +307,7 @@ class DropboxProvider(provider.BaseProvider):
 
     async def _upload_parts(self, stream: streams.BaseStream, session_id: str):
 
-        for i in range(0, stream.size, self.CHUNKED_SIZE):
+        for i in range(0, stream.size, self.CHUNK_SIZE):
             upload_args = {
                 'close': False,
                 'cursor': {
@@ -322,7 +322,7 @@ class DropboxProvider(provider.BaseProvider):
                     'Content-Type': 'application/octet-stream',
                     'Dropbox-API-Arg': json.dumps(upload_args),
                 },
-                data=stream.read(self.CHUNKED_SIZE),
+                data=stream.read(self.CHUNK_SIZE),
                 expects=(200, ),
                 throws=exceptions.UploadError,
             )
