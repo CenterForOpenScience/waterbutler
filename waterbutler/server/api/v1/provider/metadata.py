@@ -62,6 +62,8 @@ class MetadataMixin:
         if 'Range' not in self.request.headers:
             request_range = None
         else:
+            # As per RFC 2616 14.16, if an invalid Range header is specified,
+            # the request will be treated as if the header didn't exist.
             request_range = tornado.httputil._parse_request_range(self.request.headers['Range'])
 
         version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
@@ -76,13 +78,6 @@ class MetadataMixin:
         if isinstance(stream, str):
             return self.redirect(stream)
 
-        request_range = None
-        range_header = self.request.headers.get("Range")
-        if range_header:
-            # As per RFC 2616 14.16, if an invalid Range header is specified,
-            # the request will be treated as if the header didn't exist.
-            request_range = tornado.httputil._parse_request_range(range_header)
-
         size = stream.size
         if request_range:
             start, end = request_range
@@ -96,6 +91,7 @@ class MetadataMixin:
                 return
             if start is not None and start < 0:
                 start += size
+
             if end is not None and end > size:
                 # Clients sometimes blindly use a large range to limit their
                 # download size; cap the endpoint at the actual file size.
