@@ -360,8 +360,7 @@ class TestUpload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_commit_upload(self, provider, root_provider_fixtures):
-        path = WaterButlerPath('/newfile', _ids=(provider.folder, None))
+    async def test_upload_complete_session(self, provider, root_provider_fixtures):
         commit_url = provider._build_upload_url('files', 'upload_sessions',
                                                               'fake_session_id', 'commit')
 
@@ -371,13 +370,11 @@ class TestUpload:
                                        body=root_provider_fixtures['upload_commit_metadata'])
 
         session_metadata = root_provider_fixtures['create_session_metadata']
-        metadata, created = await provider._commit_upload(path,
-                                                          session_metadata,
+        entry = await provider._complete_session(session_metadata,
                                                           root_provider_fixtures['formated_parts'],
                                                           'fake_sha')
 
-        assert created
-        assert metadata.name == 'test.txt'
+        assert root_provider_fixtures['upload_commit_metadata']['entries'][0] == entry
         assert aiohttpretty.has_call(method='POST', uri=commit_url)
 
 

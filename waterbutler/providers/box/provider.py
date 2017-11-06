@@ -347,7 +347,7 @@ class BoxProvider(provider.BaseProvider):
         parts = await self._upload_parts(data, session_data)
 
         # Step 4 complete the session and return the upload file's metadata.
-        return await self._complete_session(path, session_data, parts, data_sha)
+        return await self._complete_session(session_data, parts, data_sha)
 
     async def _create_upload_session(self,
                                      path: wb_path.WaterButlerPath,
@@ -372,11 +372,11 @@ class BoxProvider(provider.BaseProvider):
                             session_data: dict):
 
         parts = {'parts': []}
-        upload_size = len(bytearray(data))
+        upload_size = len(data)
 
         for start_bytes in range(0, upload_size, session_data['part_size']):
             chunk = data[start_bytes: start_bytes + session_data['part_size']]
-            chunk_size = len(bytearray(chunk))  # Final chunk size != session_data['part_size']
+            chunk_size = len(chunk)  # Final chunk size != session_data['part_size']
             chunk_sha = base64.standard_b64encode(hashlib.sha1(chunk).digest()).decode()
 
             byte_range = self._build_range_header((start_bytes, start_bytes + chunk_size - 1))
