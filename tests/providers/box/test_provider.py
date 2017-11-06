@@ -325,9 +325,9 @@ class TestUpload:
         session_url = provider._build_upload_url('files', 'upload_sessions', 'fake_session_id')
 
         responses = [{'body': json.dumps(root_provider_fixtures['upload_part_one']),
-                      'status' : 201},
+                      'status': 201},
                      {'body': json.dumps(root_provider_fixtures['upload_part_two']),
-                      'status' : 201}]
+                      'status': 201}]
 
         aiohttpretty.register_json_uri('PUT',
                                        session_url,
@@ -351,13 +351,12 @@ class TestUpload:
             ]
         }
 
-
         assert parts_metadata == expected_response
 
         assert len(aiohttpretty.calls) == 2
         for call in aiohttpretty.calls:
-            call['method'] == 'PUT'
-            call['uri'] == provider._build_upload_url('files', 'upload_sessions', 'fake_session_id')
+            assert call['method'] == 'PUT'
+            assert call['uri'] == provider._build_upload_url('files', 'upload_sessions', 'fake_session_id')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

@@ -289,47 +289,66 @@ class BoxProvider(provider.BaseProvider):
                      conflict: str='replace',
                      **kwargs) -> typing.Tuple[BoxFileMetadata, bool]:
 
-        if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
-            data = await stream.read()
-            data_sha = base64.standard_b64encode(hashlib.sha1(data).digest()).decode()
-            session_data = await self._create_upload_session(path, data)
-            parts = await self._upload_parts(data, session_data)
-            return await self._commit_upload(path, session_data, parts, data_sha)
-
         if path.identifier and conflict == 'keep':
             path, _ = await self.handle_name_conflict(path, conflict=conflict, kind='folder')
             path._parts[-1]._id = None
 
-        stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
 
-        data_stream = streams.FormDataStream(
-            attributes=json.dumps({
-                'name': path.name,
-                'parent': {
-                    'id': path.parent.identifier
-                }
-            })
-        )
-        data_stream.add_file('file', stream, path.name, disposition='form-data')
+        if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
+            entry = await self._chunked_upload(stream, path)
+        else:
+            stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
 
-        async with self.request(
-            'POST',
-            self._build_upload_url(
-                *filter(lambda x: x is not None, ('files', path.identifier, 'content'))),
-            data=data_stream,
-            headers=data_stream.headers,
-            expects=(201,),
-            throws=exceptions.UploadError,
-        ) as resp:
-            data = await resp.json()
+            data_stream = streams.FormDataStream(
+                attributes=json.dumps({
+                    'name': path.name,
+                    'parent': {
+                        'id': path.parent.identifier
+                    }
+                })
+            )
+            data_stream.add_file('file', stream, path.name, disposition='form-data')
 
-        entry = data['entries'][0]
-        if stream.writers['sha1'].hexdigest != entry['sha1']:
-            raise exceptions.UploadChecksumMismatchError()
+            async with self.request(
+                'POST',
+                self._build_upload_url(
+                    *filter(lambda x: x is not None, ('files', path.identifier, 'content'))),
+                data=data_stream,
+                headers=data_stream.headers,
+                expects=(201,),
+                throws=exceptions.UploadError,
+            ) as resp:
+                data = await resp.json()
 
-        created = path.identifier is None
-        path._parts[-1]._id = entry['id']
+            entry = data['entries'][0]
+            if stream.writers['sha1'].hexdigest != entry['sha1']:
+                raise exceptions.UploadChecksumMismatchError()
+
+            created = path.identifier is None
+            path._parts[-1]._id = entry['id']
+
         return BoxFileMetadata(entry, path), created
+
+    async def _chunked_upload(self,
+                              path: wb_path.WaterButlerPath,
+                              stream: streams.BaseStream) -> dict:
+        """
+        Chunked uploading allows us to upload large files over several requests, Box's chunked
+        uploading process has 4 steps.
+        """
+
+        # Step 1 get the sha of all the data you will upload and base 64 encode it.
+        data = await stream.read()
+        data_sha = base64.standard_b64encode(hashlib.sha1(data).digest()).decode()
+
+        # Step 2 create an upload session with box and recieve session id.
+        session_data = await self._create_upload_session(path, data)
+
+        # Step 3 split the data into chunks and upload them to box.
+        parts = await self._upload_parts(data, session_data)
+
+        # Step 4 complete the session and return the upload file's metadata.
+        return await self._complete_session(path, session_data, parts, data_sha)
 
     async def _create_upload_session(self,
                                      path: wb_path.WaterButlerPath,
@@ -347,7 +366,7 @@ class BoxProvider(provider.BaseProvider):
             expects=(201,),
             throws=exceptions.UploadError,
         ) as resp:
-            return (await resp.json())
+            return await resp.json()
 
     async def _upload_parts(self,
                             data: bytes,
@@ -380,11 +399,10 @@ class BoxProvider(provider.BaseProvider):
 
         return parts
 
-    async def _commit_upload(self,
-                             path: wb_path.WaterButlerPath,
+    async def _complete_session(self,
                              session_data: dict,
                              parts: dict,
-                             data_sha: str) -> typing.Tuple[BoxFileMetadata, bool]:
+                             data_sha: str) -> dict:
 
         async with self.request(
             'POST',
@@ -396,10 +414,9 @@ class BoxProvider(provider.BaseProvider):
             expects=(201,),
             throws=exceptions.UploadError,
         ) as resp:
-            data = await resp.json()
+            entry = (await resp.json())['entries'][0]
 
-        created = path.identifier is None
-        return BoxFileMetadata(data['entries'][0], path), created
+        return entry
 
     async def delete(self,  # type: ignore
                      path: wb_path.WaterButlerPath,
