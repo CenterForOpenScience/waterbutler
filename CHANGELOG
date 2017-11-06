@@ -2,6 +2,66 @@
 ChangeLog
 *********
 
+0.34.1 (2017-10-18)
+===================
+- Fix: Don't crash when a file on Google Drive is missing an md5 in its metadata.  This occurs
+for non-exportable files like Google Maps, Google Forms, etc.
+
+0.34.0 (2017-09-29)
+===================
+- ANNOUNCEMENT!  Sadly, the WaterButler v0 API is now *undeprecated*.  We've discovered that the
+OSF is still using it in a few places, so it's been given a temporary reprieve.  Once those are
+converted to v1, v0 will be re-deprecated then removed after an appropriate warning period.
+- Feature: For providers that return hashes on upload, WaterButler will calculate the same hash
+as the file streams and throw an informative error if its hash and the provider's hash differ.
+- Fix: Stop throwing exceptions when building exceptions to throw.  Pickled exceptions are
+resurrected in a peculiar fashion that some of WaterButler's exception classes could not survive.
+- Fix: Validate that the move/copy destination path is really a folder.
+- Fix: Update the Box and Google Drive intra-{move,copy} actions to include children in the
+returned metadata for folders (and document it).
+- Fix: Release Box responses on error.
+- Code: Update the Postman test suite to include CRUD and move tests.
+- Code: Start testing with python-3.6 on Travis.
+- Code: Improve test coverage for all providers except osftorage and figshare (coming soon!).
+- Code: Teach WaterButler to listen for a SIGTERM signal and exit immediately upon receiving it.
+This bypasses the 10 second wait for shutdown when running it in Docker.
+- Code: Fix sphinx syntax errors in the WaterButler docs.
+
+0.33.1 (2017-09-05)
+===================
+- Reject requests for Box IDs if the ID is valid, but the file or folder is outside of the
+project root.  (thanks, @AddisonSchiller!)
+
+0.33.0 (2017-08-09)
+===================
+- ANNOUNCEMENT!  The WaterButler v0 API is DEPRECATED!  COS no longer uses it and has moved
+entirely to the v1 API.  It will be removed in the first release after October 1.  If you depend on
+v0, please get in contact with us (contact@cos.io) before then, and let us know.
+- Feature: WaterButler now supports Bitbucket as a read-only provider!  As a read-only provider,
+you can browse, download, download-as-zip, get file revision history, and copy out of your
+connected Bitbucket repository.
+- Feature: Sentry errors now include provider and resource as searchable parameters. (thanks,
+@abought!)
+- Fix: Correctly describe the response of folder intra-move actions in GoogleDrive as folders,
+rather than files.
+- Fix: WaterButler now correctly throttles multiple parallel requests.  The maximum number of
+simultaneous requests is set by the waterbutler.settings.OP_CONCURRENCY config variable.
+
+0.32.3 (2017-07-20)
+===================
+- Fix: Quiet some overly-verbose error logging.
+
+0.32.2 (2017-07-09)
+===================
+- Fix: Fix hanging figshare uploads by replacing a StreamReader.readexactly call with a
+StreamReader.read.  The underlying cause of this problem is still unknown.
+
+0.32.1 (2017-07-07)
+===================
+- Fix: Correctly format the Last-Modified header returned from v1 HEAD requests. WB had been
+setting it to the datetime format used by the provider, but we should be following the format laid
+out by RFC 7232, S2.2.  (thanks, @icereval and @luizirber!)
+
 0.32.0 (2017-06-14)
 ===================
 - Fix: Send back the correct modified date when uploading a file to osfstorage. osfstorage had
