@@ -293,7 +293,6 @@ class BoxProvider(provider.BaseProvider):
             path, _ = await self.handle_name_conflict(path, conflict=conflict, kind='folder')
             path._parts[-1]._id = None
 
-
         if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
             entry = await self._chunked_upload(stream, path)
         else:
