@@ -120,7 +120,11 @@ class CloudFilesProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(resp)
 
     @ensure_connection
-    async def upload(self, stream, path, check_created=True, fetch_metadata=True):
+    async def upload(self, stream,
+                     path,
+                     check_created=True,
+                     fetch_metadata=True,
+                     conflict='replace'):
         """Uploads the given stream to CloudFiles
         :param ResponseStreamReader stream: The stream to put to CloudFiles
         :param str path: The full path of the object to upload to/into
@@ -128,6 +132,9 @@ class CloudFilesProvider(provider.BaseProvider):
         :param bool fetch_metadata: If true upload will return metadata
         :rtype (dict/None, bool):
         """
+
+        path, _ = await self.handle_name_conflict(path, conflict=conflict, kind=path.kind)
+
         if stream.size > self.SEGMENT_SIZE:
             return await self.chunked_upload(stream, path,
                                 check_created=check_created,

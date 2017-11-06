@@ -180,10 +180,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_chunked_upload_segment_size(self,
-                          connected_provider,
-                          file_stream_100_bytes,
-                          file_header_metadata):
+    async def test_chunked_upload_segment(self, connected_provider, file_stream_100_bytes):
 
         path = WaterButlerPath('/similar.file')
 
