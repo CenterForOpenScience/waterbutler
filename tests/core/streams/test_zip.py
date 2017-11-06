@@ -141,11 +141,9 @@ class TestZipStreamReader:
             files.append({
                 'filename': filename,
                 'path': path,
-                'contents': contents
+                'contents': contents,
+                'handle': open(path, 'rb')
             })
-
-        for file in files:
-            file['handle'] = open(file['path'], 'rb')
 
         stream = streams.ZipStreamReader(
             AsyncIterator(
