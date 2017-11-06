@@ -74,11 +74,6 @@ class UtilMixin:
     bytes_downloaded = 0
     bytes_uploaded = 0
 
-    def initialize(self):
-        method = self.get_query_argument('method', None)
-        if method:
-            self.request.method = method.upper()
-
     def set_status(self, code, reason=None):
         return super().set_status(code, reason or HTTP_REASONS.get(code))
 

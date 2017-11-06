@@ -1,0 +1,47 @@
+<?xml version="1.0" ?>
+<d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:s="http://sabredav.org/ns">
+    <d:response><d:href>/owncloud/remote.php/webdav/</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:getlastmodified>Tue, 21 Jun 2016 00:44:03 GMT</d:getlastmodified>
+                <d:resourcetype>
+                     <d:collection/>
+                </d:resourcetype>
+                <d:quota-used-bytes>714783</d:quota-used-bytes>
+                <d:quota-available-bytes>-3</d:quota-available-bytes>
+                <d:getetag>&quot;57688dd358fb7&quot;</d:getetag>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+    <d:response>
+        <d:href>/owncloud/remote.php/webdav/Documents/</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:getlastmodified>Tue, 21 Jun 2016 00:44:03 GMT</d:getlastmodified>
+                <d:resourcetype>
+                    <d:collection/>
+                </d:resourcetype>
+                <d:quota-used-bytes>36227</d:quota-used-bytes>
+                <d:quota-available-bytes>-3</d:quota-available-bytes>
+                <d:getetag>&quot;57688dd3584b0&quot;</d:getetag>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+    <d:response>
+        <d:href>/owncloud/remote.php/webdav/Photos/</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:getlastmodified>Wed, 15 Jun 2016 22:49:40 GMT</d:getlastmodified>
+                <d:resourcetype>
+                    <d:collection/>
+                </d:resourcetype>
+                <d:quota-used-bytes>678556</d:quota-used-bytes>
+                <d:quota-available-bytes>-3</d:quota-available-bytes>
+                <d:getetag>&quot;5761db8485325&quot;</d:getetag>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+</d:multistatus>

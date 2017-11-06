@@ -126,8 +126,8 @@ class CloudFilesProvider(provider.BaseProvider):
         )
         await resp.release()
         # md5 is returned as ETag header as long as server side encryption is not used.
-        # TODO: nice assertion error goes here
-        assert resp.headers['ETag'].replace('"', '') == stream.writers['md5'].hexdigest
+        if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
+            raise exceptions.UploadChecksumMismatchError()
 
         if fetch_metadata:
             metadata = await self.metadata(path)

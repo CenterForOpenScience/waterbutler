@@ -108,10 +108,9 @@ class DropboxProvider(provider.BaseProvider):
                 if error_type['.tag'] == 'not_found':
                     raise exceptions.NotFoundError(error_path)
                 if 'conflict' in error_type:
-                    raise DropboxNamingConflictError(data['error_summary'])
+                    raise DropboxNamingConflictError(error_path)
             if data['error'].get('reason', False) and 'conflict' in data['error']['reason']['.tag']:
-                raise DropboxNamingConflictError('{} for path {}'.format(data['error_summary'],
-                                                                         error_path))
+                raise DropboxNamingConflictError(error_path)
         raise DropboxUnhandledConflictError(str(data))
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
@@ -240,7 +239,7 @@ class DropboxProvider(provider.BaseProvider):
         if 'Content-Length' not in resp.headers:
             size = json.loads(resp.headers['dropbox-api-result'])['size']
         else:
-            size = None
+            size = None  # ResponseStreamReader will extract it from the resp
         return streams.ResponseStreamReader(resp, size=size)
 
     async def upload(self,  # type: ignore
@@ -377,7 +376,7 @@ class DropboxProvider(provider.BaseProvider):
 
     def can_intra_move(self, dest_provider: provider.BaseProvider,
                        path: WaterButlerPath=None) -> bool:
-        return self == dest_provider
+        return self == dest_provider  # dropbox can only intra move on same account
 
     def _build_content_url(self, *segments, **query):
         return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)

@@ -1,9 +1,10 @@
 import os
+import signal
 import asyncio
 import logging
+from functools import partial
 
 import tornado.web
-import tornado.httpserver
 import tornado.platform.asyncio
 
 from raven.contrib.tornado import AsyncSentryClient
@@ -16,6 +17,18 @@ from waterbutler.server import handlers
 from waterbutler.server import settings as server_settings
 
 logger = logging.getLogger(__name__)
+
+
+def sig_handler(sig, frame):
+    io_loop = tornado.ioloop.IOLoop.instance()
+
+    def stop_loop():
+        if len(asyncio.Task.all_tasks(io_loop)) == 0:
+            io_loop.stop()
+        else:
+            io_loop.call_later(1, stop_loop)
+
+    io_loop.add_callback_from_signal(stop_loop)
 
 
 def api_to_handlers(api):
@@ -58,5 +71,6 @@ def serve():
 
     logger.info("Listening on {0}:{1}".format(server_settings.ADDRESS, server_settings.PORT))
 
+    signal.signal(signal.SIGTERM, partial(sig_handler))
     asyncio.get_event_loop().set_debug(server_settings.DEBUG)
     asyncio.get_event_loop().run_forever()
