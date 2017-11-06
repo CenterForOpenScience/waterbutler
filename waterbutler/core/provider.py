@@ -165,13 +165,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param \*args: ( :class:`tuple` )args passed to :func:`aiohttp.request`
         :param \*\*kwargs:  ( :class:`dict` ) kwargs passed to :func:`aiohttp.request`
         :rtype: :class:`aiohttp.ClientResponse`
-        :raises: :class:`.ProviderError` Raised if expects is defined
+        :raises: :class:`.UnhandledProviderError` Raised if expects is defined
         """
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
         retry = _retry = kwargs.pop('retry', 2)
         range = kwargs.pop('range', None)
         expects = kwargs.pop('expects', None)
-        throws = kwargs.pop('throws', exceptions.ProviderError)
+        throws = kwargs.pop('throws', exceptions.UnhandledProviderError)
         if range:
             kwargs['headers']['Range'] = self._build_range_header(range)
 
@@ -514,7 +514,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if (not exists and not exists == []) or conflict == 'replace':
             return path, exists  # type: ignore
         if conflict == 'warn':
-            raise exceptions.NamingConflict(path)
+            raise exceptions.NamingConflict(path.name)
 
         while True:
             path.increment_name()

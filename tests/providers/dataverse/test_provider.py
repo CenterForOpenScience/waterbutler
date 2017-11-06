@@ -8,33 +8,20 @@ import aiohttpretty
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
-
+from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.dataverse import settings as dvs
 from waterbutler.providers.dataverse import DataverseProvider
-from waterbutler.providers.dataverse.metadata import DataverseFileMetadata
+from waterbutler.providers.dataverse.metadata import DataverseFileMetadata, DataverseRevision
 
-
-@pytest.fixture
-def auth():
-    return {
-        'name': 'cat',
-        'email': 'cat@cat.com',
-    }
-
-
-@pytest.fixture
-def credentials():
-    return {'token': 'wrote harry potter'}
-
-
-@pytest.fixture
-def settings():
-    return {
-        'host': 'myfakehost.dataverse.org',
-        'doi': 'doi:10.5072/FK2/ABCDEF',
-        'id': '18',
-        'name': 'A look at wizards',
-    }
+from tests.providers.dataverse.fixtures import (
+    native_file_metadata,
+    native_dataset_metadata,
+    empty_native_dataset_metadata,
+    checksum_mismatch_dataset_metadata,
+    auth,
+    credentials,
+    settings
+)
 
 
 @pytest.fixture
@@ -57,175 +44,25 @@ def file_stream(file_like):
     return streams.FileStreamReader(file_like)
 
 
-@pytest.fixture
-def native_file_metadata():
-    return   {'datafile': {'contentType': 'text/plain; charset=US-ASCII',
-    'description': '',
-    'filename': '%2Fusr%2Flocal%2Fglassfish4%2Fglassfish%2Fdomains%2Fdomain1%2Ffiles%2F10.5072%2FFK2%2F232XYH%2F14c7a73d734-8383551cc713',
-    'id': 20,
-    'md5': 'acbd18db4cc2f85cedef654fccc4a4d8',
-    'name': 'thefile.txt',
-    'originalFormatLabel': 'UNKNOWN'},
-   'datasetVersionId': 5,
-   'description': '',
-   'label': 'thefile.txt',
-   'version': 1}
-
-
-@pytest.fixture
-def native_dataset_metadata():
-    return {'data': {'createTime': '2015-04-02T13:21:59Z',
- 'distributionDate': 'Distribution Date',
- 'files': [{'datafile': {'contentType': 'text/plain; charset=US-ASCII',
-    'description': '',
-    'filename': '%2Fusr%2Flocal%2Fglassfish4%2Fglassfish%2Fdomains%2Fdomain1%2Ffiles%2F10.5072%2FFK2%2F232XYH%2F14c7a73c684-4b22a1757aed',
-    'id': 19,
-    'md5': '2243b9249ca96f7cca9f58f7584b5ddb',
-    'name': 'UnZip.java',
-    'originalFormatLabel': 'UNKNOWN'},
-   'datasetVersionId': 5,
-   'description': '',
-   'label': 'UnZip.java',
-   'version': 1},
-  {'datafile': {'contentType': 'text/plain; charset=US-ASCII',
-    'description': '',
-    'filename': '%2Fusr%2Flocal%2Fglassfish4%2Fglassfish%2Fdomains%2Fdomain1%2Ffiles%2F10.5072%2FFK2%2F232XYH%2F14c7a73d734-8383551cc713',
-    'id': 20,
-    'md5': 'acbd18db4cc2f85cedef654fccc4a4d8',
-    'name': 'thefile.txt',
-    'originalFormatLabel': 'UNKNOWN'},
-   'datasetVersionId': 5,
-   'description': '',
-   'label': 'thefile.txt',
-   'version': 1},
-  {'datafile': {'contentType': 'application/octet-stream',
-    'description': '',
-    'filename': '%2Fusr%2Flocal%2Fglassfish4%2Fglassfish%2Fdomains%2Fdomain1%2Ffiles%2F10.5072%2FFK2%2F232XYH%2F14c7a73e419-b578b719b05c',
-    'id': 21,
-    'md5': 'ee5a34fe861617916acde862d4206280',
-    'name': 'UnZip.class',
-    'originalFormatLabel': 'UNKNOWN'},
-   'datasetVersionId': 5,
-   'description': '',
-   'label': 'UnZip.class',
-   'version': 1}],
- 'id': 5,
- 'lastUpdateTime': '2015-04-02T15:26:21Z',
- 'metadataBlocks': {'citation': {'displayName': 'Citation Metadata',
-   'fields': [{'multiple': False,
-     'typeClass': 'primitive',
-     'typeName': 'title',
-     'value': 'A look at wizards'},
-    {'multiple': True,
-     'typeClass': 'compound',
-     'typeName': 'author',
-     'value': [{'authorName': {'multiple': False,
-        'typeClass': 'primitive',
-        'typeName': 'authorName',
-        'value': 'Baggins, Bilbo'}}]},
-    {'multiple': True,
-     'typeClass': 'compound',
-     'typeName': 'datasetContact',
-     'value': [{'datasetContactEmail': {'multiple': False,
-        'typeClass': 'primitive',
-        'typeName': 'datasetContactEmail',
-        'value': 'email@email.com'},
-       'datasetContactName': {'multiple': False,
-        'typeClass': 'primitive',
-        'typeName': 'datasetContactName',
-        'value': 'Baggins, Bilbo'}}]},
-    {'multiple': True,
-     'typeClass': 'compound',
-     'typeName': 'dsDescription',
-     'value': [{'dsDescriptionValue': {'multiple': False,
-        'typeClass': 'primitive',
-        'typeName': 'dsDescriptionValue',
-        'value': 'desc'}}]},
-    {'multiple': True,
-     'typeClass': 'controlledVocabulary',
-     'typeName': 'subject',
-     'value': ['Other']},
-    {'multiple': False,
-     'typeClass': 'primitive',
-     'typeName': 'depositor',
-     'value': 'Baggins, Bilbo'},
-    {'multiple': False,
-     'typeClass': 'primitive',
-     'typeName': 'dateOfDeposit',
-     'value': '2015-04-02'}]}},
- 'productionDate': 'Production Date',
- 'releaseTime': '2015-04-02T15:26:21Z',
- 'versionMinorNumber': 0,
- 'versionNumber': 1,
- 'versionState': 'RELEASED'}}
-
-
-@pytest.fixture
-def empty_native_dataset_metadata():
-    return {'data': {'createTime': '2015-04-02T13:21:59Z',
- 'distributionDate': 'Distribution Date',
- 'files': [],
- 'id': 5,
- 'lastUpdateTime': '2015-04-02T15:26:21Z',
- 'metadataBlocks': {'citation': {'displayName': 'Citation Metadata',
-   'fields': [{'multiple': False,
-     'typeClass': 'primitive',
-     'typeName': 'title',
-     'value': 'A look at wizards'},
-    {'multiple': True,
-     'typeClass': 'compound',
-     'typeName': 'author',
-     'value': [{'authorName': {'multiple': False,
-        'typeClass': 'primitive',
-        'typeName': 'authorName',
-        'value': 'Baggins, Bilbo'}}]},
-    {'multiple': True,
-     'typeClass': 'compound',
-     'typeName': 'datasetContact',
-     'value': [{'datasetContactEmail': {'multiple': False,
-        'typeClass': 'primitive',
-        'typeName': 'datasetContactEmail',
-        'value': 'email@email.com'},
-       'datasetContactName': {'multiple': False,
-        'typeClass': 'primitive',
-        'typeName': 'datasetContactName',
-        'value': 'Baggins, Bilbo'}}]},
-    {'multiple': True,
-     'typeClass': 'compound',
-     'typeName': 'dsDescription',
-     'value': [{'dsDescriptionValue': {'multiple': False,
-        'typeClass': 'primitive',
-        'typeName': 'dsDescriptionValue',
-        'value': 'desc'}}]},
-    {'multiple': True,
-     'typeClass': 'controlledVocabulary',
-     'typeName': 'subject',
-     'value': ['Other']},
-    {'multiple': False,
-     'typeClass': 'primitive',
-     'typeName': 'depositor',
-     'value': 'Baggins, Bilbo'},
-    {'multiple': False,
-     'typeClass': 'primitive',
-     'typeName': 'dateOfDeposit',
-     'value': '2015-04-02'}]}},
- 'productionDate': 'Production Date',
- 'releaseTime': '2015-04-02T15:26:21Z',
- 'versionMinorNumber': 0,
- 'versionNumber': 1,
- 'versionState': 'RELEASED'}}
-
-
 class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_validate_v1_path_file(self, provider, native_dataset_metadata):
-        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
-        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
+        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                       key=provider.token)
+        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                    'latest-published'),
+                                           key=provider.token)
 
-        aiohttpretty.register_json_uri('GET', draft_url, status=200, body=native_dataset_metadata)
-        aiohttpretty.register_json_uri('GET', published_url, status=200, body=native_dataset_metadata)
+        aiohttpretty.register_json_uri('GET',
+                                       draft_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
+        aiohttpretty.register_json_uri('GET',
+                                       published_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
 
         path = '/21'
 
@@ -255,6 +92,32 @@ class TestValidatePath:
 
         assert wb_path_v1 == wb_path_v0
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revalidate_path(self, provider, native_dataset_metadata):
+        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                       key=provider.token)
+        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                    'latest-published'),
+                                           key=provider.token)
+
+        aiohttpretty.register_json_uri('GET',
+                                       draft_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
+        aiohttpretty.register_json_uri('GET',
+                                       published_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
+
+
+        base = await provider.validate_v1_path('/')
+
+        wb_path = await provider.revalidate_path(base, '/thefile.txt')
+        assert wb_path.name == 'thefile.txt'
+
+        wb_path = await provider.revalidate_path(base, '/new_path')
+        assert wb_path.name == 'new_path'
 
 
 class TestCRUD:
@@ -264,12 +127,21 @@ class TestCRUD:
     async def test_download(self, provider, native_dataset_metadata):
         path = '/21'
         url = provider.build_url(dvs.DOWN_BASE_URL, path, key=provider.token)
-        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
-        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
+        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                       key=provider.token)
+        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                    'latest-published'),
+                                           key=provider.token)
 
         aiohttpretty.register_uri('GET', url, body=b'better', auto_length=True)
-        aiohttpretty.register_json_uri('GET', draft_url, status=200, body=native_dataset_metadata)
-        aiohttpretty.register_json_uri('GET', published_url, status=200, body=native_dataset_metadata)
+        aiohttpretty.register_json_uri('GET',
+                                       draft_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
+        aiohttpretty.register_json_uri('GET',
+                                       published_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
 
         path = await provider.validate_path(path)
 
@@ -284,10 +156,16 @@ class TestCRUD:
         path = '/21'
         url = provider.build_url(dvs.DOWN_BASE_URL, path, key=provider.token)
         aiohttpretty.register_uri('GET', url, status=404)
-        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
+        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                       key=provider.token)
         aiohttpretty.register_json_uri('GET', draft_url, status=200, body=native_dataset_metadata)
-        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
-        aiohttpretty.register_json_uri('GET', published_url, status=200, body=native_dataset_metadata)
+        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                    'latest-published'),
+                                           key=provider.token)
+        aiohttpretty.register_json_uri('GET',
+                                       published_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
 
         path = await provider.validate_path(path)
 
@@ -298,10 +176,17 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_download_invalid_path(self, provider, native_dataset_metadata):
         path = '/50'
-        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
+        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                'latest'),
+                                       key=provider.token)
         aiohttpretty.register_json_uri('GET', draft_url, status=200, body=native_dataset_metadata)
-        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
-        aiohttpretty.register_json_uri('GET', published_url, status=200, body=native_dataset_metadata)
+        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                    'latest-published'),
+                                           key=provider.token)
+        aiohttpretty.register_json_uri('GET',
+                                       published_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
 
         path = await provider.validate_path(path)
 
@@ -310,12 +195,19 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_create(self, provider, file_stream, native_file_metadata, empty_native_dataset_metadata, native_dataset_metadata):
+    async def test_upload_create(self, provider, file_stream, native_file_metadata,
+                                 empty_native_dataset_metadata, native_dataset_metadata):
         path = '/thefile.txt'
         url = provider.build_url(dvs.EDIT_MEDIA_BASE_URL, 'study', provider.doi)
         aiohttpretty.register_uri('POST', url, status=201)
-        latest_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
-        latest_published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
+        latest_url = provider.build_url(
+            dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+            key=provider.token
+        )
+        latest_published_url = provider.build_url(
+            dvs.JSON_BASE_URL.format(provider._id, 'latest-published'),
+            key=provider.token
+        )
 
         aiohttpretty.register_json_uri('GET', latest_published_url, body={'data': {'files': []}})
         aiohttpretty.register_uri('GET', latest_url, responses=[
@@ -345,15 +237,24 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_updates(self, provider, file_stream, native_file_metadata, native_dataset_metadata):
+    async def test_upload_updates(self, provider,
+                                  file_stream,
+                                  native_file_metadata,
+                                  native_dataset_metadata):
         path = '/20'
         url = provider.build_url(dvs.EDIT_MEDIA_BASE_URL, 'study', provider.doi)
         aiohttpretty.register_uri('POST', url, status=201)
-        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
-        aiohttpretty.register_json_uri('GET', published_url, status=200, body=native_dataset_metadata)
+        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                           key=provider.token)
+        aiohttpretty.register_json_uri('GET',
+                                       published_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
         delete_url = provider.build_url(dvs.EDIT_MEDIA_BASE_URL, 'file', '/20')  # Old file id
         aiohttpretty.register_json_uri('DELETE', delete_url, status=204)
-        latest_published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
+        latest_published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                           'latest-published'),
+                                                  key=provider.token)
 
         aiohttpretty.register_json_uri('GET', latest_published_url, body={'data': {'files': []}})
 
@@ -370,31 +271,86 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_upload_checksum_mismatch(self, provider, file_stream,
+                                            empty_native_dataset_metadata,
+                                            checksum_mismatch_dataset_metadata):
+        path = '/thefile.txt'
+        url = provider.build_url(dvs.EDIT_MEDIA_BASE_URL, 'study', provider.doi)
+        aiohttpretty.register_uri('POST', url, status=201)
+        latest_url = provider.build_url(
+            dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+            key=provider.token
+        )
+        latest_published_url = provider.build_url(
+            dvs.JSON_BASE_URL.format(provider._id, 'latest-published'),
+            key=provider.token
+        )
+
+        aiohttpretty.register_json_uri('GET', latest_published_url, body={'data': {'files': []}})
+        aiohttpretty.register_uri('GET', latest_url, responses=[
+            {
+                'status': 200,
+                'body': json.dumps(empty_native_dataset_metadata).encode('utf-8'),
+                'headers': {'Content-Type': 'application/json'},
+            },
+            {
+                'status': 200,
+                'body': json.dumps(checksum_mismatch_dataset_metadata).encode('utf-8'),
+                'headers': {'Content-Type': 'application/json'},
+            },
+        ])
+
+        path = await provider.validate_path(path)
+        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+            await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='POST', uri=url)
+        assert aiohttpretty.has_call(method='GET', uri=latest_url)
+        assert aiohttpretty.has_call(method='GET', uri=latest_published_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_delete_file(self, provider, native_dataset_metadata):
         path = '21'
         url = provider.build_url(dvs.EDIT_MEDIA_BASE_URL, 'file', path)
         aiohttpretty.register_json_uri('DELETE', url, status=204)
-        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
+        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                'latest'),
+                                       key=provider.token)
         aiohttpretty.register_json_uri('GET', draft_url, status=200, body=native_dataset_metadata)
-        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
-        aiohttpretty.register_json_uri('GET', published_url, status=200, body=native_dataset_metadata)
+        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                    'latest-published'),
+                                           key=provider.token)
+        aiohttpretty.register_json_uri('GET',
+                                       published_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
 
         path = await provider.validate_path(path)
         await provider.delete(path)
 
         assert aiohttpretty.has_call(method='DELETE', uri=url)
 
-    # @pytest.mark.asyncio
-    # @pytest.mark.aiohttpretty
-    # async def test_delete_file_invalid_path(self, provider, native_dataset_metadata):
-    #     path = '500'
-    #     draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
-    #     aiohttpretty.register_json_uri('GET', draft_url, status=200, body=native_dataset_metadata)
-    #     published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
-    #     aiohttpretty.register_json_uri('GET', published_url, status=200, body=native_dataset_metadata)
 
-    #     with pytest.raises(exceptions.MetadataError):
-    #         await provider.delete(path)
+class TestRevisions:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revisions(self, provider, native_dataset_metadata):
+
+        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'),
+                                 key=provider.token)
+        aiohttpretty.register_json_uri('GET', url, status=200, body=native_dataset_metadata)
+
+        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                 key=provider.token)
+        aiohttpretty.register_json_uri('GET', url, status=200, body=native_dataset_metadata)
+
+        path = WaterButlerPath('/thefile.txt', _ids=('?', '19'))
+        result = await provider.revisions(path, version='latest')
+
+        isinstance(result, DataverseRevision)
+        assert result[0].raw == 'latest-published'
 
 
 class TestMetadata:
@@ -402,7 +358,30 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_metadata(self, provider, native_dataset_metadata):
-        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
+
+        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'),
+                                 key=provider.token)
+        aiohttpretty.register_json_uri('GET', url, status=200, body=native_dataset_metadata)
+
+        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                 key=provider.token)
+        aiohttpretty.register_json_uri('GET', url, status=200, body=native_dataset_metadata)
+
+        path = WaterButlerPath('/thefile.txt', _ids=('?', '19'))
+        result = await provider.metadata(path, version='latest')
+
+        assert result.provider == 'dataverse'
+        assert result.kind == 'file'
+        assert result.name == 'UnZip.java'
+        assert result.path == '/19'
+        assert result.extra['fileId'] == '19'
+        assert result.materialized_path == '/UnZip.java'
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata_root(self, provider, native_dataset_metadata):
+        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                 key=provider.token)
         aiohttpretty.register_json_uri('GET', url, status=200, body=native_dataset_metadata)
 
         path = await provider.validate_path('/')
@@ -419,7 +398,8 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_metadata_no_files(self, provider, empty_native_dataset_metadata):
-        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
+        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                 key=provider.token)
         aiohttpretty.register_json_uri('GET', url, status=200, body=empty_native_dataset_metadata)
         path = await provider.validate_path('/')
         result = await provider.metadata(path, version='latest')
@@ -428,8 +408,26 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_metadata_404(self, provider, native_dataset_metadata):
+
+        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'),
+                                 key=provider.token)
+        aiohttpretty.register_json_uri('GET', url, status=404, body=native_dataset_metadata)
+
+        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                 key=provider.token)
+        aiohttpretty.register_json_uri('GET', url, status=200, body=native_dataset_metadata)
+
+        path = WaterButlerPath('/thefilenotfound.txt', _ids=('?', 'nobody has this fileId'))
+
+        with pytest.raises(exceptions.MetadataError):
+            await provider.metadata(path, version='latest')
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_metadata_published(self, provider, native_dataset_metadata):
-        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
+        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'),
+                                 key=provider.token)
         aiohttpretty.register_json_uri('GET', url, status=200, body=native_dataset_metadata)
 
         path = await provider.validate_path('/')
@@ -445,7 +443,8 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_metadata_published_no_files(self, provider, empty_native_dataset_metadata):
-        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
+        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'),
+                                 key=provider.token)
         aiohttpretty.register_json_uri('GET', url, status=200, body=empty_native_dataset_metadata)
 
         path = await provider.validate_path('/')
@@ -456,7 +455,8 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_draft_metadata_missing(self, provider):
-        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
+        url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                 key=provider.token)
         aiohttpretty.register_json_uri('GET', url, status=404)
 
         path = await provider.validate_path('/')
@@ -467,10 +467,16 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_draft_metadata_no_state_catches_all(self, provider, native_dataset_metadata):
-        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
+        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                       key=provider.token)
         aiohttpretty.register_json_uri('GET', draft_url, status=200, body=native_dataset_metadata)
-        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
-        aiohttpretty.register_json_uri('GET', published_url, status=200, body=native_dataset_metadata)
+        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                    'latest-published'),
+                                           key=provider.token)
+        aiohttpretty.register_json_uri('GET',
+                                       published_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
 
         path = await provider.validate_path('/')
         result = await provider.metadata(path)
@@ -481,9 +487,13 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_metadata_never_published(self, provider, native_dataset_metadata):
-        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
+        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                    'latest-published'),
+                                           key=provider.token)
         aiohttpretty.register_json_uri('GET', published_url, status=404)
-        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'), key=provider.token)
+        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                'latest'),
+                                       key=provider.token)
         aiohttpretty.register_json_uri('GET', draft_url, status=200, body=native_dataset_metadata)
 
         path = await provider.validate_path('/')
@@ -493,8 +503,10 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_never_published_raises_errors(self, provider, native_dataset_metadata):
-        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest-published'), key=provider.token)
+    async def test_metadata_never_published_raises_errors(self, provider):
+        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                    'latest-published'),
+                                           key=provider.token)
         aiohttpretty.register_json_uri('GET', published_url, status=400)
 
         path = await provider.validate_path('/')
@@ -502,3 +514,9 @@ class TestMetadata:
             result = await provider.metadata(path)
 
         assert e.value.code == 400
+
+
+class TestUtils:
+
+    def test_utils(self, provider):
+        assert not provider.can_duplicate_names()

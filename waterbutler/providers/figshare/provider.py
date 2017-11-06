@@ -1,6 +1,7 @@
-import http
 import json
 import asyncio
+import hashlib
+from http import HTTPStatus
 
 import aiohttp
 
@@ -175,13 +176,13 @@ class BaseFigshareProvider(provider.BaseProvider):
         file_metadata = await self.metadata(path)
         download_url = file_metadata.extra['downloadUrl']
         if download_url is None:
-            raise exceptions.DownloadError('Download not available', code=http.client.FORBIDDEN)
+            raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)
 
         params = {} if file_metadata.is_public else {'token': self.token}
         resp = await aiohttp.request('GET', download_url, params=params)
         if resp.status == 404:
             await resp.release()
-            raise exceptions.DownloadError('Download not available', code=http.client.FORBIDDEN)
+            raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)
 
         return streams.ResponseStreamReader(resp)
 
@@ -261,6 +262,7 @@ class BaseFigshareProvider(provider.BaseProvider):
             expects=(200, 404),
         )
         if resp.status == 404:
+            await resp.release()
             raise exceptions.ProviderError(
                 'Could not get upload_url. File creation may have taken more '
                 'than {} seconds to finish.'.format(str(settings.FILE_CREATE_WAIT)))
@@ -554,6 +556,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                     expects=(201, ),
                 )
 
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         file_id = await self._upload_file(article_id, path.name, stream)
 
         # Build new file path and return metadata
@@ -561,7 +564,11 @@ class FigshareProjectProvider(BaseFigshareProvider):
                             _ids=(self.container_id, article_id, file_id),
                             folder=False,
                             is_public=False)
-        return (await self.metadata(path, **kwargs)), True
+        metadata = await self.metadata(path, **kwargs)
+        if stream.writers['md5'].hexdigest != metadata.extra['hashes']['md5']:
+            raise exceptions.UploadChecksumMismatchError()
+
+        return metadata, True
 
     async def create_folder(self, path, **kwargs):
         """Create a folder at ``path``. Returns a `FigshareFolderMetadata` object if successful.
@@ -585,7 +592,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
             'GET',
             self.build_url(False, *self.root_path_parts, 'articles', article_id),
             expects=(200, ),
-            throws=exceptions.NotFoundError,
+            throws=exceptions.CreateFolderError,
         )
         article_json = await get_article_response.json()
 
@@ -898,11 +905,16 @@ class FigshareArticleProvider(BaseFigshareProvider):
             if not parent_json['defined_type'] in settings.FOLDER_TYPES:
                 del path._parts[1]
 
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         file_id = await self._upload_file(self.container_id, path.name, stream)
 
         # Build new file path and return metadata
         path = FigsharePath('/' + file_id, _ids=('', file_id), folder=False, is_public=False)
-        return (await self.metadata(path, **kwargs)), True
+        metadata = await self.metadata(path, **kwargs)
+        if stream.writers['md5'].hexdigest != metadata.extra['hashes']['md5']:
+            raise exceptions.UploadChecksumMismatchError()
+
+        return metadata, True
 
     async def create_folder(self, path, **kwargs):
         raise exceptions.CreateFolderError('Cannot create folders within articles.', code=400)

@@ -4,20 +4,19 @@ import jwe
 import jwt
 import aiohttp
 
-from waterbutler.core import auth
 from waterbutler.core import exceptions
-
 from waterbutler.auth.osf import settings
+from waterbutler.core.auth import (BaseAuthHandler,
+                                    AuthType)
 
 
 JWE_KEY = jwe.kdf(settings.JWE_SECRET.encode(), settings.JWE_SALT.encode())
 
 
-class OsfAuthHandler(auth.BaseAuthHandler):
+class OsfAuthHandler(BaseAuthHandler):
     """Identity lookup via the Open Science Framework"""
     ACTION_MAP = {
         'put': 'upload',
-        'post': 'upload',  # TODO copyfrom
         'get': 'download',
         'head': 'metadata',
         'delete': 'delete',
@@ -91,16 +90,26 @@ class OsfAuthHandler(auth.BaseAuthHandler):
         payload['auth']['callback_url'] = payload['callback_url']
         return payload
 
-    async def get(self, resource, provider, request):
+    async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE):
         """Used for v1"""
+        method = request.method.lower()
 
-        try:
-            action = self.ACTION_MAP[request.method.lower()]
-        except KeyError:
-            raise exceptions.UnsupportedHTTPMethodError(
-                method_used=request.method.lower(),
-                supported_methods=self.ACTION_MAP.keys()
-            )
+        if method == 'post' and action:
+            post_action_map = {
+                'copy': 'download' if auth_type is AuthType.SOURCE else 'upload',
+                'rename': 'upload',
+                'move': 'upload',
+            }
+
+            try:
+                osf_action = post_action_map[action.lower()]
+            except KeyError:
+                raise exceptions.UnsupportedActionError(method, supported=post_action_map.keys())
+        else:
+            try:
+                osf_action = self.ACTION_MAP[method]
+            except KeyError:
+                raise exceptions.UnsupportedHTTPMethodError(method, supported=self.ACTION_MAP.keys())
 
         headers = {'Content-Type': 'application/json'}
 
@@ -120,7 +129,7 @@ class OsfAuthHandler(auth.BaseAuthHandler):
             self.build_payload({
                 'nid': resource,
                 'provider': provider,
-                'action': action
+                'action': osf_action
             }, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)

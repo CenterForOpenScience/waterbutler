@@ -319,8 +319,10 @@ class OSFStorageProvider(provider.BaseProvider):
         try:
             with open(local_pending_path, 'wb') as file_pointer:
                 stream.add_writer('file', file_pointer)
-                await provider.upload(stream, remote_pending_path, check_created=False, fetch_metadata=False, **kwargs)
+                await provider.upload(stream, remote_pending_path, check_created=False,
+                                      fetch_metadata=False, **kwargs)
         except Exception as ex:
+            print(local_pending_path)
             os.remove(local_pending_path)
             raise ex
 

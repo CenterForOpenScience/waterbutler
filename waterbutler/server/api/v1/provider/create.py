@@ -62,7 +62,7 @@ class CreateMixin:
 
             my_type_exists = await self.provider.exists(validated_target_path)
             if not isinstance(my_type_exists, bool) or my_type_exists:
-                raise exceptions.NamingConflict(self.target_path)
+                raise exceptions.NamingConflict(self.target_path.name)
 
             if not self.provider.can_duplicate_names():
                 target_flipped = self.path.child(self.childs_name, folder=(self.kind != 'folder'))
@@ -76,7 +76,7 @@ class CreateMixin:
                 other_exists = await self.provider.exists(validated_target_flipped)
                 # the dropbox provider's metadata() method returns a [] here instead of True
                 if not isinstance(other_exists, bool) or other_exists:
-                    raise exceptions.NamingConflict(self.target_path)
+                    raise exceptions.NamingConflict(self.target_path.name)
 
         else:
             if self.childs_name is not None:

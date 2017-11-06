@@ -466,6 +466,27 @@ class TestUpload:
         expected = GoogleDriveFileMetadata(item, path)
         assert result == expected
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_checksum_mismatch(self, provider, file_stream, root_provider_fixtures):
+        upload_id = '7'
+        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
+
+        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                       upload_id=upload_id)
+
+        aiohttpretty.register_json_uri('PUT', finish_upload_url,
+                                       body=root_provider_fixtures['checksum_mismatch_metadata'])
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+
+        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+            await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
+        assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
+
 
 class TestDelete:
 
@@ -1423,8 +1444,8 @@ class TestCreateFolder:
             await provider.create_folder(path)
 
         assert e.value.code == 409
-        assert e.value.message == ('Cannot create folder "{}" because a file or folder '
-                                   'already exists at path "{}"'.format(path.name, str(path)))
+        assert e.value.message == ('Cannot create folder "hugo", because a file or folder '
+                                   'already exists with that name')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
