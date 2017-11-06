@@ -209,8 +209,6 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_create_upload_session(self, provider, root_provider_fixtures):
 
-        path = await provider.validate_path('/phile')
-
         url = provider._build_content_url('files', 'upload_session', 'start')
 
         aiohttpretty.register_json_uri('POST',
