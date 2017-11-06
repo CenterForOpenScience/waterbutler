@@ -133,7 +133,9 @@ class CloudFilesProvider(provider.BaseProvider):
         :rtype (dict/None, bool):
         """
 
-        path, _ = await self.handle_name_conflict(path, conflict=conflict, kind=path.kind)
+        if path.identifier and conflict == 'keep':
+            path, _ = await self.handle_name_conflict(path, conflict=conflict, kind='folder')
+            path._parts[-1]._id = None
 
         if stream.size > self.SEGMENT_SIZE:
             return await self.chunked_upload(stream, path,
