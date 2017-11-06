@@ -207,16 +207,12 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_create_upload_session(self, provider, root_provider_fixtures,
-                          error_fixtures, file_stream, settings):
+    async def test_create_upload_session(self, provider, root_provider_fixtures):
 
         path = await provider.validate_path('/phile')
 
-        metadata_url = provider.build_url('files', 'get_metadata')
         url = provider._build_content_url('files', 'upload_session', 'start')
 
-        aiohttpretty.register_json_uri('POST', metadata_url, data={'path': path.full_path},
-                                       status=409, body=error_fixtures['not_found_metadata_data'])
         aiohttpretty.register_json_uri('POST',
                                        url,
                                        status=200,
@@ -225,7 +221,6 @@ class TestCRUD:
         session_id = await provider._create_upload_session()
 
         assert session_id == 'test session id'
-        assert aiohttpretty.has_call(method='POST', uri=metadata_url)
         assert aiohttpretty.has_call(method='POST', uri=url)
 
     @pytest.mark.asyncio
