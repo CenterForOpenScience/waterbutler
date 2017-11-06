@@ -294,7 +294,8 @@ class BoxProvider(provider.BaseProvider):
             path._parts[-1]._id = None
 
         if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
-            entry = await self._chunked_upload(stream, path)
+            data = await stream.read()
+            entry = await self._chunked_upload(path, data)
         else:
             stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
 
@@ -323,21 +324,20 @@ class BoxProvider(provider.BaseProvider):
             if stream.writers['sha1'].hexdigest != entry['sha1']:
                 raise exceptions.UploadChecksumMismatchError()
 
-            created = path.identifier is None
-            path._parts[-1]._id = entry['id']
+        created = path.identifier is None
+        path._parts[-1]._id = entry['id']
 
         return BoxFileMetadata(entry, path), created
 
     async def _chunked_upload(self,
                               path: wb_path.WaterButlerPath,
-                              stream: streams.BaseStream) -> dict:
+                              data: bytes) -> dict:
         """
         Chunked uploading allows us to upload large files over several requests, Box's chunked
         uploading process has 4 steps.
         """
 
         # Step 1 get the sha of all the data you will upload and base 64 encode it.
-        data = await stream.read()
         data_sha = base64.standard_b64encode(hashlib.sha1(data).digest()).decode()
 
         # Step 2 create an upload session with box and recieve session id.
@@ -402,7 +402,6 @@ class BoxProvider(provider.BaseProvider):
                              session_data: dict,
                              parts: dict,
                              data_sha: str) -> dict:
-
         async with self.request(
             'POST',
             self._build_upload_url('files', 'upload_sessions', session_data['id'], 'commit'),
