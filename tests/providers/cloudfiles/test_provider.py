@@ -327,7 +327,6 @@ class TestRevisions:
         metadata_url = connected_provider.build_url(path.path)
         aiohttpretty.register_uri('HEAD', metadata_url, status=200, headers=file_header_metadata)
 
-
         result = await connected_provider.revisions(path)
 
         assert type(result) == list
