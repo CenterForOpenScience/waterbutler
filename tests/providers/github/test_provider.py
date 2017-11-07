@@ -3,13 +3,13 @@ import pytest
 import io
 import os
 import copy
-import furl
 import json
 import time
 import base64
 import hashlib
 from http import client
 
+import furl
 import aiohttpretty
 
 from waterbutler.core import streams
@@ -17,14 +17,13 @@ from waterbutler.core import exceptions
 
 from waterbutler.providers.github import GitHubProvider
 from waterbutler.providers.github.path import GitHubPath
+from waterbutler.providers.github import settings as github_settings
+from waterbutler.providers.github import exceptions as github_exceptions
 from waterbutler.providers.github.metadata import (GitHubRevision,
                                                    GitHubFileTreeMetadata,
                                                    GitHubFolderTreeMetadata,
                                                    GitHubFileContentMetadata,
                                                    GitHubFolderContentMetadata)
-from waterbutler.providers.github import settings as github_settings
-from waterbutler.providers.github import exceptions as gh_exceptions
-
 
 from tests.providers.github.fixtures import(crud_fixtures,
                                             revision_fixtures,
@@ -1375,19 +1374,22 @@ class TestCreateFolder:
 
 class TestRateLimit:
 
+    # Test rate_limit() method: within normal parameters
     def test_update_rate_limit(self, rate_limit_provider, patch_time):
         provider = rate_limit_provider
         provider.update_rate_limit()
         assert provider.rate_limit == 0.8
         assert provider.rate_limit_updated == 100
 
-    def test_update_rate_limit_under_reserve_limite(self, rate_limit_provider, patch_time):
+    # Test rate_limit() method: when remaining rate limit is less then reserve
+    def test_update_rate_limit_under_reserve_limit(self, rate_limit_provider, patch_time):
         provider = rate_limit_provider
         provider.rate_limit_remaining = 10
         provider.update_rate_limit()
         assert provider.rate_limit == 0.01
         assert provider.rate_limit_updated == 100
 
+    # Test add_new_rate_limit_tokens(): within normal parameters
     def test_add_new_rate_limit_tokens(self, rate_limit_provider, patch_time):
         provider = rate_limit_provider
         provider.add_new_rate_limit_tokens()
@@ -1396,7 +1398,8 @@ class TestRateLimit:
         assert provider.rate_limit_tokens == 8
         assert provider.rate_limit_tokens_updated == 100
 
-    def test_add_new_rate_limit_tokens_max_tokens_enforeced(self, rate_limit_provider, patch_time):
+    # Test add_new_rate_limit_tokens(): when calculated tokens is greater then max tokens
+    def test_add_new_rate_limit_tokens_max_tokens_enforced(self, rate_limit_provider, patch_time):
         provider = rate_limit_provider
         provider.rate_limit_tokens_updated = 10
         provider.add_new_rate_limit_tokens()
@@ -1405,6 +1408,7 @@ class TestRateLimit:
         assert provider.rate_limit_tokens == 10
         assert provider.rate_limit_tokens_updated == 100
 
+    # Test add_new_rate_limit_tokens(): Not yet time to update rate_limit
     def test_add_new_rate_limit_tokens_not_time_yet(self, rate_limit_provider, patch_time):
         provider = rate_limit_provider
         provider.rate_limit_updated = 90
@@ -1412,6 +1416,7 @@ class TestRateLimit:
         provider.add_new_rate_limit_tokens()
         assert provider.rate_limit == 1
 
+    # Test wait_for_token(): within normal parameters
     @pytest.mark.asyncio
     async def test_wait_for_token(self, rate_limit_provider, patch_time):
         provider = rate_limit_provider
@@ -1462,7 +1467,7 @@ class TestRateLimit:
                 headers={'X-RateLimit-Remaining': 1234,
                          'X-RateLimit-Reset': 5678},
                 body={'message': 'API rate limit exceeded'})
-        with pytest.raises(gh_exceptions.GitHubRateLimitExceededError) as e:
+        with pytest.raises(github_exceptions.GitHubRateLimitExceededError) as e:
             await provider.make_request(
                 'GET',
                 'dubyas.com',
@@ -1471,7 +1476,8 @@ class TestRateLimit:
             )
 
         assert e.value.code == 503
-        assert e.value.message == 'Rate limit exceeded. New quota will be available after 1970-1-1T1:34:38+00:00.'
+        assert e.value.message == 'Rate limit exceeded. New quota will be available after ' \
+                                  '1970-1-1T1:34:38+00:00.'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -1482,7 +1488,7 @@ class TestRateLimit:
                 headers={'X-RateLimit-Remaining': 1234,
                          'X-RateLimit-Reset': 5678},
                 body={'message': 'API rate limit exceeded'})
-        with pytest.raises(gh_exceptions.GitHubRateLimitExceededError) as e:
+        with pytest.raises(github_exceptions.GitHubRateLimitExceededError) as e:
             await provider.make_request(
                 'GET',
                 'dubyas.com',
@@ -1491,7 +1497,8 @@ class TestRateLimit:
             )
 
         assert e.value.code == 503
-        assert e.value.message == 'Rate limit exceeded. New quota will be available after 1970-1-1T1:34:38+00:00.'
+        assert e.value.message == 'Rate limit exceeded. New quota will be available after ' \
+                                  '1970-1-1T1:34:38+00:00.'
 
 class TestOperations:
 
@@ -1525,7 +1532,7 @@ class TestOperations:
         url = furl.furl(provider.build_repo_url('git', 'trees', sha))
         aiohttpretty.register_json_uri('GET', url, body={'truncated': True})
 
-        with pytest.raises(gh_exceptions.GitHubUnsupportedRepoError) as e:
+        with pytest.raises(github_exceptions.GitHubUnsupportedRepoError) as e:
             await provider._fetch_tree(sha)
 
         assert e.value.code == 501
