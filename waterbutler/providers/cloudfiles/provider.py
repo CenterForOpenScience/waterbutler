@@ -40,7 +40,7 @@ class CloudFilesProvider(provider.BaseProvider):
     """
     NAME = 'cloudfiles'
 
-    SEGMENT_SIZE = 50000  # 5 GB
+    SEGMENT_SIZE = 5000000000  # 5 GB
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
