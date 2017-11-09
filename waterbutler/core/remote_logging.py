@@ -174,11 +174,42 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
                         settings.KEEN_PUBLIC_WRITE_KEY, action, domain='public')
 
 
+def _scrub_payload_for_keen(payload):
+    """ Scrub unwanted keystring characters like \\.\\ from a keen payload """
+
+    scrubbed_payload = {}
+    for key in payload:
+        scrubbed_key = key
+        scrubbed_value = payload[key]
+
+        if '.' in key:
+            scrubbed_key = key.replace('.', '')
+
+        # If value is a dict, we need to do some recursion and scrub it as well
+        if isinstance(scrubbed_value, dict):
+            scrubbed_value = _scrub_payload_for_keen(scrubbed_value)
+
+        # if our new scrubbed key is already in the payload, we need to increment it
+        if scrubbed_key in scrubbed_payload:
+            i = 1
+            incremented_key = scrubbed_key + ' ({})'.format(i)
+            while incremented_key in scrubbed_payload:
+                i += 1
+                incremented_key = scrubbed_key + ' ({})'.format(i)
+
+            scrubbed_key = incremented_key
+
+        scrubbed_payload[scrubbed_key] = scrubbed_value
+
+    return scrubbed_payload
+
+
 @utils.async_retry(retries=5, backoff=5)
 async def _send_to_keen(payload, collection, project_id, write_key, action, domain='private'):
     """Serialize and send an event to Keen.  If an error occurs, try up to five more times.
     Will raise an excpetion if the event cannot be sent."""
 
+    payload = _scrub_payload_for_keen(payload)
     serialized = json.dumps(payload).encode('UTF-8')
     logger.debug("Serialized payload: {}".format(serialized))
     headers = {
