@@ -1,5 +1,6 @@
 import copy
 import json
+import hashlib
 
 import furl
 
@@ -50,18 +51,6 @@ class GitHubProvider(provider.BaseProvider):
     NAME = 'github'
     BASE_URL = settings.BASE_URL
     VIEW_URL = settings.VIEW_URL
-
-    @staticmethod
-    def is_sha(ref):
-        # sha1 is always 40 characters in length
-        try:
-            if len(ref) != 40:
-                return False
-            # sha1 is always base 16 (hex)
-            int(ref, 16)
-        except (TypeError, ValueError, ):
-            return False
-        return True
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -344,7 +333,7 @@ class GitHubProvider(provider.BaseProvider):
 
         if resp.status in (422, 409):
             if resp.status == 409 or data.get('message') == 'Invalid request.\n\n"sha" wasn\'t supplied.':
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
             raise exceptions.CreateFolderError(data, code=resp.status)
 
         data['content']['name'] = path.name
@@ -357,9 +346,6 @@ class GitHubProvider(provider.BaseProvider):
             sha = path.file_sha
         else:
             sha = (await self.metadata(path)).extra['fileSha']
-
-        if not sha:
-            raise exceptions.MetadataError('A sha is required for deleting')
 
         data = {
             'sha': sha,
@@ -423,27 +409,24 @@ class GitHubProvider(provider.BaseProvider):
         # The last tree's structure is rewritten w/o the target folder, all others
         # in the hierarchy are simply updated to reflect this change.
         tree = trees.pop()
-        if tree['target'] == '':
-            # Git Empty SHA
-            tree_sha = GIT_EMPTY_SHA
-        else:
-            # Delete the folder from the tree cast to list iterator over all values
-            current_tree = tree['tree']
-            tree['tree'] = list(filter(lambda x: x['path'] != tree['target'], tree['tree']))
-            if current_tree == tree['tree']:
-                raise exceptions.NotFoundError(str(path))
 
+        # Delete the folder from the tree cast to list iterator over all values
+        current_tree = tree['tree']
+        tree['tree'] = list(filter(lambda x: x['path'] != tree['target'], tree['tree']))
+        if current_tree == tree['tree']:
+            raise exceptions.NotFoundError(str(path))
+
+        tree_data = await self._create_tree({'tree': tree['tree']})
+        tree_sha = tree_data['sha']
+
+        # Update parent tree(s)
+        for tree in reversed(trees):
+            for item in tree['tree']:
+                if item['path'] == tree['target']:
+                    item['sha'] = tree_sha
+                    break
             tree_data = await self._create_tree({'tree': tree['tree']})
             tree_sha = tree_data['sha']
-
-            # Update parent tree(s)
-            for tree in reversed(trees):
-                for item in tree['tree']:
-                    if item['path'] == tree['target']:
-                        item['sha'] = tree_sha
-                        break
-                tree_data = await self._create_tree({'tree': tree['tree']})
-                tree_sha = tree_data['sha']
 
         # Create a new commit which references our top most tree change.
         message = message or settings.DELETE_FOLDER_MESSAGE
@@ -562,7 +545,7 @@ class GitHubProvider(provider.BaseProvider):
         tree = await resp.json()
 
         if tree['truncated']:
-            raise GitHubUnsupportedRepoError
+            raise GitHubUnsupportedRepoError('')
 
         return tree
 
@@ -570,9 +553,6 @@ class GitHubProvider(provider.BaseProvider):
         """Search through the given tree for an entity matching the name and type of `path`.
         """
         tree = await self._fetch_tree(tree_sha, recursive=True)
-
-        if tree['truncated']:
-            raise GitHubUnsupportedRepoError
 
         implicit_type = 'tree' if path.endswith('/') else 'blob'
 
@@ -610,6 +590,11 @@ class GitHubProvider(provider.BaseProvider):
             'content': streams.Base64EncodeStream(stream),
         })
 
+        sha1_calculator = streams.HashStreamWriter(hashlib.sha1)
+        stream.add_writer('sha1', sha1_calculator)
+        git_blob_header = 'blob {}\0'.format(str(stream.size))
+        sha1_calculator.write(git_blob_header.encode('utf-8'))
+
         resp = await self.make_request(
             'POST',
             self.build_repo_url('git', 'blobs'),
@@ -621,18 +606,12 @@ class GitHubProvider(provider.BaseProvider):
             expects=(201, ),
             throws=exceptions.UploadError,
         )
-        return (await resp.json())
 
-    def _is_sha(self, ref):
-        # sha1 is always 40 characters in length
-        try:
-            if len(ref) != 40:
-                return False
-            # sha1 is always base 16 (hex)
-            int(ref, 16)
-        except (TypeError, ValueError, ):
-            return False
-        return True
+        blob_metadata = await resp.json()
+        if stream.writers['sha1'].hexdigest != blob_metadata['sha']:
+            raise exceptions.UploadChecksumMismatchError()
+
+        return blob_metadata
 
     def _web_view(self, path):
         segments = (self.owner, self.repo, 'blob', path.branch_ref, path.path)
@@ -689,12 +668,6 @@ class GitHubProvider(provider.BaseProvider):
             )
         except StopIteration:
             raise exceptions.NotFoundError(str(path))
-
-        if isinstance(data, list):
-            raise exceptions.MetadataError(
-                'Could not retrieve file "{0}"'.format(str(path)),
-                code=404,
-            )
 
         return GitHubFileTreeMetadata(
             data, commit=latest['commit'], web_view=self._web_view(path),

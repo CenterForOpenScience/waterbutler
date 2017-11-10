@@ -1,7 +1,7 @@
-import os
 import json
 import typing
 import aiohttp
+import hashlib
 from http import HTTPStatus
 
 from waterbutler.core import streams
@@ -59,9 +59,15 @@ class BoxProvider(provider.BaseProvider):
         )
 
         if response.status == 404:
+            await response.release()
             raise exceptions.NotFoundError(str(path))
 
         data = await response.json()
+
+        if self.folder != '0':  # don't allow files outside project root
+            path_ids = [entry['id'] for entry in data['path_collection']['entries']]
+            if self.folder not in path_ids:
+                raise exceptions.NotFoundError(path)
 
         names, ids = zip(*[
             (x['name'], x['id'])
@@ -87,6 +93,7 @@ class BoxProvider(provider.BaseProvider):
             files_or_folders = 'files'
 
         # Box file ids must be a valid base10 number
+        response = None
         if obj_id.isdecimal():
             response = await self.make_request(
                 'get',
@@ -94,10 +101,11 @@ class BoxProvider(provider.BaseProvider):
                 expects=(200, 404, 405),
                 throws=exceptions.MetadataError,
             )
-        else:
-            response = None  # Ugly but easiest
+            if response.status in (404, 405):
+                await response.release()
+                response = None
 
-        if response is None or response.status in (404, 405):
+        if response is None:
             if new_name is not None:
                 raise exceptions.MetadataError('Could not find {}'.format(path), code=404)
 
@@ -108,6 +116,12 @@ class BoxProvider(provider.BaseProvider):
             )
         else:
             data = await response.json()  # .json releases the response
+
+            if self.folder != '0':  # don't allow files outside project root
+                path_ids = [entry['id'] for entry in data['path_collection']['entries']]
+                if self.folder not in path_ids:
+                    raise exceptions.NotFoundError(path)
+
             names, ids = zip(*[
                 (x['name'], x['id'])
                 for x in
@@ -203,7 +217,7 @@ class BoxProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        return self._serialize_item(data, dest_path), dest_path.identifier is None
+        return await self._intra_move_copy_metadata(dest_path, data)
 
     async def intra_move(self,  # type: ignore
                          dest_provider: provider.BaseProvider,
@@ -230,7 +244,7 @@ class BoxProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        return self._serialize_item(data, dest_path), dest_path.identifier is None
+        return await self._intra_move_copy_metadata(dest_path, data)
 
     @property
     def default_headers(self) -> dict:
@@ -276,6 +290,8 @@ class BoxProvider(provider.BaseProvider):
             path, _ = await self.handle_name_conflict(path, conflict=conflict, kind='folder')
             path._parts[-1]._id = None
 
+        stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
+
         data_stream = streams.FormDataStream(
             attributes=json.dumps({
                 'name': path.name,
@@ -297,9 +313,13 @@ class BoxProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
+        entry = data['entries'][0]
+        if stream.writers['sha1'].hexdigest != entry['sha1']:
+            raise exceptions.UploadChecksumMismatchError()
+
         created = path.identifier is None
-        path._parts[-1]._id = data['entries'][0]['id']
-        return BoxFileMetadata(data['entries'][0], path), created
+        path._parts[-1]._id = entry['id']
+        return BoxFileMetadata(entry, path), created
 
     async def delete(self,  # type: ignore
                      path: wb_path.WaterButlerPath,
@@ -369,7 +389,7 @@ class BoxProvider(provider.BaseProvider):
 
         if folder_precheck:
             if path.identifier is not None:
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
 
         async with self.request(
             'POST',
@@ -385,33 +405,11 @@ class BoxProvider(provider.BaseProvider):
         ) as resp:
             # Catch 409s to avoid race conditions
             if resp.status == 409:
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
             resp_json = await resp.json()
         # save new folder's id into the WaterButlerPath object. logs will need it later.
         path._parts[-1]._id = resp_json['id']
         return BoxFolderMetadata(resp_json, path)
-
-    def _assert_child(self, paths: typing.List[dict], target: str=None) -> bool:
-        if self.folder == 0:
-            return True
-        if target == self.folder:
-            return True
-        if not paths:
-            raise exceptions.MetadataError('Not found', code=HTTPStatus.NOT_FOUND)
-        if paths[0]['id'] == self.folder:
-            return True
-        return self._assert_child(paths[1:])
-
-    async def _assert_child_folder(self, path):
-        # TODO: This method and the one above may be totally unused
-        async with self.request(
-            'GET',
-            self.build_url('folders', path._id),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        ) as response:
-            data = await response.json()
-        self._assert_child(data['path_collection']['entries'], target=data['id'])
 
     async def _get_file_meta(self,
                              path: wb_path.WaterButlerPath,
@@ -493,17 +491,6 @@ class BoxProvider(provider.BaseProvider):
     def _build_upload_url(self, *segments, **query):
         return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
 
-    def _build_full_path(self, entries, filename):
-        # TODO: Method may be totally unused
-        path = []
-        for entry in reversed(entries):
-            if self.folder == entry['id']:
-                break
-            path.append(entry['name'])
-
-        base_path = '/'.join(reversed(path))
-        return '/' + os.path.join(base_path, filename)
-
     async def _delete_folder_contents(self, path: wb_path.WaterButlerPath, **kwargs) -> None:
         """Delete the contents of a folder. For use against provider root.
 
@@ -513,3 +500,16 @@ class BoxProvider(provider.BaseProvider):
         for child in meta:  # type: ignore
             box_path = await self.validate_path(child.path)
             await self.delete(box_path)
+
+    async def _intra_move_copy_metadata(self, path, data: dict) -> BaseBoxMetadata:
+        """Return appropriate metadata from intra_copy/intra_move actions. If `data` respresents
+        a folder, will fetch and include `data`'s children.
+        """
+        created = path.identifier is None
+        path.parts[-1]._id = data['id']
+        if data['type'] == 'file':
+            return self._serialize_item(data, path), created
+        else:
+            folder = self._serialize_item(data, path)
+            folder._children = await self._get_folder_meta(path)
+            return folder, created

@@ -40,6 +40,14 @@ class CloudFilesFileMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata):
     def etag(self):
         return self.raw['hash']
 
+    @property
+    def extra(self):
+        return {
+            'hashes': {
+                'md5': self.raw['hash'],
+            },
+        }
+
 
 class CloudFilesHeaderMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata):
 
@@ -74,6 +82,14 @@ class CloudFilesHeaderMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata
     @property
     def etag(self):
         return self.raw['etag']
+
+    @property
+    def extra(self):
+        return {
+            'hashes': {
+                'md5': self.raw['etag'].replace('"', ''),
+            },
+        }
 
 
 class CloudFilesFolderMetadata(BaseCloudFilesMetadata, metadata.BaseFolderMetadata):

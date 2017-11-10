@@ -1,9 +1,23 @@
-<!-- Before submit your Pull Request, make sure you picked
-     the right branch:
+<!-- Use the following format for the title of the Pull Request:
 
-     - For hotfixes, select "master" as the target branch
-     - For new features, select "develop" as the target branch
-     - For release feature fixes, select the relevant release branch (release/X.Y.Z) as the target branch -->
+    [Status] [Ticket] Title
+
+    - For PR ready for review, no need for status
+    - For PR in progress, use [WIP]
+    - For PR on hold, use [HOLD]
+-->
+
+<!-- Before submit your Pull Request, make sure you picked the right branch:
+
+    - For hotfixes, select "master" as the target branch
+    - For new features and improvements, select "develop" as the target branch
+-->
+
+<!-- For security related tickets, talk with the team lead before submit your PR -->
+
+## Ticket
+
+<!-- Link to JIRA ticket, if applicable e.g. https://openscience.atlassian.net/browse/SVCS-1234 -->
 
 ## Purpose
 
@@ -15,9 +29,12 @@
 
 ## Side effects
 
-<!--Any possible side effects? -->
+<!-- Any possible side effects? -->
 
+## QA Notes
 
-## Ticket
+<!-- If applicable, briefly describe how QA should test this ticket/PR -->
 
-<!-- Link to JIRA ticket, if applicable e.g. https://openscience.atlassian.net/browse/OSF-1234 -->
+## Deployment Notes
+
+<!-- Any special configurations for deployment? -->
