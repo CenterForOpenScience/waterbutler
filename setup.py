@@ -1,6 +1,5 @@
 from setuptools import setup, find_packages
-
-from waterbutler import __version__
+from version import __version__
 
 
 def parse_requirements(requirements):

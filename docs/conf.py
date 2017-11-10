@@ -1,17 +1,18 @@
 # Ensure we get the local copy of tornado instead of what's on the standard path
 import os
 import sys
+from version import __version__
+
 sys.path.insert(0, os.path.abspath(".."))
-import waterbutler  # noqa
-import waterbutler.server  # noqa
-# import waterbutler.providers  # noqa
+
 
 master_doc = "index"
 
 project = "WaterButler"
 copyright = "2017, Center For Open Science"
 
-version = release = waterbutler.__version__
+
+version = release = __version__
 
 extensions = [
     "sphinx.ext.autodoc",
