@@ -231,7 +231,7 @@ class TestCRUD:
         await provider._upload_parts(stream_200_MB, 'session id')
 
         assert len(aiohttpretty.calls) == 2
-        for call in  aiohttpretty.calls:
+        for call in aiohttpretty.calls:
             assert call['method'] == 'POST'
             assert call['uri'] == url
 
