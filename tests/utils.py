@@ -1,5 +1,4 @@
 import asyncio
-import aiohttp
 import os
 import sys
 import copy
@@ -8,6 +7,7 @@ import tempfile
 from unittest import mock
 
 import pytest
+import aiohttp
 from tornado import testing
 from tornado.platform.asyncio import AsyncIOMainLoop
 
