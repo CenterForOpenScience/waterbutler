@@ -699,7 +699,13 @@ class TestUploads:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_and_tasks(self, monkeypatch, provider_and_mock, file_stream, credentials, settings, mock_time):
+    async def test_upload_and_tasks(self,
+                                    monkeypatch,
+                                    provider_and_mock,
+                                    file_stream,
+                                    credentials,
+                                    settings,
+                                    mock_time):
         provider, inner_provider = provider_and_mock
         basepath = 'waterbutler.providers.osfstorage.provider.{}'
         path = WaterButlerPath('/foopath', _ids=('Test', 'OtherTest'))
@@ -709,8 +715,10 @@ class TestUploads:
         mock_backup = mock.Mock()
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
-
-        aiohttpretty.register_json_uri('POST', url, status=201, body={'version': 'versionpk', 'data': {'version': 42, 'downloads': 30, 'modified': '2017-03-13T15:43:02+00:00', 'path': '/alkjdaslke09', 'checkout': None, 'md5': 'abcd', 'sha256': 'bcde'}})
+        body = {'version': 'versionpk',
+         'data': {'version': 42, 'downloads': 30, 'modified': '2017-03-13T15:43:02+00:00',
+                  'path': '/alkjdaslke09', 'checkout': None, 'md5': 'abcd', 'sha256': 'bcde'}}
+        aiohttpretty.register_json_uri('POST', url, status=201, body=body)
 
         monkeypatch.setattr(basepath.format('backup.main'), mock_backup)
         monkeypatch.setattr(basepath.format('parity.main'), mock_parity)
@@ -727,16 +735,31 @@ class TestUploads:
         assert res.extra['downloads'] == 30
         assert res.extra['checkout'] is None
 
-        inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'), check_created=False, fetch_metadata=False)
+        inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'),
+                                                      check_created=False,
+                                                      fetch_metadata=False)
         complete_path = os.path.join(FILE_PATH_COMPLETE, file_stream.writers['sha256'].hexdigest)
-        mock_parity.assert_called_once_with(complete_path, credentials['parity'], settings['parity'])
-        mock_backup.assert_called_once_with(complete_path, 'versionpk', 'https://waterbutler.io/hooks/metadata/', credentials['archive'], settings['parity'])
-        inner_provider.metadata.assert_called_once_with(WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
-        inner_provider.move.assert_called_once_with(inner_provider, WaterButlerPath('/uniquepath'), WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
+        mock_parity.assert_called_once_with(complete_path,
+                                            credentials['parity'],
+                                            settings['parity'])
+        mock_backup.assert_called_once_with(complete_path,
+                                            'versionpk',
+                                            'https://waterbutler.io/hooks/metadata/',
+                                            credentials['archive'],
+                                            settings['parity'])
+        inner_provider.metadata.assert_called_once_with(
+            WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
+        inner_provider.move.assert_called_once_with(
+            inner_provider, WaterButlerPath('/uniquepath'),
+            WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_fails(self, monkeypatch, provider_and_mock, file_stream, upload_response,
+    async def test_upload_fails(self,
+                                monkeypatch,
+                                provider_and_mock,
+                                file_stream,
+                                upload_response,
                                 mock_time):
         self.patch_tasks(monkeypatch)
 
