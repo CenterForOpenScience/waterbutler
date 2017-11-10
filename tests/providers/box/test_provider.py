@@ -356,7 +356,9 @@ class TestUpload:
         assert len(aiohttpretty.calls) == 2
         for call in aiohttpretty.calls:
             assert call['method'] == 'PUT'
-            assert call['uri'] == provider._build_upload_url('files', 'upload_sessions', 'fake_session_id')
+            assert call['uri'] == provider._build_upload_url('files',
+                                                             'upload_sessions',
+                                                             'fake_session_id')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
