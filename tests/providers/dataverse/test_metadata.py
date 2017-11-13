@@ -2,8 +2,10 @@ import pytest
 from tests.providers.dataverse.fixtures import (
     dataset_metadata_object,
     revision_metadata_object,
+    csv_file_metadata_object,
     file_metadata_object
 )
+
 
 class TestDatasetMetadata:
 
@@ -45,7 +47,32 @@ class TestFileMetadata:
         assert not file_metadata_object.created_utc
         assert file_metadata_object.content_type == 'text/plain; charset=US-ASCII'
         assert file_metadata_object.etag == 'latest::20'
+        assert file_metadata_object.original_name == 'thefile.txt'
         assert file_metadata_object.extra == {
+            'fileId': '20',
+            'datasetVersion': 'latest',
+            'hasPublishedVersion': False,
+            'hashes': {
+                'md5': '6b50249f91258397fc5cb7d5a4127e15',
+            },
+        }
+
+    def test_csv_file_metadata(self, csv_file_metadata_object):
+        assert csv_file_metadata_object.is_file
+        assert not csv_file_metadata_object.is_folder
+        assert csv_file_metadata_object.provider == 'dataverse'
+        assert csv_file_metadata_object.kind == 'file'
+        assert csv_file_metadata_object.file_id == '20'
+        assert csv_file_metadata_object.name == 'thefile.tab'
+        assert csv_file_metadata_object.path == '/20'
+        assert csv_file_metadata_object.materialized_path == '/thefile.tab'
+        assert not csv_file_metadata_object.size
+        assert not csv_file_metadata_object.modified
+        assert not csv_file_metadata_object.created_utc
+        assert csv_file_metadata_object.content_type == 'text/tab-separated-values'
+        assert csv_file_metadata_object.etag == 'latest::20'
+        assert csv_file_metadata_object.original_name == 'thefile.csv'
+        assert csv_file_metadata_object.extra == {
             'fileId': '20',
             'datasetVersion': 'latest',
             'hasPublishedVersion': False,

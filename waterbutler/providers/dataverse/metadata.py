@@ -1,4 +1,5 @@
 from waterbutler.core import metadata
+from waterbutler.providers.dataverse import utils as dv_utils
 
 
 class BaseDataverseMetadata(metadata.BaseMetadata):
@@ -25,6 +26,20 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
     @property
     def name(self):
         return self.raw.get('name', None) or self.raw.get('filename', None)
+
+    @property
+    def original_name(self):
+        """ Dataverse 'ingests' some files types. This changes their extension.
+        This property will look through the metadata to try to determine the original
+        name of the file.
+        """
+
+        ext = dv_utils.original_ext_from_raw_metadata(self.raw)
+        if ext is None:
+            return self.name
+        else:
+            name = self.name[:self.name.rfind('.')]
+            return name + '.{}'.format(ext)
 
     @property
     def path(self):

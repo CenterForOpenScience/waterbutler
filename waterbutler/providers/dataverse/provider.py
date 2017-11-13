@@ -178,7 +178,8 @@ class DataverseProvider(provider.BaseProvider):
         # Find appropriate version of file
         metadata = await self._get_data('latest')
         files = metadata if isinstance(metadata, list) else []
-        file_metadata = next(file for file in files if file.name == path.name)
+        file_metadata = next(file for file in files if file.name == path.name or
+                                                file.original_name == path.name)
 
         if stream.writers['md5'].hexdigest != file_metadata.extra['hashes']['md5']:
             raise exceptions.UploadChecksumMismatchError()
