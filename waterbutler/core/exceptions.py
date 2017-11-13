@@ -231,6 +231,13 @@ class UninitializedRepositoryError(ProviderError):
                          is_user_error=is_user_error)
 
 
+class UnexportableFileTypeError(DownloadError):
+    def __init__(self, path, message=None, is_user_error=True):
+        if not message:
+            message = 'The file "{}" is not exportable'.format(path)
+        super().__init__(message, code=HTTPStatus.BAD_REQUEST, is_user_error=is_user_error)
+
+
 async def exception_from_response(resp, error=UnhandledProviderError, **kwargs):
     """Build and return, not raise, an exception from a response object
 
