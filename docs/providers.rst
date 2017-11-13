@@ -11,6 +11,7 @@ Providers
    provider.figshare
    provider.filesystem
    provider.github
+   provider.gitlab
    provider.googledrive
    provider.osfstorage
    provider.owncloud

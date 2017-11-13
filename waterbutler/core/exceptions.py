@@ -220,6 +220,17 @@ class ReadOnlyProviderError(ProviderError):
         super().__init__('Provider "{}" is read-only'.format(provider), code=code)
 
 
+class UninitializedRepositoryError(ProviderError):
+    """Error for providers that wrap VCS systems (GitHub, Bitbucket, GitLab, etc). Indicates that
+    the user has not yet initialized their repository, and that WB cannot operate on it until it
+    has been initialized"""
+    def __init__(self, repo_name, is_user_error=True, **kwargs):
+        super().__init__(('The "{}" repository has not yet been initialized. Please do so before '
+                         'attempting to access it.'.format(repo_name)),
+                         code=HTTPStatus.BAD_REQUEST,
+                         is_user_error=is_user_error)
+
+
 async def exception_from_response(resp, error=UnhandledProviderError, **kwargs):
     """Build and return, not raise, an exception from a response object
 
