@@ -16,8 +16,8 @@ class TestFileMetadataHeaders:
         assert not file_metadata_headers_object.is_folder
         assert file_metadata_headers_object.is_file
         assert file_metadata_headers_object.name == 'test-path'
-        assert file_metadata_headers_object.path == '//test-path'
-        assert file_metadata_headers_object.materialized_path == '//test-path'
+        assert file_metadata_headers_object.path == '/test-path'
+        assert file_metadata_headers_object.materialized_path == '/test-path'
         assert file_metadata_headers_object.kind == 'file'
         assert file_metadata_headers_object.provider == 's3'
         assert file_metadata_headers_object.size == 9001
