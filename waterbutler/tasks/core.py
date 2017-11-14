@@ -99,7 +99,7 @@ def celery_task(func, *args, **kwargs):
 
 
 @backgroundify
-async def wait_on_celery(result, interval=None, timeout=None, basepath=None):
+async def wait_on_celery(result, result_resource=None, interval=None, timeout=None, basepath=None):
     timeout = timeout or settings.WAIT_TIMEOUT
     interval = interval or settings.WAIT_INTERVAL
     basepath = basepath or settings.ADHOC_BACKEND_PATH
@@ -123,6 +123,6 @@ async def wait_on_celery(result, interval=None, timeout=None, basepath=None):
                 return result.result
 
         if waited > timeout:
-            raise exceptions.WaitTimeOutError
+            raise exceptions.WaitTimeOutError(str(result.id), str(result_resource))
         await asyncio.sleep(interval)
         waited += interval

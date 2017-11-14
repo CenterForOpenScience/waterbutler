@@ -15,8 +15,19 @@ BROKER_URL = config.get(
         os.environ.get('RABBITMQ_PORT_5672_TCP_PORT', ''),
     )
 )
+CELERY_RESULT_BACKEND = config.get(
+    'CELERY_RESULT_BACKEND',
+    '{}://{}:{}/{}'.format(
+        os.environ.get('CELERY_RESULT_BACKEND_PROTO', ''),
+        os.environ.get('CELERY_RESULT_BACKEND_TCP_ADDR', ''),
+        os.environ.get('CELERY_RESULT_BACKEND_TCP_PORT', ''),
+        os.environ.get('CELERY_RESULT_BACKEND_ID', ''),
+    )
+)
 
 WAIT_TIMEOUT = int(config.get('WAIT_TIMEOUT', 15))
+# For testing 202 response
+# WAIT_TIMEOUT = int(config.get('WAIT_TIMEOUT', 1))
 WAIT_INTERVAL = float(config.get('WAIT_INTERVAL', 0.5))
 ADHOC_BACKEND_PATH = config.get('ADHOC_BACKEND_PATH', '/tmp')
 
@@ -25,12 +36,6 @@ CELERY_DEFAULT_QUEUE = config.get('CELERY_DEFAULT_QUEUE', 'waterbutler')
 CELERY_QUEUES = (
     Queue('waterbutler', Exchange('waterbutler'), routing_key='waterbutler'),
 )
-# CELERY_ALWAYS_EAGER = config.get('CELERY_ALWAYS_EAGER', True)
-CELERY_ALWAYS_EAGER = config.get_bool('CELERY_ALWAYS_EAGER', False)
-# CELERY_RESULT_BACKEND = config.get('CELERY_RESULT_BACKEND', 'redis://')
-CELERY_RESULT_BACKEND = config.get_nullable('CELERY_RESULT_BACKEND', None)
-CELERY_DISABLE_RATE_LIMITS = config.get_bool('CELERY_DISABLE_RATE_LIMITS', True)
-CELERY_TASK_RESULT_EXPIRES = int(config.get('CELERY_TASK_RESULT_EXPIRES', 60))
 CELERY_IMPORTS = [
     entry.module_name
     for entry in iter_entry_points(group='waterbutler.providers.tasks', name=None)
@@ -41,4 +46,3 @@ CELERY_IMPORTS.extend([
 
 CELERY_ACKS_LATE = True
 CELERYD_HIJACK_ROOT_LOGGER = False
-CELERY_EAGER_PROPAGATES_EXCEPTIONS = True

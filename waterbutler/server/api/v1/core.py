@@ -4,7 +4,7 @@ import tornado.iostream
 from raven.contrib.tornado import SentryMixin
 
 from waterbutler import tasks
-from waterbutler.server import utils
+from waterbutler.server import utils, settings
 from waterbutler.core import exceptions
 
 
@@ -24,7 +24,16 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler, 
             finish_args = [exc.data] if exc.data else [{'code': exc.code, 'message': exc.message}]
         elif issubclass(etype, tasks.WaitTimeOutError):
             self.set_status(202)
+            pending_url = '{}/pending/{}/{}'.format(settings.DOMAIN, exc.args[1], exc.args[0])
+            self.add_header('Content-Location', pending_url)
             exception_kwargs = {'data': {'level': 'info'}}
+            finish_args = [{'data': {'attributes': {'status': 'Accepted',
+                                                    'id': exc.args[0],
+                                                    'resource': exc.args[1]
+                                                    },
+                                     'links': {'status': pending_url}
+                                     }
+                            }]
         else:
             finish_args = [{'code': status_code, 'message': self._reason}]
 
