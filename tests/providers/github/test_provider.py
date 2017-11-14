@@ -613,6 +613,10 @@ class TestCRUD:
         branch = 'master'
         message = 'deleted'
 
+        metadata_url = provider.build_repo_url('contents', ref='master')
+        aiohttpretty.register_json_uri('GET', metadata_url,
+                                       body=root_provider_fixtures['content_repo_metadata_root'])
+
         branch_url = provider.build_repo_url('branches', 'master')
         tree_url = furl.furl(
             provider.build_repo_url(
@@ -652,6 +656,10 @@ class TestCRUD:
         branch = 'master'
         message = 'deleted'
 
+        metadata_url = provider.build_repo_url('contents', ref='master')
+        aiohttpretty.register_json_uri('GET', metadata_url,
+                                       body=root_provider_fixtures['content_repo_metadata_root'])
+
         branch_url = provider.build_repo_url('branches', 'master')
         tree_url = furl.furl(provider.build_repo_url(
             'git', 'trees',
@@ -679,6 +687,37 @@ class TestCRUD:
 
         assert e.value.code == 404
         assert e.value.message == "Could not retrieve file or directory /deletedfolder/"
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_folder_last_item_in_repo(self, provider, root_provider_fixtures,
+                                                   crud_fixtures):
+        sha = crud_fixtures['deleted_tree_metadata']['tree'][2]['sha']
+        path = GitHubPath('/deletedfolder/', _ids=[('master', sha), ('master', sha)])
+        branch = 'master'
+        message = 'deleted'
+
+        metadata_url = provider.build_repo_url('contents', ref='master')
+        aiohttpretty.register_json_uri('GET', metadata_url,
+                              body=root_provider_fixtures['content_repo_metadata_root_one_folder'])
+
+        branch_url = provider.build_repo_url('branches', 'master')
+        commit_url = provider.build_repo_url('git', 'commits')
+        patch_url = provider.build_repo_url('git', 'refs', 'heads', path.branch_ref)
+
+        aiohttpretty.register_json_uri(
+            'GET', branch_url, body=crud_fixtures['deleted_branch_metadata']
+        )
+
+        aiohttpretty.register_json_uri(
+            'POST', commit_url, body=crud_fixtures['deleted_commit_metadata'], status=201
+        )
+
+        aiohttpretty.register_json_uri('PATCH', patch_url)
+
+        await provider.delete(path, sha, message, branch=branch)
+
+        assert aiohttpretty.has_call(method='PATCH', uri=patch_url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
