@@ -53,19 +53,24 @@ class MoveCopyMixin:
 
     async def move_or_copy(self):
         """Copy, move and rename files and folders.
+
+        Auth actions: 'copy', 'move' and 'rename'
+        Provider actions: 'copy' and 'move'
+        Auth actions comes from the request and are used by the auth handler. They need to be converted into
+        provider actions which the providers use for actual move or copy.
         """
 
         # Force the json body to load into memory
         await self.request.body
 
-        json_action = self.json.get('action', 'null')
-        if json_action not in ('copy', 'move', 'rename'):
-            raise exceptions.InvalidParameters('Action must be copy, move or rename, not {}'.format(json_action))
+        auth_action = self.json.get('action', 'null')
+        if auth_action not in ('copy', 'move', 'rename'):
+            raise exceptions.InvalidParameters('Auth action must be copy, move or rename, not {}'.format(auth_action))
 
-        # Setup of the provider was delayed so the json action could be retrieved from the request body.
+        # Setup of the provider was delayed so the provider action can be updated from the auth action.
         provider = self.path_kwargs.get('provider', '')
-        provider_action = json_action
-        if json_action == 'rename':
+        provider_action = auth_action
+        if auth_action == 'rename':
             if not self.json.get('rename', ''):
                 raise exceptions.InvalidParameters('Rename is required for renaming')
             provider_action = 'move'
@@ -74,7 +79,7 @@ class MoveCopyMixin:
             self.resource,
             provider,
             self.request,
-            action=json_action,
+            action=auth_action,
             auth_type=AuthType.SOURCE
         )
         self.provider = make_provider(
@@ -85,7 +90,7 @@ class MoveCopyMixin:
         )
         self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
 
-        if json_action == 'rename':
+        if auth_action == 'rename':
             self.dest_auth = self.auth
             self.dest_provider = self.provider
             self.dest_path = self.path.parent
@@ -105,7 +110,7 @@ class MoveCopyMixin:
                 self.dest_resource,
                 self.json.get('provider', self.provider.NAME),
                 self.request,
-                action=json_action,
+                action=auth_action,
                 auth_type=AuthType.DESTINATION,
             )
             self.dest_provider = make_provider(
