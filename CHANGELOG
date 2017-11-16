@@ -2,6 +2,17 @@
 ChangeLog
 *********
 
+0.35.0 (2017-11-13)
+===================
+- Feature: Allow copying from public resources with the OSF provider.  WaterButler had been
+requiring write permissions on the source resource for both moves and copies, but copy only needs
+read.  Update the v1 API to distinguish between the two types of requests.
+- Docs: Document supported query parameters in the v1 API.
+- Code: Improve test coverage for osfstorage and figshare.
+- Code: Cleanups for Box, Google Drive, and GitHub providers.
+- Code: Don't include test directories in module search paths.
+- Code: Don't let query parameters override the HTTP verb in v1.
+
 0.34.1 (2017-10-18)
 ===================
 - Fix: Don't crash when a file on Google Drive is missing an md5 in its metadata.  This occurs
@@ -22,7 +33,7 @@ returned metadata for folders (and document it).
 - Fix: Release Box responses on error.
 - Code: Update the Postman test suite to include CRUD and move tests.
 - Code: Start testing with python-3.6 on Travis.
-- Code: Improve test coverage for all providers except osftorage and figshare (coming soon!).
+- Code: Improve test coverage for all providers except osfstorage and figshare (coming soon!).
 - Code: Teach WaterButler to listen for a SIGTERM signal and exit immediately upon receiving it.
 This bypasses the 10 second wait for shutdown when running it in Docker.
 - Code: Fix sphinx syntax errors in the WaterButler docs.
