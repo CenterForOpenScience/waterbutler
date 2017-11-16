@@ -39,7 +39,6 @@ def provider(auth, credentials, settings):
     return CloudFilesProvider(auth, credentials, settings)
 
 
-
 @pytest.fixture
 def token(auth_json):
     return auth_json['access']['token']['id']
