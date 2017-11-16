@@ -200,7 +200,7 @@ class TestCRUD:
 
         path = WaterButlerPath('/delete/')
         query = {'prefix': path.path}
-        url = connected_provider.build_url('',  **query)
+        url = connected_provider.build_url('', **query)
         body = json.dumps(folder_root_empty).encode('utf-8')
 
         delete_query = {'bulk-delete': ''}
@@ -271,7 +271,6 @@ class TestRevisions:
         metadata_url = connected_provider.build_url(path.path)
         aiohttpretty.register_uri('HEAD', metadata_url, status=200, headers=file_header_metadata)
 
-
         result = await connected_provider.revisions(path)
 
         assert type(result) == list
@@ -303,6 +302,7 @@ class TestRevisions:
         assert result.name == 'file.txt'
         assert result.path == '/file.txt'
         assert result.kind == 'file'
+
 
 class TestMetadata:
 
@@ -343,9 +343,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_404(self, connected_provider, folder_root_level1):
+    async def test_metadata_404(self, connected_provider):
         path = WaterButlerPath('/level1/')
-        body = json.dumps(folder_root_level1).encode('utf-8')
         url = connected_provider.build_url('', prefix=path.path, delimiter='/')
         aiohttpretty.register_uri('GET', url, status=200, body=b'')
         connected_provider._metadata_item = MockCoroutine(return_value=None)

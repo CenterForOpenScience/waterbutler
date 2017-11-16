@@ -36,7 +36,7 @@ def ensure_connection(func):
 class CloudFilesProvider(provider.BaseProvider):
     """Provider for Rackspace CloudFiles.
 
-    API Docs: https://developer.rackspace.com/docs/cloud-files/v1/developer-guide/document-developer-guide
+    API Docs: https://developer.rackspace.com/docs/cloud-files/v1/developer-guide/#document-developer-guide
     """
     NAME = 'cloudfiles'
 
@@ -209,7 +209,7 @@ class CloudFilesProvider(provider.BaseProvider):
         if path.is_dir:
             return (await self._metadata_folder(path, recursive=recursive))
         elif version or revision:
-            return (await self.get_metadata_revision(path, version, revision))
+            return (await self._metadata_revision(path, version, revision))
         else:
             return (await self._metadata_item(path))
 
@@ -243,8 +243,7 @@ class CloudFilesProvider(provider.BaseProvider):
 
         method = method.upper()
         expires = str(int(time.time() + seconds))
-        path_str = path.path
-        url = furl.furl(self.build_url(path_str, _endpoint=endpoint))
+        url = furl.furl(self.build_url(path.path, _endpoint=endpoint))
 
         body = '\n'.join([method, expires])
         body += '\n' + str(url.path)
@@ -450,7 +449,7 @@ class CloudFilesProvider(provider.BaseProvider):
     @ensure_connection
     async def revisions(self, path):
         """Get past versions of the request file from special user designated version container,
-        if the user hasn't designated a version_location container in raises an infomative error
+        if the user hasn't designated a version_location container it raises an infomative error
         message. The revision endpoint also doesn't return the current version so that is added to
         the revision list after other revisions are returned. More info about versioning with Cloud
         Files here:
@@ -475,7 +474,7 @@ class CloudFilesProvider(provider.BaseProvider):
         return [current] + [CloudFilesRevisonMetadata(revision_data) for revision_data in json_resp]
 
     @ensure_connection
-    async def get_metadata_revision(self, path, version=None, revision=None):
+    async def _metadata_revision(self, path, version=None, revision=None):
         version_location = await self._get_version_location()
 
         resp = await self.make_request(
