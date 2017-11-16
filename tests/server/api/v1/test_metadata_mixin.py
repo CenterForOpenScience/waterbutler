@@ -70,8 +70,7 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.get_folder()
 
-        assert self.handler.download_folder_as_zip.call_count == 1
-        # self.handler.download_folder_as_zip.assert_called_once() only works with python 3.6
+        self.handler.download_folder_as_zip.assert_awaited_once()
 
     @tornado.testing.gen_test
     async def test_get_file_metadata(self):
@@ -80,8 +79,7 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.get_file()
 
-        assert self.handler.file_metadata.call_count == 1
-        # self.handler.file_metadata.assert_called_once() only works with python 3.6
+        self.handler.file_metadata.assert_awaited_once()
 
     @tornado.testing.gen_test
     async def test_get_file_versions(self):
@@ -92,8 +90,7 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.get_file()
 
-        assert self.handler.get_file_revisions.call_count == 1
-        # self.handler.get_file_revisions.assert_called_once() only works with python 3.6
+        self.handler.get_file_revisions.assert_awaited_once()
 
         self.handler.request.query_arguments.clear()
         self.handler.get_file_revisions = MockCoroutine()
@@ -101,8 +98,7 @@ class TestMetadataMixin(HandlerTestCase):
 
         await self.handler.get_file()
 
-        assert self.handler.get_file_revisions.call_count == 1
-        # self.handler.get_file_revisions.assert_called_once() only works with python 3.6
+        self.handler.get_file_revisions.assert_awaited_once()
 
     @tornado.testing.gen_test
     async def test_get_file_download_file(self):
@@ -110,8 +106,7 @@ class TestMetadataMixin(HandlerTestCase):
         self.handler.download_file = MockCoroutine()
         await self.handler.get_file()
 
-        assert self.handler.download_file.call_count == 1
-        # self.handler.download_file.assert_called_once() only works with python 3.6
+        self.handler.download_file.assert_awaited_once()
 
     @tornado.testing.gen_test
     async def test_download_file_headers(self):
@@ -126,8 +121,7 @@ class TestMetadataMixin(HandlerTestCase):
         assert self.handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'
             .format(self.handler.path.name), 'latin-1')
 
-        assert self.handler.write_stream.call_count == 1
-        # self.handler.write_stream.assert_called_once() only works with python 3.6
+        self.handler.write_stream.assert_awaited_once()
 
     @tornado.testing.gen_test
     async def test_download_file_range_request_header(self):

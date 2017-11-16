@@ -25,6 +25,9 @@ class MockCoroutine(mock.Mock):
     async def __call__(self, *args, **kwargs):
         return super().__call__(*args, **kwargs)
 
+    def assert_awaited_once(self):
+        assert self.call_count == 1
+
 
 class MockFileMetadata(metadata.BaseFileMetadata):
     provider = 'MockProvider'
