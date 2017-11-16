@@ -1,6 +1,6 @@
 import json
-import tornado
 
+import tornado
 from unittest import mock
 
 from waterbutler.server.api.v1.provider import ProviderHandler
