@@ -80,7 +80,6 @@ class TestCRUD:
         revision_url = connected_provider.build_url(version_name, container='versions-container', )
         aiohttpretty.register_uri('GET', revision_url, body=body, auto_length=True)
 
-
         result = await connected_provider.download(path, version=version_name)
         content = await result.read()
 

@@ -12,7 +12,6 @@ from waterbutler.core import streams
 from waterbutler.providers.cloudfiles import CloudFilesProvider
 
 
-
 @pytest.fixture
 def auth():
     return {
@@ -105,10 +104,10 @@ def file_stream(file_like):
     return streams.FileStreamReader(file_like)
 
 
-
 @pytest.fixture
 def folder_root_empty():
     return []
+
 
 @pytest.fixture
 def container_header_metadata_with_verision_location():
@@ -121,10 +120,12 @@ def container_header_metadata_without_verision_location():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json'), 'r') as fp:
         return json.load(fp)['container_header_metadata_without_verision_location']
 
+
 @pytest.fixture
 def file_metadata():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json'), 'r') as fp:
         return json.load(fp)['file_metadata']
+
 
 @pytest.fixture
 def folder_root():
@@ -161,10 +162,12 @@ def folder_root():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json'), 'r') as fp:
         return json.load(fp)['folder_root']
 
+
 @pytest.fixture
 def revision_list():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json'), 'r') as fp:
         return json.load(fp)['revision_list']
+
 
 @pytest.fixture
 def file_root_level1_level2_file2_txt():
@@ -224,7 +227,6 @@ def file_root_similar_name():
         ('X-TRANS-ID', 'tx438cbb32b5344d63b267c-0054987f3biad3'),
         ('DATE', 'Mon, 22 Dec 2014 20:29:47 GMT')
     ])
-
 
 
 @pytest.fixture
