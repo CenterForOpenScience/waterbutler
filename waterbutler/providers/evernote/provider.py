@@ -178,16 +178,26 @@ class EvernoteProvider(provider.BaseProvider):
 
     async def download(self, path, **kwargs):
 
+        print('EvernoteProvider.download: path, kwargs', path, kwargs)
+
         try:
             token = self.credentials['token']
 
             note_guid = path.identifier
+            print('EvernoteProvider.download: note_guid ', note_guid)
             note = await _evernote_note(note_guid, token, withContent=True, withResourcesData=True)
 
+            print('EvernoteProvider.download: note', note)
+
             note_store = await _evernote_note_store(token)
+            print('EvernoteProvider.download: note_store', note_store)
+
             mediaStore = OSFMediaStore(note_store, note_guid, note_resources=note['resources'])
+            print('EvernoteProvider.download: mediaStore', mediaStore)
+
             html = await _enml_to_html(note["content"], pretty=True, header=False,
                   media_store=mediaStore)
+            print('EvernoteProvider.download: html', html)
 
             stream = streams.StringStream(html)
             stream.content_type = "text/html"
@@ -219,17 +229,19 @@ class EvernoteProvider(provider.BaseProvider):
     async def validate_v1_path(self, path, **kwargs):
 
         # print('EvernoteProvider.validate_v1_path:path -> ', path)
+        # I'm not sure what the diff between validate_v1_path and validate_path is
         wbpath = await self.validate_path(path, **kwargs)
+        return wbpath
 
-        if wbpath.is_root:
-            return wbpath
+        # if wbpath.is_root:
+        #     return wbpath
 
-        note_metadata = await self._file_metadata(wbpath.identifier)
-
-        if isinstance(note_metadata, Exception):
-            raise exceptions.NotFoundError(str(path))
-        else:
-            return wbpath
+        # try:
+        #     await self._file_metadata(wbpath.identifier)
+        # except Exception:
+        #     raise exceptions.NotFoundError(str(path))
+        # else:
+        #     return wbpath
 
     def can_intra_move(self, other, path=None):
         """
