@@ -1,7 +1,7 @@
 import os
-import http
 import json
 import asyncio
+from http import HTTPStatus
 
 import aiohttp
 from boto.glacier.layer2 import Layer2
@@ -64,7 +64,7 @@ def _push_archive_complete(self, version_id, callback_url, metadata):
         loop = asyncio.get_event_loop()
         response = loop.run_until_complete(future)
 
-        if response.status != http.client.OK:
+        if response.status != HTTPStatus.OK:
             raise Exception('Failed to report archive completion, got status code {}'.format(response.status))
 
 

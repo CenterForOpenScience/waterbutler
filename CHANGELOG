@@ -2,6 +2,47 @@
 ChangeLog
 *********
 
+0.35.0 (2017-11-13)
+===================
+- Feature: Allow copying from public resources with the OSF provider.  WaterButler had been
+requiring write permissions on the source resource for both moves and copies, but copy only needs
+read.  Update the v1 API to distinguish between the two types of requests.
+- Docs: Document supported query parameters in the v1 API.
+- Code: Improve test coverage for osfstorage and figshare.
+- Code: Cleanups for Box, Google Drive, and GitHub providers.
+- Code: Don't include test directories in module search paths.
+- Code: Don't let query parameters override the HTTP verb in v1.
+
+0.34.1 (2017-10-18)
+===================
+- Fix: Don't crash when a file on Google Drive is missing an md5 in its metadata.  This occurs
+for non-exportable files like Google Maps, Google Forms, etc.
+
+0.34.0 (2017-09-29)
+===================
+- ANNOUNCEMENT!  Sadly, the WaterButler v0 API is now *undeprecated*.  We've discovered that the
+OSF is still using it in a few places, so it's been given a temporary reprieve.  Once those are
+converted to v1, v0 will be re-deprecated then removed after an appropriate warning period.
+- Feature: For providers that return hashes on upload, WaterButler will calculate the same hash
+as the file streams and throw an informative error if its hash and the provider's hash differ.
+- Fix: Stop throwing exceptions when building exceptions to throw.  Pickled exceptions are
+resurrected in a peculiar fashion that some of WaterButler's exception classes could not survive.
+- Fix: Validate that the move/copy destination path is really a folder.
+- Fix: Update the Box and Google Drive intra-{move,copy} actions to include children in the
+returned metadata for folders (and document it).
+- Fix: Release Box responses on error.
+- Code: Update the Postman test suite to include CRUD and move tests.
+- Code: Start testing with python-3.6 on Travis.
+- Code: Improve test coverage for all providers except osfstorage and figshare (coming soon!).
+- Code: Teach WaterButler to listen for a SIGTERM signal and exit immediately upon receiving it.
+This bypasses the 10 second wait for shutdown when running it in Docker.
+- Code: Fix sphinx syntax errors in the WaterButler docs.
+
+0.33.1 (2017-09-05)
+===================
+- Reject requests for Box IDs if the ID is valid, but the file or folder is outside of the
+project root.  (thanks, @AddisonSchiller!)
+
 0.33.0 (2017-08-09)
 ===================
 - ANNOUNCEMENT!  The WaterButler v0 API is DEPRECATED!  COS no longer uses it and has moved

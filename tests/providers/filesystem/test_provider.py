@@ -43,6 +43,7 @@ def setup_filesystem(provider):
         fp.write(b'I am a file')
 
     os.mkdir(os.path.join(provider.folder, 'subfolder'))
+    os.mkdir(os.path.join(provider.folder, 'other_subfolder'))
 
     with open(os.path.join(provider.folder, 'subfolder', 'nested.txt'), 'wb') as fp:
         fp.write(b'Here is my content')
@@ -174,6 +175,23 @@ class TestCRUD:
         with pytest.raises(exceptions.MetadataError):
             await provider.metadata(path)
 
+    @pytest.mark.asyncio
+    async def test_delete_folder(self, provider):
+        path = await provider.validate_path('/subfolder/')
+
+        await provider.delete(path)
+
+        with pytest.raises(exceptions.MetadataError):
+            await provider.metadata(path)
+
+    @pytest.mark.asyncio
+    async def test_delete_root(self, provider):
+        path = await provider.validate_path('/')
+
+        await provider.delete(path)
+
+        assert os.path.exists(provider.folder)
+
 
 class TestMetadata:
 
@@ -183,14 +201,14 @@ class TestMetadata:
         result = await provider.metadata(path)
 
         assert isinstance(result, list)
-        assert len(result) == 2
+        assert len(result) == 3
 
         file = next(x for x in result if x.kind == 'file')
         assert file.name == 'flower.jpg'
         assert file.path == '/flower.jpg'
         folder = next(x for x in result if x.kind == 'folder')
-        assert folder.name == 'subfolder'
-        assert folder.path == '/subfolder/'
+        assert folder.name == 'subfolder' or 'other_subfolder'
+        assert folder.path == '/subfolder/' or '/other_subfolder/'
 
     @pytest.mark.asyncio
     async def test_metadata_root_file(self, provider):
@@ -210,10 +228,54 @@ class TestMetadata:
             await provider.metadata(path)
 
 
+class TestIntra:
+
+    @pytest.mark.asyncio
+    async def test_intra_copy_file(self, provider):
+        src_path = await provider.validate_path('/flower.jpg')
+        dest_path = await provider.validate_path('/subfolder/flower.jpg')
+
+        result = await provider.intra_copy(provider, src_path, dest_path)
+
+        assert result[1] is True
+        assert isinstance(result[0], metadata.BaseFileMetadata)
+        assert result[0].path == '/subfolder/flower.jpg'
+        assert result[0].kind == 'file'
+        assert result[0].name == 'flower.jpg'
+
+    @pytest.mark.asyncio
+    async def test_intra_move_folder(self, provider):
+        src_path = await provider.validate_path('/subfolder/')
+        dest_path = await provider.validate_path('/other_subfolder/subfolder/')
+
+        result = await provider.intra_move(provider, src_path, dest_path)
+
+        assert result[1] is True
+        assert result[0][0].path == '/other_subfolder/subfolder/nested.txt'
+        assert result[0][0].kind == 'file'
+        assert result[0][0].name == 'nested.txt'
+
+    @pytest.mark.asyncio
+    async def test_intra_move_file(self, provider):
+        src_path = await provider.validate_path('/flower.jpg')
+        dest_path = await provider.validate_path('/subfolder/flower.jpg')
+
+        result = await provider.intra_move(provider, src_path, dest_path)
+
+        assert result[1] is True
+        assert isinstance(result[0], metadata.BaseFileMetadata)
+        assert result[0].path == '/subfolder/flower.jpg'
+        assert result[0].kind == 'file'
+        assert result[0].name == 'flower.jpg'
+
+
 class TestOperations:
 
-    async def test_can_intra_copy(self, provider):
+    def test_can_duplicate_names(self, provider):
+        assert provider.can_duplicate_names() is False
+
+    def test_can_intra_copy(self, provider):
         assert provider.can_intra_copy(provider)
 
-    async def test_can_intra_move(self, provider):
+    def test_can_intra_move(self, provider):
         assert provider.can_intra_move(provider)

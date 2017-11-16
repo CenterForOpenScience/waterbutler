@@ -1,6 +1,7 @@
 import os
 import json
 import typing
+import hashlib
 import functools
 from urllib import parse
 from http import HTTPStatus
@@ -171,13 +172,15 @@ class GoogleDriveProvider(provider.BaseProvider):
         ) as resp:
             data = await resp.json()
 
-        metadata_class = None
-        if dest_path.is_dir:
-            metadata_class = GoogleDriveFolderMetadata  # type: ignore
-        else:
-            metadata_class = GoogleDriveFileMetadata  # type: ignore
+        created = dest_path.identifier is None
+        dest_path.parts[-1]._id = data['id']
 
-        return metadata_class(data, dest_path), dest_path.identifier is None
+        if dest_path.is_dir:
+            metadata = GoogleDriveFolderMetadata(data, dest_path)
+            metadata._children = await self._folder_metadata(dest_path)
+            return metadata, created
+        else:
+            return GoogleDriveFileMetadata(data, dest_path), created  # type: ignore
 
     async def intra_copy(self,
                          dest_provider: provider.BaseProvider,
@@ -260,10 +263,15 @@ class GoogleDriveProvider(provider.BaseProvider):
         else:
             segments = []
 
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+
         upload_metadata = self._build_upload_metadata(path.parent.identifier, path.name)
         upload_id = await self._start_resumable_upload(not path.identifier, segments, stream.size,
                                                        upload_metadata)
         data = await self._finish_resumable_upload(segments, stream, upload_id)
+
+        if data['md5Checksum'] != stream.writers['md5'].hexdigest:
+            raise exceptions.UploadChecksumMismatchError()
 
         return GoogleDriveFileMetadata(data, path), path.identifier is None
 
@@ -380,7 +388,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         if folder_precheck:
             if path.identifier:
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
 
         async with self.request(
             'POST',
@@ -458,26 +466,6 @@ class GoogleDriveProvider(provider.BaseProvider):
         ) as resp:
             return await resp.json()
 
-    async def _materialized_path_to_id(self, path, parent_id=None):
-        parts = path.parts
-        item_id = parent_id or self.folder['id']
-
-        while parts:
-            query = self._build_query(path.identifier)
-            async with self.request(
-                'GET',
-                self.build_url('files', item_id, 'children', q=query),
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            ) as resp:
-                try:
-                    item_id = (await resp.json())['items'][0]['id']
-                except (KeyError, IndexError):
-                    raise exceptions.MetadataError('{} not found'.format(str(path)),
-                                                   code=HTTPStatus.NOT_FOUND)
-
-        return item_id
-
     async def _resolve_path_to_ids(self, path, start_at=None):
         """Takes a path and traverses the file tree (ha!) beginning at ``start_at``, looking for
         something that matches ``path``.  Returns a list of dicts for each part of the path, with
@@ -547,50 +535,6 @@ class GoogleDriveProvider(provider.BaseProvider):
             ) as resp:
                 ret.append(await resp.json())
         return ret
-
-    async def _resolve_id_to_parts(self, _id, accum=None):
-        self.metrics.incr('called_resolve_id_to_parts')
-        if _id == self.folder['id']:
-            return [{
-                'title': '',
-                'mimeType': 'folder',
-                'id': self.folder['id'],
-            }] + (accum or [])
-
-        if accum is None:
-            async with self.request(
-                'GET',
-                self.build_url('files', _id, fields='id,title,mimeType'),
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            ) as resp:
-                accum = [await resp.json()]
-
-        for parent in await self._get_parent_ids(_id):
-            if self.folder['id'] == parent['id']:
-                return [parent] + (accum or [])
-        # TODO Custom exception here
-        raise exceptions.MetadataError('ID is out of scope')
-
-    async def _get_parent_ids(self, _id):
-        async with self.request(
-            'GET',
-            self.build_url('files', _id, 'parents', fields='items(id)'),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        ) as resp:
-            parents_data = await resp.json()
-
-        parents = []
-        for parent in parents_data['items']:
-            async with self.request(
-                'GET',
-                self.build_url('files', parent['id'], fields='id,title,labels/trashed'),
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            ) as p_resp:
-                parents.append(await p_resp.json())
-        return parents
 
     async def _handle_docs_versioning(self, path: GoogleDrivePath, item: dict, raw: bool=True):
         """Sends an extra request to GDrive to fetch revision information for Google Docs. Needed
@@ -700,7 +644,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         async with self.request(
             'GET', url,
             expects=(200, 403, 404, ),
-            throws=exceptions.NotFoundError,
+            throws=exceptions.MetadataError,
         ) as resp:
             try:
                 data = await resp.json()
