@@ -12,21 +12,10 @@ import waterbutler.providers.evernote.provider as evernote_provider
 from waterbutler.providers.evernote.provider import (EvernoteProvider, EvernotePath)
 from waterbutler.providers.evernote.metadata import EvernoteFileMetadata
 
+# I need to come back to this when I merge the latest code for WB
+# from tests.providers.osfstorage.fixtures import provider as osfstorage_provider
 
-# def test_import():
-#   import sys
-#   print (sys.path)
-#   try:
-#     # from waterbutler.providers.evernote.provider import EvernoteProvider
-#     #from evernote.api.client import EvernoteClient
-#     import evernote
-#     print(dir(evernote))
-#     print(evernote.__path__)
-#     print('successful import')
-#   except Exception as e:
-#     print (e)
-
-#   assert True
+from tests.providers.osfstorage.test_provider import provider as osfstorage_provider
 
 
 @pytest.fixture
@@ -358,3 +347,65 @@ class TestOperations:
 
         with pytest.raises(exceptions.ReadOnlyProviderError) as e:
             result = await provider.intra_copy(other_provider, src_path, dest_path)
+
+    @pytest.mark.asyncio
+    async def test_do_intra_move_or_copy(self, provider, other_provider, mock_evernote):
+        src_path =  EvernotePath("/a", _ids=('/', '1'))
+        dest_path = EvernotePath("/b", _ids=('/', '2'))
+
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            result = await provider._do_intra_move_or_copy(other_provider, src_path, dest_path)
+
+    @pytest.mark.asyncio
+    async def test_copy(self, provider, mock_evernote):
+#   async def test_copy(self, provider, osfstorage_provider, mock_evernote)
+
+        # let's test trying to copy from Evernote to Evernote
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+          result = await provider.copy(provider)
+
+        # TO DO: if other_provider were an OSF Storage -- maybe I'll need to mock
+        # Error for now -- catch it and fix later
+        # try:
+        #   result = await provider.copy(osfstorage_provider)
+        # except Exception as e:
+        #   assert True
+
+    @pytest.mark.asyncio
+    async def test_move(self, provider, mock_evernote):
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+          result = await provider.move()
+
+    @pytest.mark.asyncio
+    async def test_delete(self, provider, mock_evernote):
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+          result = await provider.delete()
+
+    @pytest.mark.asyncio
+    async def test_upload(self, provider, mock_evernote):
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+          result = await provider.upload(None)
+
+
+class TestMisc:
+
+    @pytest.mark.asyncio
+    async def test_can_duplicate_name(self, provider, mock_evernote):
+        assert provider.can_duplicate_names() == False
+
+    @pytest.mark.asyncio
+    async def test_path_from_metadata(self, provider, credentials, mock_evernote):
+
+        note_guid = '71ce96e5-463b-4a72-9fc7-8cdcde7862d4'
+        note_name = 'another note for OSF Notebook'
+        token = credentials['token']
+
+        wbpath = EvernotePath("/" + parse.quote(note_name, safe='') + '.html', _ids=('/', note_guid))
+
+        note = await evernote_provider._evernote_note(note_guid, token, withContent=False)
+        note_md = EvernoteFileMetadata(note)
+
+        child_path =  provider.path_from_metadata(wbpath.parent, note_md)
+
+        assert child_path.full_path == wbpath.full_path
+        assert child_path == wbpath
