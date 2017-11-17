@@ -45,6 +45,7 @@ setup(
             'figshare = waterbutler.providers.figshare:FigshareProvider',
             'filesystem = waterbutler.providers.filesystem:FileSystemProvider',
             'github = waterbutler.providers.github:GitHubProvider',
+            'gitlab = waterbutler.providers.gitlab:GitLabProvider',
             'bitbucket = waterbutler.providers.bitbucket:BitbucketProvider',
             'osfstorage = waterbutler.providers.osfstorage:OSFStorageProvider',
             'owncloud = waterbutler.providers.owncloud:OwnCloudProvider',
@@ -52,6 +53,7 @@ setup(
             'dataverse = waterbutler.providers.dataverse:DataverseProvider',
             'box = waterbutler.providers.box:BoxProvider',
             'googledrive = waterbutler.providers.googledrive:GoogleDriveProvider',
+            'onedrive = waterbutler.providers.onedrive:OneDriveProvider',
         ],
         'waterbutler.providers.tasks': [
             'osfstorage_parity = waterbutler.providers.osfstorage.tasks.parity',
