@@ -26,9 +26,35 @@ class TestWBSanitizer:
     def test_value_is_none(self, sanitizer):
         assert sanitizer.sanitize('great hair', None) is None
 
+    def test_key_is_none(self, sanitizer):
+        assert sanitizer.sanitize(None, 'best day ever') is 'best day ever'
+
     def test_sanitize_credit_card(self, sanitizer):
         assert sanitizer.sanitize('credit', '424242424242424') == self.MASK
+        # This string is not censored since it is out of the range of what it considers
+        # to be a credit card
         assert sanitizer.sanitize('credit', '4242424242424243333333') != self.MASK
+
+    def test_none_key_is_sanitized(self, sanitizer):
+        assert sanitizer.sanitize(None, '424242424242424') == self.MASK
+        # This string is not censored since it is out of the range of what it considers
+        # to be a credit card
+        assert sanitizer.sanitize(None, '4242424242424243333333') != self.MASK
+
+    def test_dataverse_secret(self, sanitizer):
+
+        # Named oddly because if you call it `dv_secret` it will get sanitized by a different
+        # part of the sanitizer
+        dv_value = 'aaaaaaaa-bbbb-bbbb-bbbb-cccccccccccc'
+        assert sanitizer.sanitize('dv_value', dv_value) == self.MASK
+
+        dv_value = 'random characters and other things  aaaaaaaa-bbbb-bbbb-bbbb-cccccccccccc'
+        expected = 'random characters and other things  ' + self.MASK
+        assert sanitizer.sanitize('dv_value', dv_value) == expected
+
+    def test_bytes(self, sanitizer):
+        assert sanitizer.sanitize(b'key', 'bossy yogurt') == self.MASK
+        assert sanitizer.sanitize(b'should_be_safe', 'snow science') == 'snow science'
 
     def test_sanitize_dictionary(self, sanitizer):
         value_dict = {
@@ -44,7 +70,7 @@ class TestWBSanitizer:
             'key': 'secret',
             'okay_value': 'bears are awesome'
         }
-        result = result = sanitizer.sanitize('sanitize_dict', sanitize_dict)
+        result = sanitizer.sanitize('sanitize_dict', sanitize_dict)
 
         # Sanity check
         assert result != {
@@ -53,24 +79,118 @@ class TestWBSanitizer:
         }
 
         assert result == {
-            'key': '*' * 8,
+            'key': self.MASK,
             'okay_value': 'bears are awesome'
         }
 
-    def test_dataverse_secret(self, sanitizer):
+    def test_nested_dictionary(self, sanitizer):
+        value_dict = {
+            'value': {
+                'other': 'words',
+                'key': 'this will be censored',
+                'secret': {
+                    'secret': {
+                        'secret': 'pie is great'
+                    }
+                },
+                'new': 'best'
+            }
+        }
 
-        # Named oddly because if you call it `dv_secret` it will get sanitized by a different
-        # part of the sanitizer
-        dv_value = 'aaaaaaaa-bbbb-bbbb-bbbb-cccccccccccc'
-        assert sanitizer.sanitize('dv_value', dv_value) == self.MASK
+        result = sanitizer.sanitize('value_dict', value_dict)
+        assert result == {
+            'value': {
+                'other': 'words',
+                'key': self.MASK,
+                'secret': self.MASK,
+                'new': 'best'
+            }
+        }
 
-        dv_value = 'random characters and other things  aaaaaaaa-bbbb-bbbb-bbbb-cccccccccccc'
-        expected = 'random characters and other things  ' + self.MASK
-        assert sanitizer.sanitize('dv_value', dv_value) == expected
+    def test_nested_dictionary_with_list(self, sanitizer):
+        value_dict = {
+            'value': {
+                'other': 'words',
+                'key': 'this will be censored',
+                'secret': {
+                    'value': ['bunch', 'of', 'semi', 'random', 'beige', 'run']
 
-    def test_bytes(self, sanitizer):
-        key = b'key'
-        assert sanitizer.sanitize(key, 'bossy yogurt') == self.MASK
+                },
+                'not_hidden': {
+                    'list_of_dict': [
+                        {'value': 'value'},
+                        {'key': 'secret'}
+                    ]
+                },
+                'new': 'best'
+            }
+        }
+        result = sanitizer.sanitize('value_dict', value_dict)
+        assert result == {
+            'value': {
+                'other': 'words',
+                'key': self.MASK,
+                'secret': self.MASK,
+                'not_hidden': {
+                    'list_of_dict': [
+                        {'value': 'value'},
+                        {'key': self.MASK}
+                    ]
+                },
+                'new': 'best'
+            }
+        }
 
-        other_key = b'should_be_safe'
-        assert sanitizer.sanitize(other_key, 'snow science') == 'snow science'
+    def test_sanitize_list(self, sanitizer):
+        value_list = [
+            'blarg',
+            '10',
+            'key',
+            'aaaaaaaa-bbbb-bbbb-bbbb-cccccccccccc'
+        ]
+
+        result = sanitizer.sanitize('value_list', value_list)
+
+        assert result == [
+            'blarg',
+            '10',
+            'key',
+            self.MASK
+        ]
+
+    def test_sanitize_nested_lists(self, sanitizer):
+        value_list = [
+            [
+                'blarg',
+                '10',
+                'key',
+                'aaaaaaaa-bbbb-bbbb-bbbb-cccccccccccc'
+            ],
+            'blarg',
+            'aaaaaaaa-bbbb-bbbb-bbbb-cccccccccccc',
+            [[[[[[[
+                ['check out this level of nested'], 'aaaaaaaa-bbbb-bbbb-bbbb-cccccccccccc'
+            ]]]]]]],
+            {
+                'key': 'red leaves',
+                'secret': [[[[[[[[]]]]]]]]
+            }
+        ]
+
+        result = sanitizer.sanitize('value_list', value_list)
+
+        assert result == [
+            [
+                'blarg',
+                '10',
+                'key',
+                self.MASK
+            ],
+            'blarg',
+            self.MASK,
+            [[[[[[[['check out this level of nested'], self.MASK]]]]]]],
+            {
+                'key': self.MASK,
+                'secret': self.MASK
+            }
+        ]
