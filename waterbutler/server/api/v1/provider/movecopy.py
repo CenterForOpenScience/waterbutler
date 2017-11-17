@@ -76,6 +76,7 @@ class MoveCopyMixin:
             if not self.json.get('rename'):
                 raise exceptions.InvalidParameters('Rename is required for renaming')
 
+            action = 'move'
             self.dest_auth = self.auth
             self.dest_provider = self.provider
             self.dest_path = self.path.parent
