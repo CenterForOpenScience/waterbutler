@@ -34,6 +34,7 @@ class WBSanitizer(SanitizePasswordsProcessor):
 
     def sanitize(self, key, value):
         """Overload the sanitize function of the `SanitizePasswordsProcessor'."""
+
         if value is None:
             return
 
@@ -43,8 +44,14 @@ class WBSanitizer(SanitizePasswordsProcessor):
 
         if isinstance(value, dict):
             for item in value:
-                if item in self.FIELDS:
-                    value[item] = self.MASK
+                value[item] = self.sanitize(item, value[item])
+
+        if isinstance(value, list):
+            new_list = []
+            for item in value:
+                new_list.append(self.sanitize(key, item))
+
+            value = new_list
 
         # Check for Dataverse secrets
         if isinstance(value, str):
@@ -53,12 +60,14 @@ class WBSanitizer(SanitizePasswordsProcessor):
                 value = value.replace(match, self.MASK)
 
         # key can be a NoneType
+        # This sould be after the regex checks incase a `None` key is a token
         if not key:
             return value
 
         # Just in case we have bytes here, we want to turn them into text
         # properly without failing so we can perform our check.
         if isinstance(key, bytes):
+            # May want a try/except block around this, but for now it should be okay
             key = key.decode('utf-8', 'replace')
         else:
             key = str(key)
