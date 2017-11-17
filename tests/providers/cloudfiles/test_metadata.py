@@ -1,10 +1,12 @@
 import pytest
 
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.cloudfiles.metadata import (CloudFilesFileMetadata,
-                                                       CloudFilesHeaderMetadata,
-                                                       CloudFilesFolderMetadata,
-                                                       CloudFilesRevisonMetadata)
+from waterbutler.providers.cloudfiles.metadata import (
+    CloudFilesFileMetadata,
+    CloudFilesHeaderMetadata,
+    CloudFilesFolderMetadata,
+    CloudFilesRevisonMetadata
+)
 
 from tests.providers.cloudfiles.fixtures import (
     file_header_metadata_txt,
