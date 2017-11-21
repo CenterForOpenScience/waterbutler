@@ -11,7 +11,7 @@ class TestScubPayloadForKeen:
             'key2': 'value2'
         }
 
-        result = remote_logging._scrub_payload_for_keen(payload)
+        result = remote_logging._scrub_headers_for_keen(payload)
 
         assert result == {
             'key': 'value',
@@ -25,7 +25,7 @@ class TestScubPayloadForKeen:
             'key2': 'value2'
         }
 
-        result = remote_logging._scrub_payload_for_keen(payload)
+        result = remote_logging._scrub_headers_for_keen(payload)
 
         assert result == {
             'keytest': 'value',
@@ -39,7 +39,7 @@ class TestScubPayloadForKeen:
             'keytest': 'value2'
         }
 
-        result = remote_logging._scrub_payload_for_keen(payload)
+        result = remote_logging._scrub_headers_for_keen(payload)
 
         # it will rename whichever one comes second, even though it is the original in this case
         assert result == {
@@ -55,7 +55,7 @@ class TestScubPayloadForKeen:
             'key..test': 'value'
         }
 
-        result = remote_logging._scrub_payload_for_keen(payload)
+        result = remote_logging._scrub_headers_for_keen(payload)
 
         assert result == {
             'keytest': 'value',
@@ -76,7 +76,7 @@ class TestScubPayloadForKeen:
             'key2': 'value2'
         }
 
-        result = remote_logging._scrub_payload_for_keen(payload)
+        result = remote_logging._scrub_headers_for_keen(payload)
 
         assert result == {
             'key': {
@@ -100,7 +100,7 @@ class TestScubPayloadForKeen:
             'key2': 'value2'
         }
 
-        result = remote_logging._scrub_payload_for_keen(payload)
+        result = remote_logging._scrub_headers_for_keen(payload)
 
         assert result == {
             'keytest': {
@@ -124,7 +124,7 @@ class TestScubPayloadForKeen:
             'key2': 'value2'
         }
 
-        result = remote_logging._scrub_payload_for_keen(payload)
+        result = remote_logging._scrub_headers_for_keen(payload)
 
         assert result == {
             'key': {
@@ -148,7 +148,7 @@ class TestScubPayloadForKeen:
             'key2': 'value2'
         }
 
-        result = remote_logging._scrub_payload_for_keen(payload)
+        result = remote_logging._scrub_headers_for_keen(payload)
         # Test is different from others so it passes on python 3.5
         assert 'resourcetwitter (1)' in result['key']
         assert 'resourcetwitter' in result['key']
