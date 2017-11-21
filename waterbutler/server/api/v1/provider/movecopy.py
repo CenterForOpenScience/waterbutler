@@ -1,4 +1,5 @@
 import json
+from http import HTTPStatus
 
 from waterbutler import tasks
 from waterbutler.sizes import MBs
@@ -51,43 +52,63 @@ class MoveCopyMixin:
         })
 
     async def move_or_copy(self):
+        """Copy, move, and rename files and folders.
+
+        **Auth actions**: ``copy``, ``move``, or ``rename``
+
+        **Provider actions**: ``copy`` or ``move``
+
+        *Auth actions* come from the ``action`` body parameter in the request and are used by the
+        auth handler.
+
+        *Provider actions* are determined from the *auth action*.  A "rename" is a special case of
+        the "move" provider action that implies that the destination resource, provider, and parent
+        path will all be the same as the source.
+        """
+
         # Force the json body to load into memory
         await self.request.body
 
-        if self.json.get('action') not in ('copy', 'move', 'rename'):
-            # Note: null is used as the default to avoid python specific error messages
-            raise exceptions.InvalidParameters('Action must be copy, move or rename, '
-                                               'not {}'.format(self.json.get('action', 'null')))
+        auth_action = self.json.get('action', 'null')
+        if auth_action not in ('copy', 'move', 'rename'):
+            raise exceptions.InvalidParameters('Auth action must be "copy", "move", or "rename", '
+                                               'not "{}"'.format(auth_action))
 
-        # Setup of the provider was delayed so the json action could be retrieved from the request body.
-        provider = self.path_kwargs['provider']
-        action = self.json['action']
+        # Provider setup is delayed so the provider action can be updated from the auth action.
+        provider = self.path_kwargs.get('provider', '')
+        provider_action = auth_action
+        if auth_action == 'rename':
+            if not self.json.get('rename', ''):
+                raise exceptions.InvalidParameters('"rename" field is required for renaming')
+            provider_action = 'move'
 
         self.auth = await auth_handler.get(
-            self.resource, provider,
+            self.resource,
+            provider,
             self.request,
-            action=action,
+            action=auth_action,
             auth_type=AuthType.SOURCE
         )
-        self.provider = make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
+        self.provider = make_provider(
+            provider,
+            self.auth['auth'],
+            self.auth['credentials'],
+            self.auth['settings']
+        )
         self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
 
-        if action == 'rename':
-            if not self.json.get('rename'):
-                raise exceptions.InvalidParameters('Rename is required for renaming')
-
-            action = 'move'
+        if auth_action == 'rename':  # 'rename' implies the file/folder does not change location
             self.dest_auth = self.auth
             self.dest_provider = self.provider
             self.dest_path = self.path.parent
             self.dest_resource = self.resource
         else:
-            if 'path' not in self.json:
-                raise exceptions.InvalidParameters('Path is required for moves or copies')
-
-            if not self.json['path'].endswith('/'):
-                raise exceptions.InvalidParameters('Path requires a trailing slash to indicate '
-                                                   'it is a folder')
+            path = self.json.get('path', None)
+            if path is None:
+                raise exceptions.InvalidParameters('"path" field is required for moves or copies')
+            if not path.endswith('/'):
+                raise exceptions.InvalidParameters('"path" field requires a trailing slash to '
+                                                   'indicate it is a folder')
 
             # TODO optimize for same provider and resource
 
@@ -97,7 +118,7 @@ class MoveCopyMixin:
                 self.dest_resource,
                 self.json.get('provider', self.provider.NAME),
                 self.request,
-                action=action,
+                action=auth_action,
                 auth_type=AuthType.DESTINATION,
             )
             self.dest_provider = make_provider(
@@ -108,10 +129,10 @@ class MoveCopyMixin:
             )
             self.dest_path = await self.dest_provider.validate_path(**self.json)
 
-        if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):
+        if not getattr(self.provider, 'can_intra_' + provider_action)(self.dest_provider, self.path):
             # this weird signature syntax courtesy of py3.4 not liking trailing commas on kwargs
             conflict = self.json.get('conflict', DEFAULT_CONFLICT)
-            result = await getattr(tasks, action).adelay(
+            result = await getattr(tasks, provider_action).adelay(
                 rename=self.json.get('rename'),
                 conflict=conflict,
                 request=remote_logging._serialize_request(self.request),
@@ -121,7 +142,7 @@ class MoveCopyMixin:
         else:
             metadata, created = (
                 await tasks.backgrounded(
-                    getattr(self.provider, action),
+                    getattr(self.provider, provider_action),
                     self.dest_provider,
                     self.path,
                     self.dest_path,
@@ -133,8 +154,8 @@ class MoveCopyMixin:
         self.dest_meta = metadata
 
         if created:
-            self.set_status(201)
+            self.set_status(HTTPStatus.CREATED)
         else:
-            self.set_status(200)
+            self.set_status(HTTPStatus.OK)
 
         self.write({'data': metadata.json_api_serialized(self.dest_resource)})
