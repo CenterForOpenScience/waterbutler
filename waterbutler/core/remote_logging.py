@@ -308,14 +308,9 @@ def _scrub_headers_for_keen(payload):
     scrubbed_payload = {}
     for key in payload:
         scrubbed_key = key
-        scrubbed_value = payload[key]
 
         if '.' in key:
             scrubbed_key = key.replace('.', '')
-
-        # If value is a dict, we need to do some recursion and scrub it as well
-        if isinstance(scrubbed_value, dict):
-            scrubbed_value = _scrub_headers_for_keen(scrubbed_value)
 
         # if our new scrubbed key is already in the payload, we need to increment it
         if scrubbed_key in scrubbed_payload:
@@ -327,7 +322,7 @@ def _scrub_headers_for_keen(payload):
 
             scrubbed_key = incremented_key
 
-        scrubbed_payload[scrubbed_key] = scrubbed_value
+        scrubbed_payload[scrubbed_key] = payload[key]
 
     return scrubbed_payload
 
@@ -341,7 +336,7 @@ def _serialize_request(request):
     for (k, v) in sorted(request.headers.get_all()):
         if k not in ('Authorization', 'Cookie', 'User-Agent',):
             headers_dict[k] = v
-    headers_dict['test.this.thing'] = 'wjatever'
+
     headers_dict = _scrub_headers_for_keen(headers_dict)
     serialized = {
         'tech': {
