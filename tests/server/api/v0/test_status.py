@@ -1,10 +1,10 @@
 import json
+from http import HTTPStatus
 
 from tornado import testing
 
-import waterbutler
-
 from tests import utils
+from version import __version__
 
 
 class TestStatusHandler(utils.HandlerTestCase):
@@ -13,10 +13,10 @@ class TestStatusHandler(utils.HandlerTestCase):
     def test_get_coro(self):
         expected = {
             'status': 'up',
-            'version': waterbutler.__version__,
+            'version': __version__,
         }
         resp = yield self.http_client.fetch(
             self.get_url('/status'),
         )
-        assert resp.code == 200
+        assert resp.code == HTTPStatus.OK
         assert expected == json.loads(resp.body.decode())
