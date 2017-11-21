@@ -11,6 +11,7 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.dataverse import settings as dvs
 from waterbutler.providers.dataverse import DataverseProvider
+from waterbutler.providers.dataverse.exceptions import DataverseIngestionLockError
 from waterbutler.providers.dataverse.metadata import DataverseFileMetadata, DataverseRevision
 
 from tests.providers.dataverse.fixtures import (
@@ -234,6 +235,32 @@ class TestCRUD:
         assert aiohttpretty.has_call(method='POST', uri=url)
         assert aiohttpretty.has_call(method='GET', uri=latest_url)
         assert aiohttpretty.has_call(method='GET', uri=latest_published_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_ingestion_exception(self, provider, file_stream, native_file_metadata,
+                                 empty_native_dataset_metadata, native_dataset_metadata):
+        path = WaterButlerPath('/thefile.txt')
+        url = provider.build_url(dvs.EDIT_MEDIA_BASE_URL, 'study', provider.doi)
+        aiohttpretty.register_uri('POST', url, status=400, body=b'something dataset lock: Ingest')
+
+        with pytest.raises(DataverseIngestionLockError):
+            await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='POST', uri=url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_random_exception(self, provider, file_stream, native_file_metadata,
+                                 empty_native_dataset_metadata, native_dataset_metadata):
+        path = WaterButlerPath('/thefile.txt')
+        url = provider.build_url(dvs.EDIT_MEDIA_BASE_URL, 'study', provider.doi)
+        aiohttpretty.register_uri('POST', url, status=400, body=b'something something error')
+
+        with pytest.raises(exceptions.UploadError):
+            await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='POST', uri=url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

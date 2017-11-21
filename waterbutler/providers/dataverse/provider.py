@@ -11,6 +11,7 @@ from waterbutler.core.utils import AsyncIterator
 from waterbutler.providers.dataverse import settings
 from waterbutler.providers.dataverse.metadata import DataverseRevision
 from waterbutler.providers.dataverse.metadata import DataverseDatasetMetadata
+from waterbutler.providers.dataverse.exceptions import DataverseIngestionLockError
 
 
 class DataverseProvider(provider.BaseProvider):
@@ -170,16 +171,26 @@ class DataverseProvider(provider.BaseProvider):
             headers=dv_headers,
             auth=(self.token, ),
             data=file_stream,
-            expects=(201, ),
+            expects=(201, 400,),
             throws=exceptions.UploadError
         )
+
+        if resp.status == 400:
+            data = await resp.read()
+            data = data.decode('utf-8')
+
+            if 'dataset lock: Ingest' in data:
+                raise DataverseIngestionLockError({'response': data})
+            else:
+                raise (await exceptions.exception_from_response(resp,
+                                                                error=exceptions.UploadError))
         await resp.release()
 
         # Find appropriate version of file
         metadata = await self._get_data('latest')
         files = metadata if isinstance(metadata, list) else []
-        file_metadata = next(file for file in files if file.name == path.name or
-                                                file.original_name == path.name)
+        file_metadata = next(file for file in files if (file.name == path.name or
+                                                path.name in file.original_names))
 
         if stream.writers['md5'].hexdigest != file_metadata.extra['hashes']['md5']:
             raise exceptions.UploadChecksumMismatchError()

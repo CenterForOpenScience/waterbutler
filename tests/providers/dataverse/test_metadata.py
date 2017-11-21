@@ -47,7 +47,7 @@ class TestFileMetadata:
         assert not file_metadata_object.created_utc
         assert file_metadata_object.content_type == 'text/plain; charset=US-ASCII'
         assert file_metadata_object.etag == 'latest::20'
-        assert file_metadata_object.original_name == 'thefile.txt'
+        assert file_metadata_object.original_names == ['thefile.txt']
         assert file_metadata_object.extra == {
             'fileId': '20',
             'datasetVersion': 'latest',
@@ -71,7 +71,9 @@ class TestFileMetadata:
         assert not csv_file_metadata_object.created_utc
         assert csv_file_metadata_object.content_type == 'text/tab-separated-values'
         assert csv_file_metadata_object.etag == 'latest::20'
-        assert csv_file_metadata_object.original_name == 'thefile.csv'
+        names = csv_file_metadata_object.original_names
+        assert 'thefile.csv' in names
+        assert 'thefile.CSV' in names
         assert csv_file_metadata_object.extra == {
             'fileId': '20',
             'datasetVersion': 'latest',

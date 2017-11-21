@@ -10,13 +10,11 @@ def format_dict():
             'originalFileFormat': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'originalFormatLabel': 'MS Excel (XLSX)',
             'contentType': 'text/tab-separated-values',
-
         },
         'RData': {
             'originalFileFormat': 'application/x-rlang-transport',
             'originalFormatLabel': 'R Data',
             'contentType': 'text/tab-separated-values'
-
         },
         'sav': {
             'originalFileFormat': 'application/x-spss-sav',
@@ -27,13 +25,11 @@ def format_dict():
             'originalFileFormat': 'application/x-stata',
             'originalFormatLabel': 'Stata Binary',
             'contentType': 'text/tab-separated-values'
-
         },
         'por': {
             'originalFileFormat': 'application/x-spss-por',
             'originalFormatLabel': 'SPSS Portable',
             'contentType': 'text/tab-separated-values'
-
         },
         'csv': {
             'originalFileFormat': 'text/csv',
@@ -47,7 +43,7 @@ class TestUtils:
 
     def test_original_ext_from_raw_metadata(self, format_dict):
         for key in format_dict:
-            assert key == dv_utils.original_ext_from_raw_metadata(format_dict[key])
+            assert key in dv_utils.original_ext_from_raw_metadata(format_dict[key])
 
     def test_original_ext_from_raw_metadata_none_case(self, format_dict):
         for key in format_dict:

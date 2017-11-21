@@ -28,18 +28,21 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
         return self.raw.get('name', None) or self.raw.get('filename', None)
 
     @property
-    def original_name(self):
+    def original_names(self):
         """ Dataverse 'ingests' some files types. This changes their extension.
-        This property will look through the metadata to try to determine the original
-        name of the file.
+        This property will look through the metadata to try to determine possible
+        original names of the file.
         """
 
-        ext = dv_utils.original_ext_from_raw_metadata(self.raw)
-        if ext is None:
-            return self.name
+        extensions = dv_utils.original_ext_from_raw_metadata(self.raw)
+        if extensions is None:
+            return [self.name]
         else:
-            name = self.name[:self.name.rfind('.')]
-            return name + '.{}'.format(ext)
+            names = []
+            for ext in extensions:
+                name = self.name[:self.name.rfind('.')]
+                names.append(name + '.{}'.format(ext))
+            return names
 
     @property
     def path(self):
