@@ -182,6 +182,9 @@ class BoxProvider(provider.BaseProvider):
         Add a comparison of credentials to avoid this."""
         return super().shares_storage_root(other) and self.credentials == other.credentials
 
+    def will_self_overwrite(self, dest_provider, src_path, dest_path):
+        return self.NAME == dest_provider.NAME and src_path.identifier == dest_path.identifier
+
     def can_intra_move(self, other: provider.BaseProvider,
                        path: wb_path.WaterButlerPath=None) -> bool:
         return self == other
@@ -195,10 +198,6 @@ class BoxProvider(provider.BaseProvider):
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) \
             -> typing.Tuple[typing.Union[BoxFileMetadata, BoxFolderMetadata], bool]:
-
-        if src_path.identifier == dest_path.identifier:
-            raise exceptions.IntraCopyError("Cannot overwrite a file with itself",
-                                            code=HTTPStatus.CONFLICT)
 
         if dest_path.identifier is not None:
             await dest_provider.delete(dest_path)
@@ -228,10 +227,6 @@ class BoxProvider(provider.BaseProvider):
                          dest_provider: provider.BaseProvider,
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) -> typing.Tuple[BaseBoxMetadata, bool]:
-
-        if src_path.identifier == dest_path.identifier:
-            raise exceptions.IntraCopyError("Cannot overwrite a file with itself",
-                                            code=HTTPStatus.CONFLICT)
 
         if dest_path.identifier is not None and str(dest_path).lower() != str(src_path).lower():
             await dest_provider.delete(dest_path)

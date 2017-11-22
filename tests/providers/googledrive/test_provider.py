@@ -1573,51 +1573,36 @@ class TestIntraFunctions:
         assert result == expected
         assert aiohttpretty.has_call(method='PUT', uri=delete_url)
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_copy_move_overwrite_error(self, provider, root_provider_fixtures):
-        item = root_provider_fixtures['docs_file_metadata']
-        src_path = WaterButlerPath('/unsure.txt', _ids=('0', item['id']))
-
-        with pytest.raises(exceptions.IntraCopyError) as e:
-            await provider.intra_copy(provider, src_path, src_path)
-
-        assert e.value.code == 409
-        with pytest.raises(exceptions.IntraCopyError) as e:
-            await provider.intra_move(provider, src_path, src_path)
-
-        assert e.value.code == 409
-
 
 class TestOperationsOrMisc:
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_duplicate_names(self, provider):
+    def test_will_self_overwrite(self, provider, other_provider):
+        src_path = GoogleDrivePath('/root/Gear1.stl', _ids=['0', '10', '11'])
+        dest_path = GoogleDrivePath('/root/Gear23123.stl', _ids=['0', '10', '12'])
+
+        result = provider.will_self_overwrite(other_provider, src_path, dest_path)
+        assert result is False
+
+        result = provider.will_self_overwrite(other_provider, src_path, src_path)
+        assert result is True
+
+    def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names() is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_shares_storage_root(self, provider, other_provider):
+    def test_shares_storage_root(self, provider, other_provider):
         assert provider.shares_storage_root(other_provider) is True
         assert provider.shares_storage_root(provider) is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_move(self, provider, other_provider):
+    def test_can_intra_move(self, provider, other_provider):
         assert provider.can_intra_move(other_provider) is False
         assert provider.can_intra_move(provider) is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test__serialize_item_raw(self, provider, root_provider_fixtures):
+    def test__serialize_item_raw(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['docs_file_metadata']
 
         assert provider._serialize_item(None, item, True) == item
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_copy(self, provider, other_provider, root_provider_fixtures):
+    def test_can_intra_copy(self, provider, other_provider, root_provider_fixtures):
         item = root_provider_fixtures['list_file']['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
 
@@ -1654,7 +1639,7 @@ class TestOperationsOrMisc:
                                        body=error_fixtures['parts_file_missing_metadata'])
 
         with pytest.raises(exceptions.MetadataError) as e:
-            result = await provider._resolve_path_to_ids(file_name)
+            await provider._resolve_path_to_ids(file_name)
 
         assert e.value.message == '{} not found'.format(str(path))
         assert e.value.code == 404
