@@ -35,7 +35,7 @@ class TestScubPayloadForKeen:
 
     def test_scrub_and_rename(self):
         payload = {
-            'key.test': 'value',
+            'key.test': 'value2',
             'keytest': 'value2'
         }
 
@@ -43,7 +43,7 @@ class TestScubPayloadForKeen:
 
         # it will rename whichever one comes second, even though it is the original in this case
         assert result == {
-            'keytest': 'value',
+            'keytest': 'value2',
             'keytest (1)': 'value2'
         }
         assert result != payload
