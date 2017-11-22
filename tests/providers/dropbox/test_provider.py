@@ -290,8 +290,12 @@ class TestMetadata:
         path = await provider.validate_path('/')
         url = provider.build_url('files', 'list_folder')
         data = {'path': path.full_path}
-        aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=root_provider_fixtures['folder_with_subdirectory_metadata'])
+        aiohttpretty.register_json_uri(
+            'POST',
+            url,
+            data=data,
+            body=root_provider_fixtures['folder_with_subdirectory_metadata']
+        )
         result = await provider.metadata(path)
 
         assert isinstance(result, list)
@@ -308,8 +312,12 @@ class TestMetadata:
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data,
                                        body=root_provider_fixtures['folder_with_hasmore_metadata'])
-        aiohttpretty.register_json_uri('POST', url + '/continue', data=data,
-                                       body=root_provider_fixtures['folder_with_subdirectory_metadata'])
+        aiohttpretty.register_json_uri(
+            'POST',
+            url + '/continue',
+            data=data,
+            body=root_provider_fixtures['folder_with_subdirectory_metadata']
+        )
 
         result = await provider.metadata(path)
 
@@ -544,7 +552,9 @@ class TestIntra:
                 {
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
-                    'body': json.dumps(error_fixtures['rename_conflict_folder_metadata']).encode('utf-8'),
+                    'body': json.dumps(
+                        error_fixtures['rename_conflict_folder_metadata']
+                    ).encode('utf-8'),
                     'status': 409
                 },
                 {
@@ -574,8 +584,12 @@ class TestIntra:
 
         url1 = provider.build_url('files', 'copy_reference', 'save')
         data1 = {'copy_reference': 'test', 'path': dest_path.full_path.rstrip('/')}
-        aiohttpretty.register_json_uri('POST', url1, data=data1,
-                                       body=intra_copy_fixtures['intra_copy_other_provider_file_metadata'])
+        aiohttpretty.register_json_uri(
+            'POST',
+            url1,
+            data=data1,
+            body=intra_copy_fixtures['intra_copy_other_provider_file_metadata']
+        )
 
         result = await provider.intra_copy(other_provider, src_path, dest_path)
         expected = (DropboxFileMetadata(
@@ -648,7 +662,9 @@ class TestIntra:
                 {
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
-                    'body': json.dumps(error_fixtures['rename_conflict_file_metadata']).encode('utf-8'),
+                    'body': json.dumps(
+                        error_fixtures['rename_conflict_file_metadata']
+                    ).encode('utf-8'),
                     'status': 409
                 },
                 {
@@ -689,7 +705,9 @@ class TestIntra:
                 {
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
-                    'body': json.dumps(error_fixtures['rename_conflict_folder_metadata']).encode('utf-8'),
+                    'body': json.dumps(
+                        error_fixtures['rename_conflict_folder_metadata']
+                    ).encode('utf-8'),
                     'status': 409
                 },
                 {
@@ -719,23 +737,20 @@ class TestIntra:
 
         assert e.value.code == 400
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_overwrite_error(self, provider):
-        src_path = WaterButlerPath('/pfile.txt', prepend=provider.folder)
-
-        with pytest.raises(exceptions.IntraCopyError) as e:
-            await provider.intra_move(provider, src_path, src_path)
-
-        assert e.value.code == 409
-
-        with pytest.raises(exceptions.IntraCopyError) as e:
-            await provider.intra_copy(provider, src_path, src_path)
-
-        assert e.value.code == 409
-
 
 class TestOperations:
+
+    def test_will_self_overwrite(self, provider, other_provider):
+        src_path = WaterButlerPath('/50 shades of nope.txt',
+                                   _ids=(provider.folder, '12231'))
+        dest_path = WaterButlerPath('/50 shades of nope2223.txt',
+                                    _ids=(provider.folder, '2342sdfsd'))
+
+        result = provider.will_self_overwrite(other_provider, src_path, dest_path)
+        assert result is False
+
+        result = provider.will_self_overwrite(other_provider, src_path, src_path)
+        assert result is True
 
     def test_can_intra_copy(self, provider):
         assert provider.can_intra_copy(provider)
@@ -747,7 +762,7 @@ class TestOperations:
         assert provider.can_intra_move(provider)
 
     def test_cannot_intra_move_other(self, provider, other_provider):
-        assert provider.can_intra_move(other_provider) == False
+        assert provider.can_intra_move(other_provider) is False
 
     def test_conflict_error_handler_not_found(self, provider, error_fixtures):
         error_path = '/Photos/folder/file'
