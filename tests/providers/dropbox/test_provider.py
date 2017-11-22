@@ -371,6 +371,7 @@ class TestMetadata:
             data=data,
             body=provider_fixtures['folder_with_more_metadata']
         )
+
         aiohttpretty.register_json_uri(
             'POST',
             url + '/continue',
@@ -676,17 +677,13 @@ class TestIntraMoveCopy:
                 {
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
-                    'body': json.dumps(
-                                error_fixtures['rename_conflict_folder_metadata']
-                            ).encode('utf-8'),
+                    'body': json.dumps(error_fixtures['rename_conflict_folder_metadata']).encode('utf-8'),
                     'status': HTTPStatus.CONFLICT
                 },
                 {
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
-                    'body': json.dumps(
-                                provider_fixtures['intra_move_copy_file_metadata_v2']
-                            ).encode('utf-8')
+                    'body': json.dumps(provider_fixtures['intra_move_copy_file_metadata_v2']).encode('utf-8')
                 },
             ]
         })
@@ -918,23 +915,20 @@ class TestIntraMoveCopy:
 
         assert e.value.code == HTTPStatus.BAD_REQUEST
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_overwrite_error(self, provider):
-        src_path = WaterButlerPath('/pfile.txt', prepend=provider.folder)
-
-        with pytest.raises(exceptions.IntraCopyError) as e:
-            await provider.intra_move(provider, src_path, src_path)
-
-        assert e.value.code == 409
-
-        with pytest.raises(exceptions.IntraCopyError) as e:
-            await provider.intra_copy(provider, src_path, src_path)
-
-        assert e.value.code == 409
-
 
 class TestOperations:
+
+    def test_will_self_overwrite(self, provider, other_provider):
+        src_path = WaterButlerPath('/50 shades of nope.txt',
+                                   _ids=(provider.folder, '12231'))
+        dest_path = WaterButlerPath('/50 shades of nope2223.txt',
+                                    _ids=(provider.folder, '2342sdfsd'))
+
+        result = provider.will_self_overwrite(other_provider, src_path, dest_path)
+        assert result is False
+
+        result = provider.will_self_overwrite(other_provider, src_path, src_path)
+        assert result is True
 
     def test_can_intra_copy(self, provider):
         assert provider.can_intra_copy(provider)

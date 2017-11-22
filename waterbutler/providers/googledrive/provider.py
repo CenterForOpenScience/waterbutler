@@ -133,7 +133,14 @@ class GoogleDriveProvider(provider.BaseProvider):
     def default_headers(self) -> dict:
         return {'authorization': 'Bearer {}'.format(self.token)}
 
-    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
+    def will_self_overwrite(self, dest_provider, src_path, dest_path):
+        return self.NAME == dest_provider.NAME and src_path.identifier == dest_path.identifier
+
+    def can_intra_move(
+        self,
+        other: provider.BaseProvider,
+        path=None
+    ) -> bool:
         return self == other
 
     def can_intra_copy(self, other: provider.BaseProvider, path=None) -> bool:

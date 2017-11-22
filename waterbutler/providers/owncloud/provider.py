@@ -1,5 +1,4 @@
 import aiohttp
-from http import HTTPStatus
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -267,6 +266,9 @@ class OwnCloudProvider(provider.BaseProvider):
     def can_duplicate_names(self):
         return True
 
+    def will_self_overwrite(self, dest_provider, src_path, dest_path):
+        return self.NAME == dest_provider.NAME and src_path.identifier == dest_path.identifier
+
     def can_intra_copy(self, dest_provider, path=None):
         return self == dest_provider
 
@@ -291,10 +293,6 @@ class OwnCloudProvider(provider.BaseProvider):
         """
         if operation != 'MOVE' and operation != 'COPY':
             raise NotImplementedError("ownCloud move/copy only supports MOVE and COPY endpoints")
-
-        if src_path.full_path == dest_path.full_path:
-            raise exceptions.IntraCopyError("Cannot overwrite a file with itself",
-                                                        code=HTTPStatus.CONFLICT)
 
         resp = await self.make_request(
             operation,
