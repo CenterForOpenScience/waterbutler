@@ -220,6 +220,32 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_delete_root(self, connected_provider, folder_root_empty, file_header_metadata):
+
+        path = WaterButlerPath('/')
+        query = {'prefix': path.path}
+        url = connected_provider.build_url('', **query)
+        body = json.dumps(folder_root_empty).encode('utf-8')
+
+        delete_query = {'bulk-delete': ''}
+        delete_url_folder = connected_provider.build_url(path.name, **delete_query)
+        delete_url_content = connected_provider.build_url('', **delete_query)
+
+        file_url = connected_provider.build_url(path.path)
+        aiohttpretty.register_uri('GET', url, body=body)
+        aiohttpretty.register_uri('HEAD', file_url, headers=file_header_metadata)
+
+        aiohttpretty.register_uri('DELETE', delete_url_content, status=200)
+
+        with pytest.raises(exceptions.DeleteError):
+            await connected_provider.delete(path)
+
+        await connected_provider.delete(path, confirm_delete=1)
+
+        assert aiohttpretty.has_call(method='DELETE', uri=delete_url_content)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_delete_file(self, connected_provider):
         path = WaterButlerPath('/delete.file')
         url = connected_provider.build_url(path.path)

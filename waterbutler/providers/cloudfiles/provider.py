@@ -155,7 +155,7 @@ class CloudFilesProvider(provider.BaseProvider):
         return metadata, created
 
     @ensure_connection
-    async def delete(self, path, confirm_delete=False):
+    async def delete(self, path, confirm_delete=0):
         """Deletes the key at the specified path
         :param str path: The path of the key to delete
         :param int confirm_delete: Must be 1 to confirm root folder delete, this deletes entire
@@ -170,26 +170,37 @@ class CloudFilesProvider(provider.BaseProvider):
             )
 
         if path.is_dir:
-            metadata = await self._metadata_folder(path, recursive=True)
+            await self._delete_folder_contents(path)
 
-            delete_files = [
-                os.path.join('/', self.container, path.child(item.name).path)
-                for item in metadata
-            ]
+        if not path.is_root:  # deleting the root "item" deletes the whole bucket.
+            await self._delete_item(path)
 
-            delete_files.append(os.path.join('/', self.container, path.path))
-            query = {'bulk-delete': ''}
-            resp = await self.make_request(
-                'DELETE',
-                functools.partial(self.build_url, '', **query),
-                data='\n'.join(delete_files),
-                expects=(200, ),
-                throws=exceptions.DeleteError,
-                headers={
-                    'Content-Type': 'text/plain',
-                },
-            )
-            await resp.release()
+    @ensure_connection
+    async def _delete_folder_contents(self, path):
+
+        metadata = await self._metadata_folder(path, recursive=True)
+
+        delete_files = [
+            os.path.join('/', self.container, path.child(item.name).path)
+            for item in metadata
+        ]
+
+        delete_files.append(os.path.join('/', self.container, path.path))
+        query = {'bulk-delete': ''}
+        resp = await self.make_request(
+            'DELETE',
+            functools.partial(self.build_url, '', **query),
+            data='\n'.join(delete_files),
+            expects=(200,),
+            throws=exceptions.DeleteError,
+            headers={
+                'Content-Type': 'text/plain',
+            },
+        )
+        await resp.release()
+
+    @ensure_connection
+    async def _delete_item(self, path):
 
         resp = await self.make_request(
             'DELETE',
