@@ -3,7 +3,7 @@ import pytest
 from waterbutler.core import remote_logging
 
 
-class TestScubPayloadForKeen:
+class TestScrubPayloadForKeen:
 
     def test_flat_dict(self):
         payload = {
@@ -17,7 +17,6 @@ class TestScubPayloadForKeen:
             'key': 'value',
             'key2': 'value2'
         }
-        assert result == payload
 
     def test_flat_dict_needs_scrubbing(self):
         payload = {
@@ -28,39 +27,51 @@ class TestScubPayloadForKeen:
         result = remote_logging._scrub_headers_for_keen(payload)
 
         assert result == {
-            'keytest': 'value',
+            'key-test': 'value',
             'key2': 'value2'
         }
-        assert result != payload
 
     def test_scrub_and_rename(self):
         payload = {
-            'key.test': 'value2',
-            'keytest': 'value2'
+            'key.test': 'unique value',
+            'key-test': 'value2'
         }
 
         result = remote_logging._scrub_headers_for_keen(payload)
 
         # it will rename whichever one comes second, even though it is the original in this case
+
         assert result == {
-            'keytest': 'value2',
-            'keytest (1)': 'value2'
+            'key-test': 'value2',
+            'key-test (1)': 'unique value'
         }
-        assert result != payload
 
     def test_scrub_and_loop_rename(self):
         payload = {
-            'key.test': 'value',
-            'keytest': 'value',
-            'key..test': 'value'
+            'key.test': 'value1',
+            'key-test': 'value2',
+            'key-test (1)': 'value3'
         }
 
         result = remote_logging._scrub_headers_for_keen(payload)
 
         assert result == {
-            'keytest': 'value',
-            'keytest (1)': 'value',
-            'keytest (2)': 'value'
+            'key-test': 'value2',
+            'key-test (2)': 'value1',
+            'key-test (1)': 'value3'
 
         }
-        assert result != payload
+
+    def test_max_iteration(self):
+        payload = {
+            'key.test': 'value1',
+            'key-test': 'value2',
+            'key-test (1)': 'value3'
+        }
+
+        result = remote_logging._scrub_headers_for_keen(payload, MAX_ITERATIONS=1)
+
+        assert result == {
+            'key-test': 'value2',
+            'key-test (1)': 'value3'
+        }
