@@ -69,7 +69,10 @@ def get_alt_download_extension(metadata):
 def get_alt_export_link(metadata):
     format_type = get_format(metadata)
     export_links = metadata['exportLinks']
-    return export_links.get(format_type['alt_type'], None) or export_links[format_type['type']]
+    if format_type.get('alt_type'):
+        return export_links.get(format_type['alt_type'])
+    else:
+        return export_links[format_type['type']]
 
 
 def get_export_link(metadata):
