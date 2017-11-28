@@ -1,5 +1,6 @@
-import pytest
 from unittest import mock
+
+import pytest
 
 from waterbutler.server.sanitize import WBSanitizer
 
@@ -71,12 +72,6 @@ class TestWBSanitizer:
             'okay_value': 'bears are awesome'
         }
         result = sanitizer.sanitize('sanitize_dict', sanitize_dict)
-
-        # Sanity check
-        assert result != {
-            'key': 'secret',
-            'okay_value': 'bears are awesome'
-        }
 
         assert result == {
             'key': self.MASK,
