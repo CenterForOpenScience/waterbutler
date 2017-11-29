@@ -224,18 +224,18 @@ class BaseProvider(metaclass=abc.ABCMeta):
             'got_rename': rename is not None,
         })
 
+        # This does not mean the `dest_path` is a folder, at this point it could just be the parent
+        # of the actual dest_path, or have a blank name
+        if not dest_path.is_file:
+            temp_path = await self.revalidate_path(
+                dest_path,
+                rename or src_path.name,
+                folder=src_path.is_dir
+            )
+            if self.will_self_overwrite(dest_provider, src_path, temp_path):
+                raise exceptions.OverwriteSelfError(src_path)
+
         if handle_naming:
-            # In handle_naming so we don't run it multiple times
-            # This does not mean the `dest_path` is a folder, at this point it could just be the parent
-            # of the actual dest_path, or have a blank name
-            if not dest_path.is_file:
-                temp_path = await self.revalidate_path(
-                    dest_path,
-                    rename or src_path.name,
-                    folder=src_path.is_dir
-                )
-                if self.will_self_overwrite(dest_provider, src_path, temp_path):
-                    raise exceptions.OverwriteSelfError(src_path)
 
             dest_path = await dest_provider.handle_naming(
                 src_path,
@@ -283,6 +283,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
             'got_rename': rename is not None,
         })
 
+        # This does not mean the `dest_path` is a folder, at this point it could just be the parent
+        # of the actual dest_path, or have a blank name
         if not dest_path.is_file:
             temp_path = await self.revalidate_path(
                 dest_path,
@@ -293,17 +295,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
                 raise exceptions.OverwriteSelfError(src_path)
 
         if handle_naming:
-            # In handle_naming so we don't run it multiple times
-            # This does not mean the `dest_path` is a folder, at this point it could just be the parent
-            # of the actual dest_path, or have a blank name
-            if not dest_path.is_file:
-                temp_path = await self.revalidate_path(
-                    dest_path,
-                    rename or src_path.name,
-                    folder=src_path.is_dir
-                )
-                if self.will_self_overwrite(dest_provider, src_path, temp_path):
-                    raise exceptions.OverwriteSelfError(src_path)
 
             dest_path = await dest_provider.handle_naming(
                 src_path,
@@ -458,6 +449,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
        .. note::
             Defaults to False
+            Overridden by providers that need to run this check
 
         :param dest_provider: ( :class:`.BaseProvider` ) The provider to check against
         :param  src_path: ( :class:`.WaterButlerPath` ) The move/copy source path
