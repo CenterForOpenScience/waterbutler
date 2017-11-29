@@ -91,7 +91,7 @@ class MoveCopyMixin:
 
             # TODO optimize for same provider and resource
 
-            if action in ['copy'] and not self.json.get('rename') and self.path.is_root:
+            if action == 'copy' and not self.json.get('rename') and self.path.is_root:
                 raise exceptions.InvalidParameters('Rename is required for copying root')
 
             # Note: attached to self so that _send_hook has access to these
