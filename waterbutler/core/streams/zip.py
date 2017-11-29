@@ -1,13 +1,11 @@
-import asyncio
-import binascii
-import struct
-import time
-import zipfile
 import zlib
+import time
+import struct
+import asyncio
+import zipfile
+import binascii
 
-from waterbutler.core.streams.base import BaseStream
-from waterbutler.core.streams.base import MultiStream
-from waterbutler.core.streams.base import StringStream
+from waterbutler.core.streams.base import BaseStream, MultiStream, StringStream
 
 # for some reason python3.5 has this as (1 << 31) - 1, which is 0x7fffffff
 ZIP64_LIMIT = 0xffffffff - 1
@@ -118,31 +116,35 @@ class ZipLocalFileData(BaseStream):
 
 
 class ZipLocalFile(MultiStream):
-    """A local file entry in a zip archive.  Constructs the local file header, file data stream,
-    and data descriptor.
+    """A local file entry in a zip archive. Constructs the local file header,
+    file data stream, and data descriptor.
 
-    Note: This class is tightly coupled to ZipStreamReader and should not be used separately.
+    Note: This class is tightly coupled to ZipStreamReader and should not be
+    used separately.
     """
     def __init__(self, file_tuple):
+
         filename, stream = file_tuple
         # Build a ZipInfo instance to use for the file's header and footer
         self.zinfo = zipfile.ZipInfo(
             filename=filename,
             date_time=time.localtime(time.time())[:6],
         )
-        # If the file is a zip don't zip it again.
+
+        # If the file is a `.zip`, set permission and turn off compression
         if self.zinfo.filename.endswith('.zip'):
+            self.zinfo.external_attr = 0o600 << 16      # -rw-------
             self.zinfo.compress_type = zipfile.ZIP_STORED
             self.compressor = None
-        # If the file is a directory, set the directory flag, turn off compression
+        # If the file is a directory, set the directory flag and turn off compression
         elif self.zinfo.filename[-1] == '/':
-            self.zinfo.external_attr = 0o40775 << 16   # drwxrwxr-x
-            self.zinfo.external_attr |= 0x10           # Directory flag
+            self.zinfo.external_attr = 0o40775 << 16    # drwxrwxr-x
+            self.zinfo.external_attr |= 0x10            # Directory flag
             self.zinfo.compress_type = zipfile.ZIP_STORED
             self.compressor = None
+        # For other types, set permission and define a compressor
         else:
-            self.zinfo.external_attr = 0o600 << 16  # rw-------
-            # define a compressor
+            self.zinfo.external_attr = 0o600 << 16      # -rw-------
             self.zinfo.compress_type = zipfile.ZIP_DEFLATED
             self.compressor = zlib.compressobj(
                 zlib.Z_DEFAULT_COMPRESSION,
@@ -152,6 +154,7 @@ class ZipLocalFile(MultiStream):
 
         self.zinfo.header_offset = 0
         self.zinfo.flag_bits |= 0x08
+
         # Initial CRC: value will be updated as file is streamed
         self.zinfo.CRC = 0
 
