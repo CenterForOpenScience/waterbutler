@@ -4,6 +4,7 @@ from waterbutler import tasks
 from waterbutler.sizes import MBs
 from waterbutler.core import exceptions
 from waterbutler.server import settings
+from waterbutler.core.auth import AuthType
 from waterbutler.core import remote_logging
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.utils import make_provider
@@ -60,9 +61,25 @@ class MoveCopyMixin:
             raise exceptions.InvalidParameters('Action must be copy, move or rename, '
                                                'not {}'.format(self.json.get('action', 'null')))
 
-        elif action == 'rename':
+        # Setup of the provider was delayed so the json action could be retrieved from the request body.
+        provider = self.path_kwargs['provider']
+        action = self.json['action']
+
+        self.auth = await auth_handler.get(
+            self.resource, provider,
+            self.request,
+            action=action,
+            auth_type=AuthType.SOURCE
+        )
+        self.provider = make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
+        self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
+
+        if action == 'rename':
 
             self.provider.validate_rename(self.json.get('rename'), self.path.is_dir)
+
+            if not self.json.get('rename'):
+                raise exceptions.InvalidParameters('Rename is required for renaming')
 
             self.dest_auth = self.auth
             self.dest_provider = self.provider
@@ -78,25 +95,23 @@ class MoveCopyMixin:
                 raise exceptions.InvalidParameters('Path requires a trailing slash to indicate '
                                                    'it is a folder')
 
-            action = self.json['action']
+            # TODO optimize for same provider and resource
 
             # Note: attached to self so that _send_hook has access to these
             self.dest_resource = self.json.get('resource', self.resource)
-
-            # TODO optimize for same provider and resource
             self.dest_auth = await auth_handler.get(
                 self.dest_resource,
                 self.json.get('provider', self.provider.NAME),
-                self.request
+                self.request,
+                action=action,
+                auth_type=AuthType.DESTINATION,
             )
-
             self.dest_provider = make_provider(
                 self.json.get('provider', self.provider.NAME),
                 self.dest_auth['auth'],
                 self.dest_auth['credentials'],
                 self.dest_auth['settings']
             )
-
             self.dest_path = await self.dest_provider.validate_path(**self.json)
 
         if not getattr(self.provider, 'can_intra_' + action)(self.dest_provider, self.path):

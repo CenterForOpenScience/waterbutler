@@ -1,0 +1,53 @@
+{
+    "deeply_nested_file_id": "F4D50E400DFE7D4E!299",
+    "deeply_nested_file_metadata": {
+        "id" : "F4D50E400DFE7D4E!299",
+        "createdBy" : {
+            "application" : {
+                "displayName" : "OneDrive",
+                "id" : "481710a4"
+            },
+            "user" : {
+                "id" : "f4d50e400dfe7d4e",
+                "displayName" : "Fitz Elliott"
+            }
+        },
+        "fileSystemInfo" : {
+            "lastModifiedDateTime" : "2017-08-21T20:48:50.636Z",
+            "createdDateTime" : "2017-08-21T20:48:38.633Z"
+        },
+        "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21299')/children",
+        "file" : {
+            "mimeType" : "text/plain",
+            "hashes" : {
+                "sha1Hash" : "780892A03B54C6221AAD649266F85111EB707CE0"
+            }
+        },
+        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTkuMg",
+        "createdDateTime" : "2017-08-21T20:48:38.633Z",
+        "lastModifiedDateTime" : "2017-08-21T20:48:50.653Z",
+        "name" : "the kraken.txt",
+        "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5OS4yNTg",
+        "lastModifiedBy" : {
+            "user" : {
+                "displayName" : "Fitz Elliott",
+                "id" : "f4d50e400dfe7d4e"
+            },
+            "application" : {
+                "id" : "481710a4",
+                "displayName" : "OneDrive"
+            }
+        },
+        "parentReference" : {
+            "path" : "/drive/root:/deep/deeper/deepest/positively%20abyssyal",
+            "id" : "F4D50E400DFE7D4E!298",
+            "name" : "positively abyssyal",
+            "driveId" : "f4d50e400dfe7d4e"
+        },
+        "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0gis",
+        "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mjtosOcbGBtNxYmp5-H-TYeT7TdFxv_EMev3KEQcOqMc_a6mKODjh0SOew6vLNy12kUopxRF3kihUHYY18zanCHKN3N7Wb28ppZmFGjQ4kA2RVrk7f2QqDpbA5VAxZ4zmqQcsl5aVYEH9_pCBwhhcJzTF-VQSZELL5dG4RdLPqQX4tUo8KEyonlWb0-uuR_7ssfZXTIgu5fIqGvskT882y2H3zOF8P6tSJAVVpvKuOxnXAIITn1ghKu1KlDpzktcPXmDkjY2sE_vRBn_5CM0zzg",
+        "children" : [],
+        "size" : 33
+    }
+}
