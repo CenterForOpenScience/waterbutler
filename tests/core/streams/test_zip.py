@@ -158,8 +158,7 @@ class TestZipStreamReader:
             file['handle'].close()
 
         zip = zipfile.ZipFile(io.BytesIO(data))
-        # Verify CRCs
-        assert zip.testzip() is None
+        assert zip.testzip() is None  # returns `None` if there are no bad files in the zipfile
 
         for file in files:
             assert zip.open(file['filename']).read() == file['contents']
