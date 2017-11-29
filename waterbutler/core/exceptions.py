@@ -76,6 +76,21 @@ class UnsupportedHTTPMethodError(WaterButlerError):
                          code=HTTPStatus.METHOD_NOT_ALLOWED, is_user_error=True)
 
 
+class UnsupportedActionError(WaterButlerError):
+    """An unsupported Action was used.
+    """
+    def __init__(self, method, supported=None):
+
+        if supported is None:
+            supported_actions = 'unspecified'
+        else:
+            supported_actions = ', '.join(list(supported)).upper()
+
+        super().__init__('Action "{}" not supported, currently supported actions '
+                         'are {}'.format(method, supported_actions),
+                         code=HTTPStatus.BAD_REQUEST, is_user_error=True)
+
+
 class PluginError(WaterButlerError):
     """WaterButler-related errors raised from a plugin, such as an auth handler or provider, should
     inherit from `PluginError`.
@@ -203,6 +218,24 @@ class UnsupportedOperationError(ProviderError):
 class ReadOnlyProviderError(ProviderError):
     def __init__(self, provider, code=501):
         super().__init__('Provider "{}" is read-only'.format(provider), code=code)
+
+
+class UninitializedRepositoryError(ProviderError):
+    """Error for providers that wrap VCS systems (GitHub, Bitbucket, GitLab, etc). Indicates that
+    the user has not yet initialized their repository, and that WB cannot operate on it until it
+    has been initialized"""
+    def __init__(self, repo_name, is_user_error=True, **kwargs):
+        super().__init__(('The "{}" repository has not yet been initialized. Please do so before '
+                         'attempting to access it.'.format(repo_name)),
+                         code=HTTPStatus.BAD_REQUEST,
+                         is_user_error=is_user_error)
+
+
+class UnexportableFileTypeError(DownloadError):
+    def __init__(self, path, message=None, is_user_error=True):
+        if not message:
+            message = 'The file "{}" is not exportable'.format(path)
+        super().__init__(message, code=HTTPStatus.BAD_REQUEST, is_user_error=is_user_error)
 
 
 async def exception_from_response(resp, error=UnhandledProviderError, **kwargs):
