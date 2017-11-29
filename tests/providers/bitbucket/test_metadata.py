@@ -36,7 +36,6 @@ class TestBitbucketMetadata:
         assert metadata.content_type is None
         assert metadata.size == 13
         assert metadata.size_as_int == 13
-        assert type(metadata.size_as_int) == int
         assert metadata.etag == '{}::{}'.format(full_path,COMMIT_SHA)
         assert metadata.provider == 'bitbucket'
         assert metadata.last_commit_sha == '90c8f7eef948'

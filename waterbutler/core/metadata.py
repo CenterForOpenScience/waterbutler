@@ -267,7 +267,10 @@ class BaseFileMetadata(BaseMetadata):
 
     @property
     def size_as_int(self) -> int:
-        """ Size of the file in bytes. """
+        """ Size of the file as an int.
+        Some providers give metadata as an int. Both exist to maintain backwards
+        compatibility.
+        """
         if self.size is not None:
             return int(self.size)
         else:
