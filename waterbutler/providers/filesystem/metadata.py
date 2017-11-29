@@ -24,10 +24,7 @@ class FileSystemFolderMetadata(BaseFileSystemMetadata, metadata.BaseFolderMetada
 
     @property
     def name(self):
-        if self.raw['path'].endswith('/'):
-            return os.path.split(self.raw['path'].rstrip('/'))[1]
-        else:
-            return os.path.split(self.raw['path'])[1]
+        return os.path.split(self.raw['path'].rstrip('/'))[1]
 
     @property
     def path(self):
