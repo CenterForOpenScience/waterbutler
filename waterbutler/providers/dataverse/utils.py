@@ -48,11 +48,11 @@ def original_ext_from_raw_metadata(data):
     if not label or not file_format or not content_type:
         return None
 
-    for key in ORIGINAL_FORMATS:
-        if (label == ORIGINAL_FORMATS[key]['original_label'] and
-                file_format == ORIGINAL_FORMATS[key]['original_format'] and
-                content_type == ORIGINAL_FORMATS[key]['content_type']):
+    for key, ext in ORIGINAL_FORMATS.items():
+        if (label == ext['original_label'] and
+                file_format == ext['original_format'] and
+                content_type == ext['content_type']):
 
-            return ORIGINAL_FORMATS[key]['all_extensions']
+            return ext['all_extensions']
 
     return None

@@ -46,6 +46,6 @@ class TestUtils:
             assert key in dv_utils.original_ext_from_raw_metadata(format_dict[key])
 
     def test_original_ext_from_raw_metadata_none_case(self, format_dict):
-        for key in format_dict:
-            format_dict[key]['originalFormatLabel'] = 'blarg'
-            assert dv_utils.original_ext_from_raw_metadata(format_dict[key]) is None
+        for key, ext in format_dict.items():
+            ext['originalFormatLabel'] = 'blarg'
+            assert dv_utils.original_ext_from_raw_metadata(ext) is None
