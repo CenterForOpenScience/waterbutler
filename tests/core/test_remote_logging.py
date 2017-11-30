@@ -43,22 +43,22 @@ class TestScrubPayloadForKeen:
 
         assert result == {
             'key-test': 'value2',
-            'key-test (1)': 'unique value'
+            'key-test-1': 'unique value'
         }
 
     def test_scrub_and_loop_rename(self):
         payload = {
             'key.test': 'value1',
             'key-test': 'value2',
-            'key-test (1)': 'value3'
+            'key-test-1': 'value3'
         }
 
         result = remote_logging._scrub_headers_for_keen(payload)
 
         assert result == {
             'key-test': 'value2',
-            'key-test (2)': 'value1',
-            'key-test (1)': 'value3'
+            'key-test-2': 'value1',
+            'key-test-1': 'value3'
 
         }
 
@@ -66,12 +66,12 @@ class TestScrubPayloadForKeen:
         payload = {
             'key.test': 'value1',
             'key-test': 'value2',
-            'key-test (1)': 'value3'
+            'key-test-1': 'value3'
         }
 
         result = remote_logging._scrub_headers_for_keen(payload, MAX_ITERATIONS=1)
 
         assert result == {
             'key-test': 'value2',
-            'key-test (1)': 'value3'
+            'key-test-1': 'value3'
         }
