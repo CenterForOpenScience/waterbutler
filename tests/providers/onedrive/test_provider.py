@@ -409,13 +409,12 @@ class TestRevisions:
         path = OneDrivePath('/bicuspids.txt', _ids=[revision_fixtures['root_id'], file_id])
 
         revision_response = revision_fixtures['file_revisions']
-        revisions_url = provider._build_drive_url('items', file_id, 'view.delta',
-                                                  top=provider.MAX_REVISIONS)
+        revisions_url = provider._build_drive_url(*path.api_identifier, 'versions')
         aiohttpretty.register_json_uri('GET', revisions_url, body=revision_response)
 
         result = await provider.revisions(path)
 
-        assert len(result) == 1
+        assert len(result) == 5
 
 
 class TestDownload:
@@ -440,20 +439,19 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_by_revision(self, provider, download_fixtures):
+    async def test_download_by_revision(self, provider, download_fixtures, revision_fixtures):
         file_id = download_fixtures['file_id']
         path = OneDrivePath('/toes.txt', _ids=[download_fixtures['root_id'], file_id])
 
-        revision_response = download_fixtures['file_revisions']
-        revisions_url = provider._build_drive_url('items', file_id, 'view.delta',
-                                                  top=provider.MAX_REVISIONS)
+        revision_response = revision_fixtures['file_revisions']
+        revisions_url = provider._build_drive_url(*path.api_identifier, 'versions')
         aiohttpretty.register_json_uri('GET', revisions_url, body=revision_response)
 
-        aiohttpretty.register_uri('GET', download_fixtures['file_revision_download_url'],
+        aiohttpretty.register_uri('GET', revision_fixtures['file_revision_download_url'],
                                   body=download_fixtures['file_content'],
                                   headers={'Content-Length': '11'})
 
-        response = await provider.download(path, revision=download_fixtures['file_revision'])
+        response = await provider.download(path, revision=revision_fixtures['revision_id'])
         content = await response.read()
         assert content == b'ten of them'
 
@@ -470,8 +468,7 @@ class TestDownload:
         path = OneDrivePath('/toes.txt', _ids=[download_fixtures['root_id'], file_id])
 
         revision_response = download_fixtures['file_revisions']
-        revisions_url = provider._build_drive_url('items', file_id, 'view.delta',
-                                                  top=provider.MAX_REVISIONS)
+        revisions_url = provider._build_drive_url(*path.api_identifier, 'versions')
         aiohttpretty.register_json_uri('GET', revisions_url, body=revision_response)
 
         with pytest.raises(exceptions.NotFoundError) as exc:
@@ -497,12 +494,13 @@ class TestDownload:
         path = OneDrivePath('/onenote', _ids=[download_fixtures['root_id'], onenote_id])
 
         revision_response = download_fixtures['onenote_revisions']
-        revisions_url = provider._build_drive_url('items', onenote_id, 'view.delta',
-                                                  top=provider.MAX_REVISIONS)
+        revisions_url = provider._build_drive_url('items', onenote_id, 'versions')
+        print(revisions_url)
         aiohttpretty.register_json_uri('GET', revisions_url, body=revision_response)
 
         with pytest.raises(exceptions.UnexportableFileTypeError) as exc:
-            await provider.download(path, revision=download_fixtures['onenote_revision'])
+            await provider.download(path,
+                                    revision=download_fixtures['onenote_revision_non_exportable'])
 
 
 class TestReadOnlyProvider:
