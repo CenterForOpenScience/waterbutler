@@ -18,7 +18,7 @@ class GitLabPathPart(WaterButlerPathPart):
 class GitLabPath(WaterButlerPath):
     """The ``identifier`` for GitLabPaths are tuples of ``(commit_sha, branch_name)``. Children
     of GitLabPaths inherit their parent's ``commit_sha`` and ``branch_name``.  Either one may be
-    ``None``.
+    ``None`` at object creation, but the provider will look up and set the commit SHA if so.
     """
     PART_CLASS = GitLabPathPart
 
@@ -49,3 +49,7 @@ class GitLabPath(WaterButlerPath):
         if _id is None:
             _id = (self.commit_sha, self.branch_name)
         return super().child(name, _id=_id, folder=folder)
+
+    def set_commit_sha(self, commit_sha):
+        for part in self.parts:
+            part._id = (commit_sha, part._id[1])

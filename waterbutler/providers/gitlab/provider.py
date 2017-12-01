@@ -41,8 +41,14 @@ class GitLabProvider(provider.BaseProvider):
     * GitLab does not do content-type detection, so the ``contentType`` property is inferred in WB
       from the file extension.
 
-    * If a path is given with ``commit_sha``, ``branch_name``, and ``revision`` parameters, then
-      ``revision`` will overwrite whichever of the other two it is determined to be.
+    * There are three query parameters supported to identify the ref of a path, ``revision``,
+      ``commitSha``, and ``branch``.  ``commitSha`` and ``branch`` are explicit and preferred.  If
+      both are given, ``commitSha`` will take precedence, as it is more precise.  If ``revision`` is
+      given, the provider will guess if it is a commit SHA or branch name and overwrite the
+      appropriate parameter.
+
+    * If an explicit ``commitSha`` is not provided the provider will look it up and set it on the
+      `GitLabPath` object, so that it will be available in the returned metadata.
     """
     NAME = 'gitlab'
 
@@ -76,6 +82,11 @@ class GitLabProvider(provider.BaseProvider):
         """
 
         gl_path = await self.validate_path(path, **kwargs)
+
+        if gl_path.commit_sha is None:
+            commit_sha = await self._get_commit_sha_for_branch(gl_path.branch_name)
+            gl_path.set_commit_sha(commit_sha)
+
         if gl_path.is_root:
             return gl_path
 
@@ -430,6 +441,26 @@ class GitLabProvider(provider.BaseProvider):
             raise exceptions.UninitializedRepositoryError('{}/{}'.format(self.owner, self.repo))
 
         return data['default_branch']
+
+    async def _get_commit_sha_for_branch(self, branch_name: str) -> str:
+        """Translate a branch name into the SHA of the commit it currently points to.
+
+        API docs: https://docs.gitlab.com/ee/api/branches.html#get-single-repository-branch
+
+        :param str branch_name: name of a branch in the repo
+        :rtype: `str`
+        :return: the SHA of the commit that `branch_name` points to
+        """
+
+        url = self._build_repo_url('repository', 'branches', branch_name)
+        resp = await self.make_request(
+            'GET',
+            url,
+            expects=(200,),
+            throws=exceptions.NotFoundError,
+        )
+        data = await resp.json()
+        return data['commit']['id']
 
     def _convert_ruby_hash_to_dict(self, ruby_hash: str) -> dict:
         """Adopted from https://stackoverflow.com/a/19322785 as a workaround for
