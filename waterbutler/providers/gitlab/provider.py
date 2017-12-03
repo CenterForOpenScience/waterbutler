@@ -210,7 +210,7 @@ class GitLabProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
-        url = self._build_repo_url('repository', 'files', path.full_path, ref=path.ref)
+        url = self._build_file_url(path)
         resp = await self.make_request(
             'GET',
             url,
@@ -277,6 +277,27 @@ class GitLabProvider(provider.BaseProvider):
         """
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
+
+    def _build_file_url(self, path: GitLabPath) -> str:
+        """Build a url to GitLab's files endpoint.  This is done separately because the files
+        endpoint requires unusual quoting of the path.  GL requires that the directory-separating
+        slashes in the full path of the file be url encoded.  Ex. a file called ``foo/bar/baz``
+        would be encoded as ``foo%2Fbar%2Fbaz``.  WB's default url-building methods would split the
+        path, encode each segment, then rejoin them with literal slashes.  If we were to try to
+        pre-encode the path, any encoded characters will be double-encoded
+
+        API docs:
+
+        * https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
+
+        * https://docs.gitlab.com/ce/api/README.html#namespaced-path-encoding
+
+        :param GitLabPath path: path to a file
+        :rtype: str
+        :return: url to the GitLab files endpoint for the given file
+        """
+        file_base = self._build_repo_url('repository', 'files')
+        return '{}/{}?ref={}'.format(file_base, path.raw_path.replace('/', '%2F'), path.ref)
 
     async def _metadata_folder(self, path: GitLabPath) -> typing.List[BaseGitLabMetadata]:
         """Fetch metadata for the contents of the folder at ``path`` and return a `list` of
@@ -357,7 +378,7 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: `dict`
         :return: file metadata from the GitLab endpoint
         """
-        url = self._build_repo_url('repository', 'files', path.raw_path, ref=path.ref)
+        url = self._build_file_url(path)
         resp = await self.make_request(
             'GET',
             url,
