@@ -1,8 +1,12 @@
+import logging
 import functools
 from urllib import parse
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.path import WaterButlerPathPart
+
+
+logger = logging.getLogger(__name__)
 
 
 class GitLabPathPart(WaterButlerPathPart):

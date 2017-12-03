@@ -2,6 +2,7 @@ import json
 import base64
 import typing
 import aiohttp
+import logging
 import mimetypes
 
 from waterbutler.core import streams
@@ -13,6 +14,9 @@ from waterbutler.providers.gitlab.metadata import (BaseGitLabMetadata,
                                                    GitLabRevision,
                                                    GitLabFileMetadata,
                                                    GitLabFolderMetadata)
+
+
+logger = logging.getLogger(__name__)
 
 
 class GitLabProvider(provider.BaseProvider):
