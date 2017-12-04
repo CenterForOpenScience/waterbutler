@@ -28,11 +28,24 @@ class SwiftProvider(provider.BaseProvider):
         """
         super().__init__(auth, credentials, settings)
 
-        self.connection = Connection(auth_version='2',
-                                     authurl=credentials['auth_url'],
-                                     user=credentials['username'],
-                                     key=credentials['password'],
-                                     tenant_name=credentials['tenant_name'])
+        auth_version = credentials['auth_version']
+        if auth_version == '2':
+            self.connection = Connection(auth_version='2',
+                                         authurl=credentials['auth_url'],
+                                         user=credentials['username'],
+                                         key=credentials['password'],
+                                         tenant_name=credentials['tenant_name'])
+        elif auth_version == '3':
+            os_options = {'user_domain_name': credentials['user_domain_name'],
+                          'project_domain_name': credentials['project_domain_name'],
+                          'project_name': credentials['tenant_name']}
+            self.connection = Connection(auth_version='3',
+                                         authurl=credentials['auth_url'],
+                                         user=credentials['username'],
+                                         key=credentials['password'],
+                                         os_options=os_options)
+        else:
+            raise ValueError('Invalid auth version: {}'.format(auth_version))
         self.url = None
         self.token = None
 

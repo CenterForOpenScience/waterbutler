@@ -28,15 +28,26 @@ def auth():
     }
 
 
-@pytest.fixture
-def credentials():
-    return {
-        'username': 'Dont dead',
-        'password': 'open inside',
-        'tenant_name': 'test',
-        'auth_url': 'http://test_url/v2.0'
-    }
-
+@pytest.fixture(params=['2', '3'])
+def credentials(request):
+    if request.param == '2':
+        return {
+            'auth_version': '2',
+            'username': 'Dont dead',
+            'password': 'open inside',
+            'tenant_name': 'test',
+            'auth_url': 'http://test_url/v2.0'
+        }
+    else:
+        return {
+            'auth_version': '3',
+            'username': 'Dont dead',
+            'password': 'open inside',
+            'tenant_name': 'test',
+            'user_domain_name': 'user_domain',
+            'project_domain_name': 'tenant_domain',
+            'auth_url': 'http://test_url/v3.0'
+        }
 
 @pytest.fixture
 def settings():
