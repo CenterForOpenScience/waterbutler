@@ -368,8 +368,8 @@ class GitLabProvider(provider.BaseProvider):
 
             # GitLab currently returns 200 OK for nonexistent directories
             # See: https://gitlab.com/gitlab-org/gitlab-ce/issues/34016
-            # Fallback: empty directories shouldn't exist in git,
-            if page_nbr == 1 and len(data_page) == 0:
+            # Fallback: empty directories shouldn't exist in git, unless it's the root
+            if page_nbr == 1 and len(data_page) == 0 and not path.is_root:
                 raise exceptions.NotFoundError(path.full_path)
 
             if page_nbr == 1:
@@ -451,14 +451,15 @@ class GitLabProvider(provider.BaseProvider):
                 throws=exceptions.NotFoundError,
             )
             if resp.status == 404:
+                await resp.release()
                 raise exceptions.NotFoundError(path.full_path)
 
             data_page = await resp.json()
 
             # GitLab currently returns 200 OK for nonexistent directories
             # See: https://gitlab.com/gitlab-org/gitlab-ce/issues/34016
-            # Fallback: empty directories shouldn't exist in git,
-            if page_nbr == 1 and len(data_page) == 0:
+            # Fallback: empty directories shouldn't exist in git, unless it's the root
+            if page_nbr == 1 and len(data_page) == 0 and not path.is_root:
                 raise exceptions.NotFoundError(path.full_path)
 
             data.extend(data_page)
@@ -511,7 +512,7 @@ class GitLabProvider(provider.BaseProvider):
 
     def _convert_ruby_hash_to_dict(self, ruby_hash: str) -> dict:
         """Adopted from https://stackoverflow.com/a/19322785 as a workaround for
-        https://gitlab.com/gitlab-org/gitlab-ce/issues/34016. Fixed in GL v9.5
+        https://gitlab.com/gitlab-org/gitlab-ce/issues/31790. Fixed in GL v9.5
 
         :param str ruby_hash: serialized Ruby hash
         :rtype: `dict`
