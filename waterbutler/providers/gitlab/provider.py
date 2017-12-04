@@ -181,9 +181,15 @@ class GitLabProvider(provider.BaseProvider):
         resp = await self.make_request(
             'GET',
             url,
-            expects=(200,),
+            expects=(200, 500),
             throws=exceptions.RevisionsError
         )
+        if resp.status == 500:
+            # GitLab API is buggy for unicode filenames. Affected files will still work, but
+            # but will have empty created/modified dates. See docstring for _metadata_file
+            await resp.release()
+            return []  # temporary work around for uncommon bug
+
         data = await resp.json()
         if len(data) == 0:
             raise exceptions.RevisionsError('No revisions found', code=404)
@@ -327,6 +333,10 @@ class GitLabProvider(provider.BaseProvider):
     async def _metadata_file(self, path: GitLabPath) -> GitLabFileMetadata:
         """Fetch metadata for the file at ``path`` and build a `GitLabFileMetadata` object for it.
 
+        The commits endpoint used here will 500 when given a unicode filename.  Bug reported here:
+        https://gitlab.com/gitlab-org/gitlab-ce/issues/40776  The `revisions` method uses the same
+        endpoint and will probably encounter the same issue.
+
         :param GitLabPath path: the file to get metadata for
         :rtype: `GitLabFileMetadata`
         """
@@ -338,14 +348,21 @@ class GitLabProvider(provider.BaseProvider):
             url = self._build_repo_url('repository', 'commits', path=path.path,
                                        ref_name=path.ref, page=page_nbr,
                                        per_page=self.MAX_PAGE_SIZE)
+            logger.debug('file metadata commit history url: {}'.format(url))
             resp = await self.make_request(
                 'GET',
                 url,
-                expects=(200, 404),
+                expects=(200, 404, 500),
                 throws=exceptions.NotFoundError,
             )
             if resp.status == 404:
+                await resp.release()
                 raise exceptions.NotFoundError(path.full_path)
+            if resp.status == 500:
+                # GitLab API is buggy for unicode filenames. Affected files will still work, but
+                # but will have empty created/modified dates. See method docstring
+                await resp.release()
+                break
 
             data_page = await resp.json()
 
@@ -364,9 +381,13 @@ class GitLabProvider(provider.BaseProvider):
         file_name = file_contents['file_name']
         data = {'name': file_name, 'id': file_contents['blob_id'],
                 'path': file_contents['file_path'], 'size': file_contents['size'],
-                'mime_type': mimetypes.guess_type(file_name)[0],
-                'modified': last_commit['committed_date'],
-                'created': first_commit['committed_date'], }
+                'mime_type': mimetypes.guess_type(file_name)[0]}
+
+        if last_commit is not None:
+            data['modified'] = last_commit['committed_date']
+
+        if first_commit is not None:
+            data['created'] = first_commit['committed_date']
 
         return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
 
@@ -381,6 +402,7 @@ class GitLabProvider(provider.BaseProvider):
         :return: file metadata from the GitLab endpoint
         """
         url = self._build_file_url(path)
+        logger.debug('_fetch_file_contents url: {}'.format(url))
         resp = await self.make_request(
             'GET',
             url,
@@ -421,6 +443,7 @@ class GitLabProvider(provider.BaseProvider):
                 path_kwargs['path'] = path.full_path
 
             url = self._build_repo_url(*path_args, **path_kwargs)
+            logger.debug('_fetch_tree_contents url: {}'.format(url))
             resp = await self.make_request(
                 'GET',
                 url,
