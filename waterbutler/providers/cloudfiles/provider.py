@@ -118,7 +118,7 @@ class CloudFilesProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(resp)
 
     @ensure_connection
-    async def upload(self, stream, path, check_created=True, fetch_metadata=True):
+    async def upload(self, stream, path, check_created=True, fetch_metadata=True, **kwargs):
         """Uploads the given stream to CloudFiles
         :param ResponseStreamReader stream: The stream to put to CloudFiles
         :param str path: The full path of the object to upload to/into
