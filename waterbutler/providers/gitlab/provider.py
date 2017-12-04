@@ -197,7 +197,8 @@ class GitLabProvider(provider.BaseProvider):
         There is an endpoint for downloading the raw file directly, but we cannot use it because
         GitLab requires periods in the file path to be encoded.  Python and aiohttp make this
         difficult, though their behavior is arguably correct. See
-        https://gitlab.com/gitlab-org/gitlab-ce/issues/31470 for details.
+        https://gitlab.com/gitlab-org/gitlab-ce/issues/31470 for details. (Update: this is due to
+        be fixed in the GL 10.0 release)
 
         API docs: https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
 
@@ -225,6 +226,7 @@ class GitLabProvider(provider.BaseProvider):
         except json.decoder.JSONDecodeError:
             # GitLab API sometimes returns ruby hashes instead of json
             # see: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790
+            # fixed in GL v9.5
             data = self._convert_ruby_hash_to_dict(raw_data)
 
         raw = base64.b64decode(data['content'])
@@ -392,6 +394,7 @@ class GitLabProvider(provider.BaseProvider):
         except json.decoder.JSONDecodeError:
             # GitLab API sometimes returns ruby hashes instead of json
             # see: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790
+            # fixed in GL v9.5
             data = self._convert_ruby_hash_to_dict(raw_data)
 
         return data
@@ -485,7 +488,7 @@ class GitLabProvider(provider.BaseProvider):
 
     def _convert_ruby_hash_to_dict(self, ruby_hash: str) -> dict:
         """Adopted from https://stackoverflow.com/a/19322785 as a workaround for
-        https://gitlab.com/gitlab-org/gitlab-ce/issues/34016.
+        https://gitlab.com/gitlab-org/gitlab-ce/issues/34016. Fixed in GL v9.5
 
         :param str ruby_hash: serialized Ruby hash
         :rtype: `dict`
