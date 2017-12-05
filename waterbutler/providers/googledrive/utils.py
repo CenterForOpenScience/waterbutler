@@ -4,6 +4,8 @@ DOCS_FORMATS = [
         'ext': '.gdoc',
         'download_ext': '.docx',
         'type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'alt_download_ext': '.pdf',
+        'alt_type': 'application/pdf',
     },
     {
         'mime_type': 'application/vnd.google-apps.drawing',
@@ -37,28 +39,42 @@ def is_docs_file(metadata):
 
 
 def get_mimetype_from_ext(ext):
-    for format in DOCS_FORMATS:
-        if format['ext'] == ext:
-            return format['mime_type']
+    for format_type in DOCS_FORMATS:
+        if format_type['ext'] == ext:
+            return format_type['mime_type']
 
 
 def get_format(metadata):
-    for format in DOCS_FORMATS:
-        if format['mime_type'] == metadata['mimeType']:
-            return format
+    for format_type in DOCS_FORMATS:
+        if format_type['mime_type'] == metadata['mimeType']:
+            return format_type
     return DOCS_DEFAULT_FORMAT
 
 
 def get_extension(metadata):
-    format = get_format(metadata)
-    return format['ext']
+    format_type = get_format(metadata)
+    return format_type['ext']
 
 
 def get_download_extension(metadata):
-    format = get_format(metadata)
-    return format['download_ext']
+    format_type = get_format(metadata)
+    return format_type['download_ext']
+
+
+def get_alt_download_extension(metadata):
+    format_type = get_format(metadata)
+    return format_type.get('alt_download_ext', None) or format_type['download_ext']
+
+
+def get_alt_export_link(metadata):
+    format_type = get_format(metadata)
+    export_links = metadata['exportLinks']
+    if format_type.get('alt_type'):
+        return export_links.get(format_type['alt_type'])
+    else:
+        return export_links[format_type['type']]
 
 
 def get_export_link(metadata):
-    format = get_format(metadata)
-    return metadata['exportLinks'][format['type']]
+    format_type = get_format(metadata)
+    return metadata['exportLinks'][format_type['type']]

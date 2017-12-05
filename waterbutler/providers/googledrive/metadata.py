@@ -137,6 +137,14 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
         return title
 
     @property
+    def alt_export_name(self):
+        title = self._file_title
+        if self.is_google_doc:
+            ext = utils.get_alt_download_extension(self.raw)
+            title += ext
+        return title
+
+    @property
     def _file_title(self):
         return self.raw['title']
 
