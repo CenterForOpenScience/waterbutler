@@ -26,6 +26,7 @@ DOCS_FORMATS = [
         'type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     },
 ]
+
 DOCS_DEFAULT_FORMAT = {
     'ext': '',
     'download_ext': '.pdf',
@@ -40,41 +41,41 @@ def is_docs_file(metadata):
 
 def get_mimetype_from_ext(ext):
     for format_type in DOCS_FORMATS:
-        if format_type['ext'] == ext:
-            return format_type['mime_type']
+        if format_type.get('ext') == ext:
+            return format_type.get('mime_type')
 
 
 def get_format(metadata):
     for format_type in DOCS_FORMATS:
-        if format_type['mime_type'] == metadata['mimeType']:
+        if format_type.get('mime_type') == metadata.get('mimeType'):
             return format_type
     return DOCS_DEFAULT_FORMAT
 
 
 def get_extension(metadata):
     format_type = get_format(metadata)
-    return format_type['ext']
+    return format_type.get('ext')
 
 
 def get_download_extension(metadata):
     format_type = get_format(metadata)
-    return format_type['download_ext']
+    return format_type.get('download_ext')
 
 
 def get_alt_download_extension(metadata):
     format_type = get_format(metadata)
-    return format_type.get('alt_download_ext', None) or format_type['download_ext']
+    return format_type.get('alt_download_ext', None) or format_type.get('download_ext')
 
 
 def get_alt_export_link(metadata):
     format_type = get_format(metadata)
-    export_links = metadata['exportLinks']
+    export_links = metadata.get('exportLinks')
     if format_type.get('alt_type'):
-        return export_links.get(format_type['alt_type'])
+        return export_links.get(format_type.get('alt_type'))
     else:
-        return export_links[format_type['type']]
+        return export_links.get(format_type.get('type'))
 
 
 def get_export_link(metadata):
     format_type = get_format(metadata)
-    return metadata['exportLinks'][format_type['type']]
+    return metadata.get('exportLinks').get(format_type.get('type'))

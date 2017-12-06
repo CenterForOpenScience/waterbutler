@@ -235,13 +235,11 @@ class GoogleDriveProvider(provider.BaseProvider):
         metadata = await self.metadata(path, revision=revision)
 
         if kwargs.get('mfr', None) and kwargs['mfr'].lower() == 'true':
-            download_url = drive_utils.get_alt_export_link(metadata.raw)  # type: ignore
+            download_url = metadata.raw.get('downloadUrl') or drive_utils.get_alt_export_link(metadata.raw)
             export_name = metadata.alt_export_name
         else:
-
-            # TODO figure out metadata.raw.get('downloadUrl')
-            download_url = metadata.raw.get('downloadUrl') or drive_utils.get_export_link(metadata.raw)  # type: ignore
-            export_name = metadata.export_name  # type: ignore
+            download_url = metadata.raw.get('downloadUrl') or drive_utils.get_export_link(metadata.raw)
+            export_name = metadata.export_name
 
         download_resp = await self.make_request(
             'GET',
