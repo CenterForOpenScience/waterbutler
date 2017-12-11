@@ -1,0 +1,401 @@
+{
+    "root_id" : "F4D50E400DFE7D4E!290",
+    "file_id" : "F4D50E400DFE7D4E!292",
+    "folder_id" : "F4D50E400DFE7D4E!293",
+    "subfile_id" : "F4D50E400DFE7D4E!294",
+    "outside_file_id" : "F4D50E400DFE7D4E!291",
+    "root_metadata": {
+        "name" : "teeth",
+        "createdBy" : {
+            "user" : {
+                "id" : "f4d50e400dfe7d4e",
+                "displayName" : "Fitz Elliott"
+            },
+            "application" : {
+                "id" : "44048800",
+                "displayName" : "OneDrive website"
+            }
+        },
+        "parentReference" : {
+            "path" : "/drive/root:",
+            "id" : "F4D50E400DFE7D4E!103",
+            "driveId" : "f4d50e400dfe7d4e"
+        },
+        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21290')/children",
+        "lastModifiedBy" : {
+            "user" : {
+                "id" : "f4d50e400dfe7d4e",
+                "displayName" : "Fitz Elliott"
+            },
+            "application" : {
+                "id" : "44048800",
+                "displayName" : "OneDrive website"
+            }
+        },
+        "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTAuMA",
+        "folder" : {
+            "childCount" : 2,
+            "folderView" : {
+                "viewType" : "thumbnails",
+                "sortBy" : "name",
+                "sortOrder" : "ascending"
+            }
+        },
+        "createdDateTime" : "2017-08-17T17:49:26.74Z",
+        "id" : "F4D50E400DFE7D4E!290",
+        "fileSystemInfo" : {
+            "createdDateTime" : "2017-08-17T17:49:26.74Z",
+            "lastModifiedDateTime" : "2017-08-17T17:49:26.74Z"
+        },
+        "webUrl" : "https://1drv.ms/f/s!AE59_g1ADtX0giI",
+        "children" : [
+            {
+                "createdDateTime" : "2017-08-17T19:07:47.843Z",
+                "name" : "crushers",
+                "id" : "F4D50E400DFE7D4E!293",
+                "createdBy" : {
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    },
+                    "application" : {
+                        "id" : "44048800",
+                        "displayName" : "OneDrive website"
+                    }
+                },
+                "fileSystemInfo" : {
+                    "lastModifiedDateTime" : "2017-08-17T19:07:47.843Z",
+                    "createdDateTime" : "2017-08-17T19:07:47.843Z"
+                },
+                "parentReference" : {
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "path" : "/drive/root:/teeth",
+                    "id" : "F4D50E400DFE7D4E!290",
+                    "name" : "teeth"
+                },
+                "webUrl" : "https://1drv.ms/f/s!AE59_g1ADtX0giU",
+                "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+                "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITI5My42MzYzODU5MzcxMDMzNzAwMDA",
+                "lastModifiedBy" : {
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    },
+                    "application" : {
+                        "displayName" : "OneDrive website",
+                        "id" : "44048800"
+                    }
+                },
+                "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTMuMA",
+                "folder" : {
+                    "childCount" : 1,
+                    "folderView" : {
+                        "sortBy" : "name",
+                        "sortOrder" : "ascending",
+                        "viewType" : "thumbnails"
+                    }
+                },
+                "size" : 45
+            },
+            {
+                "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4m6vJbXfO-fuQZKr11RiBjuRAzM_DcRzU3JtT06HHt17abJkMJBCTuyBDXr18CPjaLPVVB8F02VGPXi2kmJYy4OdCjrIZ72J3FlpKTbSDd-ccQwvXzZNoVZWhLDU5_bx-aR588pIUcxhBMN527kR99PnDgGEhu6nt8xMNF0y4urvxBoT-snnzNfAnqqqlnYmIVHd7CEFihZigJVdKd_Q2BPlNuiVSpGjnHgYyuXtetOEDOfPJiTCZ80drcFr5z1d_ech-sPVbjtgTtdpTm8ZfjEg",
+                "parentReference" : {
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "path" : "/drive/root:/teeth",
+                    "id" : "F4D50E400DFE7D4E!290",
+                    "name" : "teeth"
+                },
+                "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giQ",
+                "createdBy" : {
+                    "application" : {
+                        "id" : "481710a4",
+                        "displayName" : "OneDrive"
+                    },
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    }
+                },
+                "fileSystemInfo" : {
+                    "lastModifiedDateTime" : "2017-08-17T17:53:21.113Z",
+                    "createdDateTime" : "2017-08-17T17:50:26.876Z"
+                },
+                "createdDateTime" : "2017-08-17T17:50:26.877Z",
+                "name" : "bicuspid.txt",
+                "id" : "F4D50E400DFE7D4E!292",
+                "size" : 40,
+                "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTIuMg",
+                "file" : {
+                    "mimeType" : "text/plain",
+                    "hashes" : {
+                        "sha1Hash" : "A61275F93B2710487CE2C94F9CC256E413EA6871"
+                    }
+                },
+                "lastModifiedBy" : {
+                    "application" : {
+                        "displayName" : "OneDrive",
+                        "id" : "481710a4"
+                    },
+                    "user" : {
+                        "id" : "f4d50e400dfe7d4e",
+                        "displayName" : "Fitz Elliott"
+                    }
+                },
+                "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
+                "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5Mi4yNTg"
+            }
+        ],
+        "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITI5MC42MzYzODU5MzcxMDMzNzAwMDA",
+        "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+        "size" : 85
+    },
+    "file_metadata" : {
+        "createdBy" : {
+            "application" : {
+                "displayName" : "OneDrive",
+                "id" : "481710a4"
+            },
+            "user" : {
+                "id" : "f4d50e400dfe7d4e",
+                "displayName" : "Fitz Elliott"
+            }
+        },
+        "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giQ",
+        "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21292')/children",
+        "size" : 40,
+        "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mSGfK7V7xQl1tZrz7UQTsCKyTXFp0d0H75AQdzM3_GgwUoPdE4-RkkZF3-c14dlj-oPoiCttFqlkMe2Ja-R-rzrcjUKNbl5HaprTkANJe_Nb8Qv0EOJ-ngFTg6-NaIx7tgvPXrBvaDMyyMWfUSuDnfNQVumL9xmQ-CbcpJe-N86sACf1RERKPsAsesO2VWSmevXUK6U1A87Efw1bk3FAGp7bh5RSmZfvpXSGLswPRbmI_xShjMdo8J1DUsTnC6remAtRuUXyZ5yEpJCpiY75kqw",
+        "file" : {
+            "mimeType" : "text/plain",
+            "hashes" : {
+                "sha1Hash" : "A61275F93B2710487CE2C94F9CC256E413EA6871"
+            }
+        },
+        "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5Mi4yNTg",
+        "parentReference" : {
+            "driveId" : "f4d50e400dfe7d4e",
+            "path" : "/drive/root:/teeth",
+            "name" : "teeth",
+            "id" : "F4D50E400DFE7D4E!290"
+        },
+        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
+        "name" : "bicuspid.txt",
+        "lastModifiedBy" : {
+            "application" : {
+                "displayName" : "OneDrive",
+                "id" : "481710a4"
+            },
+            "user" : {
+                "displayName" : "Fitz Elliott",
+                "id" : "f4d50e400dfe7d4e"
+            }
+        },
+        "fileSystemInfo" : {
+            "createdDateTime" : "2017-08-17T17:50:26.876Z",
+            "lastModifiedDateTime" : "2017-08-17T17:53:21.113Z"
+        },
+        "id" : "F4D50E400DFE7D4E!292",
+        "children" : [],
+        "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTIuMg",
+        "createdDateTime" : "2017-08-17T17:50:26.877Z"
+    },
+    "folder_metadata" : {
+        "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITI5My42MzYzODU5MzcxMDMzNzAwMDA",
+        "createdBy" : {
+            "application" : {
+                "id" : "44048800",
+                "displayName" : "OneDrive website"
+            },
+            "user" : {
+                "id" : "f4d50e400dfe7d4e",
+                "displayName" : "Fitz Elliott"
+            }
+        },
+        "webUrl" : "https://1drv.ms/f/s!AE59_g1ADtX0giU",
+        "size" : 45,
+        "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21293')/children",
+        "name" : "crushers",
+        "parentReference" : {
+            "id" : "F4D50E400DFE7D4E!290",
+            "name" : "teeth",
+            "driveId" : "f4d50e400dfe7d4e",
+            "path" : "/drive/root:/teeth"
+        },
+        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+        "id" : "F4D50E400DFE7D4E!293",
+        "children" : [
+            {
+                "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTQuMg",
+                "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+                "parentReference" : {
+                    "id" : "F4D50E400DFE7D4E!293",
+                    "name" : "crushers",
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "path" : "/drive/root:/teeth/crushers"
+                },
+                "name" : "molars.txt",
+                "createdDateTime" : "2017-08-17T19:08:03.03Z",
+                "fileSystemInfo" : {
+                    "createdDateTime" : "2017-08-17T19:08:03.03Z",
+                    "lastModifiedDateTime" : "2017-08-17T19:08:30.32Z"
+                },
+                "size" : 45,
+                "createdBy" : {
+                    "application" : {
+                        "id" : "481710a4",
+                        "displayName" : "OneDrive"
+                    },
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    }
+                },
+                "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giY",
+                "lastModifiedBy" : {
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    },
+                    "application" : {
+                        "displayName" : "OneDrive",
+                        "id" : "481710a4"
+                    }
+                },
+                "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mO1VUyGkx1jMbvuSh39sB5hHkVtY9jF-z0eEzmmSwz85fwmzQwFA0MKYlJiTFHPuUItQaHbocR-fxLCt4-LAM--20CvEyr4hX6BNtnlhxwg3FRFg_fLYsk8ESqqJbbnxQYLmBpqJZ1ympsnv1U9KxWoW0Fb07HqKxm5bKIWhFmmmFwfSoTe80yE_-9eV9-ATFAuBFkZ8uVODyrgIN-hsrKDWh4CUJs2V3FFEg_6nERUpncQWfsL7HaMJbUD4LsU_tpSLEemayqxcguyUmMdrCmA",
+                "file" : {
+                    "mimeType" : "text/plain",
+                    "hashes" : {
+                        "sha1Hash" : "71E36DE69F693D7DED11A689CEE9779DCCC37928"
+                    }
+                },
+                "id" : "F4D50E400DFE7D4E!294",
+                "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5NC4yNTg"
+            }
+        ],
+        "lastModifiedBy" : {
+            "user" : {
+                "id" : "f4d50e400dfe7d4e",
+                "displayName" : "Fitz Elliott"
+            },
+            "application" : {
+                "displayName" : "OneDrive website",
+                "id" : "44048800"
+            }
+        },
+        "fileSystemInfo" : {
+            "createdDateTime" : "2017-08-17T19:07:47.843Z",
+            "lastModifiedDateTime" : "2017-08-17T19:07:47.843Z"
+        },
+        "createdDateTime" : "2017-08-17T19:07:47.843Z",
+        "folder" : {
+            "folderView" : {
+                "sortBy" : "name",
+                "sortOrder" : "ascending",
+                "viewType" : "thumbnails"
+            },
+            "childCount" : 1
+        },
+        "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTMuMA"
+    },
+    "subfile_metadata" : {
+        "createdBy" : {
+            "user" : {
+                "displayName" : "Fitz Elliott",
+                "id" : "f4d50e400dfe7d4e"
+            },
+            "application" : {
+                "id" : "481710a4",
+                "displayName" : "OneDrive"
+            }
+        },
+        "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giY",
+        "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21294')/children",
+        "size" : 45,
+        "file" : {
+            "mimeType" : "text/plain",
+            "hashes" : {
+                "sha1Hash" : "71E36DE69F693D7DED11A689CEE9779DCCC37928"
+            }
+        },
+        "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4msgC4teoghHKiACyXiJoRwNNI0vUf_rsaT6tci9H0d_YRIL7l-z32DkOKQAySqmeNQ2p5-G0thk3CjRmRVllqhVyM7xrHLO_1ybnfNO1IN_31WdLytIjcXUb_G9068o2wClIinh-liGSz3dsm7cGb6I0cOxYwFy8GgqN4X2QfF4VErDCWy7ZCNoUiYh4jlew6ZI9W0-_Xkv09NvToYE4ErnniEnh-_trg1MrtOlD7bUqxBleJHr6h4zeqSyk5M1gC-HUfwKpFGdOq4yEsf36MKQ",
+        "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5NC4yNTg",
+        "parentReference" : {
+            "path" : "/drive/root:/teeth/crushers",
+            "driveId" : "f4d50e400dfe7d4e",
+            "name" : "crushers",
+            "id" : "F4D50E400DFE7D4E!293"
+        },
+        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+        "name" : "molars.txt",
+        "lastModifiedBy" : {
+            "application" : {
+                "id" : "481710a4",
+                "displayName" : "OneDrive"
+            },
+            "user" : {
+                "id" : "f4d50e400dfe7d4e",
+                "displayName" : "Fitz Elliott"
+            }
+        },
+        "fileSystemInfo" : {
+            "createdDateTime" : "2017-08-17T19:08:03.03Z",
+            "lastModifiedDateTime" : "2017-08-17T19:08:30.32Z"
+        },
+        "id" : "F4D50E400DFE7D4E!294",
+        "children" : [],
+        "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTQuMg",
+        "createdDateTime" : "2017-08-17T19:08:03.03Z"
+    },
+    "outside_file_metadata" : {
+        "createdDateTime" : "2017-08-17T17:49:39.613Z",
+        "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTEuMg",
+        "id" : "F4D50E400DFE7D4E!291",
+        "children" : [],
+        "lastModifiedBy" : {
+            "application" : {
+                "displayName" : "OneDrive",
+                "id" : "481710a4"
+            },
+            "user" : {
+                "id" : "f4d50e400dfe7d4e",
+                "displayName" : "Fitz Elliott"
+            }
+        },
+        "fileSystemInfo" : {
+            "lastModifiedDateTime" : "2017-08-17T17:49:50.363Z",
+            "createdDateTime" : "2017-08-17T17:49:39.613Z"
+        },
+        "name" : "toes.txt",
+        "parentReference" : {
+            "driveId" : "f4d50e400dfe7d4e",
+            "path" : "/drive/root:",
+            "id" : "F4D50E400DFE7D4E!103"
+        },
+        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "lastModifiedDateTime" : "2017-08-17T17:49:50.38Z",
+        "file" : {
+            "hashes" : {
+                "sha1Hash" : "D6FAC576DCF80198874C9C9476F021AF3F12688C"
+            },
+            "mimeType" : "text/plain"
+        },
+        "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mB8JhDUWbofzVglNap3rO5i6R7jOQyJAz995dPlkrOiQeOV2jgK-EOf916z8YHi9A42WCTMVfNmHjJliYLccUFzJgsEK3j3cviT2YLlZBMRVN-sC0mfvZz_ZeDgiLzfSChMmNXkRoq6Ymh_F8r8jRAvZTzJOgyX3F7jdw4qcY27tz95Rutrl68W0Z8ntuh3bVoPIDHC5kckF8sSWoyv5j4BfRQCckjyrmaV8F1BM5Cb1x10WNdE7CP_X1bBFqY7ZTJzYcsQcDR07BdalvRTDp-A",
+        "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5MS4yNTg",
+        "createdBy" : {
+            "application" : {
+                "id" : "481710a4",
+                "displayName" : "OneDrive"
+            },
+            "user" : {
+                "displayName" : "Fitz Elliott",
+                "id" : "f4d50e400dfe7d4e"
+            }
+        },
+        "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giM",
+        "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21291')/children",
+        "size" : 11
+    }
+}
