@@ -353,10 +353,12 @@ class TestMetadata:
         folder_metadata = result[0]
         assert folder_metadata.kind == 'folder'
         assert folder_metadata.name == 'crushers'
+        assert folder_metadata.materialized_path == '/crushers/'
 
         file_metadata = result[1]
         assert file_metadata.kind == 'file'
         assert file_metadata.name == 'bicuspid.txt'
+        assert file_metadata.materialized_path == '/bicuspid.txt'
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
@@ -376,6 +378,7 @@ class TestMetadata:
         file_metadata = result[0]
         assert file_metadata.kind == 'file'
         assert file_metadata.name == 'molars.txt'
+        assert file_metadata.materialized_path == '/crushers/molars.txt'
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
@@ -392,6 +395,7 @@ class TestMetadata:
         result = await subfolder_provider.metadata(path)
         assert result.kind == 'file'
         assert result.name == 'bicuspid.txt'
+        assert result.materialized_path == '/bicuspid.txt'
 
 
 class TestRevisions:
