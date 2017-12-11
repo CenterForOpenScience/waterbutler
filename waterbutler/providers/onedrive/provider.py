@@ -268,7 +268,7 @@ class OneDriveProvider(provider.BaseProvider):
                 code=HTTPStatus.NOT_FOUND,
             )
 
-        return self._construct_metadata(data)
+        return self._construct_metadata(data, path)
 
     async def revisions(self,  # type: ignore
                         path: OneDrivePath,
@@ -393,21 +393,24 @@ class OneDriveProvider(provider.BaseProvider):
     def _build_item_url(self, *segments, **query) -> str:
         return provider.build_url(settings.BASE_DRIVE_URL, 'items', *segments, **query)
 
-    def _construct_metadata(self, data: dict):
-        """Take a file/folder metadata response from OneDrive and return a `OneDriveFileMetadata`
-        object if the repsonse represents a file or a list of `OneDriveFileMetadata` and
-        `OneDriveFolderMetadata` objects if the response represents a folder. """
+    def _construct_metadata(self, data: dict, path):
+        """Take a file/folder metadata response from OneDrive and a path object representing the
+        queried path and return a `OneDriveFileMetadata` object if the repsonse represents a file
+        or a list of `OneDriveFileMetadata` and `OneDriveFolderMetadata` objects if the response
+        represents a folder. """
         if 'folder' in data.keys():
             ret = []
             if 'children' in data.keys():
                 for item in data['children']:
-                    if 'folder' in item.keys():
-                        ret.append(OneDriveFolderMetadata(item, self.folder))  # type: ignore
+                    is_folder = 'folder' in item.keys()
+                    child_path = path.child(item['name'], _id=item['id'], folder=is_folder)
+                    if is_folder:
+                        ret.append(OneDriveFolderMetadata(item, child_path))  # type: ignore
                     else:
-                        ret.append(OneDriveFileMetadata(item, self.folder))  # type: ignore
+                        ret.append(OneDriveFileMetadata(item, child_path))  # type: ignore
             return ret
 
-        return OneDriveFileMetadata(data, self.folder)
+        return OneDriveFileMetadata(data, path)
 
     async def _revisions_json(self, path: OneDrivePath, **kwargs) -> dict:
         """Fetch a list of revisions for the file at ``path``.
