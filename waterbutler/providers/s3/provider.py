@@ -135,7 +135,7 @@ class S3Provider(provider.BaseProvider):
         await resp.release()
         return (await dest_provider.metadata(dest_path)), not exists
 
-    async def download(self, path, accept_url=False, version=None, range=None, **kwargs):
+    async def download(self, path, accept_url=False, revision=None, range=None, **kwargs):
         """Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from S3 is not 200
 
@@ -149,10 +149,10 @@ class S3Provider(provider.BaseProvider):
         if not path.is_file:
             raise exceptions.DownloadError('No file specified for download', code=400)
 
-        if not version or version.lower() == 'latest':
+        if not revision or revision.lower() == 'latest':
             query_parameters = None
         else:
-            query_parameters = {'versionId': version}
+            query_parameters = {'versionId': revision}
 
         if kwargs.get('displayName'):
             response_headers = {'response-content-disposition': 'attachment; filename*=UTF-8\'\'{}'.format(parse.quote(kwargs['displayName']))}
