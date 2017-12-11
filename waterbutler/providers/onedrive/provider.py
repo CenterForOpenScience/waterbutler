@@ -288,7 +288,6 @@ class OneDriveProvider(provider.BaseProvider):
         return [
             OneDriveRevisionMetadata(item)
             for item in data['value']
-            if not item.get('deleted')
         ]
 
     async def download(self,  # type: ignore
@@ -318,7 +317,7 @@ class OneDriveProvider(provider.BaseProvider):
         if revision:
             items = await self._revisions_json(path)
             for item in items['value']:
-                if item['eTag'] == revision:
+                if item['id'] == revision:
                     try:
                         download_url = item['@content.downloadUrl']
                     except KeyError:
@@ -413,19 +412,40 @@ class OneDriveProvider(provider.BaseProvider):
     async def _revisions_json(self, path: OneDrivePath, **kwargs) -> dict:
         """Fetch a list of revisions for the file at ``path``.
 
-        API docs: https://dev.onedrive.com/items/view_delta.htm
+        API docs: https://docs.microsoft.com/en-us/onedrive/developer/rest-api/resources/driveitemversion
 
         :param OneDrivePath path: the path of the file to get revisions for
         :rtype: dict
         :return: list of revision metadata under a ``value`` key
         """
+        try:
+            resp = await self.make_request(
+                'GET',
+                self._build_drive_url(*path.api_identifier, 'versions'),
+                expects=(200, ),
+                throws=exceptions.RevisionsError
+            )
+        except exceptions.RevisionsError as exc:
+            if (
+                    exc.code == 405 and
+                    exc.data['error']['message'] == 'Item does not match expected type'
+            ):
+                # OneNote versioning not supported, instead return a lone revision called 'current'
+                url = self._build_drive_url(*path.api_identifier)
+                resp = await self.make_request(
+                    'GET',
+                    url,
+                    expects=(200,),
+                    throws=exceptions.MetadataError
+                )
+                logger.debug("metadata resp::{}".format(repr(resp)))
+                data = await resp.json()
+                return {'value': [
+                    {'id': 'current', 'lastModifiedDateTime': data['lastModifiedDateTime']},
+                ]}  # fudge a fake revision response
+            else:
+                raise exc
 
-        resp = await self.make_request(
-            'GET',
-            self._build_drive_url(*path.api_identifier, 'view.delta', top=self.MAX_REVISIONS),
-            expects=(200, ),
-            throws=exceptions.RevisionsError
-        )
         logger.debug('_revisions_json: resp::{}'.format(repr(resp)))
         data = await resp.json()
         logger.debug('_revisions_json: data::{}'.format(json.dumps(data)))
