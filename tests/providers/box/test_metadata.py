@@ -135,7 +135,6 @@ class TestBoxMetadata:
         data = BoxRevision(item)
         assert data.version == '25065971851'
         assert data.version_identifier == 'revision'
-        assert data.path == '/25065971851/lode.txt'
         assert data.modified == '2015-02-24T09:26:02-08:00'
         assert data.modified_utc == '2015-02-24T17:26:02+00:00'
         assert data.serialized() == {

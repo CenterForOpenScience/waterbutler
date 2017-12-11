@@ -302,6 +302,26 @@ def _build_public_file_payload(action, request, file_metadata):
     return public_payload
 
 
+def _scrub_headers_for_keen(payload, MAX_ITERATIONS=10):
+    """ Scrub unwanted characters like \\.\\ from the keys in the keen payload """
+
+    scrubbed_payload = {}
+    for key in sorted(payload):
+        scrubbed_key = key.replace('.', '-')
+
+        # if our new scrubbed key is already in the payload, we need to increment it
+        if scrubbed_key in scrubbed_payload:
+            for i in range(1, MAX_ITERATIONS + 1):  # try MAX_ITERATION times, then give up & drop it
+                incremented_key = '{}-{}'.format(scrubbed_key, i)
+                if incremented_key not in scrubbed_payload:  # we found an unused key!
+                    scrubbed_payload[incremented_key] = payload[key]
+                    break
+        else:
+            scrubbed_payload[scrubbed_key] = payload[key]
+
+    return scrubbed_payload
+
+
 def _serialize_request(request):
     """Serialize the original request so we can log it across celery."""
     if request is None:
@@ -312,6 +332,7 @@ def _serialize_request(request):
         if k not in ('Authorization', 'Cookie', 'User-Agent',):
             headers_dict[k] = v
 
+    headers_dict = _scrub_headers_for_keen(headers_dict)
     serialized = {
         'tech': {
             'ip': request.remote_ip,
