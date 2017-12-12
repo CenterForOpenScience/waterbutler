@@ -159,8 +159,8 @@ class MoveCopyMixin:
         self.dest_meta = metadata
 
         if created:
-            self.set_status(HTTPStatus.CREATED)
+            self.set_status(int(HTTPStatus.CREATED))
         else:
-            self.set_status(HTTPStatus.OK)
+            self.set_status(int(HTTPStatus.OK))
 
         self.write({'data': metadata.json_api_serialized(self.dest_resource)})
