@@ -212,7 +212,8 @@ class BaseFigshareProvider(provider.BaseProvider):
         # Process for creating a file:
 
         # 1. Get file ID
-        file_id = await self._make_file_placeholder(article_id, name, stream.size)
+        file_id = await self._make_file_placeholder(article_id, name, stream.size,
+                                                    stream.writers['md5'].hexdigest)
 
         # 2. Get upload url and file parts info
         # added sleep() as file was not availble right away after getting 201 back.
@@ -229,7 +230,7 @@ class BaseFigshareProvider(provider.BaseProvider):
 
         return file_id
 
-    async def _make_file_placeholder(self, article_id, name, size):
+    async def _make_file_placeholder(self, article_id, name, size, md5):
         """Create a placeholder for a file to be uploaded later.  Takes the id of the parent
         article, a name for the file, and the size.  Returns the id set aside for the file.
 
@@ -241,7 +242,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         file_resp = await self.make_request(
             'POST',
             self.build_url(False, 'articles', article_id, 'files'),
-            data=json.dumps({'name': name, 'size': size}),
+            data=json.dumps({'name': name, 'size': size, 'md5': md5}),
             expects=(201, ),
         )
         file_json = await file_resp.json()
@@ -289,7 +290,7 @@ class BaseFigshareProvider(provider.BaseProvider):
             upload_response = await self.make_request(
                 'PUT',
                 upload_url + '/' + str(part_number),
-                data=stream.read(size),
+                data=await stream.read(size),
                 expects=(200, ),
             )
             await upload_response.release()
@@ -565,8 +566,6 @@ class FigshareProjectProvider(BaseFigshareProvider):
                             folder=False,
                             is_public=False)
         metadata = await self.metadata(path, **kwargs)
-        if stream.writers['md5'].hexdigest != metadata.extra['hashes']['md5']:
-            raise exceptions.UploadChecksumMismatchError()
 
         return metadata, True
 
