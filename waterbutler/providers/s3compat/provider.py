@@ -10,6 +10,7 @@ import xml.sax.saxutils
 from boto.compat import BytesIO  # type: ignore
 from boto.utils import compute_md5
 from boto.s3.connection import S3Connection, OrdinaryCallingFormat, NoHostProvided
+from boto.connection import HTTPRequest
 from boto.s3.bucket import Bucket
 
 from waterbutler.core import streams
@@ -43,6 +44,14 @@ class S3CompatConnection(S3Connection):
                 path=path, provider=provider, bucket_class=bucket_class,
                 security_token=security_token, anon=anon,
                 validate_certs=validate_certs, profile_name=profile_name)
+
+    def add_auth(self, method, url, headers):
+        urlo = parse.urlparse(url)
+        self._auth_handler.add_auth(HTTPRequest(method, urlo.scheme,
+                                                urlo.hostname, self.port,
+                                                urlo.path, urlo.path, {},
+                                                headers, ''))
+        return url[:url.index('?')] if '?' in url else url
 
     def _required_auth_capability(self):
         return ['s3']
@@ -183,13 +192,14 @@ class S3CompatProvider(provider.BaseProvider):
             response_headers=response_headers
         )
 
-        if accept_url:
-            return url()
+        headers = {}
+        raw_url = self.connection.add_auth('GET', url('GET'), headers)
 
         resp = await self.make_request(
             'GET',
-            url,
+            raw_url,
             range=range,
+            headers=headers,
             expects=(200, 206),
             throws=exceptions.DownloadError,
         )
