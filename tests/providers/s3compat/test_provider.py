@@ -389,7 +389,7 @@ class TestCRUD:
     async def test_download(self, provider, mock_time):
         path = WaterButlerPath('/muhtriangle')
         url = provider.bucket.new_key(path.path).generate_url(100, response_headers={'response-content-disposition': 'attachment'})
-        aiohttpretty.register_uri('GET', url, body=b'delicious', auto_length=True)
+        aiohttpretty.register_uri('GET', url[:url.index('?')], body=b'delicious', auto_length=True)
 
         result = await provider.download(path)
         content = await result.read()
@@ -405,7 +405,7 @@ class TestCRUD:
             query_parameters={'versionId': 'someversion'},
             response_headers={'response-content-disposition': 'attachment'},
         )
-        aiohttpretty.register_uri('GET', url, body=b'delicious', auto_length=True)
+        aiohttpretty.register_uri('GET', url[:url.index('?')], body=b'delicious', auto_length=True)
 
         result = await provider.download(path, version='someversion')
         content = await result.read()
@@ -417,7 +417,7 @@ class TestCRUD:
     async def test_download_display_name(self, provider, mock_time):
         path = WaterButlerPath('/muhtriangle')
         url = provider.bucket.new_key(path.path).generate_url(100, response_headers={'response-content-disposition': "attachment; filename*=UTF-8''tuna"})
-        aiohttpretty.register_uri('GET', url, body=b'delicious', auto_length=True)
+        aiohttpretty.register_uri('GET', url[:url.index('?')], body=b'delicious', auto_length=True)
 
         result = await provider.download(path, displayName='tuna')
         content = await result.read()
@@ -429,7 +429,7 @@ class TestCRUD:
     async def test_download_not_found(self, provider, mock_time):
         path = WaterButlerPath('/muhtriangle')
         url = provider.bucket.new_key(path.path).generate_url(100, response_headers={'response-content-disposition': 'attachment'})
-        aiohttpretty.register_uri('GET', url, status=404)
+        aiohttpretty.register_uri('GET', url[:url.index('?')], status=404)
 
         with pytest.raises(exceptions.DownloadError):
             await provider.download(path)
@@ -585,16 +585,6 @@ class TestCRUD:
         assert aiohttpretty.has_call(method='GET', uri=query_url, params=params_two)
         assert aiohttpretty.has_call(method='POST', uri=delete_url_one)
         assert aiohttpretty.has_call(method='POST', uri=delete_url_two)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_accepts_url(self, provider, mock_time):
-        path = WaterButlerPath('/my-image')
-        url = provider.bucket.new_key(path.path).generate_url(100, 'GET', response_headers={'response-content-disposition': 'attachment'})
-
-        ret_url = await provider.download(path, accept_url=True)
-
-        assert ret_url == url
 
 
 class TestMetadata:
