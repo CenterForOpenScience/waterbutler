@@ -511,80 +511,21 @@ class TestCRUD:
             status=200,
         )
 
-        query_params = {'delete': ''}
-        (payload, headers) = bulk_delete_body(
-            ['thisfolder/', 'thisfolder/item1', 'thisfolder/item2']
-        )
-
-        delete_url = provider.bucket.generate_url(
-            100,
-            'POST',
-            query_parameters=query_params,
-            headers=headers,
-        )
-        aiohttpretty.register_uri('POST', delete_url, status=204)
+        target_items = ['thisfolder/', 'thisfolder/item1', 'thisfolder/item2']
+        delete_urls = []
+        for i in target_items:
+            delete_url = provider.bucket.new_key(i).generate_url(
+                100,
+                'DELETE',
+            )
+            delete_urls.append(delete_url)
+            aiohttpretty.register_uri('DELETE', delete_url, status=204)
 
         await provider.delete(path)
 
         assert aiohttpretty.has_call(method='GET', uri=query_url, params=params)
-        assert aiohttpretty.has_call(method='POST', uri=delete_url)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_large_folder_delete(self, provider, mock_time):
-        path = WaterButlerPath('/some-folder/')
-
-        query_url = provider.bucket.generate_url(100, 'GET')
-
-        keys_one = [str(x) for x in range(2500, 3500)]
-        response_one = list_objects_response(keys_one, truncated=True)
-        params_one = {'prefix': 'some-folder/'}
-
-        keys_two = [str(x) for x in range(3500, 3601)]
-        response_two = list_objects_response(keys_two)
-        params_two = {'prefix': 'some-folder/', 'marker': '3499'}
-
-        aiohttpretty.register_uri(
-            'GET',
-            query_url,
-            params=params_one,
-            body=response_one,
-            status=200,
-        )
-        aiohttpretty.register_uri(
-            'GET',
-            query_url,
-            params=params_two,
-            body=response_two,
-            status=200,
-        )
-
-        query_params = {'delete': None}
-
-        (payload_one, headers_one) = bulk_delete_body(keys_one)
-        delete_url_one = provider.bucket.generate_url(
-            100,
-            'POST',
-            query_parameters=query_params,
-            headers=headers_one,
-        )
-        aiohttpretty.register_uri('POST', delete_url_one, status=204)
-
-        (payload_two, headers_two) = bulk_delete_body(keys_two)
-        delete_url_two = provider.bucket.generate_url(
-            100,
-            'POST',
-            query_parameters=query_params,
-            headers=headers_two,
-        )
-        aiohttpretty.register_uri('POST', delete_url_two, status=204)
-
-        await provider.delete(path)
-
-        assert aiohttpretty.has_call(method='GET', uri=query_url, params=params_one)
-        assert aiohttpretty.has_call(method='GET', uri=query_url, params=params_two)
-        assert aiohttpretty.has_call(method='POST', uri=delete_url_one)
-        assert aiohttpretty.has_call(method='POST', uri=delete_url_two)
+        for delete_url in delete_urls:
+            assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
 
 
 class TestMetadata:

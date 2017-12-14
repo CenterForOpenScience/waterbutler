@@ -5,10 +5,6 @@ from urllib import parse
 
 import xmltodict
 
-import xml.sax.saxutils
-
-from boto.compat import BytesIO  # type: ignore
-from boto.utils import compute_md5
 from boto.s3.connection import S3Connection, OrdinaryCallingFormat, NoHostProvided
 from boto.connection import HTTPRequest
 from boto.s3.bucket import Bucket
@@ -319,42 +315,10 @@ class S3CompatProvider(provider.BaseProvider):
         if len(content_keys) == 0:
             raise exceptions.NotFoundError(str(path))
 
-        while len(content_keys) > 0:
-            key_batch = content_keys[:1000]
-            del content_keys[:1000]
-
-            payload = '<?xml version="1.0" encoding="UTF-8"?>'
-            payload += '<Delete>'
-            payload += ''.join(map(
-                lambda x: '<Object><Key>{}</Key></Object>'.format(xml.sax.saxutils.escape(x)),
-                key_batch
-            ))
-            payload += '</Delete>'
-            payload = payload.encode('utf-8')
-            md5 = compute_md5(BytesIO(payload))
-
-            query_params = {'delete': ''}
-            headers = {
-                'Content-Length': str(len(payload)),
-                'Content-MD5': md5[1],
-                'Content-Type': 'text/xml',
-            }
-
-            # We depend on a customized version of boto that can make query parameters part of
-            # the signature.
-            url = functools.partial(
-                self.bucket.generate_url,
-                settings.TEMP_URL_SECS,
-                'POST',
-                query_parameters=query_params,
-                headers=headers,
-            )
+        for content_key in content_keys[::-1]:
             resp = await self.make_request(
-                'POST',
-                url,
-                params=query_params,
-                data=payload,
-                headers=headers,
+                'DELETE',
+                self.bucket.new_key(content_key).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
                 expects=(200, 204, ),
                 throws=exceptions.DeleteError,
             )
