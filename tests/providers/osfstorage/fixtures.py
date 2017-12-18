@@ -22,6 +22,7 @@ def auth():
         'id': 'cat',
         'name': 'cat',
         'email': 'cat@cat.com',
+        'callback_url': 'fakecallback.com',
     }
 
 

@@ -57,6 +57,10 @@ class LogPayload:
 
         return payload
 
+    def __eq__(self, other: object) -> bool:
+        # This is allows for easy comparisons via unit tests.
+        return isinstance(other, LogPayload) and self.serialize() == other.serialize()
+
     @property
     def auth(self):
         """The auth object for the entity.  Contains the callback_url."""
