@@ -145,7 +145,7 @@ class ResponseStreamReader(BaseStream):
         if 'Content-Length' in response.headers:
             self._size = int(response.headers['Content-Length'])
         else:
-            self._size = None
+            self._size = size
 
         self._name = name
         self.response = response
