@@ -96,7 +96,6 @@ class TestRootProviderValidatePath:
         file_metadata = root_provider_fixtures['file_metadata']
 
         item_url = root_provider._build_item_url(file_id)
-        print('item url: {}'.format(item_url))
         aiohttpretty.register_json_uri('GET', item_url, body=file_metadata, status=200)
 
         file_path = '/{}'.format(file_id)
@@ -124,7 +123,6 @@ class TestRootProviderValidatePath:
         folder_metadata = root_provider_fixtures['folder_metadata']
 
         item_url = root_provider._build_item_url(folder_id)
-        print('item url: {}'.format(item_url))
         aiohttpretty.register_json_uri('GET', item_url, body=folder_metadata, status=200)
 
         folder_path = '/{}/'.format(folder_id)
@@ -168,7 +166,6 @@ class TestSubfolderProviderValidatePath:
         folder_metadata = subfolder_provider_fixtures['folder_metadata']
 
         item_url = subfolder_provider._build_item_url(folder_id)
-        print('item url: {}'.format(item_url))
         aiohttpretty.register_json_uri('GET', item_url, body=folder_metadata, status=200)
 
         folder_path = '/{}/'.format(folder_id)
@@ -198,7 +195,6 @@ class TestSubfolderProviderValidatePath:
         file_metadata = subfolder_provider_fixtures['file_metadata']
 
         item_url = subfolder_provider._build_item_url(file_id)
-        print('item url: {}'.format(item_url))
         aiohttpretty.register_json_uri('GET', item_url, body=file_metadata, status=200)
 
         file_path = '/{}'.format(file_id)
@@ -228,11 +224,9 @@ class TestSubfolderProviderValidatePath:
         subfile_metadata = subfolder_provider_fixtures['subfile_metadata']
 
         item_url = subfolder_provider._build_item_url(subfile_id)
-        print('item url: {}'.format(item_url))
         aiohttpretty.register_json_uri('GET', item_url, body=subfile_metadata, status=200)
 
         root_url = subfolder_provider._build_item_url(subfolder_provider_fixtures['root_id'])
-        print('root url: {}'.format(root_url))
         aiohttpretty.register_json_uri('GET', root_url,
                                        body=subfolder_provider_fixtures['root_metadata'],
                                        status=200)
@@ -359,10 +353,12 @@ class TestMetadata:
         folder_metadata = result[0]
         assert folder_metadata.kind == 'folder'
         assert folder_metadata.name == 'crushers'
+        assert folder_metadata.materialized_path == '/crushers/'
 
         file_metadata = result[1]
         assert file_metadata.kind == 'file'
         assert file_metadata.name == 'bicuspid.txt'
+        assert file_metadata.materialized_path == '/bicuspid.txt'
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
@@ -382,6 +378,7 @@ class TestMetadata:
         file_metadata = result[0]
         assert file_metadata.kind == 'file'
         assert file_metadata.name == 'molars.txt'
+        assert file_metadata.materialized_path == '/crushers/molars.txt'
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
@@ -398,6 +395,7 @@ class TestMetadata:
         result = await subfolder_provider.metadata(path)
         assert result.kind == 'file'
         assert result.name == 'bicuspid.txt'
+        assert result.materialized_path == '/bicuspid.txt'
 
 
 class TestRevisions:
