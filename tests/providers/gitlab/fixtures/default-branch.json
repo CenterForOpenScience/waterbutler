@@ -1,0 +1,91 @@
+{
+    "default_branch": {
+        "tag_list" : [],
+        "path" : "wb-gl-testing",
+        "default_branch" : "master",
+        "creator_id" : 452881,
+        "description" : "WaterButler GitLab Testing Repo",
+        "visibility" : "public",
+        "printing_merge_request_link_enabled" : true,
+        "lfs_enabled" : true,
+        "container_registry_enabled" : true,
+        "only_allow_merge_if_pipeline_succeeds" : false,
+        "forks_count" : 0,
+        "id" : 1907995,
+        "http_url_to_repo" : "https://gitlab.com/fitzcos/wb-gl-testing.git",
+        "runners_token" : "mooquackwoof",
+        "import_error" : null,
+        "request_access_enabled" : true,
+        "shared_runners_enabled" : true,
+        "wiki_enabled" : true,
+        "merge_requests_enabled" : true,
+        "snippets_enabled" : true,
+        "permissions" : {
+            "group_access" : null,
+            "project_access" : {
+                "access_level" : 40,
+                "notification_level" : 3
+            }
+        },
+        "path_with_namespace" : "fitzcos/wb-gl-testing",
+        "avatar_url" : null,
+        "open_issues_count" : 0,
+        "public_jobs" : true,
+        "jobs_enabled" : true,
+        "created_at" : "2016-10-26T14:57:47.857Z",
+        "ci_config_path" : null,
+        "only_allow_merge_if_all_discussions_are_resolved" : null,
+        "archived" : false,
+        "shared_with_groups" : [],
+        "ssh_url_to_repo" : "git@gitlab.com:fitzcos/wb-gl-testing.git",
+        "issues_enabled" : true,
+        "namespace" : {
+            "plan" : null,
+            "full_path" : "fitzcos",
+            "id" : 532511,
+            "name" : "fitzcos",
+            "kind" : "user",
+            "parent_id" : null,
+            "path" : "fitzcos"
+        },
+        "web_url" : "https://gitlab.com/fitzcos/wb-gl-testing",
+        "owner" : {
+            "state" : "active",
+            "username" : "fitzcos",
+            "avatar_url" : "https://secure.gravatar.com/avatar/dcf73fbfbdba5c37ea7cd7e652be2f20?s=80&d=identicon",
+            "web_url" : "https://gitlab.com/fitzcos",
+            "name" : "Fitz Elliott",
+            "id" : 452881
+        },
+        "import_status" : "none",
+        "approvals_before_merge" : 0,
+        "last_activity_at" : "2017-07-15T16:24:53.574Z",
+        "name_with_namespace" : "Fitz Elliott / wb-gl-testing",
+        "star_count" : 0,
+        "name" : "wb-gl-testing"
+    },
+    "get_commit_sha": {
+        "merged" : false,
+        "developers_can_push" : false,
+        "commit" : {
+            "message" : "add back aaa-01.txt\n",
+            "created_at" : "2017-06-05T16:12:32.000-04:00",
+            "parent_ids" : [
+                "968ec68985026fc54e9b96ba835b7bcb345dc09d"
+            ],
+            "committed_date" : "2017-06-05T16:12:32.000-04:00",
+            "committer_name" : "Fitz Elliott",
+            "short_id" : "5e4718bd",
+            "id" : "5e4718bd52874cf373dad0e9ca602a9a36f87e5c",
+            "title" : "add back aaa-01.txt",
+            "authored_date" : "2017-06-05T16:12:03.000-04:00",
+            "committer_email" : "fitz@cos.io",
+            "author_email" : "fitz@cos.io",
+            "author_name" : "Fitz Elliott"
+        },
+        "name" : "master",
+        "protected" : true,
+        "developers_can_merge" : false
+    }
+
+}
