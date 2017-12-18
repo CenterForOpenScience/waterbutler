@@ -1,5 +1,7 @@
 from stevedore import driver
 
+from waterbutler.core.auth import AuthType
+
 
 class AuthHandler:
 
@@ -19,9 +21,9 @@ class AuthHandler:
                 return credential
         raise AuthHandler('no valid credential found')
 
-    async def get(self, resource, provider, request):
+    async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE):
         for extension in self.manager.extensions:
-            credential = await extension.obj.get(resource, provider, request)
+            credential = await extension.obj.get(resource, provider, request, action=action, auth_type=auth_type)
             if credential:
                 return credential
         raise AuthHandler('no valid credential found')
