@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.36.1 (2017-12-11)
+===================
+- Fix: Update OneDrive metadata to report the correct materialized name.
+
 0.36.0 (2017-12-05)
 ===================
 - Feature: WaterButler now supports two new read-only providers, GitLab and Microsoft OneDrive!

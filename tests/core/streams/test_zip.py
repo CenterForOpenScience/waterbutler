@@ -1,14 +1,13 @@
-import pytest
-
 import io
 import os
-import tempfile
 import zipfile
 
-from tests.utils import temp_files
+import pytest
 
 from waterbutler.core import streams
 from waterbutler.core.utils import AsyncIterator
+
+from tests.utils import temp_files
 
 
 class TestZipStreamReader:
@@ -127,3 +126,41 @@ class TestZipStreamReader:
 
         for file in files:
             assert zip.open(file['filename']).read() == file['contents']
+
+    @pytest.mark.asyncio
+    async def test_zip_files(self, temp_files):
+
+        files = []
+        for filename in ['file1.ext', 'zip.zip', 'file2.ext']:
+            path = temp_files.add_file(filename)
+            contents = os.urandom(2 ** 5)
+            with open(path, 'wb') as f:
+                f.write(contents)
+            files.append({
+                'filename': filename,
+                'path': path,
+                'contents': contents,
+                'handle': open(path, 'rb')
+            })
+
+        stream = streams.ZipStreamReader(
+            AsyncIterator(
+                (file['filename'], streams.FileStreamReader(file['handle']))
+                for file in files
+            )
+        )
+        data = await stream.read()
+        for file in files:
+            file['handle'].close()
+        zip = zipfile.ZipFile(io.BytesIO(data))
+
+        # Verify CRCs: `.testzip()` returns `None` if there are no bad files in the zipfile
+        assert zip.testzip() is None
+
+        for file in files:
+            assert zip.open(file['filename']).read() == file['contents']
+            compression_type = zip.open(file['filename'])._compress_type
+            if file['filename'].endswith('.zip'):
+                assert compression_type == zipfile.ZIP_STORED
+            else:
+                assert compression_type != zipfile.ZIP_STORED

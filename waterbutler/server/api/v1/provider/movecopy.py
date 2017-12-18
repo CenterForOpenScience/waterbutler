@@ -107,10 +107,15 @@ class MoveCopyMixin:
             if path is None:
                 raise exceptions.InvalidParameters('"path" field is required for moves or copies')
             if not path.endswith('/'):
-                raise exceptions.InvalidParameters('"path" field requires a trailing slash to '
-                                                   'indicate it is a folder')
+                raise exceptions.InvalidParameters(
+                    '"path" field requires a trailing slash to indicate it is a folder'
+                )
 
             # TODO optimize for same provider and resource
+
+            # for copy action, `auth_action` is the same as `provider_action`
+            if auth_action == 'copy' and self.path.is_root and not self.json.get('rename'):
+                raise exceptions.InvalidParameters('"rename" field is required for copying root')
 
             # Note: attached to self so that _send_hook has access to these
             self.dest_resource = self.json.get('resource', self.resource)
@@ -154,8 +159,8 @@ class MoveCopyMixin:
         self.dest_meta = metadata
 
         if created:
-            self.set_status(HTTPStatus.CREATED)
+            self.set_status(int(HTTPStatus.CREATED))
         else:
-            self.set_status(HTTPStatus.OK)
+            self.set_status(int(HTTPStatus.OK))
 
         self.write({'data': metadata.json_api_serialized(self.dest_resource)})
