@@ -203,7 +203,7 @@ class TestHandleNaming:
         dest_path = await provider1.validate_path('/test/path/')
         provider1.exists = utils.MockCoroutine(return_value=False)
 
-        handled = await provider1.handle_naming(src_path, dest_path)
+        handled = await provider1.handle_conflicts(provider1, src_path, dest_path)
 
         assert handled == src_path.child('path', folder=True)
         assert handled.is_dir is True
@@ -216,7 +216,7 @@ class TestHandleNaming:
         dest_path = await provider1.validate_path('/test/name2')
         provider1.exists = utils.MockCoroutine(return_value=False)
 
-        handled = await provider1.handle_naming(src_path, dest_path)
+        handled = await provider1.handle_conflicts(provider1, src_path, dest_path)
 
         assert handled.name == 'name2'
         assert handled.is_file is True
@@ -227,23 +227,10 @@ class TestHandleNaming:
         src_path = await provider1.validate_path('/test/name1')
         provider1.exists = utils.MockCoroutine(return_value=False)
 
-        handled = await provider1.handle_naming(src_path, dest_path, rename='name2')
+        handled = await provider1.handle_conflicts(provider1, src_path, dest_path, rename='name2')
 
         assert handled.name == 'name2'
         assert handled.is_file is True
-
-    @pytest.mark.asyncio
-    async def test_no_problem_file(self, provider1):
-        src_path = await provider1.validate_path('/test/path')
-        dest_path = await provider1.validate_path('/test/path')
-        provider1.exists = utils.MockCoroutine(return_value=False)
-
-        handled = await provider1.handle_naming(src_path, dest_path)
-
-        assert handled == dest_path  # == not is
-        assert handled.is_file is True
-        assert len(handled.parts) == 3  # Includes root
-        assert handled.name == 'path'
 
 
 class TestCopy:
@@ -253,22 +240,23 @@ class TestCopy:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
-        await provider1.copy(provider1, src_path, dest_path, handle_naming=False)
+        await provider1.copy(provider1, src_path, dest_path, handle_conflicts=False)
 
-        assert provider1.handle_naming.called is False
+        assert provider1.handle_conflicts.called is False
 
     @pytest.mark.asyncio
     async def test_handles_naming(self, provider1):
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.copy(provider1, src_path, dest_path)
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename=None,
@@ -280,11 +268,12 @@ class TestCopy:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.copy(provider1, src_path, dest_path, conflict='keep')
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename=None,
@@ -296,11 +285,12 @@ class TestCopy:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.copy(provider1, src_path, dest_path, rename='Baz')
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename='Baz',
@@ -392,22 +382,23 @@ class TestMove:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
-        await provider1.move(provider1, src_path, dest_path, handle_naming=False)
+        await provider1.move(provider1, src_path, dest_path, handle_conflicts=False)
 
-        assert provider1.handle_naming.called is False
+        assert provider1.handle_conflicts.called is False
 
     @pytest.mark.asyncio
     async def test_handles_naming(self, provider1):
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.move(provider1, src_path, dest_path)
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename=None,
@@ -419,11 +410,12 @@ class TestMove:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.move(provider1, src_path, dest_path, conflict='keep')
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename=None,
@@ -435,11 +427,12 @@ class TestMove:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.move(provider1, src_path, dest_path, rename='Baz')
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename='Baz',
@@ -528,7 +521,7 @@ class TestMove:
             provider1,
             src_path,
             dest_path,
-            handle_naming=False
+            handle_conflicts=False
         )
 
     @pytest.mark.asyncio
@@ -548,7 +541,7 @@ class TestMove:
             provider1,
             src_path,
             dest_path,
-            handle_naming=False
+            handle_conflicts=False
         )
 
     def test_build_range_header(self, provider1):
