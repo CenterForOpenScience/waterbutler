@@ -2,6 +2,7 @@ import json
 import base64
 import typing
 import aiohttp
+import logging
 import mimetypes
 
 from waterbutler.core import streams
@@ -13,6 +14,9 @@ from waterbutler.providers.gitlab.metadata import (BaseGitLabMetadata,
                                                    GitLabRevision,
                                                    GitLabFileMetadata,
                                                    GitLabFolderMetadata)
+
+
+logger = logging.getLogger(__name__)
 
 
 class GitLabProvider(provider.BaseProvider):
@@ -37,8 +41,14 @@ class GitLabProvider(provider.BaseProvider):
     * GitLab does not do content-type detection, so the ``contentType`` property is inferred in WB
       from the file extension.
 
-    * If a path is given with ``commit_sha``, ``branch_name``, and ``revision`` parameters, then
-      ``revision`` will overwrite whichever of the other two it is determined to be.
+    * There are three query parameters supported to identify the ref of a path, ``revision``,
+      ``commitSha``, and ``branch``.  ``commitSha`` and ``branch`` are explicit and preferred.  If
+      both are given, ``commitSha`` will take precedence, as it is more precise.  If ``revision`` is
+      given, the provider will guess if it is a commit SHA or branch name and overwrite the
+      appropriate parameter.
+
+    * If an explicit ``commitSha`` is not provided the provider will look it up and set it on the
+      `GitLabPath` object, so that it will be available in the returned metadata.
     """
     NAME = 'gitlab'
 
@@ -72,6 +82,11 @@ class GitLabProvider(provider.BaseProvider):
         """
 
         gl_path = await self.validate_path(path, **kwargs)
+
+        if gl_path.commit_sha is None:
+            commit_sha = await self._get_commit_sha_for_branch(gl_path.branch_name)
+            gl_path.set_commit_sha(commit_sha)
+
         if gl_path.is_root:
             return gl_path
 
@@ -166,9 +181,15 @@ class GitLabProvider(provider.BaseProvider):
         resp = await self.make_request(
             'GET',
             url,
-            expects=(200,),
+            expects=(200, 500),
             throws=exceptions.RevisionsError
         )
+        if resp.status == 500:
+            # GitLab API is buggy for unicode filenames. Affected files will still work, but
+            # but will have empty created/modified dates. See docstring for _metadata_file
+            await resp.release()
+            return []  # temporary work around for uncommon bug
+
         data = await resp.json()
         if len(data) == 0:
             raise exceptions.RevisionsError('No revisions found', code=404)
@@ -182,7 +203,8 @@ class GitLabProvider(provider.BaseProvider):
         There is an endpoint for downloading the raw file directly, but we cannot use it because
         GitLab requires periods in the file path to be encoded.  Python and aiohttp make this
         difficult, though their behavior is arguably correct. See
-        https://gitlab.com/gitlab-org/gitlab-ce/issues/31470 for details.
+        https://gitlab.com/gitlab-org/gitlab-ce/issues/31470 for details. (Update: this is due to
+        be fixed in the GL 10.0 release)
 
         API docs: https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
 
@@ -195,7 +217,7 @@ class GitLabProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
-        url = self._build_repo_url('repository', 'files', path.full_path, ref=path.ref)
+        url = self._build_file_url(path)
         resp = await self.make_request(
             'GET',
             url,
@@ -210,6 +232,7 @@ class GitLabProvider(provider.BaseProvider):
         except json.decoder.JSONDecodeError:
             # GitLab API sometimes returns ruby hashes instead of json
             # see: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790
+            # fixed in GL v9.5
             data = self._convert_ruby_hash_to_dict(raw_data)
 
         raw = base64.b64decode(data['content'])
@@ -263,6 +286,27 @@ class GitLabProvider(provider.BaseProvider):
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
 
+    def _build_file_url(self, path: GitLabPath) -> str:
+        """Build a url to GitLab's files endpoint.  This is done separately because the files
+        endpoint requires unusual quoting of the path.  GL requires that the directory-separating
+        slashes in the full path of the file be url encoded.  Ex. a file called ``foo/bar/baz``
+        would be encoded as ``foo%2Fbar%2Fbaz``.  WB's default url-building methods would split the
+        path, encode each segment, then rejoin them with literal slashes.  If we were to try to
+        pre-encode the path, any encoded characters will be double-encoded
+
+        API docs:
+
+        * https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
+
+        * https://docs.gitlab.com/ce/api/README.html#namespaced-path-encoding
+
+        :param GitLabPath path: path to a file
+        :rtype: str
+        :return: url to the GitLab files endpoint for the given file
+        """
+        file_base = self._build_repo_url('repository', 'files')
+        return '{}/{}?ref={}'.format(file_base, path.raw_path.replace('/', '%2F'), path.ref)
+
     async def _metadata_folder(self, path: GitLabPath) -> typing.List[BaseGitLabMetadata]:
         """Fetch metadata for the contents of the folder at ``path`` and return a `list` of
         `GitLabFileMetadata` and `GitLabFolderMetadata` objects.
@@ -289,6 +333,10 @@ class GitLabProvider(provider.BaseProvider):
     async def _metadata_file(self, path: GitLabPath) -> GitLabFileMetadata:
         """Fetch metadata for the file at ``path`` and build a `GitLabFileMetadata` object for it.
 
+        The commits endpoint used here will 500 when given a unicode filename.  Bug reported here:
+        https://gitlab.com/gitlab-org/gitlab-ce/issues/40776  The `revisions` method uses the same
+        endpoint and will probably encounter the same issue.
+
         :param GitLabPath path: the file to get metadata for
         :rtype: `GitLabFileMetadata`
         """
@@ -300,21 +348,28 @@ class GitLabProvider(provider.BaseProvider):
             url = self._build_repo_url('repository', 'commits', path=path.path,
                                        ref_name=path.ref, page=page_nbr,
                                        per_page=self.MAX_PAGE_SIZE)
+            logger.debug('file metadata commit history url: {}'.format(url))
             resp = await self.make_request(
                 'GET',
                 url,
-                expects=(200, 404),
+                expects=(200, 404, 500),
                 throws=exceptions.NotFoundError,
             )
             if resp.status == 404:
+                await resp.release()
                 raise exceptions.NotFoundError(path.full_path)
+            if resp.status == 500:
+                # GitLab API is buggy for unicode filenames. Affected files will still work, but
+                # but will have empty created/modified dates. See method docstring
+                await resp.release()
+                break
 
             data_page = await resp.json()
 
             # GitLab currently returns 200 OK for nonexistent directories
             # See: https://gitlab.com/gitlab-org/gitlab-ce/issues/34016
-            # Fallback: empty directories shouldn't exist in git,
-            if page_nbr == 1 and len(data_page) == 0:
+            # Fallback: empty directories shouldn't exist in git, unless it's the root
+            if page_nbr == 1 and len(data_page) == 0 and not path.is_root:
                 raise exceptions.NotFoundError(path.full_path)
 
             if page_nbr == 1:
@@ -326,9 +381,13 @@ class GitLabProvider(provider.BaseProvider):
         file_name = file_contents['file_name']
         data = {'name': file_name, 'id': file_contents['blob_id'],
                 'path': file_contents['file_path'], 'size': file_contents['size'],
-                'mime_type': mimetypes.guess_type(file_name)[0],
-                'modified': last_commit['committed_date'],
-                'created': first_commit['committed_date'], }
+                'mime_type': mimetypes.guess_type(file_name)[0]}
+
+        if last_commit is not None:
+            data['modified'] = last_commit['committed_date']
+
+        if first_commit is not None:
+            data['created'] = first_commit['committed_date']
 
         return GitLabFileMetadata(data, path, host=self.VIEW_URL, owner=self.owner, repo=self.repo)
 
@@ -342,7 +401,8 @@ class GitLabProvider(provider.BaseProvider):
         :rtype: `dict`
         :return: file metadata from the GitLab endpoint
         """
-        url = self._build_repo_url('repository', 'files', path.raw_path, ref=path.ref)
+        url = self._build_file_url(path)
+        logger.debug('_fetch_file_contents url: {}'.format(url))
         resp = await self.make_request(
             'GET',
             url,
@@ -356,6 +416,7 @@ class GitLabProvider(provider.BaseProvider):
         except json.decoder.JSONDecodeError:
             # GitLab API sometimes returns ruby hashes instead of json
             # see: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790
+            # fixed in GL v9.5
             data = self._convert_ruby_hash_to_dict(raw_data)
 
         return data
@@ -382,6 +443,7 @@ class GitLabProvider(provider.BaseProvider):
                 path_kwargs['path'] = path.full_path
 
             url = self._build_repo_url(*path_args, **path_kwargs)
+            logger.debug('_fetch_tree_contents url: {}'.format(url))
             resp = await self.make_request(
                 'GET',
                 url,
@@ -389,14 +451,15 @@ class GitLabProvider(provider.BaseProvider):
                 throws=exceptions.NotFoundError,
             )
             if resp.status == 404:
+                await resp.release()
                 raise exceptions.NotFoundError(path.full_path)
 
             data_page = await resp.json()
 
             # GitLab currently returns 200 OK for nonexistent directories
             # See: https://gitlab.com/gitlab-org/gitlab-ce/issues/34016
-            # Fallback: empty directories shouldn't exist in git,
-            if page_nbr == 1 and len(data_page) == 0:
+            # Fallback: empty directories shouldn't exist in git, unless it's the root
+            if page_nbr == 1 and len(data_page) == 0 and not path.is_root:
                 raise exceptions.NotFoundError(path.full_path)
 
             data.extend(data_page)
@@ -427,9 +490,29 @@ class GitLabProvider(provider.BaseProvider):
 
         return data['default_branch']
 
+    async def _get_commit_sha_for_branch(self, branch_name: str) -> str:
+        """Translate a branch name into the SHA of the commit it currently points to.
+
+        API docs: https://docs.gitlab.com/ee/api/branches.html#get-single-repository-branch
+
+        :param str branch_name: name of a branch in the repo
+        :rtype: `str`
+        :return: the SHA of the commit that `branch_name` points to
+        """
+
+        url = self._build_repo_url('repository', 'branches', branch_name)
+        resp = await self.make_request(
+            'GET',
+            url,
+            expects=(200,),
+            throws=exceptions.NotFoundError,
+        )
+        data = await resp.json()
+        return data['commit']['id']
+
     def _convert_ruby_hash_to_dict(self, ruby_hash: str) -> dict:
         """Adopted from https://stackoverflow.com/a/19322785 as a workaround for
-        https://gitlab.com/gitlab-org/gitlab-ce/issues/34016.
+        https://gitlab.com/gitlab-org/gitlab-ce/issues/31790. Fixed in GL v9.5
 
         :param str ruby_hash: serialized Ruby hash
         :rtype: `dict`

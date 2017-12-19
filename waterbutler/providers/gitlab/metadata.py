@@ -1,7 +1,12 @@
+import logging
+
 from furl import furl
 
 from waterbutler.core import utils
 from waterbutler.core import metadata
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseGitLabMetadata(metadata.BaseMetadata):
