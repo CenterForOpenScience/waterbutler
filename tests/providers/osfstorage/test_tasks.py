@@ -4,13 +4,16 @@ import asyncio
 from unittest import mock
 
 import pytest
+import aiohttpretty
 
 from tests import utils as test_utils
 
 from boto.glacier.exceptions import UnexpectedHTTPResponseError
 
+from waterbutler.core import signing
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.osfstorage import settings
+from waterbutler.providers.osfstorage.settings import HMAC_ALGORITHM
+from waterbutler.providers.osfstorage.settings import HMAC_SECRET
 from waterbutler.providers.osfstorage.tasks import utils
 from waterbutler.providers.osfstorage.tasks import backup
 from waterbutler.providers.osfstorage.tasks import parity
@@ -152,6 +155,23 @@ class TestParityTask:
         assert paths == []
         assert not mock_sp_call.called
 
+    @pytest.mark.aiohttpretty
+    def test_push_complete(self, event_loop):
+        callback_url = 'https://fakeosf.io/guidz/osfstorage/hooks/metadata/'
+        aiohttpretty.register_json_uri('PUT', callback_url, status=200, body={'status': 'success'})
+
+        parity._push_parity_complete(123, callback_url, {'some': 'metadata'})
+
+        assert aiohttpretty.has_call(method='PUT', uri=callback_url)
+
+    @pytest.mark.aiohttpretty
+    def test_push_complete_error(self, event_loop):
+        callback_url = 'https://fakeosf.io/guidz/osfstorage/hooks/metadata/'
+        aiohttpretty.register_json_uri('PUT', callback_url, status=500)
+
+        with pytest.raises(Exception):
+            parity._push_parity_complete(123, callback_url, {'some': 'metadata'})
+
 
 class TestBackupTask:
 
@@ -241,3 +261,20 @@ class TestBackupTask:
         with pytest.raises(UnexpectedHTTPResponseError):
             backup._push_file_archive('Triangles', None, None, {}, {})
         assert not mock_complete.called
+
+    @pytest.mark.aiohttpretty
+    def test_push_complete(self, event_loop):
+        callback_url = 'https://fakeosf.io/guidz/osfstorage/hooks/metadata/'
+        aiohttpretty.register_json_uri('PUT', callback_url, status=200, body={'status': 'success'})
+
+        backup._push_archive_complete(123, callback_url, {'some': 'metadata'})
+
+        assert aiohttpretty.has_call(method='PUT', uri=callback_url)
+
+    @pytest.mark.aiohttpretty
+    def test_push_complete_error(self, event_loop):
+        callback_url = 'https://fakeosf.io/guidz/osfstorage/hooks/metadata/'
+        aiohttpretty.register_json_uri('PUT', callback_url, status=500)
+
+        with pytest.raises(Exception):
+            backup._push_archive_complete(123, callback_url, {'some': 'metadata'})
