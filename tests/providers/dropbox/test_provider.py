@@ -12,16 +12,21 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.dropbox import DropboxProvider
-from waterbutler.providers.dropbox.metadata import (DropboxFileMetadata,
-                                                    DropboxRevision,
-                                                    DropboxFolderMetadata)
-from waterbutler.providers.dropbox.exceptions import (DropboxNamingConflictError,
-                                                      DropboxUnhandledConflictError)
+from waterbutler.providers.dropbox.metadata import (
+    DropboxFileMetadata,
+    DropboxRevision,
+    DropboxFolderMetadata
+)
+from waterbutler.providers.dropbox.exceptions import (
+    DropboxNamingConflictError,
+    DropboxUnhandledConflictError
+)
 
-from tests.providers.dropbox.fixtures import(root_provider_fixtures,
-                                             revision_fixtures,
-                                             intra_copy_fixtures,
-                                             error_fixtures)
+from tests.providers.dropbox.fixtures import(
+    provider_fixtures,
+    revision_fixtures,
+    error_fixtures
+)
 
 
 @pytest.fixture
@@ -83,13 +88,13 @@ class TestValidatePath:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     @pytest.mark.parametrize('settings', [{'folder': '/'}])
-    async def test_validate_v1_path_file(self, provider, root_provider_fixtures):
+    async def test_validate_v1_path_file(self, provider, provider_fixtures):
         file_path = '/Photos/Getting_Started.pdf'
         data = {"path": file_path}
 
         metadata_url = provider.build_url('files', 'get_metadata')
         aiohttpretty.register_json_uri('POST', metadata_url, data=data,
-                                       body=root_provider_fixtures['file_metadata'])
+                                       body=provider_fixtures['file_metadata'])
 
         try:
             wb_path_v1 = await provider.validate_v1_path(file_path)
@@ -108,13 +113,13 @@ class TestValidatePath:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     @pytest.mark.parametrize('settings', [{'folder': '/'}])
-    async def test_validate_v1_path_folder(self, provider, root_provider_fixtures):
+    async def test_validate_v1_path_folder(self, provider, provider_fixtures):
         folder_path = '/Photos'
         data = {"path": folder_path}
 
         metadata_url = provider.build_url('files', 'get_metadata')
         aiohttpretty.register_json_uri('POST', metadata_url, data=data,
-                                       body=root_provider_fixtures['folder_metadata'])
+                                       body=provider_fixtures['folder_metadata'])
 
         try:
             wb_path_v1 = await provider.validate_v1_path(folder_path + '/')
@@ -186,8 +191,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload(self, provider, root_provider_fixtures,
-                          error_fixtures, file_stream, settings):
+    async def test_upload(self, provider, provider_fixtures, error_fixtures, file_stream, settings):
         path = await provider.validate_path('/phile')
 
         metadata_url = provider.build_url('files', 'get_metadata')
@@ -197,10 +201,10 @@ class TestCRUD:
         aiohttpretty.register_json_uri('POST', metadata_url, data=data,
                                        status=409, body=error_fixtures['not_found_metadata_data'])
         aiohttpretty.register_json_uri('POST', url, status=200,
-                                       body=root_provider_fixtures['file_metadata'])
+                                       body=provider_fixtures['file_metadata'])
 
         metadata, created = await provider.upload(file_stream, path)
-        expected = DropboxFileMetadata(root_provider_fixtures['file_metadata'], provider.folder)
+        expected = DropboxFileMetadata(provider_fixtures['file_metadata'], provider.folder)
 
         assert created is True
         assert metadata == expected
@@ -235,12 +239,12 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_root(self, provider, root_provider_fixtures):
+    async def test_delete_root(self, provider, provider_fixtures):
         url = provider.build_url('files', 'list_folder')
         path = await provider.validate_path('/')
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=root_provider_fixtures['folder_children'], status=200)
+                                       body=provider_fixtures['folder_children'], status=200)
         path2 = await provider.validate_path('/photos/flower.jpg')
         url = provider.build_url('files', 'delete_v2')
         data = {'path': provider.folder.rstrip('/') + '/' + path2.path.rstrip('/')}
@@ -255,12 +259,12 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata(self, provider, root_provider_fixtures):
+    async def test_metadata(self, provider, provider_fixtures):
         path = await provider.validate_path('/')
         url = provider.build_url('files', 'list_folder')
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=root_provider_fixtures['folder_children'])
+                                       body=provider_fixtures['folder_children'])
         result = await provider.metadata(path)
 
         assert isinstance(result, list)
@@ -286,12 +290,12 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_folder_with_subdirectory_metadata(self, provider, root_provider_fixtures):
+    async def test_folder_with_subdirectory_metadata(self, provider, provider_fixtures):
         path = await provider.validate_path('/')
         url = provider.build_url('files', 'list_folder')
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=root_provider_fixtures['folder_with_subdirectory_metadata'])
+                                       body=provider_fixtures['folder_with_subdirectory_metadata'])
         result = await provider.metadata(path)
 
         assert isinstance(result, list)
@@ -302,14 +306,14 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_folder_with_hasmore_metadata(self, provider, root_provider_fixtures):
+    async def test_folder_with_more_metadata(self, provider, provider_fixtures):
         path = await provider.validate_path('/')
         url = provider.build_url('files', 'list_folder')
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=root_provider_fixtures['folder_with_hasmore_metadata'])
+                                       body=provider_fixtures['folder_with_more_metadata'])
         aiohttpretty.register_json_uri('POST', url + '/continue', data=data,
-                                       body=root_provider_fixtures['folder_with_subdirectory_metadata'])
+                                       body=provider_fixtures['folder_with_subdirectory_metadata'])
 
         result = await provider.metadata(path)
 
@@ -354,12 +358,12 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_root_file(self, provider, root_provider_fixtures):
+    async def test_metadata_root_file(self, provider, provider_fixtures):
         path = WaterButlerPath('/pfile', prepend=provider.folder)
         url = provider.build_url('files', 'get_metadata')
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=root_provider_fixtures['file_metadata'])
+                                       body=provider_fixtures['file_metadata'])
         result = await provider.metadata(path)
 
         assert isinstance(result, metadata.BaseMetadata)
@@ -444,14 +448,14 @@ class TestCreateFolder:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_already_exists_unhandled_conflict(self, provider, root_provider_fixtures):
+    async def test_already_exists_unhandled_conflict(self, provider, provider_fixtures):
         # This test is just to hit the last line of dropbox_conflict_error_handler and not much else
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
         url = provider.build_url('files', 'create_folder_v2')
         data = build_folder_metadata_data(path)
 
         aiohttpretty.register_json_uri('POST', url, data=data, status=409,
-                                       body=root_provider_fixtures['folder_metadata'])
+                                       body=provider_fixtures['folder_metadata'])
 
         with pytest.raises(DropboxUnhandledConflictError) as e:
             await provider.create_folder(path)
@@ -490,13 +494,13 @@ class TestCreateFolder:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_returns_metadata(self, provider, root_provider_fixtures):
+    async def test_returns_metadata(self, provider, provider_fixtures):
         path = WaterButlerPath('/newfolder/', prepend=provider.folder)
         url = provider.build_url('files', 'create_folder_v2')
         data = build_folder_metadata_data(path)
 
         aiohttpretty.register_json_uri('POST', url, data=data, status=200,
-                                       body=root_provider_fixtures['folder_metadata_v2'])
+                                       body=provider_fixtures['folder_metadata_v2'])
 
         resp = await provider.create_folder(path)
 
@@ -509,7 +513,7 @@ class TestIntra:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_file(self, provider, intra_copy_fixtures):
+    async def test_intra_copy_file(self, provider, provider_fixtures):
         src_path = WaterButlerPath('/pfile', prepend=provider.folder)
         dest_path = WaterButlerPath('/pfile_renamed', prepend=provider.folder)
 
@@ -517,18 +521,18 @@ class TestIntra:
         data = {'from_path': src_path.full_path.rstrip('/'),
                 'to_path': dest_path.full_path.rstrip('/')},
         aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=intra_copy_fixtures['intra_move_copy_file_metadata_v2'])
+                                       body=provider_fixtures['intra_move_copy_file_metadata_v2'])
 
         result = await provider.intra_copy(provider, src_path, dest_path)
         expected = (DropboxFileMetadata(
-            intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
+            provider_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
                     True)
 
         assert result == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_replace_file(self, provider, intra_copy_fixtures, error_fixtures):
+    async def test_intra_copy_replace_file(self, provider, provider_fixtures, error_fixtures):
         url = provider.build_url('files', 'delete_v2')
         path = await provider.validate_path('/The past')
         data = {'path': path.full_path}
@@ -552,13 +556,13 @@ class TestIntra:
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
                     'body': json.dumps(
-                        intra_copy_fixtures['intra_move_copy_file_metadata_v2']).encode('utf-8')
+                        provider_fixtures['intra_move_copy_file_metadata_v2']).encode('utf-8')
                 },
             ]})
 
         result = await provider.intra_copy(provider, src_path, dest_path)
         expected = (DropboxFileMetadata(
-            intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
+            provider_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
                     False)
 
         assert expected == result
@@ -566,23 +570,23 @@ class TestIntra:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_intra_copy_file_different_provider(self, provider, other_provider,
-                                                      intra_copy_fixtures):
+                                                      provider_fixtures):
         src_path = WaterButlerPath('/pfile', prepend=provider.folder)
         dest_path = WaterButlerPath('/pfile_renamed', prepend=other_provider.folder)
 
         url = provider.build_url('files', 'copy_reference', 'get')
         data = {'path': src_path.full_path.rstrip('/')},
         aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=intra_copy_fixtures['intra_copy_file_metadata'])
+                                       body=provider_fixtures['intra_copy_file_metadata'])
 
         url1 = provider.build_url('files', 'copy_reference', 'save')
         data1 = {'copy_reference': 'test', 'path': dest_path.full_path.rstrip('/')}
         aiohttpretty.register_json_uri('POST', url1, data=data1,
-                                       body=intra_copy_fixtures['intra_copy_other_provider_file_metadata'])
+                                       body=provider_fixtures['intra_copy_other_provider_file_metadata'])
 
         result = await provider.intra_copy(other_provider, src_path, dest_path)
         expected = (DropboxFileMetadata(
-            intra_copy_fixtures['intra_copy_other_provider_file_metadata']['metadata'],
+            provider_fixtures['intra_copy_other_provider_file_metadata']['metadata'],
             provider.folder
         ), True)
 
@@ -590,7 +594,7 @@ class TestIntra:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_folder(self, provider, root_provider_fixtures, intra_copy_fixtures):
+    async def test_intra_copy_folder(self, provider, provider_fixtures):
         src_path = WaterButlerPath('/pfile/', prepend=provider.folder)
         dest_path = WaterButlerPath('/pfile_renamed/', prepend=provider.folder)
 
@@ -600,27 +604,26 @@ class TestIntra:
         aiohttpretty.register_json_uri('POST',
                                        url,
                                        data=data,
-                                       body=intra_copy_fixtures
-                                       ['intra_move_copy_folder_metadata_v2'])
+                                       body=provider_fixtures['intra_move_copy_folder_metadata_v2'])
 
         url = provider.build_url('files', 'list_folder')
         data = {'path': dest_path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=root_provider_fixtures['folder_children'], status=200)
+                                       body=provider_fixtures['folder_children'], status=200)
 
         result = await provider.intra_copy(provider, src_path, dest_path)
         expected = DropboxFolderMetadata(
-            intra_copy_fixtures['intra_move_copy_folder_metadata_v2']['metadata'], provider.folder)
+            provider_fixtures['intra_move_copy_folder_metadata_v2']['metadata'], provider.folder)
         expected.children = [
             DropboxFileMetadata(item, provider.folder)
-            for item in root_provider_fixtures['folder_children']['entries']
+            for item in provider_fixtures['folder_children']['entries']
         ]
 
         assert expected == result[0]
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_move_file(self, provider, intra_copy_fixtures):
+    async def test_intra_move_file(self, provider, provider_fixtures):
         src_path = WaterButlerPath('/pfile', prepend=provider.folder)
         dest_path = WaterButlerPath('/pfile_renamed', prepend=provider.folder)
 
@@ -628,18 +631,18 @@ class TestIntra:
         data = {'from_path': src_path.full_path.rstrip('/'),
                 'to_path': dest_path.full_path.rstrip('/')}
         aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=intra_copy_fixtures['intra_move_copy_file_metadata_v2'])
+                                       body=provider_fixtures['intra_move_copy_file_metadata_v2'])
 
         result = await provider.intra_move(provider, src_path, dest_path)
         expected = (DropboxFileMetadata(
-            intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
+            provider_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
                     True)
 
         assert result == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_move_replace_file(self, provider, intra_copy_fixtures, error_fixtures):
+    async def test_intra_move_replace_file(self, provider, provider_fixtures, error_fixtures):
         url = provider.build_url('files', 'delete_v2')
         path = await provider.validate_path('/The past')
         data = {'path': path.full_path}
@@ -663,22 +666,20 @@ class TestIntra:
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
                     'body': json.dumps(
-                        intra_copy_fixtures['intra_move_copy_file_metadata_v2']).encode('utf-8')
+                        provider_fixtures['intra_move_copy_file_metadata_v2']).encode('utf-8')
                 },
             ]})
 
         result = await provider.intra_move(provider, src_path, dest_path)
         expected = (DropboxFileMetadata(
-            intra_copy_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
+            provider_fixtures['intra_move_copy_file_metadata_v2']['metadata'], provider.folder),
                     False)
 
         assert expected == result
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_move_replace_folder(self, provider, root_provider_fixtures,
-                                             intra_copy_fixtures,
-                                             error_fixtures):
+    async def test_intra_move_replace_folder(self, provider, provider_fixtures, error_fixtures):
         url = provider.build_url('files', 'delete_v2')
         path = await provider.validate_path('/newfolder/')
         data = {'path': path.full_path}
@@ -687,7 +688,7 @@ class TestIntra:
         url = provider.build_url('files', 'list_folder')
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data,
-                                       body=root_provider_fixtures['folder_children'], status=200)
+                                       body=provider_fixtures['folder_children'], status=200)
 
         src_path = WaterButlerPath('/pfile/', prepend=provider.folder)
         dest_path = WaterButlerPath('/pfile_renamed/', prepend=provider.folder)
@@ -707,16 +708,16 @@ class TestIntra:
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
                     'body': json.dumps(
-                        intra_copy_fixtures['intra_move_copy_folder_metadata_v2']).encode('utf-8')
+                        provider_fixtures['intra_move_copy_folder_metadata_v2']).encode('utf-8')
                 },
             ]})
 
         result = await provider.intra_move(provider, src_path, dest_path)
         expected = DropboxFolderMetadata(
-            intra_copy_fixtures['intra_move_copy_folder_metadata_v2']['metadata'], provider.folder)
+            provider_fixtures['intra_move_copy_folder_metadata_v2']['metadata'], provider.folder)
         expected.children = [
             DropboxFileMetadata(item, provider.folder)
-            for item in root_provider_fixtures['folder_children']['entries']
+            for item in provider_fixtures['folder_children']['entries']
         ]
         assert expected == result[0]
 
