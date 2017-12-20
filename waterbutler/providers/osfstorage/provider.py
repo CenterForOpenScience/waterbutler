@@ -373,6 +373,8 @@ class OSFStorageProvider(provider.BaseProvider):
         if settings.RUN_TASKS and data.pop('archive', True):
             parity.main(
                 local_complete_path,
+                data['version'],
+                self.build_url('hooks', 'metadata') + '/',
                 self.parity_credentials,
                 self.parity_settings,
             )

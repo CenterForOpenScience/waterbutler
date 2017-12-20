@@ -9,11 +9,10 @@ import aiohttpretty
 from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.osfstorage.settings import FILE_PATH_COMPLETE, FILE_PATH_PENDING
+from waterbutler.providers.osfstorage.settings import FILE_PATH_PENDING, FILE_PATH_COMPLETE
 from waterbutler.providers.osfstorage.metadata import (OsfStorageFileMetadata,
                                                        OsfStorageFolderMetadata,
                                                        OsfStorageRevisionMetadata)
-
 from tests import utils
 from tests.providers.osfstorage.fixtures import (auth,
                                                  credentials,
@@ -39,6 +38,7 @@ from tests.providers.osfstorage.fixtures import (auth,
                                                  upload_response,
                                                  upload_path,
                                                  root_path,
+                                                 request_body,
                                                  mock_time)
 
 
@@ -158,6 +158,7 @@ class TestDelete:
 
         url, params = build_signed_url_without_auth(provider, 'DELETE', file_path.identifier)
         aiohttpretty.register_uri('DELETE', url, status_code=200)
+
         file_path._parts[-1]._id = None
 
         with pytest.raises(exceptions.NotFoundError):
@@ -716,8 +717,8 @@ class TestUploads:
         mock_backup = mock.Mock()
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
-        aiohttpretty.register_json_uri('POST', url, status=201, body=request_body)
 
+        aiohttpretty.register_json_uri('POST', url, status=201, body=request_body)
         monkeypatch.setattr(basepath.format('backup.main'), mock_backup)
         monkeypatch.setattr(basepath.format('parity.main'), mock_parity)
         monkeypatch.setattr(basepath.format('settings.RUN_TASKS'), True)
@@ -738,8 +739,10 @@ class TestUploads:
                                                       fetch_metadata=False)
         complete_path = os.path.join(FILE_PATH_COMPLETE, file_stream.writers['sha256'].hexdigest)
         mock_parity.assert_called_once_with(complete_path,
-                                            credentials['parity'],
-                                            settings['parity'])
+                                            'versionpk',
+                                            'https://waterbutler.io/hooks/metadata/',
+                                            {},
+                                            {})
         mock_backup.assert_called_once_with(complete_path,
                                             'versionpk',
                                             'https://waterbutler.io/hooks/metadata/',
