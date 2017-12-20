@@ -2,6 +2,19 @@
 ChangeLog
 *********
 
+0.36.1 (2017-12-11)
+===================
+- Fix: Update OneDrive metadata to report the correct materialized name.
+
+0.36.0 (2017-12-05)
+===================
+- Feature: WaterButler now supports two new read-only providers, GitLab and Microsoft OneDrive!
+Read-only providers support browsing, downloading, downloading-as-zip, getting file revision
+history, and copying from connected repositories.  Thanks to the following devs for their hard
+work!
+ - GitLab: @danielneis, @luismulinari, @rafaeldelucena
+ - OneDrive: @caseyrygt, @alexandr-melnikov-dev-pro, @johnetordoff
+
 0.35.0 (2017-11-13)
 ===================
 - Feature: Allow copying from public resources with the OSF provider.  WaterButler had been

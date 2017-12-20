@@ -114,7 +114,7 @@ class OneDriveRevisionMetadata(metadata.BaseFileRevisionMetadata):
 
     @property
     def version(self):
-        return self.raw['eTag']
+        return self.raw['id']
 
     @property
     def modified(self):
