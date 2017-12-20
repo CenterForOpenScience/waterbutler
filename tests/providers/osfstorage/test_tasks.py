@@ -29,7 +29,7 @@ def settings():
     return {
         'storage': {
             'provider': 'cloud',
-            'container': 'butt',
+            'container': 'foo',
         },
     }
 
@@ -55,29 +55,30 @@ class TestParityTask:
         task = mock.Mock()
         monkeypatch.setattr(parity, '_parity_create_files', task)
 
-        fut = parity.main('The Best', credentials, settings)
+        fut = parity.main('The Best', 0, None, credentials, settings)
         event_loop.run_until_complete(fut)
 
-        task.delay.assert_called_once_with('The Best', credentials, settings)
+        task.delay.assert_called_once_with('The Best', 0, None, credentials, settings)
 
     def test_creates_upload_futures(self, monkeypatch, event_loop, credentials, settings):
-        paths = range(10)
+        paths = ['/foo/bar{}'.format(p) for p in range(10)]
         future = asyncio.Future()
-        future.set_result(None)
+        future.set_result(('faake_name', 'fake_sha256'))
         mock_upload_parity = mock.Mock()
         mock_upload_parity.return_value = future
         mock_create_parity = mock.Mock(return_value=paths)
         monkeypatch.setattr(parity, '_upload_parity', mock_upload_parity)
         monkeypatch.setattr(parity.utils, 'create_parity_files', mock_create_parity)
+        monkeypatch.setattr(parity, '_push_parity_complete', mock.Mock())
 
-        parity._parity_create_files('Triangles', credentials, settings)
+        parity._parity_create_files('Triangles', None, None, credentials, settings)
 
         mock_create_parity.assert_called_once_with(
             os.path.join(osf_settings.FILE_PATH_COMPLETE, 'Triangles'),
             redundancy=osf_settings.PARITY_REDUNDANCY,
         )
-        for num in reversed(range(10)):
-            mock_upload_parity.assert_any_call(num, credentials, settings)
+        for p in reversed(paths):
+            mock_upload_parity.assert_any_call(p, credentials, settings)
 
     @pytest.mark.asyncio
     async def test_uploads(self, monkeypatch, tmpdir, mock_provider):
@@ -95,6 +96,35 @@ class TestParityTask:
         mock_provider.upload.assert_called_once_with(
             stream,
             WaterButlerPath('/' + os.path.split(path)[1])
+        )
+
+    def test_calls_complete(self, monkeypatch, event_loop, mock_provider, credentials, settings):
+        paths = ['/foo/bar{}'.format(p) for p in range(10)]
+        paths.sort(key=lambda datum: datum[0])
+        mock_complete = mock.Mock()
+        monkeypatch.setattr(parity.utils, 'create_parity_files', mock.Mock(return_value=paths))
+        monkeypatch.setattr(parity, '_push_parity_complete', mock_complete)
+
+        with mock.patch('waterbutler.providers.osfstorage.tasks.parity.open', mock.mock_open(), create=False):
+            parity._parity_create_files('Triangles', 0, 'http://callbackurl', credentials, settings)
+
+        complete_call_args = mock_complete.delay.call_args[0]
+        complete_call_args[2]['parity']['files'].sort(key=lambda datum: datum['name'])
+        assert complete_call_args == (
+            0,
+            'http://callbackurl',
+            {
+                'parity': {
+                    'redundancy': osf_settings.PARITY_REDUNDANCY,
+                    'files': sorted([
+                        {
+                            'name': os.path.split(p)[1],
+                            'sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',  # mock_provider = /dev/null
+                        }
+                        for p in paths
+                    ], key=lambda datum: datum['name']),
+                }
+            },
         )
 
     def test_exceptions_get_raised(self, monkeypatch):
@@ -123,7 +153,7 @@ class TestParityTask:
         assert not mock_sp_call.called
 
 
-class TestBackUpTask:
+class TestBackupTask:
 
     def test_main_delays(self, monkeypatch, event_loop):
         task = mock.Mock()
