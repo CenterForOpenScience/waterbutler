@@ -705,6 +705,7 @@ class TestUploads:
                                     file_stream,
                                     credentials,
                                     settings,
+                                    request_body,
                                     mock_time):
         provider, inner_provider = provider_and_mock
         basepath = 'waterbutler.providers.osfstorage.provider.{}'
@@ -715,10 +716,7 @@ class TestUploads:
         mock_backup = mock.Mock()
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
-        body = {'version': 'versionpk',
-         'data': {'version': 42, 'downloads': 30, 'modified': '2017-03-13T15:43:02+00:00',
-                  'path': '/alkjdaslke09', 'checkout': None, 'md5': 'abcd', 'sha256': 'bcde'}}
-        aiohttpretty.register_json_uri('POST', url, status=201, body=body)
+        aiohttpretty.register_json_uri('POST', url, status=201, body=request_body)
 
         monkeypatch.setattr(basepath.format('backup.main'), mock_backup)
         monkeypatch.setattr(basepath.format('parity.main'), mock_parity)

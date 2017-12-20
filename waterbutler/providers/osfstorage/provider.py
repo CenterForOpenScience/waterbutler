@@ -321,10 +321,9 @@ class OSFStorageProvider(provider.BaseProvider):
                 stream.add_writer('file', file_pointer)
                 await provider.upload(stream, remote_pending_path, check_created=False,
                                       fetch_metadata=False, **kwargs)
-        except Exception as ex:
-            print(local_pending_path)
+        except Exception as exc:
             os.remove(local_pending_path)
-            raise ex
+            raise exc
 
         complete_name = stream.writers['sha256'].hexdigest
         local_complete_path = os.path.join(settings.FILE_PATH_COMPLETE, complete_name)

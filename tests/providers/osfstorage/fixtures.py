@@ -51,6 +51,23 @@ def settings():
         'parity': {},
     }
 
+
+@pytest.fixture
+def request_body():
+    return {
+        'version': 'versionpk',
+        'data': {
+            'version': 42,
+            'downloads': 30,
+            'modified': '2017-03-13T15:43:02+00:00',
+            'path': '/alkjdaslke09',
+            'checkout': None,
+            'md5': 'abcd',
+            'sha256': 'bcde'
+        }
+    }
+
+
 @pytest.fixture
 def folder_children_metadata():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
