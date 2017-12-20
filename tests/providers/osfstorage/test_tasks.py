@@ -4,18 +4,20 @@ import asyncio
 from unittest import mock
 
 import pytest
+import aiohttpretty
+from boto.glacier.exceptions import UnexpectedHTTPResponseError
 
 from tests import utils as test_utils
 
-from boto.glacier.exceptions import UnexpectedHTTPResponseError
-
+from waterbutler.core import signing
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.tasks import utils
 from waterbutler.providers.osfstorage.tasks import backup
 from waterbutler.providers.osfstorage.tasks import parity
 from waterbutler.providers.osfstorage.tasks import exceptions
 from waterbutler.providers.osfstorage import settings as osf_settings
+
+EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
 
 
 @pytest.fixture
@@ -105,7 +107,8 @@ class TestParityTask:
         monkeypatch.setattr(parity.utils, 'create_parity_files', mock.Mock(return_value=paths))
         monkeypatch.setattr(parity, '_push_parity_complete', mock_complete)
 
-        with mock.patch('waterbutler.providers.osfstorage.tasks.parity.open', mock.mock_open(), create=False):
+        with mock.patch('waterbutler.providers.osfstorage.tasks.parity.open', mock.mock_open(),
+                        create=False):
             parity._parity_create_files('Triangles', 0, 'http://callbackurl', credentials, settings)
 
         complete_call_args = mock_complete.delay.call_args[0]
@@ -119,7 +122,7 @@ class TestParityTask:
                     'files': sorted([
                         {
                             'name': os.path.split(p)[1],
-                            'sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',  # mock_provider = /dev/null
+                            'sha256': EMPTY_SHA256,
                         }
                         for p in paths
                     ], key=lambda datum: datum['name']),
@@ -151,6 +154,23 @@ class TestParityTask:
         paths = utils.create_parity_files(path)
         assert paths == []
         assert not mock_sp_call.called
+
+    @pytest.mark.aiohttpretty
+    def test_push_complete(self, event_loop):
+        callback_url = 'https://fakeosf.io/guidz/osfstorage/hooks/metadata/'
+        aiohttpretty.register_json_uri('PUT', callback_url, status=200, body={'status': 'success'})
+
+        parity._push_parity_complete(123, callback_url, {'some': 'metadata'})
+
+        assert aiohttpretty.has_call(method='PUT', uri=callback_url)
+
+    @pytest.mark.aiohttpretty
+    def test_push_complete_error(self, event_loop):
+        callback_url = 'https://fakeosf.io/guidz/osfstorage/hooks/metadata/'
+        aiohttpretty.register_json_uri('PUT', callback_url, status=500)
+
+        with pytest.raises(Exception):
+            parity._push_parity_complete(123, callback_url, {'some': 'metadata'})
 
 
 class TestBackupTask:
@@ -241,3 +261,20 @@ class TestBackupTask:
         with pytest.raises(UnexpectedHTTPResponseError):
             backup._push_file_archive('Triangles', None, None, {}, {})
         assert not mock_complete.called
+
+    @pytest.mark.aiohttpretty
+    def test_push_complete(self, event_loop):
+        callback_url = 'https://fakeosf.io/guidz/osfstorage/hooks/metadata/'
+        aiohttpretty.register_json_uri('PUT', callback_url, status=200, body={'status': 'success'})
+
+        backup._push_archive_complete(123, callback_url, {'some': 'metadata'})
+
+        assert aiohttpretty.has_call(method='PUT', uri=callback_url)
+
+    @pytest.mark.aiohttpretty
+    def test_push_complete_error(self, event_loop):
+        callback_url = 'https://fakeosf.io/guidz/osfstorage/hooks/metadata/'
+        aiohttpretty.register_json_uri('PUT', callback_url, status=500)
+
+        with pytest.raises(Exception):
+            backup._push_archive_complete(123, callback_url, {'some': 'metadata'})
