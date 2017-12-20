@@ -135,6 +135,16 @@ class BaseMetadata(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
+    def id(self) -> str:
+        """
+        This property consolidated "path-based" ids and "id-based" ids under a single property. This
+        makes inter provider move/copies easier. This should be identical to the path object
+        identifier as this is used to revalidate paths.
+        """
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
     def name(self) -> str:
         """ The user-facing name of the entity, excluding parent folder(s).
         ::

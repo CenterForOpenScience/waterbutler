@@ -13,6 +13,10 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
         self._path_obj = path_obj
 
     @property
+    def id(self):
+        return self.raw.get('id')
+
+    @property
     def provider(self):
         return 'onedrive'
 

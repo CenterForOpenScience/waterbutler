@@ -20,6 +20,10 @@ class BaseGitHubMetadata(metadata.BaseMetadata):
         self.ref = ref
 
     @property
+    def id(self):
+        return self.path
+
+    @property
     def provider(self):
         return 'github'
 

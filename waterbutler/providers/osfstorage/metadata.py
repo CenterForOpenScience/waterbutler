@@ -17,6 +17,10 @@ class BaseOsfStorageItemMetadata(BaseOsfStorageMetadata):
         self._materialized = materialized
 
     @property
+    def id(self):
+        return self.raw['id']
+
+    @property
     def name(self):
         return self.raw['name']
 

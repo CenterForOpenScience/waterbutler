@@ -25,6 +25,10 @@ class BaseBitbucketMetadata(metadata.BaseMetadata):
         self.repo = repo
 
     @property
+    def id(self):
+        return self.build_path()
+
+    @property
     def provider(self):
         return 'bitbucket'
 

@@ -10,6 +10,10 @@ class BaseDropboxMetadata(metadata.BaseMetadata):
         self._folder = folder
 
     @property
+    def id(self):
+        return self.raw['id']
+
+    @property
     def provider(self):
         return 'dropbox'
 

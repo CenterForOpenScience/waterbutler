@@ -10,6 +10,10 @@ class BaseOwnCloudMetadata(metadata.BaseMetadata):
         self._href = href
 
     @property
+    def id(self):
+        return self._href[len(self._folder) - 1:]
+
+    @property
     def provider(self):
         return 'owncloud'
 

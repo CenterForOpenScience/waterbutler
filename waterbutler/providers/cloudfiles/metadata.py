@@ -6,6 +6,10 @@ from waterbutler.core import metadata
 class BaseCloudFilesMetadata(metadata.BaseMetadata):
 
     @property
+    def id(self):
+        return self.path
+
+    @property
     def provider(self):
         return 'cloudfiles'
 

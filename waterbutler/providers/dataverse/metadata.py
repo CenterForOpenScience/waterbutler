@@ -4,6 +4,10 @@ from waterbutler.core import metadata
 class BaseDataverseMetadata(metadata.BaseMetadata):
 
     @property
+    def id(self):
+        return str(self.raw['id'])
+
+    @property
     def provider(self):
         return 'dataverse'
 

@@ -16,6 +16,10 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
         self._path_obj = path
 
     @property
+    def id(self) -> str:
+        return self.build_path()
+
+    @property
     def provider(self) -> str:
         return 'gitlab'
 

@@ -8,6 +8,10 @@ class BaseBoxMetadata(metadata.BaseMetadata):
         self._path_obj = path_obj
 
     @property
+    def id(self):
+        return self.raw['id']
+
+    @property
     def provider(self):
         return 'box'
 
