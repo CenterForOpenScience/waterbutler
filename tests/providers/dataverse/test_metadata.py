@@ -32,6 +32,7 @@ class TestRevisionMetadata:
 class TestFileMetadata:
 
     def test_file_metadata(self, file_metadata_object):
+        assert file_metadata_object.id == '20'
         assert file_metadata_object.is_file
         assert not file_metadata_object.is_folder
         assert file_metadata_object.provider == 'dataverse'

@@ -27,6 +27,7 @@ class TestBitbucketMetadata:
         except Exception as exc:
             pytest.fail(str(exc))
 
+        assert metadata.id == full_path
         assert metadata.name == name
         assert metadata.path == full_path
         assert metadata.kind == 'file'

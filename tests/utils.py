@@ -26,6 +26,7 @@ class MockCoroutine(mock.Mock):
 
 
 class MockFileMetadata(metadata.BaseFileMetadata):
+    id = '/Foo.name'
     provider = 'MockProvider'
     name = 'Foo.name'
     size = 1337
@@ -41,6 +42,7 @@ class MockFileMetadata(metadata.BaseFileMetadata):
 
 
 class MockFolderMetadata(metadata.BaseFolderMetadata):
+    id = '/Foo.name'
     provider = 'MockProvider'
     name = 'Bar'
     size = 1337

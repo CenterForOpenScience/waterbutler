@@ -16,6 +16,7 @@ class TestBoxMetadata:
         item = root_provider_fixtures['file_metadata']['entries'][0]
         dest_path = WaterButlerPath('/charmander/name.txt', _ids=('0', item['id'], item['id']))
         data = BoxFileMetadata(item, dest_path)
+        assert data.id == '5000948880'
         assert data.name == 'tigers.jpeg'
         assert data.path == '/5000948880'
         assert data.provider == 'box'
