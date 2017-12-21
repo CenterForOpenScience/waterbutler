@@ -271,10 +271,11 @@ class BaseFileMetadata(BaseMetadata):
         Some providers give metadata as an int. Both exist to maintain backwards
         compatibility.
         """
-        if self.size is not None:
-            return int(self.size)
-        else:
-            return None
+        try:
+            size_as_int = int(self.size)
+        except (TypeError, ValueError):
+            size_as_int = None
+        return size_as_int
 
 
 class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
