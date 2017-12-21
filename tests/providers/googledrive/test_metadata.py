@@ -32,6 +32,8 @@ class TestMetadata:
         assert parsed.id == item['id']
         assert path.name == item['title']
         assert parsed.name == item['title']
+        assert parsed.size_as_int == 918668
+        assert type(parsed.size_as_int) == int
         assert parsed.size == item['fileSize']
         assert parsed.modified == item['modifiedDate']
         assert parsed.content_type == item['mimeType']
@@ -55,6 +57,8 @@ class TestMetadata:
         assert parsed.name == item['title']
         assert parsed.name == path.name
         assert parsed.size == item['fileSize']
+        assert parsed.size_as_int == 918668
+        assert type(parsed.size_as_int) == int
         assert parsed.modified == item['modifiedDate']
         assert parsed.content_type == item['mimeType']
         assert parsed.extra == {
