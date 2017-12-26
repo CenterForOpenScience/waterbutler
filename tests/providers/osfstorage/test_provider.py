@@ -14,31 +14,16 @@ from waterbutler.providers.osfstorage.metadata import (OsfStorageFileMetadata,
                                                        OsfStorageFolderMetadata,
                                                        OsfStorageRevisionMetadata)
 from tests import utils
-from tests.providers.osfstorage.fixtures import (auth,
-                                                 credentials,
-                                                 settings,
-                                                 provider,
-                                                 provider_and_mock,
-                                                 provider_and_mock2,
-                                                 file_stream,
-                                                 file_like,
-                                                 file_content,
-                                                 file_lineage,
-                                                 file_metadata,
-                                                 file_metadata_object,
-                                                 file_path,
-                                                 folder_lineage,
-                                                 folder_metadata,
-                                                 folder_children_metadata,
-                                                 folder_path,
-                                                 revisions_metadata,
-                                                 revision_metadata_object,
-                                                 download_response,
-                                                 download_path,
-                                                 upload_response,
-                                                 upload_path,
-                                                 root_path,
-                                                 request_body,
+from tests.providers.osfstorage.fixtures import (auth, credentials, settings, provider,
+                                                 provider_and_mock, provider_and_mock2,
+                                                 file_stream, file_like, file_content,
+                                                 file_lineage, file_metadata,
+                                                 file_metadata_object, file_path,
+                                                 folder_lineage, folder_metadata,
+                                                 folder_children_metadata, folder_path,
+                                                 revisions_metadata, revision_metadata_object,
+                                                 download_response, download_path,
+                                                 upload_response, upload_path, root_path,
                                                  mock_time)
 
 
@@ -700,17 +685,12 @@ class TestUploads:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_and_tasks(self,
-                                    monkeypatch,
-                                    provider_and_mock,
-                                    file_stream,
-                                    credentials,
-                                    settings,
-                                    request_body,
-                                    mock_time):
+    async def test_upload_and_tasks(self, monkeypatch, provider_and_mock, file_stream,
+                                    credentials, settings, upload_response,):
+
         provider, inner_provider = provider_and_mock
         basepath = 'waterbutler.providers.osfstorage.provider.{}'
-        path = WaterButlerPath('/foopath', _ids=('Test', 'OtherTest'))
+        path = WaterButlerPath('/' + upload_response['data']['name'], _ids=('Test', upload_response['data']['id']))
         url = 'https://waterbutler.io/{}/children/'.format(path.parent.identifier)
 
         mock_parity = mock.Mock()
@@ -718,7 +698,7 @@ class TestUploads:
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
 
-        aiohttpretty.register_json_uri('POST', url, status=201, body=request_body)
+        aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
         monkeypatch.setattr(basepath.format('backup.main'), mock_backup)
         monkeypatch.setattr(basepath.format('parity.main'), mock_parity)
         monkeypatch.setattr(basepath.format('settings.RUN_TASKS'), True)
@@ -728,47 +708,52 @@ class TestUploads:
         res, created = await provider.upload(file_stream, path)
 
         assert created is True
-        assert res.name == 'foopath'
-        assert res.extra['version'] == 42
+        assert res.name == '[TEST]'
+        assert res.extra['version'] == 8
         assert res.provider == 'osfstorage'
-        assert res.extra['downloads'] == 30
+        assert res.extra['downloads'] == 0
         assert res.extra['checkout'] is None
 
-        inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'),
-                                                      check_created=False,
-                                                      fetch_metadata=False)
+        inner_provider.upload.assert_called_once_with(
+            file_stream,
+            WaterButlerPath('/uniquepath'),
+            check_created=False,
+            fetch_metadata=False
+        )
         complete_path = os.path.join(FILE_PATH_COMPLETE, file_stream.writers['sha256'].hexdigest)
-        mock_parity.assert_called_once_with(complete_path,
-                                            'versionpk',
-                                            'https://waterbutler.io/hooks/metadata/',
-                                            {},
-                                            {})
-        mock_backup.assert_called_once_with(complete_path,
-                                            'versionpk',
-                                            'https://waterbutler.io/hooks/metadata/',
-                                            credentials['archive'],
-                                            settings['parity'])
-        inner_provider.metadata.assert_called_once_with(
-            WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
+        mock_parity.assert_called_once_with(
+            complete_path,
+            upload_response['version'],
+            'https://waterbutler.io/hooks/metadata/',
+            credentials['archive'],
+            settings['archive']
+        )
+        mock_backup.assert_called_once_with(
+            complete_path,
+            upload_response['version'],
+            'https://waterbutler.io/hooks/metadata/',
+            credentials['parity'],
+            settings['parity']
+        )
+
+        expected_path = WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest)
+        inner_provider.metadata.assert_called_once_with(expected_path)
         inner_provider.move.assert_called_once_with(
-            inner_provider, WaterButlerPath('/uniquepath'),
-            WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest))
+            inner_provider,
+            WaterButlerPath('/uniquepath'),
+            expected_path
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_fails(self,
-                                monkeypatch,
-                                provider_and_mock,
-                                file_stream,
-                                upload_response,
-                                mock_time):
+    async def test_upload_fails(self, monkeypatch, provider_and_mock, file_stream, upload_response):
+
         self.patch_tasks(monkeypatch)
-
-        path = WaterButlerPath('/newfile', _ids=('rootId', None))
-        url = 'https://waterbutler.io/{}/children/'.format(path.parent.identifier)
-        aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
-
         provider, inner_provider = provider_and_mock
+        path = WaterButlerPath('/' + upload_response['data']['name'], _ids=('Test', upload_response['data']['id']))
+        url = 'https://waterbutler.io/{}/children/'.format(path.parent.identifier)
+
+        aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
         inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())
         inner_provider.upload.side_effect = Exception()
 
@@ -776,5 +761,9 @@ class TestUploads:
             await provider.upload(file_stream, path)
 
         assert not os.path.isfile(FILE_PATH_PENDING + '/patched_path')
-        inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/patched_path'),
-                                                      check_created=False, fetch_metadata=False)
+        inner_provider.upload.assert_called_once_with(
+            file_stream,
+            WaterButlerPath('/patched_path'),
+            check_created=False,
+            fetch_metadata=False
+        )
