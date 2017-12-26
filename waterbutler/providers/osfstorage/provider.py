@@ -19,7 +19,6 @@ from waterbutler.providers.osfstorage.metadata import OsfStorageFileMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageFolderMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageRevisionMetadata
 
-
 QUERY_METHODS = ('GET', 'DELETE')
 
 
@@ -322,8 +321,12 @@ class OSFStorageProvider(provider.BaseProvider):
                 await provider.upload(stream, remote_pending_path, check_created=False,
                                       fetch_metadata=False, **kwargs)
         except Exception as exc:
-            os.remove(local_pending_path)
-            raise exc
+            try:
+                os.remove(local_pending_path)
+            except OSError as os_exc:
+                raise exceptions.UploadFailedError('Upload failed and attempts to clean pending '
+                                                   'files failed:\n{}\n{}'.format(exc, os_exc))
+            raise exceptions.UploadError('Upload failed and pending files cleaned:\n{}'.format(exc))
 
         complete_name = stream.writers['sha256'].hexdigest
         local_complete_path = os.path.join(settings.FILE_PATH_COMPLETE, complete_name)

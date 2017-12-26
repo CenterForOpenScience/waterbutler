@@ -15,30 +15,16 @@ from waterbutler.providers.osfstorage.metadata import (OsfStorageFileMetadata,
                                                        OsfStorageRevisionMetadata)
 
 from tests import utils
-from tests.providers.osfstorage.fixtures import (auth,
-                                                 credentials,
-                                                 settings,
-                                                 provider,
-                                                 provider_and_mock,
-                                                 provider_and_mock2,
-                                                 file_stream,
-                                                 file_like,
-                                                 file_content,
-                                                 file_lineage,
-                                                 file_metadata,
-                                                 file_metadata_object,
-                                                 file_path,
-                                                 folder_lineage,
-                                                 folder_metadata,
-                                                 folder_children_metadata,
-                                                 folder_path,
-                                                 revisions_metadata,
-                                                 revision_metadata_object,
-                                                 download_response,
-                                                 download_path,
-                                                 upload_response,
-                                                 upload_path,
-                                                 root_path,
+from tests.providers.osfstorage.fixtures import (auth, credentials, settings, provider,
+                                                 provider_and_mock, provider_and_mock2,
+                                                 file_stream, file_like, file_content,
+                                                 file_lineage, file_metadata,
+                                                 file_metadata_object, file_path,
+                                                 folder_lineage, folder_metadata,
+                                                 folder_children_metadata, folder_path,
+                                                 revisions_metadata, revision_metadata_object,
+                                                 download_response, download_path,
+                                                 upload_response, upload_path, root_path,
                                                  mock_time)
 
 
@@ -745,19 +731,25 @@ class TestUploads:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_fails(self, monkeypatch, provider_and_mock, file_stream, upload_response, mock_time):
+    async def test_upload_fails(self, monkeypatch, provider_and_mock, file_stream, upload_response,
+                                mock_time):
         self.patch_tasks(monkeypatch)
-
-        path = WaterButlerPath('/newfile', _ids=('rootId', None))
-        url = 'https://waterbutler.io/{}/children/'.format(path.parent.identifier)
-        aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
-
         provider, inner_provider = provider_and_mock
+        path = WaterButlerPath('/{}'.format(upload_response['data']['name']),
+                               _ids=('Test', upload_response['data']['id']))
+        url = 'https://waterbutler.io/{}/children/'.format(path.parent.identifier)
+
+        aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
         inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())
         inner_provider.upload.side_effect = Exception()
 
         with pytest.raises(Exception):
             await provider.upload(file_stream, path)
 
-        assert not os.path.isfile(FILE_PATH_PENDING + '/uniquepath')
-        inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'), check_created=False, fetch_metadata=False)
+        assert not os.path.isfile(FILE_PATH_PENDING + '/patched_path')
+        inner_provider.upload.assert_called_once_with(
+            file_stream,
+            WaterButlerPath('/patched_path'),
+            check_created=False,
+            fetch_metadata=False
+        )
