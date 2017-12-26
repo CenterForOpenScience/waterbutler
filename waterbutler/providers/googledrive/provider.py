@@ -135,6 +135,9 @@ class GoogleDriveProvider(provider.BaseProvider):
     def default_headers(self) -> dict:
         return {'authorization': 'Bearer {}'.format(self.token)}
 
+    def will_self_overwrite(self, dest_provider, src_path, dest_path):
+        return self.NAME == dest_provider.NAME and src_path.identifier == dest_path.identifier
+
     def can_intra_move(self,
                        other: provider.BaseProvider,
                        path=None) -> bool:
@@ -151,6 +154,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) \
                          -> typing.Tuple[BaseGoogleDriveMetadata, bool]:
+
         self.metrics.add('intra_move.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -187,6 +191,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) \
                          -> typing.Tuple[GoogleDriveFileMetadata, bool]:
+
         self.metrics.add('intra_copy.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)

@@ -151,6 +151,7 @@ class DropboxProvider(provider.BaseProvider):
                          dest_path: WaterButlerPath) \
             -> typing.Tuple[typing.Union[DropboxFileMetadata, DropboxFolderMetadata], bool]:
         dest_folder = dest_provider.folder
+
         try:
             if self == dest_provider:
                 data = await self.dropbox_request(
@@ -192,6 +193,7 @@ class DropboxProvider(provider.BaseProvider):
                          dest_provider: 'DropboxProvider',
                          src_path: WaterButlerPath,
                          dest_path: WaterButlerPath) -> typing.Tuple[BaseDropboxMetadata, bool]:
+
         if dest_path.full_path.lower() == src_path.full_path.lower():
             # Dropbox does not support changing the casing in a file name
             raise exceptions.InvalidPathError(
@@ -369,6 +371,9 @@ class DropboxProvider(provider.BaseProvider):
             throws=exceptions.CreateFolderError,
         )
         return DropboxFolderMetadata(data, self.folder)
+
+    def will_self_overwrite(self, dest_provider, src_path, dest_path):
+        return self.NAME == dest_provider.NAME and dest_path.full_path == src_path.full_path
 
     def can_intra_copy(self, dest_provider: provider.BaseProvider,
                        path: WaterButlerPath=None) -> bool:

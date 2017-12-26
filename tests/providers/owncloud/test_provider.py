@@ -36,6 +36,7 @@ from tests.providers.owncloud.fixtures import (
 def file_like(file_content):
     return io.BytesIO(file_content)
 
+
 @pytest.fixture
 def file_stream(file_like):
     return streams.FileStreamReader(file_like)
@@ -359,6 +360,18 @@ class TestRevisions:
 
 
 class TestOperations:
+
+    def test_will_self_overwrite(self, provider):
+        src_path = WaterButlerPath('/50 shades of nope.txt',
+                                    _ids=(provider.folder, '12231'))
+        dest_path = WaterButlerPath('/50 shades of nope2223.txt',
+                                    _ids=(provider.folder, '2342sdfsd'))
+
+        result = provider.will_self_overwrite(provider, src_path, dest_path)
+        assert result is False
+
+        result = provider.will_self_overwrite(provider, src_path, src_path)
+        assert result is True
 
     def test_can_intra_copy(self, provider, provider_different_credentials):
         assert provider.can_intra_copy(provider)

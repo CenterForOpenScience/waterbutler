@@ -4,6 +4,7 @@ from tests import utils
 from unittest import mock
 from waterbutler.core import metadata
 from waterbutler.core import exceptions
+from waterbutler.core.path import WaterButlerPath
 
 
 @pytest.fixture
@@ -36,6 +37,36 @@ class TestBaseProvider:
 
     def test_can_intra_move(self, provider2):
         assert provider2.can_intra_move(provider2) is True
+
+    @pytest.mark.asyncio
+    async def test_will_orphan_dest_is_file(self, provider1):
+        src_path =  WaterButlerPath('/folder1/folder1/',
+                                    _ids=['root', 'folder', 'Folder'],
+                                    folder=True)
+        dest_path = WaterButlerPath('/folder1/',
+                                    _ids=['root','folder'],
+                                    folder=False)
+        assert provider1.replace_will_orphan(src_path, dest_path) == False
+
+    @pytest.mark.asyncio
+    async def test_will_orphan_dest_different_names(self, provider1):
+        src_path =  WaterButlerPath('/folder1/folder1/',
+                                    _ids=['root', 'folder', 'Folder'],
+                                    folder=True)
+        dest_path = WaterButlerPath('/folder2/',
+                                    _ids=['root','folder'],
+                                    folder=True)
+        assert provider1.replace_will_orphan(src_path, dest_path) == False
+
+    @pytest.mark.asyncio
+    async def test_will_orphan_dest_different_branch(self, provider1):
+        src_path =  WaterButlerPath('/other_folder/folder1/',
+                                    _ids=['root', 'other_folder', 'Folder'],
+                                    folder=True)
+        dest_path = WaterButlerPath('/folder1/',
+                                    _ids=['root','folder'],
+                                    folder=True)
+        assert provider1.replace_will_orphan(src_path, dest_path) == False
 
     @pytest.mark.asyncio
     async def test_exists(self, provider1):
@@ -172,7 +203,7 @@ class TestHandleNaming:
         dest_path = await provider1.validate_path('/test/path/')
         provider1.exists = utils.MockCoroutine(return_value=False)
 
-        handled = await provider1.handle_naming(src_path, dest_path)
+        handled = await provider1.handle_conflicts(provider1, src_path, dest_path)
 
         assert handled == src_path.child('path', folder=True)
         assert handled.is_dir is True
@@ -185,7 +216,7 @@ class TestHandleNaming:
         dest_path = await provider1.validate_path('/test/name2')
         provider1.exists = utils.MockCoroutine(return_value=False)
 
-        handled = await provider1.handle_naming(src_path, dest_path)
+        handled = await provider1.handle_conflicts(provider1, src_path, dest_path)
 
         assert handled.name == 'name2'
         assert handled.is_file is True
@@ -196,23 +227,10 @@ class TestHandleNaming:
         src_path = await provider1.validate_path('/test/name1')
         provider1.exists = utils.MockCoroutine(return_value=False)
 
-        handled = await provider1.handle_naming(src_path, dest_path, rename='name2')
+        handled = await provider1.handle_conflicts(provider1, src_path, dest_path, rename='name2')
 
         assert handled.name == 'name2'
         assert handled.is_file is True
-
-    @pytest.mark.asyncio
-    async def test_no_problem_file(self, provider1):
-        src_path = await provider1.validate_path('/test/path')
-        dest_path = await provider1.validate_path('/test/path')
-        provider1.exists = utils.MockCoroutine(return_value=False)
-
-        handled = await provider1.handle_naming(src_path, dest_path)
-
-        assert handled == dest_path  # == not is
-        assert handled.is_file is True
-        assert len(handled.parts) == 3  # Includes root
-        assert handled.name == 'path'
 
 
 class TestCopy:
@@ -222,22 +240,23 @@ class TestCopy:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
-        await provider1.copy(provider1, src_path, dest_path, handle_naming=False)
+        await provider1.copy(provider1, src_path, dest_path, handle_conflicts=False)
 
-        assert provider1.handle_naming.called is False
+        assert provider1.handle_conflicts.called is False
 
     @pytest.mark.asyncio
     async def test_handles_naming(self, provider1):
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.copy(provider1, src_path, dest_path)
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename=None,
@@ -249,11 +268,12 @@ class TestCopy:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.copy(provider1, src_path, dest_path, conflict='keep')
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename=None,
@@ -265,16 +285,26 @@ class TestCopy:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.copy(provider1, src_path, dest_path, rename='Baz')
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename='Baz',
             conflict='replace',
         )
+
+    @pytest.mark.asyncio
+    async def test_copy_will_self_overwrite(self, provider1):
+        src_path = await provider1.validate_path('/source/path')
+        dest_path = await provider1.validate_path('/destination/')
+        provider1.will_self_overwrite = utils.MockCoroutine()
+
+        with pytest.raises(exceptions.OverwriteSelfError):
+            await provider1.copy(provider1, src_path, dest_path)
 
     @pytest.mark.asyncio
     async def test_checks_can_intra_copy(self, provider1):
@@ -299,6 +329,19 @@ class TestCopy:
         assert data == 'Someratheruniquevalue'
         provider1.can_intra_copy.assert_called_once_with(provider1, src_path)
         provider1.intra_copy.assert_called_once_with(provider1, src_path, dest_path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_copy_folder_orphan(self, provider1):
+        src_path = await provider1.validate_path('/folder1/folder1/')
+        dest_path = await provider1.validate_path('/')
+
+        provider1.can_intra_copy = mock.Mock(return_value=True)
+
+        with pytest.raises(exceptions.OrphanSelfError) as exc:
+            await provider1.copy(provider1, src_path, dest_path)
+        assert exc.value.code == 400
+        assert exc.typename == 'OrphanSelfError'
 
     @pytest.mark.asyncio
     async def test_calls_folder_op_on_dir(self, provider1):
@@ -339,22 +382,23 @@ class TestMove:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
-        await provider1.move(provider1, src_path, dest_path, handle_naming=False)
+        await provider1.move(provider1, src_path, dest_path, handle_conflicts=False)
 
-        assert provider1.handle_naming.called is False
+        assert provider1.handle_conflicts.called is False
 
     @pytest.mark.asyncio
     async def test_handles_naming(self, provider1):
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.move(provider1, src_path, dest_path)
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename=None,
@@ -366,11 +410,12 @@ class TestMove:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.move(provider1, src_path, dest_path, conflict='keep')
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename=None,
@@ -382,16 +427,26 @@ class TestMove:
         src_path = await provider1.validate_path('/source/path')
         dest_path = await provider1.validate_path('/destination/path')
 
-        provider1.handle_naming = utils.MockCoroutine()
+        provider1.handle_conflicts = utils.MockCoroutine()
 
         await provider1.move(provider1, src_path, dest_path, rename='Baz')
 
-        provider1.handle_naming.assert_called_once_with(
+        provider1.handle_conflicts.assert_called_once_with(
+            provider1,
             src_path,
             dest_path,
             rename='Baz',
             conflict='replace',
         )
+
+    @pytest.mark.asyncio
+    async def test_move_will_self_overwrite(self, provider1):
+        src_path = await provider1.validate_path('/source/path')
+        dest_path = await provider1.validate_path('/destination/')
+        provider1.will_self_overwrite = utils.MockCoroutine()
+
+        with pytest.raises(exceptions.OverwriteSelfError):
+            await provider1.move(provider1, src_path, dest_path)
 
     @pytest.mark.asyncio
     async def test_checks_can_intra_move(self, provider1):
@@ -416,6 +471,19 @@ class TestMove:
         assert data == 'Someratheruniquevalue'
         provider1.can_intra_move.assert_called_once_with(provider1, src_path)
         provider1.intra_move.assert_called_once_with(provider1, src_path, dest_path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_move_folder_orphan(self, provider1):
+        src_path = await provider1.validate_path('/folder1/folder1/')
+        dest_path = await provider1.validate_path('/')
+
+        provider1.can_intra_move = mock.Mock(return_value=True)
+
+        with pytest.raises(exceptions.OrphanSelfError) as exc:
+            await provider1.move(provider1, src_path, dest_path)
+        assert exc.value.code == 400
+        assert exc.typename == 'OrphanSelfError'
 
     @pytest.mark.asyncio
     async def test_calls_folder_op_on_dir_and_delete(self, provider1):
@@ -453,7 +521,7 @@ class TestMove:
             provider1,
             src_path,
             dest_path,
-            handle_naming=False
+            handle_conflicts=False
         )
 
     @pytest.mark.asyncio
@@ -473,7 +541,7 @@ class TestMove:
             provider1,
             src_path,
             dest_path,
-            handle_naming=False
+            handle_conflicts=False
         )
 
     def test_build_range_header(self, provider1):
