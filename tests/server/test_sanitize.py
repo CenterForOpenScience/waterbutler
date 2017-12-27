@@ -7,7 +7,7 @@ from waterbutler.server.sanitize import WBSanitizer
 
 @pytest.fixture
 def sanitizer():
-    return WBSanitizer(mock.Mock())
+    return WBSanitizer()
 
 
 class TestWBSanitizer:
