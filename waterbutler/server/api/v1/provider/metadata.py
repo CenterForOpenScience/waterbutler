@@ -59,6 +59,12 @@ class MetadataMixin:
         return (await self.download_file())
 
     async def download_file(self):
+        """
+        This code is adapted from Tornado's StaticFileHandler which can be found at:
+        https://github.com/tornadoweb/tornado/blob/master/tornado/web.py#L2401-L2444
+        :return: None
+        """
+
         if 'Range' not in self.request.headers:
             request_range = None
         else:
