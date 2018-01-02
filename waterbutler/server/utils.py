@@ -77,9 +77,10 @@ class UtilMixin:
     def set_status(self, code, reason=None):
         return super().set_status(code, reason or HTTP_REASONS.get(code))
 
-    async def write_stream(self, stream, request_range):
+    async def write_stream(self, stream, request_range=(0, None)):
 
-        # If the browser does not supply a request range our start is 0 and our end is a NoneType
+        # If the browser does not supply a request range our start is 0 and our end is a NoneType.
+        # This is just to be consitent with other Tornado code.
         start, end = request_range
 
         while True:
