@@ -1,15 +1,11 @@
 import os
 import json
 import asyncio
-from http import HTTPStatus
 
-import aiohttp
 from boto.glacier.layer2 import Layer2
 from boto.glacier.exceptions import UnexpectedHTTPResponseError
 
-from waterbutler.core import signing
 from waterbutler.core.utils import async_retry
-from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.tasks import utils
 
 
@@ -46,26 +42,10 @@ def _push_file_archive(self, local_path, version_id, callback_url,
 
 @utils.task
 def _push_archive_complete(self, version_id, callback_url, metadata):
-    signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
     with utils.RetryHook(self):
-        data = signing.sign_data(
-            signer,
-            {
-                'version': version_id,
-                'metadata': metadata,
-            },
-        )
-        future = aiohttp.request(
-            'PUT',
-            callback_url,
-            data=json.dumps(data),
-            headers={'Content-Type': 'application/json'},
-        )
+        future = utils.push_metadata(version_id, callback_url, metadata)
         loop = asyncio.get_event_loop()
-        response = loop.run_until_complete(future)
-
-        if response.status != HTTPStatus.OK:
-            raise Exception('Failed to report archive completion, got status code {}'.format(response.status))
+        loop.run_until_complete(future)
 
 
 @async_retry(retries=5, backoff=5)

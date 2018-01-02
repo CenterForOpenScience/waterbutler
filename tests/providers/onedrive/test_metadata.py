@@ -70,8 +70,8 @@ class TestOneDriveMetadata:
 
         assert metadata.serialized() == {
             'extra': {},
-            'version': 'aRjRENTBFNDAwREZFN0Q0RSEyOTEuMg',
-            'modified': '2017-08-17T17:49:50.38Z',
-            'modified_utc': '2017-08-17T17:49:50+00:00',
+            'version': 'current',
+            'modified': '2017-11-30T15:42:33.447Z',
+            'modified_utc': '2017-11-30T15:42:33+00:00',
             'versionIdentifier': 'revision',
         }
