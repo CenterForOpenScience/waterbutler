@@ -8,6 +8,7 @@ def parse_requirements(requirements):
 
 requirements = parse_requirements('requirements.txt')
 
+# Taken from option 3 of https://packaging.python.org/guides/single-sourcing-package-version/
 version = {}
 with open('waterbutler/version.py') as fp:
     exec(fp.read(), version)

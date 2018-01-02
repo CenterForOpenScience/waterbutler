@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.abspath(".."))
 master_doc = "index"
 
 project = "WaterButler"
-copyright = "2017, Center For Open Science"
+copyright = "2018, Center For Open Science"
 
 
 version = release = __version__
