@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.36.2 (2017-12-20)
+===================
+- Feature: Log osfstorage parity file metadata back to the OSF after upload.
+
 0.36.1 (2017-12-11)
 ===================
 - Fix: Update OneDrive metadata to report the correct materialized name.
@@ -53,7 +57,7 @@ This bypasses the 10 second wait for shutdown when running it in Docker.
 
 0.33.1 (2017-09-05)
 ===================
-- Reject requests for Box IDs if the ID is valid, but the file or folder is outside of the
+- Fix: Reject requests for Box IDs if the ID is valid, but the file or folder is outside of the
 project root.  (thanks, @AddisonSchiller!)
 
 0.33.0 (2017-08-09)
