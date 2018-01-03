@@ -2,16 +2,12 @@ from unittest import mock
 
 import pytest
 
-from tests.core.streams.fixtures import (
-    mock_content,
-    mock_content_eof,
-    MockResponse,
-    MockResponseNoContentLength,
-    MockResponseNoContent,
-    mock_response_stream_reader,
-    mock_response_stream_reader_no_size,
-    mock_response_stream_reader_no_content
-)
+from tests.core.streams.fixtures import (mock_content_eof, MockResponseNoContent,
+                                         mock_content, MockResponseNoContentLength,
+                                         mock_response_stream_reader, MockResponse,
+                                         mock_response_stream_reader_no_size,
+                                         mock_response_stream_reader_no_content)
+
 
 class TestResponseStreamReader:
 
@@ -37,7 +33,6 @@ class TestResponseStreamReader:
     async def test_response_stream_reader_eof(self, mock_response_stream_reader_no_content):
 
         mock_response_stream_reader_no_content.feed_eof = mock.Mock()
-
         assert (await mock_response_stream_reader_no_content.read()) is None
         mock_response_stream_reader_no_content.feed_eof.assert_called_once_with()
         MockResponseNoContent.release.assert_called_once_with()
