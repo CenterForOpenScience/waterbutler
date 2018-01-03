@@ -150,12 +150,10 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if any((method in ('HEAD', 'OPTIONS'), status == 202, status > 302, status < 200)):
             return
 
-        if method == 'GET' and 'meta' in self.request.query_arguments:
-            return
-
         # Done here just because method is defined
         action = {
-            'GET': lambda: 'download_file' if self.path.is_file else 'download_zip',
+            'GET': lambda: 'metadata' if 'meta' in self.request.query_arguments else (
+                'download_file' if self.path.is_file else 'download_zip'),
             'PUT': lambda: ('create' if self.target_path.is_file else 'create_folder') if status == 201 else 'update',
             'POST': lambda: 'move' if self.json['action'] == 'rename' else self.json['action'],
             'DELETE': lambda: 'delete'
@@ -180,7 +178,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             )
         elif action in ('create', 'create_folder', 'update'):
             source = LogPayload(self.resource, self.provider, metadata=self.metadata)
-        elif action in ('delete', 'download_file', 'download_zip'):
+        elif action in ('delete', 'download_file', 'download_zip', 'metadata'):
             source = LogPayload(self.resource, self.provider, path=self.path)
         else:
             return
