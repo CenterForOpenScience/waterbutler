@@ -16,11 +16,22 @@ def file_metadata():
         'modified': 'Wed, 20 Sep 2017 15:16:02 +0000'
     }
 
+@pytest.fixture
+def root_metadata():
+    return {
+        'path': os.path.join('/')
+    }
 
 @pytest.fixture
 def folder_metadata():
     return {
         'path': os.path.join('/', 'folder1/')
+    }
+
+@pytest.fixture
+def subfolder_metadata():
+    return {
+        'path': os.path.join('/', 'folder1/', 'folder2/')
     }
 
 
@@ -97,10 +108,64 @@ class TestMetadata:
                 'filesystem/code/website/osfstoragecache/77094244-aa24-48da-9437-d8ce6f7a94e9')
         }
 
+    def test_root_metadata(self, root_metadata):
+        data = FileSystemFolderMetadata(root_metadata, '')
+        assert data.path == '/'
+        assert data.name == ''
+        assert data.provider == 'filesystem'
+        assert data.build_path('') == '/'
+        assert data.materialized_path == '/'
+        assert data.is_folder is True
+        assert data.children is None
+        assert data.kind == 'folder'
+        assert data.etag is None
+        assert data.serialized() == {
+            'extra': {},
+            'kind': 'folder',
+            'name': '',
+            'path': '/',
+            'provider': 'filesystem',
+            'materialized': '/',
+            'etag': '6a2b72b88f67692ff6f4cc3a52798cdc54a6e7c7e6dcbf8463fcb5105b6b949e'
+        }
+
+        assert data.json_api_serialized('7ycmyr') == {
+            'id': 'filesystem/',
+            'type': 'files',
+            'attributes': {
+                'extra': {},
+                'kind': 'folder',
+                'name': '',
+                'path': '/',
+                'provider': 'filesystem',
+                'materialized': '/',
+                'etag': '6a2b72b88f67692ff6f4cc3a52798cdc54a6e7c7e6dcbf8463fcb5105b6b949e',
+                'resource': '7ycmyr',
+                'size': None
+            },
+            'links': {
+                'move': 'http://localhost:7777/v1/resources/7ycmyr/providers/filesystem/',
+                'upload': ('http://localhost:7777/v1/resources/'
+                    '7ycmyr/providers/filesystem/?kind=file'),
+                'delete': 'http://localhost:7777/v1/resources/7ycmyr/providers/filesystem/',
+                'new_folder': ('http://localhost:7777/v1/resources/'
+                    '7ycmyr/providers/filesystem/?kind=folder')
+            }
+        }
+
+        assert data._json_api_links('cn42d') == {
+            'move': 'http://localhost:7777/v1/resources/cn42d/providers/filesystem/',
+            'upload': ('http://localhost:7777/v1/resources/'
+                'cn42d/providers/filesystem/?kind=file'),
+            'delete': 'http://localhost:7777/v1/resources/cn42d/providers/filesystem/',
+            'new_folder': ('http://localhost:7777/v1/resources/'
+                'cn42d/providers/filesystem/?kind=folder')
+        }
+
     def test_folder_metadata(self, folder_metadata):
         data = FileSystemFolderMetadata(folder_metadata, '/')
         assert data.path == '/folder1/'
-        assert data.name == ''
+        assert data.name == 'folder1'
         assert data.provider == 'filesystem'
         assert data.build_path('') == '/'
         assert data.materialized_path == '/folder1/'
@@ -111,7 +176,7 @@ class TestMetadata:
         assert data.serialized() == {
             'extra': {},
             'kind': 'folder',
-            'name': '',
+            'name': 'folder1',
             'path': '/folder1/',
             'provider': 'filesystem',
             'materialized': '/folder1/',
@@ -124,7 +189,7 @@ class TestMetadata:
             'attributes': {
                 'extra': {},
                 'kind': 'folder',
-                'name': '',
+                'name': 'folder1',
                 'path': '/folder1/',
                 'provider': 'filesystem',
                 'materialized': '/folder1/',
@@ -149,4 +214,62 @@ class TestMetadata:
             'delete': 'http://localhost:7777/v1/resources/cn42d/providers/filesystem/folder1/',
             'new_folder': ('http://localhost:7777/v1/resources/'
                 'cn42d/providers/filesystem/folder1/?kind=folder')
+        }
+
+    def test_subfolder_metadata(self, subfolder_metadata):
+        data = FileSystemFolderMetadata(subfolder_metadata, '/')
+        assert data.path == '/folder1/folder2/'
+        assert data.name == 'folder2'
+        assert data.provider == 'filesystem'
+        assert data.build_path('') == '/'
+        assert data.materialized_path == '/folder1/folder2/'
+        assert data.is_folder is True
+        assert data.children is None
+        assert data.kind == 'folder'
+        assert data.etag is None
+        assert data.serialized() == {
+            'extra': {},
+            'kind': 'folder',
+            'name': 'folder2',
+            'path': '/folder1/folder2/',
+            'provider': 'filesystem',
+            'materialized': '/folder1/folder2/',
+            'etag': '6a2b72b88f67692ff6f4cc3a52798cdc54a6e7c7e6dcbf8463fcb5105b6b949e'
+        }
+
+        assert data.json_api_serialized('7ycmyr') == {
+            'id': 'filesystem/folder1/folder2/',
+            'type': 'files',
+            'attributes': {
+                'extra': {},
+                'kind': 'folder',
+                'name': 'folder2',
+                'path': '/folder1/folder2/',
+                'provider': 'filesystem',
+                'materialized': '/folder1/folder2/',
+                'etag': '6a2b72b88f67692ff6f4cc3a52798cdc54a6e7c7e6dcbf8463fcb5105b6b949e',
+                'resource': '7ycmyr',
+                'size': None
+            },
+            'links': {
+                'move': 'http://localhost:7777/v1/resources/7ycmyr/providers/filesystem/'
+                        'folder1/folder2/',
+                'upload': ('http://localhost:7777/v1/resources/'
+                    '7ycmyr/providers/filesystem/folder1/folder2/?kind=file'),
+                'delete': 'http://localhost:7777/v1/resources/7ycmyr/providers/filesystem/'
+                          'folder1/folder2/',
+                'new_folder': ('http://localhost:7777/v1/resources/'
+                    '7ycmyr/providers/filesystem/folder1/folder2/?kind=folder')
+            }
+        }
+
+        assert data._json_api_links('cn42d') == {
+            'move': 'http://localhost:7777/v1/resources/cn42d/providers/filesystem'
+                    '/folder1/folder2/',
+            'upload': ('http://localhost:7777/v1/resources/'
+                'cn42d/providers/filesystem/folder1/folder2/?kind=file'),
+            'delete': 'http://localhost:7777/v1/resources/cn42d/providers/filesystem'
+                      '/folder1/folder2/',
+            'new_folder': ('http://localhost:7777/v1/resources/'
+                'cn42d/providers/filesystem/folder1/folder2/?kind=folder')
         }
