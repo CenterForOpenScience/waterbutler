@@ -377,7 +377,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         metadata = await self.metadata(path, raw=True)
         return [GoogleDriveRevision({
             'modifiedDate': metadata['modifiedDate'],  # type: ignore
-            'id': metadata['etag'] + settings.DRIVE_IGNORE_VERSION,
+            'id': metadata['etag'] + settings.DRIVE_IGNORE_VERSION,  # type: ignore
         })]
 
     async def create_folder(self,
