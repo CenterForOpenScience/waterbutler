@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 import pytest
 
 from tests.utils import MockCoroutine
@@ -15,22 +17,21 @@ def mock_content_eof():
 
 
 class MockResponse:
-    status = 200
-    headers = {'Content-Length' : 100,
-              'Content-Range': '0-100'}
+    status = HTTPStatus.OK
+    headers = {'Content-Length': 100, 'Content-Range': '0-100'}
     content = mock_content()
     release = MockCoroutine()
 
 
 class MockResponseNoContentLength:
-    status = 200
+    status = HTTPStatus.OK
     headers = {'Content-Range': '0-0'}
     content = mock_content()
     release = MockCoroutine()
 
 
 class MockResponseNoContent:
-    status = 200
+    status = HTTPStatus.OK
     headers = {'Content-Range': '0-0'}
     content = mock_content_eof()
     release = MockCoroutine()
