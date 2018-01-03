@@ -1,13 +1,17 @@
 import os
 import glob
+import json
 import errno
 import logging
 import functools
 import contextlib
 import subprocess
+from http import HTTPStatus
 
+import aiohttp
 from celery.utils.log import get_task_logger
 
+from waterbutler.core import signing
 from waterbutler.tasks.app import app, client
 from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.tasks import exceptions
@@ -64,6 +68,27 @@ def create_parity_files(file_path, redundancy=5):
             for fpath in
             glob.glob(os.path.join(path, '{0}*.par2'.format(name)))
         ]
+
+
+async def push_metadata(version_id, callback_url, metadata):
+    signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
+    data = signing.sign_data(
+        signer,
+        {
+            'version': version_id,
+            'metadata': metadata,
+        },
+    )
+    response = await aiohttp.request(
+        'PUT',
+        callback_url,
+        data=json.dumps(data),
+        headers={'Content-Type': 'application/json'},
+    )
+
+    if response.status != HTTPStatus.OK:
+        raise Exception('Failed to report archive completion, got status '
+                        'code {}'.format(response.status))
 
 
 def sanitize_request(request):
