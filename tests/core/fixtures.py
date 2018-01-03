@@ -1,19 +1,15 @@
 import time
+from http import HTTPStatus
 from unittest import mock
 
 import pytest
 
-from tests.utils import MockCoroutine
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.log_payload import LogPayload
-from tests.providers.osfstorage.fixtures import (
-    file_metadata_object,
-    file_path,
-    file_metadata,
-    file_lineage,
-    provider,
-    auth
-)
+
+from tests.utils import MockCoroutine
+from tests.providers.osfstorage.fixtures import (auth, file_path, file_lineage, provider,
+                                                 file_metadata_object, file_metadata)
 
 
 @pytest.fixture
@@ -195,16 +191,16 @@ def mock_time(monkeypatch):
     monkeypatch.setattr(time, 'time', mock_time)
 
 
-class MockResponse():
-    status = 200
-    read = MockCoroutine(return_value=b'{"status": "success"}')
-
-
-class MockBadResponse():
-    status = 500
-    read = MockCoroutine(return_value=b'{"status": "failure"}')
-
-
 @pytest.fixture
 def mock_signed_request():
     return MockCoroutine(return_value=MockResponse())
+
+
+class MockResponse:
+    status = HTTPStatus.OK
+    read = MockCoroutine(return_value=b'{"status": "success"}')
+
+
+class MockBadResponse:
+    status = HTTPStatus.INTERNAL_SERVER_ERROR
+    read = MockCoroutine(return_value=b'{"status": "failure"}')

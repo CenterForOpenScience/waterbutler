@@ -3,26 +3,18 @@ import asyncio
 from unittest import mock
 
 import pytest
-import tornado
+from tornado.httputil import HTTPServerRequest
+from tornado.http1connection import HTTP1ConnectionParameters
 
 from waterbutler.server.app import make_app
-from waterbutler.server.api.v1.provider import ProviderHandler
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.log_payload import LogPayload
+from waterbutler.server.api.v1.provider import ProviderHandler
 
-from tests.providers.osfstorage.fixtures import (
-    file_metadata_object,
-    file_metadata,
-    file_path,
-    file_lineage,
-    provider,
-    auth
-)
+from tests.utils import MockProvider, MockFileMetadata
+from tests.providers.osfstorage.fixtures import (auth, provider, file_metadata_object,
+                                                 file_metadata, file_path, file_lineage)
 
-from tests.utils import (
-    MockProvider,
-    MockFileMetadata
-)
 
 @pytest.yield_fixture
 def event_loop():
@@ -37,74 +29,71 @@ def event_loop():
 
     res._close()
 
+
 @pytest.fixture
 def http_request():
-    http_request = tornado.httputil.HTTPServerRequest(
+    mocked_http_request = HTTPServerRequest(
         uri='/v1/resources/test/providers/test/path/mock',
-        method='GET')
-    http_request.headers['User-Agent'] = 'test'
-    http_request.connection = tornado.http1connection.HTTP1ConnectionParameters()
-    http_request.connection.set_close_callback = mock.Mock()
-    http_request.request_time = mock.Mock(return_value=10)
+        method='GET'
+    )
+    mocked_http_request.headers['User-Agent'] = 'test'
+    mocked_http_request.connection = HTTP1ConnectionParameters()
+    mocked_http_request.connection.set_close_callback = mock.Mock()
+    mocked_http_request.request_time = mock.Mock(return_value=10)
 
-    return http_request
+    return mocked_http_request
+
 
 @pytest.fixture
 def log_payload():
     return LogPayload('test', MockProvider(), path=WaterButlerPath('/test_path'))
 
+
 @pytest.fixture
 def mock_time(monkeypatch):
-    mock_time = mock.Mock()
-    mock_time.return_value = 10
-    monkeypatch.setattr(time, 'time', mock_time)
+    mocked_time = mock.Mock()
+    mocked_time.return_value = 10
+    monkeypatch.setattr(time, 'time', mocked_time)
+
 
 @pytest.fixture
 def handler(http_request):
-    handler = ProviderHandler(make_app(True), http_request)
-    handler.path = WaterButlerPath('/test_path')
+    mocked_handler = ProviderHandler(make_app(True), http_request)
+    mocked_handler.path = WaterButlerPath('/test_path')
 
-    handler.provider = MockProvider()
-    handler.resource = 'test_source_resource'
-    handler.metadata = MockFileMetadata()
+    mocked_handler.provider = MockProvider()
+    mocked_handler.resource = 'test_source_resource'
+    mocked_handler.metadata = MockFileMetadata()
 
-    handler.dest_provider = MockProvider()
-    handler.dest_resource = 'test_dest_resource'
-    handler.dest_meta = MockFileMetadata()
+    mocked_handler.dest_provider = MockProvider()
+    mocked_handler.dest_resource = 'test_dest_resource'
+    mocked_handler.dest_meta = MockFileMetadata()
 
-    return handler
+    return mocked_handler
 
 
 @pytest.fixture
 def source_payload(handler):
-    return LogPayload(handler.resource,
-                                handler.provider,
-                                path=handler.path)
+    return LogPayload(handler.resource, handler.provider, path=handler.path)
 
 
 @pytest.fixture
 def destination_payload(handler):
-    return LogPayload(handler.dest_resource,
-                      handler.provider,
-                      metadata=handler.dest_meta)
+    return LogPayload(handler.dest_resource, handler.provider, metadata=handler.dest_meta)
 
 
 @pytest.fixture
 def payload_path(handler):
-    return LogPayload(handler.resource,
-                                handler.provider,
-                                path=handler.path)
+    return LogPayload(handler.resource, handler.provider, path=handler.path)
 
 
 @pytest.fixture
 def payload_metadata(handler):
-    return LogPayload(handler.resource,
-                      handler.provider,
-                      metadata=handler.metadata)
+    return LogPayload(handler.resource, handler.provider, metadata=handler.metadata)
 
 
 @pytest.fixture
-def serialzied_request(handler):
+def serialized_request():
     return {
         'request': {
             'url': 'http://127.0.0.1/v1/resources/test/providers/test/path/mock',
@@ -118,5 +107,5 @@ def serialzied_request(handler):
         },
         'referrer': {
             'url': None
-        }
+        },
     }
