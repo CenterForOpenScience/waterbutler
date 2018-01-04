@@ -19,7 +19,6 @@ from waterbutler.providers.osfstorage.metadata import OsfStorageFileMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageFolderMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageRevisionMetadata
 
-
 QUERY_METHODS = ('GET', 'DELETE')
 
 
@@ -316,9 +315,19 @@ class OSFStorageProvider(provider.BaseProvider):
         stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
         stream.add_writer('sha256', streams.HashStreamWriter(hashlib.sha256))
 
-        with open(local_pending_path, 'wb') as file_pointer:
-            stream.add_writer('file', file_pointer)
-            await provider.upload(stream, remote_pending_path, check_created=False, fetch_metadata=False, **kwargs)
+        try:
+            with open(local_pending_path, 'wb') as file_pointer:
+                stream.add_writer('file', file_pointer)
+                await provider.upload(stream, remote_pending_path, check_created=False,
+                                      fetch_metadata=False, **kwargs)
+        except Exception as exc:
+            try:
+                os.remove(local_pending_path)
+            except OSError as os_exc:
+                raise exceptions.UploadFailedError(
+                    'Upload failed and attempts to clean pending files failed:\n{}\n{}'.format(exc, os_exc)
+                )
+            raise exceptions.UploadError('Upload failed and pending files cleaned:\n{}'.format(exc))
 
         complete_name = stream.writers['sha256'].hexdigest
         local_complete_path = os.path.join(settings.FILE_PATH_COMPLETE, complete_name)
