@@ -263,6 +263,24 @@
         },
         "name":"master"
     },
+    "content_repo_metadata_root_one_folder":[
+        {
+            "path":"deletedfolder",
+            "type":"dir",
+            "html_url":"https://github.com/icereval/test/tree/master/deletedfolder",
+            "git_url":"https://api.github.com/repos/icereval/test/git/trees/bc1087ebfe8354a684bf9f8b75517784143dde86",
+            "url":"https://api.github.com/repos/icereval/test/contents/deletedfolder?ref=master",
+            "sha":"bc1087ebfe8354a684bf9f8b75517784143dde86",
+            "_links":{
+                "git":"https://api.github.com/repos/icereval/test/git/trees/bc1087ebfe8354a684bf9f8b75517784143dde86",
+                "self":"https://api.github.com/repos/icereval/test/contents/deletedfolder?ref=master",
+                "html":"https://github.com/icereval/test/tree/master/deletedfolder"
+            },
+            "name":"deletedfolder",
+            "size":0,
+            "download_url":null
+        }
+    ],
     "content_repo_metadata_root":[  
         {  
             "path":"file.txt",
