@@ -321,6 +321,9 @@ class OSFStorageProvider(provider.BaseProvider):
                 await provider.upload(stream, remote_pending_path, check_created=False,
                                       fetch_metadata=False, **kwargs)
         except Exception as exc:
+            # If we fail to upload to the remote storage provider, then delete the copy of the file
+            # from the local provider, too.  The user will have to reupload the file to local
+            # anyway, and this will avoid filling up the local disk with unused pending files.
             try:
                 os.remove(local_pending_path)
             except OSError as os_exc:
