@@ -899,6 +899,18 @@ class TestIntraMoveCopy:
 
 class TestOperations:
 
+    @pytest.mark.asyncio
+    async def test_construct_path(self, provider, root_provider_fixtures):
+        # Construct replaces revalidate_path in some instances, so it should always
+        # be tested against it, even if calls revalidate_path
+        path = WaterButlerPath('/file.txt')
+
+        data = DropboxFileMetadata(root_provider_fixtures['file_metadata'], folder=False)
+
+        rev_path = await provider.revalidate_path(path.parent, data.name)
+        con_path = await provider.construct_path(path.parent, data)
+        assert rev_path == con_path
+
     def test_can_intra_copy(self, provider):
         assert provider.can_intra_copy(provider)
 

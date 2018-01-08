@@ -10,12 +10,13 @@ from waterbutler.core import exceptions
 
 from waterbutler.providers.github import settings
 from waterbutler.providers.github.path import GitHubPath
-from waterbutler.providers.github.metadata import GitHubRevision
-from waterbutler.providers.github.metadata import GitHubFileContentMetadata
-from waterbutler.providers.github.metadata import GitHubFolderContentMetadata
-from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
-from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
 from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
+from waterbutler.providers.github.metadata import (GitHubRevision,
+                                                    BaseGitHubMetadata,
+                                                    GitHubFileTreeMetadata,
+                                                    GitHubFolderTreeMetadata,
+                                                    GitHubFileContentMetadata,
+                                                    GitHubFolderContentMetadata)
 
 
 GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -126,6 +127,11 @@ class GitHubProvider(provider.BaseProvider):
         self.metrics.add('file_sha_given', True if kwargs.get('fileSha') else False)
 
         return path
+
+    async def construct_path(self,
+                           parent_path: GitHubPath,
+                           meta_data: BaseGitHubMetadata) -> GitHubPath:
+        return await self.revalidate_path(parent_path, meta_data.name, folder=meta_data.is_folder)
 
     async def revalidate_path(self, base, path, folder=False):
         return base.child(path, _id=((base.branch_ref, None)), folder=folder)

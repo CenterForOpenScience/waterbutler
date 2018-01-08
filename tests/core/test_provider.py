@@ -104,6 +104,15 @@ class TestBaseProvider:
         assert str(path) == str(new_path.parent)
         assert new_path.name == 'text_file.txt'
 
+    @pytest.mark.asyncio
+    async def test_construct_empty_path(self, provider1):
+        path = await provider1.validate_path('/folder/')
+        data = utils.MockFileMetadata()
+        empty_path = await provider1.construct_empty_path(path, data)
+
+        # Make sure its actually not a real path
+        assert empty_path.identifier is None
+
 
 class TestHandleNameConflict:
 

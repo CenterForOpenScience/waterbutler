@@ -1387,6 +1387,36 @@ class TestRevalidatePath:
 
 class TestMisc:
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_construct_path(self, project_provider, root_provider_fixtures):
+        file_article_id = str(root_provider_fixtures['list_project_articles'][0]['id'])
+        folder_article_id = str(root_provider_fixtures['list_project_articles'][1]['id'])
+
+        root_parts = project_provider.root_path_parts
+        list_articles_url = project_provider.build_url(False, *root_parts, 'articles')
+        file_article_url = project_provider.build_url(False, *root_parts, 'articles',
+                                                      file_article_id)
+        folder_article_url = project_provider.build_url(False, *root_parts, 'articles',
+                                                        folder_article_id)
+
+        aiohttpretty.register_json_uri('GET', list_articles_url,
+                                       body=root_provider_fixtures['list_project_articles'],
+                                       params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
+        aiohttpretty.register_json_uri('GET', list_articles_url, body=[],
+                                       params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
+        aiohttpretty.register_json_uri('GET', file_article_url,
+                                       body=root_provider_fixtures['file_article_metadata'])
+        aiohttpretty.register_json_uri('GET', folder_article_url,
+                                       body=root_provider_fixtures['folder_article_metadata'])
+
+        path = FigsharePath('/test/', _ids=('0', folder_article_id), folder=True, parent_is_folder=False)
+        base_meta = root_provider_fixtures['file_article_metadata']
+        data = metadata.FigshareFileMetadata(base_meta, base_meta['files'][0])
+        rev_path = await project_provider.revalidate_path(path, data.name, folder=False)
+        con_path = await project_provider.construct_path(path, data)
+        assert con_path == rev_path
+
     def test_path_from_metadata(self, project_provider, root_provider_fixtures):
         file_article_metadata = root_provider_fixtures['file_article_metadata']
         fig_metadata = metadata.FigshareFileMetadata(file_article_metadata)

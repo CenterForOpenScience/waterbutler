@@ -808,6 +808,13 @@ class TestCreateFolder:
 class TestOperations:
 
     @pytest.mark.asyncio
+    async def test_construct_path(self, provider, file_metadata_object):
+        path = WaterButlerPath('/dissertation/')
+        con_path = await provider.construct_path(path, file_metadata_object)
+        rev_path = await provider.revalidate_path(path, file_metadata_object.name)
+        assert con_path == rev_path
+
+    @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_intra_copy(self, provider, file_header_metadata, mock_time):
 

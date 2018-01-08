@@ -9,8 +9,9 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.filesystem import settings
-from waterbutler.providers.filesystem.metadata import FileSystemFileMetadata
-from waterbutler.providers.filesystem.metadata import FileSystemFolderMetadata
+from waterbutler.providers.filesystem.metadata import (FileSystemFileMetadata,
+                                                        BaseFileSystemMetadata,
+                                                        FileSystemFolderMetadata)
 
 
 class FileSystemProvider(provider.BaseProvider):
@@ -85,6 +86,11 @@ class FileSystemProvider(provider.BaseProvider):
             shutil.rmtree(path.full_path)
             if path.is_root:
                 os.makedirs(self.folder, exist_ok=True)
+
+    async def construct_path(self,
+                           parent_path: WaterButlerPath,
+                           meta_data: BaseFileSystemMetadata) -> WaterButlerPath:
+        return await self.revalidate_path(parent_path, meta_data.name, folder=meta_data.is_folder)
 
     async def metadata(self, path, **kwargs):
         if path.is_dir:

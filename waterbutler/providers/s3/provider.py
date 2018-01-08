@@ -20,11 +20,12 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.s3 import settings
-from waterbutler.providers.s3.metadata import S3Revision
-from waterbutler.providers.s3.metadata import S3FileMetadata
-from waterbutler.providers.s3.metadata import S3FolderMetadata
-from waterbutler.providers.s3.metadata import S3FolderKeyMetadata
-from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
+from waterbutler.providers.s3.metadata import (S3Metadata,
+                                                S3Revision,
+                                                S3FileMetadata,
+                                                S3FolderMetadata,
+                                                S3FolderKeyMetadata,
+                                                S3FileMetadataHeaders)
 
 
 class S3Provider(provider.BaseProvider):
@@ -368,6 +369,11 @@ class S3Provider(provider.BaseProvider):
             for item in versions
             if item['Key'] == path.path
         ]
+
+    async def construct_path(self,
+                           parent_path: WaterButlerPath,
+                           meta_data: S3Metadata) -> WaterButlerPath:
+        return await self.revalidate_path(parent_path, meta_data.name, folder=meta_data.is_folder)
 
     async def metadata(self, path, revision=None, **kwargs):
         """Get Metadata about the requested file or folder

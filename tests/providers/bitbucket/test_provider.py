@@ -61,7 +61,7 @@ class TestValidatePath:
 
         assert wb_path_v1 == wb_path_v0
         assert wb_path_v1.branch_name == default_branch_body['name']
-        assert wb_path_v1.commit_sha == None
+        assert wb_path_v1.commit_sha is None
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -77,8 +77,8 @@ class TestValidatePath:
         default_branch_url = provider._build_v1_repo_url('main-branch')
         aiohttpretty.register_json_uri('GET', default_branch_url, body=default_branch_body)
 
-        dir_listing_body =  test_fixtures['root_dir_listing']
-        dir_listing_url = provider._build_v1_repo_url('src', default_branch)  + '/'
+        dir_listing_body = test_fixtures['root_dir_listing']
+        dir_listing_url = provider._build_v1_repo_url('src', default_branch) + '/'
         aiohttpretty.register_json_uri('GET', dir_listing_url, body=dir_listing_body)
 
         try:
@@ -107,9 +107,9 @@ class TestValidatePath:
     async def test_validate_v1_path_commit_sha(self, provider, arg_name, arg_val, attr_name):
         test_fixtures = fixtures.validate_path
 
-        dir_listing_body =  test_fixtures['root_dir_listing']
+        dir_listing_body = test_fixtures['root_dir_listing']
         base_commit = dir_listing_body['node']
-        dir_listing_url = provider._build_v1_repo_url('src', arg_val)  + '/'
+        dir_listing_url = provider._build_v1_repo_url('src', arg_val) + '/'
         aiohttpretty.register_json_uri('GET', dir_listing_url, body=dir_listing_body)
 
         path = '/foo-file.txt'
@@ -145,9 +145,9 @@ class TestValidatePath:
     async def test_validate_v1_path_subfolder(self, provider):
         test_fixtures = fixtures.validate_path
 
-        dir_listing_body =  test_fixtures['subfolder_dir_listing']
+        dir_listing_body = test_fixtures['subfolder_dir_listing']
         base_commit = dir_listing_body['node']
-        dir_listing_url = provider._build_v1_repo_url('src', 'main-branch', 'subfolder')  + '/'
+        dir_listing_url = provider._build_v1_repo_url('src', 'main-branch', 'subfolder') + '/'
         aiohttpretty.register_json_uri('GET', dir_listing_url, body=dir_listing_body)
 
         path = '/subfolder/.gitkeep'
@@ -186,8 +186,8 @@ class TestMetadata:
         path = BitbucketPath('/foo-file.txt', _ids=[(base_ref, 'develop'), (base_ref, 'develop')])
 
         test_fixtures = fixtures.validate_path
-        dir_listing_body =  test_fixtures['root_dir_listing']
-        dir_listing_url = provider._build_v1_repo_url('src', base_ref)  + '/'
+        dir_listing_body = test_fixtures['root_dir_listing']
+        dir_listing_url = provider._build_v1_repo_url('src', base_ref) + '/'
         aiohttpretty.register_json_uri('GET', dir_listing_url, body=dir_listing_body)
 
         result = await provider.metadata(path)
@@ -211,8 +211,8 @@ class TestMetadata:
         path = BitbucketPath('/', _ids=[(None, 'develop')], folder=True)
 
         test_fixtures = fixtures.validate_path
-        dir_listing_body =  test_fixtures['root_dir_listing']
-        dir_listing_url = provider._build_v1_repo_url('src', 'develop')  + '/'
+        dir_listing_body = test_fixtures['root_dir_listing']
+        dir_listing_url = provider._build_v1_repo_url('src', 'develop') + '/'
         aiohttpretty.register_json_uri('GET', dir_listing_url, body=dir_listing_body)
 
         result = await provider.metadata(path)
@@ -229,8 +229,8 @@ class TestDownload:
         path = BitbucketPath('/foo-file.txt', _ids=[(base_ref, 'develop'), (base_ref, 'develop')])
 
         test_fixtures = fixtures.validate_path
-        dir_listing_body =  test_fixtures['root_dir_listing']
-        dir_listing_url = provider._build_v1_repo_url('src', base_ref)  + '/'
+        dir_listing_body = test_fixtures['root_dir_listing']
+        dir_listing_url = provider._build_v1_repo_url('src', base_ref) + '/'
         aiohttpretty.register_json_uri('GET', dir_listing_url, body=dir_listing_body)
 
         download_url = provider._build_v1_repo_url('raw', path.commit_sha, *path.path_tuple())
@@ -268,17 +268,38 @@ class TestReadOnlyProvider:
         assert e.value.code == 501
 
     def test_can_intra_move(self, provider):
-        assert provider.can_intra_move(provider) == False
+        assert provider.can_intra_move(provider) is False
 
     def test_can_intra_copy(self, provider):
-        assert provider.can_intra_copy(provider) == False
+        assert provider.can_intra_copy(provider) is False
 
 
 # leftover bits
 class TestMisc:
 
+    @pytest.mark.asyncio
+    async def test_construct_path(self, provider):
+        name = 'aaa-01-2.txt'
+        subdir = 'plaster'
+        full_path = '/{}/{}'.format(subdir, name)
+        branch = 'master'
+        commit_sha = '123abc456def'
+
+        path = BitbucketPath(full_path, _ids=[
+            (commit_sha, branch), (commit_sha, branch), (commit_sha, branch)
+        ])
+
+        metadata = BitbucketFileMetadata(fixtures.file_metadata, path, owner=fixtures.owner, repo=fixtures.repo)
+        child_path = await provider.construct_path(path.parent, metadata)
+        rev_metadata = await provider.revalidate_path(path.parent,
+                        metadata.name, folder=metadata.is_folder)
+
+        assert child_path.full_path == path.full_path
+        assert child_path == path
+        assert child_path == rev_metadata
+
     def test_can_duplicate_name(self, provider):
-        assert provider.can_duplicate_names() == False
+        assert provider.can_duplicate_names() is False
 
     def test_path_from_metadata(self, provider):
         name = 'aaa-01-2.txt'
@@ -292,7 +313,7 @@ class TestMisc:
         ])
 
         metadata = BitbucketFileMetadata(fixtures.file_metadata, path, owner=fixtures.owner, repo=fixtures.repo)
-        child_path =  provider.path_from_metadata(path.parent, metadata)
+        child_path = provider.path_from_metadata(path.parent, metadata)
 
         assert child_path.full_path == path.full_path
         assert child_path == path

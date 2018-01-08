@@ -3,7 +3,6 @@ import os
 import json
 import time
 import hashlib
-import functools
 from unittest import mock
 
 import furl
@@ -17,6 +16,7 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.cloudfiles import CloudFilesProvider
 from waterbutler.providers.cloudfiles import settings as cloud_settings
+from waterbutler.providers.cloudfiles.metadata import CloudFilesFileMetadata
 
 
 @pytest.fixture
@@ -180,7 +180,8 @@ def file_metadata():
         ('ETAG', 'edfa12d00b779b4b37b81fe5b61b2b3f'),
         ('CONTENT-TYPE', 'text/html; charset=UTF-8'),
         ('X-TRANS-ID', 'txf876a4b088e3451d94442-00549b7c6aiad3'),
-        ('DATE', 'Thu, 25 Dec 2014 02:54:34 GMT')
+        ('DATE', 'Thu, 25 Dec 2014 02:54:34 GMT'),
+        ('NAME', 'file.txt')
     ])
 
 
@@ -663,6 +664,17 @@ class TestV1ValidatePath:
 
 
 class TestOperations:
+
+    @pytest.mark.asyncio
+    async def test_construct_path(self, provider, file_metadata):
+        # Construct replaces revalidate_path in some instances, so it should always
+        # be tested against it, even if calls revalidate_path
+        path = WaterButlerPath('/file.txt')
+
+        data = CloudFilesFileMetadata(file_metadata)
+        rev_path = await provider.revalidate_path(path.parent, data.name)
+        con_path = await provider.construct_path(path.parent, data)
+        assert rev_path == con_path
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

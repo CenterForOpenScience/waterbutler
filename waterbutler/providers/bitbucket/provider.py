@@ -127,10 +127,16 @@ class BitbucketProvider(provider.BaseProvider):
 
         return path_obj
 
+    async def construct_path(self,  # type: ignore
+                           parent_path: BitbucketPath,
+                           meta_data) -> BitbucketPath:
+
+        return self.path_from_metadata(parent_path, meta_data)
+
     def path_from_metadata(self,  # type: ignore
                            parent_path: BitbucketPath,
-                           metadata) -> BitbucketPath:
-        return parent_path.child(metadata.name, folder=metadata.is_folder)
+                           meta_data) -> BitbucketPath:
+        return parent_path.child(meta_data.name, folder=meta_data.is_folder)
 
     async def metadata(self, path: BitbucketPath, **kwargs):  # type: ignore
         """Get metadata about the requested file or folder.

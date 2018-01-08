@@ -481,6 +481,23 @@ class TestIntraMove:
 
 class TestUtils:
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_construct_path(self, provider, folder_path, folder_children_metadata,
+                                            mock_time):
+        url, params = build_signed_url_without_auth(provider, 'GET', folder_path.identifier,
+                                                    'children')
+        aiohttpretty.register_json_uri('GET', url, params=params, status=200,
+                                       body=folder_children_metadata)
+
+        rev_path = await provider.revalidate_path(folder_path,
+                                                          folder_children_metadata[1]['name'],
+                                                          folder=False)
+
+        data = OsfStorageFileMetadata(folder_children_metadata[1], '/')
+        con_path = await provider.construct_path(folder_path, data)
+        assert rev_path == con_path
+
     def test_intra_move_copy_utils(self, provider):
         assert provider.can_duplicate_names()
 

@@ -110,7 +110,6 @@ class TestValidatePath:
                                        status=200,
                                        body=native_dataset_metadata)
 
-
         base = await provider.validate_v1_path('/')
 
         wb_path = await provider.revalidate_path(base, '/thefile.txt')
@@ -301,7 +300,7 @@ class TestCRUD:
         ])
 
         path = await provider.validate_path(path)
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='POST', uri=url)
@@ -511,12 +510,39 @@ class TestMetadata:
 
         path = await provider.validate_path('/')
         with pytest.raises(exceptions.MetadataError) as e:
-            result = await provider.metadata(path)
+            await provider.metadata(path)
 
         assert e.value.code == 400
 
 
 class TestUtils:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_construct_path(self, provider, native_dataset_metadata):
+        entry = native_dataset_metadata['data']['files'][0]['datafile']
+        metadata = DataverseFileMetadata(entry, 'latest')
+
+        draft_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id, 'latest'),
+                                       key=provider.token)
+        published_url = provider.build_url(dvs.JSON_BASE_URL.format(provider._id,
+                                                                    'latest-published'),
+                                           key=provider.token)
+
+        aiohttpretty.register_json_uri('GET',
+                                       draft_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
+        aiohttpretty.register_json_uri('GET',
+                                       published_url,
+                                       status=200,
+                                       body=native_dataset_metadata)
+
+        base = await provider.validate_v1_path('/')
+
+        rev_path = await provider.revalidate_path(base, metadata.name)
+        con_path = await provider.construct_path(base, metadata)
+        assert rev_path == con_path
 
     def test_utils(self, provider):
         assert not provider.can_duplicate_names()
