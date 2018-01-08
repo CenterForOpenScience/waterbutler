@@ -1,19 +1,14 @@
-import pytest
-
 import os
 
-from waterbutler.providers.googledrive.provider import GoogleDrivePath
-from waterbutler.providers.googledrive.provider import GoogleDrivePathPart
-from waterbutler.providers.googledrive.metadata import GoogleDriveRevision
-from waterbutler.providers.googledrive.metadata import GoogleDriveFileMetadata
-from waterbutler.providers.googledrive.metadata import GoogleDriveFolderMetadata
+import pytest
 
-from tests.providers.googledrive.fixtures import(
-    error_fixtures,
-    root_provider_fixtures,
-    revision_fixtures,
-    sharing_fixtures,
-)
+from waterbutler.providers.googledrive.provider import GoogleDrivePath
+from waterbutler.providers.googledrive.metadata import (GoogleDriveRevision,
+                                                        GoogleDriveFileMetadata,
+                                                        GoogleDriveFolderMetadata)
+
+from tests.providers.googledrive.fixtures import (error_fixtures, root_provider_fixtures,
+                                                  revision_fixtures, sharing_fixtures)
 
 
 @pytest.fixture
@@ -110,6 +105,7 @@ class TestMetadata:
     def test_revision_metadata(self, revision_fixtures):
         revision = revision_fixtures['revision_metadata']
         parsed = GoogleDriveRevision(revision)
+
         assert parsed.version_identifier == 'revision'
         assert parsed.version == revision['id']
         assert parsed.modified == revision['modifiedTime']

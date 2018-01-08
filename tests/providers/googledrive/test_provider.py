@@ -2,30 +2,27 @@ import io
 import os
 import copy
 import json
-from http import client
 from urllib import parse
+from http import HTTPStatus
 
 import furl
 import pytest
 import aiohttpretty
 
-from waterbutler.core import streams
-from waterbutler.core import exceptions
+from waterbutler.core import streams, exceptions
 from waterbutler.core.path import WaterButlerPath
 
-from waterbutler.providers.googledrive import settings as ds
 from waterbutler.providers.googledrive import GoogleDriveProvider
-from waterbutler.providers.googledrive import utils as drive_utils
+from waterbutler.providers.googledrive import utils as provider_utils
+from waterbutler.providers.googledrive import settings as provider_settings
 from waterbutler.providers.googledrive.provider import GoogleDrivePath
 from waterbutler.providers.googledrive.metadata import (GoogleDriveRevision,
                                                         GoogleDriveFileMetadata,
                                                         GoogleDriveFolderMetadata,
                                                         GoogleDriveFileRevisionMetadata)
 
-from tests.providers.googledrive.fixtures import(error_fixtures,
-                                                 sharing_fixtures,
-                                                 revision_fixtures,
-                                                 root_provider_fixtures)
+from tests.providers.googledrive.fixtures import(error_fixtures, sharing_fixtures,
+                                                 revision_fixtures, root_provider_fixtures)
 
 
 @pytest.fixture
@@ -132,8 +129,8 @@ def actual_folder_response():
 
 
 def make_unauthorized_file_access_error(file_id):
-    message = ('The authenticated user does not have the required access '
-               'to the file {}'.format(file_id))
+    message = 'The authenticated user does not have the required access to the file ' \
+              '{}'.format(file_id)
     return json.dumps({
         "error": {
             "errors": [
@@ -146,7 +143,7 @@ def make_unauthorized_file_access_error(file_id):
                 }
             ],
             "message": message,
-            "code": 403
+            "code": HTTPStatus.FORBIDDEN
         }
     })
 
@@ -158,7 +155,6 @@ def make_no_such_revision_error(revision_id):
             "errors": [
                 {
                     "reason": "notFound",
-                    "locationType": "other",
                     "message": message,
                     "locationType": "parameter",
                     "location": "revisionId",
@@ -166,7 +162,7 @@ def make_no_such_revision_error(revision_id):
                 }
             ],
             "message": message,
-            "code": 404
+            "code": HTTPStatus.NOT_FOUND
         }
     })
 
@@ -207,8 +203,12 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, search_for_file_response,
-                                         actual_file_response, no_folder_response):
+    async def test_validate_v1_path_file(
+            self,
+            provider,
+            search_for_file_response,
+            actual_file_response, no_folder_response
+    ):
         file_name = 'file.txt'
         file_id = '1234ideclarethumbwar'
 
@@ -231,12 +231,13 @@ class TestValidatePath:
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + file_name)
         except Exception as exc:
+            wb_path_v1 = None
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/' + file_name + '/')
 
-        assert exc.value.code == client.NOT_FOUND
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + file_name)
 
@@ -244,8 +245,13 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider, search_for_folder_response,
-                                           actual_folder_response, no_file_response):
+    async def test_validate_v1_path_folder(
+            self,
+            provider,
+            search_for_folder_response,
+            actual_folder_response,
+            no_file_response
+    ):
         folder_name = 'foofolder'
         folder_id = 'whyis6afraidof7'
 
@@ -268,12 +274,13 @@ class TestValidatePath:
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + folder_name + '/')
         except Exception as exc:
+            wb_path_v1 = None
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/' + folder_name)
 
-        assert exc.value.code == client.NOT_FOUND
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + folder_name + '/')
 
@@ -302,15 +309,17 @@ class TestValidatePath:
 
         current_part = parts.pop(0)
         part_name, part_is_folder = current_part[0], current_part[1]
-        name, ext = os.path.splitext(part_name)
         query = _build_name_search_query(provider, file_name.strip('/'), file_id, False)
 
         url = provider.build_url('files', q=query, fields='files(id)')
         aiohttpretty.register_json_uri('GET', url, body=revalidate_path_metadata)
 
         url = provider.build_url('files', file_id, fields='id, name, mimeType')
-        aiohttpretty.register_json_uri('GET', url,
-                                       body=root_provider_fixtures['revalidate_path_file_metadata_2'])
+        aiohttpretty.register_json_uri(
+            'GET',
+            url,
+            body=root_provider_fixtures['revalidate_path_file_metadata_2']
+        )
 
         result = await provider.revalidate_path(path, file_name)
 
@@ -329,19 +338,26 @@ class TestValidatePath:
         current_part = parts.pop(0)
         part_name, part_is_folder = current_part[0], current_part[1]
         name, ext = os.path.splitext(part_name)
-        gd_ext = drive_utils.get_mimetype_from_ext(ext)
-        query = "name = '{}' " \
-                "and trashed = false " \
-                "and '{}' in parents " \
-                "and mimeType = '{}'".format(clean_query(name), file_id, gd_ext)
+        gd_ext = provider_utils.get_mimetype_from_ext(ext)
+        query = "name = '{}' and trashed = false and '{}' in parents and mimeType = '{}'".format(
+            clean_query(name),
+            file_id,
+            gd_ext
+        )
 
         url = provider.build_url('files', q=query, fields='files(id)')
-        aiohttpretty.register_json_uri('GET', url,
-                                       body=root_provider_fixtures['revalidate_path_file_metadata_1'])
+        aiohttpretty.register_json_uri(
+            'GET',
+            url,
+            body=root_provider_fixtures['revalidate_path_file_metadata_1']
+        )
 
         url = provider.build_url('files', file_id, fields='id, name, mimeType')
-        aiohttpretty.register_json_uri('GET', url,
-                                       body=root_provider_fixtures['revalidate_path_gdoc_file_metadata'])
+        aiohttpretty.register_json_uri(
+            'GET',
+            url,
+            body=root_provider_fixtures['revalidate_path_gdoc_file_metadata']
+        )
 
         result = await provider.revalidate_path(path, file_name)
 
@@ -359,18 +375,24 @@ class TestValidatePath:
 
         current_part = parts.pop(0)
         part_name, part_is_folder = current_part[0], current_part[1]
-        name, ext = os.path.splitext(part_name)
         query = _build_name_search_query(provider, file_name.strip('/') + '/', file_id, True)
 
         folder_one_url = provider.build_url('files', q=query, fields='files(id)')
-        aiohttpretty.register_json_uri('GET', folder_one_url,
-                                       body=root_provider_fixtures['revalidate_path_folder_metadata_1'])
+        aiohttpretty.register_json_uri(
+            'GET',
+            folder_one_url,
+            body=root_provider_fixtures['revalidate_path_folder_metadata_1']
+        )
 
         folder_two_url = provider.build_url('files', file_id, fields='id, name, mimeType')
-        aiohttpretty.register_json_uri('GET', folder_two_url,
-                                       body=root_provider_fixtures['revalidate_path_folder_metadata_2'])
+        aiohttpretty.register_json_uri(
+            'GET',
+            folder_two_url,
+            body=root_provider_fixtures['revalidate_path_folder_metadata_2']
+        )
 
         result = await provider.revalidate_path(path, file_name, True)
+
         assert result.name in path.name
 
 
@@ -383,14 +405,23 @@ class TestUpload:
         file = root_provider_fixtures['list_file']['files'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
 
-        start_upload_furl = furl.furl(provider._build_upload_url('files', '',
-                                                        uploadType='resumable'))
+        start_upload_furl = furl.furl(provider._build_upload_url(
+                'files',
+                '',
+                uploadType='resumable'
+        ))
         start_upload_url = start_upload_furl.add(provider.FILE_FIELDS).url
-        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
-                                                       upload_id=upload_id)
+        finish_upload_url = provider._build_upload_url(
+            'files',
+            uploadType='resumable',
+            upload_id=upload_id
+        )
 
-        aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+        aiohttpretty.register_uri(
+            'POST',
+            start_upload_url,
+            headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)}
+        )
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=file)
 
         result, created = await provider.upload(file_stream, path)
@@ -409,14 +440,23 @@ class TestUpload:
         file = root_provider_fixtures['list_file']['files'][0]
         path = GoogleDrivePath('/birdie%2F %20".jpg', _ids=(provider.folder['id'], None))
 
-        start_upload_furl = furl.furl(provider._build_upload_url('files', '',
-                                                        uploadType='resumable'))
+        start_upload_furl = furl.furl(provider._build_upload_url(
+            'files',
+            '',
+            uploadType='resumable'
+        ))
         start_upload_url = start_upload_furl.add(provider.FILE_FIELDS).url
-        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
-                                                       upload_id=upload_id)
+        finish_upload_url = provider._build_upload_url(
+            'files',
+            uploadType='resumable',
+            upload_id=upload_id
+        )
 
-        aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+        aiohttpretty.register_uri(
+            'POST',
+            start_upload_url,
+            headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)}
+        )
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=file)
 
         result, created = await provider.upload(file_stream, path)
@@ -435,15 +475,26 @@ class TestUpload:
         file = root_provider_fixtures['list_file']['files'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], file['id']))
 
-        start_upload_furl = furl.furl(provider._build_upload_url('files', file['id'],
-                                                        uploadType='resumable'))
+        start_upload_furl = furl.furl(provider._build_upload_url(
+            'files',
+            file['id'],
+            uploadType='resumable'
+        ))
         start_upload_url = start_upload_furl.add(provider.FILE_FIELDS).url
-        finish_upload_url = provider._build_upload_url('files', path.identifier,
-                                                       uploadType='resumable', upload_id=upload_id)
+        finish_upload_url = provider._build_upload_url(
+            'files',
+            path.identifier,
+            uploadType='resumable',
+            upload_id=upload_id
+        )
 
-        aiohttpretty.register_uri('PATCH', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+        aiohttpretty.register_uri(
+            'PATCH',
+            start_upload_url,
+            headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)}
+        )
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=file)
+
         result, created = await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='PATCH', uri=start_upload_url)
@@ -462,14 +513,25 @@ class TestUpload:
             _ids=[str(x) for x in range(3)]
         )
 
-        start_upload_furl = furl.furl(provider._build_upload_url('files', '',
-                                                        uploadType='resumable'))
+        start_upload_furl = furl.furl(provider._build_upload_url(
+            'files',
+            '',
+            uploadType='resumable'
+        ))
         start_upload_url = start_upload_furl.add(provider.FILE_FIELDS).url
-        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
-                                                       upload_id=upload_id)
-        aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+        finish_upload_url = provider._build_upload_url(
+            'files',
+            uploadType='resumable',
+            upload_id=upload_id
+        )
+
+        aiohttpretty.register_uri(
+            'POST',
+            start_upload_url,
+            headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)}
+        )
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=file)
+
         result, created = await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
@@ -484,18 +546,30 @@ class TestUpload:
         upload_id = '7'
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
 
-        start_upload_furl = furl.furl(provider._build_upload_url('files', '',
-                                                        uploadType='resumable'))
+        start_upload_furl = furl.furl(provider._build_upload_url(
+            'files',
+            '',
+            uploadType='resumable'
+        ))
         start_upload_url = start_upload_furl.add(provider.FILE_FIELDS).url
-        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
-                                                       upload_id=upload_id)
+        finish_upload_url = provider._build_upload_url(
+            'files',
+            uploadType='resumable',
+            upload_id=upload_id
+        )
 
-        aiohttpretty.register_json_uri('PUT', finish_upload_url,
-                                       body=root_provider_fixtures['checksum_mismatch_metadata'])
-        aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+        aiohttpretty.register_json_uri(
+            'PUT',
+            finish_upload_url,
+            body=root_provider_fixtures['checksum_mismatch_metadata']
+        )
+        aiohttpretty.register_uri(
+            'POST',
+            start_upload_url,
+            headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)}
+        )
 
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
@@ -511,10 +585,12 @@ class TestDelete:
         path = WaterButlerPath('/birdie.jpg', _ids=(None, file['id']))
         delete_url = provider.build_url('files', file['id'])
         del_url_body = json.dumps({'labels': {'trashed': 'true'}})
-        aiohttpretty.register_uri('PATCH',
-                                  delete_url,
-                                  body=del_url_body,
-                                  status=200)
+        aiohttpretty.register_uri(
+            'PATCH',
+            delete_url,
+            body=del_url_body,
+            status=HTTPStatus.OK
+        )
 
         result = await provider.delete(path)
 
@@ -527,15 +603,16 @@ class TestDelete:
         item = root_provider_fixtures['folder_metadata']
         del_url = provider.build_url('files', item['id'])
         del_url_body = json.dumps({'labels': {'trashed': 'true'}})
-
         path = WaterButlerPath('/foobar/', _ids=('doesntmatter', item['id']))
 
-        aiohttpretty.register_uri('PATCH',
-                                  del_url,
-                                  body=del_url_body,
-                                  status=200)
+        aiohttpretty.register_uri(
+            'PATCH',
+            del_url,
+            body=del_url_body,
+            status=HTTPStatus.OK
+        )
 
-        result = await provider.delete(path)
+        await provider.delete(path)
 
         assert aiohttpretty.has_call(method='PATCH', uri=del_url)
 
@@ -550,11 +627,11 @@ class TestDelete:
     async def test_delete_root_no_confirm(self, provider):
         path = WaterButlerPath('/', _ids=('0'))
 
-        with pytest.raises(exceptions.DeleteError) as e:
+        with pytest.raises(exceptions.DeleteError) as exc:
             await provider.delete(path)
 
-        assert e.value.message == 'confirm_delete=1 is required for deleting root provider folder'
-        assert e.value.code == 400
+        assert exc.value.message == 'confirm_delete=1 is required for deleting root provider folder'
+        assert exc.value.code == HTTPStatus.BAD_REQUEST
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -562,14 +639,20 @@ class TestDelete:
         file = root_provider_fixtures['delete_contents_metadata']['files'][0]
         root_path = WaterButlerPath('/', _ids=('0'))
 
-        url = provider.build_url('files', q="'{}' in parents and trashed = false".format('0'),
-                                 fields='files(id)')
-        aiohttpretty.register_json_uri('GET', url,
-                                       body=root_provider_fixtures['delete_contents_metadata'])
+        url = provider.build_url(
+            'files',
+            q="'{}' in parents and trashed = false".format('0'),
+            fields='files(id)'
+        )
+        aiohttpretty.register_json_uri(
+            'GET',
+            url,
+            body=root_provider_fixtures['delete_contents_metadata']
+        )
 
         delete_url = provider.build_url('files', file['id'])
         data = json.dumps({'labels': {'trashed': 'true'}}),
-        aiohttpretty.register_json_uri('PATCH', delete_url, data=data, status=200)
+        aiohttpretty.register_json_uri('PATCH', delete_url, data=data, status=HTTPStatus.OK)
 
         await provider.delete(root_path, 1)
 
@@ -600,7 +683,8 @@ class TestDownload:
     JPEG_GOOD_REVISION = GDOC_BAD_REVISION
     JPEG_BAD_REVISION = GDOC_GOOD_REVISION
     MAGIC_REVISION = '"LUxk1DXE_0fd4yeJDIgpecr5uPA/MTQ5NTExOTgxMzgzOQ"{}'.format(
-        ds.DRIVE_IGNORE_VERSION)
+        provider_settings.DRIVE_IGNORE_VERSION
+    )
 
     GDOC_EXPORT_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
@@ -622,13 +706,17 @@ class TestDownload:
         aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_body)
 
         file_content = b'we love you conrad'
-        download_file_url = provider.build_url('files', metadata_body['id'], 'export',
-                mimeType=self.GDOC_EXPORT_MIME_TYPE)
+        download_file_url = provider.build_url(
+            'files',
+            metadata_body['id'],
+            'export',
+            mimeType=self.GDOC_EXPORT_MIME_TYPE
+        )
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path)
-        assert result.name == 'editable_gdoc.docx'
 
+        assert result.name == 'editable_gdoc.docx'
         content = await result.read()
         assert content == file_content
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
@@ -653,8 +741,12 @@ class TestDownload:
         aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_body)
 
         revision_body = sharing_fixtures['editable_gdoc']['v2_revision']
-        revision_url = provider.build_url('files', metadata_body['id'],
-                                          'revisions', self.GDOC_GOOD_REVISION)
+        revision_url = provider.build_url(
+            'files',
+            metadata_body['id'],
+            'revisions',
+            self.GDOC_GOOD_REVISION
+        )
         revision_url = revision_url.replace('/v3/', '/v2/', 1)
         aiohttpretty.register_json_uri('GET', revision_url, body=revision_body)
 
@@ -663,8 +755,8 @@ class TestDownload:
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path, revision=self.GDOC_GOOD_REVISION)
-        assert result.name == 'editable_gdoc.docx'
 
+        assert result.name == 'editable_gdoc.docx'
         content = await result.read()
         assert content == file_content
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
@@ -690,15 +782,24 @@ class TestDownload:
         aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_body)
 
         no_such_revision_error = make_no_such_revision_error(self.GDOC_BAD_REVISION)
-        revision_url = provider.build_url('files', metadata_body['id'],
-                                          'revisions', self.GDOC_BAD_REVISION)
+        revision_url = provider.build_url(
+            'files',
+            metadata_body['id'],
+            'revisions',
+            self.GDOC_BAD_REVISION
+        )
         revision_url = revision_url.replace('/v3/', '/v2/', 1)
-        aiohttpretty.register_json_uri('GET', revision_url, status=404, body=no_such_revision_error)
+        aiohttpretty.register_json_uri(
+            'GET',
+            revision_url,
+            status=HTTPStatus.NOT_FOUND,
+            body=no_such_revision_error
+        )
 
-        with pytest.raises(exceptions.NotFoundError) as e:
+        with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.download(path, revision=self.GDOC_BAD_REVISION)
 
-        assert e.value.code == 404
+        assert exc.value.code == HTTPStatus.NOT_FOUND
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
         assert aiohttpretty.has_call(method='GET', uri=revisions_url)
         assert aiohttpretty.has_call(method='GET', uri=revision_url)
@@ -722,13 +823,17 @@ class TestDownload:
 
         file_content = b'we love you conrad'
         mime_type = self.GDOC_EXPORT_MIME_TYPE
-        download_url = provider.build_url('files', path.identifier, 'export',
-                                          mimeType=mime_type)
+        download_url = provider.build_url(
+            'files',
+            path.identifier,
+            'export',
+            mimeType=mime_type
+        )
         aiohttpretty.register_uri('GET', download_url, body=file_content, auto_length=True)
 
         result = await provider.download(path, revision=self.MAGIC_REVISION)
-        assert result.name == 'editable_gdoc.docx'
 
+        assert result.name == 'editable_gdoc.docx'
         content = await result.read()
         assert content == file_content
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
@@ -749,13 +854,17 @@ class TestDownload:
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
         file_content = b'we love you conrad'
-        download_file_url = provider.build_url('files', metadata_body.get('id'), 'export',
-                                               mimeType=self.GDOC_EXPORT_MIME_TYPE)
+        download_file_url = provider.build_url(
+            'files',
+            metadata_body.get('id'),
+            'export',
+            mimeType=self.GDOC_EXPORT_MIME_TYPE
+        )
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path)
-        assert result.name == 'viewable_gdoc.docx'
 
+        assert result.name == 'viewable_gdoc.docx'
         content = await result.read()
         assert content == file_content
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
@@ -779,15 +888,24 @@ class TestDownload:
         aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_body)
 
         unauthorized_error = make_unauthorized_file_access_error(metadata_body['id'])
-        revision_url = provider.build_url('files', metadata_body['id'],
-                                          'revisions', self.GDOC_BAD_REVISION)
+        revision_url = provider.build_url(
+            'files',
+            metadata_body['id'],
+            'revisions',
+            self.GDOC_BAD_REVISION
+        )
         revision_url = revision_url.replace('/v3/', '/v2/', 1)
-        aiohttpretty.register_json_uri('GET', revision_url, status=404, body=unauthorized_error)
+        aiohttpretty.register_json_uri(
+            'GET',
+            revision_url,
+            status=HTTPStatus.NOT_FOUND,
+            body=unauthorized_error
+        )
 
-        with pytest.raises(exceptions.NotFoundError) as e:
+        with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.download(path, revision=self.GDOC_BAD_REVISION)
 
-        assert e.value.code == 404
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -804,13 +922,17 @@ class TestDownload:
 
         file_content = b'we love you conrad'
         mime_type = self.GDOC_EXPORT_MIME_TYPE
-        download_url = provider.build_url('files', metadata_body.get('id'), 'export',
-                                          mimeType=mime_type)
+        download_url = provider.build_url(
+            'files',
+            metadata_body.get('id'),
+            'export',
+            mimeType=mime_type
+        )
         aiohttpretty.register_uri('GET', download_url, body=file_content, auto_length=True)
 
         result = await provider.download(path, revision=self.MAGIC_REVISION)
-        assert result.name == 'viewable_gdoc.docx'
 
+        assert result.name == 'viewable_gdoc.docx'
         content = await result.read()
         assert content == file_content
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
@@ -854,8 +976,13 @@ class TestDownload:
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
         file_content = b'we love you conrad'
-        download_url = provider.build_url('files', metadata_body.get('id'),
-                                          'revisions', self.JPEG_GOOD_REVISION, alt='media')
+        download_url = provider.build_url(
+            'files',
+            metadata_body.get('id'),
+            'revisions',
+            self.JPEG_GOOD_REVISION,
+            alt='media'
+        )
         aiohttpretty.register_uri('GET', download_url, body=file_content, auto_length=True)
 
         result = await provider.download(path, revision=self.JPEG_GOOD_REVISION)
@@ -879,15 +1006,25 @@ class TestDownload:
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
         no_such_revision_error = make_no_such_revision_error(self.JPEG_BAD_REVISION)
-        download_url = provider.build_url('files', metadata_body.get('id'),
-                                          'revisions', self.JPEG_BAD_REVISION, alt='media')
-        aiohttpretty.register_uri('GET', download_url, status=404, body=no_such_revision_error,
-                                  auto_length=True)
+        download_url = provider.build_url(
+            'files',
+            metadata_body.get('id'),
+            'revisions',
+            self.JPEG_BAD_REVISION,
+            alt='media'
+        )
+        aiohttpretty.register_uri(
+            'GET',
+            download_url,
+            status=HTTPStatus.NOT_FOUND,
+            body=no_such_revision_error,
+            auto_length=True
+        )
 
-        with pytest.raises(exceptions.DownloadError) as e:
+        with pytest.raises(exceptions.DownloadError) as exc:
             await provider.download(path, revision=self.JPEG_BAD_REVISION)
 
-        assert e.value.code == 404
+        assert exc.value.code == HTTPStatus.NOT_FOUND
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
         assert aiohttpretty.has_call(method='GET', uri=download_url)
 
@@ -953,15 +1090,25 @@ class TestDownload:
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
         no_such_revision_error = make_no_such_revision_error(metadata_body['id'])
-        download_url = provider.build_url('files', metadata_body.get('id'),
-                                          'revisions', self.JPEG_BAD_REVISION, alt='media')
-        aiohttpretty.register_uri('GET', download_url, status=404, body=no_such_revision_error,
-                                  auto_length=True)
+        download_url = provider.build_url(
+            'files',
+            metadata_body.get('id'),
+            'revisions',
+            self.JPEG_BAD_REVISION,
+            lt='media'
+        )
+        aiohttpretty.register_uri(
+            'GET',
+            download_url,
+            status=HTTPStatus.NOT_FOUND,
+            body=no_such_revision_error,
+            auto_length=True
+        )
 
-        with pytest.raises(exceptions.DownloadError) as e:
+        with pytest.raises(exceptions.DownloadError) as exc:
             await provider.download(path, revision=self.JPEG_BAD_REVISION)
 
-        assert e.value.code == 404
+        assert exc.value.code == HTTPStatus.NOT_FOUND
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
         assert aiohttpretty.has_call(method='GET', uri=download_url)
 
@@ -1014,9 +1161,11 @@ class TestMetadata:
     JPEG_GOOD_REVISION = GDOC_BAD_REVISION
     JPEG_BAD_REVISION = GDOC_GOOD_REVISION
     MAGIC_REVISION = '"LUxk1DXE_0fd4yeJDIgpecr5uPA/MTQ5NTExOTgxMzgzOQ"{}'.format(
-        ds.DRIVE_IGNORE_VERSION)
+        provider_settings.DRIVE_IGNORE_VERSION
+    )
 
-    GDOC_EXPORT_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    GDOC_EXPORT_MIME_TYPE = 'application/' \
+                            'vnd.openxmlformats-officedocument.wordprocessingml.document'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -1037,20 +1186,26 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_metadata_string_error_response(self, provider, root_provider_fixtures):
-        path = WaterButlerPath('/birdie.jpg',
-                               _ids=(provider.folder['id'],
-                                     root_provider_fixtures['list_file']['files'][0]['id']))
+        path = WaterButlerPath(
+            '/birdie.jpg',
+            _ids=(provider.folder['id'], root_provider_fixtures['list_file']['files'][0]['id'])
+        )
 
         metadata_furl = furl.furl(provider.build_url('files', path.identifier or ''))
         metadata_url = metadata_furl.add(provider.FILE_FIELDS).url
-        aiohttpretty.register_uri('GET', metadata_url, headers={'Content-Type': 'text/html'},
-            body='this is an error message string with a 404... or is it?', status=404)
+        aiohttpretty.register_uri(
+            'GET',
+            metadata_url,
+            headers={'Content-Type': 'text/html'},
+            body='this is an error message string with a 404... or is it?',
+            status=HTTPStatus.NOT_FOUND
+        )
 
-        with pytest.raises(exceptions.NotFoundError) as e:
+        with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.metadata(path)
 
-        assert e.value.code == 404
-        assert e.value.message == 'Could not retrieve file or directory {}'.format('/' + path.path)
+        assert exc.value.code == HTTPStatus.NOT_FOUND
+        assert exc.value.message == 'Could not retrieve file or directory {}'.format('/' + path.path)
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
 
     @pytest.mark.asyncio
@@ -1058,10 +1213,10 @@ class TestMetadata:
     async def test_metadata_file_root_not_found(self, provider):
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
 
-        with pytest.raises(exceptions.MetadataError) as exc_info:
+        with pytest.raises(exceptions.MetadataError) as exc:
             await provider.metadata(path)
 
-        assert exc_info.value.code == 404
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -1087,6 +1242,7 @@ class TestMetadata:
     @pytest.mark.aiohttpretty
     async def test_metadata_root_folder(self, provider, root_provider_fixtures):
         path = await provider.validate_path('/')
+
         query = provider._build_query(path.identifier)
         folder_furl = furl.furl(provider.build_url('files', q=query, alt='json', pageSize=1000))
         folder_url = folder_furl.add(provider.FOLDER_FIELDS).url
@@ -1142,7 +1298,6 @@ class TestMetadata:
         result = await provider.metadata(path)
 
         expected = GoogleDriveFolderMetadata(file, path.child(file['name'], folder=True))
-
         assert result == [expected]
         assert aiohttpretty.has_call(method='GET', uri=folder_url)
 
@@ -1182,8 +1337,12 @@ class TestMetadata:
         )
 
         revision_body = sharing_fixtures['editable_gdoc']['revision']
-        revision_furl = furl.furl(provider.build_url('files', path.identifier,
-                                                     'revisions', self.GDOC_GOOD_REVISION))
+        revision_furl = furl.furl(provider.build_url(
+            'files',
+            path.identifier,
+            'revisions',
+            self.GDOC_GOOD_REVISION
+        ))
         revision_url = revision_furl.add(provider.REVISION_FIELDS).url
         aiohttpretty.register_json_uri('GET', revision_url, body=revision_body)
 
@@ -1203,15 +1362,19 @@ class TestMetadata:
         )
 
         no_such_revision_error = make_no_such_revision_error(self.GDOC_BAD_REVISION)
-        revision_furl = furl.furl(provider.build_url('files', path.identifier,
-                                                     'revisions', self.GDOC_BAD_REVISION))
+        revision_furl = furl.furl(provider.build_url(
+            'files',
+            path.identifier,
+            'revisions',
+            self.GDOC_BAD_REVISION
+        ))
         revision_url = revision_furl.add(provider.REVISION_FIELDS).url
-        aiohttpretty.register_json_uri('GET', revision_url, status=404, body=no_such_revision_error)
+        aiohttpretty.register_json_uri('GET', revision_url, status=HTTPStatus.NOT_FOUND, body=no_such_revision_error)
 
-        with pytest.raises(exceptions.NotFoundError) as e:
+        with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.metadata(path, revision=self.GDOC_BAD_REVISION)
 
-        assert e.value.code == 404
+        assert exc.value.code == HTTPStatus.NOT_FOUND
         assert aiohttpretty.has_call(method='GET', uri=revision_url)
 
     @pytest.mark.asyncio
@@ -1235,7 +1398,6 @@ class TestMetadata:
 
         local_metadata = copy.deepcopy(metadata_body)
         local_metadata['version'] = revisions_body['revisions'][-1]['id']
-
         expected = GoogleDriveFileMetadata(local_metadata, path)
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
@@ -1258,9 +1420,8 @@ class TestMetadata:
 
         local_metadata = copy.deepcopy(metadata_body)
         etag = '{}::{}'.format(local_metadata['id'], local_metadata['modifiedTime'])
-        local_metadata['version'] = etag + ds.DRIVE_IGNORE_VERSION
+        local_metadata['version'] = etag + provider_settings.DRIVE_IGNORE_VERSION
         expected = GoogleDriveFileMetadata(local_metadata, path)
-
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
 
@@ -1274,15 +1435,24 @@ class TestMetadata:
         )
 
         unauthorized_error = make_unauthorized_file_access_error(metadata_body['id'])
-        revision_furl = furl.furl(provider.build_url('files', path.identifier,
-                                                     'revisions', self.GDOC_BAD_REVISION))
+        revision_furl = furl.furl(provider.build_url(
+            'files',
+            path.identifier,
+            'revisions',
+            self.GDOC_BAD_REVISION)
+        )
         revision_url = revision_furl.add(provider.REVISION_FIELDS).url
-        aiohttpretty.register_json_uri('GET', revision_url, status=404, body=unauthorized_error)
+        aiohttpretty.register_json_uri(
+            'GET',
+            revision_url,
+            status=HTTPStatus.NOT_FOUND,
+            body=unauthorized_error
+        )
 
-        with pytest.raises(exceptions.NotFoundError) as e:
+        with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.metadata(path, revision=self.GDOC_BAD_REVISION)
 
-        assert e.value.code == 404
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -1301,7 +1471,7 @@ class TestMetadata:
 
         local_metadata = copy.deepcopy(metadata_body)
         etag = '{}::{}'.format(local_metadata['id'], local_metadata['modifiedTime'])
-        local_metadata['version'] = etag + ds.DRIVE_IGNORE_VERSION
+        local_metadata['version'] = etag + provider_settings.DRIVE_IGNORE_VERSION
         expected = GoogleDriveFileMetadata(local_metadata, path)
         assert result == expected
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
@@ -1335,8 +1505,12 @@ class TestMetadata:
         )
 
         revision_body = sharing_fixtures['editable_jpeg']['revision']
-        revision_furl = furl.furl(provider.build_url('files', path.identifier,
-                                                     'revisions', self.JPEG_GOOD_REVISION))
+        revision_furl = furl.furl(provider.build_url(
+            'files',
+            path.identifier,
+            'revisions',
+            self.JPEG_GOOD_REVISION
+        ))
         revision_url = revision_furl.add(provider.REVISION_FIELDS).url
         aiohttpretty.register_json_uri('GET', revision_url, body=revision_body)
 
@@ -1356,15 +1530,24 @@ class TestMetadata:
         )
 
         no_such_revision_error = make_no_such_revision_error(self.JPEG_BAD_REVISION)
-        revision_furl = furl.furl(provider.build_url('files', path.identifier,
-                                                     'revisions', self.JPEG_BAD_REVISION))
+        revision_furl = furl.furl(provider.build_url(
+            'files',
+            path.identifier,
+            'revisions',
+            self.JPEG_BAD_REVISION
+        ))
         revision_url = revision_furl.add(provider.REVISION_FIELDS).url
-        aiohttpretty.register_json_uri('GET', revision_url, status=404, body=no_such_revision_error)
+        aiohttpretty.register_json_uri(
+            'GET',
+            revision_url,
+            status=HTTPStatus.NOT_FOUND,
+            body=no_such_revision_error
+        )
 
-        with pytest.raises(exceptions.NotFoundError) as e:
+        with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.metadata(path, revision=self.JPEG_BAD_REVISION)
 
-        assert e.value.code == 404
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -1414,15 +1597,24 @@ class TestMetadata:
         )
 
         unauthorized_error = make_unauthorized_file_access_error(metadata_body['id'])
-        revision_furl = furl.furl(provider.build_url('files', path.identifier,
-                                                     'revisions', self.JPEG_BAD_REVISION))
+        revision_furl = furl.furl(provider.build_url(
+            'files',
+            path.identifier,
+            'revisions',
+            self.JPEG_BAD_REVISION
+        ))
         revision_url = revision_furl.add(provider.REVISION_FIELDS).url
-        aiohttpretty.register_json_uri('GET', revision_url, status=404, body=unauthorized_error)
+        aiohttpretty.register_json_uri(
+            'GET',
+            revision_url,
+            status=HTTPStatus.NOT_FOUND,
+            body=unauthorized_error
+        )
 
-        with pytest.raises(exceptions.NotFoundError) as e:
+        with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.metadata(path, revision=self.JPEG_BAD_REVISION)
 
-        assert e.value.code == 404
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -1453,20 +1645,27 @@ class TestRevisions:
         path = WaterButlerPath('/birdie.jpg', _ids=('doesntmatter', file['id']))
 
         revisions_url = provider.build_url('files', file['id'], 'revisions')
-        aiohttpretty.register_json_uri('GET', revisions_url,
-                                       body=revision_fixtures['revisions_list'])
+        aiohttpretty.register_json_uri(
+            'GET',
+            revisions_url,
+            body=revision_fixtures['revisions_list']
+        )
 
         result = await provider.revisions(path)
+
         expected = [
-            GoogleDriveRevision(each)
-            for each in revision_fixtures['revisions_list']['revisions']
+            GoogleDriveRevision(each) for each in revision_fixtures['revisions_list']['revisions']
         ]
         assert result == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_get_revisions_no_revisions(self, provider, revision_fixtures,
-                                              root_provider_fixtures):
+    async def test_get_revisions_no_revisions(
+            self,
+            provider,
+            revision_fixtures,
+            root_provider_fixtures
+    ):
         file = root_provider_fixtures['list_file']['files'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=('doesntmatter', file['id']))
 
@@ -1475,16 +1674,19 @@ class TestRevisions:
         aiohttpretty.register_json_uri('GET', metadata_url, body=file)
 
         revisions_url = provider.build_url('files', file['id'], 'revisions')
-
-        aiohttpretty.register_json_uri('GET', revisions_url,
-                                       body=revision_fixtures['revisions_list_empty'])
+        aiohttpretty.register_json_uri(
+            'GET',
+            revisions_url,
+            body=revision_fixtures['revisions_list_empty']
+        )
 
         result = await provider.revisions(path)
+
         etag = '{}::{}'.format(file['id'], file['modifiedTime'])
         expected = [
             GoogleDriveRevision({
                 'modifiedTime': file['modifiedTime'],
-                'id': etag + ds.DRIVE_IGNORE_VERSION,
+                'id': etag + provider_settings.DRIVE_IGNORE_VERSION,
             })
         ]
         assert result == expected
@@ -1502,14 +1704,19 @@ class TestRevisions:
 
         revisions_url = provider.build_url('files', file['id'], 'revisions')
         aiohttpretty.register_json_uri(
-            'GET', revisions_url, body=file_fixtures['revisions_error'], status=403)
+            'GET',
+            revisions_url,
+            body=file_fixtures['revisions_error'],
+            status=HTTPStatus.FORBIDDEN
+        )
 
         result = await provider.revisions(path)
+
         etag = '{}::{}'.format(file['id'], file['modifiedTime'])
         expected = [
             GoogleDriveRevision({
                 'modifiedTime': file['modifiedTime'],
-                'id': etag + ds.DRIVE_IGNORE_VERSION,
+                'id': etag + provider_settings.DRIVE_IGNORE_VERSION,
             })
         ]
         assert result == expected
@@ -1528,22 +1735,29 @@ class TestCreateFolder:
     async def test_already_exists(self, provider):
         path = WaterButlerPath('/hugo/', _ids=('doesnt', 'matter'))
 
-        with pytest.raises(exceptions.FolderNamingConflict) as e:
+        with pytest.raises(exceptions.FolderNamingConflict) as exc:
             await provider.create_folder(path)
 
-        assert e.value.code == 409
-        assert e.value.message == ('Cannot create folder "hugo", because a file or folder '
-                                   'already exists with that name')
+        assert exc.value.code == HTTPStatus.CONFLICT
+        assert exc.value.message == 'Cannot create folder "hugo", ' \
+                                  'because a file or folder already exists with that name'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_returns_metadata(self, provider, root_provider_fixtures):
+    async def test_returns_metadata(
+            self,
+            provider,
+            root_provider_fixtures
+    ):
         path = WaterButlerPath('/osf%20test/', _ids=(provider.folder['id'], None))
 
         metadata_furl = furl.furl(provider.build_url('files', path.identifier or ''))
         metadata_url = metadata_furl.add(provider.FILE_FIELDS).url
-        aiohttpretty.register_json_uri('POST', metadata_url,
-                                       body=root_provider_fixtures['folder_metadata'])
+        aiohttpretty.register_json_uri(
+            'POST',
+            metadata_url,
+            body=root_provider_fixtures['folder_metadata']
+        )
 
         resp = await provider.create_folder(path)
 
@@ -1555,22 +1769,24 @@ class TestCreateFolder:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_raises_non_404(self, provider):
-        path = WaterButlerPath('/hugo/kim/pins/', _ids=(provider.folder['id'],
-                                                        'something', 'something', None))
+        path = WaterButlerPath(
+            '/hugo/kim/pins/',
+            _ids=(provider.folder['id'], 'something', 'something', None)
+        )
 
         metadata_furl = furl.furl(provider.build_url('files', path.identifier or ''))
         metadata_url = metadata_furl.add(provider.FILE_FIELDS).url
         aiohttpretty.register_json_uri('POST', metadata_url, status=418)
 
-        with pytest.raises(exceptions.CreateFolderError) as e:
+        with pytest.raises(exceptions.CreateFolderError) as exc:
             await provider.create_folder(path)
 
-        assert e.value.code == 418
+        assert exc.value.code == 418
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_must_be_folder(self, provider, monkeypatch):
-        with pytest.raises(exceptions.CreateFolderError) as e:
+        with pytest.raises(exceptions.CreateFolderError):
             await provider.create_folder(WaterButlerPath('/carp.fish', _ids=('doesnt', 'matter')))
 
 
@@ -1581,21 +1797,29 @@ class TestIntraFunctions:
     async def test_intra_move_file(self, provider, root_provider_fixtures):
         file = root_provider_fixtures['docs_file_metadata']
         src_path = WaterButlerPath('/unsure.txt', _ids=(provider.folder['id'], file['id']))
-        dest_path = WaterButlerPath('/really/unsure.txt', _ids=(provider.folder['id'],
-                                                                file['id'], file['id']))
+        dest_path = WaterButlerPath(
+            '/really/unsure.txt',
+            _ids=(provider.folder['id'], file['id'], file['id'])
+        )
 
-        move_furl = furl.furl(provider.build_url('files', src_path.identifier,
-                                                 removeParents=src_path.parent.identifier,
-                                                 addParents=dest_path.parent.identifier))
+        move_furl = furl.furl(provider.build_url(
+            'files',
+            src_path.identifier,
+            removeParents=src_path.parent.identifier,
+            addParents=dest_path.parent.identifier
+        ))
         move_url = move_furl.add(provider.FILE_FIELDS).url
-        data = json.dumps({
-            'name': dest_path.name
-        }),
+        data = json.dumps({'name': dest_path.name}),
         aiohttpretty.register_json_uri('PATCH', move_url, data=data, body=file)
 
         delete_url = provider.build_url('files', file['id'])
         del_url_body = json.dumps({'trashed': 'true'})
-        aiohttpretty.register_uri('PATCH', delete_url, body=del_url_body, status=200)
+        aiohttpretty.register_uri(
+            'PATCH',
+            delete_url,
+            body=del_url_body,
+            status=HTTPStatus.OK
+        )
 
         result, created = await provider.intra_move(provider, src_path, dest_path)
         expected = GoogleDriveFileMetadata(file, dest_path)
@@ -1610,36 +1834,38 @@ class TestIntraFunctions:
         folder = root_provider_fixtures['folder_metadata']
         folder2 = root_provider_fixtures['folder2_metadata']
         src_path = WaterButlerPath('/unsure/', _ids=(provider.folder['id'], folder['id']))
-        dest_path = WaterButlerPath('/really/unsure/', _ids=(provider.folder['id'],
-                                                             folder2['id'], folder2['id']))
+        dest_path = WaterButlerPath(
+            '/really/unsure/',
+            _ids=(provider.folder['id'], folder2['id'], folder2['id'])
+        )
 
-        move_furl = furl.furl(provider.build_url('files', src_path.identifier,
-                                                 removeParents=src_path.parent.identifier,
-                                                 addParents=dest_path.parent.identifier))
+        move_furl = furl.furl(provider.build_url(
+            'files',
+            src_path.identifier,
+            removeParents=src_path.parent.identifier,
+            addParents=dest_path.parent.identifier
+        ))
         move_url = move_furl.add(provider.FILE_FIELDS).url
-        data = json.dumps({
-            'name': dest_path.name
-        }),
+        data = json.dumps({'name': dest_path.name}),
         aiohttpretty.register_json_uri('PATCH', move_url, data=data, body=folder)
 
         delete_url = provider.build_url('files', folder2['id'])
         del_url_body = json.dumps({'trashed': 'true'})
-        aiohttpretty.register_uri('PATCH', delete_url, body=del_url_body, status=200)
+        aiohttpretty.register_uri('PATCH', delete_url, body=del_url_body, status=HTTPStatus.OK)
 
         query = provider._build_query(src_path.identifier)
         children_furl = furl.furl(provider.build_url('files', q=query, alt='json', pageSize=1000))
         children_url = children_furl.add(provider.FOLDER_FIELDS).url
-
         children_list = generate_list(3, **root_provider_fixtures['folder_metadata'])
         aiohttpretty.register_json_uri('GET', children_url, body=children_list)
 
         result, created = await provider.intra_move(provider, src_path, dest_path)
+
         expected = GoogleDriveFolderMetadata(folder, dest_path)
         expected.children = [
             provider._serialize_file(dest_path.child(file['name']), file)
             for file in children_list['files']
         ]
-
         assert result == expected
         assert aiohttpretty.has_call(method='PATCH', uri=move_url)
         assert aiohttpretty.has_call(method='PATCH', uri=delete_url)
@@ -1649,22 +1875,22 @@ class TestIntraFunctions:
     async def test_intra_copy_file(self, provider, root_provider_fixtures):
         file = root_provider_fixtures['docs_file_metadata']
         src_path = WaterButlerPath('/unsure.txt', _ids=(provider.folder['id'], file['id']))
-        dest_path = WaterButlerPath('/really/unsure.txt', _ids=(provider.folder['id'],
-                                                                file['id'], file['id']))
+        dest_path = WaterButlerPath(
+            '/really/unsure.txt',
+            _ids=(provider.folder['id'], file['id'], file['id'])
+        )
 
         copy_furl = furl.furl(provider.build_url('files', src_path.identifier, 'copy'))
         copy_url = copy_furl.add(provider.FILE_FIELDS).url
         data = json.dumps({
-            'parents': [{
-                'id': dest_path.parent.identifier
-            }],
+            'parents': [{'id': dest_path.parent.identifier}],
             'name': dest_path.name
         }),
         aiohttpretty.register_json_uri('POST', copy_url, data=data, body=file)
 
         delete_url = provider.build_url('files', file['id'])
         del_url_body = json.dumps({'trashed': 'true'})
-        aiohttpretty.register_uri('PATCH', delete_url, body=del_url_body, status=200)
+        aiohttpretty.register_uri('PATCH', delete_url, body=del_url_body, status=HTTPStatus.OK)
 
         result, created = await provider.intra_copy(provider, src_path, dest_path)
         expected = GoogleDriveFileMetadata(file, dest_path)
@@ -1711,8 +1937,12 @@ class TestOperationsOrMisc:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_revalidate_path_file_error(self, provider, root_provider_fixtures,
-                                              error_fixtures):
+    async def test_revalidate_path_file_error(
+            self,
+            provider,
+            root_provider_fixtures,
+            error_fixtures
+    ):
         file_name = '/root/whatever/Gear1.stl'
         file_id = root_provider_fixtures['revalidate_path_file_metadata_1']['files'][0]['id']
         path = GoogleDrivePath(file_name, _ids=['0', file_id, file_id, file_id])
@@ -1722,13 +1952,15 @@ class TestOperationsOrMisc:
         current_part = parts.pop(0)
         part_name, part_is_folder = current_part[0], current_part[1]
         query = _build_name_search_query(provider, part_name, provider.folder['id'], True)
-
         list_url = provider.build_url('files', q=query, fields='files(id)')
-        aiohttpretty.register_json_uri('GET', list_url,
-                                       body=error_fixtures['parts_file_missing_metadata'])
+        aiohttpretty.register_json_uri(
+            'GET',
+            list_url,
+            body=error_fixtures['parts_file_missing_metadata']
+        )
 
-        with pytest.raises(exceptions.MetadataError) as e:
-            result = await provider._resolve_path_to_ids(file_name)
+        with pytest.raises(exceptions.MetadataError) as exc:
+            await provider._resolve_path_to_ids(file_name)
 
-        assert e.value.message == '{} not found'.format(str(path))
-        assert e.value.code == 404
+        assert exc.value.message == '{} not found'.format(str(path))
+        assert exc.value.code == HTTPStatus.NOT_FOUND
