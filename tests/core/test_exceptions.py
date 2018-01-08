@@ -27,6 +27,7 @@ class TestExceptionSerialization:
         (exceptions.NamingConflict),
         (exceptions.ProviderNotFound),
         (exceptions.UploadChecksumMismatchError),
+        (exceptions.UploadFailedError),
         (exceptions.NotFoundError),
         (exceptions.InvalidPathError),
         (exceptions.OverwriteSelfError),

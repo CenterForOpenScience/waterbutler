@@ -188,6 +188,13 @@ class UploadChecksumMismatchError(ProviderError):
         super().__init__(message, code=code)
 
 
+class UploadFailedError(ProviderError):
+    def __init__(self, message=None, code=HTTPStatus.INTERNAL_SERVER_ERROR):
+        if message is None:
+            message = 'Upload Failed'
+        super().__init__(message, code=code)
+
+
 class NotFoundError(ProviderError):
     def __init__(self, path, code=HTTPStatus.NOT_FOUND, is_user_error=True):
         super().__init__(

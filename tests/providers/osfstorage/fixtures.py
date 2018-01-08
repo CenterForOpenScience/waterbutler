@@ -51,6 +51,7 @@ def settings():
         'parity': {},
     }
 
+
 @pytest.fixture
 def folder_children_metadata():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
