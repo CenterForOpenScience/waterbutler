@@ -6,10 +6,10 @@ import logging
 import aiohttp
 # from geoip import geolite2
 
-import waterbutler
 from waterbutler import settings
 from waterbutler.core import utils
 from waterbutler.sizes import KBs, MBs, GBs
+from waterbutler.version import __version__
 from waterbutler.tasks import settings as task_settings
 
 
@@ -71,7 +71,7 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
 
     keen_payload = {
         'meta': {
-            'wb_version': waterbutler.__version__,
+            'wb_version': __version__,
             'api_version': api_version,
             'epoch': 1,
         },
