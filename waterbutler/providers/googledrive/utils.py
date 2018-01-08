@@ -26,7 +26,9 @@ DOCS_FORMATS = [
             'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     },
 ]
+
 DOCS_MIMES = [doc_format['mime_type'] for doc_format in DOCS_FORMATS]
+
 DOCS_DEFAULT_FORMAT = {
     'mime_type': '',
     'ext': '',
@@ -51,18 +53,18 @@ def get_export_mimetype_from_ext(ext):
             return doc_format['export_mimetype']
 
 
-def get_format(metadata):
-    for doc_format in DOCS_FORMATS:
-        if doc_format['mime_type'] == metadata['mimeType']:
-            return doc_format
+def get_docs_format(metadata):
+    for docs_format in DOCS_FORMATS:
+        if docs_format['mime_type'] == metadata['mimeType']:
+            return docs_format
     return DOCS_DEFAULT_FORMAT
 
 
 def get_extension(metadata):
-    doc_format = get_format(metadata)
+    doc_format = get_docs_format(metadata)
     return doc_format['ext']
 
 
 def get_download_extension(metadata):
-    doc_format = get_format(metadata)
+    doc_format = get_docs_format(metadata)
     return doc_format['download_ext']

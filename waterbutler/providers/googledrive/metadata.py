@@ -1,10 +1,9 @@
-from waterbutler.core import metadata
-import waterbutler.core.utils as core_utils
+from waterbutler.core import utils as core_utils
+from waterbutler.core import metadata as core_metadata
+from waterbutler.providers.googledrive import utils as provider_utils
 
-from waterbutler.providers.googledrive import utils
 
-
-class BaseGoogleDriveMetadata(metadata.BaseMetadata):
+class BaseGoogleDriveMetadata(core_metadata.BaseMetadata):
 
     def __init__(self, raw, path):
         super().__init__(raw)
@@ -26,7 +25,7 @@ class BaseGoogleDriveMetadata(metadata.BaseMetadata):
         return {'revisionId': self.raw['version']}
 
 
-class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMetadata):
+class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, core_metadata.BaseFolderMetadata):
 
     def __init__(self, raw, path):
         super().__init__(raw, path)
@@ -53,7 +52,7 @@ class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMeta
         return self.name
 
 
-class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata):
+class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, core_metadata.BaseFileMetadata):
     """The metadata for a single file on Google Drive.  This class expects a the ``raw``
     property to be the response[1] from the GDrive v3 file metadata endpoint[2].
 
@@ -69,7 +68,7 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     def name(self):
         name = self._file_name
         if self.is_google_doc:
-            ext = utils.get_extension(self.raw)
+            ext = provider_utils.get_extension(self.raw)
             name += ext
         return name
 
@@ -77,7 +76,7 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     def path(self):
         path = '/' + self._path.raw_path
         if self.is_google_doc:
-            ext = utils.get_extension(self.raw)
+            ext = provider_utils.get_extension(self.raw)
             path += ext
         return path
 
@@ -85,7 +84,7 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     def materialized_path(self):
         materialized = str(self._path)
         if self.is_google_doc:
-            ext = utils.get_extension(self.raw)
+            ext = provider_utils.get_extension(self.raw)
             materialized += ext
         return materialized
 
@@ -116,7 +115,7 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
         ret['webView'] = self.raw.get('webViewLink')
 
         if self.is_google_doc:
-            ret['downloadExt'] = utils.get_download_extension(self.raw)
+            ret['downloadExt'] = provider_utils.get_download_extension(self.raw)
         else:
             if not hasattr(ret, 'hashes'):
                 ret['hashes'] = {}
@@ -126,13 +125,13 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
 
     @property
     def is_google_doc(self):
-        return utils.is_docs_file(self.raw)
+        return provider_utils.is_docs_file(self.raw)
 
     @property
     def export_name(self):
         name = self._file_name
         if self.is_google_doc:
-            ext = utils.get_download_extension(self.raw)
+            ext = provider_utils.get_download_extension(self.raw)
             name += ext
         return name
 
@@ -168,7 +167,7 @@ class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
         appropriate.  GDocs don't have an md5, non-GDocs don't need a downloadExt.
         """
         if self.is_google_doc:
-            return {'downloadExt': utils.get_download_extension(self.raw)}
+            return {'downloadExt': provider_utils.get_download_extension(self.raw)}
         return {'md5': self.raw['md5Checksum']}
 
     @property
@@ -176,7 +175,7 @@ class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
         return self.raw.get('originalFilename', self._path.name)
 
 
-class GoogleDriveRevision(metadata.BaseFileRevisionMetadata):
+class GoogleDriveRevision(core_metadata.BaseFileRevisionMetadata):
 
     @property
     def version_identifier(self):
