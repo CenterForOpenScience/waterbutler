@@ -3,6 +3,7 @@ import json
 import uuid
 import shutil
 import hashlib
+import logging
 
 from waterbutler.core import utils
 from waterbutler.core import signing
@@ -18,6 +19,8 @@ from waterbutler.providers.osfstorage.tasks import parity
 from waterbutler.providers.osfstorage.metadata import OsfStorageFileMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageFolderMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageRevisionMetadata
+
+logger = logging.getLogger(__name__)
 
 QUERY_METHODS = ('GET', 'DELETE')
 
@@ -310,6 +313,8 @@ class OSFStorageProvider(provider.BaseProvider):
         provider = self.make_provider(self.settings)
         local_pending_path = os.path.join(settings.FILE_PATH_PENDING, pending_name)
         remote_pending_path = await provider.validate_path('/' + pending_name)
+        logger.debug('upload: local_pending_path::{}'.format(local_pending_path))
+        logger.debug('upload: remote_pending_path::{}'.format(remote_pending_path))
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
