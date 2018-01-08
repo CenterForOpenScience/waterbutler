@@ -1,16 +1,14 @@
-import asyncio
 import uuid
+import asyncio
 
-from waterbutler.core.streams.base import BaseStream
-from waterbutler.core.streams.base import MultiStream
-from waterbutler.core.streams.base import StringStream
+from waterbutler.core.streams.base import BaseStream, MultiStream, StringStream
 
 
 class FormDataStream(MultiStream):
     """A child of MultiSteam used to create stream friendly multipart form data requests.
     Usage:
 
-    >>> stream = FormDataStream(key1='value1', file=FileStream(...))
+        >>> stream = FormDataStream(key1='value1', file=FileStream(...))
 
     Or:
 
@@ -29,9 +27,7 @@ class FormDataStream(MultiStream):
 
     @classmethod
     def make_boundary(cls):
-        """Creates a random-ish boundary for
-        form data seperator
-        """
+        """Creates a random-ish boundary for form data separator"""
         return uuid.uuid4().hex
 
     @classmethod
@@ -41,15 +37,12 @@ class FormDataStream(MultiStream):
 
         header += ''.join([
             '; {}="{}"'.format(key, value)
-            for key, value
-            in extra.items()
-            if value is not None
+            for key, value in extra.items() if value is not None
         ])
 
         additional = '\r\n'.join([
             '{}: {}'.format(key, value)
-            for key, value in additional_headers.items()
-            if value is not None
+            for key, value in additional_headers.items() if value is not None
         ])
 
         header += '\r\n'
@@ -114,7 +107,15 @@ class FormDataStream(MultiStream):
             StringStream(self.make_header(key) + value + '\r\n')
         )
 
-    def add_file(self, field_name, file_stream, file_name=None, mime='application/octet-stream', disposition='file', transcoding='binary'):
+    def add_file(
+            self,
+            field_name,
+            file_stream,
+            file_name=None,
+            mime='application/octet-stream',
+            disposition='file',
+            transcoding='binary'
+    ):
         assert self.can_add_more, 'Cannot add more fields after calling finalize or read'
 
         header = self.make_header(
@@ -140,15 +141,12 @@ class FormDataStream(MultiStream):
 
 class ResponseStreamReader(BaseStream):
 
-    def __init__(self, response, size=None, name=None, unsizable=False):
+    def __init__(self, response, size=None, name=None):
         super().__init__()
         if 'Content-Length' in response.headers:
             self._size = int(response.headers['Content-Length'])
-        elif not unsizable:
-            self._size = int(size)
         else:
-            self._size = None
-
+            self._size = size
         self._name = name
         self.response = response
 
