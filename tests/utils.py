@@ -7,6 +7,7 @@ import tempfile
 from unittest import mock
 
 import pytest
+import tornado
 from tornado import testing
 from tornado.platform.asyncio import AsyncIOMainLoop
 
@@ -67,12 +68,24 @@ class MockFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
     def __init__(self):
         super().__init__({})
 
+
 class MockStream(FileStreamReader):
     content_type = 'application/octet-stream'
     size = 1334
 
     def __init__(self):
-        super().__init__({})
+        super().__init__(tempfile.TemporaryFile())
+
+
+class MockRequestBody(tornado.concurrent.Future):
+
+    def __await__(self):
+        yield None
+
+
+class MockWriter(object):
+    write = mock.Mock()
+    drain = MockCoroutine()
 
 
 class MockProvider(provider.BaseProvider):
@@ -96,8 +109,12 @@ class MockProvider(provider.BaseProvider):
         self.upload = MockCoroutine()
         self.download = MockCoroutine()
         self.metadata = MockCoroutine()
-        self.validate_v1_path = MockCoroutine()
-        self.revalidate_path = MockCoroutine()
+        self.revalidate_path = MockCoroutine(
+            side_effect=lambda base, path, *args, **kwargs: base.child(path, *args, **kwargs))
+        self.validate_v1_path = MockCoroutine(
+            side_effect=lambda path,  **kwargs: WaterButlerPath(path, **kwargs))
+        self.validate_path = MockCoroutine(
+            side_effect=lambda path, **kwargs: WaterButlerPath(path, **kwargs))
 
 
 class MockProvider1(provider.BaseProvider):

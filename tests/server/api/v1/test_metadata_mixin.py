@@ -1,186 +1,177 @@
 import json
 
-import tornado
-from unittest import mock
+import pytest
 
-from waterbutler.server.api.v1.provider import ProviderHandler
+from tests.utils import MockCoroutine
 from waterbutler.core.path import WaterButlerPath
-from tests.utils import (HandlerTestCase,
-                         MockProvider,
-                         MockFileMetadata,
-                         MockFolderMetadata,
-                         MockCoroutine,
-                         MockStream,
-                         MockFileRevisionMetadata
-                         )
-
-class TestMetadataMixin(HandlerTestCase):
-
-    def setUp(self):
-        super().setUp()
-        self.resp = tornado.httputil.HTTPServerRequest(
-            uri='/v1/resources/test/providers/test/path/mock',
-            method='GET')
-        self.resp.connection = tornado.http1connection.HTTP1ConnectionParameters()
-        self.resp.connection.set_close_callback = mock.Mock()
-
-        self.handler = ProviderHandler(self.get_app(), self.resp)
-        self.handler.provider = MockProvider()
-        self.handler.path = WaterButlerPath('/test_path')
-        self.handler.resource = 'test_resource'
-        self.handler.write = mock.Mock()
-        self.handler.write_stream = MockCoroutine()
+from tests.server.api.v1.fixtures import (http_request, handler, handler_auth, mock_stream,
+                                          mock_partial_stream, mock_file_metadata,
+                                          mock_folder_children, mock_revision_metadata)
 
 
-    @tornado.testing.gen_test
-    async def test_header_file_metadata(self):
+class TestMetadataMixin:
 
-        metadata = MockFileMetadata()
-        self.handler.provider.metadata = MockCoroutine(return_value=metadata)
+    @pytest.mark.asyncio
+    async def test_header_file_metadata(self, handler, mock_file_metadata):
 
-        await self.handler.header_file_metadata()
+        handler.provider.metadata = MockCoroutine(return_value=mock_file_metadata)
 
-        assert self.handler._headers['Content-Length'] == '1337'
-        assert self.handler._headers['Last-Modified'] == b'Wed, 25 Sep 1991 18:20:30 GMT'
-        assert self.handler._headers['Content-Type'] == b'application/octet-stream'
-        expected = bytes(json.dumps(metadata.json_api_serialized(self.handler.resource)), 'latin-1')
-        assert self.handler._headers['X-Waterbutler-Metadata'] == expected
+        await handler.header_file_metadata()
 
-    @tornado.testing.gen_test
-    async def test_get_folder(self):
+        assert handler._headers['Content-Length'] == '1337'
+        assert handler._headers['Last-Modified'] == b'Wed, 25 Sep 1991 18:20:30 GMT'
+        assert handler._headers['Content-Type'] == b'application/octet-stream'
+        expected = bytes(json.dumps(mock_file_metadata.json_api_serialized(handler.resource)),
+                         'latin-1')
+        assert handler._headers['X-Waterbutler-Metadata'] == expected
+
+    @pytest.mark.asyncio
+    async def test_get_folder(self, handler, mock_folder_children):
         # The get_folder method expected behavior is to return folder children's metadata, not the
         # metadata of the actual folder. This should be true of all providers.
-        folder_children_metadata = [MockFolderMetadata(), MockFileMetadata(), MockFileMetadata()]
 
-        self.handler.provider.metadata = MockCoroutine(return_value=folder_children_metadata)
+        handler.provider.metadata = MockCoroutine(return_value=mock_folder_children)
 
-        serialized_data = [x.json_api_serialized(self.handler.resource)
-                           for x in folder_children_metadata]
+        serialized_data = [x.json_api_serialized(handler.resource) for x in mock_folder_children]
 
-        await self.handler.get_folder()
+        await handler.get_folder()
 
-        self.handler.write.assert_called_once_with({'data': serialized_data})
+        handler.write.assert_called_once_with({'data': serialized_data})
 
-    @tornado.testing.gen_test
-    async def test_get_folder_download_as_zip(self):
+    @pytest.mark.asyncio
+    async def test_get_folder_download_as_zip(self, handler):
         # Including 'zip' in the query params should trigger the download_as_zip method
 
-        self.handler.download_folder_as_zip = MockCoroutine()
-        self.handler.request.query_arguments['zip'] = ''
+        handler.download_folder_as_zip = MockCoroutine()
+        handler.request.query_arguments['zip'] = ''
 
-        await self.handler.get_folder()
+        await handler.get_folder()
 
-        self.handler.download_folder_as_zip.assert_awaited_once()
+        handler.download_folder_as_zip.assert_awaited_once()
 
-    @tornado.testing.gen_test
-    async def test_get_file_metadata(self):
-        self.handler.file_metadata = MockCoroutine()
-        self.handler.request.query_arguments['meta'] = ''
+    @pytest.mark.asyncio
+    async def test_get_file_metadata(self, handler):
+        handler.file_metadata = MockCoroutine()
+        handler.request.query_arguments['meta'] = ''
 
-        await self.handler.get_file()
+        await handler.get_file()
 
-        self.handler.file_metadata.assert_awaited_once()
+        handler.file_metadata.assert_awaited_once()
 
-    @tornado.testing.gen_test
-    async def test_get_file_versions(self):
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('query_param', ['versions', 'revisions'])
+    async def test_get_file_versions(self, query_param, handler):
         # Query parameters versions and revisions are equivalent, but versions is preferred for
         # clarity.
-        self.handler.get_file_revisions = MockCoroutine()
-        self.handler.request.query_arguments['versions'] = ''
+        handler.get_file_revisions = MockCoroutine()
+        handler.request.query_arguments[query_param] = ''
 
-        await self.handler.get_file()
+        await handler.get_file()
 
-        self.handler.get_file_revisions.assert_awaited_once()
+        handler.get_file_revisions.assert_awaited_once()
 
-        self.handler.request.query_arguments.clear()
-        self.handler.get_file_revisions = MockCoroutine()
-        self.handler.request.query_arguments['revisions'] = ''
+    @pytest.mark.asyncio
+    async def test_get_file_download_file(self, handler):
 
-        await self.handler.get_file()
+        handler.download_file = MockCoroutine()
+        await handler.get_file()
 
-        self.handler.get_file_revisions.assert_awaited_once()
+        handler.download_file.assert_awaited_once()
 
-    @tornado.testing.gen_test
-    async def test_get_file_download_file(self):
+    @pytest.mark.asyncio
+    async def test_download_file_headers(self, handler, mock_stream):
 
-        self.handler.download_file = MockCoroutine()
-        await self.handler.get_file()
+        handler.provider.download = MockCoroutine(return_value=mock_stream)
+        handler.path = WaterButlerPath('/test_file')
 
-        self.handler.download_file.assert_awaited_once()
+        await handler.download_file()
 
-    @tornado.testing.gen_test
-    async def test_download_file_headers(self):
-        stream = MockStream()
+        assert handler._headers['Content-Length'] == bytes(str(mock_stream.size), 'latin-1')
+        assert handler._headers['Content-Type'] == bytes(mock_stream.content_type, 'latin-1')
+        assert handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'.format(
+            handler.path.name), 'latin-1')
 
-        self.handler.provider.download = MockCoroutine(return_value=stream)
+        handler.write_stream.assert_awaited_once()
 
-        await self.handler.download_file()
+    @pytest.mark.asyncio
+    async def test_download_file_range_request_header(self, handler, mock_partial_stream):
 
-        assert self.handler._headers['Content-Length'] == bytes(str(stream.size), 'latin-1')
-        assert self.handler._headers['Content-Type'] == bytes(stream.content_type, 'latin-1')
-        assert self.handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'
-            .format(self.handler.path.name), 'latin-1')
+        handler.request.headers['Range'] = 'bytes=10-100'
+        handler.provider.download = MockCoroutine(return_value=mock_partial_stream)
+        handler.path = WaterButlerPath('/test_file')
 
-        self.handler.write_stream.assert_awaited_once()
+        await handler.download_file()
 
-    @tornado.testing.gen_test
-    async def test_download_file_range_request_header(self):
-        stream = MockStream()
-        stream.partial = True
-        stream.content_range = 'bytes=10-100'
+        assert handler._headers['Content-Range'] == bytes(mock_partial_stream.content_range,
+                                                          'latin-1')
+        assert handler.get_status() == 206
+        handler.write_stream.assert_called_once_with(mock_partial_stream)
 
-        self.handler.provider.download = MockCoroutine(return_value=stream)
+    @pytest.mark.asyncio
+    async def test_download_file_stream_redirect(self, handler):
 
-        await self.handler.download_file()
+        handler.provider.download = MockCoroutine(return_value='stream')
+        await handler.download_file()
 
-        assert self.handler._headers['Content-Range'] == bytes(stream.content_range, 'latin-1')
-        assert self.handler.get_status() == 206
+        handler.redirect.assert_called_once_with('stream')
 
-        self.handler.write_stream.assert_called_once_with(stream)
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("extension, mimetype", [
+        ('.csv', 'text/csv'),
+        ('.md', 'text/x-markdown')
+    ])
+    async def test_download_file_safari_mime_type(self, extension, mimetype, handler, mock_stream):
+        """ If the file extention is in mime_types override the content type to fix issues with
+         safari shoving in new file extensions """
 
-    @tornado.testing.gen_test
-    async def test_file_metadata(self):
-        metadata = MockFileMetadata()
-        self.handler.provider.metadata = MockCoroutine(return_value=metadata)
+        handler.path = WaterButlerPath('/test_path.{}'.format(extension))
+        handler.provider.download = MockCoroutine(return_value=mock_stream)
 
-        await self.handler.file_metadata()
+        await handler.download_file()
 
-        self.handler.write.assert_called_once_with(
-            {'data' : metadata.json_api_serialized(self.handler.resource)})
+        handler.write_stream.assert_called_once_with(mock_stream)
+        assert handler._headers['Content-Type'] == bytes(mimetype, 'latin-1')
 
-    @tornado.testing.gen_test
-    async def test_file_metadata_version(self):
-        metadata = MockFileMetadata()
-        self.handler.provider.metadata = MockCoroutine(return_value=metadata)
-        self.handler.request.query_arguments['version'] = ['version id']
+    @pytest.mark.asyncio
+    async def test_file_metadata(self, handler, mock_file_metadata):
 
-        await self.handler.file_metadata()
+        handler.provider.metadata = MockCoroutine(return_value=mock_file_metadata)
 
-        self.handler.provider.metadata.assert_called_once_with(self.handler.path,
-                                                               revision='version id')
-        self.handler.write.assert_called_once_with(
-            {'data' : metadata.json_api_serialized(self.handler.resource)})
+        await handler.file_metadata()
 
-    @tornado.testing.gen_test
-    async def test_get_file_revisions_raw(self):
-        revision_metadata = [MockFileRevisionMetadata()]
-        self.handler.provider.revisions = MockCoroutine(return_value=revision_metadata)
+        handler.write.assert_called_once_with(
+            {'data': mock_file_metadata.json_api_serialized(handler.resource)})
 
-        await self.handler.get_file_revisions()
+    @pytest.mark.asyncio
+    async def test_file_metadata_version(self, handler, mock_file_metadata):
+        handler.provider.metadata = MockCoroutine(return_value=mock_file_metadata)
+        handler.request.query_arguments['version'] = ['version id']
 
-        self.handler.write.assert_called_once_with(
-            {'data': [r.json_api_serialized() for r in revision_metadata]})
+        await handler.file_metadata()
 
-    @tornado.testing.gen_test
-    async def test_download_folder_as_zip(self):
+        handler.provider.metadata.assert_called_once_with(handler.path, revision='version id')
+        handler.write.assert_called_once_with(
+            {'data': mock_file_metadata.json_api_serialized(handler.resource)})
 
-        stream = MockStream()
-        self.handler.provider.zip = MockCoroutine(return_value=stream)
+    @pytest.mark.asyncio
+    async def test_get_file_revisions_raw(self, handler, mock_revision_metadata):
+        handler.provider.revisions = MockCoroutine(return_value=mock_revision_metadata)
 
-        await self.handler.download_folder_as_zip()
+        await handler.get_file_revisions()
 
-        assert self.handler._headers['Content-Type'] == bytes('application/zip', 'latin-1')
-        assert self.handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'
-            .format(self.handler.path.name + '.zip'), 'latin-1')
+        handler.write.assert_called_once_with(
+            {'data': [r.json_api_serialized() for r in mock_revision_metadata]})
 
-        self.handler.write_stream.assert_called_once_with(stream)
+    @pytest.mark.asyncio
+    async def test_download_folder_as_zip(self, handler, mock_stream):
+
+        handler.provider.zip = MockCoroutine(return_value=mock_stream)
+        handler.path = WaterButlerPath('/test_file')
+
+        await handler.download_folder_as_zip()
+
+        assert handler._headers['Content-Type'] == bytes('application/zip', 'latin-1')
+        assert handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'.format(
+            handler.path.name + '.zip'), 'latin-1')
+
+        handler.write_stream.assert_called_once_with(mock_stream)
