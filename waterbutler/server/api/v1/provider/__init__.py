@@ -26,7 +26,6 @@ def list_or_value(value):
     if len(value) == 0:
         return None
     if len(value) == 1:
-        # Remove leading slashes as they break things
         return value[0].decode('utf-8')
     return [item.decode('utf-8') for item in value]
 
