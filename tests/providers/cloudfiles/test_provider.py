@@ -124,14 +124,14 @@ class TestCRUD:
         metadata_url = connected_provider.build_url(path.path)
         url = connected_provider.sign_url(path, 'PUT')
         aiohttpretty.register_uri('HEAD',
-                                  metadata_url,
-                                  responses=[
-                                      {'status': 404},
-                                      {'headers': file_header_metadata}
-                                  ]
+                                      metadata_url,
+                                      responses=[
+                                          {'status': 404},
+                                          {'headers': file_header_metadata}
+                                      ]
                                   )
 
-        aiohttpretty.register_uri('PUT', url, status=200,
+        aiohttpretty.register_uri('PUT', url, status=201,
                                   headers={'ETag': '"{}"'.format(content_md5)})
 
         metadata, created = await connected_provider.upload(file_stream, path)
@@ -147,7 +147,7 @@ class TestCRUD:
         path = WaterButlerPath('/foo/', folder=True)
         metadata_url = connected_provider.build_url(path.path)
         url = connected_provider.sign_url(path, 'PUT')
-        aiohttpretty.register_uri('PUT', url, status=200)
+        aiohttpretty.register_uri('PUT', url, status=201)
         aiohttpretty.register_uri('HEAD', metadata_url, headers=file_header_metadata)
 
         metadata = await connected_provider.create_folder(path)
@@ -165,7 +165,7 @@ class TestCRUD:
         metadata_url = connected_provider.build_url(path.path)
         url = connected_provider.sign_url(path, 'PUT')
         aiohttpretty.register_uri('HEAD', metadata_url, status=404, headers=file_header_metadata)
-        aiohttpretty.register_uri('PUT', url, status=200,
+        aiohttpretty.register_uri('PUT', url, status=201,
                                   headers={'ETag': '"{}"'.format(content_md5)})
         metadata, created = await connected_provider.upload(
             file_stream, path, check_created=False, fetch_metadata=False)
@@ -185,7 +185,7 @@ class TestCRUD:
         url = connected_provider.sign_url(path, 'PUT')
         aiohttpretty.register_uri('HEAD', metadata_url, status=404, headers=file_header_metadata)
 
-        aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"Bogus MD5"'})
+        aiohttpretty.register_uri('PUT', url, status=201, headers={'ETag': '"Bogus MD5"'})
 
         with pytest.raises(exceptions.UploadChecksumMismatchError):
             await connected_provider.upload(file_stream, path)
@@ -374,8 +374,10 @@ class TestMetadata:
         aiohttpretty.register_uri('GET', url, status=200, body=b'')
         connected_provider._metadata_item = MockCoroutine(return_value=None)
 
-        with pytest.raises(exceptions.MetadataError):
+        with pytest.raises(exceptions.MetadataError) as exc:
             await connected_provider.metadata(path)
+
+        assert exc.value.message == "Could not retrieve folder '/level1/'"
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -469,8 +471,10 @@ class TestMetadata:
         path = WaterButlerPath('/does_not.exist')
         url = connected_provider.build_url(path.path)
         aiohttpretty.register_uri('HEAD', url, status=404)
-        with pytest.raises(exceptions.MetadataError):
+        with pytest.raises(exceptions.MetadataError) as exc:
             await connected_provider.metadata(path)
+
+        assert exc.value.message == "Could not retrieve '/does_not.exist'"
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -481,8 +485,10 @@ class TestMetadata:
         file_url = connected_provider.build_url(path.path.rstrip('/'))
         aiohttpretty.register_uri('GET', folder_url, status=200, body=folder_body)
         aiohttpretty.register_uri('HEAD', file_url, status=404)
-        with pytest.raises(exceptions.MetadataError):
+        with pytest.raises(exceptions.MetadataError) as exc:
             await connected_provider.metadata(path)
+
+        assert exc.value.message == "Could not retrieve '/does_not_exist/'"
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -492,9 +498,10 @@ class TestMetadata:
         path = WaterButlerPath('/does_not.exist')
         url = connected_provider.build_url(path.path)
         aiohttpretty.register_uri('HEAD', url, headers=item)
-        with pytest.raises(exceptions.MetadataError):
+        with pytest.raises(exceptions.MetadataError) as exc:
             await connected_provider.metadata(path)
 
+        assert exc.value.message == "Could not retrieve '/does_not.exist'"
 
 class TestV1ValidatePath:
 
@@ -532,8 +539,14 @@ class TestOperations:
                                   container_url,
                                   headers=container_header_metadata_without_verision_location)
 
-        with pytest.raises(exceptions.MetadataError):
+        with pytest.raises(exceptions.MetadataError) as exc:
             await connected_provider.revisions(path)
+
+        assert exc.value.message == 'The your container does not have a defined version location.' \
+                                    ' To set a version location and store file versions follow' \
+                                    ' the instructions here: https://developer.rackspace.com/' \
+                                    'docs/cloud-files/v1/use-cases/' \
+                                    'additional-object-services-information/#object-versioning'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

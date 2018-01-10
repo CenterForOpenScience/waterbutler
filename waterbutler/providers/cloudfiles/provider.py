@@ -2,6 +2,8 @@ import os
 import hmac
 import json
 import time
+import typing
+from typing import List, Union, Tuple
 import asyncio
 import hashlib
 import functools
@@ -9,7 +11,7 @@ from urllib.parse import unquote
 
 import furl
 
-from waterbutler.core import streams
+from waterbutler.core.streams import ResponseStreamReader, HashStreamWriter
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
@@ -29,7 +31,7 @@ def ensure_connection(func):
     @functools.wraps(func)
     async def wrapped(self, *args, **kwargs):
         await self._ensure_connection()
-        return (await func(self, *args, **kwargs))
+        return await func(self, *args, **kwargs)
     return wrapped
 
 
@@ -53,10 +55,10 @@ class CloudFilesProvider(provider.BaseProvider):
         self.use_public = self.settings.get('use_public', True)
         self.metrics.add('region', self.region)
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path: str, **kwargs):
         return await self.validate_path(path, **kwargs)
 
-    async def validate_path(self, path, **kwargs):
+    async def validate_path(self, path: str, **kwargs):
         return WaterButlerPath(path)
 
     @property
@@ -76,7 +78,7 @@ class CloudFilesProvider(provider.BaseProvider):
             headers={
                 'X-Copy-From': os.path.join(self.container, source_path.path)
             },
-            expects=(201, ),
+            expects=(201,),
             throws=exceptions.IntraCopyError,
         )
         await resp.release()
@@ -84,20 +86,14 @@ class CloudFilesProvider(provider.BaseProvider):
 
     @ensure_connection
     async def download(self,
-                       path,
-                       accept_url=False,
-                       range=None,
-                       version=None,
-                       revision=None,
-                       displayName=None,
-                       **kwargs):
-        """Returns a ResponseStreamReader (Stream) for the specified path
-        :param str path: Path to the object you want to download
-        :param dict \*\*kwargs: Additional arguments that are ignored
-        :rtype str:
-        :rtype ResponseStreamReader:
-        :raises: exceptions.DownloadError
-        """
+                       path: WaterButlerPath,
+                       accept_url: bool=False,
+                       range: tuple=None,
+                       version: str=None,
+                       revision: str=None,
+                       displayName: str=None,
+                       **kwargs) -> ResponseStreamReader:
+        """Returns a ResponseStreamReader (Stream) for the specified path """
         self.metrics.add('download.accept_url', accept_url)
         if accept_url:
             parsed_url = furl.furl(self.sign_url(path, endpoint=self.public_endpoint))
@@ -115,10 +111,15 @@ class CloudFilesProvider(provider.BaseProvider):
             expects=(200, 206),
             throws=exceptions.DownloadError,
         )
-        return streams.ResponseStreamReader(resp)
+        return ResponseStreamReader(resp)
 
     @ensure_connection
-    async def upload(self, stream, path, check_created=True, fetch_metadata=True, **kwargs):
+    async def upload(self,
+                     stream: ResponseStreamReader,
+                     path: WaterButlerPath,
+                     check_created: bool=True,
+                     fetch_metadata: bool=True,
+                     **kwargs) -> Tuple[CloudFilesHeaderMetadata, bool]:
         """Uploads the given stream to CloudFiles
         :param ResponseStreamReader stream: The stream to put to CloudFiles
         :param str path: The full path of the object to upload to/into
@@ -132,13 +133,13 @@ class CloudFilesProvider(provider.BaseProvider):
             created = None
         self.metrics.add('upload.check_created', check_created)
 
-        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+        stream.add_writer('md5', HashStreamWriter(hashlib.md5))
         resp = await self.make_request(
             'PUT',
             functools.partial(self.sign_url, path, 'PUT'),
             data=stream,
             headers={'Content-Length': str(stream.size)},
-            expects=(200, 201),
+            expects=(201,),
             throws=exceptions.UploadError,
         )
         await resp.release()
@@ -155,7 +156,7 @@ class CloudFilesProvider(provider.BaseProvider):
         return metadata, created
 
     @ensure_connection
-    async def delete(self, path, confirm_delete=0):
+    async def delete(self, path: WaterButlerPath, confirm_delete: int=0) -> None:
         """Deletes the key at the specified path
         :param str path: The path of the key to delete
         :param int confirm_delete: Must be 1 to confirm root folder delete, this deletes entire
@@ -176,7 +177,7 @@ class CloudFilesProvider(provider.BaseProvider):
             await self._delete_item(path)
 
     @ensure_connection
-    async def _delete_folder_contents(self, path):
+    async def _delete_folder_contents(self, path: WaterButlerPath) -> None:
 
         metadata = await self._metadata_folder(path, recursive=True)
 
@@ -200,7 +201,7 @@ class CloudFilesProvider(provider.BaseProvider):
         await resp.release()
 
     @ensure_connection
-    async def _delete_item(self, path):
+    async def _delete_item(self, path: WaterButlerPath) -> None:
 
         resp = await self.make_request(
             'DELETE',
@@ -211,20 +212,25 @@ class CloudFilesProvider(provider.BaseProvider):
         await resp.release()
 
     @ensure_connection
-    async def metadata(self, path, recursive=False, version=None, revision=None, **kwargs):
-        """Get Metadata about the requested file or folder
-        :param str path: The path to a key or folder
-        :rtype dict:
-        :rtype list:
-        """
-        if path.is_dir:
-            return (await self._metadata_folder(path, recursive=recursive))
-        elif version or revision:
-            return (await self._metadata_revision(path, version, revision))
-        else:
-            return (await self._metadata_item(path))
+    async def metadata(self, path: WaterButlerPath,
+                       recursive: bool=False,
+                       version: str=None,
+                       revision: str=None,
+                       **kwargs) -> Union[CloudFilesHeaderMetadata, List]:
+        """Get Metadata about the requested file or the metadata of a folder's contents"""
 
-    def build_url(self, path, _endpoint=None, container=None, **query):
+        if path.is_dir:
+            return await self._metadata_folder(path, recursive=recursive)
+        elif version or revision:
+            return await self._metadata_revision(path, version, revision)
+        else:
+            return await self._metadata_item(path)
+
+    def build_url(self,
+                  path: str,
+                  _endpoint: str=None,
+                  container: str=None,
+                  **query) -> str:
         """Build the url for the specified object
         :param args segments: URI segments
         :param kwargs query: Query parameters
@@ -243,14 +249,12 @@ class CloudFilesProvider(provider.BaseProvider):
     def can_intra_move(self, dest_provider, path=None):
         return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
 
-    def sign_url(self, path, method='GET', endpoint=None, seconds=settings.TEMP_URL_SECS):
-        """Sign a temp url for the specified stream
-        :param str stream: The requested stream's path
-        :param CloudFilesPath path: A path to a file/folder
-        :param str method: The HTTP method used to access the returned url
-        :param int seconds: Time for the url to live
-        :rtype str:
-        """
+    def sign_url(self,
+                 path: WaterButlerPath,
+                 method: str='GET',
+                 endpoint: str=None,
+                 seconds: int=settings.TEMP_URL_SECS) -> str:
+        """Sign a temp url for the specified stream"""
 
         method = method.upper()
         expires = str(int(time.time() + seconds))
@@ -258,8 +262,8 @@ class CloudFilesProvider(provider.BaseProvider):
 
         body = '\n'.join([method, expires])
         body += '\n' + str(url.path)
-        body = unquote(body).encode()
-        signature = hmac.new(self.temp_url_key, body, hashlib.sha1).hexdigest()
+        body_data = unquote(body).encode()
+        signature = hmac.new(self.temp_url_key, body_data, hashlib.sha1).hexdigest()
         url.args.update({
             'temp_url_sig': signature,
             'temp_url_expires': expires,
@@ -269,12 +273,12 @@ class CloudFilesProvider(provider.BaseProvider):
 
     async def make_request(self, *args, **kwargs):
         try:
-            return (await super().make_request(*args, **kwargs))
+            return await super().make_request(*args, **kwargs)
         except exceptions.ProviderError as e:
             if e.code != 408:
                 raise
             await asyncio.sleep(1)
-            return (await super().make_request(*args, **kwargs))
+            return await super().make_request(*args, **kwargs)
 
     async def _ensure_connection(self):
         """Defines token, endpoint and temp_url_key if they are not already defined
@@ -302,24 +306,19 @@ class CloudFilesProvider(provider.BaseProvider):
                 except KeyError:
                     raise exceptions.ProviderError('No temp url key is available', code=503)
 
-    def _extract_endpoints(self, data):
-        """Pulls both the public and internal cloudfiles urls,
-        returned respectively, from the return of tokens
-        Very optimized.
-        :param dict data: The json response from the token endpoint
-        :rtype (str, str):
-        """
+    def _extract_endpoints(self, data: dict):
+        """Pulls both the public and internal cloudfiles urls, returned respectively, from the
+        return of tokens Very optimized."""
         for service in reversed(data['access']['serviceCatalog']):
             if service['name'].lower() == 'cloudfiles':
                 for region in service['endpoints']:
                     if region['region'].lower() == self.region.lower():
                         return region['publicURL'], region['internalURL']
 
-    async def _get_token(self):
+    async def _get_token(self) -> dict:
         """Fetches an access token from cloudfiles for actual api requests
         Returns the entire json response from the tokens endpoint
         Notably containing our token and proper endpoint to send requests to
-        :rtype dict:
         """
         resp = await self.make_request(
             'POST',
@@ -337,37 +336,29 @@ class CloudFilesProvider(provider.BaseProvider):
             },
             expects=(200, ),
         )
-        data = await resp.json()
-        return data
+        return await resp.json()
 
-    async def _metadata_item(self, path):
-        """Get Metadata about the requested file
-        :param str path: The path to a key
-        :rtype dict:
-        :rtype list:
-        """
+    async def _metadata_item(self, path: WaterButlerPath) -> CloudFilesHeaderMetadata:
+        """Get Metadata about the requested file or folder"""
         resp = await self.make_request(
             'HEAD',
             functools.partial(self.build_url, path.path),
-            expects=(200, ),
+            expects=(200, 404),
             throws=exceptions.MetadataError,
         )
         await resp.release()
 
-        if resp.headers['Content-Type'] == 'application/directory' and path.is_file:
+        if resp.status == 404 or resp.headers['Content-Type'] == 'application/directory' and path.is_file:
             raise exceptions.MetadataError(
-                'Could not retrieve file \'{0}\''.format(str(path)),
+                'Could not retrieve \'{0}\''.format(str(path)),
                 code=404,
             )
 
         return CloudFilesHeaderMetadata(dict(resp.headers), path)
 
-    async def _metadata_folder(self, path, recursive=False):
-        """Get Metadata about the requested folder
-        :param str path: The path to a folder
-        :rtype dict:
-        :rtype list:
-        """
+    async def _metadata_folder(self, path: WaterButlerPath, recursive: bool=False) -> \
+            List[Union[CloudFilesFolderMetadata, CloudFilesFileMetadata]]:
+        """Get Metadata about the contents of requested folder"""
         # prefix must be blank when searching the root of the container
         query = {'prefix': path.path}
         self.metrics.add('metadata.folder.is_recursive', True if recursive else False)
@@ -384,7 +375,7 @@ class CloudFilesProvider(provider.BaseProvider):
         # no data and the provider path is not root, we are left with either a file or a directory
         # marker
         if not data and not path.is_root:
-            # Convert the parent path into a directory marker (file) and check for an empty folder
+            # Convert the parent path into a directory marker (item) and check for an empty folder
             dir_marker = path.parent.child(path.name, folder=path.is_dir)
             metadata = await self._metadata_item(dir_marker)
             if not metadata:
@@ -408,7 +399,8 @@ class CloudFilesProvider(provider.BaseProvider):
             for item in data
         ]
 
-    def _serialize_metadata(self, data):
+    def _serialize_metadata(self, data: dict) -> typing.Union[CloudFilesFolderMetadata,
+                                                              CloudFilesFileMetadata]:
         if data.get('subdir'):
             return CloudFilesFolderMetadata(data)
         elif data['content_type'] == 'application/directory':
@@ -416,15 +408,11 @@ class CloudFilesProvider(provider.BaseProvider):
         return CloudFilesFileMetadata(data)
 
     @ensure_connection
-    async def create_folder(self, path, **kwargs):
+    async def create_folder(self, path: WaterButlerPath, **kwargs) -> CloudFilesHeaderMetadata:
         """Create a folder in the current provider at `path`. Returns a `BaseFolderMetadata` object
         if successful.  May throw a 409 Conflict if a directory with the same name already exists.
         Enpoint information can be found here:
         https://developer.rackspace.com/docs/cloud-files/v1/general-api-info/pseudo-hierarchical-folders-and-directories/
-        :param path: ( :class:`.WaterButlerPath` )User-supplied path to create. Must be a directory.
-        :param kwargs: dict unused params
-        :rtype: :class:`.BaseFileMetadata`
-        :raises: :class:`.CreateFolderError`
         """
 
         resp = await self.make_request(
@@ -438,7 +426,7 @@ class CloudFilesProvider(provider.BaseProvider):
         return await self._metadata_item(path)
 
     @ensure_connection
-    async def _get_version_location(self):
+    async def _get_version_location(self) -> str:
         resp = await self.make_request(
             'HEAD',
             functools.partial(self.build_url, ''),
@@ -458,8 +446,8 @@ class CloudFilesProvider(provider.BaseProvider):
                                            '#object-versioning')
 
     @ensure_connection
-    async def revisions(self, path):
-        """Get past versions of the request file from special user designated version container,
+    async def revisions(self, path: WaterButlerPath, **kwarg) -> List[CloudFilesRevisonMetadata]:
+        """Get past versions of the requested file from special user designated version container,
         if the user hasn't designated a version_location container it raises an infomative error
         message. The revision endpoint also doesn't return the current version so that is added to
         the revision list after other revisions are returned. More info about versioning with Cloud
@@ -485,7 +473,10 @@ class CloudFilesProvider(provider.BaseProvider):
         return [current] + [CloudFilesRevisonMetadata(revision_data) for revision_data in json_resp]
 
     @ensure_connection
-    async def _metadata_revision(self, path, version=None, revision=None):
+    async def _metadata_revision(self,
+                                 path: WaterButlerPath,
+                                 version: str=None,
+                                 revision: str=None) -> CloudFilesHeaderMetadata:
         version_location = await self._get_version_location()
 
         resp = await self.make_request(
@@ -498,16 +489,16 @@ class CloudFilesProvider(provider.BaseProvider):
 
         return CloudFilesHeaderMetadata(resp.headers, path)
 
-    async def _download_revision(self, range, version):
+    async def _download_revision(self, request_range: tuple, version: str) -> ResponseStreamReader:
 
         version_location = await self._get_version_location()
 
         resp = await self.make_request(
             'GET',
             functools.partial(self.build_url, version, container=version_location),
-            range=range,
+            range=request_range,
             expects=(200, 206),
             throws=exceptions.DownloadError
         )
 
-        return streams.ResponseStreamReader(resp)
+        return ResponseStreamReader(resp)

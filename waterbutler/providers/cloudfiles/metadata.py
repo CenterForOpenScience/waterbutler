@@ -93,13 +93,13 @@ class CloudFilesHeaderMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata
 
     @property
     def etag(self):
-        return self.raw['ETAG']
+        return self.raw['ETAG'].replace('"', '')
 
     @property
     def extra(self):
         return {
             'hashes': {
-                'md5': self.raw['ETAG'],
+                'md5': self.raw['ETAG'].replace('"', '')
             },
         }
 
