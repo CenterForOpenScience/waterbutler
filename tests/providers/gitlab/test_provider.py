@@ -78,29 +78,36 @@ class TestValidatePath:
         body = fixtures.default_branches['default_branch']
         aiohttpretty.register_json_uri('GET', default_branch_url, body=body, status=200)
 
+        commit_sha_url = 'http://base.url/api/v4/projects/123/repository/branches/master'
+        commit_sha_body = fixtures.default_branches['get_commit_sha']
+        aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
+
         root_path = await provider.validate_v1_path(path)
 
         assert root_path.is_dir
         assert root_path.is_root
-        assert root_path.commit_sha is None
+        assert root_path.commit_sha == '5e4718bd52874cf373dad0e9ca602a9a36f87e5c'
         assert root_path.branch_name == 'master'
         assert root_path.extra == {
-            'commitSha': None,
+            'commitSha': '5e4718bd52874cf373dad0e9ca602a9a36f87e5c',
             'branchName': 'master',
         }
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_validate_v1_root_by_branch(self, provider):
-        path = '/'
-        root_path = await provider.validate_v1_path(path, branch='otherbranch')
+        commit_sha_url = 'http://base.url/api/v4/projects/123/repository/branches/otherbranch'
+        commit_sha_body = fixtures.default_branches['get_commit_sha']
+        aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
+
+        root_path = await provider.validate_v1_path('/', branch='otherbranch')
 
         assert root_path.is_dir
         assert root_path.is_root
-        assert root_path.commit_sha is None
+        assert root_path.commit_sha == '5e4718bd52874cf373dad0e9ca602a9a36f87e5c'
         assert root_path.branch_name == 'otherbranch'
         assert root_path.extra == {
-            'commitSha': None,
+            'commitSha': '5e4718bd52874cf373dad0e9ca602a9a36f87e5c',
             'branchName': 'otherbranch',
         }
 
@@ -137,15 +144,18 @@ class TestValidatePath:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_validate_v1_root_by_revision_branch(self, provider):
-        path = '/'
-        root_path = await provider.validate_v1_path(path, revision='otherbranch')
+        commit_sha_url = 'http://base.url/api/v4/projects/123/repository/branches/otherbranch'
+        commit_sha_body = fixtures.default_branches['get_commit_sha']
+        aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
+
+        root_path = await provider.validate_v1_path('/', revision='otherbranch')
 
         assert root_path.is_dir
         assert root_path.is_root
-        assert root_path.commit_sha is None
+        assert root_path.commit_sha == '5e4718bd52874cf373dad0e9ca602a9a36f87e5c'
         assert root_path.branch_name == 'otherbranch'
         assert root_path.extra == {
-            'commitSha': None,
+            'commitSha': '5e4718bd52874cf373dad0e9ca602a9a36f87e5c',
             'branchName': 'otherbranch',
         }
 
