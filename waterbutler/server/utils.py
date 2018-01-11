@@ -83,8 +83,6 @@ class UtilMixin:
         # This is just to be consitent with other Tornado code.
         start, end = request_range
 
-        stream.file_pointer.seek(start)
-
         while True:
             if end and end - start - self.bytes_downloaded < settings.CHUNK_SIZE:
                 chunk = await stream.read(end - start - self.bytes_downloaded)
