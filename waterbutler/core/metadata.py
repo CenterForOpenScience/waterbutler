@@ -188,7 +188,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
 
     @property
     def extra(self) -> dict:
-        """A dict of optional metdata from the provider.  Non-mandatory metadata should be stored
+        """A dict of optional metadata from the provider.  Non-mandatory metadata should be stored
         in this property.
 
         While this field is not explicitly structured, the `hashes` key should be reserved for the
