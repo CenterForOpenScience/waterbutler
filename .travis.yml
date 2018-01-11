@@ -2,6 +2,7 @@ language: python
 
 python:
   - "3.5"
+  - "3.6"
 
 sudo: false
 
@@ -14,7 +15,7 @@ before_install:
 
 install:
     - travis_retry pip install --upgrade pip
-    - travis_retry pip install setuptools==30.4.0
+    - travis_retry pip install setuptools==37.0.0
     - travis_retry pip install wheel==0.26.0
     - travis_retry pip install invoke==0.13.0
     - travis_retry invoke wheelhouse --develop

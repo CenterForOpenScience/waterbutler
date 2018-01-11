@@ -1,7 +1,5 @@
 from setuptools import setup, find_packages
 
-from waterbutler import __version__
-
 
 def parse_requirements(requirements):
     with open(requirements) as f:
@@ -10,9 +8,14 @@ def parse_requirements(requirements):
 
 requirements = parse_requirements('requirements.txt')
 
+# Taken from option 3 of https://packaging.python.org/guides/single-sourcing-package-version/
+version = {}
+with open('waterbutler/version.py') as fp:
+    exec(fp.read(), version)
+
 setup(
     name='waterbutler',
-    version=__version__,
+    version=version['__version__'],
     namespace_packages=['waterbutler', 'waterbutler.auth', 'waterbutler.providers'],
     description='WaterButler Storage Server',
     author='Center for Open Science',
@@ -45,6 +48,7 @@ setup(
             'figshare = waterbutler.providers.figshare:FigshareProvider',
             'filesystem = waterbutler.providers.filesystem:FileSystemProvider',
             'github = waterbutler.providers.github:GitHubProvider',
+            'gitlab = waterbutler.providers.gitlab:GitLabProvider',
             'bitbucket = waterbutler.providers.bitbucket:BitbucketProvider',
             'osfstorage = waterbutler.providers.osfstorage:OSFStorageProvider',
             'owncloud = waterbutler.providers.owncloud:OwnCloudProvider',
@@ -52,6 +56,7 @@ setup(
             'dataverse = waterbutler.providers.dataverse:DataverseProvider',
             'box = waterbutler.providers.box:BoxProvider',
             'googledrive = waterbutler.providers.googledrive:GoogleDriveProvider',
+            'onedrive = waterbutler.providers.onedrive:OneDriveProvider',
         ],
         'waterbutler.providers.tasks': [
             'osfstorage_parity = waterbutler.providers.osfstorage.tasks.parity',

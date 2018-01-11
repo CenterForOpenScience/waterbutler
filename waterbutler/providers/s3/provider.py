@@ -135,7 +135,7 @@ class S3Provider(provider.BaseProvider):
         await resp.release()
         return (await dest_provider.metadata(dest_path)), not exists
 
-    async def download(self, path, accept_url=False, version=None, range=None, **kwargs):
+    async def download(self, path, accept_url=False, revision=None, range=None, **kwargs):
         """Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from S3 is not 200
 
@@ -149,10 +149,10 @@ class S3Provider(provider.BaseProvider):
         if not path.is_file:
             raise exceptions.DownloadError('No file specified for download', code=400)
 
-        if not version or version.lower() == 'latest':
+        if not revision or revision.lower() == 'latest':
             query_parameters = None
         else:
-            query_parameters = {'versionId': version}
+            query_parameters = {'versionId': revision}
 
         if kwargs.get('displayName'):
             response_headers = {'response-content-disposition': 'attachment; filename*=UTF-8\'\'{}'.format(parse.quote(kwargs['displayName']))}
@@ -215,8 +215,8 @@ class S3Provider(provider.BaseProvider):
             throws=exceptions.UploadError,
         )
         # md5 is returned as ETag header as long as server side encryption is not used.
-        # TODO: nice assertion error goes here
-        assert resp.headers['ETag'].replace('"', '') == stream.writers['md5'].hexdigest
+        if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
+            raise exceptions.UploadChecksumMismatchError()
 
         await resp.release()
         return (await self.metadata(path, **kwargs)), not exists
@@ -392,7 +392,7 @@ class S3Provider(provider.BaseProvider):
 
         if folder_precheck:
             if (await self.exists(path)):
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
 
         async with self.request(
             'PUT',
