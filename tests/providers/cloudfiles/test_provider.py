@@ -198,7 +198,7 @@ class TestCRUD:
     async def test_delete_folder(self, connected_provider, folder_root_empty, file_header_metadata):
 
         path = WaterButlerPath('/delete/')
-        query = {'prefix': path.path}
+        query = {'prefix': path.path, 'delimiter': '/'}
         url = connected_provider.build_url('', **query)
         body = json.dumps(folder_root_empty).encode('utf-8')
 
@@ -215,7 +215,6 @@ class TestCRUD:
 
         await connected_provider.delete(path)
 
-        assert aiohttpretty.has_call(method='DELETE', uri=delete_url_content)
         assert aiohttpretty.has_call(method='DELETE', uri=delete_url_folder)
 
     @pytest.mark.asyncio
@@ -223,7 +222,7 @@ class TestCRUD:
     async def test_delete_root(self, connected_provider, folder_root_empty, file_header_metadata):
 
         path = WaterButlerPath('/')
-        query = {'prefix': path.path}
+        query = {'prefix': path.path, 'delimiter': '/'}
         url = connected_provider.build_url('', **query)
         body = json.dumps(folder_root_empty).encode('utf-8')
 
@@ -237,12 +236,14 @@ class TestCRUD:
 
         aiohttpretty.register_uri('DELETE', delete_url_content, status=200)
 
-        with pytest.raises(exceptions.DeleteError):
+        with pytest.raises(exceptions.DeleteError) as exc:
             await connected_provider.delete(path)
+
+        assert exc.value.message == 'query argument confirm_delete=1 is required for' \
+                                    ' deleting the entire root contents.'
 
         await connected_provider.delete(path, confirm_delete=1)
 
-        assert aiohttpretty.has_call(method='DELETE', uri=delete_url_content)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -377,7 +378,7 @@ class TestMetadata:
         with pytest.raises(exceptions.MetadataError) as exc:
             await connected_provider.metadata(path)
 
-        assert exc.value.message == "Could not retrieve folder '/level1/'"
+        assert exc.value.message == "'/level1/' could not be found."
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -474,7 +475,7 @@ class TestMetadata:
         with pytest.raises(exceptions.MetadataError) as exc:
             await connected_provider.metadata(path)
 
-        assert exc.value.message == "Could not retrieve '/does_not.exist'"
+        assert exc.value.message == "'/does_not.exist' could not be found."
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -488,20 +489,8 @@ class TestMetadata:
         with pytest.raises(exceptions.MetadataError) as exc:
             await connected_provider.metadata(path)
 
-        assert exc.value.message == "Could not retrieve '/does_not_exist/'"
+        assert exc.value.message == "'/does_not_exist/' could not be found."
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_metadata_file_bad_content_type(self, connected_provider, file_metadata):
-        item = file_metadata
-        item['Content-Type'] = 'application/directory'
-        path = WaterButlerPath('/does_not.exist')
-        url = connected_provider.build_url(path.path)
-        aiohttpretty.register_uri('HEAD', url, headers=item)
-        with pytest.raises(exceptions.MetadataError) as exc:
-            await connected_provider.metadata(path)
-
-        assert exc.value.message == "Could not retrieve '/does_not.exist'"
 
 class TestV1ValidatePath:
 

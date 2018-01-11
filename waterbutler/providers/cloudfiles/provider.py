@@ -88,7 +88,7 @@ class CloudFilesProvider(provider.BaseProvider):
     async def download(self,
                        path: WaterButlerPath,
                        accept_url: bool=False,
-                       range: tuple=None,
+                       request_range: tuple=None,
                        version: str=None,
                        revision: str=None,
                        displayName: str=None,
@@ -102,12 +102,12 @@ class CloudFilesProvider(provider.BaseProvider):
 
         version = revision or version
         if version:
-            return await self._download_revision(range, version)
+            return await self._download_revision(request_range, version)
 
         resp = await self.make_request(
             'GET',
             functools.partial(self.sign_url, path),
-            range=range,
+            range=request_range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
         )
@@ -157,36 +157,33 @@ class CloudFilesProvider(provider.BaseProvider):
 
     @ensure_connection
     async def delete(self, path: WaterButlerPath, confirm_delete: int=0) -> None:
-        """Deletes the key at the specified path
-        :param str path: The path of the key to delete
-        :param int confirm_delete: Must be 1 to confirm root folder delete, this deletes entire
-        container object.
-        :rtype None:
-        """
+        """Deletes the key at the specified path."""
 
-        if path.is_root and not confirm_delete:
+        if path.is_root and confirm_delete != 1:
             raise exceptions.DeleteError(
-                'query argument confirm_delete=1 is required for deleting the entire container.',
+                'query argument confirm_delete=1 is required for'
+                ' deleting the entire root contents.',
                 code=400
             )
 
         if path.is_dir:
-            await self._delete_folder_contents(path)
-
-        if not path.is_root:  # deleting the root "item" deletes the whole bucket.
+            await self._delete_folder(path)
+        else:
             await self._delete_item(path)
 
     @ensure_connection
-    async def _delete_folder_contents(self, path: WaterButlerPath) -> None:
+    async def _delete_folder(self, path: WaterButlerPath) -> None:
+        """Folders must be emptied of all contents before they can be deleted"""
 
-        metadata = await self._metadata_folder(path, recursive=True)
+        metadata = await self._metadata_folder(path)
 
-        delete_files = [
-            os.path.join('/', self.container, path.child(item.name).path)
-            for item in metadata
-        ]
+        delete_files = []
+        for item in metadata:
+            if item.kind == 'folder':
+                await self._delete_folder(path.from_metadata(item))
+            else:
+                delete_files.append(os.path.join('/', self.container, path.child(item.name).path))
 
-        delete_files.append(os.path.join('/', self.container, path.path))
         query = {'bulk-delete': ''}
         resp = await self.make_request(
             'DELETE',
@@ -199,6 +196,9 @@ class CloudFilesProvider(provider.BaseProvider):
             },
         )
         await resp.release()
+
+        if not path.is_root:  # deleting root here would destory the container
+            await self._delete_item(path)
 
     @ensure_connection
     async def _delete_item(self, path: WaterButlerPath) -> None:
@@ -213,14 +213,13 @@ class CloudFilesProvider(provider.BaseProvider):
 
     @ensure_connection
     async def metadata(self, path: WaterButlerPath,
-                       recursive: bool=False,
                        version: str=None,
                        revision: str=None,
                        **kwargs) -> Union[CloudFilesHeaderMetadata, List]:
         """Get Metadata about the requested file or the metadata of a folder's contents"""
 
         if path.is_dir:
-            return await self._metadata_folder(path, recursive=recursive)
+            return await self._metadata_folder(path)
         elif version or revision:
             return await self._metadata_revision(path, version, revision)
         else:
@@ -231,11 +230,7 @@ class CloudFilesProvider(provider.BaseProvider):
                   _endpoint: str=None,
                   container: str=None,
                   **query) -> str:
-        """Build the url for the specified object
-        :param args segments: URI segments
-        :param kwargs query: Query parameters
-        :rtype str:
-        """
+        """Build the url for the specified object."""
         endpoint = _endpoint or self.endpoint
         container = container or self.container
         return provider.build_url(endpoint, container, *path.split('/'), **query)
@@ -348,22 +343,19 @@ class CloudFilesProvider(provider.BaseProvider):
         )
         await resp.release()
 
-        if resp.status == 404 or resp.headers['Content-Type'] == 'application/directory' and path.is_file:
+        if resp.status == 404:
             raise exceptions.MetadataError(
-                'Could not retrieve \'{0}\''.format(str(path)),
+                '\'{}\' could not be found.'.format(str(path)),
                 code=404,
             )
 
         return CloudFilesHeaderMetadata(dict(resp.headers), path)
 
-    async def _metadata_folder(self, path: WaterButlerPath, recursive: bool=False) -> \
+    async def _metadata_folder(self, path: WaterButlerPath) -> \
             List[Union[CloudFilesFolderMetadata, CloudFilesFileMetadata]]:
         """Get Metadata about the contents of requested folder"""
         # prefix must be blank when searching the root of the container
-        query = {'prefix': path.path}
-        self.metrics.add('metadata.folder.is_recursive', True if recursive else False)
-        if not recursive:
-            query.update({'delimiter': '/'})
+        query = {'prefix': path.path, 'delimiter': '/'}
         resp = await self.make_request(
             'GET',
             functools.partial(self.build_url, '', **query),
@@ -380,7 +372,7 @@ class CloudFilesProvider(provider.BaseProvider):
             metadata = await self._metadata_item(dir_marker)
             if not metadata:
                 raise exceptions.MetadataError(
-                    'Could not retrieve folder \'{0}\''.format(str(path)),
+                    '\'{0}\' could not be found.'.format(str(path)),
                     code=404,
                 )
 
