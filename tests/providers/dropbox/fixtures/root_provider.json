@@ -1,87 +1,232 @@
 {
-    "folder_metadata": {
-        ".tag": "folder",
-        "name": "newfolder",
-        "path_lower": "/newfolder",
-        "path_display": "/newfolder",
-        "id": "id:67BLXqRKo-gAAAAAAAADZg"
-    },
-    "folder_children": {
-        "entries": [
-            {".tag": "file",
-            "name": "flower.jpg",
-            "path_lower": "/photos/flower.jpg",
-            "path_display": "/Photos/flower.jpg",
-            "id": "id:8y8sAJlrhuAAAAAAAAAAAQ",
-            "client_modified": "2016-06-13T19:08:17Z",
-            "server_modified": "2016-06-13T19:08:17Z",
-            "rev": "38af1b183490",
-            "size": 124778,
-            "content_hash": "woof-woof"}
-        ],
-        "cursor": "AAGFHXqUgavlrBd2TBDxKNdV2rnu48QeThbxccGEvaSwiAAIt5-iho9P8EJIIVdSh6RKRNHq-An2lyyjJ34yCOhyBcIa6Gh6tYOko_okZgZTP_Ga0-kqHtm1HaQOQNdOmPPoNwiXB_rflzSLwq6AXi_F",
-        "has_more": false
-    },
-    "file_metadata": {
+  "folder_metadata": {
+    ".tag": "folder",
+    "name": "newfolder",
+    "path_lower": "/newfolder",
+    "path_display": "/newfolder",
+    "id": "id:67BLXqRKo-gAAAAAAAADZg"
+  },
+  "folder_children": {
+    "entries": [
+      {
         ".tag": "file",
-        "name": "Getting_Started.pdf",
-        "path_lower": "/photos/getting_started.pdf",
-        "path_display": "/Photos/Getting_Started.pdf",
+        "name": "flower.jpg",
+        "path_lower": "/photos/flower.jpg",
+        "path_display": "/Photos/flower.jpg",
         "id": "id:8y8sAJlrhuAAAAAAAAAAAQ",
         "client_modified": "2016-06-13T19:08:17Z",
         "server_modified": "2016-06-13T19:08:17Z",
-        "rev": "2ba1017a0c1e",
+        "rev": "38af1b183490",
         "size": 124778,
-        "content_hash": "meow"
-    },
-
-    "folder_with_subdirectory_metadata": {
-        "has_more": false,
-        "entries": [
-            {"name": "randomfolder",
-            "path_lower": "/conflict folder/randomfolder",
-            ".tag": "folder",
-            "path_display": "/conflict folder/randomfolder",
-            "id": "id:jki_ZJstdSAAAAAAAAAACw"},
-            {"server_modified": "2017-08-25T17:14:41Z",
-            "path_lower": "/conflict folder/1dragon.rtf",
-            ".tag": "file",
-            "size": 364,
-            "client_modified": "2017-08-25T17:14:41Z",
-            "name": "1dragon.rtf",
-            "content_hash": "060a25a56cfce28e8aefa8e32a55ff9e890cbd714cabb156e5feb41f9a7b1624",
-            "rev": "45bb27d11",
-            "path_display": "/conflict folder/1dragon.rtf",
-            "id": "id:jki_ZJstdSAAAAAAAAAACQ"}
-        ],
-        "cursor": "AAHv3crtaRWT0SKHClfYwa4vmR72KjiW1wjLYSE3BLatCZSJ6pJnD4nWlmAXCZPDXGrxMaIZ0lrRMMAxACEmhJn47aYQCyb1pgOhYqWyinyADa99SpqL2gxdKsq-3I0nUrWd3AaGUiw6GzH5Lg8i_FYy2YyeLkETb7tjRTc6KUTjHCjD61T4A3ZYiNrDp_cSxWg"
+        "content_hash": "woof-woof"
+      }
+    ],
+    "cursor": "AAGFHXqUgavlrBd2TBDxKNdV2rnu48QeThbxccGEvaSwiAAIt5-iho9P8EJIIVdSh6RKRNHq-An2lyyjJ34yCOhyBcIa6Gh6tYOko_okZgZTP_Ga0-kqHtm1HaQOQNdOmPPoNwiXB_rflzSLwq6AXi_F",
+    "has_more": false
+  },
+  "file_metadata": {
+    ".tag": "file",
+    "name": "Getting_Started.pdf",
+    "path_lower": "/photos/getting_started.pdf",
+    "path_display": "/Photos/Getting_Started.pdf",
+    "id": "id:8y8sAJlrhuAAAAAAAAAAAQ",
+    "client_modified": "2016-06-13T19:08:17Z",
+    "server_modified": "2016-06-13T19:08:17Z",
+    "rev": "2ba1017a0c1e",
+    "size": 124778,
+    "content_hash": "meow"
+  },
+  "folder_metadata_v2": {
+    "metadata": {
+      "name": "newfolder",
+      "id": "id:a4ayc_80_OEAAAAAAAAAXz",
+      "path_lower": "/newfolder",
+      "path_display": "/newfolder",
+      "sharing_info": {
+        "read_only": false,
+        "parent_shared_folder_id": "84528192421",
+        "traverse_only": false,
+        "no_access": false
+      },
+      "property_groups": [
+        {
+          "template_id": "ptid:1a5n2i6d3OYEAAAAAAAAAYa",
+          "fields": [
+            {
+              "name": "Security Policy",
+              "value": "Confidential"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "folder_with_subdirectory_metadata": {
+    "has_more": false,
+    "entries": [
+      {
+        "name": "randomfolder",
+        "path_lower": "/conflict folder/randomfolder",
+        ".tag": "folder",
+        "path_display": "/conflict folder/randomfolder",
+        "id": "id:jki_ZJstdSAAAAAAAAAACw"
+      },
+      {
+        "server_modified": "2017-08-25T17:14:41Z",
+        "path_lower": "/conflict folder/1dragon.rtf",
+        ".tag": "file",
+        "size": 364,
+        "client_modified": "2017-08-25T17:14:41Z",
+        "name": "1dragon.rtf",
+        "content_hash": "060a25a56cfce28e8aefa8e32a55ff9e890cbd714cabb156e5feb41f9a7b1624",
+        "rev": "45bb27d11",
+        "path_display": "/conflict folder/1dragon.rtf",
+        "id": "id:jki_ZJstdSAAAAAAAAAACQ"
+      }
+    ],
+    "cursor": "AAHv3crtaRWT0SKHClfYwa4vmR72KjiW1wjLYSE3BLatCZSJ6pJnD4nWlmAXCZPDXGrxMaIZ0lrRMMAxACEmhJn47aYQCyb1pgOhYqWyinyADa99SpqL2gxdKsq-3I0nUrWd3AaGUiw6GzH5Lg8i_FYy2YyeLkETb7tjRTc6KUTjHCjD61T4A3ZYiNrDp_cSxWg"
+  },
+  "folder_with_more_metadata": {
+    "has_more": true,
+    "entries": [
+      {
+        "name": "randomfolder",
+        "path_lower": "/conflict folder/randomfolder",
+        ".tag": "folder",
+        "path_display": "/conflict folder/randomfolder",
+        "id": "id:jki_ZJstdSAAAAAAAAAACw"
+      },
+      {
+        "server_modified": "2017-08-25T17:14:41Z",
+        "path_lower": "/conflict folder/1dragon.rtf",
+        ".tag": "file",
+        "size": 364,
+        "client_modified": "2017-08-25T17:14:41Z",
+        "name": "1dragon.rtf",
+        "content_hash": "060a25a56cfce28e8aefa8e32a55ff9e890cbd714cabb156e5feb41f9a7b1624",
+        "rev": "45bb27d11",
+        "path_display": "/conflict folder/1dragon.rtf",
+        "id": "id:jki_ZJstdSAAAAAAAAAACQ"
+      }
+    ],
+    "cursor": "AAHv3crtaRWT0SKHClfYwa4vmR72KjiW1wjLYSE3BLatCZSJ6pJnD4nWlmAXCZPDXGrxMaIZ0lrRMMAxACEmhJn47aYQCyb1pgOhYqWyinyADa99SpqL2gxdKsq-3I0nUrWd3AaGUiw6GzH5Lg8i_FYy2YyeLkETb7tjRTc6KUTjHCjD61T4A3ZYiNrDp_cSxWg"
+  },
+  "intra_copy_file_metadata": {
+    "metadata": {
+      "path_lower": "/conflict folder/rename.rtf",
+      "id": "id:jki_ZJstdSAAAAAAAAAACQ",
+      "rev": "3d5bb27d11",
+      "server_modified": "2017-08-29T15:26:16Z",
+      ".tag": "file",
+      "content_hash": "2722228970da1ca23d68d6283a33bf85f7b1dbf909acfbe96a6c44d530bfa0ad",
+      "client_modified": "2017-08-28T19:43:11Z",
+      "size": 372,
+      "path_display": "/conflict folder/rename.rtf",
+      "name": "rename.rtf"
     },
     "folder_with_hasmore_metadata": {
-        "has_more": true,
-        "entries": [
-            {"name": "randomfolder",
-            "path_lower": "/conflict folder/randomfolder",
-            ".tag": "folder",
-            "path_display": "/conflict folder/randomfolder",
-            "id": "id:jki_ZJstdSAAAAAAAAAACw"},
-            {"server_modified": "2017-08-25T17:14:41Z",
-            "path_lower": "/conflict folder/1dragon.rtf",
-            ".tag": "file",
-            "size": 364,
-            "client_modified": "2017-08-25T17:14:41Z",
-            "name": "1dragon.rtf",
-            "content_hash": "060a25a56cfce28e8aefa8e32a55ff9e890cbd714cabb156e5feb41f9a7b1624",
-            "rev": "45bb27d11",
-            "path_display": "/conflict folder/1dragon.rtf",
-            "id": "id:jki_ZJstdSAAAAAAAAAACQ"}
-        ],
-        "cursor": "AAHv3crtaRWT0SKHClfYwa4vmR72KjiW1wjLYSE3BLatCZSJ6pJnD4nWlmAXCZPDXGrxMaIZ0lrRMMAxACEmhJn47aYQCyb1pgOhYqWyinyADa99SpqL2gxdKsq-3I0nUrWd3AaGUiw6GzH5Lg8i_FYy2YyeLkETb7tjRTc6KUTjHCjD61T4A3ZYiNrDp_cSxWg"
+      "has_more": true,
+      "entries": [
+        {
+          "name": "randomfolder",
+          "path_lower": "/conflict folder/randomfolder",
+          ".tag": "folder",
+          "path_display": "/conflict folder/randomfolder",
+          "id": "id:jki_ZJstdSAAAAAAAAAACw"
+        },
+        {
+          "server_modified": "2017-08-25T17:14:41Z",
+          "path_lower": "/conflict folder/1dragon.rtf",
+          ".tag": "file",
+          "size": 364,
+          "client_modified": "2017-08-25T17:14:41Z",
+          "name": "1dragon.rtf",
+          "content_hash": "060a25a56cfce28e8aefa8e32a55ff9e890cbd714cabb156e5feb41f9a7b1624",
+          "rev": "45bb27d11",
+          "path_display": "/conflict folder/1dragon.rtf",
+          "id": "id:jki_ZJstdSAAAAAAAAAACQ"
+        }
+      ],
+      "cursor": "AAHv3crtaRWT0SKHClfYwa4vmR72KjiW1wjLYSE3BLatCZSJ6pJnD4nWlmAXCZPDXGrxMaIZ0lrRMMAxACEmhJn47aYQCyb1pgOhYqWyinyADa99SpqL2gxdKsq-3I0nUrWd3AaGUiw6GzH5Lg8i_FYy2YyeLkETb7tjRTc6KUTjHCjD61T4A3ZYiNrDp_cSxWg"
     },
     "session_metadata": {
-        "session_id" : "test session id"
+      "session_id": "test session id"
+    },
+    "intra_move_copy_file_metadata_v2": {
+      "metadata": {
+        ".tag": "file",
+        "name": "Prime_Numbers.txt",
+        "id": "id:a4ayc_80_OEAAAAAAAAAXw",
+        "client_modified": "2015-05-12T15:50:38Z",
+        "server_modified": "2015-05-12T15:50:38Z",
+        "rev": "a1c10ce0dd78",
+        "size": 7212,
+        "path_lower": "/homework/math/prime_numbers.txt",
+        "path_display": "/Homework/math/Prime_Numbers.txt",
+        "sharing_info": {
+          "read_only": true,
+          "parent_shared_folder_id": "84528192421",
+          "modified_by": "dbid:AAH4f99T0taONIb-OurWxbNQ6ywGRopQngc"
+        },
+        "property_groups": [
+          {
+            "template_id": "ptid:1a5n2i6d3OYEAAAAAAAAAYa",
+            "fields": [
+              {
+                "name": "Security Policy",
+                "value": "Confidential"
+              }
+            ]
+          }
+        ],
+        "has_explicit_shared_members": false,
+        "content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "intra_move_copy_folder_metadata_v2": {
+      "metadata": {
+        ".tag": "folder",
+        "name": "testfolder",
+        "id": "id:a4ayc_80_OEAAAAAAAAAXw",
+        "client_modified": "2015-05-12T15:50:38Z",
+        "server_modified": "2015-05-12T15:50:38Z",
+        "rev": "a1c10ce0dd78",
+        "size": 7212,
+        "path_lower": "/testfolder/",
+        "path_display": "/Test Folder/",
+        "sharing_info": {
+          "read_only": true,
+          "parent_shared_folder_id": "84528192421",
+          "modified_by": "dbid:AAH4f99T0taONIb-OurWxbNQ6ywGRopQngc"
+        },
+        "property_groups": [
+          {
+            "template_id": "ptid:1a5n2i6d3OYEAAAAAAAAAYa",
+            "fields": [
+              {
+                "name": "Security Policy",
+                "value": "Confidential"
+              }
+            ]
+          }
+        ],
+        "has_explicit_shared_members": false,
+        "content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "intra_copy_other_provider_file_metadata": {
+      "metadata": {
+        "rev": "4f5bb27d11",
+        "content_hash": "2722228970da1ca23d68d6283a33bf85f7b1dbf909acfbe96a6c44d530bfa0ad",
+        "size": 372,
+        "id": "id:jki_ZJstdSAAAAAAAAAAHw",
+        "path_display": "/conflict folder/copy2/asdf/rename.rtf",
+        ".tag": "file",
+        "client_modified": "2017-08-28T19:43:11Z",
+        "path_lower": "/conflict folder/copy2/asdf/rename.rtf",
+        "name": "rename.rtf",
+        "server_modified": "2017-08-29T15:37:04Z"
+      }
     }
-
-
-
-
+  }
 }
