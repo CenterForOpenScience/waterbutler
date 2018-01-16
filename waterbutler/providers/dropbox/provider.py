@@ -269,7 +269,7 @@ class DropboxProvider(provider.BaseProvider):
                 },
                 data=stream,
                 expects=(200, 409,),
-                throws=exceptions.UploadError,
+                throws=core_exceptions.UploadError,
             )
             data = await resp.json()
             if resp.status == 409:
@@ -326,7 +326,7 @@ class DropboxProvider(provider.BaseProvider):
                 },
                 data=stream.read(self.CHUNK_SIZE),
                 expects=(200, ),
-                throws=exceptions.UploadError,
+                throws=core_exceptions.UploadError,
             )
             await resp.release()
 
@@ -350,7 +350,7 @@ class DropboxProvider(provider.BaseProvider):
                 'Dropbox-API-Arg': json.dumps(upload_args),
             },
             expects=(200, ),
-            throws=exceptions.UploadError,
+            throws=core_exceptions.UploadError,
         )
         return await resp.json()
 

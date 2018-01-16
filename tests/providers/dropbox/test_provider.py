@@ -19,7 +19,8 @@ from waterbutler.providers.dropbox.exceptions import (DropboxNamingConflictError
 
 from tests.providers.dropbox.fixtures import (provider_fixtures,
                                               revision_fixtures,
-                                              error_fixtures)
+                                              error_fixtures,
+                                              stream_200_MB)
 
 @pytest.fixture
 def auth():
@@ -222,14 +223,14 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_create_upload_session(self, provider, root_provider_fixtures):
+    async def test_create_upload_session(self, provider, provider_fixtures):
 
         url = provider._build_content_url('files', 'upload_session', 'start')
 
         aiohttpretty.register_json_uri('POST',
                                        url,
                                        status=200,
-                                       body=root_provider_fixtures['session_metadata'])
+                                       body=provider_fixtures['session_metadata'])
 
         session_id = await provider._create_upload_session()
 
@@ -252,20 +253,20 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_complete_session(self, provider, stream_200_MB, root_provider_fixtures):
+    async def test_complete_session(self, provider, stream_200_MB, provider_fixtures):
 
         url = provider._build_content_url('files', 'upload_session', 'finish')
 
         aiohttpretty.register_json_uri('POST',
                                        url,
                                        status=200,
-                                       body=root_provider_fixtures['file_metadata'])
+                                       body=provider_fixtures['file_metadata'])
 
         upload_data = await provider._complete_session(stream_200_MB,
                                                        'session id',
                                                        {'path': 'hedgehogs'})
 
-        assert upload_data == root_provider_fixtures['file_metadata']
+        assert upload_data == provider_fixtures['file_metadata']
         assert aiohttpretty.has_call(method='POST', uri=url)
 
     @pytest.mark.asyncio
