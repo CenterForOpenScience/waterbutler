@@ -28,6 +28,13 @@ def make_disposition(filename):
     return 'attachment;filename="{}"'.format(filename.replace('"', '\\"'))
 
 
+def base_api_links(entity_url):
+    actions = {'move': entity_url,
+               'upload': entity_url + '?kind=file',
+               'delete': entity_url, }
+    return actions
+
+
 class CORsMixin:
 
     def _cross_origin_is_allowed(self):

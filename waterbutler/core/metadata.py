@@ -6,6 +6,7 @@ import furl
 
 from waterbutler.core import utils
 from waterbutler.server import settings
+from waterbutler.server import utils as serv_utils
 
 
 class BaseMetadata(metaclass=abc.ABCMeta):
@@ -77,11 +78,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         :rtype: dict
         """
         entity_url = self._entity_url(resource)
-        actions = {
-            'move': entity_url,
-            'upload': entity_url + '?kind=file',
-            'delete': entity_url,
-        }
+        actions = serv_utils.base_api_links(entity_url)
 
         return actions
 
