@@ -1,0 +1,246 @@
+--batch_8kft0Fgr_MM_AAbjON5KFwQ
+Content-Type: application/http
+Content-ID: <response-b29c5de2-0db4-490b-b421-6a51b598bd22+1>
+
+HTTP/1.1 200 OK
+ETag: CPef1+Dj4dgCEAE=
+Content-Type: application/json; charset=UTF-8
+Date: Thu, 18 Jan 2018 15:01:12 GMT
+Expires: Thu, 18 Jan 2018 15:01:12 GMT
+Cache-Control: private, max-age=0
+Content-Length: 894
+
+{
+ "kind": "storage#object",
+ "id": "gcloud-test.longzechen.com/test-folder-1-copy//1516287672307703",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2F",
+ "name": "test-folder-1-copy/",
+ "bucket": "gcloud-test.longzechen.com",
+ "generation": "1516287672307703",
+ "metageneration": "1",
+ "contentType": "application/x-www-form-urlencoded;charset=UTF-8",
+ "timeCreated": "2018-01-18T15:01:12.268Z",
+ "updated": "2018-01-18T15:01:12.268Z",
+ "storageClass": "REGIONAL",
+ "timeStorageClassUpdated": "2018-01-18T15:01:12.268Z",
+ "size": "0",
+ "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2F?generation=1516287672307703&alt=media",
+ "owner": {
+  "entity": "user-cslzchen@gmail.com"
+ },
+ "crc32c": "AAAAAA==",
+ "etag": "CPef1+Dj4dgCEAE="
+}
+
+--batch_8kft0Fgr_MM_AAbjON5KFwQ
+Content-Type: application/http
+Content-ID: <response-b29c5de2-0db4-490b-b421-6a51b598bd22+2>
+
+HTTP/1.1 200 OK
+ETag: CPOm2eDj4dgCEAE=
+Content-Type: application/json; charset=UTF-8
+Date: Thu, 18 Jan 2018 15:01:12 GMT
+Expires: Thu, 18 Jan 2018 15:01:12 GMT
+Cache-Control: private, max-age=0
+Content-Length: 912
+
+{
+ "kind": "storage#object",
+ "id": "gcloud-test.longzechen.com/test-folder-1-copy/DSC_0235.JPG/1516387505375399",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2FDSC_0235.JPG",
+ "name": "test-folder-1-copy/DSC_0235.JPG",
+ "bucket": "gcloud-test.longzechen.com",
+ "generation": "1516387505375399",
+ "metageneration": "1",
+ "contentType": "image/jpeg",
+ "timeCreated": "2018-01-19T18:45:05.159Z",
+ "updated": "2018-01-19T18:45:05.159Z",
+ "storageClass": "REGIONAL",
+ "timeStorageClassUpdated": "2018-01-19T18:45:05.159Z",
+ "size": "10724401",
+ "md5Hash": "lTcHcNCpt+pFo9YCgU14bQ==",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2FDSC_0235.JPG?generation=1516387505375399&alt=media",
+ "owner": {
+  "entity": "user-cslzchen@gmail.com"
+ },
+ "crc32c": "IhS+NQ==",
+ "etag": "CKeR5tTX5NgCEAE="
+}
+
+--batch_8kft0Fgr_MM_AAbjON5KFwQ
+Content-Type: application/http
+Content-ID: <response-b29c5de2-0db4-490b-b421-6a51b598bd22+3>
+
+HTTP/1.1 200 OK
+ETag: CMiF1+Dj4dgCEAE=
+Content-Type: application/json; charset=UTF-8
+Date: Thu, 18 Jan 2018 15:01:12 GMT
+Expires: Thu, 18 Jan 2018 15:01:12 GMT
+Cache-Control: private, max-age=0
+Content-Length: 912
+
+{
+ "kind": "storage#object",
+ "id": "gcloud-test.longzechen.com/test-folder-1-copy/DSC_0244.JPG/1516287672304328",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2FDSC_0244.JPG",
+ "name": "test-folder-1-copy/DSC_0244.JPG",
+ "bucket": "gcloud-test.longzechen.com",
+ "generation": "1516287672304328",
+ "metageneration": "1",
+ "contentType": "image/jpeg",
+ "timeCreated": "2018-01-18T15:01:12.284Z",
+ "updated": "2018-01-18T15:01:12.284Z",
+ "storageClass": "REGIONAL",
+ "timeStorageClassUpdated": "2018-01-18T15:01:12.284Z",
+ "size": "13652201",
+ "md5Hash": "dSwr0bbZ4pZUTKya7fRmeg==",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2FDSC_0244.JPG?generation=1516287672304328&alt=media",
+ "owner": {
+  "entity": "user-cslzchen@gmail.com"
+ },
+ "crc32c": "IL5TGA==",
+ "etag": "CMiF1+Dj4dgCEAE="
+}
+
+--batch_8kft0Fgr_MM_AAbjON5KFwQ
+Content-Type: application/http
+Content-ID: <response-b29c5de2-0db4-490b-b421-6a51b598bd22+4>
+
+HTTP/1.1 200 OK
+ETag: CLb41uDj4dgCEAE=
+Content-Type: application/json; charset=UTF-8
+Date: Thu, 18 Jan 2018 15:01:12 GMT
+Expires: Thu, 18 Jan 2018 15:01:12 GMT
+Cache-Control: private, max-age=0
+Content-Length: 954
+
+{
+ "kind": "storage#object",
+ "id": "gcloud-test.longzechen.com/test-folder-1-copy/test-folder-5//1516287672302646",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-5%2F",
+ "name": "test-folder-1-copy/test-folder-5/",
+ "bucket": "gcloud-test.longzechen.com",
+ "generation": "1516287672302646",
+ "metageneration": "1",
+ "contentType": "application/x-www-form-urlencoded;charset=UTF-8",
+ "timeCreated": "2018-01-18T15:01:12.267Z",
+ "updated": "2018-01-18T15:01:12.267Z",
+ "storageClass": "REGIONAL",
+ "timeStorageClassUpdated": "2018-01-18T15:01:12.267Z",
+ "size": "0",
+ "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-5%2F?generation=1516287672302646&alt=media",
+ "owner": {
+  "entity": "user-cslzchen@gmail.com"
+ },
+ "crc32c": "AAAAAA==",
+ "etag": "CLb41uDj4dgCEAE="
+}
+
+--batch_8kft0Fgr_MM_AAbjON5KFwQ
+Content-Type: application/http
+Content-ID: <response-b29c5de2-0db4-490b-b421-6a51b598bd22+5>
+
+HTTP/1.1 200 OK
+ETag: CPaZ1+Dj4dgCEAE=
+Content-Type: application/json; charset=UTF-8
+Date: Thu, 18 Jan 2018 15:01:12 GMT
+Expires: Thu, 18 Jan 2018 15:01:12 GMT
+Cache-Control: private, max-age=0
+Content-Length: 992
+
+{
+ "kind": "storage#object",
+ "id": "gcloud-test.longzechen.com/test-folder-1-copy/test-folder-5/DSC_0235_COPY.JPG/1516287672306934",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-5%2FDSC_0235_COPY.JPG",
+ "name": "test-folder-1-copy/test-folder-5/DSC_0235_COPY.JPG",
+ "bucket": "gcloud-test.longzechen.com",
+ "generation": "1516287672306934",
+ "metageneration": "1",
+ "contentType": "image/jpeg",
+ "timeCreated": "2018-01-18T15:01:12.274Z",
+ "updated": "2018-01-18T15:01:12.274Z",
+ "storageClass": "REGIONAL",
+ "timeStorageClassUpdated": "2018-01-18T15:01:12.274Z",
+ "size": "10724401",
+ "md5Hash": "lTcHcNCpt+pFo9YCgU14bQ==",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-5%2FDSC_0235_COPY.JPG?generation=1516287672306934&alt=media",
+ "owner": {
+  "entity": "user-cslzchen@gmail.com"
+ },
+ "crc32c": "IhS+NQ==",
+ "etag": "CPaZ1+Dj4dgCEAE="
+}
+
+--batch_8kft0Fgr_MM_AAbjON5KFwQ
+Content-Type: application/http
+Content-ID: <response-b29c5de2-0db4-490b-b421-6a51b598bd22+6>
+
+HTTP/1.1 200 OK
+ETag: CNiA1+Dj4dgCEAE=
+Content-Type: application/json; charset=UTF-8
+Date: Thu, 18 Jan 2018 15:01:12 GMT
+Expires: Thu, 18 Jan 2018 15:01:12 GMT
+Cache-Control: private, max-age=0
+Content-Length: 954
+
+{
+ "kind": "storage#object",
+ "id": "gcloud-test.longzechen.com/test-folder-1-copy/test-folder-6//1516287672303704",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-6%2F",
+ "name": "test-folder-1-copy/test-folder-6/",
+ "bucket": "gcloud-test.longzechen.com",
+ "generation": "1516287672303704",
+ "metageneration": "1",
+ "contentType": "application/x-www-form-urlencoded;charset=UTF-8",
+ "timeCreated": "2018-01-18T15:01:12.282Z",
+ "updated": "2018-01-18T15:01:12.282Z",
+ "storageClass": "REGIONAL",
+ "timeStorageClassUpdated": "2018-01-18T15:01:12.282Z",
+ "size": "0",
+ "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-6%2F?generation=1516287672303704&alt=media",
+ "owner": {
+  "entity": "user-cslzchen@gmail.com"
+ },
+ "crc32c": "AAAAAA==",
+ "etag": "CNiA1+Dj4dgCEAE="
+}
+
+--batch_8kft0Fgr_MM_AAbjON5KFwQ
+Content-Type: application/http
+Content-ID: <response-b29c5de2-0db4-490b-b421-6a51b598bd22+7>
+
+HTTP/1.1 200 OK
+ETag: CIyP1+Dj4dgCEAE=
+Content-Type: application/json; charset=UTF-8
+Date: Thu, 18 Jan 2018 15:01:12 GMT
+Expires: Thu, 18 Jan 2018 15:01:12 GMT
+Cache-Control: private, max-age=0
+Content-Length: 992
+
+{
+ "kind": "storage#object",
+ "id": "gcloud-test.longzechen.com/test-folder-1-copy/test-folder-6/DSC_0244_COPY.JPG/1516287672305548",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-6%2FDSC_0244_COPY.JPG",
+ "name": "test-folder-1-copy/test-folder-6/DSC_0244_COPY.JPG",
+ "bucket": "gcloud-test.longzechen.com",
+ "generation": "1516287672305548",
+ "metageneration": "1",
+ "contentType": "image/jpeg",
+ "timeCreated": "2018-01-18T15:01:12.280Z",
+ "updated": "2018-01-18T15:01:12.280Z",
+ "storageClass": "REGIONAL",
+ "timeStorageClassUpdated": "2018-01-18T15:01:12.280Z",
+ "size": "13652201",
+ "md5Hash": "dSwr0bbZ4pZUTKya7fRmeg==",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-6%2FDSC_0244_COPY.JPG?generation=1516287672305548&alt=media",
+ "owner": {
+  "entity": "user-cslzchen@gmail.com"
+ },
+ "crc32c": "IL5TGA==",
+ "etag": "CIyP1+Dj4dgCEAE="
+}
+
+--batch_8kft0Fgr_MM_AAbjON5KFwQ--

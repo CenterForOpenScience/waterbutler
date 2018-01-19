@@ -1,0 +1,22 @@
+{
+    "kind": "storage#object",
+    "id": "gcloud-test.longzechen.com/test-folder-1-copy/DSC_0235.JPG/1516387505375399",
+    "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2FDSC_0235.JPG",
+    "name": "test-folder-1-copy/DSC_0235.JPG",
+    "bucket": "gcloud-test.longzechen.com",
+    "generation": "1516387505375399",
+    "metageneration": "1",
+    "contentType": "image/jpeg",
+    "timeCreated": "2018-01-19T18:45:05.159Z",
+    "updated": "2018-01-19T18:45:05.159Z",
+    "storageClass": "REGIONAL",
+    "timeStorageClassUpdated": "2018-01-19T18:45:05.159Z",
+    "size": "10724401",
+    "md5Hash": "lTcHcNCpt+pFo9YCgU14bQ==",
+    "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2FDSC_0235.JPG?generation=1516387505375399&alt=media",
+    "owner": {
+        "entity": "user-cslzchen@gmail.com"
+    },
+    "crc32c": "IhS+NQ==",
+    "etag": "CKeR5tTX5NgCEAE="
+}
