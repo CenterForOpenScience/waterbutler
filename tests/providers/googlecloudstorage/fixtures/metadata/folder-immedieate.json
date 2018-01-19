@@ -1,0 +1,66 @@
+{
+    "kind": "storage#objects",
+    "prefixes": [
+        "test-folder-1/test-folder-5/",
+        "test-folder-1/test-folder-6/"
+    ],
+    "items": [
+        {
+            "kind": "storage#object",
+            "id": "gcloud-test.longzechen.com/test-folder-1//1514922457990512",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2F",
+            "name": "test-folder-1/",
+            "bucket": "gcloud-test.longzechen.com",
+            "generation": "1514922457990512",
+            "metageneration": "1",
+            "contentType": "application/x-www-form-urlencoded;charset=UTF-8",
+            "timeCreated": "2018-01-02T19:47:37.942Z",
+            "updated": "2018-01-02T19:47:37.942Z",
+            "storageClass": "REGIONAL",
+            "timeStorageClassUpdated": "2018-01-02T19:47:37.942Z",
+            "size": "0",
+            "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+            "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2F?generation=1514922457990512&alt=media",
+            "crc32c": "AAAAAA==",
+            "etag": "CPCK4veFutgCEAE="
+        },
+        {
+            "kind": "storage#object",
+            "id": "gcloud-test.longzechen.com/test-folder-1/DSC_0235.JPG/1515686172180045",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2FDSC_0235.JPG",
+            "name": "test-folder-1/DSC_0235.JPG",
+            "bucket": "gcloud-test.longzechen.com",
+            "generation": "1515686172180045",
+            "metageneration": "1",
+            "contentType": "image/jpeg",
+            "timeCreated": "2018-01-11T15:56:12.174Z",
+            "updated": "2018-01-11T15:56:12.174Z",
+            "storageClass": "REGIONAL",
+            "timeStorageClassUpdated": "2018-01-11T15:56:12.174Z",
+            "size": "10724401",
+            "md5Hash": "lTcHcNCpt+pFo9YCgU14bQ==",
+            "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2FDSC_0235.JPG?generation=1515686172180045&alt=media",
+            "crc32c": "IhS+NQ==",
+            "etag": "CM38iP+i0NgCEAE="
+        },
+        {
+            "kind": "storage#object",
+            "id": "gcloud-test.longzechen.com/test-folder-1/DSC_0244.JPG/1514922493227351",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2FDSC_0244.JPG",
+            "name": "test-folder-1/DSC_0244.JPG",
+            "bucket": "gcloud-test.longzechen.com",
+            "generation": "1514922493227351",
+            "metageneration": "1",
+            "contentType": "image/jpeg",
+            "timeCreated": "2018-01-02T19:48:13.222Z",
+            "updated": "2018-01-02T19:48:13.222Z",
+            "storageClass": "REGIONAL",
+            "timeStorageClassUpdated": "2018-01-02T19:48:13.222Z",
+            "size": "13652201",
+            "md5Hash": "dSwr0bbZ4pZUTKya7fRmeg==",
+            "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2FDSC_0244.JPG?generation=1514922493227351&alt=media",
+            "crc32c": "IL5TGA==",
+            "etag": "CNfiyIiGutgCEAE="
+        }
+    ]
+}
