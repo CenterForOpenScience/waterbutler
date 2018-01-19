@@ -245,6 +245,17 @@ class UnexportableFileTypeError(DownloadError):
         super().__init__(message, code=HTTPStatus.BAD_REQUEST, is_user_error=is_user_error)
 
 
+class InvalidProviderConfigError(ProviderError):
+    """Error for provider init failure due to invalid (include missing) settings and credentials"""
+    def __init__(self, provider_name, message=None):
+        base_message = 'Invalid provider configuration for {}'.format(provider_name)
+        if not message:
+            message = base_message
+        else:
+            message = '{}: {}'.format(base_message, message)
+        super().__init__(message, code=HTTPStatus.BAD_REQUEST, is_user_error=False)
+
+
 async def exception_from_response(resp, error=UnhandledProviderError, **kwargs):
     """Build and return, not raise, an exception from a response object
 
