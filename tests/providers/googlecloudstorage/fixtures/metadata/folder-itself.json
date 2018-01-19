@@ -1,0 +1,22 @@
+{
+    "kind": "storage#object",
+    "id": "gcloud-test.longzechen.com/test-folder-1-copy//1516287672307703",
+    "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2F",
+    "name": "test-folder-1-copy/",
+    "bucket": "gcloud-test.longzechen.com",
+    "generation": "1516287672307703",
+    "metageneration": "1",
+    "contentType": "application/x-www-form-urlencoded;charset=UTF-8",
+    "timeCreated": "2018-01-18T15:01:12.268Z",
+    "updated": "2018-01-18T15:01:12.268Z",
+    "storageClass": "REGIONAL",
+    "timeStorageClassUpdated": "2018-01-18T15:01:12.268Z",
+    "size": "0",
+    "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+    "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2F?generation=1516287672307703&alt=media",
+    "owner": {
+        "entity": "user-cslzchen@gmail.com"
+    },
+    "crc32c": "AAAAAA==",
+    "etag": "CPef1+Dj4dgCEAE="
+}
