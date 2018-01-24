@@ -4,10 +4,10 @@ import typing
 from urllib.parse import urlparse, quote
 
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.googlecloudstorage import settings as pd_settings
+from waterbutler.providers.googlecloud import settings as pd_settings
 
 
-def get_obj_name(path: WaterButlerPath, is_folder: bool = False) -> str:
+def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:
     """Get the object name of the object with the given Waterbutler Path.
 
     The "object name" is used by Google Cloud Storage API in path or query parameters to refer
@@ -38,7 +38,6 @@ def build_url(base: str, *segments, **query) -> str:
     :param segments: the path segments tuple
     :param query: the query pairs dict
     :rtype: str
-    :return: an URL built with proper encoding
     """
 
     parsed_base = urlparse(base).geturl()
@@ -84,14 +83,14 @@ def build_payload_from_req_map(req_list_failed: list, req_map: dict) -> str:
 
 
 def parse_batch_delete_resp(resp: str) -> list:
-    """Parse the response from batch delete.  Find failed requests and return a list of their IDs.
+    """Parse the response from batch delete.  Find failed requests and return a list of their id.
 
     1. Expected: HTTP 204 No Content
     2. Ignored: HTTP 404 Not Found
 
-    "HTTP 404 Not Found" should never happen if the request is built correctly and if the data on
-    the storage is not corrupted. However, we need still to ignore it if this happened to prevent
-    hanging the delete request.
+    "HTTP 404 Not Found" should never happen if the batch request is built correctly and if the data
+    on the Cloud Storage is not corrupted.  However, we need to ignore it when it happened to
+    prevent the delete request from hanging.
 
     :param resp: the response string
     :rtype list:
@@ -112,19 +111,20 @@ def parse_batch_delete_resp(resp: str) -> list:
     return req_list_failed
 
 
-def parse_batch_copy_resp(resp: str) -> typing.Tuple[list, list]:
-    """Parse the response from batch copy.  Return a list of raw metadata of successful requests and
-    a list of IDs for failed requests.
+def parse_batch_copy_resp(resp: str) -> typing.Tuple[typing.List[dict], typing.List[int]]:
+    """Parse the response from batch copy.  Return a list of raw metadata of the successful requests
+    and a list of id for the failed requests.
 
     1. Expected: HTTP 200 OK
     2. Ignored: HTTP 404 Not Found
 
-    "HTTP 404 Not Found" should never happen if the request is built correctly and if the data on
-    the storage is not corrupted. However, we need still to ignore it if this happened to prevent
-    hanging the copy request.
+    "HTTP 404 Not Found" should never happen if the batch request is built correctly and if the data
+    on the Cloud Storage is not corrupted.  However, we need to ignore it when it happened to
+    prevent the copy request from hanging.
 
     :param resp: the response string
-    :return:
+    :rtype list:
+    :rtype list:
     """
 
     req_list_failed = []
@@ -148,7 +148,7 @@ def parse_batch_copy_resp(resp: str) -> typing.Tuple[list, list]:
     return metadata_list, req_list_failed
 
 
-def get_metadata_from_resp_part(resp_part: str) -> typing.Union[dict, None]:
+def get_metadata_from_resp_part(resp_part: str) -> dict:
     """Retrieve the metadata part of an successful response. Parse it and return a dict.
 
     :param resp_part: the response part that contains either one or no metadata
@@ -161,9 +161,9 @@ def get_metadata_from_resp_part(resp_part: str) -> typing.Union[dict, None]:
     if matched:
         try:
             metadata = matched.group(0)
-            return json.loads(metadata)
+            return dict(json.loads(metadata))
         except (IndexError, TypeError, json.JSONDecodeError):
-            return None
+            return {}
     return {}
 
 
@@ -171,7 +171,9 @@ def get_req_id_from_resp_part(resp_part: str) -> int:
     """Retrieve the request id from partial response, which is the integer part of the Content-ID.
 
     :param resp_part: the response part that contains either one or no "Content-ID" header
-    :rypte int: -1 for error, 0 for no header found, and (1, 2, ... , 100) if found
+    :rtype int:     -1 for error
+                     0 for no header found
+               [1-100] for id found
     """
 
     regex = r'Content-ID: <response(.*)\+(.*)>(\r\n|\r|\n)'
