@@ -1,3 +1,4 @@
+import json
 import uuid
 import typing
 import hashlib
@@ -89,19 +90,21 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=MetadataError
         )
-        await resp.release()
-        data = resp.json()
+        try:
+            data = await resp.json()
+        except (TypeError, json.JSONDecodeError):
+            raise MetadataError
 
         if is_folder:
-            return GoogleCloudFolderMetadata(dict(data))
+            return GoogleCloudFolderMetadata(data)
         else:
-            return GoogleCloudFileMetadata(dict(data))
+            return GoogleCloudFileMetadata(data)
 
     async def _metadata_folder(
             self,
             path: WaterButlerPath
     ) -> typing.List[BaseGoogleCloudMetadata]:
-        """Get the metadata about the folder with the given Waterbutler path.
+        """Get the metadata about the folder's immediate children with the given Waterbutler path.
 
         Google Cloud Storage: Objects - List
         JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/objects/list
@@ -109,29 +112,29 @@ class GoogleCloudProvider(BaseProvider):
         "In conjunction with the prefix filter, the use of the delimiter parameter allows the list
         method to operate like a directory listing, despite the object namespace being flat."
 
-        Set the object name of the folder as the PREFIX, and use '/' as the DELIMITER.  Here is
-        an example request: "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o
-        ?prefix=test-folder-1%2F&delimiter=%2F".
+        Set the object name of the folder as the PREFIX, and use '/' as the DELIMITER.  For example:
+
+            "storage/v1/b/gcloud-test.longzechen.com/o?prefix=test-folder-1%2F&delimiter=%2F".
 
         Below is an example of the structure of the JSON response. "items" contains the folder
         itself and all its immediate child files.  "prefixes" contains all its immediate child
         folders.  Refer to the  file "tests/googlecloud/fixtures/metadata/folder-all.json" for a
         real example.
 
-        {
-            "kind": "storage#objects",
-            "prefixes": [
-                "test-folder-1/test-folder-5/",
-            ],
-            "items": [
-                {
-                    "name": "test-folder-1/",
-                },
-                {
-                    "name": "test-folder-1/DSC_0235.JPG",
-                },
-            ]
-        }
+            {
+                "kind": "storage#objects",
+                "prefixes": [
+                    "test-folder-1/test-folder-5/",
+                ],
+                "items": [
+                    {
+                        "name": "test-folder-1/",
+                    },
+                    {
+                        "name": "test-folder-1/DSC_0235.JPG",
+                    },
+                ]
+            }
 
         :param path: the Waterbutler path of the folder
         :rtype List<BaseGoogleCloudMetadata>
@@ -153,8 +156,7 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=MetadataError
         )
-        await resp.release()
-        data = resp.json()
+        data = await resp.json()
 
         # Add immediate child files to metadata list, need to exclude itself
         folder_metadata_list = []
@@ -163,15 +165,51 @@ class GoogleCloudProvider(BaseProvider):
                 folder_metadata_list.append(GoogleCloudFileMetadata(dict(item)))
 
         # Retrieve and add immediate child folders to the metadata list
-        sub_folders = data.get('prefixes', [])
-        for sub_folder in sub_folders:
+        sub_folder_names = data.get('prefixes', [])
+        for name in sub_folder_names:
+            path = pd_utils.build_path(name, is_folder=True)
             sub_folder_metadata = await self._metadata_object(
-                WaterButlerPath(sub_folder),
+                WaterButlerPath(path),
                 is_folder=True
             )
             folder_metadata_list.append(sub_folder_metadata)
 
         return folder_metadata_list
+
+    async def _metadata_all_children(
+            self,
+            path: WaterButlerPath
+    ) -> typing.List[dict]:
+        """Get the metadata about all of the folder's children with the given Waterbutler path.
+
+        Google Cloud Storage: Objects - List
+        JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/objects/list
+
+        In Google Cloud Storage, find all children of a given folder is equal to finding all objects
+        of which the names are prefixed with the folder's object name.  Note that the folder itself
+        is included in the result.  Set the object name of the folder as the PREFIX, and do not use
+        a DELIMITER.  For example:
+
+            "/storage/v1/b/gcloud-test.longzechen.com/o ?prefix=test-folder-1%2F"
+
+        :param path: the Waterbutler path of the folder
+        :rtype List<BaseGoogleCloudMetadata>
+        """
+
+        http_method = 'GET'
+        prefix = pd_utils.get_obj_name(path, is_folder=True)
+        query = {'prefix': prefix}
+        metadata_url = self.build_url(base_url=pd_settings.BASE_URL, **query)
+
+        resp = await self.make_request(
+            http_method,
+            metadata_url,
+            expects=(HTTPStatus.OK,),
+            throws=MetadataError
+        )
+        data = await resp.json()
+
+        return data.get('items', [])
 
     async def create_folder(
             self,
@@ -217,8 +255,7 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=UploadError
         )
-        await resp.release()
-        data = resp.json()
+        data = await resp.json()
 
         return GoogleCloudFolderMetadata(dict(data)), created
 
@@ -262,8 +299,7 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=UploadError
         )
-        await resp.release()
-        data = resp.json()
+        data = await resp.json()
 
         if stream.writers['md5'].hexdigest != data.get('md5Hash', ''):
             raise UploadChecksumMismatchError
@@ -400,8 +436,7 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=MetadataError
         )
-        await resp.release()
-        data = resp.json()
+        data = await resp.json()
 
         # If there are more items than the ``BATCH_THRESHOLD``, slice the list into eligible sub
         # lists and call ``_batch_delete_items`` on each of them.
@@ -476,8 +511,7 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=DeleteError
         )
-        await resp.release()
-        data = resp.read()
+        data = await resp.read()
 
         # Parse the response and find out if there are failures and what are they.
         req_failed_new = pd_utils.parse_batch_delete_resp(data)
@@ -564,9 +598,7 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=CopyError
         )
-
-        await resp.release()
-        data = resp.json()
+        data = await resp.json()
 
         return GoogleCloudFileMetadata(dict(data)), created
 
@@ -609,8 +641,7 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=MetadataError
         )
-        await resp.release()
-        data = resp.json()
+        data = await resp.json()
 
         # If there are more items than the ``BATCH_THRESHOLD``, slice the list into eligible sub
         # lists and call ``_batch_copy_items`` on each of them.
@@ -708,8 +739,7 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=DeleteError
         )
-        await resp.release()
-        data = resp.read()
+        data = await resp.read()
 
         # Parse the response and find out if there are failures and what are they.
         metadata_list, req_list_failed = pd_utils.parse_batch_copy_resp(data)

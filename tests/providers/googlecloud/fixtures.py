@@ -37,6 +37,11 @@ def batch_boundary():
 
 
 @pytest.fixture()
+def file_wb_path():
+    return WaterButlerPath('/test-folder-1-copy/DSC_0235.JPG')
+
+
+@pytest.fixture()
 def src_file_wb_path():
     return WaterButlerPath('/test-folder-1/DSC_0244.JPG')
 
@@ -44,6 +49,36 @@ def src_file_wb_path():
 @pytest.fixture()
 def dest_file_wb_path():
     return WaterButlerPath('/test-folder-1/DSC_0244_COPY.JPG')
+
+
+@pytest.fixture()
+def folder_path():
+    return '/test-folder-1/'
+
+
+@pytest.fixture()
+def sub_folder_1_path():
+    return '/test-folder-1/test-folder-5/'
+
+
+@pytest.fixture()
+def sub_folder_2_path():
+    return '/test-folder-1/test-folder-6/'
+
+
+@pytest.fixture()
+def sub_file_1_path():
+    return '/test-folder-1/DSC_0235.JPG'
+
+
+@pytest.fixture()
+def sub_file_2_path():
+    return '/test-folder-1/DSC_0244.JPG'
+
+
+@pytest.fixture()
+def file_path():
+    return '/test-folder-1-copy/DSC_0235.JPG'
 
 
 @pytest.fixture()
@@ -63,7 +98,7 @@ def src_file_object_name():
 
 @pytest.fixture()
 def dest_file_object_name():
-    return 'test-folder-1/DSC_0244_COPY.JPG'
+    return 'test-folder-1-copy/DSC_0244.JPG'
 
 
 @pytest.fixture()
@@ -88,6 +123,19 @@ def metadata_folder_itself():
             os.path.join(
                 os.path.dirname(__file__),
                 'fixtures/metadata/folder-itself.json'
+            ),
+            'r'
+    ) as fp:
+        return fp.read()
+
+
+@pytest.fixture()
+def metadata_folder_extra():
+
+    with open(
+            os.path.join(
+                os.path.dirname(__file__),
+                'fixtures/metadata/folder-extra.json'
             ),
             'r'
     ) as fp:
@@ -121,12 +169,51 @@ def metadata_folder_all():
 
 
 @pytest.fixture()
+def metadata_sub_folder_1_itself():
+
+    with open(
+            os.path.join(
+                os.path.dirname(__file__),
+                'fixtures/metadata/sub-folder-1-itself.json'
+            ),
+            'r'
+    ) as fp:
+        return fp.read()
+
+
+@pytest.fixture()
+def metadata_sub_folder_2_itself():
+
+    with open(
+            os.path.join(
+                os.path.dirname(__file__),
+                'fixtures/metadata/sub-folder-2-itself.json'
+            ),
+            'r'
+    ) as fp:
+        return fp.read()
+
+
+@pytest.fixture()
 def metadata_file_itself():
 
     with open(
             os.path.join(
                 os.path.dirname(__file__),
                 'fixtures/metadata/file-itself.json'
+            ),
+            'r'
+    ) as fp:
+        return fp.read()
+
+
+@pytest.fixture()
+def metadata_file_extra():
+
+    with open(
+            os.path.join(
+                os.path.dirname(__file__),
+                'fixtures/metadata/file-extra.json'
             ),
             'r'
     ) as fp:
@@ -270,6 +357,32 @@ def batch_copy_response_failed_part():
             os.path.join(
                 os.path.dirname(__file__),
                 'fixtures/batch-requests/copy-response-failed-part.txt'
+            ),
+            'r'
+    ) as fp:
+        return fp.read()
+
+
+@pytest.fixture()
+def error_response_401_unauthorized():
+
+    with open(
+            os.path.join(
+                os.path.dirname(__file__),
+                'fixtures/errors/401-unauthorized.json'
+            ),
+            'r'
+    ) as fp:
+        return fp.read()
+
+
+@pytest.fixture()
+def error_response_404_not_found():
+
+    with open(
+            os.path.join(
+                os.path.dirname(__file__),
+                'fixtures/errors/404-not-found.json'
             ),
             'r'
     ) as fp:
