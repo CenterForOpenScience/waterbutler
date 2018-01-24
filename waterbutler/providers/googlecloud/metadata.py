@@ -4,15 +4,15 @@ import logging
 
 from waterbutler.core import utils as core_utils
 from waterbutler.core import metadata as core_metadata
-from waterbutler.providers.googlecloudstorage import settings as pd_settings
+from waterbutler.providers.googlecloud import settings as pd_settings
 
 logger = logging.getLogger(__name__)
 
 
-class GoogleCloudStorageMetaData(core_metadata.BaseMetadata, metaclass=abc.ABCMeta):
-    """The GoogleCloudStorage object provides the base structure for both file and folder metadata
-    on the Google Cloud Storage.  It is an abstract class and does not implements all abstract
-    methods and properties in ``core_metadata.BaseMetadata``.
+class BaseGoogleCloudMetadata(core_metadata.BaseMetadata, metaclass=abc.ABCMeta):
+    """The ``BaseGoogleCloudMetadata`` object provides the base structure for both file and folder
+    metadata on the Google Cloud Storage.  It is an abstract class and does not implements all
+    abstract methods and properties in ``core_metadata.BaseMetadata``.
     """
 
     @property
@@ -40,7 +40,14 @@ class GoogleCloudStorageMetaData(core_metadata.BaseMetadata, metaclass=abc.ABCMe
         }
 
 
-class GoogleCloudStorageFileMetadata(GoogleCloudStorageMetaData, core_metadata.BaseFileMetadata):
+class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, core_metadata.BaseFileMetadata):
+    """The ``GoogleCloudFileMetadata`` object provides the full structure for files on the Google
+    Cloud Storage Provider.  It inherits two non-abstract classes: ``BaseGoogleCloudMetadata`` and
+    ``core_metadata.BaseFileMetadata``.
+
+    Please refer to the example JSON files "tests/googlecloud/fixtures/metadata/file-itself.json"
+    for what metadata Google Cloud Storage provides.
+    """
 
     @property
     def name(self) -> str:
@@ -67,7 +74,14 @@ class GoogleCloudStorageFileMetadata(GoogleCloudStorageMetaData, core_metadata.B
         return int(self.raw.get('size', None))
 
 
-class GoogleCloudStorageFolderMetadata(GoogleCloudStorageMetaData, core_metadata.BaseFolderMetadata):
+class GoogleCloudFolderMetadata(BaseGoogleCloudMetadata, core_metadata.BaseFolderMetadata):
+    """The ``GoogleCloudFolderMetadata`` object provides the full structure for folders on Google
+    Cloud Storage Provider.  It inherits two non-abstract classes: ``BaseGoogleCloudMetadata`` and
+    ``core_metadata.BaseFolderMetadata``.
+
+    Please refer to the example JSON files "tests/googlecloud/fixtures/metadata/folder-itself.json"
+    for what metadata Google Cloud Storage provides.
+    """
 
     @property
     def name(self) -> str:

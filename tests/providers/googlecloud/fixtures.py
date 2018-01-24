@@ -13,7 +13,7 @@ def mock_auth():
 
 
 @pytest.fixture()
-def mock_credentials():
+def mock_creds():
     return {
         'bucket': 'gcloud-test.longzechen.com',
         'region': 'US-EAST1',
