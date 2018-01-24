@@ -30,13 +30,12 @@ class BaseGoogleCloudMetadata(core_metadata.BaseMetadata, metaclass=abc.ABCMeta)
     @property
     def extra(self) -> dict:
         return {
-            'kind': self.raw.get('kind', None),
             'id': self.raw.get('id', None),
             'bucket': self.raw.get('bucket', None),
+            'generation': self.raw.get('generation', None),
             'hashes': {
                 'md5': self.raw.get('md5Hash', None)
             },
-            'crc32c': self.raw.get('crc32c', None)
         }
 
 

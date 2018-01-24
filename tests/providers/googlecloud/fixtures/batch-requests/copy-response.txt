@@ -3,34 +3,31 @@ Content-Type: application/http
 Content-ID: <response-b29c5de2-0db4-490b-b421-6a51b598bd22+1>
 
 HTTP/1.1 200 OK
-ETag: CPef1+Dj4dgCEAE=
+ETag: CPCK4veFutgCEAE=
 Content-Type: application/json; charset=UTF-8
 Date: Thu, 18 Jan 2018 15:01:12 GMT
 Expires: Thu, 18 Jan 2018 15:01:12 GMT
 Cache-Control: private, max-age=0
-Content-Length: 894
+Content-Length: 820
 
 {
  "kind": "storage#object",
- "id": "gcloud-test.longzechen.com/test-folder-1-copy//1516287672307703",
- "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2F",
- "name": "test-folder-1-copy/",
+ "id": "gcloud-test.longzechen.com/test-folder-1//1514922457990512",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2F",
+ "name": "test-folder-1/",
  "bucket": "gcloud-test.longzechen.com",
- "generation": "1516287672307703",
+ "generation": "1514922457990512",
  "metageneration": "1",
  "contentType": "application/x-www-form-urlencoded;charset=UTF-8",
- "timeCreated": "2018-01-18T15:01:12.268Z",
- "updated": "2018-01-18T15:01:12.268Z",
+ "timeCreated": "2018-01-02T19:47:37.942Z",
+ "updated": "2018-01-02T19:47:37.942Z",
  "storageClass": "REGIONAL",
- "timeStorageClassUpdated": "2018-01-18T15:01:12.268Z",
+ "timeStorageClassUpdated": "2018-01-02T19:47:37.942Z",
  "size": "0",
  "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
- "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2F?generation=1516287672307703&alt=media",
- "owner": {
-  "entity": "user-cslzchen@gmail.com"
- },
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2F?generation=1514922457990512&alt=media",
  "crc32c": "AAAAAA==",
- "etag": "CPef1+Dj4dgCEAE="
+ "etag": "CPCK4veFutgCEAE="
 }
 
 --batch_8kft0Fgr_MM_AAbjON5KFwQ
@@ -38,34 +35,31 @@ Content-Type: application/http
 Content-ID: <response-b29c5de2-0db4-490b-b421-6a51b598bd22+2>
 
 HTTP/1.1 200 OK
-ETag: CPOm2eDj4dgCEAE=
+ETag: CM38iP+i0NgCEAE=
 Content-Type: application/json; charset=UTF-8
 Date: Thu, 18 Jan 2018 15:01:12 GMT
 Expires: Thu, 18 Jan 2018 15:01:12 GMT
 Cache-Control: private, max-age=0
-Content-Length: 912
+Content-Length: 838
 
 {
  "kind": "storage#object",
- "id": "gcloud-test.longzechen.com/test-folder-1-copy/DSC_0235.JPG/1516387505375399",
- "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2FDSC_0235.JPG",
- "name": "test-folder-1-copy/DSC_0235.JPG",
+ "id": "gcloud-test.longzechen.com/test-folder-1/DSC_0235.JPG/1515686172180045",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2FDSC_0235.JPG",
+ "name": "test-folder-1/DSC_0235.JPG",
  "bucket": "gcloud-test.longzechen.com",
- "generation": "1516387505375399",
+ "generation": "1515686172180045",
  "metageneration": "1",
  "contentType": "image/jpeg",
- "timeCreated": "2018-01-19T18:45:05.159Z",
- "updated": "2018-01-19T18:45:05.159Z",
+ "timeCreated": "2018-01-11T15:56:12.174Z",
+ "updated": "2018-01-11T15:56:12.174Z",
  "storageClass": "REGIONAL",
- "timeStorageClassUpdated": "2018-01-19T18:45:05.159Z",
+ "timeStorageClassUpdated": "2018-01-11T15:56:12.174Z",
  "size": "10724401",
  "md5Hash": "lTcHcNCpt+pFo9YCgU14bQ==",
- "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2FDSC_0235.JPG?generation=1516387505375399&alt=media",
- "owner": {
-  "entity": "user-cslzchen@gmail.com"
- },
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2FDSC_0235.JPG?generation=1515686172180045&alt=media",
  "crc32c": "IhS+NQ==",
- "etag": "CKeR5tTX5NgCEAE="
+ "etag": "CM38iP+i0NgCEAE="
 }
 
 --batch_8kft0Fgr_MM_AAbjON5KFwQ
@@ -82,9 +76,9 @@ Content-Length: 912
 
 {
  "kind": "storage#object",
- "id": "gcloud-test.longzechen.com/test-folder-1-copy/DSC_0244.JPG/1516287672304328",
- "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2FDSC_0244.JPG",
- "name": "test-folder-1-copy/DSC_0244.JPG",
+ "id": "gcloud-test.longzechen.com/test-folder-1/DSC_0244.JPG/1516287672304328",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2FDSC_0244.JPG",
+ "name": "test-folder-1/DSC_0244.JPG",
  "bucket": "gcloud-test.longzechen.com",
  "generation": "1516287672304328",
  "metageneration": "1",
@@ -95,7 +89,7 @@ Content-Length: 912
  "timeStorageClassUpdated": "2018-01-18T15:01:12.284Z",
  "size": "13652201",
  "md5Hash": "dSwr0bbZ4pZUTKya7fRmeg==",
- "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2FDSC_0244.JPG?generation=1516287672304328&alt=media",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2FDSC_0244.JPG?generation=1516287672304328&alt=media",
  "owner": {
   "entity": "user-cslzchen@gmail.com"
  },
@@ -117,9 +111,9 @@ Content-Length: 954
 
 {
  "kind": "storage#object",
- "id": "gcloud-test.longzechen.com/test-folder-1-copy/test-folder-5//1516287672302646",
- "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-5%2F",
- "name": "test-folder-1-copy/test-folder-5/",
+ "id": "gcloud-test.longzechen.com/test-folder-1/test-folder-5//1516287672302646",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-5%2F",
+ "name": "test-folder-1/test-folder-5/",
  "bucket": "gcloud-test.longzechen.com",
  "generation": "1516287672302646",
  "metageneration": "1",
@@ -130,7 +124,7 @@ Content-Length: 954
  "timeStorageClassUpdated": "2018-01-18T15:01:12.267Z",
  "size": "0",
  "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
- "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-5%2F?generation=1516287672302646&alt=media",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-5%2F?generation=1516287672302646&alt=media",
  "owner": {
   "entity": "user-cslzchen@gmail.com"
  },
@@ -152,9 +146,9 @@ Content-Length: 992
 
 {
  "kind": "storage#object",
- "id": "gcloud-test.longzechen.com/test-folder-1-copy/test-folder-5/DSC_0235_COPY.JPG/1516287672306934",
- "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-5%2FDSC_0235_COPY.JPG",
- "name": "test-folder-1-copy/test-folder-5/DSC_0235_COPY.JPG",
+ "id": "gcloud-test.longzechen.com/test-folder-1/test-folder-5/DSC_0235_COPY.JPG/1516287672306934",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-5%2FDSC_0235_COPY.JPG",
+ "name": "test-folder-1/test-folder-5/DSC_0235_COPY.JPG",
  "bucket": "gcloud-test.longzechen.com",
  "generation": "1516287672306934",
  "metageneration": "1",
@@ -165,7 +159,7 @@ Content-Length: 992
  "timeStorageClassUpdated": "2018-01-18T15:01:12.274Z",
  "size": "10724401",
  "md5Hash": "lTcHcNCpt+pFo9YCgU14bQ==",
- "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-5%2FDSC_0235_COPY.JPG?generation=1516287672306934&alt=media",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-5%2FDSC_0235_COPY.JPG?generation=1516287672306934&alt=media",
  "owner": {
   "entity": "user-cslzchen@gmail.com"
  },
@@ -187,9 +181,9 @@ Content-Length: 954
 
 {
  "kind": "storage#object",
- "id": "gcloud-test.longzechen.com/test-folder-1-copy/test-folder-6//1516287672303704",
- "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-6%2F",
- "name": "test-folder-1-copy/test-folder-6/",
+ "id": "gcloud-test.longzechen.com/test-folder-1/test-folder-6//1516287672303704",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-6%2F",
+ "name": "test-folder-1/test-folder-6/",
  "bucket": "gcloud-test.longzechen.com",
  "generation": "1516287672303704",
  "metageneration": "1",
@@ -200,7 +194,7 @@ Content-Length: 954
  "timeStorageClassUpdated": "2018-01-18T15:01:12.282Z",
  "size": "0",
  "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
- "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-6%2F?generation=1516287672303704&alt=media",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-6%2F?generation=1516287672303704&alt=media",
  "owner": {
   "entity": "user-cslzchen@gmail.com"
  },
@@ -222,9 +216,9 @@ Content-Length: 992
 
 {
  "kind": "storage#object",
- "id": "gcloud-test.longzechen.com/test-folder-1-copy/test-folder-6/DSC_0244_COPY.JPG/1516287672305548",
- "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-6%2FDSC_0244_COPY.JPG",
- "name": "test-folder-1-copy/test-folder-6/DSC_0244_COPY.JPG",
+ "id": "gcloud-test.longzechen.com/test-folder-1/test-folder-6/DSC_0244_COPY.JPG/1516287672305548",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-6%2FDSC_0244_COPY.JPG",
+ "name": "test-folder-1/test-folder-6/DSC_0244_COPY.JPG",
  "bucket": "gcloud-test.longzechen.com",
  "generation": "1516287672305548",
  "metageneration": "1",
@@ -235,7 +229,7 @@ Content-Length: 992
  "timeStorageClassUpdated": "2018-01-18T15:01:12.280Z",
  "size": "13652201",
  "md5Hash": "dSwr0bbZ4pZUTKya7fRmeg==",
- "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1-copy%2Ftest-folder-6%2FDSC_0244_COPY.JPG?generation=1516287672305548&alt=media",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-6%2FDSC_0244_COPY.JPG?generation=1516287672305548&alt=media",
  "owner": {
   "entity": "user-cslzchen@gmail.com"
  },

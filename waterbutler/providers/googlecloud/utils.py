@@ -19,14 +19,37 @@ def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:
     :rtype: str
     """
 
-    relative_path = path.path.lstrip('/')
+    return validate_path_or_name(path.path.lstrip('/'), is_folder=is_folder)
+
+
+def build_path(obj_name: str, is_folder: bool=False) -> str:
+    """Convert the object name to a path string which can pass validation.
+
+    :param obj_name: the object name of the objects
+    :param is_folder: the folder flag
+    :rtype str:
+    """
+
+    return validate_path_or_name(
+        obj_name if obj_name.startswith('/') else '/' + obj_name,
+        is_folder=is_folder
+    )
+
+
+def validate_path_or_name(path_or_name: str, is_folder: bool=False) -> str:
+    """Validate that path or object name.
+
+    :param path_or_name: the path or the object name
+    :param is_folder: the folder flag
+    :rtype str:
+    """
 
     if is_folder:
-        assert relative_path.endswith('/')
+        assert path_or_name.endswith('/')
     else:
-        assert not relative_path.endswith('/')
+        assert not path_or_name.endswith('/')
 
-    return relative_path
+    return path_or_name
 
 
 def build_url(base: str, *segments, **query) -> str:
