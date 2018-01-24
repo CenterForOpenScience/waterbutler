@@ -2,16 +2,16 @@ import logging
 
 import pytest
 
-from waterbutler.providers.googlecloudstorage import GoogleCloudStorageProvider
+from waterbutler.providers.googlecloud import GoogleCloudProvider
 
-from tests.providers.googlecloudstorage.fixtures import mock_auth, mock_credentials, mock_settings
+from tests.providers.googlecloud.fixtures import mock_auth, mock_creds, mock_settings
 
 logger = logging.getLogger(__name__)
 
 
 @pytest.fixture()
-def mock_provider(mock_auth, mock_credentials, mock_settings):
-    return GoogleCloudStorageProvider(mock_auth, mock_credentials, mock_settings)
+def mock_provider(mock_auth, mock_creds, mock_settings):
+    return GoogleCloudProvider(mock_auth, mock_creds, mock_settings)
 
 
 @pytest.fixture()
@@ -24,7 +24,7 @@ class TestProviderInit:
     """Test that provider initialization set properties correctly.
     """
 
-    async def test_provider_init(self, mock_provider: GoogleCloudStorageProvider):
+    async def test_provider_init(self, mock_provider: GoogleCloudProvider):
 
         assert mock_provider is not None
         assert mock_provider.bucket is not None

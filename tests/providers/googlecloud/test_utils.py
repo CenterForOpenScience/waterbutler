@@ -4,42 +4,35 @@ from urllib.parse import quote
 
 import pytest
 
-from tests.providers.googlecloudstorage.fixtures import (mock_auth, mock_credentials,
-                                                         mock_settings, file_stream,
-                                                         batch_id_prefix, batch_boundary,
-                                                         src_file_wb_path, dest_file_wb_path,
-                                                         src_folder_wb_path, dest_folder_wb_path,
-                                                         src_file_object_name,
-                                                         dest_file_object_name,
-                                                         src_folder_object_name,
-                                                         dest_folder_object_name,
-                                                         batch_copy_request,
-                                                         batch_copy_response,
-                                                         batch_delete_request,
-                                                         batch_delete_response,
-                                                         failed_requests_list,
-                                                         batch_copy_request_failed,
-                                                         batch_copy_response_failed,
-                                                         batch_delete_request_failed,
-                                                         batch_delete_response_failed,
-                                                         batch_copy_response_part,
-                                                         batch_copy_response_failed_part,
-                                                         batch_delete_response_failed_part,
-                                                         metadata_folder_all,
-                                                         metadata_folder_immediate,
-                                                         metadata_folder_itself,
-                                                         metadata_file_itself,)
+from tests.providers.googlecloud.fixtures import (mock_auth, mock_creds, mock_settings, file_stream,
+                                                  batch_id_prefix, batch_boundary,
+                                                  src_file_wb_path, dest_file_wb_path,
+                                                  src_folder_wb_path, dest_folder_wb_path,
+                                                  src_file_object_name, dest_file_object_name,
+                                                  src_folder_object_name, dest_folder_object_name,
+                                                  batch_copy_request, batch_copy_response,
+                                                  batch_delete_request, batch_delete_response,
+                                                  failed_requests_list,
+                                                  batch_copy_request_failed,
+                                                  batch_copy_response_failed,
+                                                  batch_delete_request_failed,
+                                                  batch_delete_response_failed,
+                                                  batch_copy_response_part,
+                                                  batch_copy_response_failed_part,
+                                                  batch_delete_response_failed_part,
+                                                  metadata_folder_all, metadata_folder_immediate,
+                                                  metadata_folder_itself, metadata_file_itself,)
 
-from waterbutler.providers.googlecloudstorage import utils as pd_utils
-from waterbutler.providers.googlecloudstorage import settings as pd_settings
-from waterbutler.providers.googlecloudstorage import GoogleCloudStorageProvider
+from waterbutler.providers.googlecloud import utils as pd_utils
+from waterbutler.providers.googlecloud import settings as pd_settings
+from waterbutler.providers.googlecloud import GoogleCloudProvider
 
 logger = logging.getLogger(__name__)
 
 
 @pytest.fixture()
-def mock_provider(mock_auth, mock_credentials, mock_settings):
-    return GoogleCloudStorageProvider(mock_auth, mock_credentials, mock_settings)
+def mock_provider(mock_auth, mock_creds, mock_settings):
+    return GoogleCloudProvider(mock_auth, mock_creds, mock_settings)
 
 
 @pytest.fixture()
