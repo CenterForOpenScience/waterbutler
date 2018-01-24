@@ -1,33 +1,28 @@
 import json
-import logging
 from urllib.parse import quote
 
 import pytest
 
-from tests.providers.googlecloud.fixtures import (mock_auth, mock_creds, mock_settings, file_stream,
-                                                  batch_id_prefix, batch_boundary,
-                                                  src_file_wb_path, dest_file_wb_path,
-                                                  src_folder_wb_path, dest_folder_wb_path,
+from tests.providers.googlecloud.fixtures import (mock_auth, mock_creds, mock_settings,
+                                                  batch_id_prefix, failed_requests_list,
+                                                  src_file_wb_path, src_folder_wb_path,
                                                   src_file_object_name, dest_file_object_name,
                                                   src_folder_object_name, dest_folder_object_name,
+                                                  metadata_folder_itself, metadata_file_itself,
+                                                  metadata_folder_all, metadata_folder_immediate,
                                                   batch_copy_request, batch_copy_response,
                                                   batch_delete_request, batch_delete_response,
-                                                  failed_requests_list,
                                                   batch_copy_request_failed,
                                                   batch_copy_response_failed,
                                                   batch_delete_request_failed,
                                                   batch_delete_response_failed,
                                                   batch_copy_response_part,
                                                   batch_copy_response_failed_part,
-                                                  batch_delete_response_failed_part,
-                                                  metadata_folder_all, metadata_folder_immediate,
-                                                  metadata_folder_itself, metadata_file_itself,)
+                                                  batch_delete_response_failed_part,)
 
 from waterbutler.providers.googlecloud import utils as pd_utils
 from waterbutler.providers.googlecloud import settings as pd_settings
 from waterbutler.providers.googlecloud import GoogleCloudProvider
-
-logger = logging.getLogger(__name__)
 
 
 @pytest.fixture()
@@ -41,8 +36,10 @@ def mock_dest_provider(mock_provider):
     return mock_provider
 
 
-class TestGetObjectName:
-    """Test that the "Object Name" can be correctly obtained from a ``WaterbutlerPath`` object.
+class TestPathAndNameForObjects:
+    """Test that the object name can be correctly obtained from a ``WaterbutlerPath`` object, and
+    that the path, which is used to initiate ``WaterbutlerPath`` can be correctly obtained from the
+    object name.
 
     Google Cloud Storage API uses "Object Name" as an identifier to refer to objects (files and
     folders) in URL path and query parameters. Make sure that:
@@ -50,17 +47,25 @@ class TestGetObjectName:
     1. For both files and folders, it never starts with a '/'
     2. For files, it does not end with a '/'
     3. For folders, it does end with a '/'
+
+    For ``WaterButlerPath``, ``generic_path_validation()`` expects one and only one leading `/`.
     """
 
-    def test_get_file_object_name(self, src_file_wb_path, src_file_object_name):
+    def test_path_and_object_name_for_file(self, src_file_wb_path, src_file_object_name):
 
         object_name = pd_utils.get_obj_name(src_file_wb_path)
         assert object_name == src_file_object_name
 
-    def test_get_folder_object_name(self, src_folder_wb_path, src_folder_object_name):
+        path = pd_utils.build_path(src_file_object_name)
+        assert path == '/' + src_file_wb_path.path
+
+    def test_path_and_object_name_for_folder(self, src_folder_wb_path, src_folder_object_name):
 
         object_name = pd_utils.get_obj_name(src_folder_wb_path, is_folder=True)
         assert object_name == src_folder_object_name
+
+        path = pd_utils.build_path(src_folder_object_name, is_folder=True)
+        assert path == '/' + src_folder_wb_path.path
 
 
 class TestBuildUrl:
