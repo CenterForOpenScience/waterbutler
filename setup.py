@@ -55,6 +55,7 @@ setup(
             's3 = waterbutler.providers.s3:S3Provider',
             'dataverse = waterbutler.providers.dataverse:DataverseProvider',
             'box = waterbutler.providers.box:BoxProvider',
+            'fedora = waterbutler.providers.fedora:FedoraProvider',
             'googledrive = waterbutler.providers.googledrive:GoogleDriveProvider',
             'onedrive = waterbutler.providers.onedrive:OneDriveProvider',
         ],
