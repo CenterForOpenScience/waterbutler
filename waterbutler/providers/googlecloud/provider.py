@@ -1,5 +1,6 @@
 import json
 import uuid
+import base64
 import typing
 import hashlib
 import logging
@@ -9,8 +10,9 @@ from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
 from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStreamReader
 from waterbutler.core.metadata import BaseMetadata, BaseFileMetadata
-from waterbutler.core.exceptions import (MetadataError, UploadError, DownloadError, CopyError,
-                                         NotFoundError, DeleteError, UploadChecksumMismatchError,)
+from waterbutler.core.exceptions import (MetadataError, NotFoundError, CreateFolderError,
+                                         UploadError, UploadChecksumMismatchError,
+                                         DownloadError, DeleteError, CopyError, WaterButlerError)
 
 from waterbutler.providers.googlecloud import utils as pd_utils
 from waterbutler.providers.googlecloud import settings as pd_settings
@@ -40,6 +42,7 @@ class GoogleCloudProvider(BaseProvider):
     def __init__(self, auth: dict, credentials: dict, settings: dict):
         super().__init__(auth, credentials, settings)
 
+        # TODO: the structure of ``credentials`` and ``settings`` may be different
         self.bucket = credentials.get('bucket')
         self.access_token = credentials.get('access_token')
         self.region = credentials.get('region')
@@ -158,6 +161,12 @@ class GoogleCloudProvider(BaseProvider):
         )
         data = await resp.json()
 
+        # If folder does not exist, raise HTTP 404 Not Found
+        prefixes = data.get('prefixes', None)
+        items = data.get('items', None)
+        if not items and not prefixes:
+            raise NotFoundError(path.path)
+
         # Add immediate child files to metadata list, need to exclude itself
         folder_metadata_list = []
         for item in data.get('items', []):
@@ -211,32 +220,61 @@ class GoogleCloudProvider(BaseProvider):
 
         return data.get('items', [])
 
+    async def _exists_folder(self, path: WaterButlerPath) -> bool:
+        """Check if a folder with the given Waterbutler path exists. Calls ``_metadata_object()``.
+
+        ``exists()`` from the core provider calls ``metadata()``, which calls ``_metadata_folder``
+        for folders.  It makes simple action complicated and it is more expensive as well.
+
+        :param path: the Waterbutler path of the folder to check
+        :rtype bool:
+        """
+
+        if not path.is_folder:
+            raise WaterButlerError('Expecting folder instead of file')
+
+        try:
+            await self._metadata_object(path, is_folder=True)
+        except NotFoundError:
+            return False
+        except MetadataError as exc:
+            if exc.code != HTTPStatus.NOT_FOUND:
+                raise
+            return False
+        return True
+
     async def create_folder(
             self,
             path: WaterButlerPath,
             **kwargs
-    ) -> typing.Tuple[BaseGoogleCloudMetadata, bool]:
+    ) -> BaseGoogleCloudMetadata:
         """Create a folder with the given Waterbutler path.
 
         Google Cloud Storage: Objects - Insert
         JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/objects/insert
 
         Create a folder in the Google Cloud Storage is basically to upload an object (which is a
-        folder or of which the name ends with a `/`).  If the folder exists, it will be replaced
-        with the new folder and all its contents are deleted.
+        folder or of which the name ends with a `/`).
 
         1. The size of the object (folder) is set to 0
         2. The Content-Type header is set to: "application/x-www-form-urlencoded;charset=UTF-8"
 
+        Quirks:
+
+        1. Using this API, it is possible to create a folder "/a/b/c/" when neither "/a/" or "/a/b/"
+           exists.  TODO: Verify that this function is only called when parent directories exist.
+
+        2. When creating a folder, if it already exists, throw a HTTP 409 Conflict
+
+        3. ``create_folder``, though fully implemented, is not required for the limited version.
+
         :param path: the Waterbutler path of the folder to create
         :param kwargs: additional kwargs are ignored
         :rtype: BaseGoogleCloudMetadata
-        :rtype: bool
         """
 
-        created = not await self.exists(path)
-        if not created:
-            await self._delete_folder(path)
+        if await self._exists_folder(path):
+            raise CreateFolderError('Folder already exists.', code=HTTPStatus.CONFLICT)
 
         http_method = 'POST'
         query = {
@@ -253,11 +291,11 @@ class GoogleCloudProvider(BaseProvider):
             upload_url,
             headers=headers,
             expects=(HTTPStatus.OK,),
-            throws=UploadError
+            throws=CreateFolderError
         )
         data = await resp.json()
 
-        return GoogleCloudFolderMetadata(dict(data)), created
+        return GoogleCloudFolderMetadata(dict(data))
 
     async def upload(
             self,
@@ -270,6 +308,12 @@ class GoogleCloudProvider(BaseProvider):
 
         Google Cloud Storage: Objects - Insert
         JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/objects/insert
+
+        Quirks:
+
+        1. "In the JSON API, the objects resource md5Hash and crc32c properties contain
+           base64-encoded MD5 and CRC32c hashes, respectively."
+           Docs: https://cloud.google.com/storage/docs/hashes-etags
 
         :param stream: the stream to post
         :param path: the Waterbutler path of the file to upload
@@ -301,7 +345,10 @@ class GoogleCloudProvider(BaseProvider):
         )
         data = await resp.json()
 
-        if stream.writers['md5'].hexdigest != data.get('md5Hash', ''):
+        encoded_md5 = base64.b64encode(stream.writers['md5'].digest)
+        metadata_md5 = data.get('md5Hash', '').encode('UTF-8')
+
+        if encoded_md5 != metadata_md5:
             raise UploadChecksumMismatchError
 
         return GoogleCloudFileMetadata(dict(data)), created
@@ -324,6 +371,7 @@ class GoogleCloudProvider(BaseProvider):
         anything. It doesn't make any sense just to download the folder anyway.
 
         TODO: should we support the Range header?
+        TODO: should we support the ``accept_url``?
 
         :param path: the Waterbutler path to the object to download
         :param args: additional args are ignored
@@ -332,7 +380,7 @@ class GoogleCloudProvider(BaseProvider):
         """
 
         if path.is_folder:
-            raise DownloadError('Folders are not eligible for download.')
+            raise DownloadError('Cannot download folders', code=HTTPStatus.BAD_REQUEST)
 
         http_method = 'GET'
         query = {'alt': 'media'}
@@ -344,7 +392,7 @@ class GoogleCloudProvider(BaseProvider):
         resp = await self.make_request(
             http_method,
             download_url,
-            expects=(HTTPStatus.OK, HTTPStatus.PARTIAL_CONTENT),
+            expects=(HTTPStatus.OK,),
             throws=DownloadError
         )
 
@@ -417,6 +465,10 @@ class GoogleCloudProvider(BaseProvider):
                Some may fail while others succeed.  The response status is HTTP 200 OK even when
                individual requests fail.  Need to parse the response to detect and handle failures.
 
+        4. Quirk: If the folder does exists, the server returns HTTP 200 OK, not HTTP 404 Not found.
+           If the response doesn't have an item list, we say the folder does not exists.  This saves
+           us one extra request to check existence.
+
         JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/how-tos/batch
 
         :param path: the Waterbutler path of the folder to delete
@@ -438,9 +490,13 @@ class GoogleCloudProvider(BaseProvider):
         )
         data = await resp.json()
 
+        # Check if folder exists and obtain the items list.
+        items = data.get('items', None)
+        if not items:
+            raise NotFoundError(path)
+
         # If there are more items than the ``BATCH_THRESHOLD``, slice the list into eligible sub
         # lists and call ``_batch_delete_items`` on each of them.
-        items = data.get('items', [])
         num_of_items = len(items)
         num_of_slices = int(num_of_items / pd_settings.BATCH_THRESHOLD) + 1
 
@@ -756,6 +812,8 @@ class GoogleCloudProvider(BaseProvider):
         return metadata_list
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
+
+        # TODO: need more discussion with @Fitz on whether we need this
 
         wb_path = WaterButlerPath(path)
 
