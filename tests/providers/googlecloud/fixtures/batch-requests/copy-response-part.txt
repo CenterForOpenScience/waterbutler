@@ -1,0 +1,32 @@
+
+Content-ID: <response-b29c5de2-0db4-490b-b421-6a51b598bd22+1>
+
+HTTP/1.1 200 OK
+ETag: CPCK4veFutgCEAE=
+Content-Type: application/json; charset=UTF-8
+Date: Thu, 18 Jan 2018 15:01:12 GMT
+Expires: Thu, 18 Jan 2018 15:01:12 GMT
+Cache-Control: private, max-age=0
+Content-Length: 820
+
+{
+ "kind": "storage#object",
+ "id": "gcloud-test.longzechen.com/test-folder-1//1514922457990512",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2F",
+ "name": "test-folder-1/",
+ "bucket": "gcloud-test.longzechen.com",
+ "generation": "1514922457990512",
+ "metageneration": "1",
+ "contentType": "application/x-www-form-urlencoded;charset=UTF-8",
+ "timeCreated": "2018-01-02T19:47:37.942Z",
+ "updated": "2018-01-02T19:47:37.942Z",
+ "storageClass": "REGIONAL",
+ "timeStorageClassUpdated": "2018-01-02T19:47:37.942Z",
+ "size": "0",
+ "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2F?generation=1514922457990512&alt=media",
+ "crc32c": "AAAAAA==",
+ "etag": "CPCK4veFutgCEAE="
+}
+
+--batch_8kft0Fgr_MM_AAbjON5KFwQ
