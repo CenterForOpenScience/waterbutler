@@ -3,8 +3,8 @@ import json
 import pytest
 
 from tests.providers.googlecloud.fixtures import (mock_auth, mock_creds, mock_settings,
-                                                  metadata_file_itself, metadata_file_extra,
-                                                  metadata_folder_itself, metadata_folder_extra,)
+                                                  meta_file_itself, meta_file_extra,
+                                                  meta_folder_itself, meta_folder_extra,)
 
 from waterbutler.providers.googlecloud import settings as pd_settings
 from waterbutler.providers.googlecloud import (GoogleCloudProvider, BaseGoogleCloudMetadata,
@@ -18,12 +18,12 @@ def mock_provider(mock_auth, mock_creds, mock_settings):
 
 class TestGoogleCloudFileMetadata:
 
-    def test_file_metadata(self, metadata_file_itself, metadata_file_extra):
+    def test_file_metadata(self, meta_file_itself, meta_file_extra):
 
         # TODO: confirm that there is no need to test ``.serialized()`` and others.
 
-        metadata_json = json.loads(metadata_file_itself)
-        metadata_extra = json.loads(metadata_file_extra)
+        metadata_json = json.loads(meta_file_itself)
+        metadata_extra = json.loads(meta_file_extra)
         metadata = GoogleCloudFileMetadata(metadata_json)
 
         assert isinstance(metadata, BaseGoogleCloudMetadata)
@@ -43,12 +43,12 @@ class TestGoogleCloudFileMetadata:
 
 class TestGoogleCloudFolderMetadata:
 
-    def test_folder_metadata(self, metadata_folder_itself, metadata_folder_extra):
+    def test_folder_metadata(self, meta_folder_itself, meta_folder_extra):
 
         # TODO: confirm that there is no need to test ``.serialized()`` and others.
 
-        metadata_json = json.loads(metadata_folder_itself)
-        metadata_extra = json.loads(metadata_folder_extra)
+        metadata_json = json.loads(meta_folder_itself)
+        metadata_extra = json.loads(meta_folder_extra)
         metadata = GoogleCloudFolderMetadata(metadata_json)
 
         assert isinstance(metadata, BaseGoogleCloudMetadata)
