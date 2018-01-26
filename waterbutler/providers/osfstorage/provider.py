@@ -3,6 +3,7 @@ import json
 import uuid
 import shutil
 import hashlib
+import logging
 
 from waterbutler.core import utils
 from waterbutler.core import signing
@@ -19,6 +20,7 @@ from waterbutler.providers.osfstorage.metadata import OsfStorageFileMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageFolderMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageRevisionMetadata
 
+logger = logging.getLogger(__name__)
 
 QUERY_METHODS = ('GET', 'DELETE')
 
@@ -311,14 +313,27 @@ class OSFStorageProvider(provider.BaseProvider):
         provider = self.make_provider(self.settings)
         local_pending_path = os.path.join(settings.FILE_PATH_PENDING, pending_name)
         remote_pending_path = await provider.validate_path('/' + pending_name)
+        logger.debug('upload: local_pending_path::{}'.format(local_pending_path))
+        logger.debug('upload: remote_pending_path::{}'.format(remote_pending_path))
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
         stream.add_writer('sha256', streams.HashStreamWriter(hashlib.sha256))
 
-        with open(local_pending_path, 'wb') as file_pointer:
-            stream.add_writer('file', file_pointer)
-            await provider.upload(stream, remote_pending_path, check_created=False, fetch_metadata=False, **kwargs)
+        try:
+            with open(local_pending_path, 'wb') as file_pointer:
+                stream.add_writer('file', file_pointer)
+                await provider.upload(stream, remote_pending_path, check_created=False,
+                                      fetch_metadata=False, **kwargs)
+        except Exception as exc:
+            # If we fail to upload to the remote storage provider, then delete the copy of the file
+            # from the local provider, too.  The user will have to reupload the file to local
+            # anyway, and this will avoid filling up the local disk with unused pending files.
+            try:
+                os.remove(local_pending_path)
+            except OSError as os_exc:
+                raise exceptions.UploadFailedError('Upload failed, please try again.') from os_exc
+            raise exceptions.UploadFailedError('Upload failed, please try again.') from exc
 
         complete_name = stream.writers['sha256'].hexdigest
         local_complete_path = os.path.join(settings.FILE_PATH_COMPLETE, complete_name)

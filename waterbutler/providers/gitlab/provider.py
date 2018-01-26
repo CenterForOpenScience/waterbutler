@@ -247,7 +247,7 @@ class GitLabProvider(provider.BaseProvider):
         resp.headers = mdict
         resp.content = streams.StringStream(raw)
 
-        return streams.ResponseStreamReader(resp, len(raw))
+        return streams.ResponseStreamReader(resp, size=len(raw))
 
     def can_duplicate_names(self):
         return False

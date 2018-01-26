@@ -1,21 +1,16 @@
 import pytest
 
-from waterbutler.providers.dropbox.metadata import (
-    DropboxFileMetadata,
-    DropboxFolderMetadata,
-    DropboxRevision
-)
+from waterbutler.providers.dropbox.metadata import (DropboxFileMetadata,
+                                                    DropboxFolderMetadata,
+                                                    DropboxRevision)
 
-from tests.providers.dropbox.fixtures import(
-    root_provider_fixtures,
-    revision_fixtures
-)
+from tests.providers.dropbox.fixtures import provider_fixtures, revision_fixtures
 
 
 class TestDropboxMetadata:
 
-    def test_file_metadata(self, root_provider_fixtures):
-        data = DropboxFileMetadata(root_provider_fixtures['file_metadata'], '/Photos')
+    def test_file_metadata(self, provider_fixtures):
+        data = DropboxFileMetadata(provider_fixtures['file_metadata'], '/Photos')
 
         assert data.name == 'Getting_Started.pdf'
         assert data.path == '/Getting_Started.pdf'
@@ -90,8 +85,8 @@ class TestDropboxMetadata:
             }
         }
 
-    def test_folder_metadata(self, root_provider_fixtures):
-        data = DropboxFolderMetadata(root_provider_fixtures['folder_metadata'], '/Photos')
+    def test_folder_metadata(self, provider_fixtures):
+        data = DropboxFolderMetadata(provider_fixtures['folder_metadata'], '/Photos')
 
         assert data.name == 'newfolder'
         assert data.path == '/newfolder/'

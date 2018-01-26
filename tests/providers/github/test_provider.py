@@ -1,14 +1,13 @@
-import pytest
-
 import io
 import os
 import copy
-import furl
 import json
 import base64
 import hashlib
 from http import client
 
+import furl
+import pytest
 import aiohttpretty
 
 from waterbutler.core import streams
@@ -25,9 +24,9 @@ from waterbutler.providers.github import settings as github_settings
 from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
 
 
-from tests.providers.github.fixtures import(crud_fixtures,
-                                            revision_fixtures,
-                                            root_provider_fixtures)
+from tests.providers.github.fixtures import (crud_fixtures,
+                                             revision_fixtures,
+                                             provider_fixtures)
 
 
 @pytest.fixture
@@ -88,28 +87,28 @@ def file_stream(file_like):
 
 
 @pytest.fixture
-def provider(auth, credentials, settings, root_provider_fixtures):
+def provider(auth, credentials, settings, provider_fixtures):
     provider = GitHubProvider(auth, credentials, settings)
-    provider._repo = root_provider_fixtures['repo_metadata']
-    provider.default_branch = root_provider_fixtures['repo_metadata']['default_branch']
+    provider._repo = provider_fixtures['repo_metadata']
+    provider.default_branch = provider_fixtures['repo_metadata']['default_branch']
     return provider
 
 
 @pytest.fixture
-def other_provider(other_auth, other_credentials, other_settings, root_provider_fixtures):
+def other_provider(other_auth, other_credentials, other_settings, provider_fixtures):
     provider = GitHubProvider(other_auth, other_credentials, other_settings)
-    provider._repo = root_provider_fixtures['repo_metadata']
-    provider.default_branch = root_provider_fixtures['repo_metadata']['default_branch']
+    provider._repo = provider_fixtures['repo_metadata']
+    provider.default_branch = provider_fixtures['repo_metadata']['default_branch']
     return provider
 
 
 class TestHelpers:
 
-    async def test_build_repo_url(self, provider, settings):
+    def test_build_repo_url(self, provider, settings):
         expected = provider.build_url('repos', settings['owner'], settings['repo'], 'contents')
         assert provider.build_repo_url('contents') == expected
 
-    async def test_committer(self, auth, provider):
+    def test_committer(self, auth, provider):
         expected = {
             'name': auth['name'],
             'email': auth['email'],
@@ -121,18 +120,17 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, root_provider_fixtures):
+    async def test_validate_v1_path_file(self, provider, provider_fixtures):
         branch_url = provider.build_repo_url('branches', provider.default_branch)
         tree_url = provider.build_repo_url(
             'git', 'trees',
-            root_provider_fixtures['branch_metadata']['commit']['commit']['tree']['sha'],
+            provider_fixtures['branch_metadata']['commit']['commit']['tree']['sha'],
             recursive=1
         )
 
-        aiohttpretty.register_json_uri('GET', branch_url,
-                body=root_provider_fixtures['branch_metadata'])
+        aiohttpretty.register_json_uri('GET', branch_url, body=provider_fixtures['branch_metadata'])
         aiohttpretty.register_json_uri(
-            'GET', tree_url, body=root_provider_fixtures['repo_tree_metadata_root']
+            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
         )
 
         blob_path = 'file.txt'
@@ -162,19 +160,19 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider, root_provider_fixtures):
+    async def test_validate_v1_path_folder(self, provider, provider_fixtures):
         branch_url = provider.build_repo_url('branches', provider.default_branch)
         tree_url = provider.build_repo_url(
             'git', 'trees',
-            root_provider_fixtures['branch_metadata']['commit']['commit']['tree']['sha'],
+            provider_fixtures['branch_metadata']['commit']['commit']['tree']['sha'],
             recursive=1
         )
 
         aiohttpretty.register_json_uri(
-            'GET', branch_url, body=root_provider_fixtures['branch_metadata']
+            'GET', branch_url, body=provider_fixtures['branch_metadata']
         )
         aiohttpretty.register_json_uri(
-            'GET', tree_url, body=root_provider_fixtures['repo_tree_metadata_root']
+            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
         )
 
         tree_path = 'level1'
@@ -265,9 +263,9 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_by_path(self, provider, root_provider_fixtures):
+    async def test_download_by_path(self, provider, provider_fixtures):
         ref = hashlib.sha1().hexdigest()
-        file_sha = root_provider_fixtures['repo_tree_metadata_root']['tree'][0]['sha']
+        file_sha = provider_fixtures['repo_tree_metadata_root']['tree'][0]['sha']
         path = GitHubPath(
             '/file.txt', _ids=[(provider.default_branch, ''), (provider.default_branch, '')]
         )
@@ -281,7 +279,7 @@ class TestCRUD:
 
         aiohttpretty.register_uri('GET', url, body=b'delicious')
         aiohttpretty.register_json_uri(
-            'GET', tree_url, body=root_provider_fixtures['repo_tree_metadata_root']
+            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
         )
 
         aiohttpretty.register_json_uri('GET', commit_url, body=[{'commit': {'tree': {'sha': ref}}}])
@@ -293,9 +291,9 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_by_path_ref_branch(self, provider, root_provider_fixtures):
+    async def test_download_by_path_ref_branch(self, provider, provider_fixtures):
         ref = hashlib.sha1().hexdigest()
-        file_sha = root_provider_fixtures['repo_tree_metadata_root']['tree'][0]['sha']
+        file_sha = provider_fixtures['repo_tree_metadata_root']['tree'][0]['sha']
         path = GitHubPath('/file.txt', _ids=[(provider.default_branch, ''), ('other_branch', '')])
 
         url = provider.build_repo_url('git', 'blobs', file_sha)
@@ -306,7 +304,7 @@ class TestCRUD:
 
         aiohttpretty.register_uri('GET', url, body=b'delicious')
         aiohttpretty.register_json_uri(
-            'GET', tree_url, body=root_provider_fixtures['repo_tree_metadata_root']
+            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
         )
 
         aiohttpretty.register_json_uri('GET', commit_url, body=[{'commit': {'tree': {'sha': ref}}}])
@@ -318,9 +316,9 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_by_path_revision(self, provider, root_provider_fixtures):
+    async def test_download_by_path_revision(self, provider, provider_fixtures):
         ref = hashlib.sha1().hexdigest()
-        file_sha = root_provider_fixtures['repo_tree_metadata_root']['tree'][0]['sha']
+        file_sha = provider_fixtures['repo_tree_metadata_root']['tree'][0]['sha']
         path = GitHubPath('/file.txt', _ids=[(provider.default_branch, ''), ('other_branch', '')])
 
         url = provider.build_repo_url('git', 'blobs', file_sha)
@@ -331,7 +329,7 @@ class TestCRUD:
 
         aiohttpretty.register_uri('GET', url, body=b'delicious')
         aiohttpretty.register_json_uri(
-            'GET', tree_url, body=root_provider_fixtures['repo_tree_metadata_root']
+            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
         )
         aiohttpretty.register_json_uri('GET', commit_url, body=[{'commit': {'tree': {'sha': ref}}}])
 
@@ -342,10 +340,10 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_create(self, provider, root_provider_fixtures,
-                                 crud_fixtures, file_content, file_stream):
+    async def test_upload_create(self, provider, provider_fixtures, crud_fixtures, file_content,
+                                 file_stream):
         message = 'so hungry'
-        item = root_provider_fixtures['upload_response']
+        item = provider_fixtures['upload_response']
         path = GitHubPath(
             '/' + item['content']['path'],
             _ids=[(provider.default_branch, ''), ('master', ''), ('master', '')]
@@ -369,12 +367,12 @@ class TestCRUD:
 
         aiohttpretty.register_json_uri(
             'POST', create_tree_url,
-            body=root_provider_fixtures['repo_tree_metadata_root'], status=201
+            body=provider_fixtures['repo_tree_metadata_root'], status=201
         )
 
         aiohttpretty.register_json_uri(
             'POST', create_commit_url, status=201,
-            body=root_provider_fixtures['new_head_commit_metadata']
+            body=provider_fixtures['new_head_commit_metadata']
         )
 
         result = await provider.upload(file_stream, path, message)
@@ -383,17 +381,17 @@ class TestCRUD:
             'path': path.path,
             'sha': crud_fixtures['blob_data']['sha'],
             'size': file_stream.size,
-        }, commit=root_provider_fixtures['new_head_commit_metadata'], ref=path.branch_ref), True
+        }, commit=provider_fixtures['new_head_commit_metadata'], ref=path.branch_ref), True
 
         assert result == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_update(self, provider, root_provider_fixtures,
-                                 crud_fixtures, file_content, file_stream):
+    async def test_upload_update(self, provider, provider_fixtures, crud_fixtures, file_content,
+                                 file_stream):
         message = 'so hungry'
         path = GitHubPath('/file.txt', _ids=[(provider.default_branch, ''), ('master', '')])
-        tree_meta = root_provider_fixtures['repo_tree_metadata_root']
+        tree_meta = provider_fixtures['repo_tree_metadata_root']
         commit_meta = crud_fixtures['all_commits_metadata']
 
         tree_url = furl.furl(
@@ -440,10 +438,10 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_empty_repo(self, provider, root_provider_fixtures,
+    async def test_upload_empty_repo(self, provider, provider_fixtures,
                                      crud_fixtures, file_content, file_stream):
         message = 'so hungry'
-        item = root_provider_fixtures['upload_response']
+        item = provider_fixtures['upload_response']
         path = GitHubPath(
             '/' + item['content']['path'],
             _ids=[(provider.default_branch, ''), ('master', ''), ('master', '')]
@@ -472,12 +470,12 @@ class TestCRUD:
 
         aiohttpretty.register_json_uri(
             'POST', create_tree_url,
-            body=root_provider_fixtures['repo_tree_metadata_root'], status=201
+            body=provider_fixtures['repo_tree_metadata_root'], status=201
         )
 
         aiohttpretty.register_json_uri(
             'POST', create_commit_url,
-            body=root_provider_fixtures['new_head_commit_metadata'], status=201
+            body=provider_fixtures['new_head_commit_metadata'], status=201
         )
 
         aiohttpretty.register_json_uri(
@@ -485,7 +483,7 @@ class TestCRUD:
         )
 
         aiohttpretty.register_json_uri(
-            'PUT', git_keep_url, body=root_provider_fixtures['branch_metadata'], status=201
+            'PUT', git_keep_url, body=provider_fixtures['branch_metadata'], status=201
         )
 
         result = await provider.upload(file_stream, path, message)
@@ -494,15 +492,15 @@ class TestCRUD:
             'path': path.path,
             'sha': crud_fixtures['blob_data']['sha'],
             'size': file_stream.size,
-        }, commit=root_provider_fixtures['new_head_commit_metadata'], ref=path.branch_ref), True
+        }, commit=provider_fixtures['new_head_commit_metadata'], ref=path.branch_ref), True
 
         assert result == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_checksum_mismatch(self, provider, root_provider_fixtures,
+    async def test_upload_checksum_mismatch(self, provider, provider_fixtures,
                                             crud_fixtures, file_content, file_stream):
-        item = root_provider_fixtures['upload_response']
+        item = provider_fixtures['upload_response']
         path = GitHubPath(
             '/' + item['content']['path'],
             _ids=[(provider.default_branch, ''), ('master', ''), ('master', '')]
@@ -527,7 +525,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_root_no_confirm(self, provider, root_provider_fixtures):
+    async def test_delete_root_no_confirm(self, provider, provider_fixtures):
         path = GitHubPath('/', _ids=[('master', '')])
 
         with pytest.raises(exceptions.DeleteError) as e:
@@ -561,8 +559,8 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_file_with_sha(self, provider, root_provider_fixtures):
-        item = root_provider_fixtures['upload_response']
+    async def test_delete_file_with_sha(self, provider, provider_fixtures):
+        item = provider_fixtures['upload_response']
         sha = item['content']['sha']
         path = GitHubPath('/file.txt', _ids=[('master', sha), ('master', sha)])
         branch = 'master'
@@ -578,8 +576,8 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_file_no_sha(self, provider, root_provider_fixtures, crud_fixtures):
-        item = root_provider_fixtures['upload_response']
+    async def test_delete_file_no_sha(self, provider, provider_fixtures, crud_fixtures):
+        item = provider_fixtures['upload_response']
         sha = item['content']['sha']
         path = GitHubPath('/file.txt', _ids=[('master', ''), ('master', '')])
         branch = 'master'
@@ -593,7 +591,7 @@ class TestCRUD:
 
         tree_url.args.update({'recursive': 1})
         aiohttpretty.register_json_uri(
-            'GET', tree_url, body=root_provider_fixtures['repo_tree_metadata_root']
+            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
         )
 
         aiohttpretty.register_json_uri('DELETE', url)
@@ -607,11 +605,15 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_folder(self, provider, root_provider_fixtures, crud_fixtures):
+    async def test_delete_folder(self, provider, provider_fixtures, crud_fixtures):
         sha = crud_fixtures['deleted_tree_metadata']['tree'][2]['sha']
         path = GitHubPath('/deletedfolder/', _ids=[('master', sha), ('master', sha)])
         branch = 'master'
         message = 'deleted'
+
+        metadata_url = provider.build_repo_url('contents', ref='master')
+        aiohttpretty.register_json_uri('GET', metadata_url,
+                                       body=provider_fixtures['content_repo_metadata_root'])
 
         branch_url = provider.build_repo_url('branches', 'master')
         tree_url = furl.furl(
@@ -646,11 +648,15 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_folder_error_case(self, provider, root_provider_fixtures, crud_fixtures):
+    async def test_delete_folder_error_case(self, provider, provider_fixtures, crud_fixtures):
         sha = crud_fixtures['deleted_tree_metadata']['tree'][2]['sha']
         path = GitHubPath('/deletedfolder/', _ids=[('master', sha), ('master', sha)])
         branch = 'master'
         message = 'deleted'
+
+        metadata_url = provider.build_repo_url('contents', ref='master')
+        aiohttpretty.register_json_uri('GET', metadata_url,
+                                       body=provider_fixtures['content_repo_metadata_root'])
 
         branch_url = provider.build_repo_url('branches', 'master')
         tree_url = furl.furl(provider.build_repo_url(
@@ -682,6 +688,37 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_delete_folder_last_item_in_repo(self, provider, provider_fixtures,
+                                                   crud_fixtures):
+        sha = crud_fixtures['deleted_tree_metadata']['tree'][2]['sha']
+        path = GitHubPath('/deletedfolder/', _ids=[('master', sha), ('master', sha)])
+        branch = 'master'
+        message = 'deleted'
+
+        metadata_url = provider.build_repo_url('contents', ref='master')
+        aiohttpretty.register_json_uri(
+            'GET', metadata_url, body=provider_fixtures['content_repo_metadata_root_one_folder']
+        )
+
+        branch_url = provider.build_repo_url('branches', 'master')
+        aiohttpretty.register_json_uri(
+            'GET', branch_url, body=crud_fixtures['deleted_branch_metadata']
+        )
+
+        commit_url = provider.build_repo_url('git', 'commits')
+        aiohttpretty.register_json_uri(
+            'POST', commit_url, body=crud_fixtures['deleted_commit_metadata'], status=201
+        )
+
+        patch_url = provider.build_repo_url('git', 'refs', 'heads', path.branch_ref)
+        aiohttpretty.register_json_uri('PATCH', patch_url)
+
+        await provider.delete(path, sha, message, branch=branch)
+
+        assert aiohttpretty.has_call(method='PATCH', uri=patch_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_delete_subfolder(self, provider, crud_fixtures):
         sha = crud_fixtures['deleted_tree_metadata']['tree'][2]['sha']
         path = GitHubPath(
@@ -691,34 +728,25 @@ class TestCRUD:
         message = 'deleted'
 
         branch_url = provider.build_repo_url('branches', 'master')
+        branch_metadata = crud_fixtures['deleted_subfolder_branch_metadata']
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+
         tree_url = furl.furl(
-            provider.build_repo_url('git', 'trees',
-            crud_fixtures['deleted_subfolder_branch_metadata']['commit']['commit']['tree']['sha']
+            provider.build_repo_url(
+                'git', 'trees', branch_metadata['commit']['commit']['tree']['sha']
             )
         )
+        main_tree_metadata = crud_fixtures['deleted_subfolder_main_tree_metadata']
+        aiohttpretty.register_json_uri('GET', tree_url, body=main_tree_metadata)
 
         idx_tree_url = furl.furl(
-            provider.build_repo_url('git', 'trees',
-            crud_fixtures['deleted_subfolder_main_tree_metadata']['tree'][3]['sha']
-            )
+            provider.build_repo_url('git', 'trees', main_tree_metadata['tree'][3]['sha'])
         )
-
-        create_tree_url = provider.build_repo_url('git', 'trees')
-        commit_url = provider.build_repo_url('git', 'commits')
-        patch_url = provider.build_repo_url('git', 'refs', 'heads', path.branch_ref)
-
-        aiohttpretty.register_json_uri(
-            'GET', branch_url, body=crud_fixtures['deleted_subfolder_branch_metadata']
-        )
-
-        aiohttpretty.register_json_uri(
-            'GET', tree_url, body=crud_fixtures['deleted_subfolder_main_tree_metadata']
-        )
-
         aiohttpretty.register_json_uri(
             'GET', idx_tree_url, body=crud_fixtures['deleted_subfolder_idx_tree_metadata']
         )
 
+        create_tree_url = provider.build_repo_url('git', 'trees')
         aiohttpretty.register_json_uri('POST', create_tree_url, **{
             "responses": [
                 {'body': json.dumps(
@@ -727,10 +755,12 @@ class TestCRUD:
                     crud_fixtures['deleted_subfolder_tree_data_2']).encode('utf-8'), 'status': 201},
             ]})
 
+        commit_url = provider.build_repo_url('git', 'commits')
         aiohttpretty.register_json_uri(
             'POST', commit_url, body=crud_fixtures['deleted_subfolder_commit_metadata'], status=201
         )
 
+        patch_url = provider.build_repo_url('git', 'refs', 'heads', path.branch_ref)
         aiohttpretty.register_json_uri('PATCH', patch_url)
 
         await provider.delete(path, sha, message, branch=branch)
@@ -748,26 +778,14 @@ class TestCRUD:
         message = 'deleted'
 
         branch_url = provider.build_repo_url('branches', 'master')
+        branch_metadata = crud_fixtures['deleted_subfolder_branch_metadata']
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+
         tree_url = furl.furl(
-            provider.build_repo_url('git', 'trees',
-            crud_fixtures['deleted_subfolder_branch_metadata']['commit']['commit']['tree']['sha']
+            provider.build_repo_url(
+                'git', 'trees', branch_metadata['commit']['commit']['tree']['sha']
             )
         )
-
-        idx_tree_url = furl.furl(
-            provider.build_repo_url('git', 'trees',
-            crud_fixtures['deleted_subfolder_main_tree_metadata']['tree'][3]['sha']
-            )
-        )
-
-        create_tree_url = provider.build_repo_url('git', 'trees')
-        commit_url = provider.build_repo_url('git', 'commits')
-        patch_url = provider.build_repo_url('git', 'refs', 'heads', path.branch_ref)
-
-        aiohttpretty.register_json_uri(
-            'GET', branch_url, body=crud_fixtures['deleted_subfolder_branch_metadata']
-        )
-
         aiohttpretty.register_json_uri(
             'GET', tree_url, body=crud_fixtures['deleted_subfolder_bad_tree_metadata']
         )
@@ -783,7 +801,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file(self, provider, root_provider_fixtures):
+    async def test_metadata_file(self, provider, provider_fixtures):
         ref = hashlib.sha1().hexdigest()
         path = GitHubPath('/file.txt', _ids=[(provider.default_branch, ''), ('other_branch', '')])
 
@@ -793,7 +811,7 @@ class TestMetadata:
         )
 
         aiohttpretty.register_json_uri(
-            'GET', tree_url, body=root_provider_fixtures['repo_tree_metadata_root']
+            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
         )
 
         aiohttpretty.register_json_uri('GET', commit_url, body=[{
@@ -804,7 +822,7 @@ class TestMetadata:
         }])
 
         result = await provider.metadata(path)
-        item = root_provider_fixtures['repo_tree_metadata_root']['tree'][0]
+        item = provider_fixtures['repo_tree_metadata_root']['tree'][0]
         web_view = provider._web_view(path=path)
 
         assert result == GitHubFileTreeMetadata(item, web_view=web_view, commit={
@@ -813,7 +831,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file_error(self, provider, root_provider_fixtures):
+    async def test_metadata_file_error(self, provider, provider_fixtures):
         path = GitHubPath(
             '/file.txt', _ids=[(provider.default_branch, ''), (provider.default_branch, '')]
         )
@@ -839,7 +857,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_doesnt_exist(self, provider, root_provider_fixtures):
+    async def test_metadata_doesnt_exist(self, provider, provider_fixtures):
         ref = hashlib.sha1().hexdigest()
         path = GitHubPath('/file.txt', _ids=[(provider.default_branch, ''), ('other_branch', '')])
 
@@ -849,7 +867,7 @@ class TestMetadata:
         )
 
         aiohttpretty.register_json_uri(
-            'GET', tree_url, body=root_provider_fixtures['repo_tree_metadata_root']
+            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
         )
 
         aiohttpretty.register_json_uri('GET', commit_url, body=[])
@@ -859,18 +877,18 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_folder_root(self, provider, root_provider_fixtures):
+    async def test_metadata_folder_root(self, provider, provider_fixtures):
         path = GitHubPath('/', _ids=[(provider.default_branch, '')])
 
         url = provider.build_repo_url('contents', path.path, ref=provider.default_branch)
         aiohttpretty.register_json_uri(
-            'GET', url, body=root_provider_fixtures['content_repo_metadata_root']
+            'GET', url, body=provider_fixtures['content_repo_metadata_root']
         )
 
         result = await provider.metadata(path)
 
         ret = []
-        for item in root_provider_fixtures['content_repo_metadata_root']:
+        for item in provider_fixtures['content_repo_metadata_root']:
             if item['type'] == 'dir':
                 ret.append(GitHubFolderContentMetadata(item, ref=provider.default_branch))
             else:
@@ -884,9 +902,9 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_path_from_metadata(self, provider, root_provider_fixtures):
+    async def test_path_from_metadata(self, provider, provider_fixtures):
         path = GitHubPath('/', _ids=[(provider.default_branch, '')])
-        item = root_provider_fixtures['content_repo_metadata_root'][0]
+        item = provider_fixtures['content_repo_metadata_root'][0]
         metadata = GitHubFileContentMetadata(
             item, web_view=item['html_url'], ref=provider.default_branch
         )
@@ -898,7 +916,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_folder_fetch_error(self, provider, root_provider_fixtures):
+    async def test_metadata_folder_fetch_error(self, provider, provider_fixtures):
         path = GitHubPath(
             '/test/', _ids=[(provider.default_branch, ''), (provider.default_branch, '')]
         )
@@ -918,7 +936,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_folder_error_empty_repo(self, provider, root_provider_fixtures):
+    async def test_metadata_folder_error_empty_repo(self, provider, provider_fixtures):
         path = GitHubPath(
             '/test/', _ids=[(provider.default_branch, ''), (provider.default_branch, '')]
         )
@@ -936,7 +954,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_folder_error_dict_return(self, provider, root_provider_fixtures):
+    async def test_metadata_folder_error_dict_return(self, provider, provider_fixtures):
         path = GitHubPath(
             '/test/', _ids=[(provider.default_branch, ''), (provider.default_branch, '')]
         )
@@ -979,10 +997,10 @@ class TestIntra:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_file(self, provider, root_provider_fixtures):
-        branch_meta = root_provider_fixtures['branch_metadata']
-        tree_meta = root_provider_fixtures['repo_tree_metadata_root']
-        new_tree_meta = root_provider_fixtures['repo_tree_metadata_root_updated']
+    async def test_intra_copy_file(self, provider, provider_fixtures):
+        branch_meta = provider_fixtures['branch_metadata']
+        tree_meta = provider_fixtures['repo_tree_metadata_root']
+        new_tree_meta = provider_fixtures['repo_tree_metadata_root_updated']
         src_path = GitHubPath('/file.txt', _ids=[("master", ''), (branch_meta['name'], '')])
         dest_path = GitHubPath(
             '/truefacts/file.txt',
@@ -1006,7 +1024,7 @@ class TestIntra:
 
         aiohttpretty.register_json_uri(
             'POST', commit_url, headers=headers,
-            body=root_provider_fixtures['new_head_commit_metadata'], status=201
+            body=provider_fixtures['new_head_commit_metadata'], status=201
         )
 
         aiohttpretty.register_json_uri(
@@ -1021,7 +1039,7 @@ class TestIntra:
 
         blobs = [new_tree_meta['tree'][0]]
         blobs[0]['path'] = dest_path.path
-        commit = root_provider_fixtures['new_head_commit_metadata']
+        commit = provider_fixtures['new_head_commit_metadata']
         expected = (GitHubFileTreeMetadata(
             blobs[0], commit=commit, ref=dest_path.branch_ref
         ), True)
@@ -1030,9 +1048,9 @@ class TestIntra:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_file_no_commit(self, provider, root_provider_fixtures):
-        branch_meta = root_provider_fixtures['branch_metadata']
-        tree_meta = root_provider_fixtures['repo_tree_metadata_root']
+    async def test_intra_copy_file_no_commit(self, provider, provider_fixtures):
+        branch_meta = provider_fixtures['branch_metadata']
+        tree_meta = provider_fixtures['repo_tree_metadata_root']
         src_path = GitHubPath('/file.txt', _ids=[("master", ''), (branch_meta['name'], '')])
         dest_path = GitHubPath(
             '/truefacts/file.txt',
@@ -1053,7 +1071,7 @@ class TestIntra:
         update_ref_url = provider.build_repo_url('git', 'refs', 'heads', src_path.branch_ref)
         aiohttpretty.register_json_uri(
             'POST', commit_url, headers=headers,
-            body=root_provider_fixtures['new_head_commit_metadata'], status=201
+            body=provider_fixtures['new_head_commit_metadata'], status=201
         )
 
         aiohttpretty.register_json_uri(
@@ -1077,10 +1095,10 @@ class TestIntra:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_and_move_folder(self, provider, root_provider_fixtures):
-        branch_meta = root_provider_fixtures['branch_metadata']
-        tree_meta = root_provider_fixtures['repo_tree_metadata_root_with_folder']
-        new_tree_meta = root_provider_fixtures['repo_tree_metadata_root_with_folder_updated']
+    async def test_intra_copy_and_move_folder(self, provider, provider_fixtures):
+        branch_meta = provider_fixtures['branch_metadata']
+        tree_meta = provider_fixtures['repo_tree_metadata_root_with_folder']
+        new_tree_meta = provider_fixtures['repo_tree_metadata_root_with_folder_updated']
         src_path = GitHubPath('/file/', _ids=[("master", ''), (branch_meta['name'], '')])
         dest_path = GitHubPath(
             '/truefacts/file/',
@@ -1101,7 +1119,7 @@ class TestIntra:
 
         aiohttpretty.register_json_uri(
             'POST', commit_url, headers=headers,
-            body=root_provider_fixtures['new_head_commit_metadata'], status=201
+            body=provider_fixtures['new_head_commit_metadata'], status=201
         )
 
         aiohttpretty.register_json_uri(
@@ -1117,7 +1135,7 @@ class TestIntra:
 
         blobs = new_tree_meta['tree'][:3]
         provider._reparent_blobs(blobs, src_path, dest_path)
-        commit = root_provider_fixtures['new_head_commit_metadata']
+        commit = provider_fixtures['new_head_commit_metadata']
 
         expected = GitHubFolderTreeMetadata({
             'path': dest_path.path.strip('/')
@@ -1137,9 +1155,9 @@ class TestIntra:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_not_found_error(self, provider, root_provider_fixtures):
-        branch_meta = root_provider_fixtures['branch_metadata']
-        tree_meta = root_provider_fixtures['repo_tree_metadata_root_with_folder']
+    async def test_intra_copy_not_found_error(self, provider, provider_fixtures):
+        branch_meta = provider_fixtures['branch_metadata']
+        tree_meta = provider_fixtures['repo_tree_metadata_root_with_folder']
         src_path = GitHubPath('/filenotfound.txt', _ids=[("master", ''), (branch_meta['name'], '')])
         dest_path = GitHubPath(
             '/truefacts/filenotfound.txt',
@@ -1165,10 +1183,10 @@ class TestIntra:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_move_file(self, provider, root_provider_fixtures):
-        branch_meta = root_provider_fixtures['branch_metadata']
-        tree_meta = root_provider_fixtures['repo_tree_metadata_root']
-        new_tree_meta = root_provider_fixtures['repo_tree_metadata_root_updated']
+    async def test_intra_move_file(self, provider, provider_fixtures):
+        branch_meta = provider_fixtures['branch_metadata']
+        tree_meta = provider_fixtures['repo_tree_metadata_root']
+        new_tree_meta = provider_fixtures['repo_tree_metadata_root_updated']
         src_path = GitHubPath('/file.txt', _ids=[("master", ''), (branch_meta['name'], '')])
         dest_path = GitHubPath(
             '/truefacts/file.txt',
@@ -1189,7 +1207,7 @@ class TestIntra:
 
         aiohttpretty.register_json_uri(
             'POST', commit_url, headers=headers,
-            body=root_provider_fixtures['new_head_commit_metadata'], status=201
+            body=provider_fixtures['new_head_commit_metadata'], status=201
         )
 
         aiohttpretty.register_json_uri(
@@ -1204,7 +1222,7 @@ class TestIntra:
 
         blobs = [new_tree_meta['tree'][0]]
         blobs[0]['path'] = dest_path.path
-        commit = root_provider_fixtures['new_head_commit_metadata']
+        commit = provider_fixtures['new_head_commit_metadata']
         expected = (GitHubFileTreeMetadata(
             blobs[0], commit=commit, ref=dest_path.branch_ref
         ), True)
@@ -1213,10 +1231,10 @@ class TestIntra:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_move_file_different_branch(self, provider, root_provider_fixtures):
-        branch_meta = root_provider_fixtures['branch_metadata']
-        tree_meta = root_provider_fixtures['repo_tree_metadata_root']
-        new_tree_meta = root_provider_fixtures['repo_tree_metadata_root_updated']
+    async def test_intra_move_file_different_branch(self, provider, provider_fixtures):
+        branch_meta = provider_fixtures['branch_metadata']
+        tree_meta = provider_fixtures['repo_tree_metadata_root']
+        new_tree_meta = provider_fixtures['repo_tree_metadata_root_updated']
         src_path = GitHubPath('/file.txt', _ids=[("master", ''), (branch_meta['name'], '')])
         dest_path = GitHubPath(
             '/truefacts/file.txt',
@@ -1239,7 +1257,7 @@ class TestIntra:
 
         aiohttpretty.register_json_uri(
             'POST', commit_url, headers=headers,
-            body=root_provider_fixtures['new_head_commit_metadata'], status=201
+            body=provider_fixtures['new_head_commit_metadata'], status=201
         )
 
         aiohttpretty.register_json_uri(
@@ -1256,7 +1274,7 @@ class TestIntra:
 
         blobs = [new_tree_meta['tree'][0]]
         blobs[0]['path'] = dest_path.path
-        commit = root_provider_fixtures['new_head_commit_metadata']
+        commit = provider_fixtures['new_head_commit_metadata']
 
         expected = (GitHubFileTreeMetadata(
             blobs[0], commit=commit, ref=dest_path.branch_ref
@@ -1332,7 +1350,7 @@ class TestCreateFolder:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_returns_metadata(self, provider, root_provider_fixtures):
+    async def test_returns_metadata(self, provider, provider_fixtures):
         path = GitHubPath(
             '/i/like/trains/', _ids=[(provider.default_branch, ''),
             ('other_branch', ''), ('other_branch', ''), ('other_branch', '')]
@@ -1341,7 +1359,7 @@ class TestCreateFolder:
         url = provider.build_repo_url('contents', os.path.join(path.path, '.gitkeep'))
 
         aiohttpretty.register_json_uri(
-            'PUT', url, status=201, body=root_provider_fixtures['create_folder_response']
+            'PUT', url, status=201, body=provider_fixtures['create_folder_response']
         )
 
         metadata = await provider.create_folder(path)
@@ -1396,63 +1414,63 @@ class TestOperations:
 
 class TestUtilities:
 
-    def test__path_exists_in_tree(self, provider, root_provider_fixtures):
+    def test__path_exists_in_tree(self, provider, provider_fixtures):
         _ids = [('master', '')]
 
         assert provider._path_exists_in_tree(
-            root_provider_fixtures['nested_tree_metadata']['tree'],
+            provider_fixtures['nested_tree_metadata']['tree'],
             GitHubPath('/alpha.txt', _ids=_ids)
         )
 
         assert provider._path_exists_in_tree(
-            root_provider_fixtures['nested_tree_metadata']['tree'],
+            provider_fixtures['nested_tree_metadata']['tree'],
             GitHubPath('/beta/', _ids=_ids)
         )
 
         assert not provider._path_exists_in_tree(
-            root_provider_fixtures['nested_tree_metadata']['tree'],
+            provider_fixtures['nested_tree_metadata']['tree'],
             GitHubPath('/gaw-gai.txt', _ids=_ids)
         )
 
         assert not provider._path_exists_in_tree(
-            root_provider_fixtures['nested_tree_metadata']['tree'],
+            provider_fixtures['nested_tree_metadata']['tree'],
             GitHubPath('/kaw-kai/', _ids=_ids)
         )
 
-    def test__remove_path_from_tree(self, provider, root_provider_fixtures):
+    def test__remove_path_from_tree(self, provider, provider_fixtures):
         _ids = [('master', '')]
 
         simple_file_tree = provider._remove_path_from_tree(
-            root_provider_fixtures['nested_tree_metadata']['tree'],
+            provider_fixtures['nested_tree_metadata']['tree'],
             GitHubPath('/alpha.txt', _ids=_ids)
         )
 
         assert len(simple_file_tree) == (
-            len(root_provider_fixtures['nested_tree_metadata']['tree']) - 1
+            len(provider_fixtures['nested_tree_metadata']['tree']) - 1
         )
 
         assert 'alpha.txt' not in [x['path'] for x in simple_file_tree]
 
         simple_folder_tree = provider._remove_path_from_tree(
-            root_provider_fixtures['nested_tree_metadata']['tree'], GitHubPath('/beta/', _ids=_ids)
+            provider_fixtures['nested_tree_metadata']['tree'], GitHubPath('/beta/', _ids=_ids)
         )
 
         assert len(simple_folder_tree) == 1
         assert simple_folder_tree[0]['path'] == 'alpha.txt'
 
         nested_file_tree = provider._remove_path_from_tree(
-            root_provider_fixtures['nested_tree_metadata']['tree'],
+            provider_fixtures['nested_tree_metadata']['tree'],
             GitHubPath('/beta/gamma.txt', _ids=_ids)
         )
 
         assert len(nested_file_tree) == (
-            len(root_provider_fixtures['nested_tree_metadata']['tree']) - 1
+            len(provider_fixtures['nested_tree_metadata']['tree']) - 1
         )
 
         assert 'beta/gamma.txt' not in [x['path'] for x in nested_file_tree]
 
         nested_folder_tree = provider._remove_path_from_tree(
-            root_provider_fixtures['nested_tree_metadata']['tree'],
+            provider_fixtures['nested_tree_metadata']['tree'],
             GitHubPath('/beta/delta/', _ids=_ids)
         )
 
@@ -1460,25 +1478,25 @@ class TestUtilities:
         assert len([x for x in nested_folder_tree if x['path'].startswith('beta/delta')]) == 0
 
         missing_file_tree = provider._remove_path_from_tree(
-            root_provider_fixtures['nested_tree_metadata']['tree'],
+            provider_fixtures['nested_tree_metadata']['tree'],
             GitHubPath('/bet', _ids=_ids)
         )
 
-        assert missing_file_tree == root_provider_fixtures['nested_tree_metadata']['tree']
+        assert missing_file_tree == provider_fixtures['nested_tree_metadata']['tree']
 
         missing_folder_tree = provider._remove_path_from_tree(
-            root_provider_fixtures['nested_tree_metadata']['tree'],
+            provider_fixtures['nested_tree_metadata']['tree'],
             GitHubPath('/beta/gam/', _ids=_ids)
         )
 
-        assert missing_file_tree == root_provider_fixtures['nested_tree_metadata']['tree']
+        assert missing_file_tree == provider_fixtures['nested_tree_metadata']['tree']
 
-    def test__reparent_blobs(self, provider, root_provider_fixtures):
+    def test__reparent_blobs(self, provider, provider_fixtures):
         _ids = [('master', '')]
 
         file_rename_blobs = copy.deepcopy(
             [x for x in
-            root_provider_fixtures['nested_tree_metadata']['tree'] if x['path'] == 'alpha.txt']
+            provider_fixtures['nested_tree_metadata']['tree'] if x['path'] == 'alpha.txt']
         )
 
         provider._reparent_blobs(
@@ -1490,7 +1508,7 @@ class TestUtilities:
         assert file_rename_blobs[0]['path'] == 'zeta.txt'
 
         folder_rename_blobs = copy.deepcopy(
-            [x for x in root_provider_fixtures['nested_tree_metadata']['tree']
+            [x for x in provider_fixtures['nested_tree_metadata']['tree']
             if x['path'].startswith('beta')]
         )
 
@@ -1506,10 +1524,8 @@ class TestUtilities:
 
         assert len([x for x in folder_rename_blobs if x['path'] == 'theta']) == 1  # theta/
 
-    def test__prune_subtrees(self, provider, root_provider_fixtures):
-        pruned_tree = provider._prune_subtrees(
-            root_provider_fixtures['nested_tree_metadata']['tree']
-        )
+    def test__prune_subtrees(self, provider, provider_fixtures):
+        pruned_tree = provider._prune_subtrees(provider_fixtures['nested_tree_metadata']['tree'])
 
         assert len(pruned_tree) == 3  # alpha.txt, gamma.txt, epsilon.txt
         assert len([x for x in pruned_tree if x['type'] == 'tree']) == 0

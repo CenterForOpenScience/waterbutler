@@ -365,6 +365,16 @@ class GitHubProvider(provider.BaseProvider):
         await resp.release()
 
     async def _delete_folder(self, path, message=None, **kwargs):
+        message = message or settings.DELETE_FOLDER_MESSAGE
+        # _create_tree fails with empty tree (422 Invalid tree info), so catch it if this folder
+        # is the last contents of this repository and use _delete_root_folder_contents instead.
+        if path.parent.is_root:
+            root_metadata = await self.metadata(path.parent)
+            if len(root_metadata) == 1:
+                if root_metadata[0].materialized_path == path.materialized_path:
+                    await self._delete_root_folder_contents(path, message=message, **kwargs)
+                    return
+
         branch_data = await self._fetch_branch(path.branch_ref)
 
         old_commit_sha = branch_data['commit']['sha']
@@ -429,7 +439,6 @@ class GitHubProvider(provider.BaseProvider):
             tree_sha = tree_data['sha']
 
         # Create a new commit which references our top most tree change.
-        message = message or settings.DELETE_FOLDER_MESSAGE
         commit_resp = await self.make_request(
             'POST',
             self.build_repo_url('git', 'commits'),
