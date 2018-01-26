@@ -1,10 +1,8 @@
-import io
 import os
 
 import pytest
 
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.core.streams import FileStreamReader
 
 
 @pytest.fixture()
@@ -17,7 +15,16 @@ def mock_creds():
     return {
         'bucket': 'gcloud-test.longzechen.com',
         'region': 'US-EAST1',
-        'access_token': 'GlxLBdGqh56rEStTEs0KeMdEFmRJlGpg7e95y8jvzQoHbFZrnPDNBsYTIG2txg8SmacwtERkU',
+        'access_token': 'GlxLBdGqh56rEStTEs0KeMdEFmRJlGpg7e95y8jvzQoHbFZrnPDNB',
+    }
+
+
+@pytest.fixture()
+def mock_creds_2():
+    return {
+        'bucket': 'gcloud-test-2.longzechen.com',
+        'region': 'US-EAST1',
+        'access_token': 'eMdEFmRJlGpg7e95y8jvzQoHbFZrnPDNBsYTIG2txg8SmacwtERkU',
     }
 
 
@@ -78,7 +85,12 @@ def sub_file_2_path():
 
 @pytest.fixture()
 def file_path():
-    return '/test-folder-1-copy/DSC_0235.JPG'
+    return '/test-folder-1/DSC_0235.JPG'
+
+
+@pytest.fixture()
+def dest_file_path():
+    return '/test-folder-2/DSC_0235_2.JPG'
 
 
 @pytest.fixture()
@@ -92,32 +104,53 @@ def dest_folder_wb_path():
 
 
 @pytest.fixture()
-def src_file_object_name():
+def src_file_obj_name():
     return 'test-folder-1/DSC_0244.JPG'
 
 
 @pytest.fixture()
-def dest_file_object_name():
+def dest_file_obj_name():
     return 'test-folder-1-copy/DSC_0244.JPG'
 
 
 @pytest.fixture()
-def src_folder_object_name():
+def src_folder_obj_name():
     return 'test-folder-1/'
 
 
 @pytest.fixture()
-def dest_folder_object_name():
+def dest_folder_obj_name():
     return 'test-folder-1-copy/'
 
 
 @pytest.fixture
-def file_stream():
-    return FileStreamReader(io.BytesIO(b'Test File Content'))
+def test_file_1():
+
+    with open(
+            os.path.join(
+                os.path.dirname(__file__),
+                'fixtures/files/DSC_0235.JPG'
+            ),
+            'rb'
+    ) as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def test_file_2():
+
+    with open(
+            os.path.join(
+                os.path.dirname(__file__),
+                'fixtures/files/DSC_0244.JPG'
+            ),
+            'rb'
+    ) as fp:
+        return fp.read()
 
 
 @pytest.fixture()
-def metadata_folder_itself():
+def meta_folder_itself():
 
     with open(
             os.path.join(
@@ -130,7 +163,7 @@ def metadata_folder_itself():
 
 
 @pytest.fixture()
-def metadata_folder_extra():
+def meta_folder_extra():
 
     with open(
             os.path.join(
@@ -143,7 +176,7 @@ def metadata_folder_extra():
 
 
 @pytest.fixture()
-def metadata_folder_immediate():
+def meta_folder_immediate():
 
     with open(
             os.path.join(
@@ -156,7 +189,7 @@ def metadata_folder_immediate():
 
 
 @pytest.fixture()
-def metadata_folder_all():
+def meta_folder_all():
 
     with open(
             os.path.join(
@@ -169,7 +202,7 @@ def metadata_folder_all():
 
 
 @pytest.fixture()
-def metadata_sub_folder_1_itself():
+def meta_sub_folder_1_itself():
 
     with open(
             os.path.join(
@@ -182,7 +215,7 @@ def metadata_sub_folder_1_itself():
 
 
 @pytest.fixture()
-def metadata_sub_folder_2_itself():
+def meta_sub_folder_2_itself():
 
     with open(
             os.path.join(
@@ -195,7 +228,7 @@ def metadata_sub_folder_2_itself():
 
 
 @pytest.fixture()
-def metadata_file_itself():
+def meta_file_itself():
 
     with open(
             os.path.join(
@@ -208,7 +241,7 @@ def metadata_file_itself():
 
 
 @pytest.fixture()
-def metadata_file_extra():
+def meta_file_extra():
 
     with open(
             os.path.join(
@@ -221,7 +254,7 @@ def metadata_file_extra():
 
 
 @pytest.fixture()
-def batch_delete_request():
+def batch_delete_req():
 
     with open(
             os.path.join(
@@ -234,7 +267,7 @@ def batch_delete_request():
 
 
 @pytest.fixture()
-def batch_delete_request_failed():
+def batch_delete_req_failed():
 
     with open(
             os.path.join(
@@ -247,7 +280,7 @@ def batch_delete_request_failed():
 
 
 @pytest.fixture()
-def batch_delete_response():
+def batch_delete_resp():
 
     with open(
             os.path.join(
@@ -260,7 +293,7 @@ def batch_delete_response():
 
 
 @pytest.fixture()
-def batch_delete_response_failed():
+def batch_delete_resp_failed():
 
     with open(
             os.path.join(
@@ -273,7 +306,7 @@ def batch_delete_response_failed():
 
 
 @pytest.fixture()
-def batch_delete_response_failed_part():
+def batch_delete_resp_failed_part():
 
     with open(
             os.path.join(
@@ -286,7 +319,7 @@ def batch_delete_response_failed_part():
 
 
 @pytest.fixture()
-def batch_copy_request():
+def batch_copy_req():
 
     with open(
             os.path.join(
@@ -299,7 +332,7 @@ def batch_copy_request():
 
 
 @pytest.fixture()
-def batch_copy_request_failed():
+def batch_copy_req_failed():
 
     with open(
             os.path.join(
@@ -312,7 +345,7 @@ def batch_copy_request_failed():
 
 
 @pytest.fixture()
-def batch_copy_response():
+def batch_copy_resp():
 
     with open(
             os.path.join(
@@ -325,7 +358,7 @@ def batch_copy_response():
 
 
 @pytest.fixture()
-def batch_copy_response_part():
+def batch_copy_resp_part():
 
     with open(
             os.path.join(
@@ -338,7 +371,7 @@ def batch_copy_response_part():
 
 
 @pytest.fixture()
-def batch_copy_response_failed():
+def batch_copy_resp_failed():
 
     with open(
             os.path.join(
@@ -351,7 +384,7 @@ def batch_copy_response_failed():
 
 
 @pytest.fixture()
-def batch_copy_response_failed_part():
+def batch_copy_resp_failed_part():
 
     with open(
             os.path.join(
@@ -364,7 +397,7 @@ def batch_copy_response_failed_part():
 
 
 @pytest.fixture()
-def error_response_401_unauthorized():
+def err_resp_unauthorized():
 
     with open(
             os.path.join(
@@ -377,7 +410,7 @@ def error_response_401_unauthorized():
 
 
 @pytest.fixture()
-def error_response_404_not_found():
+def err_resp_not_found():
 
     with open(
             os.path.join(
@@ -390,5 +423,5 @@ def error_response_404_not_found():
 
 
 @pytest.fixture()
-def failed_requests_list():
+def failed_req_list():
     return [1, 3, 5]
