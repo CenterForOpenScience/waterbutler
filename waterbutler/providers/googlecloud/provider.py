@@ -3,7 +3,6 @@ import uuid
 import base64
 import typing
 import hashlib
-import logging
 from http import HTTPStatus
 
 from waterbutler.core.path import WaterButlerPath
@@ -20,8 +19,6 @@ from waterbutler.providers.googlecloud.metadata import (BaseGoogleCloudMetadata,
                                                         GoogleCloudFileMetadata,
                                                         GoogleCloudFolderMetadata,)
 
-logger = logging.getLogger(__name__)
-
 
 class GoogleCloudProvider(BaseProvider):
     """Provider for Google's Cloud Storage Service.
@@ -30,19 +27,21 @@ class GoogleCloudProvider(BaseProvider):
     JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/
 
     Please note the name of the service is "Cloud Storage" on "Google Cloud Platform".  However,
-    we name it ``GoogleCloudProvider`` for better clarity.  Within context, we use "Google Cloud",
-    "Cloud Storage" and "Google Cloud Storage" interchangeably.
+    it is named ``GoogleCloudProvider`` for better clarity and consistency.  "Google Cloud", "Cloud
+    Storage" and "Google Cloud Storage" are used interchangeably.
 
-    TODO: add "Quirks"
+    TODO: should we add a brief "quirks" list/abstract here? Details have been provided in the code.
     """
 
     NAME = pd_settings.NAME
     BASE_URL = pd_settings.BASE_URL
+    UPLOAD_URL = pd_settings.UPLOAD_URL
+    BATCH_URL = pd_settings.BATCH_URL
 
     def __init__(self, auth: dict, credentials: dict, settings: dict):
         super().__init__(auth, credentials, settings)
 
-        # TODO: the structure of ``credentials`` and ``settings`` may be different
+        # TODO: update after OSF side is done, the structure of the dictionaries may be different
         self.bucket = credentials.get('bucket')
         self.access_token = credentials.get('access_token')
         self.region = credentials.get('region')
@@ -78,6 +77,10 @@ class GoogleCloudProvider(BaseProvider):
         "By default, this responds with an object resource in the response body. If you provide the
         URL parameter alt=media, then it will respond with the object data in the response body."
 
+        Please note that ``is_folder`` flag is explicitly used. Providing the wrong type will fail
+        all the time. This is also true for many internal/private/helper/utility methods of/for this
+        class. They are not exposed to usage outside, including the parent classes.
+
         :param path: the Waterbutler path of the object
         :param is_folder: whether the object is a file or folder
         :rtype BaseGoogleCloudMetadata
@@ -93,10 +96,11 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=MetadataError
         )
+
         try:
             data = await resp.json()
         except (TypeError, json.JSONDecodeError):
-            raise MetadataError
+            raise MetadataError('Failed to parse response, expecting JSON format.')
 
         if is_folder:
             return GoogleCloudFolderMetadata(data)
@@ -159,7 +163,11 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=MetadataError
         )
-        data = await resp.json()
+
+        try:
+            data = await resp.json()
+        except (TypeError, json.JSONDecodeError):
+            raise MetadataError('Failed to parse response, expecting JSON format.')
 
         # If folder does not exist, raise HTTP 404 Not Found
         prefixes = data.get('prefixes', None)
@@ -171,7 +179,7 @@ class GoogleCloudProvider(BaseProvider):
         folder_metadata_list = []
         for item in data.get('items', []):
             if item.get('name', '') != prefix:
-                folder_metadata_list.append(GoogleCloudFileMetadata(dict(item)))
+                folder_metadata_list.append(GoogleCloudFileMetadata(item))
 
         # Retrieve and add immediate child folders to the metadata list
         sub_folder_names = data.get('prefixes', [])
@@ -216,15 +224,21 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=MetadataError
         )
-        data = await resp.json()
+
+        try:
+            data = await resp.json()
+        except (TypeError, json.JSONDecodeError):
+            raise MetadataError('Failed to parse response, expecting JSON format.')
 
         return data.get('items', [])
 
     async def _exists_folder(self, path: WaterButlerPath) -> bool:
         """Check if a folder with the given Waterbutler path exists. Calls ``_metadata_object()``.
 
-        ``exists()`` from the core provider calls ``metadata()``, which calls ``_metadata_folder``
-        for folders.  It makes simple action complicated and it is more expensive as well.
+        For folders, ``exists()`` from the core provider calls ``metadata()``, which further calls
+        ``_metadata_folder``.  This makes simple action more complicated and more expensive.
+
+        However, ``exists()`` for files does not have this limitation.
 
         :param path: the Waterbutler path of the folder to check
         :rtype bool:
@@ -253,16 +267,12 @@ class GoogleCloudProvider(BaseProvider):
         Google Cloud Storage: Objects - Insert
         JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/objects/insert
 
-        Create a folder in the Google Cloud Storage is basically to upload an object (which is a
-        folder or of which the name ends with a `/`).
+        Create a folder in the Google Cloud is basically to upload an object (which is a folder or
+        of which the name ends with a `/`). First, the size of the object (folder) is set to 0.
+        Second, the Content-Type header is set to: application/x-www-form-urlencoded;charset=UTF-8
 
-        1. The size of the object (folder) is set to 0
-        2. The Content-Type header is set to: "application/x-www-form-urlencoded;charset=UTF-8"
-
-        Quirks:
-
-        1. Using this API, it is possible to create a folder "/a/b/c/" when neither "/a/" or "/a/b/"
-           exists.  TODO: Verify that this function is only called when parent directories exist.
+        1. It is possible to create a folder "/a/b/c/" when neither "/a/" or "/a/b/" exists.
+           TODO: Verify that this function is only called when parent directories exist.
 
         2. When creating a folder, if it already exists, throw a HTTP 409 Conflict
 
@@ -286,6 +296,7 @@ class GoogleCloudProvider(BaseProvider):
             'Content-Length': 0,
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
         }
+
         resp = await self.make_request(
             http_method,
             upload_url,
@@ -293,9 +304,13 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=CreateFolderError
         )
-        data = await resp.json()
 
-        return GoogleCloudFolderMetadata(dict(data))
+        try:
+            data = await resp.json()
+        except (TypeError, json.JSONDecodeError):
+            raise MetadataError('Failed to parse response, expecting JSON format.')
+
+        return GoogleCloudFolderMetadata(data)
 
     async def upload(
             self,
@@ -309,11 +324,9 @@ class GoogleCloudProvider(BaseProvider):
         Google Cloud Storage: Objects - Insert
         JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/objects/insert
 
-        Quirks:
-
-        1. "In the JSON API, the objects resource md5Hash and crc32c properties contain
-           base64-encoded MD5 and CRC32c hashes, respectively."
-           Docs: https://cloud.google.com/storage/docs/hashes-etags
+        "In the JSON API, the objects resource md5Hash and crc32c properties contain base64-encoded
+        MD5 and CRC32c hashes, respectively."  Need to encode the MD5 hash calculated by stream
+        writer.  For more information, refer to https://cloud.google.com/storage/docs/hashes-etags.
 
         :param stream: the stream to post
         :param path: the Waterbutler path of the file to upload
@@ -343,15 +356,21 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK,),
             throws=UploadError
         )
-        data = await resp.json()
 
+        try:
+            data = await resp.json()
+        except (TypeError, json.JSONDecodeError):
+            raise MetadataError('Failed to parse response, expecting JSON format.')
+
+        # Encode the MD5 hash by stream writer using BASE64
         encoded_md5 = base64.b64encode(stream.writers['md5'].digest)
+        # Encode the MD5 hash from metadata using UTF-8
         metadata_md5 = data.get('md5Hash', '').encode('UTF-8')
 
         if encoded_md5 != metadata_md5:
             raise UploadChecksumMismatchError
 
-        return GoogleCloudFileMetadata(dict(data)), created
+        return GoogleCloudFileMetadata(data), created
 
     async def download(
             self,
@@ -514,6 +533,7 @@ class GoogleCloudProvider(BaseProvider):
 
             await self._batch_delete_items(
                 pd_settings.BATCH_URL,
+                0,
                 id_prefix=id_prefix,
                 items=sub_items
             )
@@ -523,6 +543,7 @@ class GoogleCloudProvider(BaseProvider):
     async def _batch_delete_items(
             self,
             batch_url: str,
+            retries: int,
             id_prefix: str=None,
             items: list=None,
             req_list_failed: list=None,
@@ -533,8 +554,7 @@ class GoogleCloudProvider(BaseProvider):
 
         1. The number of objects must be less or equal to the ``BATCH_THRESHOLD`` which is 100.
         2. Response is parsed and failures are detected.  Recursively re-try failed requests.
-
-        TODO: add timeout or threshold
+        3. Raise ``CopyError`` if retry attempts go above the ``BATCH_MAX_RETRIES which is 5.
 
         :param batch_url: the batch request URL
         :param id_prefix: the shared prefix of the Content-ID header for each requests
@@ -576,9 +596,15 @@ class GoogleCloudProvider(BaseProvider):
         if len(req_failed_new) == 0:
             return []
 
+        # Raise ``DeleteError`` if too many failed retries
+        retries += 1
+        if retries >= pd_settings.BATCH_MAX_RETRIES:
+            raise DeleteError('Too many failed delete requests.')
+
         # Make another batch request to re-issue failed requests
         await self._batch_delete_items(
             batch_url,
+            retries,
             req_list_failed=req_failed_new,
             req_map=req_map
         )
@@ -656,7 +682,7 @@ class GoogleCloudProvider(BaseProvider):
         )
         data = await resp.json()
 
-        return GoogleCloudFileMetadata(dict(data)), created
+        return GoogleCloudFileMetadata(data), created
 
     async def _intra_copy_folder(
             self,
@@ -722,6 +748,7 @@ class GoogleCloudProvider(BaseProvider):
             # Initial batch request
             metadata_sub_list = await self._batch_copy_items(
                 pd_settings.BATCH_URL,
+                0,
                 id_prefix=id_prefix,
                 items=sub_items,
                 src_prefix=src_prefix,
@@ -739,6 +766,7 @@ class GoogleCloudProvider(BaseProvider):
     async def _batch_copy_items(
             self,
             batch_url: str,
+            retries: int,
             id_prefix: str=None,
             items: list=None,
             src_prefix: str=None,
@@ -752,10 +780,10 @@ class GoogleCloudProvider(BaseProvider):
 
         1. The number of objects must be less or equal to the ``BATCH_THRESHOLD`` which is 100.
         2. Response is parsed and failures are detected.  Recursively re-try failed requests.
-
-        TODO: add timeout or threshold
+        3. Raise ``CopyError`` if retry attempts go above the ``BATCH_MAX_RETRIES which is 5.
 
         :param batch_url: the batch request URL
+        :param retries: the number of retried attempts
         :param id_prefix: the shared prefix for the Content-ID header
         :param items: the list of items/objects to be deleted
         :param src_prefix: the object name of the source folder
@@ -802,9 +830,15 @@ class GoogleCloudProvider(BaseProvider):
         if len(metadata_list) == len(items) and len(req_list_failed) == 0:
             return metadata_list
 
+        # Raise ``CopyError`` if too many failed retries
+        retries += 1
+        if retries >= pd_settings.BATCH_MAX_RETRIES:
+            raise CopyError('Too many failed copy requests.')
+
         # Make another batch request to re-issue failed ones and retrieve the metadata
         metadata_list_more = self._batch_copy_items(
             batch_url,
+            retries,
             req_list_failed=req_list_failed,
             req_map=req_map
         )
@@ -813,30 +847,28 @@ class GoogleCloudProvider(BaseProvider):
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
 
+        return await self.validate_path(path)
+
         # TODO: need more discussion with @Fitz on whether we need this
-
-        wb_path = WaterButlerPath(path)
-
-        if path == '/':
-            return wb_path
-
-        implicit_folder = path.endswith('/')
-        try:
-            if implicit_folder:
-                await self._metadata_object(wb_path, is_folder=True)
-            else:
-                await self._metadata_object(wb_path, is_folder=False)
-        except MetadataError as exc:
-            if exc.code == HTTPStatus.NOT_FOUND:
-                raise NotFoundError(path)
-            else:
-                raise MetadataError('Validating v1 path expects {} or {} but received {}'.format(
-                    HTTPStatus.OK,
-                    HTTPStatus.NOT_FOUND,
-                    exc.code
-                ))
-
-        return wb_path
+        # wb_path = WaterButlerPath(path)
+        # if path == '/':
+        #     return wb_path
+        # implicit_folder = path.endswith('/')
+        # try:
+        #     if implicit_folder:
+        #         await self._metadata_object(wb_path, is_folder=True)
+        #     else:
+        #         await self._metadata_object(wb_path, is_folder=False)
+        # except MetadataError as exc:
+        #     if exc.code == HTTPStatus.NOT_FOUND:
+        #         raise NotFoundError(path)
+        #     else:
+        #         raise MetadataError('Validating v1 path expects {} or {} but received {}'.format(
+        #             HTTPStatus.OK,
+        #             HTTPStatus.NOT_FOUND,
+        #             exc.code
+        #         ))
+        # return wb_patha
 
     async def validate_path(self, path: str, **kwargs) -> WaterButlerPath:
         return WaterButlerPath(path)

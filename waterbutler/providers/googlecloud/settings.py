@@ -16,4 +16,6 @@ COPY_ACTION = 'copyTo'  # Another option for copy is "rewriteTo"
 
 BATCH_THRESHOLD = 100  # One batch request supports no more than 100 individual requests
 
+BATCH_MAX_RETRIES = 5  # Maximum number of retries for failed requests
+
 BATCH_BOUNDARY = '===============7330845974216740156=='

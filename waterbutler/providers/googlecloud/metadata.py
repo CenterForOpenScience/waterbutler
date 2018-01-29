@@ -1,12 +1,9 @@
 import abc
 import os
-import logging
 
 from waterbutler.core import utils as core_utils
 from waterbutler.core import metadata as core_metadata
 from waterbutler.providers.googlecloud import settings as pd_settings
-
-logger = logging.getLogger(__name__)
 
 
 class BaseGoogleCloudMetadata(core_metadata.BaseMetadata, metaclass=abc.ABCMeta):

@@ -1,6 +1,5 @@
 import io
 import json
-import logging
 from http import HTTPStatus
 
 import pytest
@@ -24,8 +23,6 @@ from tests.providers.googlecloud.fixtures import (mock_auth, mock_settings, mock
                                                   err_resp_unauthorized, err_resp_not_found,
                                                   meta_file_itself, meta_folder_itself,
                                                   meta_folder_all, meta_folder_immediate,)
-
-logger = logging.getLogger(__name__)
 
 
 @pytest.fixture()
@@ -171,7 +168,6 @@ class TestMetadata:
         assert isinstance(items, list)
         assert len(items) == 7
         for item in items:
-            logger.info(item.get('name', ''))
             assert item.get('name', '').startswith(prefix)
 
     @pytest.mark.asyncio
