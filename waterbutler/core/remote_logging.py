@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @utils.async_retry(retries=5, backoff=5)
 async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[]):
     """PUT a logging payload back to the callback given by the auth provider."""
-    if action in ('download_file', 'download_zip'):
+    if action in ('download_file', 'download_zip', 'metadata'):
         logger.debug('Not logging for {} action'.format(action))
         return
 
@@ -40,10 +40,6 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
     else:
         log_payload['metadata'] = source.serialize()
         log_payload['provider'] = log_payload['metadata']['provider']
-
-    if action in ('download_file', 'download_zip'):
-        logger.info('Not logging for {} action'.format(action))
-        return
 
     resp = await utils.send_signed_request('PUT', auth['callback_url'], log_payload)
     resp_data = await resp.read()
