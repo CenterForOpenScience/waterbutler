@@ -39,12 +39,56 @@ class GoogleCloudProvider(BaseProvider):
     BATCH_URL = pd_settings.BATCH_URL
 
     def __init__(self, auth: dict, credentials: dict, settings: dict):
+        """Initialize a provider instance with the given params.
+
+        1. Here is an example of the settings for the "osfstorage" addon in OSF.
+
+            WATERBUTLER_CREDENTIALS = {
+                'storage': {
+                    'token': 'change_me',
+                }
+            }
+
+            WATERBUTLER_SETTINGS = {
+                'storage': {
+                    'provider': 'change_me',
+                    'bucket': 'change_me',
+                    'region': 'change_me',
+                },
+            }
+
+            WATERBUTLER_RESOURCE = 'bucket'
+
+        TODO: the settings may change, update ``__init__()`` when that happens
+        TODO: what does ``WATERBUTLER_RESOURCE`` do?
+
+        2. More about authentication and authorization for Google Cloud
+
+        Although waterbutler does not handle authentication/authorization, it is still worthwhile to
+        understand how Google Cloud works.  As mentioned below in their documentations, Google Cloud
+        uses OAuth 2.0.  Waterbutler obtains the access token from OSF and set the "Authorization"
+        header in every API requests.
+
+        Docs: https://cloud.google.com/storage/docs/authentication
+
+        "Cloud Storage uses OAuth 2.0 for API authentication and authorization. Authentication is
+        the process of determining the identity of a client."
+
+        "A server-centric flow allows an application to directly hold the credentials of a service
+        account to complete authentication."
+
+        "When you use a service account to authenticate your application, you do not need a user to
+        authenticate to get an access token. Instead, you obtain a private key from the Google Cloud
+        Platform Console, which you then use to send a signed request for an access token."
+
+        TODO: access token by default expires after an hour, OSF side needs to take care of it
+        """
+
         super().__init__(auth, credentials, settings)
 
-        # TODO: update after OSF side is done, the structure of the dictionaries may be different
-        self.bucket = credentials.get('bucket')
-        self.access_token = credentials.get('access_token')
-        self.region = credentials.get('region')
+        self.access_token = credentials.get('token')
+        self.bucket = settings.get('bucket')
+        self.region = settings.get('region')
 
     async def metadata(
             self,
@@ -52,6 +96,9 @@ class GoogleCloudProvider(BaseProvider):
             **kwargs
     ) -> typing.Union[BaseGoogleCloudMetadata, typing.List[BaseGoogleCloudMetadata]]:
         """Get the metadata about the object with the given Waterbutler path.
+
+        TODO: Verify the claim below
+        Note: ``OSFStorageProvider`` never uses the inner provider to call ``metadata`` on folders
 
         :param path: the Waterbutler path to the file or folder
         :param kwargs: additional kwargs are ignored
@@ -87,8 +134,8 @@ class GoogleCloudProvider(BaseProvider):
         """
 
         http_method = 'GET'
-        object_name = pd_utils.get_obj_name(path, is_folder=is_folder)
-        metadata_url = self.build_url(base_url=pd_settings.BASE_URL, obj_name=object_name)
+        obj_name = pd_utils.get_obj_name(path, is_folder=is_folder)
+        metadata_url = self.build_url(base_url=pd_settings.BASE_URL, obj_name=obj_name)
 
         resp = await self.make_request(
             http_method,
@@ -207,7 +254,7 @@ class GoogleCloudProvider(BaseProvider):
         is included in the result.  Set the object name of the folder as the PREFIX, and do not use
         a DELIMITER.  For example:
 
-            "/storage/v1/b/gcloud-test.longzechen.com/o ?prefix=test-folder-1%2F"
+            "/storage/v1/b/gcloud-test.longzechen.com/o?prefix=test-folder-1%2F"
 
         :param path: the Waterbutler path of the folder
         :rtype List<BaseGoogleCloudMetadata>
@@ -272,11 +319,14 @@ class GoogleCloudProvider(BaseProvider):
         Second, the Content-Type header is set to: application/x-www-form-urlencoded;charset=UTF-8
 
         1. It is possible to create a folder "/a/b/c/" when neither "/a/" or "/a/b/" exists.
-           TODO: Verify that this function is only called when parent directories exist.
 
         2. When creating a folder, if it already exists, throw a HTTP 409 Conflict
 
         3. ``create_folder``, though fully implemented, is not required for the limited version.
+
+
+        TODO: Verify the claim below
+        Note: ``OSFStorageProvider`` never uses the inner provider to call ``create_folder``
 
         :param path: the Waterbutler path of the folder to create
         :param kwargs: additional kwargs are ignored
@@ -293,7 +343,7 @@ class GoogleCloudProvider(BaseProvider):
         }
         upload_url = self.build_url(base_url=pd_settings.UPLOAD_URL, **query)
         headers = {
-            'Content-Length': 0,
+            'Content-Length': '0',
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
         }
 
@@ -390,7 +440,10 @@ class GoogleCloudProvider(BaseProvider):
         anything. It doesn't make any sense just to download the folder anyway.
 
         TODO: should we support the Range header?
-        TODO: should we support the ``accept_url``?
+        TODO: what is ``accept_url`` and should we support it?
+
+        TODO: Verify the claim below
+        Note: ``OSFStorageProvider`` never uses the inner provider to calls ``download`` on folders
 
         :param path: the Waterbutler path to the object to download
         :param args: additional args are ignored
@@ -425,6 +478,9 @@ class GoogleCloudProvider(BaseProvider):
 
         "Deletes an object and its metadata. Deletions are permanent if versioning is not enabled
         for the bucket, or if the generation parameter is used."
+
+        TODO: Verify the claim below
+        Note: ``OSFStorageProvider`` never uses the inner provider to call ``delete`` on folders
 
         :param path: the Waterbutler path of the object to delete
         :param args: additional args are ignored
@@ -631,6 +687,9 @@ class GoogleCloudProvider(BaseProvider):
 
         Currently, use "copyTo" since the response is the metadata of the destination file.
 
+        TODO: Verify the claim below
+        Note: ``OSFStorageProvider`` never uses the inner provider to call ``intra_copy`` on folders
+
         :param dest_provider: the destination provider, must be the same as the source one
         :param source_path: the source Waterbutler path for the object to copy from
         :param dest_path: the destination Waterbutler path for the object to copy to
@@ -654,6 +713,10 @@ class GoogleCloudProvider(BaseProvider):
         """Copy files within the same Google Cloud Storage provider, overwrite existing ones if
         there are any.  Return the metadata of the destination file, created or overwritten.
 
+        For 'POST' request with an empty body, Google Cloud API does not expect a Content-Type.
+        However, need to explicitly provider an empty header to prevent it from being set to the
+        default "application/octet-stream" which is not recognized by Google Cloud API.
+
         :param dest_provider: the destination provider, must be the same as the source one
         :param source_path: the source Waterbutler path for the object to copy from
         :param dest_path: the destination Waterbutler path for the object to copy to
@@ -671,7 +734,10 @@ class GoogleCloudProvider(BaseProvider):
             dest_bucket=dest_provider.bucket,
             dest_obj_name=pd_utils.get_obj_name(dest_path)
         )
-        headers = {'Content-Length': 0}
+        headers = {
+            'Content-Length': '0',
+            'Content-Type': ''
+        }
 
         resp = await self.make_request(
             http_method,
@@ -849,7 +915,7 @@ class GoogleCloudProvider(BaseProvider):
 
         return await self.validate_path(path)
 
-        # TODO: need more discussion with @Fitz on whether we need this
+        # TODO: need more discussion on whether we need this
         # wb_path = WaterButlerPath(path)
         # if path == '/':
         #     return wb_path
@@ -868,7 +934,7 @@ class GoogleCloudProvider(BaseProvider):
         #             HTTPStatus.NOT_FOUND,
         #             exc.code
         #         ))
-        # return wb_patha
+        # return wb_path
 
     async def validate_path(self, path: str, **kwargs) -> WaterButlerPath:
         return WaterButlerPath(path)

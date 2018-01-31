@@ -3,8 +3,9 @@ from urllib.parse import quote
 
 import pytest
 
-from tests.providers.googlecloud.fixtures import (mock_auth, mock_settings, mock_creds,
-                                                  mock_creds_2, batch_id_prefix, failed_req_list,
+from tests.providers.googlecloud.fixtures import (mock_auth, mock_creds, mock_settings,
+                                                  mock_auth_2, mock_creds_2, mock_settings_2,
+                                                  batch_id_prefix, failed_req_list,
                                                   src_file_wb_path, src_folder_wb_path,
                                                   src_file_obj_name, dest_file_obj_name,
                                                   src_folder_obj_name, dest_folder_obj_name,
@@ -27,8 +28,8 @@ def mock_provider(mock_auth, mock_creds, mock_settings):
 
 
 @pytest.fixture()
-def mock_provider_dest(mock_auth, mock_creds_2, mock_settings):
-    return GoogleCloudProvider(mock_auth, mock_creds_2, mock_settings)
+def mock_provider_dest(mock_auth_2, mock_creds_2, mock_settings_2):
+    return GoogleCloudProvider(mock_auth_2, mock_creds_2, mock_settings_2)
 
 
 class TestPathAndNameForObjects:

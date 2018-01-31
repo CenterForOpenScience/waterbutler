@@ -14,9 +14,10 @@ from waterbutler.providers.googlecloud import (GoogleCloudProvider, BaseGoogleCl
                                                GoogleCloudFileMetadata, GoogleCloudFolderMetadata,)
 
 
-from tests.providers.googlecloud.fixtures import (mock_auth, mock_settings, mock_creds,
-                                                  mock_creds_2, file_path, dest_file_path,
-                                                  folder_path, test_file_1, test_file_2,
+from tests.providers.googlecloud.fixtures import (mock_auth, mock_creds, mock_settings,
+                                                  mock_auth_2, mock_creds_2, mock_settings_2,
+                                                  file_path, dest_file_path, folder_path,
+                                                  test_file_1, test_file_2,
                                                   sub_folder_1_path, meta_sub_folder_1_itself,
                                                   sub_folder_2_path, meta_sub_folder_2_itself,
                                                   sub_file_1_path, sub_file_2_path,
@@ -31,8 +32,8 @@ def mock_provider(mock_auth, mock_creds, mock_settings):
 
 
 @pytest.fixture()
-def mock_provider_2(mock_auth, mock_creds_2, mock_settings):
-    return GoogleCloudProvider(mock_auth, mock_creds_2, mock_settings)
+def mock_provider_2(mock_auth_2, mock_creds_2, mock_settings_2):
+    return GoogleCloudProvider(mock_auth_2, mock_creds_2, mock_settings_2)
 
 
 @pytest.fixture
