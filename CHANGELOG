@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.37.1 (2018-02-06)
+===================
+- Feature: Increase default move/copy task timeout to 20s.  WaterButler will now wait 20 seconds for
+move/copy tasks to complete before backgrounding the task and returning a 202 Accepted.
+
 0.37.0 (2018-01-26)
 ===================
 - ANNOUNCEMENT!  The WaterButler v0 API is once again DEPRECATED!  COS has removed the last remnants
