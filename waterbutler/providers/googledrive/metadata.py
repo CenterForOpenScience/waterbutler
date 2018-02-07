@@ -1,10 +1,9 @@
-from waterbutler.core import metadata
-import waterbutler.core.utils as core_utils
+from waterbutler.core import utils as core_utils
+from waterbutler.core import metadata as core_metadata
+from waterbutler.providers.googledrive import utils as provider_utils
 
-from waterbutler.providers.googledrive import utils
 
-
-class BaseGoogleDriveMetadata(metadata.BaseMetadata):
+class BaseGoogleDriveMetadata(core_metadata.BaseMetadata):
 
     def __init__(self, raw, path):
         super().__init__(raw)
@@ -26,7 +25,7 @@ class BaseGoogleDriveMetadata(metadata.BaseMetadata):
         return {'revisionId': self.raw['version']}
 
 
-class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMetadata):
+class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, core_metadata.BaseFolderMetadata):
 
     def __init__(self, raw, path):
         super().__init__(raw, path)
@@ -38,7 +37,7 @@ class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMeta
 
     @property
     def name(self):
-        return self.raw['title']
+        return self.raw['name']
 
     @property
     def path(self):
@@ -53,12 +52,12 @@ class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMeta
         return self.name
 
 
-class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata):
+class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, core_metadata.BaseFileMetadata):
     """The metadata for a single file on Google Drive.  This class expects a the ``raw``
-    property to be the response[1] from the GDrive v2 file metadata endpoint[2].
+    property to be the response[1] from the GDrive v3 file metadata endpoint[2].
 
-    [1] https://developers.google.com/drive/v2/reference/files
-    [2] https://developers.google.com/drive/v2/reference/files/get
+    [1] https://developers.google.com/drive/v3/reference/files
+    [2] https://developers.google.com/drive/v3/reference/files/get
     """
 
     @property
@@ -67,17 +66,17 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
 
     @property
     def name(self):
-        title = self._file_title
+        name = self._file_name
         if self.is_google_doc:
-            ext = utils.get_extension(self.raw)
-            title += ext
-        return title
+            ext = provider_utils.get_extension(self.raw)
+            name += ext
+        return name
 
     @property
     def path(self):
         path = '/' + self._path.raw_path
         if self.is_google_doc:
-            ext = utils.get_extension(self.raw)
+            ext = provider_utils.get_extension(self.raw)
             path += ext
         return path
 
@@ -85,22 +84,22 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     def materialized_path(self):
         materialized = str(self._path)
         if self.is_google_doc:
-            ext = utils.get_extension(self.raw)
+            ext = provider_utils.get_extension(self.raw)
             materialized += ext
         return materialized
 
     @property
     def size(self):
         # Google docs(Docs,sheets, slides, etc)  don't have file size before they are exported
-        return self.raw.get('fileSize')
+        return self.raw.get('size')
 
     @property
     def modified(self):
-        return self.raw['modifiedDate']
+        return self.raw['modifiedTime']
 
     @property
     def created_utc(self):
-        return core_utils.normalize_datetime(self.raw['createdDate'])
+        return core_utils.normalize_datetime(self.raw['createdTime'])
 
     @property
     def content_type(self):
@@ -113,10 +112,10 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     @property
     def extra(self):
         ret = super().extra
-        ret['webView'] = self.raw.get('alternateLink')
+        ret['webView'] = self.raw.get('webViewLink')
 
         if self.is_google_doc:
-            ret['downloadExt'] = utils.get_download_extension(self.raw)
+            ret['downloadExt'] = provider_utils.get_download_extension(self.raw)
         else:
             if not hasattr(ret, 'hashes'):
                 ret['hashes'] = {}
@@ -126,31 +125,31 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
 
     @property
     def is_google_doc(self):
-        return utils.is_docs_file(self.raw) is not None
+        return provider_utils.is_docs_file(self.raw)
 
     @property
     def export_name(self):
-        title = self._file_title
+        name = self._file_name
         if self.is_google_doc:
-            ext = utils.get_download_extension(self.raw)
-            title += ext
-        return title
+            ext = provider_utils.get_download_extension(self.raw)
+            name += ext
+        return name
 
     @property
-    def _file_title(self):
-        return self.raw['title']
+    def _file_name(self):
+        return self.raw['name']
 
 
 class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
     """The metadata for a single file at a particular revision on Google Drive.  This class expects
-    the ``raw`` property to be the response[1] from the GDrive v2 revision metadata endpoint[2].
+    the ``raw`` property to be the response[1] from the GDrive v3 revision metadata endpoint[2].
     This response is similar to the one from the file metadata endpoint, but lacks a created date
     and version field.  It also stores the file name of non-GDoc files in the ``originalFilename``
-    field instead of the ``title`` field.  GDocs do not include the file name at all, and must
+    field instead of the ``name`` field.  GDocs do not include the file name at all, and must
     derive it from the `GoogleDrivePath` object.
 
-    [1] https://developers.google.com/drive/v2/reference/revisions
-    [2] https://developers.google.com/drive/v2/reference/revisions/get
+    [1] https://developers.google.com/drive/v3/files/fileId/revisions
+    [2] https://developers.google.com/drive/v3/files/fileId/revisions/revisionId
     """
 
     @property
@@ -159,7 +158,8 @@ class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
 
     @property
     def etag(self):
-        return self.raw['etag']
+        # Google Doc revision representations do not return etag
+        return '{}::{}'.format(self.raw['id'], self.raw['modifiedTime'])
 
     @property
     def extra(self):
@@ -167,15 +167,15 @@ class GoogleDriveFileRevisionMetadata(GoogleDriveFileMetadata):
         appropriate.  GDocs don't have an md5, non-GDocs don't need a downloadExt.
         """
         if self.is_google_doc:
-            return {'downloadExt': utils.get_download_extension(self.raw)}
+            return {'downloadExt': provider_utils.get_download_extension(self.raw)}
         return {'md5': self.raw['md5Checksum']}
 
     @property
-    def _file_title(self):
+    def _file_name(self):
         return self.raw.get('originalFilename', self._path.name)
 
 
-class GoogleDriveRevision(metadata.BaseFileRevisionMetadata):
+class GoogleDriveRevision(core_metadata.BaseFileRevisionMetadata):
 
     @property
     def version_identifier(self):
@@ -187,4 +187,4 @@ class GoogleDriveRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def modified(self):
-        return self.raw['modifiedDate']
+        return self.raw['modifiedTime']
