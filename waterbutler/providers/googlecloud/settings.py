@@ -2,20 +2,16 @@ from waterbutler import settings
 
 config = settings.child('GOOGLECLOUD_PROVIDER_SETTINGS')
 
-NAME = 'googlecloud'
+BASE_URL = config.get('BASE_URL', 'https://www.googleapis.com')
 
-CAN_DUPLICATE_NAMES = True
+# The action to use for copy. Options are 'copyTo' and 'rewriteTo'
+COPY_ACTION = config.get('COPY_ACTION', 'copyTo')
 
-BASE_URL = 'https://www.googleapis.com'
+# One batch request can support up to 100 individual requests
+BATCH_THRESHOLD = config.get('BATCH_THRESHOLD', 100)
 
-BATCH_URL = BASE_URL + '/batch'
+# Maximum number of retries for failed requests
+BATCH_MAX_RETRIES = config.get('BATCH_MAX_RETRIES', 5)
 
-UPLOAD_URL = BASE_URL + '/upload'
-
-COPY_ACTION = 'copyTo'  # Another option for copy is "rewriteTo"
-
-BATCH_THRESHOLD = 100  # One batch request supports no more than 100 individual requests
-
-BATCH_MAX_RETRIES = 5  # Maximum number of retries for failed requests
-
-BATCH_BOUNDARY = '===============7330845974216740156=='
+# The delimiter between requests in one batch
+BATCH_BOUNDARY = config.get('BATCH_BOUNDARY', '===============7330845974216740156==')
