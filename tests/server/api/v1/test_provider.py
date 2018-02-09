@@ -13,7 +13,6 @@ from tests.server.api.v1.fixtures import (http_request, handler, patch_auth_hand
 class TestUtils:
 
     def test_list_or_value(self):
-
         with pytest.raises(AssertionError):
             list_or_value('not list')
 
@@ -52,7 +51,6 @@ class TestProviderHandler:
     async def test_prepare_stream(self, handler):
         handler.target_path = WaterButlerPath('/file')
         await handler.prepare_stream()
-
 
     @pytest.mark.asyncio
     async def test_head(self, handler):
