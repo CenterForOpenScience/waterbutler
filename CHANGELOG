@@ -2,6 +2,41 @@
 ChangeLog
 *********
 
+0.37.1 (2018-02-06)
+===================
+- Feature: Increase default move/copy task timeout to 20s.  WaterButler will now wait 20 seconds for
+move/copy tasks to complete before backgrounding the task and returning a 202 Accepted.
+
+0.37.0 (2018-01-26)
+===================
+- ANNOUNCEMENT!  The WaterButler v0 API is once again DEPRECATED!  COS has removed the last remnants
+of it from the OSF (thanks, @alexschiller!) and has moved entirely to the v1 API.  It will be
+removed in the first release after *April 1*.  If you depend on v0, please get in contact with us
+(contact@cos.io) before then.
+- Feature: Don't re-compress already-zipped files when downloading a directory as a zip.  Re-zipping
+wastes CPU time and will tend to result in larger zips overall.  (thanks, @johnetordoff!)
+- Feature: Add a unique request ID to WaterButler's response headers to help with tracking down
+errors.  (thanks, @johnetordoff!)
+- Fix: Use the correct revision parameter name for fetching Amazon S3 revisions.  S3 revisions are
+an optional feature that must be turned on via the AWS interface.  (thanks, @TomBaxter!)
+- Fix: Allow the GitHub to delete a folder in the repository root when it's the only remaining
+object.  (thanks, @TomBaxter!)
+- Fix: Purge osfstorage uploads from the pending directory when the upload to the backend storage
+provider fails.  (thanks, @johnetordoff!)
+- Fix: Return a 400 Bad Request when a user tries to copy a root folder to another provider without
+setting the `rename` parameter.  (thanks, @AddisonSchiller!)
+- Fix: Don't send invalid payloads to WaterButler's metrics tracking service.  (thanks,
+@AddisonSchiller!)
+- Fix: Compute correct name for nested folders in the filesystem provider.  (thanks,
+@AddisonSchiller & @johnetordoff!)
+- Fix: Remove obsolete and unused `unsizable` flag from ResponseStreamReader.  (thanks,
+@AddisonSchiller & @johnetordoff!)
+- Code: Upgrade the Dropbox provider to only use Dropbox's v2 endpoints.  (thanks, @johnetordoff!)
+- Code: Update WaterButler to support setuptools versions greater than v30.4.0. WaterButler's
+`__version__` declaration has moved from `waterbutler.__init__` to `waterbutler.version`.  (thanks,
+@johnetordoff!)
+- Code: Distinguish between provider actions and authentication actions in the v1 move/copy code.
+
 0.36.2 (2017-12-20)
 ===================
 - Feature: Log osfstorage parity file metadata back to the OSF after upload.

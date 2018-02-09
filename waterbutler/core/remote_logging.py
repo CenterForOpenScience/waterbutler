@@ -17,15 +17,14 @@ logger = logging.getLogger(__name__)
 
 
 @utils.async_retry(retries=5, backoff=5)
-async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[]):
+async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[],
+                          request={}):
     """PUT a logging payload back to the callback given by the auth provider."""
-    if action in ('download_file', 'download_zip'):
-        logger.debug('Not logging for {} action'.format(action))
-        return
 
     auth = getattr(destination, 'auth', source.auth)
     log_payload = {
         'action': action,
+        'action_meta': {},
         'auth': auth,
         'time': time.time() + 60,
         'errors': errors,
@@ -41,9 +40,9 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         log_payload['metadata'] = source.serialize()
         log_payload['provider'] = log_payload['metadata']['provider']
 
-    if action in ('download_file', 'download_zip'):
-        logger.info('Not logging for {} action'.format(action))
-        return
+    if action in ['download_file', 'download_zip']:
+        is_mfr_render = settings.MFR_IDENTIFYING_HEADER in request['request']['headers']
+        log_payload['action_meta']['is_mfr_render'] = is_mfr_render
 
     resp = await utils.send_signed_request('PUT', auth['callback_url'], log_payload)
     resp_data = await resp.read()
@@ -204,7 +203,7 @@ def log_file_action(action, source, api_version, destination=None, request={},
     """Kick off logging actions in the background. Returns array of asyncio.Tasks."""
     return [
         log_to_callback(action, source=source, destination=destination,
-                        start_time=start_time, errors=errors,),
+                        start_time=start_time, errors=errors, request=request,),
         asyncio.ensure_future(
             log_to_keen(action, source=source, destination=destination,
                         errors=errors, request=request, api_version=api_version,
