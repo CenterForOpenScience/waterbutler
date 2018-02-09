@@ -4,7 +4,6 @@ import asyncio
 import logging
 
 import pytz
-import tornado.httputil
 from dateutil.parser import parse as datetime_parser
 
 from waterbutler.core import mime_types
@@ -66,7 +65,7 @@ class MetadataMixin:
             request_range = None
         else:
             logger.debug('Range header is: {}'.format(self.request.headers['Range']))
-            request_range = tornado.httputil._parse_request_range(self.request.headers['Range'])
+            request_range = utils.parse_request_range(self.request.headers['Range'])
             logger.debug('Range header parsed as: {}'.format(request_range))
 
         version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
