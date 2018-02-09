@@ -220,7 +220,7 @@ def celery_src_copy_params():
                 'settings': {},
                 'auth': {}
             }
-        }
+    }
 
 
 @pytest.fixture
@@ -234,7 +234,7 @@ def celery_dest_copy_params():
                 'settings': {},
                 'auth': {}
             }
-        }
+    }
 
 
 @pytest.fixture
@@ -248,7 +248,7 @@ def celery_dest_copy_params_root():
                 'settings': {},
                 'auth': {}
             }
-        }
+    }
 
 
 @pytest.fixture
