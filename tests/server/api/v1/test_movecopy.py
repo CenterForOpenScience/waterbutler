@@ -102,7 +102,8 @@ class TestMoveOrCopy:
 
         with pytest.raises(exceptions.InvalidParameters) as exc:
             await handler.move_or_copy()
-            assert exc.message == '400, "rename" field is required for renaming'
+        
+        assert exc.message == '400, "rename" field is required for renaming'
 
     @pytest.mark.asyncio
     async def test_move_or_copy_invalid_rename_root(self, handler):
