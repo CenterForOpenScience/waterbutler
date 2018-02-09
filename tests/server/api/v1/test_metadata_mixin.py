@@ -122,7 +122,7 @@ class TestMetadataMixin:
     ])
     async def test_download_file_safari_mime_type(self, extension, mimetype, handler, mock_stream):
         """ If the file extention is in mime_types override the content type to fix issues with
-         safari shoving in new file extensions """
+        safari shoving in new file extensions """
 
         handler.path = WaterButlerPath('/test_path.{}'.format(extension))
         handler.provider.download = MockCoroutine(return_value=mock_stream)
@@ -171,7 +171,7 @@ class TestMetadataMixin:
         await handler.download_folder_as_zip()
 
         assert handler._headers['Content-Type'] == bytes('application/zip', 'latin-1')
-        assert handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'.format(
-            handler.path.name + '.zip'), 'latin-1')
+        expected = bytes('attachment;filename="{}"'.format(handler.path.name + '.zip'), 'latin-1')
+        assert handler._headers['Content-Disposition'] == expected
 
         handler.write_stream.assert_called_once_with(mock_stream)
