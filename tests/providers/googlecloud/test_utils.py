@@ -228,7 +228,7 @@ class TestBuildBatchRequestPayload:
     ):
 
         items = json.loads(meta_folder_all).get('items', None)
-        payload_full, requests_map = mock_provider.build_payload_for_batch_delete(
+        payload_full, requests_map = mock_provider._build_payload_for_batch_delete(
             items,
             batch_id_prefix
         )
@@ -256,7 +256,7 @@ class TestBuildBatchRequestPayload:
     ):
 
         items = json.loads(meta_folder_all).get('items', None)
-        payload_full, requests_map = mock_provider.build_payload_for_batch_copy(
+        payload_full, requests_map = mock_provider._build_payload_for_batch_copy(
             items,
             batch_id_prefix,
             src_folder_obj_name,
