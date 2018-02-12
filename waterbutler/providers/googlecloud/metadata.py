@@ -1,10 +1,11 @@
 import os
 import abc
+import base64
 import logging
+import binascii
 
 from waterbutler.core import utils
 from waterbutler.core import metadata
-from waterbutler.providers.googlecloud import settings
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
 
     @property
     def provider(self) -> str:
-        return settings.NAME
+        return 'googlecloud'
 
     @property
     def path(self) -> str:
@@ -64,14 +65,16 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
     @property
     def extra(self) -> dict:
 
-        # TODO: store the (base64) decoded the md5Hash
+        # Convert the base64 encoded MD5 hash to hex digest representation
+        md5_hex_digest = binascii.hexlify(base64.b64decode(self.raw.get('md5Hash', '').encode()))
 
         return {
             'id': self.raw.get('id', ''),
             'bucket': self.raw.get('bucket', ''),
             'generation': self.raw.get('generation', ''),
             'hashes': {
-                'md5': self.raw.get('md5Hash', '')
+                # store hex digest in str instead of byte
+                'md5': md5_hex_digest.decode(),
             },
         }
 

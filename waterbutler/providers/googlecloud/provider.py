@@ -1,9 +1,11 @@
+import re
 import json
 import uuid
 import base64
 import typing
 import hashlib
 import logging
+import binascii
 from http import HTTPStatus
 
 from waterbutler.core.path import WaterButlerPath
@@ -169,7 +171,7 @@ class GoogleCloudProvider(BaseProvider):
 
         Note: ``OSFStorageProvider`` never uses the inner provider to call ``create_folder``
 
-        TODO: what if the folder name contains '/'?
+        TODO [New Ticket #]: what if the folder name contains '/'? how about parent folders' name?
 
         :param path: the WaterButler path of the folder to create
         :param kwargs: additional kwargs are ignored
@@ -184,7 +186,7 @@ class GoogleCloudProvider(BaseProvider):
             'uploadType': 'media',
             'name': utils.get_obj_name(path, is_folder=True)
         }
-        upload_url = self.build_url(base_url=pd_settings.BASE_URL + '/upload', **query)
+        upload_url = self.build_url(base_url=self.BASE_URL + '/upload', **query)
         headers = {
             'Content-Length': '0',
             'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
@@ -239,7 +241,7 @@ class GoogleCloudProvider(BaseProvider):
             'uploadType': 'media',
             'name': utils.get_obj_name(path, is_folder=False)
         }
-        upload_url = self.build_url(base_url=pd_settings.BASE_URL + '/upload', **query)
+        upload_url = self.build_url(base_url=self.BASE_URL + '/upload', **query)
         headers = {'Content-Length': str(stream.size)}
 
         resp = await self.make_request(
@@ -257,12 +259,11 @@ class GoogleCloudProvider(BaseProvider):
             await resp.release()
             raise MetadataError('Failed to parse response, expecting JSON format.')
 
-        # Encode the MD5 hash by stream writer using BASE64, using digest instead of hexdigest
-        encoded_md5 = base64.b64encode(stream.writers['md5'].digest)
-        # Encode the MD5 hash from metadata using UTF-8, which coverts it from string to byte
-        metadata_md5 = data.get('md5Hash', '').encode('UTF-8')
+        # Convert the base64 encoded MD5 hash to hex digest representation.  Both `.encode()` and
+        # `.decode()` are used for explicit conversion between "bytes" and "string"
+        hex_digest = binascii.hexlify(base64.b64decode(data.get('md5Hash', '').encode())).decode()
 
-        if encoded_md5 != metadata_md5:
+        if hex_digest != stream.writers['md5'].hexdigest:
             raise UploadChecksumMismatchError()
 
         return GoogleCloudFileMetadata(data), created
@@ -270,7 +271,8 @@ class GoogleCloudProvider(BaseProvider):
     async def download(
             self,
             path: WaterButlerPath,
-            *args,
+            accept_url=False,
+            range=None,
             **kwargs
     ) -> ResponseStreamReader:
         """Download the object with the given path and and return a ``ResponseStreamReader``.
@@ -284,13 +286,11 @@ class GoogleCloudProvider(BaseProvider):
         Note: download request on folders return HTTP 200 OK with empty body. The action doesn't do
         anything. It doesn't make any sense just to download the folder anyway.
 
-        TODO: support the Range header
-        TODO: support the ``accept_url``
-
         Note: ``OSFStorageProvider`` never uses the inner provider to calls ``download`` on folders
 
         :param path: the WaterButler path to the object to download
-        :param args: additional args are ignored
+        :param accept_url: the flag to solicit a direct time-limited download url from the provider
+        :param range: the Range HTTP request header
         :param kwargs: additional kwargs are ignored
         :rtype ResponseStreamReader:
         """
@@ -298,17 +298,24 @@ class GoogleCloudProvider(BaseProvider):
         if path.is_folder:
             raise DownloadError('Cannot download folders', code=HTTPStatus.BAD_REQUEST)
 
+        if accept_url:
+            # TODO: implement accept url for direct download
+            # Quirks: signed URL are only supported with XML API
+            # Docs: https://cloud.google.com/storage/docs/xml-api/get-object-download
+            pass
+
         http_method = 'GET'
         query = {'alt': 'media'}
         download_url = self.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=self.BASE_URL,
             obj_name=utils.get_obj_name(path, is_folder=False),
             **query
         )
         resp = await self.make_request(
             http_method,
             download_url,
-            expects=(HTTPStatus.OK,),
+            range=range,
+            expects=(HTTPStatus.OK, HTTPStatus.PARTIAL_CONTENT),
             throws=DownloadError
         )
 
@@ -356,7 +363,6 @@ class GoogleCloudProvider(BaseProvider):
 
         Currently, use "copyTo" since the response is the metadata of the destination file.
 
-        TODO: Verify the claim below
         Note: ``OSFStorageProvider`` never uses the inner provider to call ``intra_copy`` on folders
 
         :param dest_provider: the destination provider, must be the same as the source one
@@ -446,7 +452,7 @@ class GoogleCloudProvider(BaseProvider):
         """
 
         if not path.is_folder:
-            raise WaterButlerError('Expecting folder instead of file')
+            raise WaterButlerError('Wrong type, expecting folder but received file')
 
         try:
             await self._metadata_object(path, is_folder=True)
@@ -482,7 +488,7 @@ class GoogleCloudProvider(BaseProvider):
 
         http_method = 'GET'
         obj_name = utils.get_obj_name(path, is_folder=is_folder)
-        metadata_url = self.build_url(base_url=pd_settings.BASE_URL, obj_name=obj_name)
+        metadata_url = self.build_url(base_url=self.BASE_URL, obj_name=obj_name)
 
         resp = await self.make_request(
             http_method,
@@ -508,97 +514,45 @@ class GoogleCloudProvider(BaseProvider):
     ) -> typing.List[BaseGoogleCloudMetadata]:
         """Get the metadata about the folder's immediate children with the given WaterButler path.
 
-        Google Cloud Storage: Objects - List
-        JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/objects/list
-
-        "In conjunction with the prefix filter, the use of the delimiter parameter allows the list
-        method to operate like a directory listing, despite the object namespace being flat."
-
-        Set the object name of the folder as the PREFIX, and use '/' as the DELIMITER.  For example:
-
-            "storage/v1/b/gcloud-test.longzechen.com/o?prefix=test-folder-1%2F&delimiter=%2F".
-
-        Below is an example of the structure of the JSON response. "items" contains the folder
-        itself and all its immediate child files.  "prefixes" contains all its immediate child
-        folders.  Refer to the  file "tests/googlecloud/fixtures/metadata/folder-all.json" for a
-        real example.
-
-            {
-                "kind": "storage#objects",
-                "prefixes": [
-                    "test-folder-1/test-folder-5/",
-                ],
-                "items": [
-                    {
-                        "name": "test-folder-1/",
-                    },
-                    {
-                        "name": "test-folder-1/DSC_0235.JPG",
-                    },
-                ]
-            }
-
-        TODO:  call ``_metadata_all_children()`` and then pick only immediate children
+        This method calls ``_metadata_all_children()``, which makes only one request to retrieve all
+        all the children including itself.  Iterate through the children list and use "regex" to
+        select only immediate ones.  For more information refer to ``_metadata_all_children()``.
 
         :param path: the WaterButler path of the folder
         :rtype List<BaseGoogleCloudMetadata>
         """
 
-        # Retrieve a list of metadata for all immediate children (both files and folders)
-        http_method = 'GET'
-        prefix = utils.get_obj_name(path, is_folder=True)
-        delimiter = '/'
-        query = {
-            'prefix': prefix,
-            'delimiter': delimiter
-        }
-        metadata_url = self.build_url(base_url=pd_settings.BASE_URL, **query)
+        # Retrieve a list of metadata for all immediate and non-immediate children
+        prefix, items = await self._metadata_all_children(path)
 
-        resp = await self.make_request(
-            http_method,
-            metadata_url,
-            expects=(HTTPStatus.OK,),
-            throws=MetadataError
-        )
-
-        try:
-            data = await resp.json()
-        except (TypeError, json.JSONDecodeError):
-            await resp.release()
-            raise MetadataError('Failed to parse response, expecting JSON format.')
-
-        # If folder does not exist, raise HTTP 404 Not Found
-        prefixes = data.get('prefixes', None)
-        items = data.get('items', None)
-        if not items and not prefixes:
+        # Raise ``NotFoundError`` if folder does not exist
+        if not items:
             raise NotFoundError(path.path)
 
-        # Add immediate child files to metadata list, need to exclude itself
-        folder_metadata_list = []
-        for item in data.get('items', []):
-            if item.get('name', '') != prefix:
-                folder_metadata_list.append(GoogleCloudFileMetadata(item))
+        # Iterate through the metadata_list and only select immediate children
+        metadata_list_immediate = []
+        for item in items:
+            pattern = r'^(' + re.escape(prefix) + r')[^/]+[/]?'
+            name = item.get('name', '')
+            if re.fullmatch(pattern, name):
+                if name.endswith('/'):
+                    metadata_list_immediate.append(GoogleCloudFolderMetadata(item))
+                else:
+                    metadata_list_immediate.append(GoogleCloudFileMetadata(item))
 
-        # Retrieve and add immediate child folders to the metadata list
-        sub_folder_names = data.get('prefixes', [])
-        for name in sub_folder_names:
-            path = utils.build_path(name, is_folder=True)
-            sub_folder_metadata = await self._metadata_object(
-                WaterButlerPath(path),
-                is_folder=True
-            )
-            folder_metadata_list.append(sub_folder_metadata)
-
-        return folder_metadata_list
+        return metadata_list_immediate
 
     async def _metadata_all_children(
             self,
             path: WaterButlerPath
-    ) -> typing.List[dict]:
+    ) -> typing.Tuple[str, typing.List[dict]]:
         """Get the metadata about all of the folder's children with the given WaterButler path.
 
         Google Cloud Storage: Objects - List
         JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/objects/list
+
+        "In conjunction with the prefix filter, the use of the delimiter parameter allows the list
+        method to operate like a directory listing, despite the object namespace being flat."
 
         In Google Cloud Storage, find all children of a given folder is equal to finding all objects
         of which the names are prefixed with the folder's object name.  Note that the folder itself
@@ -608,13 +562,14 @@ class GoogleCloudProvider(BaseProvider):
             "/storage/v1/b/gcloud-test.longzechen.com/o?prefix=test-folder-1%2F"
 
         :param path: the WaterButler path of the folder
+        :rtype str
         :rtype List<BaseGoogleCloudMetadata>
         """
 
         http_method = 'GET'
         prefix = utils.get_obj_name(path, is_folder=True)
         query = {'prefix': prefix}
-        metadata_url = self.build_url(base_url=pd_settings.BASE_URL, **query)
+        metadata_url = self.build_url(base_url=self.BASE_URL, **query)
 
         resp = await self.make_request(
             http_method,
@@ -629,7 +584,7 @@ class GoogleCloudProvider(BaseProvider):
             await resp.release()
             raise MetadataError('Failed to parse response, expecting JSON format.')
 
-        return data.get('items', [])
+        return prefix, data.get('items', [])
 
     async def _delete_file(self, path: WaterButlerPath) -> None:
         """Deletes the file with the specified WaterButler path.
@@ -640,7 +595,7 @@ class GoogleCloudProvider(BaseProvider):
 
         http_method = 'DELETE'
         delete_url = self.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=self.BASE_URL,
             obj_name=utils.get_obj_name(path)
         )
 
@@ -693,7 +648,7 @@ class GoogleCloudProvider(BaseProvider):
         http_method = 'GET'
         prefix = utils.get_obj_name(path, is_folder=True)
         query = {'prefix': prefix}
-        metadata_url = self.build_url(base_url=pd_settings.BASE_URL, **query)
+        metadata_url = self.build_url(base_url=self.BASE_URL, **query)
 
         resp = await self.make_request(
             http_method,
@@ -715,19 +670,19 @@ class GoogleCloudProvider(BaseProvider):
         # If there are more items than the ``BATCH_THRESHOLD``, slice the list into eligible sub
         # lists and call ``_batch_delete_items`` on each of them.
         num_of_items = len(items)
-        num_of_slices = int(num_of_items / pd_settings.BATCH_THRESHOLD) + 1
+        num_of_slices = int(num_of_items / self.BATCH_THRESHOLD) + 1
 
         # Generate a UUID as the shared prefix of the Content-ID header fo each individual request.
         id_prefix = uuid.uuid4()
 
-        # TODO: use more concise solution (both delete and copy)
+        # TODO: use a more concise solution (both delete and copy)
         for i in range(0, num_of_slices, step=1):
 
-            start = i * pd_settings.BATCH_THRESHOLD
+            start = i * self.BATCH_THRESHOLD
             if i < num_of_slices - 1:
-                end = (i + 1) * pd_settings.BATCH_THRESHOLD
+                end = (i + 1) * self.BATCH_THRESHOLD
             else:
-                end = num_of_items % pd_settings.BATCH_THRESHOLD
+                end = num_of_items % self.BATCH_THRESHOLD
             sub_items = items[start:end]
 
             await self._batch_delete_items(0, id_prefix=id_prefix, items=sub_items)
@@ -758,9 +713,9 @@ class GoogleCloudProvider(BaseProvider):
 
         http_method = 'POST'
         copy_url = self.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=self.BASE_URL,
             obj_name=utils.get_obj_name(source_path),
-            obj_action=pd_settings.COPY_ACTION,
+            obj_action=self.COPY_ACTION,
             dest_bucket=dest_provider.bucket,
             dest_obj_name=utils.get_obj_name(dest_path)
         )
@@ -815,7 +770,7 @@ class GoogleCloudProvider(BaseProvider):
         src_prefix = utils.get_obj_name(source_path, is_folder=True)
         dest_prefix = utils.get_obj_name(dest_path, is_folder=True)
         query = {'prefix': src_prefix}
-        metadata_url = self.build_url(base_url=pd_settings.BASE_URL, **query)
+        metadata_url = self.build_url(base_url=self.BASE_URL, **query)
 
         resp = await self.make_request(
             http_method,
@@ -833,21 +788,21 @@ class GoogleCloudProvider(BaseProvider):
         # lists and call ``_batch_copy_items`` on each of them.
         items = data.get('items', [])
         num_of_items = len(items)
-        num_of_slices = int(num_of_items / pd_settings.BATCH_THRESHOLD) + 1
+        num_of_slices = int(num_of_items / self.BATCH_THRESHOLD) + 1
 
         # Generate a UUID as the shared prefix of the Content-ID header fo each individual request.
         id_prefix = uuid.uuid4()
 
-        # TODO: use more concise solution (both delete and copy)
+        # TODO: use a more concise solution (both delete and copy)
         metadata_list = []
 
         for i in range(0, num_of_slices, step=1):
 
-            start = i * pd_settings.BATCH_THRESHOLD
+            start = i * self.BATCH_THRESHOLD
             if i < num_of_slices - 1:
-                end = (i + 1) * pd_settings.BATCH_THRESHOLD
+                end = (i + 1) * self.BATCH_THRESHOLD
             else:
-                end = num_of_items % pd_settings.BATCH_THRESHOLD
+                end = num_of_items % self.BATCH_THRESHOLD
             sub_items = items[start:end]
 
             # Initial batch request
@@ -880,7 +835,7 @@ class GoogleCloudProvider(BaseProvider):
 
         1. The number of objects must be less or equal to the ``BATCH_THRESHOLD`` which is 100.
         2. Response is parsed and failures are detected.  Recursively re-try failed requests.
-        3. Raise ``CopyError`` if retry attempts go above the ``BATCH_MAX_RETRIES which is 5.
+        3. Raise ``DeleteError`` if retry attempts go above the ``BATCH_MAX_RETRIES which is 5.
 
         :param id_prefix: the shared prefix of the Content-ID header for each requests
         :param items: the list of items to be deleted
@@ -897,10 +852,10 @@ class GoogleCloudProvider(BaseProvider):
             assert len(req_list_failed) > 0 and len(req_map) > 0
             payload = utils.build_payload_from_req_map(req_list_failed, req_map)
         else:
-            raise DeleteError()
+            raise DeleteError('Invalid arguments combination for _batch_delete_items()')
 
         headers = {
-            'Content-Type': 'multipart/mixed; boundary="{}"'.format(pd_settings.BATCH_BOUNDARY)
+            'Content-Type': 'multipart/mixed; boundary="{}"'.format(self.BATCH_BOUNDARY)
         }
 
         http_method = 'POST'
@@ -923,7 +878,7 @@ class GoogleCloudProvider(BaseProvider):
 
         # Raise ``DeleteError`` if too many failed retries
         retries += 1
-        if retries >= pd_settings.BATCH_MAX_RETRIES:
+        if retries >= self.BATCH_MAX_RETRIES:
             raise DeleteError('Too many failed delete requests.')
 
         # TODO: make this iterative instead of recursive (both delete and copy)
@@ -979,10 +934,10 @@ class GoogleCloudProvider(BaseProvider):
             assert len(req_list_failed) > 0 and len(req_map) > 0
             payload = utils.build_payload_from_req_map(req_list_failed, req_map)
         else:
-            raise DeleteError
+            raise CopyError('Invalid arguments combination for _batch_copy_items()')
 
         headers = {
-            'Content-Type': 'multipart/mixed; boundary="{}"'.format(pd_settings.BATCH_BOUNDARY),
+            'Content-Type': 'multipart/mixed; boundary="{}"'.format(self.BATCH_BOUNDARY),
         }
 
         http_method = 'POST'
@@ -1003,7 +958,7 @@ class GoogleCloudProvider(BaseProvider):
 
         # Raise ``CopyError`` if too many failed retries
         retries += 1
-        if retries >= pd_settings.BATCH_MAX_RETRIES:
+        if retries >= self.BATCH_MAX_RETRIES:
             raise CopyError('Too many failed copy requests.')
 
         # TODO: make this iterative instead of recursive (both delete and copy)
@@ -1030,7 +985,7 @@ class GoogleCloudProvider(BaseProvider):
         :rtype dict:
         """
 
-        assert len(items) <= pd_settings.BATCH_THRESHOLD, 'Too many items for one batch requests!'
+        assert len(items) <= self.BATCH_THRESHOLD, 'Too many items for one batch requests!'
 
         # Build payload and a map between individual request id and partial payload
         req_map = {}
@@ -1047,13 +1002,13 @@ class GoogleCloudProvider(BaseProvider):
                 payload_part += '--{}\n' \
                                 'Content-Type: application/http\n' \
                                 'Content-Transfer-Encoding: binary\n' \
-                                'Content-ID: <{}>'.format(pd_settings.BATCH_BOUNDARY, content_id)
+                                'Content-ID: <{}>'.format(self.BATCH_BOUNDARY, content_id)
                 payload_part += '\n\n{} {}\n\n'.format(method, delete_url)
                 req_map.update({req_id: payload_part})
                 payload += payload_part
                 req_id += 1
 
-        payload += '--{}--'.format(pd_settings.BATCH_BOUNDARY)
+        payload += '--{}--'.format(self.BATCH_BOUNDARY)
 
         return payload, req_map
 
@@ -1077,7 +1032,7 @@ class GoogleCloudProvider(BaseProvider):
         :rtype dict:
         """
 
-        assert len(items) <= pd_settings.BATCH_THRESHOLD, 'Too many items for one batch requests!'
+        assert len(items) <= self.BATCH_THRESHOLD, 'Too many items for one batch requests!'
 
         # Build payload and a map between individual request id and partial payload
         req_map = {}
@@ -1097,7 +1052,7 @@ class GoogleCloudProvider(BaseProvider):
                 dest_obj_name = dest_prefix + src_obj_name[src_prefix_length:]
                 copy_url = self.build_url(
                     obj_name=src_obj_name,
-                    obj_action=pd_settings.COPY_ACTION,
+                    obj_action=self.COPY_ACTION,
                     dest_bucket=dest_bucket,
                     dest_obj_name=dest_obj_name,
                 )
@@ -1106,13 +1061,13 @@ class GoogleCloudProvider(BaseProvider):
                 payload_part += '--{}\n' \
                                 'Content-Type: application/http\n' \
                                 'Content-Transfer-Encoding: binary\n' \
-                                'Content-ID: <{}>'.format(pd_settings.BATCH_BOUNDARY, content_id)
+                                'Content-ID: <{}>'.format(self.BATCH_BOUNDARY, content_id)
                 payload_part += '\n\n{} {}\n\n'.format(method, copy_url)
                 req_map.update({req_id: payload_part})
 
                 payload += payload_part
                 req_id += 1
 
-        payload += '--{}--'.format(pd_settings.BATCH_BOUNDARY)
+        payload += '--{}--'.format(self.BATCH_BOUNDARY)
 
         return payload, req_map
