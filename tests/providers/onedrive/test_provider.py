@@ -437,6 +437,29 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_download_standard_file_range(self, provider, download_fixtures):
+        file_id = download_fixtures['file_id']
+        path = OneDrivePath('/toes.txt', _ids=[download_fixtures['root_id'], file_id])
+
+        metadata_response = download_fixtures['file_metadata']
+        metadata_url = provider._build_drive_url('items', file_id)
+        aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_response)
+
+        download_url = download_fixtures['file_download_url']
+        aiohttpretty.register_uri('GET', download_url, status=206,
+                                  body=download_fixtures['file_content'][0:2])
+
+        response = await provider.download(path, range=(0, 1))
+        assert response.partial
+        content = await response.read()
+        assert content == b'te'
+        assert aiohttpretty.has_call(method='GET', uri=download_url,
+                                     headers={'Range': 'bytes=0-1',
+                                              'Authorization': 'bearer wrote harry potter',
+                                              'accept-encoding': ''})
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_download_by_revision(self, provider, download_fixtures, revision_fixtures):
         file_id = download_fixtures['file_id']
         path = OneDrivePath('/toes.txt', _ids=[download_fixtures['root_id'], file_id])

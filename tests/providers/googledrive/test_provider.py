@@ -922,6 +922,34 @@ class TestDownload:
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
         assert aiohttpretty.has_call(method='GET', uri=download_file_url)
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_range(self, provider, sharing_fixtures):
+        """This test is adapted from test_editable_jpeg_no_revision"""
+        metadata_body = sharing_fixtures['editable_jpeg']['metadata']
+        path = GoogleDrivePath(
+            '/sharing/editable_jpeg.jpeg',
+            _ids=['1', '2', metadata_body['id']]
+        )
+
+        metadata_query = provider._build_query(path.identifier)
+        metadata_url = provider.build_url('files', path.identifier)
+        aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
+
+        file_content = b'we'
+        download_file_url = metadata_body['downloadUrl']
+        aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True,
+                                  status=206)
+
+        result = await provider.download(path, range=(0,1))
+        assert result.partial
+
+        content = await result.read()
+        assert content == file_content
+        assert aiohttpretty.has_call(method='GET', uri=download_file_url,
+                                     headers={'Range': 'bytes=0-1',
+                                              'authorization': 'Bearer hugoandkim'})
+
 
 class TestMetadata:
     """Google Docs (incl. Google Sheets, Google Slides, etc.) require extra API calls and use a
