@@ -2,6 +2,7 @@ import copy
 import json
 import typing
 import hashlib
+import logging
 
 import furl
 
@@ -17,6 +18,8 @@ from waterbutler.providers.github.metadata import GitHubFolderContentMetadata
 from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
 from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
 from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
+
+logger = logging.getLogger(__name__)
 
 
 GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -185,6 +188,7 @@ class GitHubProvider(provider.BaseProvider):
         data = await self.metadata(path, revision=revision)
         file_sha = path.file_sha or data.extra['fileSha']
 
+        logger.debug('requested-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
             self.build_repo_url('git', 'blobs', file_sha),
