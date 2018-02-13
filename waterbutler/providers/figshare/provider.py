@@ -2,6 +2,7 @@ import json
 import typing
 import asyncio
 import hashlib
+import logging
 from http import HTTPStatus
 
 from waterbutler.core import streams
@@ -10,6 +11,8 @@ from waterbutler.core import exceptions
 
 from waterbutler.providers.figshare.path import FigsharePath
 from waterbutler.providers.figshare import metadata, settings
+
+logger = logging.getLogger(__name__)
 
 
 class FigshareProvider:
@@ -177,6 +180,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         if download_url is None:
             raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)
 
+        logger.debug('requested-range:: {}'.format(range))
         params = {} if file_metadata.is_public else {'token': self.token}
         resp = await self.make_request(
             'GET',
