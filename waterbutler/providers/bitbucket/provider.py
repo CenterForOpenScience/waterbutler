@@ -1,4 +1,6 @@
 import typing
+import logging
+
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
@@ -8,6 +10,8 @@ from waterbutler.providers.bitbucket.path import BitbucketPath
 from waterbutler.providers.bitbucket.metadata import BitbucketFileMetadata
 from waterbutler.providers.bitbucket.metadata import BitbucketFolderMetadata
 from waterbutler.providers.bitbucket.metadata import BitbucketRevisionMetadata
+
+logger = logging.getLogger(__name__)
 
 
 class BitbucketProvider(provider.BaseProvider):
@@ -186,6 +190,7 @@ class BitbucketProvider(provider.BaseProvider):
         '''
         metadata = await self.metadata(path)
 
+        logger.debug('requested-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
             self._build_v1_repo_url('raw', path.commit_sha, *path.path_tuple()),
@@ -193,6 +198,7 @@ class BitbucketProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
+        logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
 
         return streams.ResponseStreamReader(resp, size=metadata.size)
 
