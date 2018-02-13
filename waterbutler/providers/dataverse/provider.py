@@ -1,5 +1,6 @@
 import typing
 import hashlib
+import logging
 import tempfile
 from http import HTTPStatus
 
@@ -12,6 +13,8 @@ from waterbutler.core.utils import AsyncIterator
 from waterbutler.providers.dataverse import settings
 from waterbutler.providers.dataverse.metadata import DataverseRevision
 from waterbutler.providers.dataverse.metadata import DataverseDatasetMetadata
+
+logger = logging.getLogger(__name__)
 
 
 class DataverseProvider(provider.BaseProvider):
@@ -127,6 +130,7 @@ class DataverseProvider(provider.BaseProvider):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
+        logger.debug('request-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
             self.build_url(settings.DOWN_BASE_URL, path.identifier, key=self.token),
