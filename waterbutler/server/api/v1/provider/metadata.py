@@ -6,8 +6,9 @@ import logging
 import pytz
 from dateutil.parser import parse as datetime_parser
 
-from waterbutler.core import mime_types
 from waterbutler.server import utils
+from waterbutler.core import mime_types
+from waterbutler.core.streams import ResponseStreamReader
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +106,10 @@ class MetadataMixin:
             self.set_header('Content-Type', mime_types[ext])
 
         await self.write_stream(stream)
+
+        if getattr(stream, 'partial', False) and isinstance(stream, ResponseStreamReader):
+            await stream.response.release()
+
         logger.debug('bytes received is: {}'.format(self.bytes_downloaded))
 
     async def file_metadata(self):
