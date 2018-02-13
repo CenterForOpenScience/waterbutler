@@ -1,3 +1,4 @@
+import typing
 import hashlib
 import tempfile
 from http import HTTPStatus
@@ -17,6 +18,10 @@ class DataverseProvider(provider.BaseProvider):
     """Provider for Dataverse
 
     API Docs: http://guides.dataverse.org/en/4.5/api/
+
+    Quirks:
+
+    * Dataverse doesn't respect Range header on downloads
 
     """
 
@@ -105,7 +110,7 @@ class DataverseProvider(provider.BaseProvider):
             return self._metadata_cache[version]
         return sum(self._metadata_cache.values(), [])
 
-    async def download(self, path, revision=None, range=None, **kwargs):
+    async def download(self, path, revision=None, range: typing.Tuple[int, int]=None, **kwargs):
         """Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from Dataverse is not 200
 
