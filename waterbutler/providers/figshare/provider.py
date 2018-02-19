@@ -1,9 +1,9 @@
 import json
+import typing
 import asyncio
 import hashlib
+import logging
 from http import HTTPStatus
-
-import aiohttp
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -11,6 +11,8 @@ from waterbutler.core import exceptions
 
 from waterbutler.providers.figshare.path import FigsharePath
 from waterbutler.providers.figshare import metadata, settings
+
+logger = logging.getLogger(__name__)
 
 
 class FigshareProvider:
@@ -164,7 +166,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         """
         return path.rstrip('/').split('/')
 
-    async def download(self, path, **kwargs):
+    async def download(self, path, range: typing.Tuple[int, int]=None, **kwargs):
         """Download the file identified by ``path`` from this project.
 
         :param FigsharePath path: FigsharePath to file you want to download
@@ -178,8 +180,14 @@ class BaseFigshareProvider(provider.BaseProvider):
         if download_url is None:
             raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)
 
+        logger.debug('requested-range:: {}'.format(range))
         params = {} if file_metadata.is_public else {'token': self.token}
-        resp = await aiohttp.request('GET', download_url, params=params)
+        resp = await self.make_request(
+            'GET',
+            download_url,
+            range=range,
+            params=params,
+        )
         if resp.status == 404:
             await resp.release()
             raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)

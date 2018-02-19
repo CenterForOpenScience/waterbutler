@@ -96,6 +96,30 @@ class TestCRUD:
         assert content == b'I am a file'
 
     @pytest.mark.asyncio
+    async def test_download_range(self, provider):
+        path = await provider.validate_path('/flower.jpg')
+
+        result = await provider.download(path, range=(0, 1))
+        assert result.partial
+        content = await result.read()
+        assert content == b'I '
+
+        result = await provider.download(path, range=(2, 5))
+        assert result.partial
+        content = await result.read()
+        assert content == b'am a'
+
+    @pytest.mark.asyncio
+    async def test_download_range_open_ended(self, provider):
+        path = await provider.validate_path('/flower.jpg')
+
+        result = await provider.download(path, range=(0, None))
+        assert hasattr('result', 'partial') == False
+        content = await result.read()
+
+        assert content == b'I am a file'
+
+    @pytest.mark.asyncio
     async def test_download_not_found(self, provider):
         path = await provider.validate_path('/missing.txt')
 

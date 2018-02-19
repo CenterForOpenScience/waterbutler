@@ -5,6 +5,7 @@ from waterbutler.core.streams.base import StringStream  # noqa
 from waterbutler.core.streams.base import EmptyStream  # noqa
 
 from waterbutler.core.streams.file import FileStreamReader  # noqa
+from waterbutler.core.streams.file import PartialFileStreamReader  # noqa
 
 from waterbutler.core.streams.http import FormDataStream  # noqa
 from waterbutler.core.streams.http import RequestStreamReader  # noqa
