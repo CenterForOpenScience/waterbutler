@@ -614,14 +614,14 @@ class GoogleCloudProvider(BaseProvider):
         For Google Cloud Storage, `DELETE` a folder does delete the folder object.  However, given
         the storage is flat, everything else in (or more accurately, prefixed with) the folder are
         not deleted.  To fully delete a folder and all its contents, we need to delete each of its
-        children (whether immediate or not). This is both easier and harder that it seems:
+        children (whether immediate or not).
 
-        1. EASY: No need for recursive behavior.  Every children must have an object name that is
-           prefixed with the object name of the folder.  And every object that is prefixed with the
-           object name of the folder must be its children.
+        1. No need for recursive behavior.  Every children must have an object name that is prefixed
+           with the object name of the folder.  And every object that is prefixed with the object
+           name of the folder must be its children.
 
-        2. EASY: Google Cloud Storage provides the option for "Sending Batch Requests" and one of
-           the suggested use case  is "Deleting many objects".
+        2. Google Cloud Storage provides the option for "Sending Batch Requests" and one of the
+           suggested use case  is "Deleting many objects".
 
         3. HARD: However, there are a few limitations with batch request but we HANDLES them.
 
@@ -639,53 +639,27 @@ class GoogleCloudProvider(BaseProvider):
 
         JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/how-tos/batch
 
+        Note: "OSFStorage Provider" never calls ``delete()`` on folders
+
         :param path: the WaterButler path of the folder to delete
         :rtype None:
         """
 
-        # Retrieve a list of metadata for all its children (both immediate and non-immediate ones).
-        # Use only prefix without delimiter, of which the response contains the folder itself.
-        http_method = 'GET'
-        prefix = utils.get_obj_name(path, is_folder=True)
-        query = {'prefix': prefix}
-        metadata_url = self.build_url(base_url=self.BASE_URL, **query)
+        # Retrieve a list of metadata for all immediate and non-immediate children
+        prefix, items = await self._metadata_all_children(path)
 
-        resp = await self.make_request(
-            http_method,
-            metadata_url,
-            expects=(HTTPStatus.OK,),
-            throws=MetadataError
-        )
-        try:
-            data = await resp.json()
-        except (TypeError, json.JSONDecodeError):
-            await resp.release()
-            raise MetadataError('Failed to parse response, expecting JSON format.')
-
-        # Check if folder exists and obtain the items list.
-        items = data.get('items', None)
+        # Raise ``NotFoundError`` if folder does not exist
         if not items:
-            raise NotFoundError(path)
-
-        # If there are more items than the ``BATCH_THRESHOLD``, slice the list into eligible sub
-        # lists and call ``_batch_delete_items`` on each of them.
-        num_of_items = len(items)
-        num_of_slices = int(num_of_items / self.BATCH_THRESHOLD) + 1
+            raise NotFoundError(path.path)
 
         # Generate a UUID as the shared prefix of the Content-ID header fo each individual request.
         id_prefix = uuid.uuid4()
 
-        # TODO: use a more concise solution (both delete and copy)
-        for i in range(0, num_of_slices, step=1):
-
-            start = i * self.BATCH_THRESHOLD
-            if i < num_of_slices - 1:
-                end = (i + 1) * self.BATCH_THRESHOLD
-            else:
-                end = num_of_items % self.BATCH_THRESHOLD
-            sub_items = items[start:end]
-
-            await self._batch_delete_items(0, id_prefix=id_prefix, items=sub_items)
+        # Iterate through the item list and delete one batch at a time
+        while len(items) > 0:
+            one_batch_of_items = items[:self.BATCH_THRESHOLD]
+            del items[:self.BATCH_THRESHOLD]
+            await self._batch_delete_items(id_prefix, one_batch_of_items)
 
         return
 
@@ -753,6 +727,8 @@ class GoogleCloudProvider(BaseProvider):
         Similar to ``_delete_folder``, batch request is used. Please refer to ``_delete_folder`` for
         more information on batch request, its limitations and our work-around.
 
+        Note: "OSFStorage Provider" never calls ``intra_copy`` on folders
+
         :param dest_provider: the destination provider, must be the same as the source one
         :param source_path: the source WaterButler path for the object to copy from
         :param dest_path: the destination WaterButler path for the object to copy to
@@ -760,216 +736,168 @@ class GoogleCloudProvider(BaseProvider):
         :rtype bool:
         """
 
-        created = not await dest_provider.exists(dest_path)
+        created = await dest_provider._exists_folder(dest_path)
         if not created:
-            await self._delete_folder(dest_path)
+            await dest_provider._delete_folder(dest_path)
 
-        # Retrieve a list of metadata for all its children (both immediate and non-immediate ones).
-        # Use only prefix without delimiter, in which case the response contains the folder itself.
-        http_method = 'GET'
-        src_prefix = utils.get_obj_name(source_path, is_folder=True)
+        # Retrieve a list of metadata for all immediate and non-immediate children
+        src_prefix, items = await self._metadata_all_children(source_path)
         dest_prefix = utils.get_obj_name(dest_path, is_folder=True)
-        query = {'prefix': src_prefix}
-        metadata_url = self.build_url(base_url=self.BASE_URL, **query)
 
-        resp = await self.make_request(
-            http_method,
-            metadata_url,
-            expects=(HTTPStatus.OK,),
-            throws=MetadataError
-        )
-        try:
-            data = await resp.json()
-        except (TypeError, json.JSONDecodeError):
-            await resp.release()
-            raise MetadataError('Failed to parse response, expecting JSON format.')
-
-        # If there are more items than the ``BATCH_THRESHOLD``, slice the list into eligible sub
-        # lists and call ``_batch_copy_items`` on each of them.
-        items = data.get('items', [])
-        num_of_items = len(items)
-        num_of_slices = int(num_of_items / self.BATCH_THRESHOLD) + 1
+        # Raise ``NotFoundError`` if folder does not exist
+        if not items:
+            raise NotFoundError(src_prefix.path)
 
         # Generate a UUID as the shared prefix of the Content-ID header fo each individual request.
         id_prefix = uuid.uuid4()
 
-        # TODO: use a more concise solution (both delete and copy)
-        metadata_list = []
-
-        for i in range(0, num_of_slices, step=1):
-
-            start = i * self.BATCH_THRESHOLD
-            if i < num_of_slices - 1:
-                end = (i + 1) * self.BATCH_THRESHOLD
-            else:
-                end = num_of_items % self.BATCH_THRESHOLD
-            sub_items = items[start:end]
-
-            # Initial batch request
-            metadata_sub_list = await self._batch_copy_items(
-                0,
-                id_prefix=id_prefix,
-                items=sub_items,
-                src_prefix=src_prefix,
-                dest_prefix=dest_prefix,
-                dest_bucket=dest_provider.bucket
+        # Iterate through the item list and copy one batch at a time
+        while len(items) > 0:
+            items_one_batch = items[:self.BATCH_THRESHOLD]
+            del items[:self.BATCH_THRESHOLD]
+            await self._batch_copy_items(
+                id_prefix,
+                items_one_batch,
+                src_prefix,
+                dest_prefix,
+                dest_provider.bucket
             )
 
-            metadata_list.append(metadata_sub_list)
-
+        # TODO [New Ticket #]: build metadata based on responses from batch copy requests
         metadata_itself = await self._metadata_object(dest_path, is_folder=True)
         metadata_immediate = await self._metadata_folder(dest_path)
         metadata_itself.children = metadata_immediate
         return metadata_itself, created
 
-    async def _batch_delete_items(
-            self,
-            retries: int,
-            id_prefix: str = None,
-            items: list = None,
-            req_list_failed: list = None,
-            req_map: dict = None,
-    ) -> None:
-        """Make a batch request that deletes multiple objects on Google Cloud Storage.  Returns a
-        list of id of the failed requests.
+    async def _batch_delete_items(self, id_prefix: str, items: list) -> None:
+        """Make a batch request that deletes multiple objects on Google Cloud Storage.
 
-        1. The number of objects must be less or equal to the ``BATCH_THRESHOLD`` which is 100.
-        2. Response is parsed and failures are detected.  Recursively re-try failed requests.
-        3. Raise ``DeleteError`` if retry attempts go above the ``BATCH_MAX_RETRIES which is 5.
+        1. The number of objects must be less or equal to the ``BATCH_THRESHOLD``.
+        2. Response is parsed and failures are detected.  Iteratively re-try failed requests.
+        3. Raise ``DeleteError`` if the number of attempts goes above the ``BATCH_MAX_RETRIES``.
 
         :param id_prefix: the shared prefix of the Content-ID header for each requests
         :param items: the list of items to be deleted
-        :param req_list_failed: the list of the id of the failed requests
-        :param req_map: the previously-built map of individual request id and partial payload
-        :rtype list:
+        :rtype None:
         """
 
-        if id_prefix and items:
-            # Build the payload and requests map for the initial batch delete request
-            payload, req_map = self._build_payload_for_batch_delete(items, id_prefix)
-        elif req_list_failed and req_map:
-            # Build the payload for failed requests
-            assert len(req_list_failed) > 0 and len(req_map) > 0
-            payload = utils.build_payload_from_req_map(req_list_failed, req_map)
-        else:
-            raise DeleteError('Invalid arguments combination for _batch_delete_items()')
-
+        http_method = 'POST'
         headers = {
             'Content-Type': 'multipart/mixed; boundary="{}"'.format(self.BATCH_BOUNDARY)
         }
+        # Build the payload and requests map for the initial batch delete request
+        init_payload, req_map = self._build_payload_for_batch_delete(items, id_prefix)
 
-        http_method = 'POST'
-        resp = await self.make_request(
-            http_method,
-            self.BASE_URL + '/batch',
-            headers=headers,
-            data=payload,
-            expects=(HTTPStatus.OK,),
-            throws=DeleteError
-        )
-        data = await resp.read()
+        init_req = True
+        num_of_retries = 0
+        req_list_failed = []
 
-        # Parse the response and find out if there are failures and what are they.
-        req_failed_new = utils.parse_batch_delete_resp(data)
+        while num_of_retries < self.BATCH_MAX_RETRIES:
 
-        # Return and empty list when all requests have succeeded
-        if len(req_failed_new) == 0:
-            return
+            if init_req:
+                init_req = False
+                payload = init_payload
+            elif len(req_list_failed) > 0:
+                num_of_retries += 1
+                payload = utils.build_payload_from_req_map(req_list_failed, req_map)
+            else:
+                raise DeleteError('The batch delete action has failed unexpectedly.')
+
+            resp = await self.make_request(
+                http_method,
+                self.BASE_URL + '/batch',
+                headers=headers,
+                data=payload,
+                expects=(HTTPStatus.OK,),
+                throws=DeleteError
+            )
+            data = await resp.read()
+
+            # Parse the response and find out if there are failures and what are they.
+            req_list_failed = utils.parse_batch_delete_resp(data)
+
+            # Break the loop if every request has succeeded
+            if len(req_list_failed) == 0:
+                break
 
         # Raise ``DeleteError`` if too many failed retries
-        retries += 1
-        if retries >= self.BATCH_MAX_RETRIES:
+        if num_of_retries >= self.BATCH_MAX_RETRIES:
             raise DeleteError('Too many failed delete requests.')
-
-        # TODO: make this iterative instead of recursive (both delete and copy)
-        # Make another batch request to re-issue failed requests
-        await self._batch_delete_items(
-            retries,
-            req_list_failed=req_failed_new,
-            req_map=req_map
-        )
 
         return
 
     async def _batch_copy_items(
             self,
-            retries: int,
-            id_prefix: str = None,
-            items: list = None,
-            src_prefix: str = None,
-            dest_prefix: str = None,
-            dest_bucket: str = None,
-            req_list_failed: list = None,
-            req_map: dict = None
-    ) -> typing.List[dict]:
-        """Make a batch request that copy multiple items (objects) on Google Cloud Storage.  Returns
-        a list of metadata for successful ones.
+            id_prefix: str,
+            items: list,
+            src_prefix: str,
+            dest_prefix: str,
+            dest_bucket: str
+    ) -> None:
+        """Make a batch request that copy multiple items (objects) on Google Cloud Storage.
 
-        1. The number of objects must be less or equal to the ``BATCH_THRESHOLD`` which is 100.
-        2. Response is parsed and failures are detected.  Recursively re-try failed requests.
-        3. Raise ``CopyError`` if retry attempts go above the ``BATCH_MAX_RETRIES which is 5.
+        1. The number of objects must be less or equal to the ``BATCH_THRESHOLD``.
+        2. Response is parsed and failures are detected.  Iteratively re-try failed requests.
+        3. Raise ``CopyError`` if the number of attempts goes above the ``BATCH_MAX_RETRIES``.
 
-        :param retries: the number of retried attempts
         :param id_prefix: the shared prefix for the Content-ID header
         :param items: the list of items/objects to be deleted
         :param src_prefix: the object name of the source folder
         :param dest_prefix: the object name of the destination folder
         :param dest_bucket: the name of the destination bucket
-        :param req_list_failed: the list of the id of the failed requests
-        :param req_map: the previously-built map of individual request and its payload part
-        :rtype list:
+        :rtype None:
         """
 
-        if id_prefix and items and src_prefix and dest_prefix and dest_bucket:
-            # Build the payload and requests map for the initial batch copy request
-            payload, req_map = self._build_payload_for_batch_copy(
-                items,
-                id_prefix,
-                src_prefix,
-                dest_prefix,
-                dest_bucket
-            )
-        elif req_list_failed and req_map:
-            # Build the payload for failed requests
-            assert len(req_list_failed) > 0 and len(req_map) > 0
-            payload = utils.build_payload_from_req_map(req_list_failed, req_map)
-        else:
-            raise CopyError('Invalid arguments combination for _batch_copy_items()')
-
-        headers = {
-            'Content-Type': 'multipart/mixed; boundary="{}"'.format(self.BATCH_BOUNDARY),
-        }
-
         http_method = 'POST'
-        resp = await self.make_request(
-            http_method,
-            self.BASE_URL + '/batch',
-            headers=headers,
-            data=payload,
-            expects=(HTTPStatus.OK,),
-            throws=DeleteError
+        headers = {
+            'Content-Type': 'multipart/mixed; boundary="{}"'.format(self.BATCH_BOUNDARY)
+        }
+        # Build the payload and requests map for the initial batch delete request
+        init_payload, req_map = self._build_payload_for_batch_copy(
+            items,
+            id_prefix,
+            src_prefix,
+            dest_prefix,
+            dest_bucket
         )
-        data = await resp.read()
 
-        # Parse the response and find out if there are failures and what are they.
-        metadata_list, req_list_failed = utils.parse_batch_copy_resp(data)
-        if len(metadata_list) == len(items) and len(req_list_failed) == 0:
-            return metadata_list
+        init_req = True
+        num_of_retries = 0
+        req_list_failed = []
+
+        while num_of_retries < self.BATCH_MAX_RETRIES:
+
+            if init_req:
+                init_req = False
+                payload = init_payload
+            elif len(req_list_failed) > 0:
+                num_of_retries += 1
+                payload = utils.build_payload_from_req_map(req_list_failed, req_map)
+            else:
+                raise CopyError('The batch copy action has failed unexpectedly.')
+
+            resp = await self.make_request(
+                http_method,
+                self.BASE_URL + '/batch',
+                headers=headers,
+                data=payload,
+                expects=(HTTPStatus.OK,),
+                throws=DeleteError
+            )
+            data = await resp.read()
+
+            # Parse the response and find out if there are failures and what are they.
+            _, req_list_failed = utils.parse_batch_copy_resp(data)
+
+            # Break the loop if every request has succeeded
+            if len(req_list_failed) == 0:
+                break
 
         # Raise ``CopyError`` if too many failed retries
-        retries += 1
-        if retries >= self.BATCH_MAX_RETRIES:
+        if num_of_retries >= self.BATCH_MAX_RETRIES:
             raise CopyError('Too many failed copy requests.')
 
-        # TODO: make this iterative instead of recursive (both delete and copy)
-        # Make another batch request to re-issue failed ones and retrieve the metadata
-        metadata_list_more = self._batch_copy_items(
-            retries,
-            req_list_failed=req_list_failed,
-            req_map=req_map
-        )
-        metadata_list.append(metadata_list_more)
-        return metadata_list
+        return
 
     def _build_payload_for_batch_delete(
             self,
