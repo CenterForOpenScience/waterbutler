@@ -181,64 +181,12 @@ def meta_folder_itself():
 
 
 @pytest.fixture()
-def meta_folder_extra():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/metadata/folder-extra.json'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def meta_folder_immediate():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/metadata/folder-immediate.json'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
 def meta_folder_all():
 
     with open(
             os.path.join(
                 os.path.dirname(__file__),
                 'fixtures/metadata/folder-all.json'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def meta_sub_folder_1_itself():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/metadata/sub-folder-1-itself.json'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def meta_sub_folder_2_itself():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/metadata/sub-folder-2-itself.json'
             ),
             'r'
     ) as fp:
