@@ -1,5 +1,6 @@
 import re
 import json
+import time
 import uuid
 import base64
 import typing
@@ -7,6 +8,8 @@ import hashlib
 import logging
 import binascii
 from http import HTTPStatus
+
+from oauth2client.service_account import ServiceAccountCredentials
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
@@ -29,18 +32,32 @@ class GoogleCloudProvider(BaseProvider):
     """Provider for Google's Cloud Storage Service.
 
     General API Docs: https://cloud.google.com/storage/docs/apis
-    JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/
+    JSON API Docs: https://cloud.google.com/storage/docs/json_api/
+    XML API Docs: https://cloud.google.com/storage/docs/xml-api/overview
+
+    TODO: add a list of quirks for Google Cloud Storage here (short version)
 
     Please note the name of the service is "Cloud Storage" on "Google Cloud Platform".  However,
     it is named ``GoogleCloudProvider`` for better clarity and consistency.  "Google Cloud", "Cloud
     Storage" and "Google Cloud Storage" are used interchangeably.
 
-    TODO: Add a brief quirk list here.
     """
 
     NAME = 'googlecloud'
-    BASE_URL = pd_settings.BASE_URL
+
+    # BASE URL for JSON API
+    BASE_URL = pd_settings.BASE_URL_JSON
+
+    # BASE URL for XML API
+    BASE_URL_XML = pd_settings.BASE_URL_XML
+
+    # EXPIRATION for Signed Request/URL for XML API
+    SIGNATURE_EXPIRATION = pd_settings.SIGNATURE_EXPIRATION
+
+    # The action for copy
     COPY_ACTION = pd_settings.COPY_ACTION
+
+    # Batch request configurations
     BATCH_THRESHOLD = pd_settings.BATCH_THRESHOLD
     BATCH_MAX_RETRIES = pd_settings.BATCH_MAX_RETRIES
     BATCH_BOUNDARY = pd_settings.BATCH_BOUNDARY
@@ -66,7 +83,7 @@ class GoogleCloudProvider(BaseProvider):
 
             WATERBUTLER_RESOURCE = 'bucket'
 
-        TODO: the settings may change, update ``__init__()`` when that happens
+        TODO [Pre-deploy]: the settings may change, update ``__init__()`` when that happens
 
         2. More about authentication and authorization for Google Cloud
 
@@ -87,7 +104,8 @@ class GoogleCloudProvider(BaseProvider):
         authenticate to get an access token. Instead, you obtain a private key from the Google Cloud
         Platform Console, which you then use to send a signed request for an access token."
 
-        TODO: access token by default expires after an hour, OSF side needs to take care of it
+        TODO [DevOps]: OSF needs to generate a long-term access token
+        TODO [DevOps]: Or, OSF needs to refresh the access token with a refresh token periodically
         """
 
         super().__init__(auth, credentials, settings)
@@ -95,6 +113,7 @@ class GoogleCloudProvider(BaseProvider):
         self.access_token = credentials.get('token')
         self.bucket = settings.get('bucket')
         self.region = settings.get('region')
+        self.creds = ServiceAccountCredentials.from_json_keyfile_name(pd_settings.CREDS_PATH)
 
     @property
     def default_headers(self) -> dict:
@@ -105,7 +124,8 @@ class GoogleCloudProvider(BaseProvider):
 
         return await self.validate_path(path)
 
-        # TODO: need more discussion on whether we need this
+        # TODO [CR]: I don't think we need this but more discussion is recommended
+        #
         # wb_path = WaterButlerPath(path)
         # if path == '/':
         #     return wb_path
@@ -274,17 +294,51 @@ class GoogleCloudProvider(BaseProvider):
             accept_url=False,
             range=None,
             **kwargs
-    ) -> ResponseStreamReader:
-        """Download the object with the given path and and return a ``ResponseStreamReader``.
+    ) -> typing.Union[str, ResponseStreamReader]:
+        """Download the object with the given path.  The behavior of download differs depending on
+        the value of ``accept_url``.  Otherwise,
 
-        Google Cloud Storage: Objects - Get
-        JSON API Docs: https://cloud.google.com/storage/docs/json_api/v1/objects/get
+        1. ``accept_url == True``
 
-        "By default, this responds with an object resource in the response body. If you provide the
-        URL parameter alt=media, then it will respond with the object data in the response body."
+            This method returns a signed URL with a short-lived signature that directly downloads
+            the file from the provider.  Use the following XML API instead of JSON API for direct
+            download.  See "Authentication by Signed URLs" for why and see Content Disposition for
+            how to trigger download.
 
-        Note: download request on folders return HTTP 200 OK with empty body. The action doesn't do
-        anything. It doesn't make any sense just to download the folder anyway.
+            XML API: https://cloud.google.com/storage/docs/xml-api/get-object-download
+
+        2. ``accept_url == False``
+
+            The download goes through WaterButler and the method returns a ``ResponseStreamReader``.
+
+            Google Cloud Storage: Objects - Get
+            JSON API: https://cloud.google.com/storage/docs/json_api/v1/objects/get
+
+            "By default, this responds with an object resource in the response body. If you provide
+            the URL parameter alt=media, then it will respond with the object data in the response
+            body."
+
+            Note: download request on folders return HTTP 200 OK with empty body. The action doesn't
+            do anything. It doesn't make any sense just to download the folder anyway.
+
+        3. Authentication by Signed URL
+
+            Google Cloud Storage: Signed URLs
+            Docs: https://cloud.google.com/storage/docs/access-control/signed-urls
+
+            "Signed URLs can only be used to access resources in Google Cloud Storage through the
+            XML API."
+
+            How to Sign URL with python:
+                https://cloud.google.com/storage/docs/access-control/create-signed-urls-program
+
+        4. Content Disposition
+
+            Docs: https://cloud.google.com/storage/docs/xml-api/reference-headers
+                  #responsecontentdisposition
+
+            "A query string parameter that allows content-disposition to be overridden for
+            authenticated GET requests."
 
         Note: ``OSFStorageProvider`` never uses the inner provider to calls ``download`` on folders
 
@@ -292,23 +346,40 @@ class GoogleCloudProvider(BaseProvider):
         :param accept_url: the flag to solicit a direct time-limited download url from the provider
         :param range: the Range HTTP request header
         :param kwargs: additional kwargs are ignored
+        :rtype str:
         :rtype ResponseStreamReader:
         """
 
         if path.is_folder:
             raise DownloadError('Cannot download folders', code=HTTPStatus.BAD_REQUEST)
 
-        if accept_url:
-            # TODO: implement accept url for direct download
-            # Quirks: signed URL are only supported with XML API
-            # Docs: https://cloud.google.com/storage/docs/xml-api/get-object-download
-            pass
-
         http_method = 'GET'
+        obj_name = utils.get_obj_name(path, is_folder=False)
+        display_name = kwargs.get('displayName', path.name)
+
+        # Return a direct download URL (signed, short-lived) from the provider
+        if accept_url:
+            content_md5 = ''
+            content_type = ''
+            expires = int(time.time()) + self.SIGNATURE_EXPIRATION
+            segments = (self.bucket, obj_name, )
+            url_path = utils.build_url('', *segments, **{})
+            string_to_sign = '\n'.join([http_method, content_md5, content_type, str(expires), url_path])
+            encoded_signature = base64.b64encode(self.creds.sign_blob(string_to_sign)[1])
+            query = {
+                'response-content-disposition': 'attachment; filename={}'.format(display_name),
+                'GoogleAccessId': self.creds.service_account_email,
+                'Expires': str(expires),
+                'Signature': encoded_signature
+            }
+            signed_url = utils.build_url(self.BASE_URL_XML, *segments, **query)
+            return signed_url
+
+        # Return a ``ResponseStreamReader``
         query = {'alt': 'media'}
         download_url = self.build_url(
             base_url=self.BASE_URL,
-            obj_name=utils.get_obj_name(path, is_folder=False),
+            obj_name=obj_name,
             **query
         )
         resp = await self.make_request(
