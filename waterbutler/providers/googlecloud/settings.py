@@ -3,7 +3,10 @@ from waterbutler import settings
 config = settings.child('GOOGLECLOUD_PROVIDER_SETTINGS')
 
 # Google Cloud service account credentials
-CREDS_PATH = config.get('CREDS_PATH', 'changeme')
+CREDS_PATH = config.get(
+    'CREDS_PATH',
+    './tests/providers/googlecloud/fixtures/credentials/gcloud-fake-000000.json'
+)
 
 # BASE URL for JSON API, which uses oauth access token as authentication
 BASE_URL_JSON = config.get('BASE_URL_JSON', 'https://www.googleapis.com')
@@ -24,4 +27,4 @@ BATCH_MAX_RETRIES = config.get('BATCH_MAX_RETRIES', 5)
 BATCH_BOUNDARY = config.get('BATCH_BOUNDARY', '===============7330845974216740156==')
 
 # The expiration time (in seconds) for a signed request
-SIGNATURE_EXPIRATION = 60
+SIGNATURE_EXPIRATION = config.get('SIGNATURE_EXPIRATION', 60)

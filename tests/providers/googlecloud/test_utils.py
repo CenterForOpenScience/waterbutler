@@ -18,7 +18,6 @@ from tests.providers.googlecloud.fixtures import (mock_auth, mock_creds, mock_se
                                                   batch_delete_resp_failed_part,)
 
 from waterbutler.providers.googlecloud import utils as pd_utils
-from waterbutler.providers.googlecloud import settings as pd_settings
 from waterbutler.providers.googlecloud import GoogleCloudProvider
 
 
@@ -92,7 +91,7 @@ class TestBuildUrl:
         """
 
         file_url = mock_provider.build_url(
-            pd_settings.BASE_URL,
+            mock_provider.BASE_URL,
             obj_name=src_file_obj_name,
             **{}
         )
@@ -102,7 +101,7 @@ class TestBuildUrl:
                             )
 
         folder_url = mock_provider.build_url(
-            pd_settings.BASE_URL,
+            mock_provider.BASE_URL,
             obj_name=src_folder_obj_name,
             **{}
         )
@@ -124,7 +123,9 @@ class TestBuildUrl:
             'uploadType': 'media',
             'name': src_file_obj_name
         }
-        file_upload_url = mock_provider.build_url(base_url=pd_settings.UPLOAD_URL, **query)
+        file_upload_url = mock_provider.build_url(
+            base_url=mock_provider.BASE_URL + '/upload', **query
+        )
 
         assert file_upload_url.startswith(
             'https://www.googleapis.com/upload/storage/v1/b/{}/o?'.format(
@@ -135,7 +136,10 @@ class TestBuildUrl:
         assert 'name={}'.format(quote(src_file_obj_name, safe='')) in file_upload_url
 
         query.update({'name': src_folder_obj_name})
-        folder_create_url = mock_provider.build_url(base_url=pd_settings.UPLOAD_URL, **query)
+        folder_create_url = mock_provider.build_url(
+            base_url=mock_provider.BASE_URL + '/upload',
+            **query
+        )
 
         assert 'name={}'.format(quote(src_folder_obj_name, safe='')) in folder_create_url
 
@@ -143,7 +147,7 @@ class TestBuildUrl:
 
         query = {'alt': 'media'}
         file_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=src_file_obj_name,
             **query
         )
@@ -165,18 +169,18 @@ class TestBuildUrl:
         """
 
         file_intra_copy_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=src_file_obj_name,
-            obj_action=pd_settings.COPY_ACTION,
+            obj_action=mock_provider.COPY_ACTION,
             dest_bucket=mock_provider_dest.bucket,
             dest_obj_name=dest_file_obj_name,
             **{}
         )
 
         folder_intra_copy_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=src_folder_obj_name,
-            obj_action=pd_settings.COPY_ACTION,
+            obj_action=mock_provider.COPY_ACTION,
             dest_bucket=mock_provider_dest.bucket,
             dest_obj_name=dest_folder_obj_name,
             **{}
@@ -201,7 +205,7 @@ class TestBuildUrl:
     def test_build_url_for_listing(self, mock_provider, src_folder_obj_name):
 
         query = {'prefix': src_folder_obj_name, 'delimiter': '/'}
-        metadata_folder_url = mock_provider.build_url(base_url=pd_settings.BASE_URL, **query)
+        metadata_folder_url = mock_provider.build_url(base_url=mock_provider.BASE_URL, **query)
 
         assert metadata_folder_url.startswith(
             'https://www.googleapis.com/storage/v1/b/{}/o?'.format(

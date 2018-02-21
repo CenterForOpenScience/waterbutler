@@ -9,7 +9,6 @@ from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.streams import FileStreamReader, ResponseStreamReader
 from waterbutler.core import exceptions as core_exceptions
 from waterbutler.providers.googlecloud import utils as pd_utils
-from waterbutler.providers.googlecloud import settings as pd_settings
 from waterbutler.providers.googlecloud import (GoogleCloudProvider, BaseGoogleCloudMetadata,
                                                GoogleCloudFileMetadata, GoogleCloudFolderMetadata,)
 
@@ -18,12 +17,11 @@ from tests.providers.googlecloud.fixtures import (mock_auth, mock_creds, mock_se
                                                   mock_auth_2, mock_creds_2, mock_settings_2,
                                                   file_path, dest_file_path, folder_path,
                                                   test_file_1, test_file_2,
-                                                  sub_folder_1_path, meta_sub_folder_1_itself,
-                                                  sub_folder_2_path, meta_sub_folder_2_itself,
+                                                  sub_folder_1_path, sub_folder_2_path,
                                                   sub_file_1_path, sub_file_2_path,
                                                   err_resp_unauthorized, err_resp_not_found,
                                                   meta_file_itself, meta_folder_itself,
-                                                  meta_folder_all, meta_folder_immediate,)
+                                                  meta_folder_all,)
 
 
 @pytest.fixture()
@@ -60,17 +58,17 @@ class TestProviderInit:
 
 class TestValidatePath:
 
-    # TODO: implement this test when updating from limited to full version
-    # @pytest.mark.asyncio
-    # @pytest.mark.aiohttpretty
-    # async def test_validate_v1_path_file(self):
-    #     pass
+    # TODO [SVCS Ticket #]: implement this
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v1_path_file(self):
+        pass
 
-    # TODO: implement this test when updating from limited to full version
-    # @pytest.mark.asyncio
-    # @pytest.mark.aiohttpretty
-    # async def test_validate_v1_path_folder(self):
-    #     pass
+    # TODO [SVCS Ticket #]: implement this
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v1_path_folder(self):
+        pass
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -97,7 +95,7 @@ class TestMetadata:
 
         path = WaterButlerPath(file_path)
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(path, is_folder=False),
             **{}
         )
@@ -122,7 +120,7 @@ class TestMetadata:
 
         path = WaterButlerPath(folder_path)
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(path, is_folder=True),
             **{}
         )
@@ -150,10 +148,10 @@ class TestMetadata:
             meta_folder_all
     ):
         path = WaterButlerPath(folder_path)
-        prefix = pd_utils.get_obj_name(path, is_folder=True)
+        expected_prefix = pd_utils.get_obj_name(path, is_folder=True)
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
-            **{'prefix': prefix}
+            base_url=mock_provider.BASE_URL,
+            **{'prefix': expected_prefix}
         )
         metadata_json = json.loads(meta_folder_all)
 
@@ -165,11 +163,12 @@ class TestMetadata:
             status=HTTPStatus.OK
         )
 
-        items = await mock_provider._metadata_all_children(path)
+        prefix, items = await mock_provider._metadata_all_children(path)
+        assert prefix == expected_prefix
         assert isinstance(items, list)
         assert len(items) == 7
         for item in items:
-            assert item.get('name', '').startswith(prefix)
+            assert item.get('name', '').startswith(expected_prefix)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -177,49 +176,21 @@ class TestMetadata:
             self,
             mock_provider,
             folder_path,
-            meta_folder_immediate,
+            meta_folder_all,
             sub_folder_1_path,
-            meta_sub_folder_1_itself,
             sub_folder_2_path,
-            meta_sub_folder_2_itself,
             sub_file_1_path,
             sub_file_2_path
     ):
+
         path = WaterButlerPath(folder_path)
+        prefix = pd_utils.get_obj_name(path, is_folder=True)
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
-            **{
-                'prefix': pd_utils.get_obj_name(path, is_folder=True),
-                'delimiter': '/'
-            }
+            base_url=mock_provider.BASE_URL,
+            **{'prefix': prefix}
         )
-        metadata_json = json.loads(meta_folder_immediate)
-        aiohttpretty.register_uri(
-            'GET',
-            metadata_url,
-            body=json.dumps(metadata_json).encode('UTF-8'),
-            headers={'Content-Type': 'application/json; charset=UTF-8'},
-            status=HTTPStatus.OK
-        )
+        metadata_json = json.loads(meta_folder_all)
 
-        metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
-            obj_name=pd_utils.get_obj_name(WaterButlerPath(sub_folder_1_path), is_folder=True)
-        )
-        metadata_json = json.loads(meta_sub_folder_1_itself)
-        aiohttpretty.register_uri(
-            'GET',
-            metadata_url,
-            body=json.dumps(metadata_json).encode('UTF-8'),
-            headers={'Content-Type': 'application/json; charset=UTF-8'},
-            status=HTTPStatus.OK
-        )
-
-        metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
-            obj_name=pd_utils.get_obj_name(WaterButlerPath(sub_folder_2_path), is_folder=True)
-        )
-        metadata_json = json.loads(meta_sub_folder_2_itself)
         aiohttpretty.register_uri(
             'GET',
             metadata_url,
@@ -252,7 +223,7 @@ class TestMetadata:
         # Whether it is a file or a folder does not make a difference, use folder for 401 test.
         path = WaterButlerPath('/temp/')
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(path, is_folder=True),
             **{}
         )
@@ -281,7 +252,7 @@ class TestMetadata:
         # Whether it is a file or a folder does not make a difference, use file for 404 test.
         path = WaterButlerPath('/temp')
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(path, is_folder=False),
             **{}
         )
@@ -309,7 +280,7 @@ class TestCRUD:
 
         path = WaterButlerPath(file_path)
         download_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(path, is_folder=False),
             **{'alt': 'media'}
         )
@@ -328,12 +299,18 @@ class TestCRUD:
         assert isinstance(resp_stream_reader, ResponseStreamReader)
         assert file_content == test_file_1
 
+    # TODO: implement this
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_file_with_accept_url(self, mock_provider, file_path, test_file_1):
+        pass
+
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_download_file_not_found(self, mock_provider, file_path, err_resp_not_found):
         path = WaterButlerPath(file_path)
         download_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(path, is_folder=False),
             **{'alt': 'media'}
         )
@@ -363,7 +340,7 @@ class TestCRUD:
     ):
         path = WaterButlerPath(folder_path)
         download_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(path, is_folder=True),
             **{'alt': 'media'}
         )
@@ -396,7 +373,7 @@ class TestCRUD:
         obj_name = pd_utils.get_obj_name(path, is_folder=False)
 
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=obj_name,
             **{}
         )
@@ -410,7 +387,7 @@ class TestCRUD:
         )
 
         upload_url = mock_provider.build_url(
-            base_url=pd_settings.UPLOAD_URL,
+            base_url=mock_provider.BASE_URL + '/upload',
             **{'uploadType': 'media', 'name': obj_name}
         )
         metadata_json = json.loads(meta_file_itself)
@@ -442,7 +419,7 @@ class TestCRUD:
         obj_name = pd_utils.get_obj_name(path, is_folder=False)
 
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=obj_name,
             **{}
         )
@@ -456,7 +433,7 @@ class TestCRUD:
         )
 
         upload_url = mock_provider.build_url(
-            base_url=pd_settings.UPLOAD_URL,
+            base_url=mock_provider.BASE_URL + '/upload',
             **{'uploadType': 'media', 'name': obj_name}
         )
         metadata_json = json.loads(meta_file_itself)
@@ -489,7 +466,7 @@ class TestCRUD:
         obj_name = pd_utils.get_obj_name(path, is_folder=False)
 
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=obj_name,
             **{}
         )
@@ -503,7 +480,7 @@ class TestCRUD:
         )
 
         upload_url = mock_provider.build_url(
-            base_url=pd_settings.UPLOAD_URL,
+            base_url=mock_provider.BASE_URL + '/upload',
             **{'uploadType': 'media', 'name': obj_name}
         )
         metadata_json = json.loads(meta_file_itself)
@@ -534,7 +511,7 @@ class TestCRUD:
         obj_name =pd_utils.get_obj_name(path, is_folder=True)
 
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=obj_name,
             **{}
         )
@@ -548,7 +525,7 @@ class TestCRUD:
         )
 
         upload_url = mock_provider.build_url(
-            base_url=pd_settings.UPLOAD_URL,
+            base_url=mock_provider.BASE_URL + '/upload',
             **{'uploadType': 'media', 'name': obj_name}
         )
         metadata_json = json.loads(meta_folder_itself)
@@ -575,7 +552,7 @@ class TestCRUD:
         obj_name = pd_utils.get_obj_name(path, is_folder=True)
 
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=obj_name,
             **{}
         )
@@ -598,7 +575,7 @@ class TestCRUD:
 
         path = WaterButlerPath(file_path)
         delete_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(path, is_folder=False),
             **{}
         )
@@ -618,7 +595,7 @@ class TestCRUD:
 
         path = WaterButlerPath(file_path)
         delete_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(path, is_folder=False),
             **{}
         )
@@ -637,11 +614,11 @@ class TestCRUD:
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
 
-    # TODO: implement this test when updating from limited to full version
-    # @pytest.mark.asyncio
-    # @pytest.mark.aiohttpretty
-    # async def test_delete_folder(self):
-    #     pass
+    # TODO [SVCS Ticket #]: implement this
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_folder(self):
+        pass
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -649,7 +626,7 @@ class TestCRUD:
 
         path = WaterButlerPath(folder_path)
         metadata_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             **{'prefix': pd_utils.get_obj_name(path, is_folder=True)}
         )
         resp = json.dumps(json.loads('{"kind": "storage#objects"}')).encode('UTF-8')
@@ -682,7 +659,7 @@ class TestCRUD:
         dest_path = WaterButlerPath(dest_file_path)
 
         metadata_url = mock_provider_2.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider_2.BASE_URL,
             obj_name=pd_utils.get_obj_name(dest_path, is_folder=False),
             **{}
         )
@@ -696,9 +673,9 @@ class TestCRUD:
         )
 
         copy_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(src_path, is_folder=False),
-            obj_action=pd_settings.COPY_ACTION,
+            obj_action=mock_provider.COPY_ACTION,
             dest_bucket=mock_provider_2.bucket,
             dest_obj_name=pd_utils.get_obj_name(dest_path, is_folder=False),
         )
@@ -732,7 +709,7 @@ class TestCRUD:
         dest_path = WaterButlerPath(dest_file_path)
 
         metadata_url = mock_provider_2.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider_2.BASE_URL,
             obj_name=pd_utils.get_obj_name(dest_path, is_folder=False),
             **{}
         )
@@ -746,9 +723,9 @@ class TestCRUD:
         )
 
         copy_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(src_path, is_folder=False),
-            obj_action=pd_settings.COPY_ACTION,
+            obj_action=mock_provider.COPY_ACTION,
             dest_bucket=mock_provider_2.bucket,
             dest_obj_name=pd_utils.get_obj_name(dest_path, is_folder=False),
         )
@@ -783,7 +760,7 @@ class TestCRUD:
         resp_json = json.loads(err_resp_not_found)
 
         metadata_url = mock_provider_2.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider_2.BASE_URL,
             obj_name=pd_utils.get_obj_name(dest_path, is_folder=False),
             **{}
         )
@@ -796,9 +773,9 @@ class TestCRUD:
         )
 
         copy_url = mock_provider.build_url(
-            base_url=pd_settings.BASE_URL,
+            base_url=mock_provider.BASE_URL,
             obj_name=pd_utils.get_obj_name(src_path, is_folder=False),
-            obj_action=pd_settings.COPY_ACTION,
+            obj_action=mock_provider.COPY_ACTION,
             dest_bucket=mock_provider_2.bucket,
             dest_obj_name=pd_utils.get_obj_name(dest_path, is_folder=False),
         )
@@ -817,11 +794,11 @@ class TestCRUD:
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
         assert aiohttpretty.has_call(method='POST', uri=copy_url)
 
-    # TODO: implement this test when updating from limited to full version
-    # @pytest.mark.asyncio
-    # @pytest.mark.aiohttpretty
-    # async def test_intra_copy_folder(self):
-    #     pass
+    # TODO [SVCS Ticket #]: implement this
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_copy_folder(self):
+        pass
 
 
 class TestOperations:
