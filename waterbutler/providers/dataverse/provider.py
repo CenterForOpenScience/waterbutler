@@ -1,4 +1,6 @@
+import typing
 import hashlib
+import logging
 import tempfile
 from http import HTTPStatus
 
@@ -12,11 +14,17 @@ from waterbutler.providers.dataverse import settings
 from waterbutler.providers.dataverse.metadata import DataverseRevision
 from waterbutler.providers.dataverse.metadata import DataverseDatasetMetadata
 
+logger = logging.getLogger(__name__)
+
 
 class DataverseProvider(provider.BaseProvider):
     """Provider for Dataverse
 
     API Docs: http://guides.dataverse.org/en/4.5/api/
+
+    Quirks:
+
+    * Dataverse doesn't respect Range header on downloads
 
     """
 
@@ -105,7 +113,7 @@ class DataverseProvider(provider.BaseProvider):
             return self._metadata_cache[version]
         return sum(self._metadata_cache.values(), [])
 
-    async def download(self, path, revision=None, range=None, **kwargs):
+    async def download(self, path, revision=None, range: typing.Tuple[int, int]=None, **kwargs):
         """Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from Dataverse is not 200
 
@@ -122,6 +130,7 @@ class DataverseProvider(provider.BaseProvider):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
+        logger.debug('request-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
             self.build_url(settings.DOWN_BASE_URL, path.identifier, key=self.token),

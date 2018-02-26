@@ -1,3 +1,6 @@
+import typing
+import logging
+
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
@@ -7,6 +10,8 @@ from waterbutler.providers.bitbucket.path import BitbucketPath
 from waterbutler.providers.bitbucket.metadata import BitbucketFileMetadata
 from waterbutler.providers.bitbucket.metadata import BitbucketFolderMetadata
 from waterbutler.providers.bitbucket.metadata import BitbucketRevisionMetadata
+
+logger = logging.getLogger(__name__)
 
 
 class BitbucketProvider(provider.BaseProvider):
@@ -25,6 +30,8 @@ class BitbucketProvider(provider.BaseProvider):
       error.
 
     * I think bitbucket lets you name branches the same as commits.  Then how does it resolve them?
+
+    * Bitbucket doesn't respect Range header on downloads for either v1.0 or v2.0 API
     """
 
     NAME = 'bitbucket'
@@ -176,18 +183,22 @@ class BitbucketProvider(provider.BaseProvider):
             for item in valid_revisions
         ]
 
-    async def download(self, path: BitbucketPath, **kwargs):  # type: ignore
+    async def download(self, path: BitbucketPath, range: typing.Tuple[int, int]=None,
+                       **kwargs):  # type: ignore
         '''Get the stream to the specified file on bitbucket
         :param str path: The path to the file on bitbucket
         '''
         metadata = await self.metadata(path)
 
+        logger.debug('requested-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
             self._build_v1_repo_url('raw', path.commit_sha, *path.path_tuple()),
+            range=range,
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
+        logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
 
         return streams.ResponseStreamReader(resp, size=metadata.size)
 

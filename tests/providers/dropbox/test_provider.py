@@ -194,6 +194,28 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_download_range(self, provider):
+        path = WaterButlerPath('/triangles.txt', prepend=provider.folder)
+        url = provider._build_content_url('files', 'download')
+        aiohttpretty.register_uri('POST', url, body=b'be', auto_length=True, status=206)
+
+        result = await provider.download(path, range=(0, 1))
+        assert result.partial
+        content = await result.response.read()
+
+        assert content == b'be'
+        assert aiohttpretty.has_call(
+            method='POST', uri=url,
+            headers={
+                'Authorization': 'Bearer wrote harry potter',
+                'Range': 'bytes=0-1',
+                'Dropbox-API-Arg': '{"path": "/Photos/triangles.txt"}',
+                'Content-Type': ''
+            }
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_upload(self, provider, provider_fixtures, error_fixtures, file_stream):
         path = await provider.validate_path('/phile')
         metadata_url = provider.build_url('files', 'get_metadata')

@@ -1,5 +1,7 @@
 import os
 import shutil
+import typing
+import logging
 import datetime
 import mimetypes
 
@@ -11,6 +13,8 @@ from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.filesystem import settings
 from waterbutler.providers.filesystem.metadata import FileSystemFileMetadata
 from waterbutler.providers.filesystem.metadata import FileSystemFolderMetadata
+
+logger = logging.getLogger(__name__)
 
 
 class FileSystemProvider(provider.BaseProvider):
@@ -53,8 +57,7 @@ class FileSystemProvider(provider.BaseProvider):
         shutil.move(src_path.full_path, dest_path.full_path)
         return (await dest_provider.metadata(dest_path)), not exists
 
-    async def download(self, path, revision=None, **kwargs):
-        # TODO implement range requests
+    async def download(self, path, revision=None, range: typing.Tuple[int, int]=None, **kwargs):
         if not os.path.exists(path.full_path):
             raise exceptions.DownloadError(
                 'Could not retrieve file \'{0}\''.format(path),
@@ -62,6 +65,10 @@ class FileSystemProvider(provider.BaseProvider):
             )
 
         file_pointer = open(path.full_path, 'rb')
+        logger.debug('requested-range:: {}'.format(range))
+        if range is not None and range[1] is not None:
+            return streams.PartialFileStreamReader(file_pointer, range)
+
         return streams.FileStreamReader(file_pointer)
 
     async def upload(self, stream, path, **kwargs):
