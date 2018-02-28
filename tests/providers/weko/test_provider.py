@@ -32,7 +32,8 @@ def auth():
 @pytest.fixture
 def credentials():
     return {
-        'token': 'open inside'
+        'token': 'open inside',
+        'user_id': 'requester'
     }
 
 
@@ -41,7 +42,8 @@ def settings():
     return {
         'url': 'http://localhost/test',
         'index_id': 'that kerning',
-        'index_title': 'sample archive'
+        'index_title': 'sample archive',
+        'nid': 'project_id'
     }
 
 @pytest.fixture

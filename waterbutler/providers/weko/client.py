@@ -8,7 +8,7 @@ import datetime
 import mimetypes
 from waterbutler.core import exceptions
 
-logger = logging.getLogger('waterbutler.providers.weko.client')
+logger = logging.getLogger(__name__)
 
 APP_NAMESPACE = 'http://www.w3.org/2007/app'
 ATOM_NAMESPACE = 'http://www.w3.org/2005/Atom'
