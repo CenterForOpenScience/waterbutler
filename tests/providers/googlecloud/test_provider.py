@@ -58,29 +58,31 @@ class TestProviderInit:
 
 class TestValidatePath:
 
-    # TODO [SVCS Ticket #]: implement this
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self):
-        pass
+    async def test_validate_v1_path_file(self, mock_provider, sub_file_1_path):
+        assert sub_file_1_path.startswith('/') and not sub_file_1_path.endswith('/')
+        wb_path = await mock_provider.validate_path(sub_file_1_path)
+        assert wb_path.path == sub_file_1_path.lstrip('/')
 
-    # TODO [SVCS Ticket #]: implement this
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self):
-        pass
+    async def test_validate_v1_path_folder(self, mock_provider, sub_folder_1_path):
+        assert sub_folder_1_path.startswith('/') and sub_folder_1_path.endswith('/')
+        wb_path = await mock_provider.validate_path(sub_folder_1_path)
+        assert wb_path.path == sub_folder_1_path.lstrip('/')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_validate_path_file(self, mock_provider, sub_file_1_path):
 
-        assert file_path.startswith('/') and not file_path.endswith('/')
+        assert sub_file_1_path.startswith('/') and not sub_file_1_path.endswith('/')
         wb_path = await mock_provider.validate_path(sub_file_1_path)
-        assert wb_path.path == file_path.lstrip('/')
+        assert wb_path.path == sub_file_1_path.lstrip('/')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_path_file(self, mock_provider, sub_folder_1_path):
+    async def test_validate_path_folder(self, mock_provider, sub_folder_1_path):
 
         assert sub_folder_1_path.startswith('/') and sub_folder_1_path.endswith('/')
         wb_path = await mock_provider.validate_path(sub_folder_1_path)
@@ -500,77 +502,6 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_create_folder_new(
-            self,
-            mock_provider,
-            folder_path,
-            meta_folder_itself,
-            err_resp_not_found
-    ):
-        path = WaterButlerPath(folder_path)
-        obj_name =pd_utils.get_obj_name(path, is_folder=True)
-
-        metadata_url = mock_provider.build_url(
-            base_url=mock_provider.BASE_URL,
-            obj_name=obj_name,
-            **{}
-        )
-        metadata_json = json.loads(err_resp_not_found)
-        aiohttpretty.register_uri(
-            'GET',
-            metadata_url,
-            body=json.dumps(metadata_json).encode('UTF-8'),
-            headers={'Content-Type': 'application/json; charset=UTF-8'},
-            status=HTTPStatus.NOT_FOUND
-        )
-
-        upload_url = mock_provider.build_url(
-            base_url=mock_provider.BASE_URL + '/upload',
-            **{'uploadType': 'media', 'name': obj_name}
-        )
-        metadata_json = json.loads(meta_folder_itself)
-        aiohttpretty.register_uri(
-            'POST',
-            upload_url,
-            body=json.dumps(metadata_json).encode('UTF-8'),
-            headers={'Content-Type': 'application/json'},
-            status=HTTPStatus.OK
-        )
-
-        metadata = await mock_provider.create_folder(path)
-        assert metadata == GoogleCloudFolderMetadata(metadata_json)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_create_folder_existing(
-            self,
-            mock_provider,
-            folder_path,
-            meta_folder_itself,
-    ):
-        path = WaterButlerPath(folder_path)
-        obj_name = pd_utils.get_obj_name(path, is_folder=True)
-
-        metadata_url = mock_provider.build_url(
-            base_url=mock_provider.BASE_URL,
-            obj_name=obj_name,
-            **{}
-        )
-        metadata_json = json.loads(meta_folder_itself)
-        aiohttpretty.register_uri(
-            'GET',
-            metadata_url,
-            body=json.dumps(metadata_json).encode('UTF-8'),
-            headers={'Content-Type': 'application/json; charset=UTF-8'},
-            status=HTTPStatus.OK
-        )
-
-        with pytest.raises(core_exceptions.CreateFolderError) as exc:
-            await mock_provider.create_folder(path)
-        assert exc.value.code == HTTPStatus.CONFLICT
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
     async def test_delete_file(self, mock_provider, file_path):
 
         path = WaterButlerPath(file_path)
@@ -610,36 +541,6 @@ class TestCRUD:
         )
 
         with pytest.raises(core_exceptions.DeleteError) as exc:
-            await mock_provider.delete(path)
-
-        assert exc.value.code == HTTPStatus.NOT_FOUND
-
-    # TODO [SVCS Ticket #]: implement this
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_delete_folder(self):
-        pass
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_delete_folder_not_found(self, mock_provider, folder_path):
-
-        path = WaterButlerPath(folder_path)
-        metadata_url = mock_provider.build_url(
-            base_url=mock_provider.BASE_URL,
-            **{'prefix': pd_utils.get_obj_name(path, is_folder=True)}
-        )
-        resp = json.dumps(json.loads('{"kind": "storage#objects"}')).encode('UTF-8')
-
-        aiohttpretty.register_uri(
-            'GET',
-            metadata_url,
-            body=resp,
-            headers={'Content-Type': 'application/json; charset=UTF-8'},
-            status=HTTPStatus.OK
-        )
-
-        with pytest.raises(core_exceptions.NotFoundError) as exc:
             await mock_provider.delete(path)
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
@@ -794,12 +695,6 @@ class TestCRUD:
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
         assert aiohttpretty.has_call(method='POST', uri=copy_url)
 
-    # TODO [SVCS Ticket #]: implement this
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_copy_folder(self):
-        pass
-
 
 class TestOperations:
 
@@ -811,14 +706,14 @@ class TestOperations:
 
         assert mock_provider.can_intra_move(mock_provider, WaterButlerPath(file_path))
         assert not mock_provider.can_intra_move(mock_provider_2, WaterButlerPath(file_path))
-        assert mock_provider.can_intra_move(mock_provider, WaterButlerPath(folder_path))
+        assert not mock_provider.can_intra_move(mock_provider, WaterButlerPath(folder_path))
         assert not mock_provider.can_intra_move(mock_provider_2, WaterButlerPath(folder_path))
 
     def test_can_intra_copy(self, mock_provider, mock_provider_2, file_path, folder_path):
 
         assert mock_provider.can_intra_copy(mock_provider, WaterButlerPath(file_path))
         assert not mock_provider.can_intra_copy(mock_provider_2, WaterButlerPath(file_path))
-        assert mock_provider.can_intra_copy(mock_provider, WaterButlerPath(folder_path))
+        assert not mock_provider.can_intra_copy(mock_provider, WaterButlerPath(folder_path))
         assert not mock_provider.can_intra_copy(mock_provider_2, WaterButlerPath(folder_path))
 
     def test_can_duplicate_names(self, mock_provider):

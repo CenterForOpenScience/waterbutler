@@ -10,6 +10,7 @@ from waterbutler.core import metadata
 logger = logging.getLogger(__name__)
 
 
+# TODO: refactor to use XML API response header
 class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
     """The ``BaseGoogleCloudMetadata`` object provides the base structure for both file and folder
     metadata on the Google Cloud Storage.  It is an abstract class and does not implements all
@@ -25,6 +26,7 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
         return self.build_path(self.raw.get('name', None))
 
 
+# TODO: refactor to use XML API response header
 class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata):
     """The ``GoogleCloudFileMetadata`` object provides the full structure for files on the Google
     Cloud Storage Provider.  It inherits two non-abstract classes: ``BaseGoogleCloudMetadata`` and
@@ -82,6 +84,7 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
         }
 
 
+# TODO: refactor to use XML API response header
 class GoogleCloudFolderMetadata(BaseGoogleCloudMetadata, metadata.BaseFolderMetadata):
     """The ``GoogleCloudFolderMetadata`` object provides the full structure for folders on Google
     Cloud Storage Provider.  It inherits two non-abstract classes: ``BaseGoogleCloudMetadata`` and

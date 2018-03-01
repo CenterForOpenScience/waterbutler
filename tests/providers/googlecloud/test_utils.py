@@ -1,21 +1,12 @@
-import json
 from urllib.parse import quote
 
 import pytest
 
 from tests.providers.googlecloud.fixtures import (mock_auth, mock_creds, mock_settings,
                                                   mock_auth_2, mock_creds_2, mock_settings_2,
-                                                  batch_id_prefix, failed_req_list,
                                                   src_file_wb_path, src_folder_wb_path,
                                                   src_file_obj_name, dest_file_obj_name,
-                                                  src_folder_obj_name, dest_folder_obj_name,
-                                                  meta_folder_itself, meta_file_itself,
-                                                  meta_folder_all, batch_copy_req, batch_copy_resp,
-                                                  batch_delete_req, batch_delete_resp,
-                                                  batch_copy_req_failed, batch_copy_resp_failed,
-                                                  batch_delete_req_failed, batch_delete_resp_failed,
-                                                  batch_copy_resp_part, batch_copy_resp_failed_part,
-                                                  batch_delete_resp_failed_part,)
+                                                  src_folder_obj_name, dest_folder_obj_name, )
 
 from waterbutler.providers.googlecloud import utils as pd_utils
 from waterbutler.providers.googlecloud import GoogleCloudProvider
@@ -214,122 +205,3 @@ class TestBuildUrl:
         )
         assert 'prefix={}'.format(quote(src_folder_obj_name, safe='')) in metadata_folder_url
         assert 'delimiter=%2F' in metadata_folder_url
-
-
-class TestBuildBatchRequestPayload:
-    """Test that request body for batch request are built correctly.  This includes both the initial
-    request for batch delete/copy and the follow-up request that batch delete/copy failed ones.
-    """
-
-    def test_build_payload_for_batch_delete(
-            self,
-            mock_provider,
-            meta_folder_all,
-            batch_id_prefix,
-            failed_req_list,
-            batch_delete_req,
-            batch_delete_req_failed,
-    ):
-
-        items = json.loads(meta_folder_all).get('items', None)
-        payload_full, requests_map = mock_provider._build_payload_for_batch_delete(
-            items,
-            batch_id_prefix
-        )
-
-        assert len(requests_map) == 7
-        assert payload_full == batch_delete_req
-
-        payload_failed = pd_utils.build_payload_from_req_map(
-            failed_req_list,
-            requests_map
-        )
-
-        assert payload_failed == batch_delete_req_failed
-
-    def test_build_payload_for_batch_copy(
-            self,
-            mock_provider,
-            meta_folder_all,
-            batch_id_prefix,
-            failed_req_list,
-            src_folder_obj_name,
-            dest_folder_obj_name,
-            batch_copy_req,
-            batch_copy_req_failed,
-    ):
-
-        items = json.loads(meta_folder_all).get('items', None)
-        payload_full, requests_map = mock_provider._build_payload_for_batch_copy(
-            items,
-            batch_id_prefix,
-            src_folder_obj_name,
-            dest_folder_obj_name,
-            mock_provider.bucket
-        )
-
-        assert len(requests_map) == 7
-        assert payload_full == batch_copy_req
-
-        payload_failed = pd_utils.build_payload_from_req_map(
-            failed_req_list,
-            requests_map
-        )
-        assert payload_failed == batch_copy_req_failed
-
-
-class TestParseBatchResponsePayload:
-    """Test that response body are parsed correctly.
-    """
-
-    def test_get_req_id(self, batch_delete_resp_failed_part, batch_copy_resp_failed_part):
-
-        content_id = pd_utils.get_req_id_from_resp_part(batch_delete_resp_failed_part)
-        assert content_id == 99
-
-        content_id = pd_utils.get_req_id_from_resp_part(batch_copy_resp_failed_part)
-        assert content_id == 88
-
-    def test_get_metadata(self, batch_copy_resp_part, meta_folder_itself):
-
-        metadata = pd_utils.get_metadata_from_resp_part(batch_copy_resp_part)
-        assert metadata is not None
-        assert metadata == json.loads(meta_folder_itself)
-
-    def test_parse_payload_for_batch_delete(self, batch_delete_resp):
-
-        failed_req = pd_utils.parse_batch_delete_resp(batch_delete_resp)
-        assert len(failed_req) == 0
-
-    def test_parse_payload_for_batch_delete_failed(self, batch_delete_resp_failed):
-
-        failed_req = pd_utils.parse_batch_delete_resp(batch_delete_resp_failed)
-        assert len(failed_req) == 3
-        assert failed_req == [1, 3, 5]
-
-    def test_parse_payload_for_batch_copy(
-            self,
-            batch_copy_resp,
-            meta_folder_itself,
-            meta_file_itself
-    ):
-        metadata_list, failed_req = pd_utils.parse_batch_copy_resp(batch_copy_resp)
-
-        assert len(failed_req) == 0
-        assert len(metadata_list) == 7
-        assert json.loads(meta_folder_itself) in metadata_list
-        assert json.loads(meta_file_itself) in metadata_list
-
-    def test_parse_payload_for_batch_copy_failed(
-            self,
-            batch_copy_resp_failed,
-            meta_folder_itself,
-            meta_file_itself
-    ):
-        metadata_list, failed_req = pd_utils.parse_batch_copy_resp(batch_copy_resp_failed)
-
-        assert len(failed_req) == 3
-        assert failed_req == [1, 3, 5]
-        assert len(metadata_list) == 3
-        assert json.loads(meta_folder_itself) not in metadata_list
-        assert json.loads(meta_file_itself) in metadata_list

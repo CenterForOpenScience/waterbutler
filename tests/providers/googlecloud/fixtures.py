@@ -52,16 +52,6 @@ def mock_settings_2():
 
 
 @pytest.fixture()
-def batch_id_prefix():
-    return 'b29c5de2-0db4-490b-b421-6a51b598bd22'
-
-
-@pytest.fixture()
-def batch_boundary():
-    return '===============7330845974216740156=='
-
-
-@pytest.fixture()
 def file_wb_path():
     return WaterButlerPath('/test-folder-1-copy/DSC_0235.JPG')
 
@@ -114,11 +104,6 @@ def dest_file_path():
 @pytest.fixture()
 def src_folder_wb_path():
     return WaterButlerPath('/test-folder-1/')
-
-
-@pytest.fixture()
-def dest_folder_wb_path():
-    return WaterButlerPath('/test-folder-1-copy/')
 
 
 @pytest.fixture()
@@ -220,149 +205,6 @@ def meta_file_extra():
 
 
 @pytest.fixture()
-def batch_delete_req():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/batch-requests/delete-request.txt'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def batch_delete_req_failed():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/batch-requests/delete-request-failed.txt'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def batch_delete_resp():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/batch-requests/delete-response.txt'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def batch_delete_resp_failed():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/batch-requests/delete-response-failed.txt'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def batch_delete_resp_failed_part():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/batch-requests/delete-response-failed-part.txt'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def batch_copy_req():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/batch-requests/copy-request.txt'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def batch_copy_req_failed():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/batch-requests/copy-request-failed.txt'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def batch_copy_resp():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/batch-requests/copy-response.txt'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def batch_copy_resp_part():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/batch-requests/copy-response-part.txt'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def batch_copy_resp_failed():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/batch-requests/copy-response-failed.txt'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
-def batch_copy_resp_failed_part():
-
-    with open(
-            os.path.join(
-                os.path.dirname(__file__),
-                'fixtures/batch-requests/copy-response-failed-part.txt'
-            ),
-            'r'
-    ) as fp:
-        return fp.read()
-
-
-@pytest.fixture()
 def err_resp_unauthorized():
 
     with open(
@@ -386,8 +228,3 @@ def err_resp_not_found():
             'r'
     ) as fp:
         return fp.read()
-
-
-@pytest.fixture()
-def failed_req_list():
-    return [1, 3, 5]
