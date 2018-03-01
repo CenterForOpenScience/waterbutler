@@ -17,7 +17,8 @@ from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStrea
 from waterbutler.core.metadata import BaseMetadata, BaseFileMetadata
 from waterbutler.core.exceptions import (MetadataError, NotFoundError, CreateFolderError,
                                          UploadError, UploadChecksumMismatchError,
-                                         DownloadError, DeleteError, CopyError, WaterButlerError)
+                                         DownloadError, DeleteError, CopyError,
+                                         WaterButlerError, InvalidProviderConfigError)
 
 from waterbutler.providers.googlecloud import utils
 from waterbutler.providers.googlecloud import settings as pd_settings
@@ -70,6 +71,7 @@ class GoogleCloudProvider(BaseProvider):
             WATERBUTLER_CREDENTIALS = {
                 'storage': {
                     'token': 'change_me',
+                    'json_creds': 'change_me'
                 }
             }
 
@@ -82,8 +84,6 @@ class GoogleCloudProvider(BaseProvider):
             }
 
             WATERBUTLER_RESOURCE = 'bucket'
-
-        TODO [Pre-deploy]: the settings may change, update ``__init__()`` when that happens
 
         2. More about authentication and authorization for Google Cloud
 
@@ -103,17 +103,28 @@ class GoogleCloudProvider(BaseProvider):
         "When you use a service account to authenticate your application, you do not need a user to
         authenticate to get an access token. Instead, you obtain a private key from the Google Cloud
         Platform Console, which you then use to send a signed request for an access token."
-
-        TODO [DevOps]: OSF needs to generate a long-term access token
-        TODO [DevOps]: Or, OSF needs to refresh the access token with a refresh token periodically
         """
 
         super().__init__(auth, credentials, settings)
 
-        self.access_token = credentials.get('token')
         self.bucket = settings.get('bucket')
-        self.region = settings.get('region')
+        if not self.bucket:
+            raise InvalidProviderConfigError(self.NAME, message='Missing bucket settings')
+
+        # TODO: replaces self.creds with self.json_creds after OSF/DevOps update
+        # self.json_creds = credentials.get('json_creds')
+        # if not self.json_creds:
+        #     raise InvalidProviderConfigError(
+        #         self.NAME,
+        #         message='Missing service account credentials'
+        #     )
         self.creds = ServiceAccountCredentials.from_json_keyfile_name(pd_settings.CREDS_PATH)
+
+        # TODO: OSF/DevOps must guarantee that the region is correct for the given bucket
+        self.region = settings.get('region')
+
+        # TODO: remove self.access_token XML API refactor
+        self.access_token = credentials.get('token')
 
     @property
     def default_headers(self) -> dict:
@@ -121,30 +132,7 @@ class GoogleCloudProvider(BaseProvider):
         return {'Authorization': 'Bearer {}'.format(self.access_token)}
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
-
         return await self.validate_path(path)
-
-        # TODO [CR]: I don't think we need this but more discussion is recommended
-        #
-        # wb_path = WaterButlerPath(path)
-        # if path == '/':
-        #     return wb_path
-        # implicit_folder = path.endswith('/')
-        # try:
-        #     if implicit_folder:
-        #         await self._metadata_object(wb_path, is_folder=True)
-        #     else:
-        #         await self._metadata_object(wb_path, is_folder=False)
-        # except MetadataError as exc:
-        #     if exc.code == HTTPStatus.NOT_FOUND:
-        #         raise NotFoundError(path)
-        #     else:
-        #         raise MetadataError('Validating v1 path expects {} or {} but received {}'.format(
-        #             HTTPStatus.OK,
-        #             HTTPStatus.NOT_FOUND,
-        #             exc.code
-        #         ))
-        # return wb_path
 
     async def validate_path(self, path: str, **kwargs) -> WaterButlerPath:
         return WaterButlerPath(path)
@@ -435,6 +423,8 @@ class GoogleCloudProvider(BaseProvider):
         Currently, use "copyTo" since the response is the metadata of the destination file.
 
         Note: ``OSFStorageProvider`` never uses the inner provider to call ``intra_copy`` on folders
+
+        # TODO: update related methods to use "rewriteTo" instead
 
         :param dest_provider: the destination provider, must be the same as the source one
         :param source_path: the source WaterButler path for the object to copy from

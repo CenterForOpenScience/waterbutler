@@ -14,6 +14,7 @@ BASE_URL_JSON = config.get('BASE_URL_JSON', 'https://www.googleapis.com')
 # BASE URL for XML API, which uses signed request as authentication
 BASE_URL_XML = config.get('BASE_URL_XML', 'https://storage.googleapis.com')
 
+# TODO: use 'copyTo' instead
 # The action to use for copy. Options are 'copyTo' and 'rewriteTo'
 COPY_ACTION = config.get('COPY_ACTION', 'copyTo')
 

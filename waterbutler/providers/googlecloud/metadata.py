@@ -30,8 +30,6 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
     Cloud Storage Provider.  It inherits two non-abstract classes: ``BaseGoogleCloudMetadata`` and
     ``core_metadata.BaseFileMetadata``.
 
-    TODO: what should we do if expected properties do not exist?
-
     Please refer to the example JSON files "tests/googlecloud/fixtures/metadata/file-itself.json"
     for what metadata Google Cloud Storage provides.
     """
@@ -42,39 +40,44 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
 
     @property
     def content_type(self) -> str:
-        return self.raw.get('contentType', '')
+        return self.raw.get('contentType', None)
 
     @property
     def modified(self) -> str:
-        return self.raw.get('updated', '')
+        return self.raw.get('updated', None)
 
     @property
     def created_utc(self) -> str:
         time_created = self.raw.get('timeCreated', None)
-        return utils.normalize_datetime(time_created) if time_created else ''
+        return utils.normalize_datetime(time_created) if time_created else None
 
     @property
     def size(self) -> int:
         size = self.raw.get('size', None)
-        return int(self.raw.get('size', None)) if size else -1
+        return int(size) if size else None
 
     @property
     def etag(self) -> str:
-        return self.raw.get('etag', '')
+        return self.raw.get('etag', None)
 
     @property
     def extra(self) -> dict:
 
-        # Convert the base64 encoded MD5 hash to hex digest representation
-        md5_hex_digest = binascii.hexlify(base64.b64decode(self.raw.get('md5Hash', '').encode()))
+        # Convert the base64 encoded MD5 hash to hex digest representation ``.encode()`` is called
+        # to convert str to bytes and ``.decode()`` is called to convert bytes to str
+        md5_hex_digest = None
+        md5_base64_encoded = self.raw.get('md5Hash', None)
+        if md5_base64_encoded:
+            md5 = base64.b64decode(md5_base64_encoded.encode())
+            md5_hex_digest = binascii.hexlify(md5).decode()
 
         return {
-            'id': self.raw.get('id', ''),
-            'bucket': self.raw.get('bucket', ''),
-            'generation': self.raw.get('generation', ''),
+            'id': self.raw.get('id', None),
+            'bucket': self.raw.get('bucket', None),
+            'generation': self.raw.get('generation', None),
             'hashes': {
-                # store hex digest in str instead of byte
-                'md5': md5_hex_digest.decode(),
+                'md5': md5_hex_digest,
+                'crc32c': self.raw.get('crc32c', None),
             },
         }
 
