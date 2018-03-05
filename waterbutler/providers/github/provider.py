@@ -1,6 +1,8 @@
 import copy
 import json
+import typing
 import hashlib
+import logging
 
 import furl
 
@@ -16,6 +18,8 @@ from waterbutler.providers.github.metadata import GitHubFolderContentMetadata
 from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
 from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
 from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
+
+logger = logging.getLogger(__name__)
 
 
 GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -47,6 +51,9 @@ class GitHubProvider(provider.BaseProvider):
       to page through the tree.  Since move, copy, and folder delete operations rely on whole-tree
       replacement, they cannot be reliably supported for large repos.  Attempting to use them will
       throw a 501 Not Implemented error.
+
+    * GitHub doesn't respect Range header on downloads
+
     """
     NAME = 'github'
     BASE_URL = settings.BASE_URL
@@ -171,7 +178,7 @@ class GitHubProvider(provider.BaseProvider):
     async def intra_move(self, dest_provider, src_path, dest_path):
         return (await self._do_intra_move_or_copy(src_path, dest_path, False))
 
-    async def download(self, path, revision=None, **kwargs):
+    async def download(self, path, revision=None, range: typing.Tuple[int, int]=None, **kwargs):
         '''Get the stream to the specified file on github
         :param str path: The path to the file on github
         :param str ref: The git 'ref' a branch or commit sha at which to get the file from
@@ -181,10 +188,12 @@ class GitHubProvider(provider.BaseProvider):
         data = await self.metadata(path, revision=revision)
         file_sha = path.file_sha or data.extra['fileSha']
 
+        logger.debug('requested-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
             self.build_repo_url('git', 'blobs', file_sha),
             headers={'Accept': 'application/vnd.github.v3.raw'},
+            range=range,
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
@@ -365,6 +374,16 @@ class GitHubProvider(provider.BaseProvider):
         await resp.release()
 
     async def _delete_folder(self, path, message=None, **kwargs):
+        message = message or settings.DELETE_FOLDER_MESSAGE
+        # _create_tree fails with empty tree (422 Invalid tree info), so catch it if this folder
+        # is the last contents of this repository and use _delete_root_folder_contents instead.
+        if path.parent.is_root:
+            root_metadata = await self.metadata(path.parent)
+            if len(root_metadata) == 1:
+                if root_metadata[0].materialized_path == path.materialized_path:
+                    await self._delete_root_folder_contents(path, message=message, **kwargs)
+                    return
+
         branch_data = await self._fetch_branch(path.branch_ref)
 
         old_commit_sha = branch_data['commit']['sha']
@@ -429,7 +448,6 @@ class GitHubProvider(provider.BaseProvider):
             tree_sha = tree_data['sha']
 
         # Create a new commit which references our top most tree change.
-        message = message or settings.DELETE_FOLDER_MESSAGE
         commit_resp = await self.make_request(
             'POST',
             self.build_repo_url('git', 'commits'),

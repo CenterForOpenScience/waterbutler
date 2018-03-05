@@ -8,7 +8,9 @@ class TestExceptionSerialization:
     @pytest.mark.parametrize('exception_class', [
         (exceptions.WaterButlerError),
         (exceptions.InvalidParameters),
+        (exceptions.InvalidHeaderError),
         (exceptions.UnsupportedHTTPMethodError),
+        (exceptions.UnsupportedActionError),
         (exceptions.PluginError),
         (exceptions.AuthError),
         (exceptions.ProviderError),
@@ -27,11 +29,14 @@ class TestExceptionSerialization:
         (exceptions.NamingConflict),
         (exceptions.ProviderNotFound),
         (exceptions.UploadChecksumMismatchError),
+        (exceptions.UploadFailedError),
         (exceptions.NotFoundError),
         (exceptions.InvalidPathError),
         (exceptions.OverwriteSelfError),
         (exceptions.UnsupportedOperationError),
         (exceptions.ReadOnlyProviderError),
+        (exceptions.UninitializedRepositoryError),
+        (exceptions.UnexportableFileTypeError),
     ])
     def test_tolerate_dumb_signature(self, exception_class):
         """In order for WaterButlerError-inheriting exception classes to survive

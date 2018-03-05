@@ -167,6 +167,19 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_download_range(self, provider, file_metadata):
+        path = WaterButlerPath('/triangles.txt', prepend=provider.folder)
+        url = provider._webdav_url_ + path.full_path
+        aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
+        aiohttpretty.register_uri('GET', url, body=b'sq', auto_length=True, status=206)
+        result = await provider.download(path, range=(0, 1))
+        assert result.partial
+        content = await result.response.read()
+        assert content == b'sq'
+        assert aiohttpretty.has_call(method='GET', uri=url, headers={'Range': 'bytes=0-1'})
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_upload(self, provider, file_stream, file_metadata, file_metadata_object):
         path = WaterButlerPath('/phile', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path

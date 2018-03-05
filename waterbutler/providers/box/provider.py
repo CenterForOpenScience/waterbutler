@@ -1,8 +1,10 @@
 import json
 import typing
-import aiohttp
 import hashlib
+import logging
 from http import HTTPStatus
+
+import aiohttp
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -13,6 +15,8 @@ from waterbutler.providers.box.metadata import (BaseBoxMetadata,
                                                 BoxFileMetadata,
                                                 BoxFolderMetadata,
                                                 BoxRevision)
+
+logger = logging.getLogger(__name__)
 
 
 class BoxProvider(provider.BaseProvider):
@@ -270,6 +274,7 @@ class BoxProvider(provider.BaseProvider):
         if revision and revision != path.identifier:
             query['version'] = revision
 
+        logger.debug('request-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
             self.build_url('files', path.identifier, 'content', **query),
@@ -278,6 +283,7 @@ class BoxProvider(provider.BaseProvider):
             expects=(200, 206),
             throws=exceptions.DownloadError,
         )
+        logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
 
         return streams.ResponseStreamReader(resp)
 

@@ -24,7 +24,7 @@ class FileSystemFolderMetadata(BaseFileSystemMetadata, metadata.BaseFolderMetada
 
     @property
     def name(self):
-        return os.path.split(self.raw['path'])[1]
+        return os.path.split(self.raw['path'].rstrip('/'))[1]
 
     @property
     def path(self):

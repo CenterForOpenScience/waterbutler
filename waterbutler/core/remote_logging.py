@@ -6,10 +6,10 @@ import logging
 import aiohttp
 # from geoip import geolite2
 
-import waterbutler
 from waterbutler import settings
 from waterbutler.core import utils
 from waterbutler.sizes import KBs, MBs, GBs
+from waterbutler.version import __version__
 from waterbutler.tasks import settings as task_settings
 
 
@@ -17,15 +17,14 @@ logger = logging.getLogger(__name__)
 
 
 @utils.async_retry(retries=5, backoff=5)
-async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[]):
+async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[],
+                          request={}):
     """PUT a logging payload back to the callback given by the auth provider."""
-    if action in ('download_file', 'download_zip'):
-        logger.debug('Not logging for {} action'.format(action))
-        return
 
     auth = getattr(destination, 'auth', source.auth)
     log_payload = {
         'action': action,
+        'action_meta': {},
         'auth': auth,
         'time': time.time() + 60,
         'errors': errors,
@@ -41,9 +40,9 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         log_payload['metadata'] = source.serialize()
         log_payload['provider'] = log_payload['metadata']['provider']
 
-    if action in ('download_file', 'download_zip'):
-        logger.info('Not logging for {} action'.format(action))
-        return
+    if action in ['download_file', 'download_zip']:
+        is_mfr_render = settings.MFR_IDENTIFYING_HEADER in request['request']['headers']
+        log_payload['action_meta']['is_mfr_render'] = is_mfr_render
 
     resp = await utils.send_signed_request('PUT', auth['callback_url'], log_payload)
     resp_data = await resp.read()
@@ -71,7 +70,7 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
 
     keen_payload = {
         'meta': {
-            'wb_version': waterbutler.__version__,
+            'wb_version': __version__,
             'api_version': api_version,
             'epoch': 1,
         },
@@ -204,7 +203,7 @@ def log_file_action(action, source, api_version, destination=None, request={},
     """Kick off logging actions in the background. Returns array of asyncio.Tasks."""
     return [
         log_to_callback(action, source=source, destination=destination,
-                        start_time=start_time, errors=errors,),
+                        start_time=start_time, errors=errors, request=request,),
         asyncio.ensure_future(
             log_to_keen(action, source=source, destination=destination,
                         errors=errors, request=request, api_version=api_version,
@@ -302,6 +301,26 @@ def _build_public_file_payload(action, request, file_metadata):
     return public_payload
 
 
+def _scrub_headers_for_keen(payload, MAX_ITERATIONS=10):
+    """ Scrub unwanted characters like \\.\\ from the keys in the keen payload """
+
+    scrubbed_payload = {}
+    for key in sorted(payload):
+        scrubbed_key = key.replace('.', '-')
+
+        # if our new scrubbed key is already in the payload, we need to increment it
+        if scrubbed_key in scrubbed_payload:
+            for i in range(1, MAX_ITERATIONS + 1):  # try MAX_ITERATION times, then give up & drop it
+                incremented_key = '{}-{}'.format(scrubbed_key, i)
+                if incremented_key not in scrubbed_payload:  # we found an unused key!
+                    scrubbed_payload[incremented_key] = payload[key]
+                    break
+        else:
+            scrubbed_payload[scrubbed_key] = payload[key]
+
+    return scrubbed_payload
+
+
 def _serialize_request(request):
     """Serialize the original request so we can log it across celery."""
     if request is None:
@@ -312,6 +331,7 @@ def _serialize_request(request):
         if k not in ('Authorization', 'Cookie', 'User-Agent',):
             headers_dict[k] = v
 
+    headers_dict = _scrub_headers_for_keen(headers_dict)
     serialized = {
         'tech': {
             'ip': request.remote_ip,
