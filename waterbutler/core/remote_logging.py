@@ -4,6 +4,7 @@ import asyncio
 import logging
 
 import aiohttp
+from furl import furl
 # from geoip import geolite2
 
 from waterbutler import settings
@@ -41,6 +42,7 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         log_payload['provider'] = log_payload['metadata']['provider']
 
     if action in ['download_file', 'download_zip']:
+        log_payload['metadata']['version'] = furl(request['request']['url']).args['version']
         is_mfr_render = settings.MFR_IDENTIFYING_HEADER in request['request']['headers']
         log_payload['action_meta']['is_mfr_render'] = is_mfr_render
 
