@@ -1,9 +1,7 @@
 {
-    "id": "gcloud-test.longzechen.com/test-folder-1/DSC_0235.JPG/1515686172180045",
-    "bucket": "gcloud-test.longzechen.com",
-    "generation": "1515686172180045",
+    "generation": "1519931085896733",
     "hashes": {
-        "crc32c": "IhS+NQ==",
-        "md5": "95370770d0a9b7ea45a3d602814d786d"
+        "crc32c": "4dff2d9b",
+        "md5": "9a46947c9c622d7792125d8ea44c4638"
     }
 }

@@ -1,4 +1,8 @@
+import base64
+import binascii
 from urllib.parse import urlparse, quote
+
+import typing
 
 from waterbutler.core.path import WaterButlerPath
 
@@ -82,3 +86,17 @@ def build_url(base: str, *segments, **query) -> str:
     path = '/' + path if path else ''
 
     return ''.join([parsed_base, path, queries])
+
+
+def decode_and_hexlify_hashes(hash_str: str) -> typing.Union[str, None]:
+    """Decode a Base64-encoded string and return a hexlified string.
+
+    This helper function inputs and outputs "string".  However, both ``base64.b64decode()`` and
+    ``binascii.hexlify()`` operates on "bytes".  Must call ``.encode()`` and ``.decode()`` perform
+    conversion between "bytes" and "string".
+
+    :param hash_str: the Base64-encoded hash string
+    :rtype str:
+    """
+
+    return binascii.hexlify(base64.b64decode(hash_str.encode())).decode() if hash_str else None
