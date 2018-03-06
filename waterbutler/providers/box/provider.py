@@ -1,4 +1,5 @@
 import json
+import base64
 import typing
 import hashlib
 import logging
@@ -28,6 +29,7 @@ class BoxProvider(provider.BaseProvider):
 
     NAME = 'box'
     BASE_URL = settings.BASE_URL
+    NONCHUNKED_UPLOAD_LIMIT = 50000000  # 50 MB
 
     def __init__(self, auth, credentials, settings):
         """
@@ -292,40 +294,133 @@ class BoxProvider(provider.BaseProvider):
                      path: wb_path.WaterButlerPath,
                      conflict: str='replace',
                      **kwargs) -> typing.Tuple[BoxFileMetadata, bool]:
+
         if path.identifier and conflict == 'keep':
             path, _ = await self.handle_name_conflict(path, conflict=conflict, kind='folder')
             path._parts[-1]._id = None
 
-        stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
+        if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
+            data = await stream.read()
+            entry = await self._chunked_upload(path, data)
+        else:
+            stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
 
-        data_stream = streams.FormDataStream(
-            attributes=json.dumps({
-                'name': path.name,
-                'parent': {
-                    'id': path.parent.identifier
-                }
-            })
-        )
-        data_stream.add_file('file', stream, path.name, disposition='form-data')
+            data_stream = streams.FormDataStream(
+                attributes=json.dumps({
+                    'name': path.name,
+                    'parent': {
+                        'id': path.parent.identifier
+                    }
+                })
+            )
+            data_stream.add_file('file', stream, path.name, disposition='form-data')
 
-        async with self.request(
-            'POST',
-            self._build_upload_url(
-                *filter(lambda x: x is not None, ('files', path.identifier, 'content'))),
-            data=data_stream,
-            headers=data_stream.headers,
-            expects=(201,),
-            throws=exceptions.UploadError,
-        ) as resp:
-            data = await resp.json()
+            async with self.request(
+                'POST',
+                self._build_upload_url(
+                    *filter(lambda x: x is not None, ('files', path.identifier, 'content'))),
+                data=data_stream,
+                headers=data_stream.headers,
+                expects=(201,),
+                throws=exceptions.UploadError,
+            ) as resp:
+                data = await resp.json()
 
-        entry = data['entries'][0]
-        if stream.writers['sha1'].hexdigest != entry['sha1']:
-            raise exceptions.UploadChecksumMismatchError()
+            entry = data['entries'][0]
+            if stream.writers['sha1'].hexdigest != entry['sha1']:
+                raise exceptions.UploadChecksumMismatchError()
 
         created = path.identifier is None
         path._parts[-1]._id = entry['id']
+
         return BoxFileMetadata(entry, path), created
+
+    async def _chunked_upload(self,
+                              path: wb_path.WaterButlerPath,
+                              data: bytes) -> dict:
+        """
+        Chunked uploading allows us to upload large files over several requests, Box's chunked
+        uploading process has 4 steps.
+        """
+
+        # Step 1 get the sha of all the data you will upload and base 64 encode it.
+        data_sha = base64.standard_b64encode(hashlib.sha1(data).digest()).decode()
+
+        # Step 2 create an upload session with box and recieve session id.
+        session_data = await self._create_upload_session(path, data)
+
+        # Step 3 split the data into chunks and upload them to box.
+        parts = await self._upload_parts(data, session_data)
+
+        # Step 4 complete the session and return the upload file's metadata.
+        return await self._complete_session(session_data, parts, data_sha)
+
+    async def _create_upload_session(self,
+                                     path: wb_path.WaterButlerPath,
+                                     data: bytes) -> dict:
+
+        async with self.request(
+            'POST',
+            self._build_upload_url('files', 'upload_sessions'),
+            data=json.dumps({
+                'folder_id': self.folder,
+                'file_size': len(bytearray(data)),
+                'file_name': path.name
+            }),
+            headers={'Content-Type': 'application/json'},
+            expects=(201,),
+            throws=exceptions.UploadError,
+        ) as resp:
+            return await resp.json()
+
+    async def _upload_parts(self,
+                            data: bytes,
+                            session_data: dict):
+
+        parts = {'parts': []}
+        upload_size = len(data)
+
+        for start_bytes in range(0, upload_size, session_data['part_size']):
+            chunk = data[start_bytes: start_bytes + session_data['part_size']]
+            chunk_size = len(chunk)  # Final chunk size != session_data['part_size']
+            chunk_sha = base64.standard_b64encode(hashlib.sha1(chunk).digest()).decode()
+
+            byte_range = self._build_range_header((start_bytes, start_bytes + chunk_size - 1))
+            byte_range = str(byte_range).replace('=', ' ') + '/{}'.format(upload_size)
+
+            async with self.request(
+                'PUT',
+                self._build_upload_url('files', 'upload_sessions', session_data['id']),
+                data=chunk,
+                headers={
+                    'Content-Range': byte_range,
+                    'Content-Type:': 'application/octet-stream',
+                    'Digest': 'sha={}'.format(chunk_sha)
+                },
+                expects=(201, 200),
+                throws=exceptions.UploadError,
+            ) as resp:
+                parts['parts'].append((await resp.json())['part'])
+
+        return parts
+
+    async def _complete_session(self,
+                             session_data: dict,
+                             parts: dict,
+                             data_sha: str) -> dict:
+        async with self.request(
+            'POST',
+            self._build_upload_url('files', 'upload_sessions', session_data['id'], 'commit'),
+            data=json.dumps(parts),
+            headers={'Content-Type:': 'application/json',
+                     'Digest': 'sha={}'.format(data_sha)
+                     },
+            expects=(201,),
+            throws=exceptions.UploadError,
+        ) as resp:
+            entry = (await resp.json())['entries'][0]
+
+        return entry
 
     async def delete(self,  # type: ignore
                      path: wb_path.WaterButlerPath,
