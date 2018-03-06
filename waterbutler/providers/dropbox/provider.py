@@ -54,7 +54,7 @@ class DropboxProvider(provider.BaseProvider):
     NAME = 'dropbox'
     BASE_URL = provider_settings.BASE_URL
     NONCHUNKED_UPLOAD_LIMIT = 150000000  # 150 MB
-    CHUNK_SIZE = 150000000  # 150 MB
+    CHUNK_SIZE = 4000000  # 4 MB
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
