@@ -41,7 +41,8 @@ from tests.providers.s3.fixtures import (
     revision_metadata_object,
     session_metadata,
     stream_200_MB,
-    part_headers
+    part_headers,
+    empty_chunks_list
 )
 
 
@@ -114,6 +115,7 @@ def bulk_delete_body(keys):
 
     return (payload, headers)
 
+
 def complete_multipart_upload_body(parts_metadata):
     payload = '<?xml version="1.0" encoding="UTF-8"?>'
     payload += '<CompleteMultipartUpload>'
@@ -134,6 +136,52 @@ def complete_multipart_upload_body(parts_metadata):
     }
 
     return payload, headers
+
+
+def list_upload_chunks_body(parts_metadata):
+    payload = '''<?xml version="1.0" encoding="UTF-8"?>
+        <ListPartsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <Bucket>example-bucket</Bucket>
+            <Key>example-object</Key>
+            <UploadId>XXBsb2FkIElEIGZvciBlbHZpbmcncyVcdS1tb3ZpZS5tMnRzEEEwbG9hZA</UploadId>
+            <Initiator>
+                <ID>arn:aws:iam::111122223333:user/some-user-11116a31-17b5-4fb7-9df5-b288870f11xx</ID>
+                <DisplayName>umat-user-11116a31-17b5-4fb7-9df5-b288870f11xx</DisplayName>
+            </Initiator>
+            <Owner>
+                <ID>75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a</ID>
+                <DisplayName>someName</DisplayName>
+            </Owner>
+            <StorageClass>STANDARD</StorageClass>
+            <PartNumberMarker>1</PartNumberMarker>
+            <NextPartNumberMarker>3</NextPartNumberMarker>
+            <MaxParts>2</MaxParts>
+            <IsTruncated>false</IsTruncated>
+            <Part>
+                <PartNumber>2</PartNumber>
+                <LastModified>2010-11-10T20:48:34.000Z</LastModified>
+                <ETag>"7778aef83f66abc1fa1e8477f296d394"</ETag>
+                <Size>10485760</Size>
+            </Part>
+            <Part>
+                <PartNumber>3</PartNumber>
+                <LastModified>2010-11-10T20:48:33.000Z</LastModified>
+                <ETag>"aaaa18db4cc2f85cedef654fccc4a4x8"</ETag>
+                <Size>10485760</Size>
+            </Part>
+        </ListPartsResult>
+    '''.encode('utf-8')
+
+    md5 = compute_md5(BytesIO(payload))
+
+    headers = {
+        'Content-Length': str(len(payload)),
+        'Content-MD5': md5[1],
+        'Content-Type': 'text/xml',
+    }
+
+    return payload, headers
+
 
 def build_folder_params(path):
     return {'prefix': path.path, 'delimiter': '/'}
@@ -402,10 +450,12 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_chunked_upload_limit(self,
-                                        provider,
-                                        file_stream,
-                                        mock_time):
+    async def test_chunked_upload_limit(
+        self,
+        provider,
+        file_stream,
+        mock_time
+    ):
         path = WaterButlerPath('/foobah')
 
         assert file_stream.size == 6
@@ -419,6 +469,60 @@ class TestCRUD:
         await provider.upload(file_stream, path)
 
         assert provider._chunked_upload.called_with(file_stream, path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_abort_chunked_upload(
+        self,
+        provider,
+        session_metadata,
+        empty_chunks_list
+    ):
+        path = WaterButlerPath('/foobah')
+        parsed_session_metadata = xmltodict.parse(session_metadata, strip_whitespace=False)
+        upload_id = parsed_session_metadata['InitiateMultipartUploadResult']['UploadId']
+        abort_url = provider.bucket.new_key(path.path).generate_url(
+            100,
+            'DELETE',
+            query_parameters={
+                'uploadId': upload_id
+            }
+        )
+        list_url = provider.bucket.new_key(path.path).generate_url(
+            100,
+            'GET',
+            query_parameters={
+                'uploadId': upload_id
+            }
+        )
+        aiohttpretty.register_uri('DELETE', abort_url, status=204)
+        aiohttpretty.register_uri('GET', list_url, body=empty_chunks_list, status=200)
+
+        await provider._abort_chunked_upload(path, parsed_session_metadata)
+
+        assert aiohttpretty.has_call(method='DELETE', uri=abort_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_list_uploaded_chunks(
+        self,
+        provider,
+        session_metadata
+    ):
+        path = WaterButlerPath('/foobah')
+        parsed_session_metadata = xmltodict.parse(session_metadata, strip_whitespace=False)
+        url = provider.bucket.new_key(path.path).generate_url(
+            100,
+            'GET',
+            query_parameters={
+                'uploadId': parsed_session_metadata['InitiateMultipartUploadResult']['UploadId']
+            }
+        )
+        aiohttpretty.register_uri('GET', url, status=200)
+
+        await provider._list_uploaded_chunks(path, parsed_session_metadata)
+
+        assert aiohttpretty.has_call(method='GET', uri=url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -810,15 +914,16 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_parts(self,
-                                provider,
-                                session_metadata,
-                                stream_200_MB,
-                                part_headers):
+    async def test_upload_parts(
+        self,
+        provider,
+        session_metadata,
+        stream_200_MB,
+        part_headers,
+        mock_time
+    ):
         path = WaterButlerPath('/foobah')
-
         generate_url = provider.bucket.new_key(path.path).generate_url
-
         parsed_session_metadata = xmltodict.parse(session_metadata, strip_whitespace=False)
 
         params_part = {
@@ -858,24 +963,32 @@ class TestMetadata:
     @pytest.mark.aiohttpretty
     async def test_complete_multipart_upload(self, provider, session_metadata, part_headers):
         path = WaterButlerPath('/foobah')
-        parsed_session_metadata = xmltodict.parse(session_metadata, strip_whitespace=False)
         parts_metadata = [part_headers] * 2
 
-        params = {'uploadId': parsed_session_metadata['InitiateMultipartUploadResult']['UploadId']}
+        parsed_session_metadata = xmltodict.parse(session_metadata, strip_whitespace=False)
+        params = {
+            'uploadId': parsed_session_metadata['InitiateMultipartUploadResult']['UploadId']
+        }
 
         payload, headers = complete_multipart_upload_body(parts_metadata)
 
-        complete_url = provider.bucket.new_key(path.path).generate_url(100,
-                                                                       'POST',
-                                                                       headers=headers,
-                                                                       query_parameters=params)
+        complete_url = provider.bucket.new_key(path.path).generate_url(
+            100,
+            'POST',
+            headers=headers,
+            query_parameters=params
+        )
 
         aiohttpretty.register_uri('POST',
                                   complete_url,
                                   status=200,
                                   headers=headers)
 
-        await provider._complete_multipart_upload(path, parsed_session_metadata, parts_metadata)
+        await provider._complete_multipart_upload(
+            path,
+            parsed_session_metadata,
+            parts_metadata
+        )
 
         assert aiohttpretty.has_call(method='POST', uri=complete_url, params=params)
 

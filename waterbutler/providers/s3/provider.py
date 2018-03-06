@@ -2,7 +2,7 @@ import os
 import hashlib
 import functools
 from urllib import parse
-
+import asyncio
 import xmltodict
 
 import xml.sax.saxutils
@@ -147,6 +147,7 @@ class S3Provider(provider.BaseProvider):
         :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
+
         await self._check_region()
 
         if not path.is_file:
@@ -230,22 +231,117 @@ class S3Provider(provider.BaseProvider):
         return (await self.metadata(path, **kwargs)), not exists
 
     async def _chunked_upload(self, stream, path) -> None:
-        """Uploads the given stream to S3 over multiple chunks of data, made up of 3 steps.
+        """
+        Uploads the given stream to S3 over multiple chunks of data, made up of 3 steps.
 
         :param waterbutler.core.streams.RequestWrapper stream: The stream to upload to S3
         :param waterbutler.path.WaterBulterPath path: The full path of the key to upload to/into
+
+        :return None
         """
 
         # Step 1. Create a multi-part upload session
         session_data = await self._create_upload_session(path)
 
         # Step 2. Break stream into parts and upload them
-        parts_metadata = await self._upload_parts(stream, path, session_data)
+        try:
+            parts_metadata = await self._upload_parts(stream, path, session_data)
+        except:
+            return await self._abort_chunked_upload(path, session_data)
 
         # Step 3. Commit the parts and end the upload session
         await self._complete_multipart_upload(path, session_data, parts_metadata)
 
+    async def _abort_chunked_upload(self, path, session_data):
+        """
+        Sends an abort request to amazon s3. Triggers s3 to release storage
+        that was allocated to the parts during the upload. This request must be
+        sent if an upload is not going to be completed because the storage will
+        incur charges if not released.
+
+        If a chunk upload request is in progress when the abort request it
+        proccessed by amazon, that storage will not be cleared. To make sure
+        this is clear, we check the list of parts uploaded after sending the
+        abort request.
+
+        If anything here errors, we should be sure to notify the user to check
+        their s3 account, that the upload failed, but they may still be charged
+        for storage, and that they should manually ensure any unwanted files
+        are removed. This condition should be logged for debugging purposes.
+
+        https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadAbort.html
+        """
+
+        headers = {}
+        params = {
+            'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']
+        }
+
+        resp = await self.make_request(
+            'DELETE',
+            lambda: self.bucket.new_key(path.path).generate_url(
+                settings.TEMP_URL_SECS,
+                'DELETE',
+                query_parameters=params,
+                headers=headers
+            ),
+            skip_auto_headers={'CONTENT-TYPE'},
+            headers=headers,
+            params=params,
+            expects=(204,),
+            throws=exceptions.UploadError
+        )
+        await resp.release()
+
+        uploaded_chunks_list = xmltodict.parse(
+            await self._list_uploaded_chunks(path, session_data),
+            strip_whitespace=False)
+
+        try:
+            if len(uploaded_chunks_list["ListPartsResult"]["Part"]) > 0:
+                self._abort_chunked_upload(path)
+        except:
+            return
+
+    async def _list_uploaded_chunks(self, path, session_data):
+        """
+        Lists the uploaded parts that are currently uploaded for a given upload
+        session.
+
+        https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadListParts.html
+        """
+
+        headers = {}
+        params = {
+            'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']
+        }
+
+        resp = await self.make_request(
+            'GET',
+            lambda: self.bucket.new_key(path.path).generate_url(
+                settings.TEMP_URL_SECS,
+                'GET',
+                query_parameters=params,
+                headers=headers
+            ),
+            skip_auto_headers={'CONTENT-TYPE'},
+            headers=headers,
+            params=params,
+            expects=(200, 201),
+            throws=exceptions.UploadError
+        )
+        chunk_list = await resp.read()
+        await resp.release()
+        return chunk_list
+
     async def _create_upload_session(self, path: WaterButlerPath) -> dict:
+        """
+        Creates an amazon s3 chunked upload session. s3 uses a session to
+        keep track of the particular upload chunks that are associated with
+        each other.
+
+        https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadInitiate.html
+        """
 
         headers = {'x-amz-server-side-encryption': 'AES256'}
         params = {'uploads': ''}
@@ -270,53 +366,57 @@ class S3Provider(provider.BaseProvider):
         upload_session_metadata = await resp.read()
         return xmltodict.parse(upload_session_metadata, strip_whitespace=False)
 
+    async def _upload_part(self, stream, path, session_data, chunk_number):
+        chunk = await stream.read(self.CHUNK_SIZE)
+        headers = {
+            'Content-Length': str(len(chunk))
+        }
+
+        params = {
+            'partNumber': str(chunk_number + 1),
+            'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']
+        }
+
+        upload_url = functools.partial(
+            self.bucket.new_key(path.path).generate_url,
+            settings.TEMP_URL_SECS,
+            'PUT',
+            query_parameters=params,
+            headers=headers
+        )
+
+        resp = await self.make_request(
+            'PUT',
+            upload_url,
+            data=chunk,
+            skip_auto_headers={'CONTENT-TYPE'},
+            headers=headers,
+            params=params,
+            expects=(200, 201,),
+            throws=exceptions.UploadError,
+        )
+        await resp.release()
+        return resp.headers
+
     async def _upload_parts(self, stream, path, session_data):
 
-        parts_metadata = []
-
-        for i, _ in enumerate(range(0, stream.size, self.CHUNK_SIZE)):
-            chunk = await stream.read(self.CHUNK_SIZE)
-            headers = {'Content-Length': str(len(chunk))}
-
-            params = {'partNumber': str(i + 1),
-                      'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']}
-
-            upload_url = functools.partial(
-                self.bucket.new_key(path.path).generate_url,
-                settings.TEMP_URL_SECS,
-                'PUT',
-                query_parameters=params,
-                headers=headers
-            )
-
-            resp = await self.make_request(
-                'PUT',
-                upload_url,
-                data=chunk,
-                skip_auto_headers={'CONTENT-TYPE'},
-                headers=headers,
-                params=params,
-                expects=(200, 201,),
-                throws=exceptions.UploadError,
-            )
-            await resp.release()
-            parts_metadata.append(resp.headers)
-
-        return parts_metadata
+        return await asyncio.gather(*[self._upload_part(stream, path, session_data, i)
+            for i, _ in enumerate(range(0, stream.size, self.CHUNK_SIZE))])
 
     async def _complete_multipart_upload(self, path, session_data, parts_metadata):
 
-        params = {'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']}
+        params = {
+            'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']
+        }
 
-        payload = '<?xml version="1.0" encoding="UTF-8"?>'
-        payload += '<CompleteMultipartUpload>'
-        for i, part in enumerate(parts_metadata):
-            payload += '<Part>'
-            payload += '<PartNumber>{}</PartNumber>'.format(i + 1)  # part number must be >= 1
-            payload += '<ETag>{}</ETag>'.format(xml.sax.saxutils.escape(part['ETAG']))
-            payload += '</Part>'
-        payload += '</CompleteMultipartUpload>'
-        payload = payload.encode('utf-8')
+        payload = ''.join([
+            '<?xml version="1.0" encoding="UTF-8"?><CompleteMultipartUpload>',
+            ''.join(['<Part><PartNumber>{}</PartNumber><ETag>{}</ETag></Part>'.format(
+                i + 1,
+                xml.sax.saxutils.escape(part['ETAG']))
+                for i, part in enumerate(parts_metadata)]),
+            '</CompleteMultipartUpload>'
+        ]).encode('utf-8')
 
         md5 = compute_md5(BytesIO(payload))
 
@@ -340,7 +440,7 @@ class S3Provider(provider.BaseProvider):
             data=payload,
             headers=headers,
             params=params,
-            expects=(200, 201,),
+            expects=(200, 201),
             throws=exceptions.UploadError,
         )
         await resp.release()
