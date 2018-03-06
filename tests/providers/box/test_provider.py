@@ -224,6 +224,27 @@ class TestDownload:
 
         assert e.value.code == 404
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_range(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']['entries'][0]
+        path = WaterButlerPath('/triangles.txt', _ids=(provider.folder, item['id']))
+
+        metadata_url = provider.build_url('files', item['id'])
+        content_url = provider.build_url('files', item['id'], 'content')
+
+        aiohttpretty.register_json_uri('GET', metadata_url, body=item)
+        aiohttpretty.register_uri('GET', content_url, body=b'be', auto_length=True, status=206)
+
+        result = await provider.download(path, range=(0,1))
+        assert result.partial
+        content = await result.read()
+
+        assert content == b'be'
+        assert aiohttpretty.has_call(method='GET', uri=content_url,
+                                     headers={'Authorization': 'Bearer wrote harry potter',
+                                              'Accept-Encoding': '', 'Range': 'bytes=0-1'})
+
 
 class TestUpload:
 

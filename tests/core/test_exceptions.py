@@ -8,6 +8,7 @@ class TestExceptionSerialization:
     @pytest.mark.parametrize('exception_class', [
         (exceptions.WaterButlerError),
         (exceptions.InvalidParameters),
+        (exceptions.InvalidHeaderError),
         (exceptions.UnsupportedHTTPMethodError),
         (exceptions.UnsupportedActionError),
         (exceptions.PluginError),

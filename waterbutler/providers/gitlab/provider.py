@@ -197,7 +197,7 @@ class GitLabProvider(provider.BaseProvider):
         return [GitLabRevision(item) for item in data]
 
     async def download(self,  # type: ignore
-                       path: GitLabPath, **kwargs):
+                       path: GitLabPath, range: typing.Tuple[int, int]=None, **kwargs):
         """Return a stream to the specified file on GitLab.
 
         There is an endpoint for downloading the raw file directly, but we cannot use it because
@@ -217,13 +217,16 @@ class GitLabProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
+        logger.debug('requested-range:: {}'.format(range))
         url = self._build_file_url(path)
         resp = await self.make_request(
             'GET',
             url,
+            range=range,
             expects=(200,),
             throws=exceptions.DownloadError,
         )
+        logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
 
         raw_data = (await resp.read()).decode("utf-8")
         data = None
@@ -235,9 +238,17 @@ class GitLabProvider(provider.BaseProvider):
             # fixed in GL v9.5
             data = self._convert_ruby_hash_to_dict(raw_data)
 
-        raw = base64.b64decode(data['content'])
-
         mdict_options = {}
+
+        raw = base64.b64decode(data['content'])
+        if range is not None:
+            start, end = range
+            orig_len = len(raw)
+            if start is not None and end is not None:
+                raw = raw[start:end + 1]
+                mdict_options['Content-Range'] = 'bytes {}-{}/{}'.format(start, end, orig_len)
+                resp.status = 206
+
         mimetype = mimetypes.guess_type(path.full_path)[0]
         if mimetype is not None:
             mdict_options['CONTENT-TYPE'] = mimetype

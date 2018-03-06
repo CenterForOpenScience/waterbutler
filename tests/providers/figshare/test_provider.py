@@ -1075,6 +1075,36 @@ class TestArticleCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_article_download_range(self, article_provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']
+        file_id = str(item['id'])
+        file_name = str(item['name'])
+        body = b'castle on a cloud'
+        root_parts = article_provider.root_path_parts
+
+        article_metadata_url = article_provider.build_url(False, *root_parts)
+        download_url = item['download_url']
+
+        aiohttpretty.register_json_uri('GET', article_metadata_url,
+                                       body=root_provider_fixtures['file_article_metadata'])
+        aiohttpretty.register_uri('GET', download_url, params={'token': article_provider.token},
+                                  body=body[0:2], auto_length=True, status=206)
+
+        path = FigsharePath('/{}'.format(file_name), _ids=('', file_id),
+                            folder=False, is_public=False)
+
+        result = await article_provider.download(path, range=(0, 1))
+        assert result.partial
+        content = await result.read()
+        assert content == b'ca'
+
+        assert aiohttpretty.has_call(method='GET', uri=download_url,
+                                     headers={'Range': 'bytes=0-1',
+                                              'Authorization': 'token freddie'},
+                                     params={'token': 'freddie'})
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_article_download_path_not_file(self, article_provider, root_provider_fixtures):
         item = root_provider_fixtures['file_metadata']
         path = FigsharePath('/testfolder/', _ids=('', ), folder=True, is_public=False)
