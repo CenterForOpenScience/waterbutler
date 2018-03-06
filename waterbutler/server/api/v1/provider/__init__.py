@@ -150,7 +150,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if any((method in ('HEAD', 'OPTIONS'), status == 202, status > 302, status < 200)):
             return
 
-        if method == 'GET' and 'meta' in self.request.query_arguments:
+        if method == 'GET' and ('meta' in self.request.query_arguments or 'revisions' in self.request.query_arguments):
             return
 
         # Done here just because method is defined
