@@ -5,6 +5,7 @@ from urllib.parse import urlparse, quote
 import typing
 
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.exceptions import WaterButlerError
 
 
 def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:
@@ -100,3 +101,27 @@ def decode_and_hexlify_hashes(hash_str: str) -> typing.Union[str, None]:
     """
 
     return binascii.hexlify(base64.b64decode(hash_str.encode())).decode() if hash_str else None
+
+
+def build_canonical_ext_headers_str(headers: dict) -> str:
+    """Build a string for canonical extension headers, which is part of the string to sign.
+
+    Here is the rule to follow when building the string:
+        cloud.google.com/storage/docs/access-control/signed-urls#about-canonical-extension-headers
+
+    For the limited version of the Google Cloud provider, only ``_intra_copy_file`` uses a canonical
+    extension header.  TODO [Phase 1.5]: fully implement this function
+
+    :param headers: the canonical extension headers
+    :rtype str:
+    """
+
+    # Return an empty string instead of ``None`` so it can be properly concatenated without if check
+    if not headers:
+        return ''
+
+    if len(headers) != 1:
+        raise WaterButlerError('The limited provider only supports one canonical extension header.')
+
+    for key, value in headers.items():
+        return '{}:{}\n'.format(key.strip().lower(), value.strip().lower())
