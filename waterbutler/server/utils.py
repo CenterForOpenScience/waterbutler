@@ -1,6 +1,5 @@
 import tornado.iostream
 
-from waterbutler.core.exceptions import InvalidHeaderError
 from waterbutler.server import settings
 
 CORS_ACCEPT_HEADERS = [
@@ -30,22 +29,30 @@ def make_disposition(filename):
 
 
 def parse_request_range(range_header):
-    """WB uses tornado's httputil._parse_request_range function to parse the Range HTTP header and
-    return a tuple representing the range.  Tornado's version returns a tuple suitable for slicing
-    arrays, meaning that a range of 0-1 will be returned as ``(0, 2)``.  WB had been assuming that
-    the tuple would represent the first and last byte positions and was consistenly returning one
-    more byte than requested. Since WB doesn't ever use ranges to do list slicing of byte streams,
-    this function wraps tornado's version and returns the actual byte indices.
+    """WB uses tornado's ``httputil._parse_request_range`` function to parse the Range HTTP header
+    and return a tuple representing the range.  Tornado's version returns a tuple suitable for
+    slicing arrays, meaning that a range of 0-1 will be returned as ``(0, 2)``.  WB had been
+    assuming that the tuple would represent the first and last byte positions and was consistently
+    returning one more byte than requested. Since WB doesn't ever use ranges to do list slicing of
+    byte streams, this function wraps tornado's version and returns the actual byte indices.
 
     Ex. ``Range: bytes=0-1`` will be returned as ``(0, 1)``.
 
-    If the end byte is omitted, the second element of the tuple will be ``None``. If no byte range
-    is given or an unfamiliar formatting is used, this function will return ``None``.  This
-    function does not understand multiple ranges (``Range: bytes:0-1,5-6``) and will return
-    ``None`` if given one.
+    If the end byte is omitted, the second element of the tuple will be ``None``. This will be sent
+    to the provider as an open ended range, e.g. (``Range: bytes=5-``).  Most providers interpret
+    this to mean "send from the start byte to the end of the file".
 
-    If the start byte is omitted or if the end byte is less than the first byte an
-    `InvalidHeaderError` will be raised.
+    If this function receives an unsupported or unfamiliar Range header, it will return ``None``,
+    indicating that the full file should be sent.  Some formats supported by other providers but
+    unsupported by WB include:
+
+    * ``Range: bytes=-5`` -- some providers interpret this as "send the last five bytes"
+
+    * ``Range: bytes=0-5,10-12`` -- indicates a multi-range, "send the first six bytes, then the
+      next three bytes starting from the eleventh".
+
+    Unfamiliar byte ranges are anything not matching ``^bytes=[0-9]+\-[0-9]*$``, or ranges where
+    the end byte position is less than the start byte.
 
     :param str range_header: a string containing the value of the Range header
     :rtype: `tuple` or `None`
@@ -57,15 +64,13 @@ def parse_request_range(range_header):
         return request_range
 
     start, end = request_range
-    if start is None and end is None:
+    if start is None or start < 0:
         return None
-    elif start is None or start < 0:
-        raise InvalidHeaderError('Unsupported Range header format: {}'.format(range_header))
 
     if end is not None:
         end -= 1
         if end < start:
-            raise InvalidHeaderError('Unsupported Range header format: {}'.format(range_header))
+            return None
 
     return (start, end)
 

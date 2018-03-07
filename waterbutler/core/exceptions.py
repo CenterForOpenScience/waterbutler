@@ -61,13 +61,6 @@ class InvalidParameters(WaterButlerError):
         super().__init__(message, code=code)
 
 
-class InvalidHeaderError(WaterButlerError):
-    """An invalid value for an HTTP header was given.
-    """
-    def __init__(self, message, is_user_error=True):
-        super().__init__(message, code=HTTPStatus.BAD_REQUEST, is_user_error=is_user_error)
-
-
 class UnsupportedHTTPMethodError(WaterButlerError):
     """An unsupported HTTP method was used.
     """

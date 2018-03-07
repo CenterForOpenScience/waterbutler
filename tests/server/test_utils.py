@@ -5,7 +5,6 @@ from tornado import testing
 
 from tests.server.api.v1.utils import ServerTestCase
 
-from waterbutler.core.exceptions import InvalidHeaderError
 from waterbutler.server.utils import CORsMixin, parse_request_range
 
 
@@ -181,17 +180,12 @@ class TestRangeParsing():
         ('bytes=',         None),
         ('foo=42',         None),
         ('bytes=1-2,6-10', None),
+        ('bytes=-6',       None),
+        ('bytes=-0',       None),
+        ('bytes=6-1',      None),
+        ('bytes=-3-5',     None),
     ])
     def test_range_parsing(self, range_header, expected):
         result = parse_request_range(range_header)
         assert result == expected
-
-    @pytest.mark.parametrize("range_header", [
-        ('bytes=-6'),
-        ('bytes=-0'),
-        ('bytes=6-1'),
-    ])
-    def test_range_parsing_errors(self, range_header):
-        with pytest.raises(InvalidHeaderError) as exc:
-            parse_request_range(range_header)
 
