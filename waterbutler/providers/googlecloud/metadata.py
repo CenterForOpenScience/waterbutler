@@ -3,6 +3,7 @@ import os
 import abc
 import typing
 import logging
+from aiohttp import MultiDict
 
 from waterbutler.core import metadata
 from waterbutler.core.exceptions import MetadataError
@@ -26,7 +27,7 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
         return self.build_path(self.raw.get('object_name', None))
 
     @staticmethod
-    def get_metadata_from_resp_headers(obj_name: str, resp_headers: dict) -> dict:
+    def get_metadata_from_resp_headers(obj_name: str, resp_headers: MultiDict) -> dict:
         """Retrieve the metadata from HTTP response headers.
 
         Refer to the example JSON file "tests/googlecloud/fixtures/metadata/file-raw.json" and
@@ -48,8 +49,8 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
             https://cloud.google.com/storage/docs/xml-api/reference-headers#xgoogstoredcontentlength
             "A response header that indicates the content length (in bytes) of the object as stored
             in Cloud Storage, independent of any server-driven negotiation that might occur for
-            individual requests for the object."  If for whatever reason this header does not exist,
-            use value in "Content-Length" instead.
+            individual requests for the object."  Do not use the "Content-Length" header, it is the
+            length of the response body, not the size of the object.
 
             Version: "x-goog-generation"
             https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooggeneration
@@ -57,7 +58,7 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
 
         There are two pieces of information that are missing from the header: one for  "created_utc"
         and the other for "path".  Set "created_utc" to ``None`` and build the path from the first
-        argument "object_name"
+        argument "object_name".
 
         :param obj_name: the "Object Name" of the object
         :param resp_headers: the response headers of the metadata HEAD request
@@ -65,8 +66,7 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
         """
 
         # HTTP Response Headers
-        etag = resp_headers.get('etag', None)
-        content_length = resp_headers.get('content-length', None)
+        etag = resp_headers.get('etag', None).strip('"')
         content_type = resp_headers.get('content-type', None)
         last_modified = resp_headers.get('last-modified', None)
 
@@ -74,30 +74,33 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
         stored_content_length = resp_headers.get('x-goog-stored-content-length', None)
         generation = resp_headers.get('x-goog-generation', None)
 
-        # TODO: verify the assumption that file objects always have both CRC32C and MD5
-        google_hash = resp_headers.get('x-goog-hash', None)
-        pattern = r'((crc32c)=(.*==),(md5)=(.*==))|((md5)=(.*==),(crc32c)=(.*==))'
-        match = re.match(pattern, google_hash)
+        # Quirks:
+        #
+        # `aiohttp` parses the raw header: x-goog-hash: crc32c=Tf8tmw==,md5=mkaUfJxiLXeSEl2OpExGOA==
+        # into a dictionary that can have multiple identical keys. This `resp_headers` is of type
+        # `aiohttp._multidict.CIMultiDictProxy` which provides the `.getall(key)` to "Return a list
+        #  of all values matching the key."
+        google_hash_list = resp_headers.getall('x-goog-hash', None)
+        if not google_hash_list:
+            raise MetadataError('Missing header "x-goog-hash"')
 
-        if not match:
-            raise MetadataError('Fail to parse HTTP response header: "x-goog-hash"')
-        start_index = 2 if match.group(1) else 7 if match.group(6) else None
-        if not start_index:
-            raise MetadataError('Fail to parse HTTP response header: "x-goog-hash"')
-        hashes = {
-            match.group(start_index): decode_and_hexlify_hashes(match.group(start_index + 1)),
-            match.group(start_index + 2): decode_and_hexlify_hashes(match.group(start_index + 3)),
-        }
+        pattern = r'(crc32c|md5)=(.*==)'
+        google_hashes = {}
+        for google_hash in google_hash_list:
+            match = re.match(pattern, google_hash)
+            if not match:
+                raise MetadataError('Fail to parse HTTP response header: "x-goog-hash"')
+            google_hashes.update({match.group(1): decode_and_hexlify_hashes(match.group(2))})
 
         return {
             'object_name': obj_name,
             'content_type': content_type,
             'last_modified': last_modified,
-            'size': stored_content_length or content_length,
+            'size': stored_content_length,
             'etag': etag,
             'extra': {
                 'generation': generation,
-                'hashes': hashes,
+                'hashes': google_hashes,
             }
         }
 

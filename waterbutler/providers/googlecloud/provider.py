@@ -10,7 +10,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
 from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStreamReader
-from waterbutler.core.metadata import BaseFileMetadata, BaseFolderMetadata
 from waterbutler.core.exceptions import (WaterButlerError, MetadataError, NotFoundError,
                                          CopyError, UploadError, DownloadError, DeleteError,
                                          UploadChecksumMismatchError, InvalidProviderConfigError, )
@@ -34,9 +33,10 @@ class GoogleCloudProvider(BaseProvider):
         XML API Docs:
             https://cloud.google.com/storage/docs/xml-api/overview
 
-    The official name of the service is "Cloud Storage" by "Google Cloud Platform". However, it is
-    named ``GoogleCloudProvider`` for better clarity and consistency in WB.  "Google Cloud", "Cloud
-    Storage" and "Google Cloud Storage" are used interchangeably when referring to this service.
+    The official name of the service is "Cloud Storage" provided by "Google Cloud Platform".
+    However, it is named ``GoogleCloudProvider`` for better clarity and consistency in WB.
+    "Google Cloud", "Cloud Storage" and "Google Cloud Storage" are used interchangeably when
+    referring to this service.  Sometimes "GC", "GCS" are used as well (e.g. commit messages).
     """
 
     NAME = 'googlecloud'
@@ -75,7 +75,7 @@ class GoogleCloudProvider(BaseProvider):
         if not self.bucket:
             raise InvalidProviderConfigError(self.NAME, message='Missing bucket settings')
 
-        # TODO [Phase 1]: replaces self.creds with self.json_creds after OSF/DevOps update
+        # TODO [Phase 1]: replaces `self.creds` with `self.json_creds` after OSF/DevOps update
         # self.json_creds = credentials.get('json_creds')
         self.creds = ServiceAccountCredentials.from_json_keyfile_name(pd_settings.CREDS_PATH)
         if not self.creds:
@@ -84,12 +84,8 @@ class GoogleCloudProvider(BaseProvider):
                 message='Missing service account credentials'
             )
 
+        # `self.region` has no functional usage or impact
         self.region = settings.get('region')
-
-    @property
-    def default_headers(self) -> dict:
-
-        return {}
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
         return await self.validate_path(path)
@@ -123,7 +119,7 @@ class GoogleCloudProvider(BaseProvider):
             path: WaterButlerPath,
             *args,
             **kwargs
-    ) -> typing.Tuple[BaseGoogleCloudMetadata, bool]:
+    ) -> typing.Tuple[GoogleCloudFileMetadata, bool]:
         """Upload a stream with the given WaterButler path.
 
         PUT Object:
@@ -131,18 +127,28 @@ class GoogleCloudProvider(BaseProvider):
         Upload an Object
             https://cloud.google.com/storage/docs/xml-api/put-object-upload
 
-        Quirks: The response body is empty and the response header does not have "last-modified" and
-                have a "content-type" for the response itself ("text/html; charset=UTF-8"), not for
-                the file WB just uploaded.  Need to make a metadata request after successful upload.
+        Quirks:
 
-        Quirks: The "etag" header XML API returns is the hex digest of the MD5.  Use this header
-                to verify the upload checksum instead of parsing and converting the "x-goog-hash".
+        The response body is empty and the response header does not have "last-modified" and have a
+        "content-type" for the response itself ("text/html; charset=UTF-8"), not for the file WB
+        just uploaded.  Must make a metadata request after successful upload.
+
+        Quirks:
+
+        The "etag" header XML API returns is the exactly the same Hex Digest of the MD5.  WB uses
+        this header to verify the upload checksum instead of parsing and converting hash header.
+
+        Quirks:
+
+        Similar to Amazon S3, WB must set `skip_auto_headers={'Content-Type'}` when calling the
+        `.make_request()` because "Content-Type" is part of the string to sign.  The signed request
+        would fail with HTTP 403 Forbidden: SignatureDoesNotMatch if auto headers were not skipped.
 
         :param stream: the stream to post
         :param path: the WaterButler path of the file to upload
         :param args: additional args are ignored
         :param kwargs: additional kwargs are ignored
-        :rtype BaseGoogleCloudMetadata:
+        :rtype GoogleCloudFileMetadata:
         :rtype bool:
         """
 
@@ -152,16 +158,14 @@ class GoogleCloudProvider(BaseProvider):
 
         req_method = 'PUT'
         obj_name = utils.get_obj_name(path, is_folder=False)
-        signed_url = self.build_and_sign_url(req_method, obj_name, **{})
-        logger.info('signed_upload_url = "{}"'.format(signed_url))
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
         headers = {'Content-Length': str(stream.size)}
 
         resp = await self.make_request(
             req_method,
             signed_url,
             data=stream,
-            # TODO [Phase 1]: s3 uses this, how about google cloud?
-            # skip_auto_headers={'Content-Type'},
+            skip_auto_headers={'Content-Type'},
             headers=headers,
             expects=(HTTPStatus.OK,),
             throws=UploadError
@@ -169,7 +173,11 @@ class GoogleCloudProvider(BaseProvider):
 
         await resp.release()
 
-        if resp.headers.get('etag', None) != stream.writers['md5'].hexdigest:
+        header_etag = resp.headers.get('etag', None)
+        if not header_etag:
+            raise UploadError('Missing response header "ETag" for upload.')
+
+        if header_etag.strip('"') != stream.writers['md5'].hexdigest:
             raise UploadChecksumMismatchError()
 
         metadata = await self._metadata_object(path, is_folder=False)
@@ -182,29 +190,23 @@ class GoogleCloudProvider(BaseProvider):
             range=None,
             **kwargs
     ) -> typing.Union[str, ResponseStreamReader]:
-        """Download the object with the given path.  The behavior of download differs depending on
-        the value of ``accept_url``.
+        """Download the object with the given path.
 
         GET Object:
             https://cloud.google.com/storage/docs/xml-api/get-object
         Download an Object
             https://cloud.google.com/storage/docs/xml-api/get-object-download
 
-        1. ``accept_url == False``
+        The behavior of download differs depending on the value of `accept_url`.
 
-            Make a standard signed request and return a ``ResponseStreamReader``
-
-
-        2. ``accept_url == True``
+        1. `accept_url == False`: Make a standard signed request and return a `ResponseStreamReader`
 
 
-            Build and sign the GET request with an extra "content-disposition" query to trigger the
-            download. Return the signed URL.
+        2. `accept_url == True`: Build and sign the GET request with an extra "content-disposition"
+                                 query to trigger the download. Return the signed URL.
 
-            Content Disposition: "A query string parameter that allows content-disposition to be
-            overridden for authenticated GET requests."
-                https://cloud.google.com/storage/docs/xml-api/reference-headers
-                #responsecontentdisposition.
+        More on  Content Disposition: "A query string parameter that allows content-disposition to
+        be overridden for authenticated GET requests."
 
         :param path: the WaterButler path to the object to download
         :param accept_url: the flag to solicit a direct time-limited download url from the provider
@@ -223,12 +225,10 @@ class GoogleCloudProvider(BaseProvider):
         if accept_url:
             display_name = kwargs.get('displayName', path.name)
             query = {'response-content-disposition': 'attachment; filename={}'.format(display_name)}
-            signed_url = self.build_and_sign_url(req_method, obj_name, **query)
-            logger.info('signed_download_url = "{}"'.format(signed_url))
+            signed_url = self._build_and_sign_url(req_method, obj_name, **query)
             return signed_url
 
-        signed_url = self.build_and_sign_url(req_method, obj_name, **{})
-        logger.info('signed_download_url = "{}"'.format(signed_url))
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
         resp = await self.make_request(
             req_method,
             signed_url,
@@ -264,7 +264,7 @@ class GoogleCloudProvider(BaseProvider):
             dest_provider: BaseProvider,
             source_path: WaterButlerPath,
             dest_path: WaterButlerPath
-    ) -> typing.Tuple[typing.Union[BaseFileMetadata, BaseFolderMetadata], bool]:
+    ) -> typing.Tuple[typing.Union[GoogleCloudFileMetadata, GoogleCloudFolderMetadata], bool]:
         """Copy file objects within the same Google Cloud Storage Provider.
 
         Similarly to delete folders, intra-copy folders requires "BATCH" request support which is
@@ -277,8 +277,8 @@ class GoogleCloudProvider(BaseProvider):
         :param dest_provider: the destination provider, must be the same as the source one
         :param source_path: the source WaterButler path for the object to copy from
         :param dest_path: the destination WaterButler path for the object to copy to
-        :rtype BaseFileMetadata:
-        :rtype BaseFolderMetadata:
+        :rtype GoogleCloudFileMetadata:
+        :rtype GoogleCloudFolderMetadata:
         :rtype bool:
         """
 
@@ -296,8 +296,6 @@ class GoogleCloudProvider(BaseProvider):
         a similar action called "BULK" request.  Need more investigation in Phase 2.  Phase 1
         OSFStorage does not perform any folder level actions (e.g. delete, copy ,move, etc.)
         using the inner provider.
-
-        TODO [Phase 2]: investigate whether folders are eligible; if so, enable for folders
         """
         return self == other and not getattr(path, 'is_folder', False)
 
@@ -312,74 +310,6 @@ class GoogleCloudProvider(BaseProvider):
         """Google Cloud Storage allows a file and a folder to share the same name.
         """
         return True
-
-    def build_and_sign_url(
-            self,
-            http_method: str,
-            obj_name: str,
-            content_md5: str='',
-            content_type: str='',
-            canonical_ext_headers: dict=None,
-            **queries
-    ) -> str:
-        """Build and sign the request URL for various actions.
-
-        Building the URL:
-
-            Most Cloud Storage XML API requests use the following URI for accessing buckets and
-            objects.  Both forms are supported by Google and we select the second one since we use
-            signed request.
-
-                [ ] https://[BUCKET_NAME].[BASE_URL]/[OBJECT_NAME]
-                [x] https://[BASE_URL]/[BUCKET_NAME]/[OBJECT_NAME]
-
-
-        Signing the URL:
-
-            WB uses authentication by signed URL for Google Cloud Storage.  XML API is the only
-            choice that supports such authentication.
-
-            Google Cloud Storage: Signed URLs
-                https://cloud.google.com/storage/docs/access-control/signed-urls
-                https://cloud.google.com/storage/docs/access-control/create-signed-urls-program
-
-            "Signed URLs can only be used to access resources in Google Cloud Storage through the
-            XML API."
-
-        :param obj_name: the object name of the object or src object
-        :param http_method: the http method
-        :param content_md5: the value of the Content-MD5 header
-        :param content_type: the value of the Content-Type header
-        :param canonical_ext_headers: the canonical extension headers string
-        :param queries: the dict for query parameters
-        :rtype str:
-        """
-
-        segments = (self.bucket, )
-
-        if obj_name:
-            segments = segments + (obj_name,)
-
-        expires = int(time.time()) + self.SIGNATURE_EXPIRATION
-        canonical_resource = utils.build_url('', *segments, **{})
-
-        canonical_ext_headers_str = utils.build_canonical_ext_headers_str(canonical_ext_headers)
-        canonical_part = canonical_ext_headers_str + canonical_resource
-        string_to_sign = '\n'.join([
-            http_method,
-            content_md5,
-            content_type,
-            str(expires),
-            canonical_part
-        ])
-        encoded_signature = base64.b64encode(self.creds.sign_blob(string_to_sign)[1])
-        queries.update({
-            'GoogleAccessId': self.creds.service_account_email,
-            'Expires': str(expires),
-            'Signature': encoded_signature
-        })
-        signed_url = utils.build_url(self.BASE_URL, *segments, **queries)
-        return signed_url
 
     async def _exists_folder(self, path: WaterButlerPath) -> bool:
         """Check if a folder with the given WaterButler path exists. Calls ``_metadata_object()``.
@@ -437,8 +367,7 @@ class GoogleCloudProvider(BaseProvider):
 
         req_method = 'HEAD'
         obj_name = utils.get_obj_name(path, is_folder=is_folder)
-        signed_url = self.build_and_sign_url(req_method, obj_name, **{})
-        logger.info('signed_metadata_url = "{}"'.format(signed_url))
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
 
         resp = await self.make_request(
             req_method,
@@ -470,10 +399,9 @@ class GoogleCloudProvider(BaseProvider):
         :rtype None:
         """
 
-        req_method = 'HEAD'
+        req_method = 'DELETE'
         obj_name = utils.get_obj_name(path, is_folder=False)
-        signed_url = self.build_and_sign_url(req_method, obj_name, **{})
-        logger.info('signed_delete_url = "{}"'.format(signed_url))
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
 
         resp = await self.make_request(
             req_method,
@@ -498,8 +426,8 @@ class GoogleCloudProvider(BaseProvider):
 
         The response body contains "CopyObjectResult", "ETag" and "LastModified" of the new file.
         The response header contains most of the metadata WB needed for the new file. However, two
-        pieces are missing: "content-type" and "last-modified".  The metadata can be constructed
-        from the response but current implementation chooses to make a metadata request.
+        pieces are missing/incorrect: "content-type" and "last-modified".  The metadata can be
+        constructed from the response but current implementation chooses to make a metadata request.
 
         :param dest_provider: the destination provider, must be the same as the source one
         :param source_path: the source WaterButler path for the object to copy from
@@ -510,22 +438,20 @@ class GoogleCloudProvider(BaseProvider):
 
         created = not await dest_provider.exists(dest_path)
 
-        req_method = 'HEAD'
+        req_method = 'PUT'
+        headers = {'Content-Length': '0', 'Content-Type': ''}
+
         src_obj_name = utils.get_obj_name(source_path, is_folder=False)
+        canonical_ext_headers = {'x-goog-copy-source': '{}/{}'.format(self.bucket, src_obj_name)}
+        headers.update(canonical_ext_headers)
+
         dest_obj_name = utils.get_obj_name(dest_path, is_folder=False)
-        canonical_ext_headers = {'x-goog-copy-source': src_obj_name}
-        signed_url = self.build_and_sign_url(
+        signed_url = self._build_and_sign_url(
             req_method,
             dest_obj_name,
             canonical_ext_headers=canonical_ext_headers,
             **{}
         )
-        logger.info('signed_intra_copy_url = "{}"'.format(signed_url))
-
-        headers = {
-            'Content-Length': '0',
-            'Content-Type': ''
-        }.update(canonical_ext_headers)
 
         resp = await self.make_request(
             req_method,
@@ -541,3 +467,72 @@ class GoogleCloudProvider(BaseProvider):
         metadata = await self._metadata_object(dest_path, is_folder=False)
 
         return metadata, created
+
+    def _build_and_sign_url(
+            self,
+            http_method: str,
+            obj_name: str,
+            content_md5: str='',
+            content_type: str='',
+            canonical_ext_headers: dict=None,
+            **queries
+    ) -> str:
+        """Build and sign the request URL for various actions.
+
+        Building the URL:
+
+            Most Cloud Storage XML API requests use the following URI for accessing buckets and
+            objects.  Both forms are supported by Google and we select the second one since we use
+            signed request.
+
+                [ ] https://[BUCKET_NAME].[BASE_URL]/[OBJECT_NAME]
+                [x] https://[BASE_URL]/[BUCKET_NAME]/[OBJECT_NAME]
+
+
+        Signing the URL:
+
+            WB uses authentication by signed URL for Google Cloud Storage.  XML API is the only
+            choice that supports such authentication.
+
+            Google Cloud Storage: Signed URLs
+                https://cloud.google.com/storage/docs/access-control/signed-urls
+                https://cloud.google.com/storage/docs/access-control/create-signed-urls-program
+
+            "Signed URLs can only be used to access resources in Google Cloud Storage through the
+            XML API."
+
+        :param obj_name: the object name of the object or src object
+        :param http_method: the http method
+        :param content_md5: the value of the Content-MD5 header
+        :param content_type: the value of the Content-Type header
+        :param canonical_ext_headers: the canonical extension headers string
+        :param queries: the dict for query parameters
+        :rtype str:
+        """
+
+        segments = (self.bucket, )
+
+        if obj_name:
+            segments = segments + (obj_name,)
+
+        expires = int(time.time()) + self.SIGNATURE_EXPIRATION
+        canonical_resource = utils.build_url('', *segments, **{})
+        canonical_ext_headers_str = utils.build_canonical_ext_headers_str(canonical_ext_headers)
+        canonical_part = canonical_ext_headers_str + canonical_resource
+
+        string_to_sign = '\n'.join([
+            http_method,
+            content_md5,
+            content_type,
+            str(expires),
+            canonical_part
+        ])
+        encoded_signature = base64.b64encode(self.creds.sign_blob(string_to_sign)[1])
+        queries.update({
+            'GoogleAccessId': self.creds.service_account_email,
+            'Expires': str(expires),
+            'Signature': encoded_signature
+        })
+        signed_url = utils.build_url(self.BASE_URL, *segments, **queries)
+
+        return signed_url

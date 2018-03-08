@@ -1,3 +1,4 @@
+import re
 import base64
 import binascii
 from urllib.parse import urlparse, quote
@@ -124,4 +125,14 @@ def build_canonical_ext_headers_str(headers: dict) -> str:
         raise WaterButlerError('The limited provider only supports one canonical extension header.')
 
     for key, value in headers.items():
-        return '{}:{}\n'.format(key.strip().lower(), value.strip().lower())
+        return '{}:{}\n'.format(key.strip().lower(), value.strip())
+
+
+def verify_raw_google_hash_header(google_hash: str) -> bool:
+    """Verify the format of the raw value of the "x-goog-hash" header.  This is used for test only.
+
+    :param google_hash: the raw value of the "x-goog-hash" header
+    :rtype bool:
+    """
+
+    return True if re.match(r'(crc32c=.*==),(md5=.*==)', google_hash) else False
