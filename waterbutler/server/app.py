@@ -45,7 +45,7 @@ def make_app(debug):
         debug=debug,
     )
     app.sentry_client = AsyncSentryClient(settings.SENTRY_DSN, release=__version__,
-                                        processors=('waterbutler.server.sanitize.WBSanitizer',))
+                                          processors=('waterbutler.server.sanitize.WBSanitizer',))
     return app
 
 

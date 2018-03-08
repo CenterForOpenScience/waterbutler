@@ -15,7 +15,8 @@ class WBSanitizer(SanitizePasswordsProcessor):
     DATAVERSE_SECRET_RE = re.compile(r'[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]'
                                                 '{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}')
 
-    def __init__(self):
+    def __init__(self, client):
+        super().__init__(client)
         # As of raven version 6.4 this attribute name has been changed from FIELDS to KEYS.
         # Will need to be updated when we upgrade.
         self.FIELDS = self.FIELDS.union(['key', 'token', 'refresh_token'])

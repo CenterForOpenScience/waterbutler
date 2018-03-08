@@ -7,7 +7,8 @@ from waterbutler.server.sanitize import WBSanitizer
 
 @pytest.fixture
 def sanitizer():
-    return WBSanitizer()
+    client = mock.Mock()
+    return WBSanitizer(client)  # WBSanitizier doesn't use client, but parent requires it
 
 
 class TestWBSanitizer:
