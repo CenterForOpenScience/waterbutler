@@ -1,0 +1,50 @@
+--===============7330845974216740156==
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <b29c5de2-0db4-490b-b421-6a51b598bd22+1>
+
+DELETE /storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2F
+
+--===============7330845974216740156==
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <b29c5de2-0db4-490b-b421-6a51b598bd22+2>
+
+DELETE /storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2FDSC_0235.JPG
+
+--===============7330845974216740156==
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <b29c5de2-0db4-490b-b421-6a51b598bd22+3>
+
+DELETE /storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2FDSC_0244.JPG
+
+--===============7330845974216740156==
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <b29c5de2-0db4-490b-b421-6a51b598bd22+4>
+
+DELETE /storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-5%2F
+
+--===============7330845974216740156==
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <b29c5de2-0db4-490b-b421-6a51b598bd22+5>
+
+DELETE /storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-5%2FDSC_0235_COPY.JPG
+
+--===============7330845974216740156==
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <b29c5de2-0db4-490b-b421-6a51b598bd22+6>
+
+DELETE /storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-6%2F
+
+--===============7330845974216740156==
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+Content-ID: <b29c5de2-0db4-490b-b421-6a51b598bd22+7>
+
+DELETE /storage/v1/b/gcloud-test.longzechen.com/o/test-folder-1%2Ftest-folder-6%2FDSC_0244_COPY.JPG
+
+--===============7330845974216740156==--
