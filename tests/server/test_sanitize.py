@@ -54,6 +54,16 @@ class TestWBSanitizer:
         expected = 'random characters and other things  ' + self.MASK
         assert sanitizer.sanitize('dv_value', dv_value) == expected
 
+
+        dv_value = 'aaaaaaaa-bbbb-bbbb-bbbb-cccccccccccc-012345678-bbbb-bbbb-bbbb-cccccccccccc'
+        expected = self.MASK + '-0' + self.MASK
+        assert sanitizer.sanitize('dv_value', dv_value) == expected
+
+        dv_value = 'aaaaaaaa-bbbb-bbbb-bbbb-cccccccccccc-bbbb-bbbb-bbbb-cccccccccccc'
+        expected = self.MASK + '-bbbb-bbbb-bbbb-cccccccccccc'
+        assert sanitizer.sanitize('dv_value', dv_value) == expected
+
+
     def test_bytes(self, sanitizer):
         assert sanitizer.sanitize(b'key', 'bossy yogurt') == self.MASK
         assert sanitizer.sanitize(b'should_be_safe', 'snow science') == 'snow science'

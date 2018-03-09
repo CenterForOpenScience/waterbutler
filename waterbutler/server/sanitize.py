@@ -4,16 +4,14 @@ from raven.processors import SanitizePasswordsProcessor
 
 
 class WBSanitizer(SanitizePasswordsProcessor):
-    """
-    Use parent class to asterisk out things that look like passwords, credit card numbers,
-    and API keys in frames, http, and basic extra data.
-
-    In addition, asterisk out Dataverse formatted ouath tokens.
+    """Parent class asterisks out things that look like passwords, credit card numbers, and API
+    keys in frames, http, and basic extra data.  This subclass will also filter values that look
+    like Dataverse access tokens.
     """
 
     # Should specifically match Dataverse secrets. Key format checked on demo and on Harvard
-    DATAVERSE_SECRET_RE = re.compile(r'[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]'
-                                                '{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}')
+    DATAVERSE_SECRET_RE = re.compile(r'[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-'
+                                     '[A-Za-z0-9]{4}-[A-Za-z0-9]{12}')
 
     def __init__(self, client):
         super().__init__(client)
@@ -24,22 +22,16 @@ class WBSanitizer(SanitizePasswordsProcessor):
     def sanitize(self, key, value):
         """Subclass the sanitize function of the `SanitizePasswordsProcessor'."""
 
-        value = SanitizePasswordsProcessor.sanitize(self, key, value)
+        value = super().sanitize(key, value)
 
         if isinstance(value, dict):
             for item in value:
                 value[item] = self.sanitize(item, value[item])
 
-        if isinstance(value, list):
-            new_list = []
-            for item in value:
-                new_list.append(self.sanitize(key, item))
-            value = new_list
+        elif isinstance(value, list):
+            value = [self.sanitize(key, item) for item in value]
 
-        # Check for Dataverse secrets
-        if isinstance(value, str):
-            matches = self.DATAVERSE_SECRET_RE.findall(value)
-            for match in matches:
-                value = value.replace(match, self.MASK)
+        elif isinstance(value, str):  # Check for Dataverse secrets
+            value = self.DATAVERSE_SECRET_RE.sub(self.MASK, value)
 
         return value
