@@ -73,15 +73,23 @@ class GoogleCloudProvider(BaseProvider):
 
         self.bucket = settings.get('bucket')
         if not self.bucket:
-            raise InvalidProviderConfigError(self.NAME, message='Missing bucket settings')
-
-        # TODO [Phase 1]: replaces `self.creds` with `self.json_creds` after OSF/DevOps update
-        # self.json_creds = credentials.get('json_creds')
-        self.creds = ServiceAccountCredentials.from_json_keyfile_name(pd_settings.CREDS_PATH)
-        if not self.creds:
             raise InvalidProviderConfigError(
                 self.NAME,
-                message='Missing service account credentials'
+                message='Missing cloud storage bucket settings from OSF'
+            )
+
+        json_creds = credentials.get('json_creds')
+        if not json_creds:
+            raise InvalidProviderConfigError(
+                self.NAME,
+                message='Missing service account credentials from OSF'
+            )
+        try:
+            self.creds = ServiceAccountCredentials.from_json_keyfile_dict(json_creds)
+        except (ValueError, KeyError) as exc:
+            raise InvalidProviderConfigError(
+                self.NAME,
+                message='Invalid or mal-formed service account credentials: {}'.format(str(exc))
             )
 
         # `self.region` has no functional usage or impact
