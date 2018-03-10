@@ -5,7 +5,7 @@ import hashlib
 import logging
 from http import HTTPStatus
 
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2 import service_account
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
@@ -85,8 +85,8 @@ class GoogleCloudProvider(BaseProvider):
                 message='Missing service account credentials from OSF'
             )
         try:
-            self.creds = ServiceAccountCredentials.from_json_keyfile_dict(json_creds)
-        except (ValueError, KeyError) as exc:
+            self.creds = service_account.Credentials.from_service_account_info(json_creds)
+        except ValueError as exc:
             raise InvalidProviderConfigError(
                 self.NAME,
                 message='Invalid or mal-formed service account credentials: {}'.format(str(exc))
@@ -535,7 +535,7 @@ class GoogleCloudProvider(BaseProvider):
             str(expires),
             canonical_part
         ])
-        encoded_signature = base64.b64encode(self.creds.sign_blob(string_to_sign)[1])
+        encoded_signature = base64.b64encode(self.creds.sign_bytes(string_to_sign))
         queries.update({
             'GoogleAccessId': self.creds.service_account_email,
             'Expires': str(expires),
