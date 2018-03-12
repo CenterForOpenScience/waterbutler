@@ -6,21 +6,29 @@ import pytest
 
 from tests.providers.googlecloud.fixtures.providers import mock_auth, mock_creds, mock_settings
 
-from tests.providers.googlecloud.fixtures.files import (file_name, meta_file_extra,
+from tests.providers.googlecloud.fixtures.files import (file_name,
+                                                        file_wb_path,
+                                                        file_obj_name,
+                                                        meta_file_raw,
+                                                        meta_file_extra,
+                                                        meta_file_parsed,
                                                         meta_file_resp_headers_raw,
-                                                        file_obj_name, file_wb_path,
-                                                        meta_file_raw, meta_file_parsed,)
+                                                        )
 
 from tests.providers.googlecloud.fixtures.folders import (folder_name,
+                                                          folder_wb_path,
+                                                          folder_obj_name,
+                                                          meta_folder_raw,
+                                                          meta_folder_parsed,
                                                           meta_folder_resp_headers_raw,
-                                                          folder_obj_name, folder_wb_path,
-                                                          meta_folder_raw, meta_folder_parsed, )
+                                                          )
 
 from waterbutler.providers.googlecloud import utils
-from waterbutler.providers.googlecloud import (BaseGoogleCloudMetadata, GoogleCloudFileMetadata,
-                                               GoogleCloudFolderMetadata, GoogleCloudProvider, )
-
-logger = logging.getLogger(__name__)
+from waterbutler.providers.googlecloud import (GoogleCloudProvider,
+                                               BaseGoogleCloudMetadata,
+                                               GoogleCloudFileMetadata,
+                                               GoogleCloudFolderMetadata,
+                                               )
 
 
 @pytest.fixture()

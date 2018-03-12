@@ -12,9 +12,9 @@ from waterbutler.core.exceptions import WaterButlerError
 def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:
     """Get the object name of the object with the given Waterbutler Path.
 
-    The "object name" is used by Google Cloud Storage API in path or query parameters to refer
-    to the object as an external identifier. The "folder" name ends with a '/' while the "file"
-    name does not. In addition, both do not start with a '/'.
+    "Object Name" is used by Google Cloud API in request path, queries and headers to refer to the
+    object as an identifier. The "folder" name ends with a '/' while the "file" name does not. In
+    addition, both do not start with a '/'.
 
     :param path: the WaterbutlerPath
     :param is_folder: the folder flag
@@ -25,7 +25,7 @@ def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:
 
 
 def build_path(obj_name: str, is_folder: bool=False) -> str:
-    """Convert the object name to a path string which can pass validation.
+    """Convert the object name to a path string which can pass WaterButler path validation.
 
     :param obj_name: the object name of the objects
     :param is_folder: the folder flag
