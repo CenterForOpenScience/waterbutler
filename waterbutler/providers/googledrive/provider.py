@@ -234,9 +234,16 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         metadata = await self.metadata(path, revision=revision)
 
+        if kwargs.get('mfr', None) and kwargs['mfr'].lower() == 'true':
+            download_url = metadata.raw.get('downloadUrl') or drive_utils.get_alt_export_link(metadata.raw)
+            export_name = metadata.alt_export_name
+        else:
+            download_url = metadata.raw.get('downloadUrl') or drive_utils.get_export_link(metadata.raw)
+            export_name = metadata.export_name
+
         download_resp = await self.make_request(
             'GET',
-            metadata.raw.get('downloadUrl') or drive_utils.get_export_link(metadata.raw),  # type: ignore
+            download_url,
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
@@ -251,7 +258,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         if download_resp.headers.get('Content-Type'):
             # TODO: Add these properties to base class officially, instead of as one-off
             stream.content_type = download_resp.headers['Content-Type']  # type: ignore
-        stream.name = metadata.export_name  # type: ignore
+        stream.name = export_name  # type: ignore
         return stream
 
     async def upload(self, stream, path: wb_path.WaterButlerPath, *args, **kwargs) \
