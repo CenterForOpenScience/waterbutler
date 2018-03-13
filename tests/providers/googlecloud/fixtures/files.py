@@ -33,6 +33,18 @@ def meta_file_parsed():
 
 
 @pytest.fixture()
+def meta_file_upload_raw():
+    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-upload-raw.json'), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture()
+def meta_file_copy_raw():
+    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-copy-raw.json'), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture()
 def meta_file_extra():
     with open(os.path.join(os.path.dirname(__file__), 'metadata/file-extra.json'), 'r') as fp:
         return fp.read()
@@ -46,8 +58,13 @@ def meta_file_resp_headers_raw():
 
 @pytest.fixture
 def file_raw():
-    with open(os.path.join(os.path.dirname(__file__), 'resources/files/file.txt'), 'rb') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'resources/file.txt'), 'rb') as fp:
         return fp.read()
+
+
+@pytest.fixture()
+def file_2_wb_path():
+    return WaterButlerPath('/xml-api/folder-2/text-file-2.txt')
 
 
 @pytest.fixture()

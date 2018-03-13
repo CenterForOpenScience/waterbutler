@@ -1,9 +1,16 @@
 import time
-from urllib.parse import quote, unquote
 from unittest import mock
+from urllib.parse import quote, unquote
 
 import furl
 import pytest
+
+from tests.providers.googlecloud.fixtures.files import (file_wb_path,
+                                                        meta_file_raw,
+                                                        file_obj_name,
+                                                        file_2_obj_name,
+                                                        file_2_copy_obj_name,
+                                                        )
 
 from tests.providers.googlecloud.fixtures.providers import (mock_auth,
                                                             mock_auth_2,
@@ -15,14 +22,8 @@ from tests.providers.googlecloud.fixtures.providers import (mock_auth,
 
 from tests.providers.googlecloud.fixtures.folders import folder_obj_name, folder_wb_path
 
-from tests.providers.googlecloud.fixtures.files import (file_wb_path,
-                                                        meta_file_raw,
-                                                        file_obj_name,
-                                                        file_2_obj_name,
-                                                        file_2_copy_obj_name,
-                                                        )
-
 from waterbutler.providers.googlecloud import utils
+from waterbutler.providers.googlecloud import settings as pd_settings
 from waterbutler.providers.googlecloud import GoogleCloudProvider
 
 
@@ -35,6 +36,11 @@ def mock_provider(mock_auth, mock_creds, mock_settings):
 def mock_time(monkeypatch):
     mock_time = mock.Mock(return_value=1234567890.0)
     monkeypatch.setattr(time, 'time', mock_time)
+
+
+@pytest.fixture
+def expires():
+    return 1234567890 + pd_settings.SIGNATURE_EXPIRATION
 
 
 class TestPathAndNameForObjects:
@@ -81,6 +87,7 @@ class TestBuildAndSignURL:
     def test_build_and_sign_metadata_url(
             self,
             mock_time,
+            expires,
             mock_provider,
             file_2_obj_name
     ):
@@ -89,7 +96,7 @@ class TestBuildAndSignURL:
 
         assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
-        assert url.args.get('Expires') == '1234567950'
+        assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
         assert url.args.get('Signature') == unquote(
             'ndhn7AZQQvy1cyriphHgA3DEQeShTbCTnqTMyRK2X5eOsmCQ2YQBnAIC7dfvLgA%2Bx0h57UAXY88gNdXo1Qlm'
@@ -102,6 +109,7 @@ class TestBuildAndSignURL:
     def test_build_and_sign_upload_url(
             self,
             mock_time,
+            expires,
             mock_provider,
             file_2_obj_name
     ):
@@ -110,7 +118,7 @@ class TestBuildAndSignURL:
 
         assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
-        assert url.args.get('Expires') == '1234567950'
+        assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
         assert url.args.get('Signature') == unquote(
             'adVO2pVvFmUdS824inIBBzly63m5gbBYKP%2FAs910n%2FyX7zPTncyCQBKP9lq6nB%2BDnEvd5Pv5l9rjtMuX'
@@ -123,6 +131,7 @@ class TestBuildAndSignURL:
     def test_build_and_sign_download_url(
             self,
             mock_time,
+            expires,
             mock_provider,
             file_2_obj_name
     ):
@@ -131,7 +140,7 @@ class TestBuildAndSignURL:
 
         assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
-        assert url.args.get('Expires') == '1234567950'
+        assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
         assert url.args.get('Signature') == unquote(
             'lC0Wc5VDE65cVk%2F3RSvO5YA9%2Fw8KMu201oR2cOmWkoJR%2FJcvV3lknK3VVh%2F4gQnbteM1RByBpKwZez'
@@ -144,6 +153,7 @@ class TestBuildAndSignURL:
     def test_build_and_sign_delete_url(
             self,
             mock_time,
+            expires,
             mock_provider,
             file_2_obj_name
     ):
@@ -152,7 +162,7 @@ class TestBuildAndSignURL:
 
         assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
-        assert url.args.get('Expires') == '1234567950'
+        assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
         assert url.args.get('Signature') == unquote(
             'euS%2FNjjQDP%2FYJtFa99WnEjlyi0MDZjruI9bnsqvrvl1ngSDDdpm99SNltETfJCpy7eE6hU6WKntXJj6Zfo'
@@ -165,6 +175,7 @@ class TestBuildAndSignURL:
     def test_build_and_sign_copy_url(
             self,
             mock_time,
+            expires,
             mock_provider,
             file_2_obj_name,
             file_2_copy_obj_name
@@ -181,7 +192,7 @@ class TestBuildAndSignURL:
 
         assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_copy_obj_name, safe=''))
-        assert url.args.get('Expires') == '1234567950'
+        assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
         assert url.args.get('Signature') == unquote(
             'wC2tSJtDlhfv1gKOFdPk9L3PmyRIHId2ehqKEBDuiZ0XG2bGH9duno6PmzDqc9yAmC8OHKCHTVt6QOvAcF4%2F'
