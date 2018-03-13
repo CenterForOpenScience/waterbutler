@@ -1,9 +1,8 @@
 import re
 import base64
+import typing
 import binascii
 from urllib.parse import urlparse, quote
-
-import typing
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.exceptions import WaterButlerError
@@ -135,4 +134,4 @@ def verify_raw_google_hash_header(google_hash: str) -> bool:
     :rtype bool:
     """
 
-    return True if re.match(r'(crc32c=.*==),(md5=.*==)', google_hash) else False
+    return bool(re.match(r'(crc32c=.*==),(md5=.*==)', google_hash))
