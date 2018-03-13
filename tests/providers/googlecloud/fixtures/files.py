@@ -42,3 +42,19 @@ def meta_file_extra():
 def meta_file_resp_headers_raw():
     with open(os.path.join(os.path.dirname(__file__), 'resp_headers/file-raw.txt'), 'r') as fp:
         return fp.read()
+
+
+@pytest.fixture
+def file_raw():
+    with open(os.path.join(os.path.dirname(__file__), 'resources/files/file.txt'), 'rb') as fp:
+        return fp.read()
+
+
+@pytest.fixture()
+def file_2_obj_name():
+    return 'xml-api/folder-2/text-file-2.txt'
+
+
+@pytest.fixture()
+def file_2_copy_obj_name():
+    return 'xml-api/folder-2/text-file-2-copy.txt'
