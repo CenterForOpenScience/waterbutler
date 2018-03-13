@@ -517,7 +517,7 @@ class GoogleCloudProvider(BaseProvider):
         segments = (self.bucket, )
 
         if obj_name:
-            segments = segments + (obj_name,)
+            segments += (obj_name, )
 
         expires = int(time.time()) + self.SIGNATURE_EXPIRATION
         canonical_resource = utils.build_url('', *segments, **{})
