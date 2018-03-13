@@ -523,7 +523,7 @@ class GoogleCloudProvider(BaseProvider):
         if obj_name:
             segments = segments + (obj_name,)
 
-        expires = int(time.time()) + self.SIGNATURE_EXPIRATION
+        expires = int(time.time()) + int(self.SIGNATURE_EXPIRATION)
         canonical_resource = utils.build_url('', *segments, **{})
         canonical_ext_headers_str = utils.build_canonical_ext_headers_str(canonical_ext_headers)
         canonical_part = canonical_ext_headers_str + canonical_resource
