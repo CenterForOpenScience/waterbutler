@@ -84,7 +84,10 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
         if not google_hash_list:
             raise MetadataError('Missing header "x-goog-hash"')
 
-        pattern = r'(crc32c|md5)=(.*==)'
+        # According to the RFC: http://www.rfc-editor.org/rfc/rfc4648.txt, there are two Base 64
+        # Alphabets: 1. The Standard Base 64 Alphabet: [A-Za-z0-9+/=] and 2.  The "URL and Filename
+        # safe" Base 64 Alphabet: [A-Za-z0-9-_=].  Google Cloud uses the standard one.
+        pattern = r'(crc32c|md5)=([A-Za-z0-9+/=]+)'
         google_hashes = {}
         for google_hash in google_hash_list:
             match = re.match(pattern, google_hash)

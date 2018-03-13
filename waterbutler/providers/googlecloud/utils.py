@@ -134,4 +134,4 @@ def verify_raw_google_hash_header(google_hash: str) -> bool:
     :rtype bool:
     """
 
-    return bool(re.match(r'(crc32c=.*==),(md5=.*==)', google_hash))
+    return bool(re.match(r'(crc32c=[A-Za-z0-9+/=]+),(md5=[A-Za-z0-9+/=]+)', google_hash))
