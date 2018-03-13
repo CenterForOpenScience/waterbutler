@@ -1,0 +1,14 @@
+{
+    "object_name": "xml-api/folder-1/text-file-1.txt",
+    "content_type": "text/plain",
+    "last_modified": "Thu, 01 Mar 2018 19:04:45 GMT",
+    "size": "85",
+    "etag": "9a46947c9c622d7792125d8ea44c4638",
+    "extra": {
+        "generation": "1519931085896733",
+        "hashes": {
+            "crc32c": "4dff2d9b",
+            "md5": "9a46947c9c622d7792125d8ea44c4638"
+        }
+    }
+}
