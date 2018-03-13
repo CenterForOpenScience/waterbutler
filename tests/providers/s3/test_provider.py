@@ -565,9 +565,11 @@ class TestCRUD:
     async def test_accepts_url(self, provider, mock_time):
         path = WaterButlerPath('/my-image')
         response_headers = {'response-content-disposition': 'attachment'}
-        url = provider.bucket.new_key(path.path).generate_url(100,
-                                                              'GET',
-                                                              response_headers=response_headers)
+        url = provider.bucket.new_key(path.path).generate_url(
+            100,
+            'GET',
+            response_headers=response_headers
+        )
 
         ret_url = await provider.download(path, accept_url=True)
 

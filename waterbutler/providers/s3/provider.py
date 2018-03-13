@@ -1,6 +1,5 @@
 import os
 import hashlib
-import functools
 from urllib import parse
 
 import xmltodict
@@ -134,7 +133,7 @@ class S3Provider(provider.BaseProvider):
             headers=headers,
             expects=(200, ),
             throws=exceptions.IntraCopyError,
-        ) as resp:
+        ):
             pass
 
         return (await dest_provider.metadata(dest_path)), not exists
@@ -163,19 +162,22 @@ class S3Provider(provider.BaseProvider):
             response_headers = {'response-content-disposition': 'attachment; filename*=UTF-8\'\'{}'.format(parse.quote(kwargs['displayName']))}
         else:
             response_headers = {'response-content-disposition': 'attachment'}
+        url = lambda: self.bucket.new_key(path.path).generate_url(
+            settings.TEMP_URL_SECS,
+            query_parameters=query_parameters,
+            response_headers=response_headers
+        )
 
-        async with self.request(
+        if accept_url:
+            return url()
+
+        return streams.ResponseStreamReader(await self.make_request(
             'GET',
-            lambda: self.bucket.new_key(path.path).generate_url(
-                settings.TEMP_URL_SECS,
-                query_parameters=query_parameters,
-                response_headers=response_headers
-            ) if accept_url else url(),
+            url,
             range=range,
             expects=(200, 206),
-            throws=exceptions.DownloadError,
-        ) as resp:
-            return streams.ResponseStreamReader(resp)
+            throws=exceptions.DownloadError
+        ))
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
         """
@@ -240,7 +242,7 @@ class S3Provider(provider.BaseProvider):
                 self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
                 expects=(200, 204, ),
                 throws=exceptions.DeleteError,
-            ) as resp:
+            ):
                 pass
         else:
             await self._delete_folder(path, **kwargs)
@@ -324,7 +326,7 @@ class S3Provider(provider.BaseProvider):
             # the signature.
             async with self.request(
                 'POST',
-                lambda: self.bucket.generate_url,
+                lambda: self.bucket.generate_url(
                     settings.TEMP_URL_SECS,
                     'POST',
                     query_parameters=query_params,
@@ -333,7 +335,7 @@ class S3Provider(provider.BaseProvider):
                 params=query_params,
                 data=payload,
                 headers=headers,
-                expects=(200, 204, ),
+                expects=(200, 204),
                 throws=exceptions.DeleteError,
             ) as resp:
                 pass
@@ -408,7 +410,7 @@ class S3Provider(provider.BaseProvider):
             skip_auto_headers={'CONTENT-TYPE'},
             expects=(200, 201),
             throws=exceptions.CreateFolderError
-        ) as resp:
+        ):
             pass
 
         return S3FolderMetadata({'Prefix': path.path})
@@ -423,7 +425,7 @@ class S3Provider(provider.BaseProvider):
         if revision == 'Latest':
             revision = None
 
-        acync with self.request(
+        async with self.request(
             'HEAD',
             lambda: self.bucket.new_key(path.path).generate_url(
                 settings.TEMP_URL_SECS,
@@ -449,9 +451,8 @@ class S3Provider(provider.BaseProvider):
             params=params,
             expects=(200,),
             throws=exceptions.MetadataError,
-        )
-
-        contents = await resp.read()
+        ) as resp:
+            contents = await resp.read()
 
         parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
 
