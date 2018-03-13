@@ -1,7 +1,12 @@
 class HashStreamWriter:
     """Stream-like object that hashes and discards its input."""
+
     def __init__(self, hasher):
         self.hash = hasher()
+
+    @property
+    def digest(self):
+        return self.hash.digest()
 
     @property
     def hexdigest(self):
