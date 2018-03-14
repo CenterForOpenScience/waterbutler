@@ -384,15 +384,11 @@ class GoogleCloudProvider(BaseProvider):
             throws=MetadataError
         )
         await resp.release()
-        parsed_resp_headers = BaseGoogleCloudMetadata.get_metadata_from_resp_headers(
-            obj_name,
-            resp.headers
-        )
 
         if is_folder:
-            return GoogleCloudFolderMetadata(parsed_resp_headers)
+            return GoogleCloudFolderMetadata(resp.headers, obj_name=obj_name)
         else:
-            return GoogleCloudFileMetadata(parsed_resp_headers)
+            return GoogleCloudFileMetadata(resp.headers, obj_name=obj_name)
 
     async def _delete_file(self, path: WaterButlerPath) -> None:
         """Deletes the file with the specified WaterButler path.
