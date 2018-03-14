@@ -1,8 +1,11 @@
 import re
+import json
 import base64
 import typing
 import binascii
 from urllib.parse import urlparse, quote
+
+from aiohttp import MultiDict
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.exceptions import WaterButlerError
@@ -135,3 +138,22 @@ def verify_raw_google_hash_header(google_hash: str) -> bool:
     """
 
     return bool(re.match(r'(crc32c=[A-Za-z0-9+/=]+),(md5=[A-Za-z0-9+/=]+)', google_hash))
+
+
+def get_multi_dict_from_json(resp_headers_json: json) -> MultiDict:
+    """Construct a ``MultiDict`` instance from a JSON.  This is used for test only.
+
+    :param resp_headers_json: the raw response headers in JSON format
+    :rtype MultiDict
+    """
+
+    resp_headers = MultiDict(resp_headers_json)
+    google_hash = resp_headers.get('x-goog-hash', None)
+    if google_hash:
+        assert verify_raw_google_hash_header(google_hash)
+        google_hash_list = google_hash.split(',')
+        resp_headers.pop('x-goog-hash')
+        for google_hash in google_hash_list:
+            resp_headers.add('x-goog-hash', google_hash)
+
+    return resp_headers
