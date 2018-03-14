@@ -1,5 +1,4 @@
 import json
-from aiohttp import MultiDict
 
 import pytest
 
@@ -36,36 +35,27 @@ def mock_provider(mock_auth, mock_creds, mock_settings):
     return GoogleCloudProvider(mock_auth, mock_creds, mock_settings)
 
 
-class TestGoogleCloudFileMetadata:
+class TestBaseGoogleCloudMetadata:
 
     def test_metadata_init_with_dict(self, meta_file_parsed):
 
         resp_headers = json.loads(meta_file_parsed)
         metadata = GoogleCloudFileMetadata(resp_headers)
+
         assert metadata
         assert metadata.etag == '9a46947c9c622d7792125d8ea44c4638'
 
     def test_metadata_init_with_multi_dict(self, file_obj_name, meta_file_raw):
 
-        resp_headers = MultiDict(json.loads(meta_file_raw))
-        google_hash = resp_headers.get('x-goog-hash', None)
-        google_hash_list = google_hash.split(',')
-        resp_headers.pop('x-goog-hash')
-        for google_hash in google_hash_list:
-            resp_headers.add('x-goog-hash', google_hash)
-
+        resp_headers = utils.get_multi_dict_from_json((json.loads(meta_file_raw)))
         metadata = GoogleCloudFileMetadata(resp_headers, obj_name=file_obj_name)
+
         assert metadata
         assert metadata.etag == '9a46947c9c622d7792125d8ea44c4638'
 
     def test_metadata_init_missing_object_name(self, meta_file_raw):
 
-        resp_headers = MultiDict(json.loads(meta_file_raw))
-        google_hash = resp_headers.get('x-goog-hash', None)
-        google_hash_list = google_hash.split(',')
-        resp_headers.pop('x-goog-hash')
-        for google_hash in google_hash_list:
-            resp_headers.add('x-goog-hash', google_hash)
+        resp_headers = utils.get_multi_dict_from_json((json.loads(meta_file_raw)))
 
         with pytest.raises(exceptions.MetadataError):
             GoogleCloudFileMetadata(resp_headers)
@@ -77,6 +67,9 @@ class TestGoogleCloudFileMetadata:
         with pytest.raises(exceptions.MetadataError):
             GoogleCloudFileMetadata(resp_headers, obj_name=file_obj_name)
 
+
+class TestGoogleCloudFileMetadata:
+
     def test_file_resp_headers(self, file_obj_name, meta_file_raw, meta_file_parsed):
 
         # Quirks:
@@ -85,39 +78,12 @@ class TestGoogleCloudFileMetadata:
         # returned by `aiohttp` is of an immutable type `aiohttp._multidict.CIMultiDictProxy`.  For
         # test to work, use `aiohttp.MultiDict` instead for both file and folder tests.
         #
-        resp_headers_dict = MultiDict(json.loads(meta_file_raw))
-        google_hash = resp_headers_dict.get('x-goog-hash', None)
-        assert google_hash and utils.verify_raw_google_hash_header(google_hash)
-
-        resp_headers_dict.pop('x-goog-hash')
-        google_hash_list = google_hash.split(',')
-        for google_hash in google_hash_list:
-            resp_headers_dict.add('x-goog-hash', google_hash)
-
+        resp_headers = utils.get_multi_dict_from_json((json.loads(meta_file_raw)))
         metadata_json = BaseGoogleCloudMetadata.get_metadata_from_resp_headers(
             file_obj_name,
-            resp_headers_dict
+            resp_headers
         )
         metadata_json_expected = json.loads(meta_file_parsed)
-
-        assert metadata_json == metadata_json_expected
-
-    def test_folder_resp_headers(self, folder_obj_name, meta_folder_raw, meta_folder_parsed):
-
-        resp_headers_dict = MultiDict(json.loads(meta_folder_raw))
-        google_hash = resp_headers_dict.get('x-goog-hash', None)
-        assert google_hash and utils.verify_raw_google_hash_header(google_hash)
-
-        resp_headers_dict.pop('x-goog-hash')
-        google_hash_list = google_hash.split(',')
-        for google_hash in google_hash_list:
-            resp_headers_dict.add('x-goog-hash', google_hash)
-
-        metadata_json = BaseGoogleCloudMetadata.get_metadata_from_resp_headers(
-            folder_obj_name,
-            resp_headers_dict
-        )
-        metadata_json_expected = json.loads(meta_folder_parsed)
 
         assert metadata_json == metadata_json_expected
 
@@ -142,6 +108,17 @@ class TestGoogleCloudFileMetadata:
 
 
 class TestGoogleCloudFolderMetadata:
+
+    def test_folder_resp_headers(self, folder_obj_name, meta_folder_raw, meta_folder_parsed):
+
+        resp_headers = utils.get_multi_dict_from_json((json.loads(meta_folder_raw)))
+        metadata_json = BaseGoogleCloudMetadata.get_metadata_from_resp_headers(
+            folder_obj_name,
+            resp_headers
+        )
+        metadata_json_expected = json.loads(meta_folder_parsed)
+
+        assert metadata_json == metadata_json_expected
 
     def test_folder_metadata(self, folder_name, folder_obj_name, meta_folder_parsed):
 

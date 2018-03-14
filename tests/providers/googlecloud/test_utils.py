@@ -1,5 +1,7 @@
+import json
 import time
 from unittest import mock
+from aiohttp import MultiDict
 from urllib.parse import quote, unquote
 
 import furl
@@ -23,7 +25,7 @@ from tests.providers.googlecloud.fixtures.providers import (mock_auth,
 from tests.providers.googlecloud.fixtures.folders import folder_obj_name, folder_wb_path
 
 from waterbutler.providers.googlecloud import utils
-from waterbutler.providers.googlecloud import settings as pd_settings
+from waterbutler.providers.googlecloud import settings
 from waterbutler.providers.googlecloud import GoogleCloudProvider
 
 
@@ -40,7 +42,7 @@ def mock_time(monkeypatch):
 
 @pytest.fixture
 def expires():
-    return 1234567890 + pd_settings.SIGNATURE_EXPIRATION
+    return 1234567890 + settings.SIGNATURE_EXPIRATION
 
 
 class TestPathAndNameForObjects:
@@ -205,6 +207,18 @@ class TestBuildAndSignURL:
 
 
 class TestHash:
+
+    def test_get_multi_dict_from_json(self, meta_file_raw):
+
+        resp_headers_json = json.loads(meta_file_raw)
+        resp_headers_dict = utils.get_multi_dict_from_json(resp_headers_json)
+        assert resp_headers_dict and isinstance(resp_headers_dict, MultiDict)
+
+        google_hashes = resp_headers_dict.getall('x-goog-hash')
+        assert len(google_hashes) == 2
+
+        for google_hash in google_hashes:
+            assert google_hash.startswith('crc32c=') or google_hash.startswith('md5=')
 
     def test_verify_raw_google_hash_header(self):
 

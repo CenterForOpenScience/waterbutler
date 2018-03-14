@@ -3,14 +3,13 @@ import json
 import time
 from unittest import mock
 from http import HTTPStatus
-from aiohttp import MultiDict
 
 import pytest
 import aiohttpretty
 
+from waterbutler.core import exceptions
 from waterbutler.providers.googlecloud import utils
-from waterbutler.core import exceptions as core_exceptions
-from waterbutler.providers.googlecloud import settings as pd_settings
+from waterbutler.providers.googlecloud import settings
 from waterbutler.core.streams import FileStreamReader, ResponseStreamReader
 from waterbutler.providers.googlecloud import GoogleCloudProvider, GoogleCloudFileMetadata
 
@@ -65,7 +64,7 @@ class TestProviderInit:
 
         assert mock_provider is not None
         assert mock_provider.NAME == 'googlecloud'
-        assert mock_provider.BASE_URL == pd_settings.BASE_URL
+        assert mock_provider.BASE_URL == settings.BASE_URL
         assert mock_provider.bucket == mock_settings.get('bucket')
 
         json_creds = mock_creds.get('json_creds')
@@ -121,14 +120,7 @@ class TestMetadata:
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
         signed_url = mock_provider._build_and_sign_url('HEAD', file_obj_name, **{})
 
-        # Must use `MultiDict` and modify the headers to mock the `aiohttp`'s response headers
-        resp_headers = MultiDict(json.loads(meta_file_raw))
-        google_hash = resp_headers.get('x-goog-hash', None)
-        resp_headers.pop('x-goog-hash')
-        google_hash_list = google_hash.split(',')
-        for google_hash in google_hash_list:
-            resp_headers.add('x-goog-hash', google_hash)
-
+        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_raw))
         aiohttpretty.register_uri(
             'HEAD',
             signed_url,
@@ -161,7 +153,7 @@ class TestMetadata:
             status=HTTPStatus.UNAUTHORIZED
         )
 
-        with pytest.raises(core_exceptions.MetadataError) as exc:
+        with pytest.raises(exceptions.MetadataError) as exc:
             await mock_provider._metadata_object(file_wb_path, is_folder=False)
 
         assert exc.value.code == HTTPStatus.UNAUTHORIZED
@@ -184,7 +176,7 @@ class TestMetadata:
             status=HTTPStatus.NOT_FOUND
         )
 
-        with pytest.raises(core_exceptions.MetadataError) as exc:
+        with pytest.raises(exceptions.MetadataError) as exc:
             await mock_provider._metadata_object(file_wb_path, is_folder=False)
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
@@ -277,7 +269,7 @@ class TestCRUD:
             status=HTTPStatus.NOT_FOUND
         )
 
-        with pytest.raises(core_exceptions.DownloadError) as exc:
+        with pytest.raises(exceptions.DownloadError) as exc:
             await mock_provider.download(file_wb_path, is_folder=False)
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
@@ -298,8 +290,7 @@ class TestCRUD:
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
 
         signed_url_upload = mock_provider._build_and_sign_url('PUT', file_obj_name, **{})
-        # There is no need to use `MultiDict` since the hashes are not used
-        resp_headers = json.loads(meta_file_upload_raw)
+        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_upload_raw))
         aiohttpretty.register_uri(
             'PUT',
             signed_url_upload,
@@ -308,14 +299,7 @@ class TestCRUD:
         )
 
         signed_url_metadata = mock_provider._build_and_sign_url('HEAD', file_obj_name, **{})
-        # Must use `MultiDict` and modify the headers to mock the `aiohttp`'s response headers
-        resp_headers = MultiDict(json.loads(meta_file_raw))
-        google_hash = resp_headers.get('x-goog-hash', None)
-        resp_headers.pop('x-goog-hash')
-        google_hash_list = google_hash.split(',')
-        for google_hash in google_hash_list:
-            resp_headers.add('x-goog-hash', google_hash)
-
+        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_raw))
         aiohttpretty.register_uri(
             'HEAD',
             signed_url_metadata,
@@ -347,7 +331,7 @@ class TestCRUD:
 
         signed_url_upload = mock_provider._build_and_sign_url('PUT', file_obj_name, **{})
         # There is no need to use `MultiDict` since the hashes are not used
-        resp_headers = json.loads(meta_file_upload_raw)
+        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_upload_raw))
         resp_headers.update({'etag': '"9e780e1c4ee28c44642160b349b3aab0"'})
         aiohttpretty.register_uri(
             'PUT',
@@ -358,7 +342,7 @@ class TestCRUD:
 
         signed_url_metadata = mock_provider._build_and_sign_url('HEAD', file_obj_name, **{})
         # There is no need to use `MultiDict` since the hashes are not used
-        resp_headers = MultiDict(json.loads(meta_file_raw))
+        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_raw))
         aiohttpretty.register_uri(
             'HEAD',
             signed_url_metadata,
@@ -366,7 +350,7 @@ class TestCRUD:
             status=HTTPStatus.OK
         )
 
-        with pytest.raises(core_exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
             await mock_provider.upload(file_stream_file, file_wb_path)
 
         assert exc.value.code == HTTPStatus.INTERNAL_SERVER_ERROR
@@ -403,7 +387,7 @@ class TestCRUD:
             status=HTTPStatus.NOT_FOUND
         )
 
-        with pytest.raises(core_exceptions.DeleteError) as exc:
+        with pytest.raises(exceptions.DeleteError) as exc:
             await mock_provider.delete(file_wb_path)
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
@@ -434,7 +418,7 @@ class TestCRUD:
             canonical_ext_headers=canonical_ext_headers,
             **{}
         )
-        resp_headers = json.loads(meta_file_copy_raw)
+        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_copy_raw))
         aiohttpretty.register_uri(
             'PUT',
             signed_url_intra_copy,
@@ -443,13 +427,7 @@ class TestCRUD:
         )
 
         signed_url_metadata = mock_provider._build_and_sign_url('HEAD', dest_file_obj_name, **{})
-        # Must use `MultiDict` and modify the headers to mock the `aiohttp`'s response headers
-        resp_headers = MultiDict(json.loads(meta_file_raw))
-        google_hash = resp_headers.get('x-goog-hash', None)
-        resp_headers.pop('x-goog-hash')
-        google_hash_list = google_hash.split(',')
-        for google_hash in google_hash_list:
-            resp_headers.add('x-goog-hash', google_hash)
+        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_raw))
         aiohttpretty.register_uri(
             'HEAD',
             signed_url_metadata,
@@ -490,7 +468,7 @@ class TestCRUD:
             canonical_ext_headers=canonical_ext_headers,
             **{}
         )
-        resp_headers = json.loads(meta_file_copy_raw)
+        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_copy_raw))
         aiohttpretty.register_uri(
             'PUT',
             signed_url_intra_copy,
@@ -499,8 +477,7 @@ class TestCRUD:
         )
 
         signed_url_metadata = mock_provider._build_and_sign_url('HEAD', dest_file_obj_name, **{})
-        # There is no need to use `MultiDict` since the hashes are not used
-        resp_headers = json.loads(meta_file_raw)
+        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_raw))
         aiohttpretty.register_uri(
             'HEAD',
             signed_url_metadata,
@@ -508,7 +485,7 @@ class TestCRUD:
             status=HTTPStatus.OK
         )
 
-        with pytest.raises(core_exceptions.CopyError) as exc:
+        with pytest.raises(exceptions.CopyError) as exc:
             await mock_provider.intra_copy(mock_provider, src_file_path, dest_file_path)
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
