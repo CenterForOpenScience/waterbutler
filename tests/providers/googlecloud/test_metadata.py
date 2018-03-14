@@ -1,5 +1,4 @@
 import json
-import logging
 from aiohttp import MultiDict
 
 import pytest
@@ -23,6 +22,7 @@ from tests.providers.googlecloud.fixtures.folders import (folder_name,
                                                           meta_folder_resp_headers_raw,
                                                           )
 
+from waterbutler.core import exceptions
 from waterbutler.providers.googlecloud import utils
 from waterbutler.providers.googlecloud import (GoogleCloudProvider,
                                                BaseGoogleCloudMetadata,
@@ -37,6 +37,45 @@ def mock_provider(mock_auth, mock_creds, mock_settings):
 
 
 class TestGoogleCloudFileMetadata:
+
+    def test_metadata_init_with_dict(self, meta_file_parsed):
+
+        resp_headers = json.loads(meta_file_parsed)
+        metadata = GoogleCloudFileMetadata(resp_headers)
+        assert metadata
+        assert metadata.etag == '9a46947c9c622d7792125d8ea44c4638'
+
+    def test_metadata_init_with_multi_dict(self, file_obj_name, meta_file_raw):
+
+        resp_headers = MultiDict(json.loads(meta_file_raw))
+        google_hash = resp_headers.get('x-goog-hash', None)
+        google_hash_list = google_hash.split(',')
+        resp_headers.pop('x-goog-hash')
+        for google_hash in google_hash_list:
+            resp_headers.add('x-goog-hash', google_hash)
+
+        metadata = GoogleCloudFileMetadata(resp_headers, obj_name=file_obj_name)
+        assert metadata
+        assert metadata.etag == '9a46947c9c622d7792125d8ea44c4638'
+
+    def test_metadata_init_missing_object_name(self, meta_file_raw):
+
+        resp_headers = MultiDict(json.loads(meta_file_raw))
+        google_hash = resp_headers.get('x-goog-hash', None)
+        google_hash_list = google_hash.split(',')
+        resp_headers.pop('x-goog-hash')
+        for google_hash in google_hash_list:
+            resp_headers.add('x-goog-hash', google_hash)
+
+        with pytest.raises(exceptions.MetadataError):
+            GoogleCloudFileMetadata(resp_headers)
+
+    def test_metadata_init_invalid_resp_headers(self, file_obj_name, meta_file_raw):
+
+        resp_headers = json.loads(meta_file_raw)
+
+        with pytest.raises(exceptions.MetadataError):
+            GoogleCloudFileMetadata(resp_headers, obj_name=file_obj_name)
 
     def test_file_resp_headers(self, file_obj_name, meta_file_raw, meta_file_parsed):
 

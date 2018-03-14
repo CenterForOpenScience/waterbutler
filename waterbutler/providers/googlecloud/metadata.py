@@ -18,6 +18,17 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
     abstract methods and properties in ``core_metadata.BaseMetadata``.
     """
 
+    def __init__(self, resp_headers, obj_name=None):
+
+        if obj_name:
+            if not isinstance(resp_headers, MultiDict):
+                raise MetadataError('Metadata init failed: invalid or missing response headers.')
+            resp_headers = self.get_metadata_from_resp_headers(obj_name, resp_headers)
+        elif isinstance(resp_headers, MultiDict):
+            raise MetadataError('Metadata init failed: missing object name')
+
+        super().__init__(resp_headers)
+
     @property
     def provider(self) -> str:
         return 'googlecloud'
@@ -26,8 +37,8 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
     def path(self) -> str:
         return self.build_path(self.raw.get('object_name', None))
 
-    @staticmethod
-    def get_metadata_from_resp_headers(obj_name: str, resp_headers: MultiDict) -> dict:
+    @classmethod
+    def get_metadata_from_resp_headers(cls, obj_name: str, resp_headers: MultiDict) -> dict:
         """Retrieve the metadata from HTTP response headers.
 
         Refer to the example JSON file "tests/googlecloud/fixtures/metadata/file-raw.json" and
