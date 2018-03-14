@@ -1,4 +1,5 @@
 import json
+from aiohttp import MultiDict
 
 import pytest
 
@@ -35,49 +36,48 @@ def mock_provider(mock_auth, mock_creds, mock_settings):
     return GoogleCloudProvider(mock_auth, mock_creds, mock_settings)
 
 
-class TestBaseGoogleCloudMetadata:
+class TestMetadataInitialization:
 
-    def test_metadata_init_with_dict(self, meta_file_parsed):
+    def test_metadata_from_dict(self, meta_file_parsed):
 
-        resp_headers = json.loads(meta_file_parsed)
+        resp_headers = dict(json.loads(meta_file_parsed))
         metadata = GoogleCloudFileMetadata(resp_headers)
 
         assert metadata
         assert metadata.etag == '9a46947c9c622d7792125d8ea44c4638'
 
-    def test_metadata_init_with_multi_dict(self, file_obj_name, meta_file_raw):
+    def test_metadata_from_resp_headers(self, file_obj_name, meta_file_raw):
 
         resp_headers = utils.get_multi_dict_from_json((json.loads(meta_file_raw)))
-        metadata = GoogleCloudFileMetadata(resp_headers, obj_name=file_obj_name)
+        metadata = GoogleCloudFileMetadata.new_from_resp_headers(file_obj_name, resp_headers)
 
         assert metadata
         assert metadata.etag == '9a46947c9c622d7792125d8ea44c4638'
 
-    def test_metadata_init_missing_object_name(self, meta_file_raw):
+    def test_metadata_from_resp_headers_missing_object_name(self, meta_file_raw):
 
         resp_headers = utils.get_multi_dict_from_json((json.loads(meta_file_raw)))
 
         with pytest.raises(exceptions.MetadataError):
-            GoogleCloudFileMetadata(resp_headers)
+            GoogleCloudFileMetadata.new_from_resp_headers('', resp_headers)
 
-    def test_metadata_init_invalid_resp_headers(self, file_obj_name, meta_file_raw):
+    def test_metadata_from_resp_headers_invalid_resp_headers(self, file_obj_name, meta_file_raw):
 
         resp_headers = json.loads(meta_file_raw)
 
         with pytest.raises(exceptions.MetadataError):
-            GoogleCloudFileMetadata(resp_headers, obj_name=file_obj_name)
+            GoogleCloudFileMetadata.new_from_resp_headers(file_obj_name, resp_headers)
+
+    def test_metadata_from_resp_headers_missing_resp_headers(self, file_obj_name):
+
+        with pytest.raises(exceptions.MetadataError):
+            GoogleCloudFileMetadata.new_from_resp_headers(file_obj_name, MultiDict({}))
 
 
 class TestGoogleCloudFileMetadata:
 
     def test_file_resp_headers(self, file_obj_name, meta_file_raw, meta_file_parsed):
 
-        # Quirks:
-        #
-        # JSON and Python Dictionary does not support multi-value key.  The real response headers
-        # returned by `aiohttp` is of an immutable type `aiohttp._multidict.CIMultiDictProxy`.  For
-        # test to work, use `aiohttp.MultiDict` instead for both file and folder tests.
-        #
         resp_headers = utils.get_multi_dict_from_json((json.loads(meta_file_raw)))
         metadata_json = BaseGoogleCloudMetadata.get_metadata_from_resp_headers(
             file_obj_name,

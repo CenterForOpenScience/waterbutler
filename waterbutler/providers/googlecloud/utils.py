@@ -143,8 +143,14 @@ def verify_raw_google_hash_header(google_hash: str) -> bool:
 def get_multi_dict_from_json(resp_headers_json: json) -> MultiDict:
     """Construct a ``MultiDict`` instance from a JSON.  This is used for test only.
 
+    Quirks:
+
+    JSON and Python Dictionary does not support multi-value key.  The real response headers returned
+    by ``aiohttp`` is of an immutable type ``aiohttp._multidict.CIMultiDictProxy``.  For test to
+    work, use `aiohttp.MultiDict` instead for both file and folder tests.
+
     :param resp_headers_json: the raw response headers in JSON format
-    :rtype MultiDict
+    :rtype MultiDict:
     """
 
     resp_headers = MultiDict(resp_headers_json)

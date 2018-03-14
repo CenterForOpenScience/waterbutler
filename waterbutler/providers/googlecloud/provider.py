@@ -386,9 +386,9 @@ class GoogleCloudProvider(BaseProvider):
         await resp.release()
 
         if is_folder:
-            return GoogleCloudFolderMetadata(resp.headers, obj_name=obj_name)
+            return GoogleCloudFolderMetadata.new_from_resp_headers(obj_name, resp.headers)
         else:
-            return GoogleCloudFileMetadata(resp.headers, obj_name=obj_name)
+            return GoogleCloudFileMetadata.new_from_resp_headers(obj_name, resp.headers)
 
     async def _delete_file(self, path: WaterButlerPath) -> None:
         """Deletes the file with the specified WaterButler path.
