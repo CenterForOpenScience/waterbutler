@@ -161,7 +161,8 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                         'Range header: {}'.format(self.request.headers['Range']))
 
         # Don't log metadata requests.
-        if method == 'GET' and 'meta' in self.request.query_arguments:
+        if (method == 'GET' and ('meta' in self.request.query_arguments or
+                                 'revisions' in self.request.query_arguments)):
             return
 
         # Done here just because method is defined
