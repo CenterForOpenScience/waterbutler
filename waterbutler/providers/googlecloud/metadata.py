@@ -18,17 +18,6 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
     abstract methods and properties in ``core_metadata.BaseMetadata``.
     """
 
-    def __init__(self, resp_headers, obj_name=None):
-
-        if obj_name:
-            if not isinstance(resp_headers, MultiDict):
-                raise MetadataError('Metadata init failed: invalid or missing response headers.')
-            resp_headers = self.get_metadata_from_resp_headers(obj_name, resp_headers)
-        elif isinstance(resp_headers, MultiDict):
-            raise MetadataError('Metadata init failed: missing object name')
-
-        super().__init__(resp_headers)
-
     @property
     def provider(self) -> str:
         return 'googlecloud'
@@ -155,6 +144,25 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
     def extra(self) -> dict:
         return self.raw.get('extra', None)
 
+    @classmethod
+    def new_from_resp_headers(cls, obj_name: str, resp_headers: MultiDict):
+        """Construct an instance of ``GoogleCloudFileMetadata`` from the response headers returned.
+
+        :param obj_name: the object name
+        :param resp_headers: the response headers
+        :rtype GoogleCloudFileMetadata:
+        """
+
+        if not obj_name:
+            raise MetadataError('Metadata init failed: missing object name')
+
+        if not resp_headers or not isinstance(resp_headers, MultiDict):
+            raise MetadataError('Metadata init failed: invalid or missing response headers.')
+
+        parsed_resp_headers = cls.get_metadata_from_resp_headers(obj_name, resp_headers)
+
+        return GoogleCloudFileMetadata(parsed_resp_headers)
+
 
 class GoogleCloudFolderMetadata(BaseGoogleCloudMetadata, metadata.BaseFolderMetadata):
     """The ``GoogleCloudFolderMetadata`` object provides the full structure for folders on Google
@@ -165,3 +173,22 @@ class GoogleCloudFolderMetadata(BaseGoogleCloudMetadata, metadata.BaseFolderMeta
     @property
     def name(self) -> str:
         return os.path.split(self.path.rstrip('/'))[1]
+
+    @classmethod
+    def new_from_resp_headers(cls, obj_name: str, resp_headers: MultiDict):
+        """Construct an instance of ``GoogleCloudFileMetadata`` from the response headers returned.
+
+        :param obj_name: the object name
+        :param resp_headers: the response headers
+        :rtype GoogleCloudFolderMetadata:
+        """
+
+        if not obj_name:
+            raise MetadataError('Metadata init failed: missing object name')
+
+        if not resp_headers or not isinstance(resp_headers, MultiDict):
+            raise MetadataError('Metadata init failed: invalid or missing response headers.')
+
+        parsed_resp_headers = cls.get_metadata_from_resp_headers(obj_name, resp_headers)
+
+        return GoogleCloudFolderMetadata(parsed_resp_headers)
