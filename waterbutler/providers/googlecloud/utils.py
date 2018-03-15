@@ -2,8 +2,8 @@ import re
 import base64
 import typing
 import binascii
-from aiohttp import MultiDict
 from urllib.parse import urlparse, quote
+from aiohttp import MultiDict, MultiDictProxy
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.exceptions import WaterButlerError
@@ -154,28 +154,31 @@ def verify_raw_google_hash_header(google_hash: str) -> bool:
     return bool(re.match(r'(crc32c=[A-Za-z0-9+/=]+),(md5=[A-Za-z0-9+/=]+)', google_hash))
 
 
-def get_multi_dict_from_python_dict(resp_headers_dict: dict) -> MultiDict:
-    """Construct an ``aiohttp.MultiDict`` instance from a Python dictionary.
+def get_multi_dict_from_python_dict(resp_headers_dict: dict) -> MultiDictProxy:
+    """Construct an ``aiohttp.CIMultiDict`` instance from a Python dictionary.
 
     Note: For now, this method is used for test only.
 
     Quirks:
 
         Neither Python dictionary nor JSON supports multi-value key.  The response headers returned
-        by ``aiohttp`` is of immutable type ``aiohttp._multidict.CIMultiDictProxy``.  WB uses the
-        parent abstract class ``aiohttp.MultiDict`` instead for both files and folders in test.
+        by ``aiohttp`` is of immutable type ``aiohttp.CIMultiDictProxy`` while the one returned by
+        ``aiohttpretty`` is of ``aiohttp.CIMultiDict``.
+
+        WB tests use the ``aiohttp.MultiDict`` type for both files and folders during modification
+        and returns the ``aiohttp.MultiDictProxy`` type to imitate the behavior of `aiohttp`.
 
     :param resp_headers_dict: the raw response headers dictionary
-    :rtype MultiDict:
+    :rtype MultiDictProxy:
     """
 
     resp_headers = MultiDict(resp_headers_dict)
     google_hash = resp_headers.get('x-goog-hash', None)
     if google_hash:
         assert verify_raw_google_hash_header(google_hash)
-        google_hash_list = google_hash.split(',')
         resp_headers.pop('x-goog-hash')
+        google_hash_list = google_hash.split(',')
         for google_hash in google_hash_list:
             resp_headers.add('x-goog-hash', google_hash)
 
-    return resp_headers
+    return MultiDictProxy(resp_headers)

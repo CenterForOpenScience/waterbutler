@@ -1,7 +1,7 @@
 import json
 import time
 from unittest import mock
-from aiohttp import MultiDict
+from aiohttp import MultiDictProxy
 from urllib.parse import quote, unquote
 
 import furl
@@ -212,7 +212,7 @@ class TestHash:
 
         resp_headers_json = json.loads(meta_file_raw)
         resp_headers_dict = utils.get_multi_dict_from_python_dict(dict(resp_headers_json))
-        assert resp_headers_dict and isinstance(resp_headers_dict, MultiDict)
+        assert resp_headers_dict and isinstance(resp_headers_dict, MultiDictProxy)
 
         google_hashes = resp_headers_dict.getall('x-goog-hash')
         assert len(google_hashes) == 2

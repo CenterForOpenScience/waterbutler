@@ -331,8 +331,9 @@ class TestCRUD:
 
         signed_url_upload = mock_provider._build_and_sign_url('PUT', file_obj_name, **{})
         # There is no need to use `MultiDict` since the hashes are not used
-        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_upload_raw)))
-        resp_headers.update({'etag': '"9e780e1c4ee28c44642160b349b3aab0"'})
+        resp_headers_dict = dict(json.loads(meta_file_upload_raw))
+        resp_headers_dict.update({'etag': '"9e780e1c4ee28c44642160b349b3aab0"'})
+        resp_headers = utils.get_multi_dict_from_python_dict(resp_headers_dict)
         aiohttpretty.register_uri(
             'PUT',
             signed_url_upload,
