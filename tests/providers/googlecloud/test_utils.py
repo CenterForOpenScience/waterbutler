@@ -211,7 +211,7 @@ class TestHash:
     def test_get_multi_dict_from_json(self, meta_file_raw):
 
         resp_headers_json = json.loads(meta_file_raw)
-        resp_headers_dict = utils.get_multi_dict_from_json(resp_headers_json)
+        resp_headers_dict = utils.get_multi_dict_from_python_dict(dict(resp_headers_json))
         assert resp_headers_dict and isinstance(resp_headers_dict, MultiDict)
 
         google_hashes = resp_headers_dict.getall('x-goog-hash')

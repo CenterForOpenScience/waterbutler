@@ -48,7 +48,7 @@ class TestMetadataInitialization:
 
     def test_metadata_from_resp_headers(self, file_obj_name, meta_file_raw):
 
-        resp_headers = utils.get_multi_dict_from_json((json.loads(meta_file_raw)))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_raw)))
         metadata = GoogleCloudFileMetadata.new_from_resp_headers(file_obj_name, resp_headers)
 
         assert metadata
@@ -56,7 +56,7 @@ class TestMetadataInitialization:
 
     def test_metadata_from_resp_headers_missing_object_name(self, meta_file_raw):
 
-        resp_headers = utils.get_multi_dict_from_json((json.loads(meta_file_raw)))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_raw)))
 
         with pytest.raises(exceptions.MetadataError):
             GoogleCloudFileMetadata.new_from_resp_headers('', resp_headers)
@@ -78,7 +78,7 @@ class TestGoogleCloudFileMetadata:
 
     def test_file_resp_headers(self, file_obj_name, meta_file_raw, meta_file_parsed):
 
-        resp_headers = utils.get_multi_dict_from_json((json.loads(meta_file_raw)))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_raw)))
         metadata_json = BaseGoogleCloudMetadata.get_metadata_from_resp_headers(
             file_obj_name,
             resp_headers
@@ -111,7 +111,7 @@ class TestGoogleCloudFolderMetadata:
 
     def test_folder_resp_headers(self, folder_obj_name, meta_folder_raw, meta_folder_parsed):
 
-        resp_headers = utils.get_multi_dict_from_json((json.loads(meta_folder_raw)))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_folder_raw)))
         metadata_json = BaseGoogleCloudMetadata.get_metadata_from_resp_headers(
             folder_obj_name,
             resp_headers
