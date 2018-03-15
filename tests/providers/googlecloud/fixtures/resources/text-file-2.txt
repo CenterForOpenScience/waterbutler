@@ -1,4 +1,0 @@
-google cloud storage test file
-
-file name: text-file-2.txt
-prefix: xml-api/folder-2/

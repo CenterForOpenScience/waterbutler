@@ -5,7 +5,7 @@
     "cache-control": "no-cache",
     "expires": "Tue, 06 Mar 2018 18:42:49 GMT",
     "last-modified": "Thu, 01 Mar 2018 18:54:16 GMT",
-    "etag": "d41d8cd98f00b204e9800998ecf8427e",
+    "etag": "\"d41d8cd98f00b204e9800998ecf8427e\"",
     "x-goog-generation": "1519930456327097",
     "x-goog-metageneration": "1",
     "x-goog-stored-content-encoding": "identity",

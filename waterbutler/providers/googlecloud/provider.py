@@ -26,19 +26,21 @@ logger = logging.getLogger(__name__)
 class GoogleCloudProvider(BaseProvider):
     """Provider for Google's Cloud Storage Service.
 
-    GoogleCloudProvider uses signed XML API request with a service account.
+    ``GoogleCloudProvider`` uses the XML API and Signed Request associated with a service account.
 
-        General API Docs:
-            https://cloud.google.com/storage/docs/apis
-        XML API Docs:
-            https://cloud.google.com/storage/docs/xml-api/overview
+    General API Docs: https://cloud.google.com/storage/docs/apis
 
-    The official name of the service is "Cloud Storage" provided by "Google Cloud Platform".
-    However, it is named ``GoogleCloudProvider`` for better clarity and consistency in WB.
-    "Google Cloud", "Cloud Storage" and "Google Cloud Storage" are used interchangeably when
-    referring to this service.  Sometimes "GC", "GCS" are used as well (e.g. commit messages).
+    XML API Docs: https://cloud.google.com/storage/docs/xml-api/overview
+
+    Quirks:
+
+        The official name of the service is "Cloud Storage" provided by "Google Cloud Platform".
+        However, it is named ``GoogleCloudProvider`` for better clarity and consistency in WB.
+        "Google Cloud", "Cloud Storage" and "Google Cloud Storage" are used interchangeably. "GC",
+        "GCS" are used as abbreviations in the commit messages.
     """
 
+    # Provider Name
     NAME = 'googlecloud'
 
     # BASE URL for JSON API
@@ -47,27 +49,31 @@ class GoogleCloudProvider(BaseProvider):
     # EXPIRATION for Signed Request/URL for XML API
     SIGNATURE_EXPIRATION = pd_settings.SIGNATURE_EXPIRATION
 
-    def __init__(self, auth: dict, credentials: dict, settings: dict):
-        """Initialize a provider instance with the given params.
+    def __init__(self, auth: dict, credentials: dict, settings: dict) -> None:
+        """Initialize a provider instance with the given parameters.
 
-        Here is an example of the settings for the "osfstorage" addon in OSF.
-
-            WATERBUTLER_CREDENTIALS = {
-                'storage': {
-                    'json_creds': 'change_me'
-                }
-            }
-
-            WATERBUTLER_SETTINGS = {
-                'storage': {
-                    'provider': 'change_me',
-                    'bucket': 'change_me',
-                    'region': 'change_me',
-                },
-            }
-
-            WATERBUTLER_RESOURCE = 'bucket'
+        :param auth: the auth dictionary
+        :param credentials: the credentials dictionary
+        :param settings: the settings dictionary
         """
+
+        # Here is an example of the settings for the ``OSFStorageProvider`` in OSF.
+        #
+        #     WATERBUTLER_CREDENTIALS = {
+        #         'storage': {
+        #             'json_creds': 'change_me'
+        #         }
+        #     }
+        #
+        #     WATERBUTLER_SETTINGS = {
+        #         'storage': {
+        #             'provider': 'change_me',
+        #             'bucket': 'change_me',
+        #             'region': 'change_me',
+        #         },
+        #     }
+        #
+        #     WATERBUTLER_RESOURCE = 'bucket'
 
         super().__init__(auth, credentials, settings)
 
@@ -101,25 +107,31 @@ class GoogleCloudProvider(BaseProvider):
     async def validate_path(self, path: str, **kwargs) -> WaterButlerPath:
         return WaterButlerPath(path)
 
-    async def metadata(
+    async def metadata(  # type: ignore
             self,
             path: WaterButlerPath,
             **kwargs
-    ) -> typing.Union[BaseGoogleCloudMetadata, typing.List[BaseGoogleCloudMetadata]]:
+    ) -> typing.Union[GoogleCloudFileMetadata, typing.List[BaseGoogleCloudMetadata]]:
         """Get the metadata about the object with the given WaterButler path.
 
-        TODO [Phase 1.5]: implement ``_metadata_folder``
+        Quirk:
+
+            This limited version only supports metadata for file objects.  There is no technical
+            blockers. The only reason is that OSF Storage never performs any action on folders for
+            this inner storage provider.  We prefer not to have dead or unreachable code.
+
+            TODO [Phase 2]: if needed, enable folder metadata and implement ``_metadata_folder()``
 
         :param path: the WaterButler path to the file or folder
         :param kwargs: additional kwargs are ignored
-        :rtype BaseGoogleCloudMetadata: for file
+        :rtype GoogleCloudFileMetadata: for file
         :rtype List<BaseGoogleCloudMetadata>: for folder
         """
 
         if path.is_folder:
             raise MetadataError('This limited provider does not support folder metadata.')
         else:
-            return await self._metadata_object(path, is_folder=False)
+            return await self._metadata_object(path, is_folder=False)  # type: ignore
 
     async def upload(
             self,
@@ -130,27 +142,24 @@ class GoogleCloudProvider(BaseProvider):
     ) -> typing.Tuple[GoogleCloudFileMetadata, bool]:
         """Upload a stream with the given WaterButler path.
 
-        PUT Object:
-            https://cloud.google.com/storage/docs/xml-api/put-object
-        Upload an Object
-            https://cloud.google.com/storage/docs/xml-api/put-object-upload
+        PUT Object: https://cloud.google.com/storage/docs/xml-api/put-object
+
+        Upload an Object: https://cloud.google.com/storage/docs/xml-api/put-object-upload
 
         Quirks:
 
-        The response body is empty and the response header does not have "last-modified" and have a
-        "content-type" for the response itself ("text/html; charset=UTF-8"), not for the file WB
-        just uploaded.  Must make a metadata request after successful upload.
+            The response has an empty body. It does not have the required header ``Last-Modified``.
+            In addition, the ``Content-Type`` header is for the response itself, not for the file WB
+            just uploaded. WB must make an extra metadata request after a successful upload.
 
-        Quirks:
+            The "etag" header returned by the XML API is exactly the same as the hex-digest of the
+            MD5 hash. WB uses this header to verify the upload checksum instead of parsing the hash
+            headers.
 
-        The "etag" header XML API returns is the exactly the same Hex Digest of the MD5.  WB uses
-        this header to verify the upload checksum instead of parsing and converting hash header.
-
-        Quirks:
-
-        Similar to Amazon S3, WB must set `skip_auto_headers={'Content-Type'}` when calling the
-        `.make_request()` because "Content-Type" is part of the string to sign.  The signed request
-        would fail with HTTP 403 Forbidden: SignatureDoesNotMatch if auto headers were not skipped.
+            Similarly to Amazon S3, WB must set ``skip_auto_headers={'Content-Type'}`` when calling
+            the ``.make_request()`` because ``Content-Type`` is part of the "String To Sign".  The
+            signed request would fail and return ``HTTP 403 Forbidden`` with the error message
+            ``SignatureDoesNotMatch`` if auto headers were not skipped.
 
         :param stream: the stream to post
         :param path: the WaterButler path of the file to upload
@@ -166,7 +175,7 @@ class GoogleCloudProvider(BaseProvider):
 
         req_method = 'PUT'
         obj_name = utils.get_obj_name(path, is_folder=False)
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
         headers = {'Content-Length': str(stream.size)}
 
         resp = await self.make_request(
@@ -189,9 +198,9 @@ class GoogleCloudProvider(BaseProvider):
             raise UploadChecksumMismatchError()
 
         metadata = await self._metadata_object(path, is_folder=False)
-        return metadata, created
+        return metadata, created  # type: ignore
 
-    async def download(
+    async def download(  # type: ignore
             self,
             path: WaterButlerPath,
             accept_url=False,
@@ -200,26 +209,23 @@ class GoogleCloudProvider(BaseProvider):
     ) -> typing.Union[str, ResponseStreamReader]:
         """Download the object with the given path.
 
-        GET Object:
-            https://cloud.google.com/storage/docs/xml-api/get-object
-        Download an Object
-            https://cloud.google.com/storage/docs/xml-api/get-object-download
+        GET Object: https://cloud.google.com/storage/docs/xml-api/get-object
 
-        The behavior of download differs depending on the value of `accept_url`.
-
-        1. `accept_url == False`: Make a standard signed request and return a `ResponseStreamReader`
+        Download an Object: https://cloud.google.com/storage/docs/xml-api/get-object-download
 
 
-        2. `accept_url == True`: Build and sign the GET request with an extra "content-disposition"
-                                 query to trigger the download. Return the signed URL.
+        Quirks:
 
-        More on  Content Disposition: "A query string parameter that allows content-disposition to
-        be overridden for authenticated GET requests."
+            The behavior of download differs depending on the value of ``accept_url``.  If
+            ``accept_url == False``, WB makes a standard signed request and returns a
+            ``ResponseStreamReader``.  If ``accept_url == True``, WB builds and signs the ``GET``
+            request with an extra query parameter ``response-content-disposition`` to trigger the
+            download with the display name.  The signed URL is returned.
 
         :param path: the WaterButler path to the object to download
         :param accept_url: the flag to solicit a direct time-limited download url from the provider
         :param range: the Range HTTP request header
-        :param kwargs:
+        :param kwargs: ``displayName`` - the display name of the file on OSF and for download
         :rtype str:
         :rtype ResponseStreamReader:
         """
@@ -233,10 +239,10 @@ class GoogleCloudProvider(BaseProvider):
         if accept_url:
             display_name = kwargs.get('displayName', path.name)
             query = {'response-content-disposition': 'attachment; filename={}'.format(display_name)}
-            signed_url = self._build_and_sign_url(req_method, obj_name, **query)
+            signed_url = self._build_and_sign_url(req_method, obj_name, **query)  # type: ignore
             return signed_url
 
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
         resp = await self.make_request(
             req_method,
             signed_url,
@@ -246,15 +252,19 @@ class GoogleCloudProvider(BaseProvider):
         )
         return ResponseStreamReader(resp)
 
-    async def delete(self, path: WaterButlerPath, *args, **kwargs) -> None:
+    async def delete(self, path: WaterButlerPath, *args, **kwargs) -> None:  # type: ignore
         """Deletes the file object with the specified WaterButler path.
 
-        Similarly to intra-copy folders, delete folders requires "BATCH" request support which is
-        available for JSON API. There is no documentation on the XML API.
+        Quirks:
 
-        TODO [Phase 2]: investigate whether folders are eligible
-        TODO [Phase 2]: if so, enable for folders
-        TODO [Phase 2]: if not, iterate through all children and make a delete request for each
+            This limited version only supports deletion for file objects.  The main reason is that
+            ``OSFStorageProvider`` does not need it.  The secondary reason is that there is no
+            documentation for the XML API on ``BATCH`` request support which is available for JSON
+            API.
+
+            TODO [Phase 2]: if needed, investigate whether folders are eligible
+            TODO [Phase 2]: if eligible, enable for folders
+            TODO [Phase 2]: if not eligible, iterate through all children and delete each of them
 
         :param path: the WaterButler path of the object to delete
         :param args: additional args are ignored
@@ -267,7 +277,7 @@ class GoogleCloudProvider(BaseProvider):
         else:
             return await self._delete_file(path)
 
-    async def intra_copy(
+    async def intra_copy(  # type: ignore
             self,
             dest_provider: BaseProvider,
             source_path: WaterButlerPath,
@@ -275,12 +285,16 @@ class GoogleCloudProvider(BaseProvider):
     ) -> typing.Tuple[typing.Union[GoogleCloudFileMetadata, GoogleCloudFolderMetadata], bool]:
         """Copy file objects within the same Google Cloud Storage Provider.
 
-        Similarly to delete folders, intra-copy folders requires "BATCH" request support which is
-        available for JSON API.  There is no documentation on the XML API.
+        Quirks:
 
-        TODO [Phase 2]: investigate whether folders are eligible
-        TODO [Phase 2]: if so, enable for folders
-        TODO [Phase 2]: if not, the action has been taken care of by the parent provider
+            This limited version only supports intra-copy for file objects.  The main reason is that
+            ``OSFStorageProvider`` does not need it.  The secondary reason is that there is no
+            documentation for the XML API on ``BATCH`` request support which is available for JSON
+            API.
+
+            TODO [Phase 2]: if needed, investigate whether folders are eligible
+            TODO [Phase 2]: if eligible, enable for folders
+            TODO [Phase 2]: if not eligible, it is taken care of by the parent provider
 
         :param dest_provider: the destination provider, must be the same as the source one
         :param source_path: the source WaterButler path for the object to copy from
@@ -298,18 +312,21 @@ class GoogleCloudProvider(BaseProvider):
         raise CopyError('Cannot copy between a file and a folder')
 
     def can_intra_copy(self, other: BaseProvider, path: WaterButlerPath = None) -> bool:
-        """Google Cloud Storage XML API supports intra-copy for files.  Intra-copy for folders
-        requires "BATCH" request support which is available for JSON API. However, there is no
-        documentation on the XML API.  It may be eligible given the fact that Amazon S3 supports
-        a similar action called "BULK" request.  Need more investigation in Phase 2.  Phase 1
-        OSFStorage does not perform any folder level actions (e.g. delete, copy ,move, etc.)
-        using the inner provider.
+        """Google Cloud Storage XML API supports intra-copy for files.
+
+        Quirks:
+
+            Intra-copy for folders requires ``BATCH`` request support which is available for the
+            JSON API. However, there is no documentation on the XML API.  It may be eligible given
+            the fact that Amazon S3 supports a similar action called ``BULK`` request. Phase 1
+            ``OSFStorageProvider`` does not perform any folder actions using this inner provider.
         """
+
         return self == other and not getattr(path, 'is_folder', False)
 
     def can_intra_move(self, other: BaseProvider, path: WaterButlerPath = None) -> bool:
-        """Google Cloud Storage XML API supports intra move for files.  It is a combination of
-        intra-copy and delete. Please refer to ``can_intra_copy()`` for more information.
+        """Google Cloud Storage XML API supports intra move for files.  It is simply a combination
+        of intra-copy and delete. Please refer to ``can_intra_copy()`` for more information.
         """
 
         return self.can_intra_copy(other, path)
@@ -322,11 +339,11 @@ class GoogleCloudProvider(BaseProvider):
     async def _exists_folder(self, path: WaterButlerPath) -> bool:
         """Check if a folder with the given WaterButler path exists. Calls ``_metadata_object()``.
 
-        For folders, ``exists()`` from the core provider calls ``metadata()``, which further calls
-        ``_metadata_folder``.  This makes simple action more complicated and more expensive if the
-        folder exists.
+        Quirks:
 
-        For files, ``exists()`` does not have such limitation.
+            For folders, ``exists()`` from the core provider calls ``metadata()``, which further
+            calls ``_metadata_folder``.  This makes the simple action more complicated and more
+            expensive if the folder exists.  For files, ``exists()`` does not have such limitation.
 
         :param path: the WaterButler path of the folder to check
         :rtype bool:
@@ -352,30 +369,31 @@ class GoogleCloudProvider(BaseProvider):
     ) -> typing.Union[GoogleCloudFileMetadata, GoogleCloudFolderMetadata]:
         """Get the metadata about the object itself with the given WaterButler path.
 
-        GET Object
-            API Docs: https://cloud.google.com/storage/docs/xml-api/get-object
-        HEAD Object
-            API Docs: https://cloud.google.com/storage/docs/xml-api/head-object
+        GET Object: https://cloud.google.com/storage/docs/xml-api/get-object
 
-        Use HEAD instead of GET to retrieve the metadata of an object.  Google points out that:
+        HEAD Object: https://cloud.google.com/storage/docs/xml-api/head-object
 
-            "You should not use a GET object request to retrieve only non-ACL metadata, because
-            doing so incurs egress charges associated with downloading the entire object. Instead
-            use a HEAD object request to retrieve non-ACL metadata for the object."
+        Quirks:
 
-        The flag ``is_folder`` is explicitly used. Providing the wrong type will always fail. This
-        is the case for many internal/private/helper/utility methods of/for this class. They are not
-        exposed to any outside usage, including the parent classes.
+            Use ``HEAD`` instead of ``GET`` to retrieve the metadata of an object.  Google points
+            out that:  "You should not use a ``GET`` object request to retrieve only non-ACL
+            metadata, because doing so incurs egress charges associated with downloading the entire
+            object.  Instead use a ``HEAD`` object request to retrieve non-ACL metadata for the
+            object."
+
+            The flag ``is_folder`` is explicitly used.  Providing the wrong type will always fail.
+            This is the case for many internal/private methods of and helper/utility functions for
+            this class. They are not exposed to any outside usage, including the parent classes.
 
         :param path: the WaterButler path of the object
         :param is_folder: whether the object is a file or folder
-        :rtype GoogleCloudFileMetadata
-        :rtype GoogleCloudFolderMetadata
+        :rtype GoogleCloudFileMetadata:
+        :rtype GoogleCloudFolderMetadata:
         """
 
         req_method = 'HEAD'
         obj_name = utils.get_obj_name(path, is_folder=is_folder)
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
 
         resp = await self.make_request(
             req_method,
@@ -384,24 +402,19 @@ class GoogleCloudProvider(BaseProvider):
             throws=MetadataError
         )
         await resp.release()
-        parsed_resp_headers = BaseGoogleCloudMetadata.get_metadata_from_resp_headers(
-            obj_name,
-            resp.headers
-        )
 
         if is_folder:
-            return GoogleCloudFolderMetadata(parsed_resp_headers)
+            return GoogleCloudFolderMetadata.new_from_resp_headers(obj_name, resp.headers)
         else:
-            return GoogleCloudFileMetadata(parsed_resp_headers)
+            return GoogleCloudFileMetadata.new_from_resp_headers(obj_name, resp.headers)
 
     async def _delete_file(self, path: WaterButlerPath) -> None:
         """Deletes the file with the specified WaterButler path.
 
-        Delete Object:
-            https://cloud.google.com/storage/docs/xml-api/delete-object
+        Delete Object: https://cloud.google.com/storage/docs/xml-api/delete-object
 
-        "If you make a DELETE request for an object that doesn't exist, you will get a 404 Not Found
-        status code and the body of the error response will contain NoSuchKey in the Code element."
+        If WB makes a ``DELETE`` request for an object that doesn't exist, it will receive the
+        ``HTTP 404 Not Found`` status and the error message containing ``NoSuchKey``.
 
         :param path: the WaterButler path of the file to delete
         :rtype None:
@@ -409,7 +422,7 @@ class GoogleCloudProvider(BaseProvider):
 
         req_method = 'DELETE'
         obj_name = utils.get_obj_name(path, is_folder=False)
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
 
         resp = await self.make_request(
             req_method,
@@ -429,13 +442,17 @@ class GoogleCloudProvider(BaseProvider):
         """Copy files within the same Google Cloud Storage provider, overwrite existing ones if
         there are any.  Return the metadata of the destination file, created or overwritten.
 
-        Copy an Object
-            https://cloud.google.com/storage/docs/xml-api/put-object-copy
+        Copy an Object: https://cloud.google.com/storage/docs/xml-api/put-object-copy
 
-        The response body contains "CopyObjectResult", "ETag" and "LastModified" of the new file.
-        The response header contains most of the metadata WB needed for the new file. However, two
-        pieces are missing/incorrect: "content-type" and "last-modified".  The metadata can be
-        constructed from the response but current implementation chooses to make a metadata request.
+        Quirks:
+
+            The XML response body contains ``CopyObjectResult``, ``ETag`` and ``LastModified`` of
+            the new file.  The response header contains most of the metadata WB needs for the file.
+            However, two pieces are missing/incorrect: ``Content-Type`` and ``Last-Modified``.  The
+            metadata can be constructed from the response but current implementation chooses to make
+            a metadata request.
+
+            TODO [Phase 2]: if needed, build the metadata from response headers and XML body
 
         :param dest_provider: the destination provider, must be the same as the source one
         :param source_path: the source WaterButler path for the object to copy from
@@ -454,7 +471,7 @@ class GoogleCloudProvider(BaseProvider):
         headers.update(canonical_ext_headers)
 
         dest_obj_name = utils.get_obj_name(dest_path, is_folder=False)
-        signed_url = self._build_and_sign_url(
+        signed_url = self._build_and_sign_url(  # type: ignore
             req_method,
             dest_obj_name,
             canonical_ext_headers=canonical_ext_headers,
@@ -471,10 +488,9 @@ class GoogleCloudProvider(BaseProvider):
 
         await resp.release()
 
-        # TODO [Phase 1.5]: if possible, obtain the metadata from response headers and body
         metadata = await self._metadata_object(dest_path, is_folder=False)
 
-        return metadata, created
+        return metadata, created  # type: ignore
 
     def _build_and_sign_url(
             self,
@@ -487,27 +503,24 @@ class GoogleCloudProvider(BaseProvider):
     ) -> str:
         """Build and sign the request URL for various actions.
 
-        Building the URL:
+        Quirks - Building the URL:
 
             Most Cloud Storage XML API requests use the following URI for accessing buckets and
-            objects.  Both forms are supported by Google and we select the second one since we use
-            signed request.
+            objects.  Both forms are supported by Google and we select the second one.
 
-                [ ] https://[BUCKET_NAME].[BASE_URL]/[OBJECT_NAME]
-                [x] https://[BASE_URL]/[BUCKET_NAME]/[OBJECT_NAME]
+            [ ] https://[BUCKET_NAME].[BASE_URL]/[OBJECT_NAME]
+            [x] https://[BASE_URL]/[BUCKET_NAME]/[OBJECT_NAME]
 
+        Quirks - Signing the URL:
 
-        Signing the URL:
-
-            WB uses authentication by signed URL for Google Cloud Storage.  XML API is the only
-            choice that supports such authentication.
-
-            Google Cloud Storage: Signed URLs
-                https://cloud.google.com/storage/docs/access-control/signed-urls
-                https://cloud.google.com/storage/docs/access-control/create-signed-urls-program
-
+            WB uses authentication via signed URL for Google Cloud Storage.  Google points out that
             "Signed URLs can only be used to access resources in Google Cloud Storage through the
-            XML API."
+            XML API."  This is the main reason that XML API is our choice for this limited provider.
+
+            Reference:
+
+                https://cloud.google.com/storage/docs/access-control/signed-urls and
+                https://cloud.google.com/storage/docs/access-control/create-signed-urls-program
 
         :param obj_name: the object name of the object or src object
         :param http_method: the http method
@@ -521,10 +534,10 @@ class GoogleCloudProvider(BaseProvider):
         segments = (self.bucket, )
 
         if obj_name:
-            segments = segments + (obj_name,)
+            segments += (obj_name, )  # type: ignore
 
         expires = int(time.time()) + self.SIGNATURE_EXPIRATION
-        canonical_resource = utils.build_url('', *segments, **{})
+        canonical_resource = utils.build_url('', *segments, **{})  # type: ignore
         canonical_ext_headers_str = utils.build_canonical_ext_headers_str(canonical_ext_headers)
         canonical_part = canonical_ext_headers_str + canonical_resource
 
