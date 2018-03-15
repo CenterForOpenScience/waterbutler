@@ -135,8 +135,11 @@ def build_canonical_ext_headers_str(headers: dict) -> str:
     if len(headers) != 1:
         raise WaterButlerError('The limited provider only supports one canonical extension header.')
 
+    headers_str = ''
     for key, value in headers.items():
-        return '{}:{}\n'.format(key.strip().lower(), value.strip())
+        headers_str += '{}:{}\n'.format(key.strip().lower(), value.strip())
+
+    return headers_str
 
 
 def verify_raw_google_hash_header(google_hash: str) -> bool:

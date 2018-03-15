@@ -49,7 +49,7 @@ class GoogleCloudProvider(BaseProvider):
     # EXPIRATION for Signed Request/URL for XML API
     SIGNATURE_EXPIRATION = pd_settings.SIGNATURE_EXPIRATION
 
-    def __init__(self, auth: dict, credentials: dict, settings: dict):
+    def __init__(self, auth: dict, credentials: dict, settings: dict) -> None:
         """Initialize a provider instance with the given parameters.
 
         :param auth: the auth dictionary
@@ -104,7 +104,7 @@ class GoogleCloudProvider(BaseProvider):
     async def validate_path(self, path: str, **kwargs) -> WaterButlerPath:
         return WaterButlerPath(path)
 
-    async def metadata(
+    async def metadata(  # type: ignore
             self,
             path: WaterButlerPath,
             **kwargs
@@ -128,7 +128,7 @@ class GoogleCloudProvider(BaseProvider):
         if path.is_folder:
             raise MetadataError('This limited provider does not support folder metadata.')
         else:
-            return await self._metadata_object(path, is_folder=False)
+            return await self._metadata_object(path, is_folder=False)  # type: ignore
 
     async def upload(
             self,
@@ -172,7 +172,7 @@ class GoogleCloudProvider(BaseProvider):
 
         req_method = 'PUT'
         obj_name = utils.get_obj_name(path, is_folder=False)
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
         headers = {'Content-Length': str(stream.size)}
 
         resp = await self.make_request(
@@ -195,9 +195,9 @@ class GoogleCloudProvider(BaseProvider):
             raise UploadChecksumMismatchError()
 
         metadata = await self._metadata_object(path, is_folder=False)
-        return metadata, created
+        return metadata, created  # type: ignore
 
-    async def download(
+    async def download(  # type: ignore
             self,
             path: WaterButlerPath,
             accept_url=False,
@@ -236,10 +236,10 @@ class GoogleCloudProvider(BaseProvider):
         if accept_url:
             display_name = kwargs.get('displayName', path.name)
             query = {'response-content-disposition': 'attachment; filename={}'.format(display_name)}
-            signed_url = self._build_and_sign_url(req_method, obj_name, **query)
+            signed_url = self._build_and_sign_url(req_method, obj_name, **query)  # type: ignore
             return signed_url
 
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
         resp = await self.make_request(
             req_method,
             signed_url,
@@ -249,7 +249,7 @@ class GoogleCloudProvider(BaseProvider):
         )
         return ResponseStreamReader(resp)
 
-    async def delete(self, path: WaterButlerPath, *args, **kwargs) -> None:
+    async def delete(self, path: WaterButlerPath, *args, **kwargs) -> None:  # type: ignore
         """Deletes the file object with the specified WaterButler path.
 
         Quirks:
@@ -274,7 +274,7 @@ class GoogleCloudProvider(BaseProvider):
         else:
             return await self._delete_file(path)
 
-    async def intra_copy(
+    async def intra_copy(  # type: ignore
             self,
             dest_provider: BaseProvider,
             source_path: WaterButlerPath,
@@ -390,7 +390,7 @@ class GoogleCloudProvider(BaseProvider):
 
         req_method = 'HEAD'
         obj_name = utils.get_obj_name(path, is_folder=is_folder)
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
 
         resp = await self.make_request(
             req_method,
@@ -419,7 +419,7 @@ class GoogleCloudProvider(BaseProvider):
 
         req_method = 'DELETE'
         obj_name = utils.get_obj_name(path, is_folder=False)
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})
+        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
 
         resp = await self.make_request(
             req_method,
@@ -468,7 +468,7 @@ class GoogleCloudProvider(BaseProvider):
         headers.update(canonical_ext_headers)
 
         dest_obj_name = utils.get_obj_name(dest_path, is_folder=False)
-        signed_url = self._build_and_sign_url(
+        signed_url = self._build_and_sign_url(  # type: ignore
             req_method,
             dest_obj_name,
             canonical_ext_headers=canonical_ext_headers,
@@ -487,7 +487,7 @@ class GoogleCloudProvider(BaseProvider):
 
         metadata = await self._metadata_object(dest_path, is_folder=False)
 
-        return metadata, created
+        return metadata, created  # type: ignore
 
     def _build_and_sign_url(
             self,
@@ -531,10 +531,10 @@ class GoogleCloudProvider(BaseProvider):
         segments = (self.bucket, )
 
         if obj_name:
-            segments += (obj_name, )
+            segments += (obj_name, )  # type: ignore
 
         expires = int(time.time()) + self.SIGNATURE_EXPIRATION
-        canonical_resource = utils.build_url('', *segments, **{})
+        canonical_resource = utils.build_url('', *segments, **{})  # type: ignore
         canonical_ext_headers_str = utils.build_canonical_ext_headers_str(canonical_ext_headers)
         canonical_part = canonical_ext_headers_str + canonical_resource
 

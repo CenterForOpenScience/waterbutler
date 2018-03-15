@@ -147,9 +147,9 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
         return None
 
     @property
-    def size(self) -> typing.Union[str, None]:
+    def size(self) -> typing.Union[str, None]:  # type: ignore
         size = self.raw.get('size', None)
-        return int(size) if size else None
+        return int(size) if size else None  # type: ignore
 
     @property
     def etag(self) -> typing.Union[str, None]:
