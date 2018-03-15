@@ -120,7 +120,7 @@ class TestMetadata:
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
         signed_url = mock_provider._build_and_sign_url('HEAD', file_obj_name, **{})
 
-        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_raw))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_raw)))
         aiohttpretty.register_uri(
             'HEAD',
             signed_url,
@@ -290,7 +290,7 @@ class TestCRUD:
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
 
         signed_url_upload = mock_provider._build_and_sign_url('PUT', file_obj_name, **{})
-        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_upload_raw))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_upload_raw)))
         aiohttpretty.register_uri(
             'PUT',
             signed_url_upload,
@@ -299,7 +299,7 @@ class TestCRUD:
         )
 
         signed_url_metadata = mock_provider._build_and_sign_url('HEAD', file_obj_name, **{})
-        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_raw))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_raw)))
         aiohttpretty.register_uri(
             'HEAD',
             signed_url_metadata,
@@ -331,7 +331,7 @@ class TestCRUD:
 
         signed_url_upload = mock_provider._build_and_sign_url('PUT', file_obj_name, **{})
         # There is no need to use `MultiDict` since the hashes are not used
-        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_upload_raw))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_upload_raw)))
         resp_headers.update({'etag': '"9e780e1c4ee28c44642160b349b3aab0"'})
         aiohttpretty.register_uri(
             'PUT',
@@ -342,7 +342,7 @@ class TestCRUD:
 
         signed_url_metadata = mock_provider._build_and_sign_url('HEAD', file_obj_name, **{})
         # There is no need to use `MultiDict` since the hashes are not used
-        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_raw))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_raw)))
         aiohttpretty.register_uri(
             'HEAD',
             signed_url_metadata,
@@ -418,7 +418,7 @@ class TestCRUD:
             canonical_ext_headers=canonical_ext_headers,
             **{}
         )
-        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_copy_raw))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_copy_raw)))
         aiohttpretty.register_uri(
             'PUT',
             signed_url_intra_copy,
@@ -427,7 +427,7 @@ class TestCRUD:
         )
 
         signed_url_metadata = mock_provider._build_and_sign_url('HEAD', dest_file_obj_name, **{})
-        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_raw))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_raw)))
         aiohttpretty.register_uri(
             'HEAD',
             signed_url_metadata,
@@ -468,7 +468,7 @@ class TestCRUD:
             canonical_ext_headers=canonical_ext_headers,
             **{}
         )
-        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_copy_raw))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_copy_raw)))
         aiohttpretty.register_uri(
             'PUT',
             signed_url_intra_copy,
@@ -477,7 +477,7 @@ class TestCRUD:
         )
 
         signed_url_metadata = mock_provider._build_and_sign_url('HEAD', dest_file_obj_name, **{})
-        resp_headers = utils.get_multi_dict_from_json(json.loads(meta_file_raw))
+        resp_headers = utils.get_multi_dict_from_python_dict(dict(json.loads(meta_file_raw)))
         aiohttpretty.register_uri(
             'HEAD',
             signed_url_metadata,
