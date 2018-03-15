@@ -3,7 +3,7 @@ import os
 import abc
 import typing
 import logging
-from aiohttp import MultiDict
+from aiohttp import MultiDict, MultiDictProxy
 
 from waterbutler.core import metadata
 from waterbutler.core.exceptions import MetadataError
@@ -31,7 +31,11 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
         return self.build_path(self.raw.get('object_name', None))
 
     @classmethod
-    def get_metadata_from_resp_headers(cls, obj_name: str, resp_headers: MultiDict) -> dict:
+    def get_metadata_from_resp_headers(
+            cls,
+            obj_name: str,
+            resp_headers: MultiDictProxy
+    ) -> dict:
         """Retrieve the metadata from HTTP response headers.
 
         Quirks - Google Cloud Customized Headers:
@@ -73,8 +77,8 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
 
             ``aiohttp`` is able to parse the raw hash header, retrieve both hashes and store them in
             a dictionary where one key can have multiple values. This ``resp_headers`` is of type
-            ``aiohttp._multidict.CIMultiDictProxy``. WB calls its ``.getall(key)`` method to return
-            a list of all values that matches the key.
+            ``aiohttp.CIMultiDictProxy``, which is immutable. WB calls its ``.getall(key)`` method
+            to return a list of all values that matches the key.
 
             The raw hash google header ``x-goog-hash: crc32c=Tf8tmw==,md5=mkaUfJxiLXeSEl2OpExGOA==``
             becomes ``{"x-goog-hash": "crc32c=Tf8tmw==", "md5": "mkaUfJxiLXeSEl2OpExGOA=="}``
@@ -160,7 +164,11 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
         return self.raw.get('extra', None)
 
     @classmethod
-    def new_from_resp_headers(cls, obj_name: str, resp_headers: MultiDict):
+    def new_from_resp_headers(
+            cls,
+            obj_name: str,
+            resp_headers: typing.Union[MultiDict, MultiDictProxy]
+    ):
         """Construct an instance of ``GoogleCloudFileMetadata`` from the response headers returned.
 
         :param obj_name: the object name
@@ -171,8 +179,11 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
         if not obj_name:
             raise MetadataError('Metadata init failed: missing object name')
 
-        if not resp_headers or not isinstance(resp_headers, MultiDict):
-            raise MetadataError('Metadata init failed: invalid or missing response headers.')
+        if not resp_headers:
+            raise MetadataError('Metadata init failed: missing response headers.')
+
+        if not isinstance(resp_headers, MultiDict) and not isinstance(resp_headers, MultiDictProxy):
+            raise MetadataError('Metadata init failed: invalid response headers.')
 
         parsed_resp_headers = cls.get_metadata_from_resp_headers(obj_name, resp_headers)
 
@@ -192,7 +203,7 @@ class GoogleCloudFolderMetadata(BaseGoogleCloudMetadata, metadata.BaseFolderMeta
         return os.path.split(self.path.rstrip('/'))[1]
 
     @classmethod
-    def new_from_resp_headers(cls, obj_name: str, resp_headers: MultiDict):
+    def new_from_resp_headers(cls, obj_name: str, resp_headers: MultiDictProxy):
         """Construct an instance of ``GoogleCloudFileMetadata`` from the response headers returned.
 
         :param obj_name: the object name
@@ -203,8 +214,11 @@ class GoogleCloudFolderMetadata(BaseGoogleCloudMetadata, metadata.BaseFolderMeta
         if not obj_name:
             raise MetadataError('Metadata init failed: missing object name')
 
-        if not resp_headers or not isinstance(resp_headers, MultiDict):
-            raise MetadataError('Metadata init failed: invalid or missing response headers.')
+        if not resp_headers:
+            raise MetadataError('Metadata init failed: missing response headers.')
+
+        if not isinstance(resp_headers, MultiDict) and not isinstance(resp_headers, MultiDictProxy):
+            raise MetadataError('Metadata init failed: invalid response headers.')
 
         parsed_resp_headers = cls.get_metadata_from_resp_headers(obj_name, resp_headers)
 
