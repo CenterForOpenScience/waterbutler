@@ -1,0 +1,482 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Metadata &mdash; WaterButler 0.37.1 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="WaterButler 0.37.1 documentation" href="index.html"/>
+        <link rel="up" title="Google Cloud Provider" href="provider.googlecloud.html"/>
+        <link rel="next" title="Utils" href="provider.googlecloud.utils.html"/>
+        <link rel="prev" title="Google Cloud Provider" href="provider.googlecloud.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> WaterButler
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.37.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="gettingstarted.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="providers.html">Providers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="baseprovider.html">Base Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.s3.html">Amazon S3 Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.box.html">Box Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.dataverse.html">Dataverse Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.dropbox.html">Dropbox Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.figshare.html">Figshare Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.filesystem.html">File System Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.github.html">Github Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.gitlab.html">GitLab Provider</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="provider.googlecloud.html">Google Cloud Provider</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Metadata</a></li>
+<li class="toctree-l3"><a class="reference internal" href="provider.googlecloud.utils.html">Utils</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="provider.googledrive.html">Google Drive Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.onedrive.html">OneDrive Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.osfstorage.html">OSF Storage Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.owncloud.html">ownCloud Storage Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.cloudfiles.html">Rackspace CloudFiles Provider</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adding-providers.html">Adding A New Provider</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">ChangeLog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">WaterButler</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="providers.html">Providers</a> &raquo;</li>
+        
+          <li><a href="provider.googlecloud.html">Google Cloud Provider</a> &raquo;</li>
+        
+      <li>Metadata</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/provider.googlecloud.metadata.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-waterbutler.providers.googlecloud.metadata">
+<span id="metadata"></span><h1>Metadata<a class="headerlink" href="#module-waterbutler.providers.googlecloud.metadata" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata">
+<em class="property">class </em><code class="descclassname">waterbutler.providers.googlecloud.metadata.</code><code class="descname">BaseGoogleCloudMetadata</code><span class="sig-paren">(</span><em>raw: dict</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/metadata.html#BaseGoogleCloudMetadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="waterbutler.core.html#waterbutler.core.metadata.BaseMetadata" title="waterbutler.core.metadata.BaseMetadata"><code class="xref py py-class docutils literal notranslate"><span class="pre">waterbutler.core.metadata.BaseMetadata</span></code></a></p>
+<p>This class provides the base structure of both files and folders metadata for the
+<code class="docutils literal notranslate"><span class="pre">GoogleCloudProvider</span></code>.  It is an abstract class and does not implements all abstract methods
+and properties in <code class="docutils literal notranslate"><span class="pre">BaseMetadata</span></code>.</p>
+<p>Quirks - Objects in Google Cloud Storage</p>
+<blockquote>
+<div>Google sees both files and folders as objects.</div></blockquote>
+<dl class="attribute">
+<dt id="waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata.provider">
+<code class="descname">provider</code><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata.provider" title="Permalink to this definition">¶</a></dt>
+<dd><p>The provider from which this resource originated.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata.path">
+<code class="descname">path</code><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata.path" title="Permalink to this definition">¶</a></dt>
+<dd><p>The canonical string representation of a waterbutler file or folder.  For providers
+that track entities with unique IDs, this will be the ID.  For providers that do not, this
+will usually be the full unix-style path of the file or folder.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">All paths MUST start with a <code class="xref py py-obj docutils literal notranslate"><span class="pre">/</span></code>
+All folder entities MUST end with a <code class="xref py py-obj docutils literal notranslate"><span class="pre">/</span></code>
+File entities MUST never end with a <code class="xref py py-obj docutils literal notranslate"><span class="pre">/</span></code></p>
+</div>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata.get_metadata_from_resp_headers">
+<em class="property">classmethod </em><code class="descname">get_metadata_from_resp_headers</code><span class="sig-paren">(</span><em>obj_name: str</em>, <em>resp_headers: aiohttp._multidict.MultiDictProxy</em><span class="sig-paren">)</span> &#x2192; dict<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/metadata.html#BaseGoogleCloudMetadata.get_metadata_from_resp_headers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata.get_metadata_from_resp_headers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve the metadata from HTTP response headers.</p>
+<p>Quirks - Google Cloud Customized Headers:</p>
+<blockquote>
+<div><p>Google provides several customized headers that contain what WB needs for metadata.</p>
+<p>CRC32C and MD5: “x-goog-hash”</p>
+<p>See: <a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooghash">https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooghash</a></p>
+<p>“A request and response header for expressing an object’s MD5 and/or CRC32C base64-
+encoded checksums.  Cloud Storage stores MD5 hashes for all non-composite objects.
+CRC32Cs are available for all objects.”</p>
+<p>According to the RFC: <a class="reference external" href="http://www.rfc-editor.org/rfc/rfc4648.txt">http://www.rfc-editor.org/rfc/rfc4648.txt</a>, there are two Base 64
+Alphabets: 1. The Standard Base 64 Alphabet: [A-Za-z0-9+/=] and 2.  The “URL and File-
+name safe” Base 64 Alphabet: [A-Za-z0-9-_=].  Google Cloud uses the standard one.</p>
+<p>SIZE: “x-goog-stored-content-length”</p>
+<p><a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/reference-headers#xgoogstoredcontentlength">https://cloud.google.com/storage/docs/xml-api/reference-headers#xgoogstoredcontentlength</a></p>
+<p>“A response header that indicates the content length (in bytes) of the object as stored
+in Cloud Storage, independent of any server-driven negotiation that might occur for
+individual requests for the object.” Do not use the “Content-Length” header, it is the
+length of the response body, not the size of the object.</p>
+<p>Version: “x-goog-generation”</p>
+<p><a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooggeneration">https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooggeneration</a></p>
+<p>“A response header that indicates which version of the object data you are accessing.”</p>
+<p>There are two pieces of information that are missing from the header: one for <code class="docutils literal notranslate"><span class="pre">path</span></code>
+and the other for <code class="docutils literal notranslate"><span class="pre">created_utc</span></code>.  Set <code class="docutils literal notranslate"><span class="pre">created_utc</span></code> to <code class="docutils literal notranslate"><span class="pre">None</span></code> and build the path
+from the <code class="docutils literal notranslate"><span class="pre">obj_name</span></code>.</p>
+</div></blockquote>
+<p>Quirks - <code class="docutils literal notranslate"><span class="pre">aiohttp</span></code> Response Headers:</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">aiohttp</span></code> is able to parse the raw hash header, retrieve both hashes and store them in
+a dictionary where one key can have multiple values. This <code class="docutils literal notranslate"><span class="pre">resp_headers</span></code> is of type
+<code class="docutils literal notranslate"><span class="pre">aiohttp.CIMultiDictProxy</span></code>, which is immutable. WB calls its <code class="docutils literal notranslate"><span class="pre">.getall(key)</span></code> method
+to return a list of all values that matches the key.</p>
+<p>The raw hash google header <code class="docutils literal notranslate"><span class="pre">x-goog-hash:</span> <span class="pre">crc32c=Tf8tmw==,md5=mkaUfJxiLXeSEl2OpExGOA==</span></code>
+becomes <code class="docutils literal notranslate"><span class="pre">{&quot;x-goog-hash&quot;:</span> <span class="pre">&quot;crc32c=Tf8tmw==&quot;,</span> <span class="pre">&quot;md5&quot;:</span> <span class="pre">&quot;mkaUfJxiLXeSEl2OpExGOA==&quot;}</span></code></p>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>obj_name</strong> – the “Object Name” of the file or folder</li>
+<li><strong>resp_headers</strong> – the response headers of the metadata request</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype dict:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata">
+<em class="property">class </em><code class="descclassname">waterbutler.providers.googlecloud.metadata.</code><code class="descname">GoogleCloudFileMetadata</code><span class="sig-paren">(</span><em>raw: dict</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/metadata.html#GoogleCloudFileMetadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata" title="waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata"><code class="xref py py-class docutils literal notranslate"><span class="pre">waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata</span></code></a>, <a class="reference internal" href="waterbutler.core.html#waterbutler.core.metadata.BaseFileMetadata" title="waterbutler.core.metadata.BaseFileMetadata"><code class="xref py py-class docutils literal notranslate"><span class="pre">waterbutler.core.metadata.BaseFileMetadata</span></code></a></p>
+<p>This class provides a full structure of the files for the <code class="docutils literal notranslate"><span class="pre">GoogleCloudProvider</span></code>.  It
+inherits two concrete classes: <code class="docutils literal notranslate"><span class="pre">BaseGoogleCloudMetadata</span></code> and <code class="docutils literal notranslate"><span class="pre">BaseFileMetadata</span></code>.</p>
+<p>Refer to the file <code class="docutils literal notranslate"><span class="pre">tests/googlecloud/fixtures/metadata/file-raw.json</span></code> for an example of the
+metadata Google Cloud Storage XML API returns via HTTP response headers.</p>
+<dl class="attribute">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.name">
+<code class="descname">name</code><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The user-facing name of the entity, excluding parent folder(s).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">bar</span><span class="o">/</span><span class="n">foo</span><span class="o">.</span><span class="n">txt</span> <span class="o">-&gt;</span> <span class="n">foo</span><span class="o">.</span><span class="n">txt</span>
+<span class="o">/&lt;</span><span class="n">someid</span><span class="o">&gt;</span> <span class="o">-&gt;</span> <span class="n">whatever</span><span class="o">.</span><span class="n">png</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.content_type">
+<code class="descname">content_type</code><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.content_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>MIME-type of the file (if available)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.modified">
+<code class="descname">modified</code><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.modified" title="Permalink to this definition">¶</a></dt>
+<dd><p>Date the file was last modified, as reported by the provider, in
+the format used by the provider.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.created_utc">
+<code class="descname">created_utc</code><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.created_utc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Date the file was created, as reported by the provider,
+converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.size">
+<code class="descname">size</code><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Size of the file in bytes.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.etag">
+<code class="descname">etag</code><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.etag" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.extra">
+<code class="descname">extra</code><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.extra" title="Permalink to this definition">¶</a></dt>
+<dd><p>A dict of optional metadata from the provider.  Non-mandatory metadata should be stored
+in this property.</p>
+<p>While this field is not explicitly structured, the <code class="xref py py-obj docutils literal notranslate"><span class="pre">hashes</span></code> key should be reserved for the
+following.  If the provider supplies MD5 or SHA256 hashes, those should be saved in a dict
+under the <code class="xref py py-obj docutils literal notranslate"><span class="pre">hashes</span></code> key, with <code class="xref py py-obj docutils literal notranslate"><span class="pre">md5</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">sha256</span></code> as the canonical key names for the hashes.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.new_from_resp_headers">
+<em class="property">classmethod </em><code class="descname">new_from_resp_headers</code><span class="sig-paren">(</span><em>obj_name: str, resp_headers: Union[aiohttp._multidict.MultiDict, aiohttp._multidict.MultiDictProxy]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/waterbutler/providers/googlecloud/metadata.html#GoogleCloudFileMetadata.new_from_resp_headers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata.new_from_resp_headers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct an instance of <code class="docutils literal notranslate"><span class="pre">GoogleCloudFileMetadata</span></code> from the response headers returned.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>obj_name</strong> – the object name</li>
+<li><strong>resp_headers</strong> – the response headers</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Rtype GoogleCloudFileMetadata:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFolderMetadata">
+<em class="property">class </em><code class="descclassname">waterbutler.providers.googlecloud.metadata.</code><code class="descname">GoogleCloudFolderMetadata</code><span class="sig-paren">(</span><em>raw: dict</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/metadata.html#GoogleCloudFolderMetadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFolderMetadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata" title="waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata"><code class="xref py py-class docutils literal notranslate"><span class="pre">waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata</span></code></a>, <a class="reference internal" href="waterbutler.core.html#waterbutler.core.metadata.BaseFolderMetadata" title="waterbutler.core.metadata.BaseFolderMetadata"><code class="xref py py-class docutils literal notranslate"><span class="pre">waterbutler.core.metadata.BaseFolderMetadata</span></code></a></p>
+<p>This class provides the full structure of the folders for the <code class="docutils literal notranslate"><span class="pre">GoogleCloudProvider</span></code>.  It
+inherits two concrete classes: <code class="docutils literal notranslate"><span class="pre">BaseGoogleCloudMetadata</span></code> and <code class="docutils literal notranslate"><span class="pre">BaseFolderMetadata</span></code>.</p>
+<p>Refer to the file <code class="docutils literal notranslate"><span class="pre">tests/googlecloud/fixtures/metadata/folder-raw.json</span></code> for an example of the
+metadata Google Cloud Storage XML API returns via HTTP response headers.</p>
+<dl class="attribute">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFolderMetadata.name">
+<code class="descname">name</code><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFolderMetadata.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The user-facing name of the entity, excluding parent folder(s).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">bar</span><span class="o">/</span><span class="n">foo</span><span class="o">.</span><span class="n">txt</span> <span class="o">-&gt;</span> <span class="n">foo</span><span class="o">.</span><span class="n">txt</span>
+<span class="o">/&lt;</span><span class="n">someid</span><span class="o">&gt;</span> <span class="o">-&gt;</span> <span class="n">whatever</span><span class="o">.</span><span class="n">png</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="waterbutler.providers.googlecloud.metadata.GoogleCloudFolderMetadata.new_from_resp_headers">
+<em class="property">classmethod </em><code class="descname">new_from_resp_headers</code><span class="sig-paren">(</span><em>obj_name: str</em>, <em>resp_headers: aiohttp._multidict.MultiDictProxy</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/waterbutler/providers/googlecloud/metadata.html#GoogleCloudFolderMetadata.new_from_resp_headers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.metadata.GoogleCloudFolderMetadata.new_from_resp_headers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct an instance of <code class="docutils literal notranslate"><span class="pre">GoogleCloudFileMetadata</span></code> from the response headers returned.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>obj_name</strong> – the object name</li>
+<li><strong>resp_headers</strong> – the response headers</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Rtype GoogleCloudFolderMetadata:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="provider.googlecloud.utils.html" class="btn btn-neutral float-right" title="Utils" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="provider.googlecloud.html" class="btn btn-neutral" title="Google Cloud Provider" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Center For Open Science.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.37.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

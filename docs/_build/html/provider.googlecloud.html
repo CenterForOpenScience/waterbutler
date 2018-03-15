@@ -1,0 +1,717 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Google Cloud Provider &mdash; WaterButler 0.37.1 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="WaterButler 0.37.1 documentation" href="index.html"/>
+        <link rel="up" title="Providers" href="providers.html"/>
+        <link rel="next" title="Metadata" href="provider.googlecloud.metadata.html"/>
+        <link rel="prev" title="GitLab Provider" href="provider.gitlab.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> WaterButler
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.37.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="gettingstarted.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="providers.html">Providers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="baseprovider.html">Base Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.s3.html">Amazon S3 Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.box.html">Box Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.dataverse.html">Dataverse Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.dropbox.html">Dropbox Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.figshare.html">Figshare Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.filesystem.html">File System Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.github.html">Github Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.gitlab.html">GitLab Provider</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Google Cloud Provider</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="provider.googlecloud.metadata.html">Metadata</a></li>
+<li class="toctree-l3"><a class="reference internal" href="provider.googlecloud.utils.html">Utils</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="provider.googledrive.html">Google Drive Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.onedrive.html">OneDrive Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.osfstorage.html">OSF Storage Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.owncloud.html">ownCloud Storage Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.cloudfiles.html">Rackspace CloudFiles Provider</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adding-providers.html">Adding A New Provider</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">ChangeLog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">WaterButler</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="providers.html">Providers</a> &raquo;</li>
+        
+      <li>Google Cloud Provider</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/provider.googlecloud.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="google-cloud-provider">
+<h1>Google Cloud Provider<a class="headerlink" href="#google-cloud-provider" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="provider.googlecloud.metadata.html">Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="provider.googlecloud.utils.html">Utils</a></li>
+</ul>
+</div>
+<dl class="class">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider">
+<em class="property">class </em><code class="descclassname">waterbutler.providers.googlecloud.provider.</code><code class="descname">GoogleCloudProvider</code><span class="sig-paren">(</span><em>auth: dict</em>, <em>credentials: dict</em>, <em>settings: dict</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="baseprovider.html#waterbutler.core.provider.BaseProvider" title="waterbutler.core.provider.BaseProvider"><code class="xref py py-class docutils literal notranslate"><span class="pre">waterbutler.core.provider.BaseProvider</span></code></a></p>
+<p>Provider for Google’s Cloud Storage Service.</p>
+<p><code class="docutils literal notranslate"><span class="pre">GoogleCloudProvider</span></code> uses the XML API and Signed Request associated with a service account.</p>
+<p>General API Docs: <a class="reference external" href="https://cloud.google.com/storage/docs/apis">https://cloud.google.com/storage/docs/apis</a></p>
+<p>XML API Docs: <a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/overview">https://cloud.google.com/storage/docs/xml-api/overview</a></p>
+<p>Quirks:</p>
+<blockquote>
+<div>The official name of the service is “Cloud Storage” provided by “Google Cloud Platform”.
+However, it is named <code class="docutils literal notranslate"><span class="pre">GoogleCloudProvider</span></code> for better clarity and consistency in WB.
+“Google Cloud”, “Cloud Storage” and “Google Cloud Storage” are used interchangeably. “GC”,
+“GCS” are used as abbreviations in the commit messages.</div></blockquote>
+<p>Initialize a provider instance with the given parameters.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>auth</strong> – the auth dictionary</li>
+<li><strong>credentials</strong> – the credentials dictionary</li>
+<li><strong>settings</strong> – the settings dictionary</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider.can_intra_copy">
+<code class="descname">can_intra_copy</code><span class="sig-paren">(</span><em>other: waterbutler.core.provider.BaseProvider</em>, <em>path: waterbutler.core.path.WaterButlerPath = None</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider.can_intra_copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider.can_intra_copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Google Cloud Storage XML API supports intra-copy for files.</p>
+<p>Quirks:</p>
+<blockquote>
+<div>Intra-copy for folders requires <code class="docutils literal notranslate"><span class="pre">BATCH</span></code> request support which is available for the
+JSON API. However, there is no documentation on the XML API.  It may be eligible given
+the fact that Amazon S3 supports a similar action called <code class="docutils literal notranslate"><span class="pre">BULK</span></code> request. Phase 1
+<code class="docutils literal notranslate"><span class="pre">OSFStorageProvider</span></code> does not perform any folder actions using this inner provider.</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider.can_intra_move">
+<code class="descname">can_intra_move</code><span class="sig-paren">(</span><em>other: waterbutler.core.provider.BaseProvider</em>, <em>path: waterbutler.core.path.WaterButlerPath = None</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider.can_intra_move"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider.can_intra_move" title="Permalink to this definition">¶</a></dt>
+<dd><p>Google Cloud Storage XML API supports intra move for files.  It is simply a combination
+of intra-copy and delete. Please refer to <code class="docutils literal notranslate"><span class="pre">can_intra_copy()</span></code> for more information.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider._delete_file">
+<code class="descname">_delete_file</code><span class="sig-paren">(</span><em>path: waterbutler.core.path.WaterButlerPath</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider._delete_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider._delete_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deletes the file with the specified WaterButler path.</p>
+<p>Delete Object: <a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/delete-object">https://cloud.google.com/storage/docs/xml-api/delete-object</a></p>
+<p>If WB makes a <code class="docutils literal notranslate"><span class="pre">DELETE</span></code> request for an object that doesn’t exist, it will receive the
+<code class="docutils literal notranslate"><span class="pre">HTTP</span> <span class="pre">404</span> <span class="pre">Not</span> <span class="pre">Found</span></code> status and the error message containing <code class="docutils literal notranslate"><span class="pre">NoSuchKey</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> – the WaterButler path of the file to delete</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype None:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider._exists_folder">
+<code class="descname">_exists_folder</code><span class="sig-paren">(</span><em>path: waterbutler.core.path.WaterButlerPath</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider._exists_folder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider._exists_folder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if a folder with the given WaterButler path exists. Calls <code class="docutils literal notranslate"><span class="pre">_metadata_object()</span></code>.</p>
+<p>Quirks:</p>
+<blockquote>
+<div>For folders, <code class="docutils literal notranslate"><span class="pre">exists()</span></code> from the core provider calls <code class="docutils literal notranslate"><span class="pre">metadata()</span></code>, which further
+calls <code class="docutils literal notranslate"><span class="pre">_metadata_folder</span></code>.  This makes the simple action more complicated and more
+expensive if the folder exists.  For files, <code class="docutils literal notranslate"><span class="pre">exists()</span></code> does not have such limitation.</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> – the WaterButler path of the folder to check</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype bool:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider._intra_copy_file">
+<code class="descname">_intra_copy_file</code><span class="sig-paren">(</span><em>dest_provider: waterbutler.core.provider.BaseProvider</em>, <em>source_path: waterbutler.core.path.WaterButlerPath</em>, <em>dest_path: waterbutler.core.path.WaterButlerPath</em><span class="sig-paren">)</span> &#x2192; Tuple[waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata, bool]<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider._intra_copy_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider._intra_copy_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy files within the same Google Cloud Storage provider, overwrite existing ones if
+there are any.  Return the metadata of the destination file, created or overwritten.</p>
+<p>Copy an Object: <a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/put-object-copy">https://cloud.google.com/storage/docs/xml-api/put-object-copy</a></p>
+<p>Quirks:</p>
+<blockquote>
+<div><p>The XML response body contains <code class="docutils literal notranslate"><span class="pre">CopyObjectResult</span></code>, <code class="docutils literal notranslate"><span class="pre">ETag</span></code> and <code class="docutils literal notranslate"><span class="pre">LastModified</span></code> of
+the new file.  The response header contains most of the metadata WB needs for the file.
+However, two pieces are missing/incorrect: <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> and <code class="docutils literal notranslate"><span class="pre">Last-Modified</span></code>.  The
+metadata can be constructed from the response but current implementation chooses to make
+a metadata request.</p>
+<p>TODO [Phase 2]: if needed, build the metadata from response headers and XML body</p>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>dest_provider</strong> – the destination provider, must be the same as the source one</li>
+<li><strong>source_path</strong> – the source WaterButler path for the object to copy from</li>
+<li><strong>dest_path</strong> – the destination WaterButler path for the object to copy to</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Rtype GoogleCloudFileMetadata:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Rtype bool:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider._metadata_object">
+<code class="descname">_metadata_object</code><span class="sig-paren">(</span><em>path: waterbutler.core.path.WaterButlerPath</em>, <em>is_folder: bool = False</em><span class="sig-paren">)</span> &#x2192; Union[waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata, waterbutler.providers.googlecloud.metadata.GoogleCloudFolderMetadata]<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider._metadata_object"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider._metadata_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the metadata about the object itself with the given WaterButler path.</p>
+<p>GET Object: <a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/get-object">https://cloud.google.com/storage/docs/xml-api/get-object</a></p>
+<p>HEAD Object: <a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/head-object">https://cloud.google.com/storage/docs/xml-api/head-object</a></p>
+<p>Quirks:</p>
+<blockquote>
+<div><p>Use <code class="docutils literal notranslate"><span class="pre">HEAD</span></code> instead of <code class="docutils literal notranslate"><span class="pre">GET</span></code> to retrieve the metadata of an object.  Google points
+out that:  “You should not use a <code class="docutils literal notranslate"><span class="pre">GET</span></code> object request to retrieve only non-ACL
+metadata, because doing so incurs egress charges associated with downloading the entire
+object.  Instead use a <code class="docutils literal notranslate"><span class="pre">HEAD</span></code> object request to retrieve non-ACL metadata for the
+object.”</p>
+<p>The flag <code class="docutils literal notranslate"><span class="pre">is_folder</span></code> is explicitly used.  Providing the wrong type will always fail.
+This is the case for many internal/private methods of and helper/utility functions for
+this class. They are not exposed to any outside usage, including the parent classes.</p>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> – the WaterButler path of the object</li>
+<li><strong>is_folder</strong> – whether the object is a file or folder</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Rtype GoogleCloudFileMetadata:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Rtype GoogleCloudFolderMetadata:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider.can_duplicate_names">
+<code class="descname">can_duplicate_names</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider.can_duplicate_names"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider.can_duplicate_names" title="Permalink to this definition">¶</a></dt>
+<dd><p>Google Cloud Storage allows a file and a folder to share the same name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider.delete">
+<code class="descname">delete</code><span class="sig-paren">(</span><em>path: waterbutler.core.path.WaterButlerPath</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider.delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider.delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deletes the file object with the specified WaterButler path.</p>
+<p>Quirks:</p>
+<blockquote>
+<div><p>This limited version only supports deletion for file objects.  The main reason is that
+<code class="docutils literal notranslate"><span class="pre">OSFStorageProvider</span></code> does not need it.  The secondary reason is that there is no
+documentation for the XML API on <code class="docutils literal notranslate"><span class="pre">BATCH</span></code> request support which is available for JSON
+API.</p>
+<p>TODO [Phase 2]: if needed, investigate whether folders are eligible
+TODO [Phase 2]: if eligible, enable for folders
+TODO [Phase 2]: if not eligible, iterate through all children and delete each of them</p>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> – the WaterButler path of the object to delete</li>
+<li><strong>args</strong> – additional args are ignored</li>
+<li><strong>kwargs</strong> – additional kwargs are ignored</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype None:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider.download">
+<code class="descname">download</code><span class="sig-paren">(</span><em>path: waterbutler.core.path.WaterButlerPath</em>, <em>accept_url=False</em>, <em>range=None</em>, <em>**kwargs</em><span class="sig-paren">)</span> &#x2192; Union[str, waterbutler.core.streams.http.ResponseStreamReader]<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider.download"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider.download" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download the object with the given path.</p>
+<p>GET Object: <a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/get-object">https://cloud.google.com/storage/docs/xml-api/get-object</a></p>
+<p>Download an Object: <a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/get-object-download">https://cloud.google.com/storage/docs/xml-api/get-object-download</a></p>
+<p>Quirks:</p>
+<blockquote>
+<div>The behavior of download differs depending on the value of <code class="docutils literal notranslate"><span class="pre">accept_url</span></code>.  If
+<code class="docutils literal notranslate"><span class="pre">accept_url</span> <span class="pre">==</span> <span class="pre">False</span></code>, WB makes a standard signed request and returns a
+<code class="docutils literal notranslate"><span class="pre">ResponseStreamReader</span></code>.  If <code class="docutils literal notranslate"><span class="pre">accept_url</span> <span class="pre">==</span> <span class="pre">True</span></code>, WB builds and signs the <code class="docutils literal notranslate"><span class="pre">GET</span></code>
+request with an extra query parameter <code class="docutils literal notranslate"><span class="pre">response-content-disposition</span></code> to trigger the
+download with the display name.  The signed URL is returned.</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> – the WaterButler path to the object to download</li>
+<li><strong>accept_url</strong> – the flag to solicit a direct time-limited download url from the provider</li>
+<li><strong>range</strong> – the Range HTTP request header</li>
+<li><strong>kwargs</strong> – <code class="docutils literal notranslate"><span class="pre">displayName</span></code> - the display name of the file on OSF and for download</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype str:</th><td class="field-body"></td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Rtype ResponseStreamReader:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider.intra_copy">
+<code class="descname">intra_copy</code><span class="sig-paren">(</span><em>dest_provider: waterbutler.core.provider.BaseProvider</em>, <em>source_path: waterbutler.core.path.WaterButlerPath</em>, <em>dest_path: waterbutler.core.path.WaterButlerPath</em><span class="sig-paren">)</span> &#x2192; Tuple[Union[waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata, waterbutler.providers.googlecloud.metadata.GoogleCloudFolderMetadata], bool]<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider.intra_copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider.intra_copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy file objects within the same Google Cloud Storage Provider.</p>
+<p>Quirks:</p>
+<blockquote>
+<div><p>This limited version only supports intra-copy for file objects.  The main reason is that
+<code class="docutils literal notranslate"><span class="pre">OSFStorageProvider</span></code> does not need it.  The secondary reason is that there is no
+documentation for the XML API on <code class="docutils literal notranslate"><span class="pre">BATCH</span></code> request support which is available for JSON
+API.</p>
+<p>TODO [Phase 2]: if needed, investigate whether folders are eligible
+TODO [Phase 2]: if eligible, enable for folders
+TODO [Phase 2]: if not eligible, it is taken care of by the parent provider</p>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>dest_provider</strong> – the destination provider, must be the same as the source one</li>
+<li><strong>source_path</strong> – the source WaterButler path for the object to copy from</li>
+<li><strong>dest_path</strong> – the destination WaterButler path for the object to copy to</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Rtype GoogleCloudFileMetadata:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Rtype GoogleCloudFolderMetadata:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype bool:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider.upload">
+<code class="descname">upload</code><span class="sig-paren">(</span><em>stream: waterbutler.core.streams.base.BaseStream</em>, <em>path: waterbutler.core.path.WaterButlerPath</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span> &#x2192; Tuple[waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata, bool]<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider.upload"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider.upload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Upload a stream with the given WaterButler path.</p>
+<p>PUT Object: <a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/put-object">https://cloud.google.com/storage/docs/xml-api/put-object</a></p>
+<p>Upload an Object: <a class="reference external" href="https://cloud.google.com/storage/docs/xml-api/put-object-upload">https://cloud.google.com/storage/docs/xml-api/put-object-upload</a></p>
+<p>Quirks:</p>
+<blockquote>
+<div><p>The response has an empty body. It does not have the required header <code class="docutils literal notranslate"><span class="pre">Last-Modified</span></code>.
+In addition, the <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> header is for the response itself, not for the file WB
+just uploaded. WB must make an extra metadata request after a successful upload.</p>
+<p>The “etag” header returned by the XML API is exactly the same as the hex-digest of the
+MD5 hash. WB uses this header to verify the upload checksum instead of parsing the hash
+headers.</p>
+<p>Similarly to Amazon S3, WB must set <code class="docutils literal notranslate"><span class="pre">skip_auto_headers={'Content-Type'}</span></code> when calling
+the <code class="docutils literal notranslate"><span class="pre">.make_request()</span></code> because <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> is part of the “String To Sign”.  The
+signed request would fail and return <code class="docutils literal notranslate"><span class="pre">HTTP</span> <span class="pre">403</span> <span class="pre">Forbidden</span></code> with the error message
+<code class="docutils literal notranslate"><span class="pre">SignatureDoesNotMatch</span></code> if auto headers were not skipped.</p>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>stream</strong> – the stream to post</li>
+<li><strong>path</strong> – the WaterButler path of the file to upload</li>
+<li><strong>args</strong> – additional args are ignored</li>
+<li><strong>kwargs</strong> – additional kwargs are ignored</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Rtype GoogleCloudFileMetadata:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Rtype bool:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider.validate_path">
+<code class="descname">validate_path</code><span class="sig-paren">(</span><em>path: str</em>, <em>**kwargs</em><span class="sig-paren">)</span> &#x2192; waterbutler.core.path.WaterButlerPath<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider.validate_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider.validate_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Validates paths passed in via the v0 API.  v0 paths are much less strict than v1 paths.
+They may represent things that exist or something that should be created.  As such, the goal
+of <code class="docutils literal notranslate"><span class="pre">validate_path</span></code> is to split the path into its component parts and attempt to determine
+the ID of each part on the external provider.  For instance, if the <code class="docutils literal notranslate"><span class="pre">googledrive</span></code> provider
+receives a path of <code class="docutils literal notranslate"><span class="pre">/foo/bar/baz.txt</span></code>, it will split those into <code class="docutils literal notranslate"><span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">foo/</span></code>, <code class="docutils literal notranslate"><span class="pre">bar/</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">baz.txt</span></code>, and query Google Drive for the ID of each.  <code class="docutils literal notranslate"><span class="pre">validate_path</span></code> then builds a
+WaterButlerPath object with an ID, name tuple for each path part.  The last part is
+permitted to not have an ID, since it may represent a file that has not yet been created.
+All other parts should have an ID.</p>
+<p>The WaterButler v0 API is deprecated and will be removed in a future release.  At that time
+this method will be obsolete and will be removed from all providers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> – ( <a class="reference external" href="https://docs.python.org/3.5/library/stdtypes.html#str" title="(in Python v3.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> ) user-supplied path to validate</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="waterbutler.core.html#waterbutler.core.path.WaterButlerPath" title="waterbutler.core.path.WaterButlerPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">WaterButlerPath</span></code></a></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="waterbutler.core.html#waterbutler.core.exceptions.NotFoundError" title="waterbutler.core.exceptions.NotFoundError"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotFoundError</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider.validate_v1_path">
+<code class="descname">validate_v1_path</code><span class="sig-paren">(</span><em>path: str</em>, <em>**kwargs</em><span class="sig-paren">)</span> &#x2192; waterbutler.core.path.WaterButlerPath<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider.validate_v1_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider.validate_v1_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>API v1 requires that requests against folder endpoints always end with a slash, and
+requests against files never end with a slash.  This method checks the provider’s metadata
+for the given id and throws a 404 Not Found if the implicit and explicit types don’t
+match.  This method duplicates the logic in the provider’s validate_path method, but
+validate_path must currently accomodate v0 AND v1 semantics.  After v0’s retirement, this
+method can replace validate_path.</p>
+<p><code class="docutils literal notranslate"><span class="pre">path</span></code> is the string in the url after the provider name and refers to the entity to be
+acted on. For v1, this must <em>always exist</em>.  If it does not, <code class="docutils literal notranslate"><span class="pre">validate_v1_path</span></code> should
+return a 404.  Creating a new file in v1 is done by making a PUT request against the parent
+folder and specifying the file name as a query parameter.  If a user attempts to create a
+file by PUTting to its inferred path, validate_v1_path should reject this request with a 404.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> – ( <a class="reference external" href="https://docs.python.org/3.5/library/stdtypes.html#str" title="(in Python v3.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> ) user-supplied path to validate</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="waterbutler.core.html#waterbutler.core.path.WaterButlerPath" title="waterbutler.core.path.WaterButlerPath"><code class="xref py py-class docutils literal notranslate"><span class="pre">WaterButlerPath</span></code></a></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="waterbutler.core.html#waterbutler.core.exceptions.NotFoundError" title="waterbutler.core.exceptions.NotFoundError"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotFoundError</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider.metadata">
+<code class="descname">metadata</code><span class="sig-paren">(</span><em>path: waterbutler.core.path.WaterButlerPath</em>, <em>**kwargs</em><span class="sig-paren">)</span> &#x2192; Union[waterbutler.providers.googlecloud.metadata.GoogleCloudFileMetadata, List[waterbutler.providers.googlecloud.metadata.BaseGoogleCloudMetadata]]<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider.metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider.metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the metadata about the object with the given WaterButler path.</p>
+<p>Quirk:</p>
+<blockquote>
+<div><p>This limited version only supports metadata for file objects.  There is no technical
+blockers. The only reason is that OSF Storage never performs any action on folders for
+this inner storage provider.  We prefer not to have dead or unreachable code.</p>
+<p>TODO [Phase 2]: if needed, enable folder metadata and implement <code class="docutils literal notranslate"><span class="pre">_metadata_folder()</span></code></p>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> – the WaterButler path to the file or folder</li>
+<li><strong>kwargs</strong> – additional kwargs are ignored</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Rtype GoogleCloudFileMetadata:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"><p class="first">for file</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Rtype List&lt;BaseGoogleCloudMetadata&gt;:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body"><p class="first last">for folder</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="waterbutler.providers.googlecloud.provider.GoogleCloudProvider._build_and_sign_url">
+<code class="descname">_build_and_sign_url</code><span class="sig-paren">(</span><em>http_method: str</em>, <em>obj_name: str</em>, <em>content_md5: str = ''</em>, <em>content_type: str = ''</em>, <em>canonical_ext_headers: dict = None</em>, <em>**queries</em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/provider.html#GoogleCloudProvider._build_and_sign_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.provider.GoogleCloudProvider._build_and_sign_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build and sign the request URL for various actions.</p>
+<p>Quirks - Building the URL:</p>
+<blockquote>
+<div><p>Most Cloud Storage XML API requests use the following URI for accessing buckets and
+objects.  Both forms are supported by Google and we select the second one.</p>
+<p>[ ] <a class="reference external" href="https://[BUCKET_NAME].[BASE_URL]/[OBJECT_NAME">https://[BUCKET_NAME].[BASE_URL]/[OBJECT_NAME</a>]
+[x] <a class="reference external" href="https://[BASE_URL]/[BUCKET_NAME]/[OBJECT_NAME">https://[BASE_URL]/[BUCKET_NAME]/[OBJECT_NAME</a>]</p>
+</div></blockquote>
+<p>Quirks - Signing the URL:</p>
+<blockquote>
+<div><p>WB uses authentication via signed URL for Google Cloud Storage.  Google points out that
+“Signed URLs can only be used to access resources in Google Cloud Storage through the
+XML API.”  This is the main reason that XML API is our choice for this limited provider.</p>
+<p>Reference:</p>
+<blockquote>
+<div><a class="reference external" href="https://cloud.google.com/storage/docs/access-control/signed-urls">https://cloud.google.com/storage/docs/access-control/signed-urls</a> and
+<a class="reference external" href="https://cloud.google.com/storage/docs/access-control/create-signed-urls-program">https://cloud.google.com/storage/docs/access-control/create-signed-urls-program</a></div></blockquote>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>obj_name</strong> – the object name of the object or src object</li>
+<li><strong>http_method</strong> – the http method</li>
+<li><strong>content_md5</strong> – the value of the Content-MD5 header</li>
+<li><strong>content_type</strong> – the value of the Content-Type header</li>
+<li><strong>canonical_ext_headers</strong> – the canonical extension headers string</li>
+<li><strong>queries</strong> – the dict for query parameters</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype str:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="provider.googlecloud.metadata.html" class="btn btn-neutral float-right" title="Metadata" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="provider.gitlab.html" class="btn btn-neutral" title="GitLab Provider" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Center For Open Science.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.37.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

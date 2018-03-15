@@ -1,0 +1,454 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Utils &mdash; WaterButler 0.37.1 documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="WaterButler 0.37.1 documentation" href="index.html"/>
+        <link rel="up" title="Google Cloud Provider" href="provider.googlecloud.html"/>
+        <link rel="next" title="Google Drive Provider" href="provider.googledrive.html"/>
+        <link rel="prev" title="Metadata" href="provider.googlecloud.metadata.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> WaterButler
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.37.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="gettingstarted.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="providers.html">Providers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="baseprovider.html">Base Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.s3.html">Amazon S3 Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.box.html">Box Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.dataverse.html">Dataverse Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.dropbox.html">Dropbox Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.figshare.html">Figshare Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.filesystem.html">File System Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.github.html">Github Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.gitlab.html">GitLab Provider</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="provider.googlecloud.html">Google Cloud Provider</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="provider.googlecloud.metadata.html">Metadata</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Utils</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="provider.googledrive.html">Google Drive Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.onedrive.html">OneDrive Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.osfstorage.html">OSF Storage Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.owncloud.html">ownCloud Storage Provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="provider.cloudfiles.html">Rackspace CloudFiles Provider</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adding-providers.html">Adding A New Provider</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="releases.html">Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">ChangeLog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">WaterButler</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="providers.html">Providers</a> &raquo;</li>
+        
+          <li><a href="provider.googlecloud.html">Google Cloud Provider</a> &raquo;</li>
+        
+      <li>Utils</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/provider.googlecloud.utils.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-waterbutler.providers.googlecloud.utils">
+<span id="utils"></span><h1>Utils<a class="headerlink" href="#module-waterbutler.providers.googlecloud.utils" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="waterbutler.providers.googlecloud.utils.get_obj_name">
+<code class="descclassname">waterbutler.providers.googlecloud.utils.</code><code class="descname">get_obj_name</code><span class="sig-paren">(</span><em>path: waterbutler.core.path.WaterButlerPath</em>, <em>is_folder: bool = False</em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/utils.html#get_obj_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.utils.get_obj_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the object name of the file or folder with the given Waterbutler Path.</p>
+<p>Quirks:</p>
+<blockquote>
+<div>Object Name is used by the Google Cloud Storage API (both XML and JSON) in the request path,
+queries and headers to identify the object.  Folders’ names always end with a <code class="docutils literal notranslate"><span class="pre">'/'</span></code> and
+files’ names never do. In addition, neither of them starts with a <code class="docutils literal notranslate"><span class="pre">'/'</span></code>.</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> – the WaterButler path of the object</li>
+<li><strong>is_folder</strong> – the folder flag</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype str:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="waterbutler.providers.googlecloud.utils.build_path">
+<code class="descclassname">waterbutler.providers.googlecloud.utils.</code><code class="descname">build_path</code><span class="sig-paren">(</span><em>obj_name: str</em>, <em>is_folder: bool = False</em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/utils.html#build_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.utils.build_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert the object name to a path string which can pass WaterButler path validation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>obj_name</strong> – the object name of the object</li>
+<li><strong>is_folder</strong> – the folder flag</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype str:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="waterbutler.providers.googlecloud.utils.validate_path_or_name">
+<code class="descclassname">waterbutler.providers.googlecloud.utils.</code><code class="descname">validate_path_or_name</code><span class="sig-paren">(</span><em>path_or_name: str</em>, <em>is_folder: bool = False</em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/utils.html#validate_path_or_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.utils.validate_path_or_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Validate that path or object name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path_or_name</strong> – the path or the object name</li>
+<li><strong>is_folder</strong> – the folder flag</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype str:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="waterbutler.providers.googlecloud.utils.build_url">
+<code class="descclassname">waterbutler.providers.googlecloud.utils.</code><code class="descname">build_url</code><span class="sig-paren">(</span><em>base: str</em>, <em>*segments</em>, <em>**query</em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/utils.html#build_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.utils.build_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build URL with <code class="docutils literal notranslate"><span class="pre">'/'</span></code> encoded in path segments and queries for Google Cloud API.</p>
+<p>Quirk:</p>
+<blockquote>
+<div>Objects’ names in Google Cloud Storage contain <code class="docutils literal notranslate"><span class="pre">'/'</span></code> which must be encoded.  WB calls
+<code class="docutils literal notranslate"><span class="pre">urllib.parse.quote()</span></code> with optional argument <code class="docutils literal notranslate"><span class="pre">safe=''</span></code>.  The default is <code class="docutils literal notranslate"><span class="pre">safe='/'</span></code>.</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>base</strong> – the base URL</li>
+<li><strong>segments</strong> – the path segments tuple</li>
+<li><strong>query</strong> – the queries dictionary</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3.5/library/stdtypes.html#str" title="(in Python v3.5)">str</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="waterbutler.providers.googlecloud.utils.decode_and_hexlify_hashes">
+<code class="descclassname">waterbutler.providers.googlecloud.utils.</code><code class="descname">decode_and_hexlify_hashes</code><span class="sig-paren">(</span><em>hash_str: str</em><span class="sig-paren">)</span> &#x2192; Union[str, NoneType]<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/utils.html#decode_and_hexlify_hashes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.utils.decode_and_hexlify_hashes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decode a Base64-encoded string and return a hexlified string.</p>
+<p>Quirks:</p>
+<blockquote>
+<div>This helper function inputs and outputs string.  However, both <code class="docutils literal notranslate"><span class="pre">base64.b64decode()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">binascii.hexlify()</span></code> operate on bytes.  WB must call <code class="docutils literal notranslate"><span class="pre">.encode()</span></code> and <code class="docutils literal notranslate"><span class="pre">.decode()</span></code> to
+convert bytes and string back and forth.</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>hash_str</strong> – the Base64-encoded hash string</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype str:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="waterbutler.providers.googlecloud.utils.build_canonical_ext_headers_str">
+<code class="descclassname">waterbutler.providers.googlecloud.utils.</code><code class="descname">build_canonical_ext_headers_str</code><span class="sig-paren">(</span><em>headers: dict</em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/utils.html#build_canonical_ext_headers_str"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.utils.build_canonical_ext_headers_str" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build a string for canonical extension headers, which is part of the string to sign.</p>
+<p>Quirks:</p>
+<blockquote>
+<div><p>Google Cloud Storage has very strict rules for building this string. See: <a class="reference external" href="https://cloud.goog">https://cloud.goog</a>
+le.com/storage/docs/access-control/signed-urls#about-canonical-extension-headers</p>
+<p>For this very limited version of the Google Cloud provider, only <code class="docutils literal notranslate"><span class="pre">_intra_copy_file</span></code> uses
+the canonical extension header and it uses only one.  There is no need for extra effort to
+remove <code class="docutils literal notranslate"><span class="pre">x-goog-encryption-key</span></code> and <code class="docutils literal notranslate"><span class="pre">x-goog-encryption-key-sha256</span></code> or to perform a lexi-
+cographical sort.  TODO [Phase 2]: fully implement this function when needed</p>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>headers</strong> – the canonical extension headers</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype str:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="waterbutler.providers.googlecloud.utils.verify_raw_google_hash_header">
+<code class="descclassname">waterbutler.providers.googlecloud.utils.</code><code class="descname">verify_raw_google_hash_header</code><span class="sig-paren">(</span><em>google_hash: str</em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/utils.html#verify_raw_google_hash_header"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.utils.verify_raw_google_hash_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Verify the format of the raw value of the “x-goog-hash” header.</p>
+<p>Note: For now this method is used for test only.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>google_hash</strong> – the raw value of the “x-goog-hash” header</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype bool:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="waterbutler.providers.googlecloud.utils.get_multi_dict_from_python_dict">
+<code class="descclassname">waterbutler.providers.googlecloud.utils.</code><code class="descname">get_multi_dict_from_python_dict</code><span class="sig-paren">(</span><em>resp_headers_dict: dict</em><span class="sig-paren">)</span> &#x2192; aiohttp._multidict.MultiDictProxy<a class="reference internal" href="_modules/waterbutler/providers/googlecloud/utils.html#get_multi_dict_from_python_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#waterbutler.providers.googlecloud.utils.get_multi_dict_from_python_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct an <code class="docutils literal notranslate"><span class="pre">aiohttp.CIMultiDict</span></code> instance from a Python dictionary.</p>
+<p>Note: For now, this method is used for test only.</p>
+<p>Quirks:</p>
+<blockquote>
+<div><p>Neither Python dictionary nor JSON supports multi-value key.  The response headers returned
+by <code class="docutils literal notranslate"><span class="pre">aiohttp</span></code> is of immutable type <code class="docutils literal notranslate"><span class="pre">aiohttp.CIMultiDictProxy</span></code> while the one returned by
+<code class="docutils literal notranslate"><span class="pre">aiohttpretty</span></code> is of <code class="docutils literal notranslate"><span class="pre">aiohttp.CIMultiDict</span></code>.</p>
+<p>WB tests use the <code class="docutils literal notranslate"><span class="pre">aiohttp.MultiDict</span></code> type for both files and folders during modification
+and returns the <code class="docutils literal notranslate"><span class="pre">aiohttp.MultiDictProxy</span></code> type to imitate the behavior of <a class="reference external" href="https://aiohttp.readthedocs.io/en/v0.18.2/multidict.html#module-aiohttp" title="(in aiohttp v0.18)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aiohttp</span></code></a>.</p>
+</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>resp_headers_dict</strong> – the raw response headers dictionary</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Rtype MultiDictProxy:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="provider.googledrive.html" class="btn btn-neutral float-right" title="Google Drive Provider" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="provider.googlecloud.metadata.html" class="btn btn-neutral" title="Metadata" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Center For Open Science.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.37.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
