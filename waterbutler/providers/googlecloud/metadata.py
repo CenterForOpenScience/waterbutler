@@ -13,9 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
-    """The ``BaseGoogleCloudMetadata`` object provides the base structure for both file and folder
-    metadata on the Google Cloud Storage.  It is an abstract class and does not implements all
-    abstract methods and properties in ``core_metadata.BaseMetadata``.
+    """This class provides the base structure of both files and folders metadata for the
+    ``GoogleCloudProvider``.  It is an abstract class and does not implements all abstract methods
+    and properties in ``BaseMetadata``.
+
+    Quirks - Objects in Google Cloud Storage
+
+        Google sees both files and folders as objects.
     """
 
     @property
@@ -30,38 +34,53 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
     def get_metadata_from_resp_headers(cls, obj_name: str, resp_headers: MultiDict) -> dict:
         """Retrieve the metadata from HTTP response headers.
 
-        Refer to the example JSON file "tests/googlecloud/fixtures/metadata/file-raw.json" and
-        "tests/googlecloud/fixtures/metadata/folder-raw.json" for what metadata Google Cloud
-        Storage provides via HTTP response headers.  Google sees both files and folders as objects.
+        Quirks - Google Cloud Customized Headers:
 
-        Google provides several customized headers that contains metadata WB needs:
+            Google provides several customized headers that contain what WB needs for metadata.
 
             CRC32C and MD5: "x-goog-hash"
-            https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooghash
+
+            See: https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooghash
+
             "A request and response header for expressing an object's MD5 and/or CRC32C base64-
             encoded checksums.  Cloud Storage stores MD5 hashes for all non-composite objects.
-            CRC32Cs are available for all objects."  Here are the three possible values returned:
-                md5=<base64-encoded-md5>
-                crc32c=<base64-encoded-crc32c>
-                md5=<base64-encoded-md5>,crc32c=<base64-encoded-crc32c>
+            CRC32Cs are available for all objects."
+
+            According to the RFC: http://www.rfc-editor.org/rfc/rfc4648.txt, there are two Base 64
+            Alphabets: 1. The Standard Base 64 Alphabet: [A-Za-z0-9+/=] and 2.  The "URL and File-
+            name safe" Base 64 Alphabet: [A-Za-z0-9-_=].  Google Cloud uses the standard one.
 
             SIZE: "x-goog-stored-content-length"
+
             https://cloud.google.com/storage/docs/xml-api/reference-headers#xgoogstoredcontentlength
+
             "A response header that indicates the content length (in bytes) of the object as stored
             in Cloud Storage, independent of any server-driven negotiation that might occur for
-            individual requests for the object."  Do not use the "Content-Length" header, it is the
+            individual requests for the object." Do not use the "Content-Length" header, it is the
             length of the response body, not the size of the object.
 
             Version: "x-goog-generation"
+
             https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooggeneration
-            A response header that indicates which version of the object data you are accessing.
 
-        There are two pieces of information that are missing from the header: one for  "created_utc"
-        and the other for "path".  Set "created_utc" to ``None`` and build the path from the first
-        argument "object_name".
+            "A response header that indicates which version of the object data you are accessing."
 
-        :param obj_name: the "Object Name" of the object
-        :param resp_headers: the response headers of the metadata HEAD request
+            There are two pieces of information that are missing from the header: one for ``path``
+            and the other for ``created_utc``.  Set ``created_utc`` to ``None`` and build the path
+            from the ``obj_name``.
+
+        Quirks - ``aiohttp`` Response Headers:
+
+            ``aiohttp`` is able to parse the raw hash header, retrieve both hashes and store them in
+            a dictionary where one key can have multiple values. This ``resp_headers`` is of type
+            ``aiohttp._multidict.CIMultiDictProxy``. WB calls its ``.getall(key)`` method to return
+            a list of all values that matches the key.
+
+            The raw hash google header ``x-goog-hash: crc32c=Tf8tmw==,md5=mkaUfJxiLXeSEl2OpExGOA==``
+            becomes ``{"x-goog-hash": "crc32c=Tf8tmw==", "md5": "mkaUfJxiLXeSEl2OpExGOA=="}``
+
+        :param obj_name: the "Object Name" of the file or folder
+        :param resp_headers: the response headers of the metadata request
         :rtype dict:
         """
 
@@ -74,19 +93,12 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
         stored_content_length = resp_headers.get('x-goog-stored-content-length', None)
         generation = resp_headers.get('x-goog-generation', None)
 
-        # Quirks:
-        #
-        # `aiohttp` parses the raw header: x-goog-hash: crc32c=Tf8tmw==,md5=mkaUfJxiLXeSEl2OpExGOA==
-        # into a dictionary that can have multiple identical keys. This `resp_headers` is of type
-        # `aiohttp._multidict.CIMultiDictProxy` which provides the `.getall(key)` to "Return a list
-        #  of all values matching the key."
+        # Obtain the CRC32C and MD5 hashes
         google_hash_list = resp_headers.getall('x-goog-hash', None)
         if not google_hash_list:
             raise MetadataError('Missing header "x-goog-hash"')
 
-        # According to the RFC: http://www.rfc-editor.org/rfc/rfc4648.txt, there are two Base 64
-        # Alphabets: 1. The Standard Base 64 Alphabet: [A-Za-z0-9+/=] and 2.  The "URL and Filename
-        # safe" Base 64 Alphabet: [A-Za-z0-9-_=].  Google Cloud uses the standard one.
+        # Parse and convert the hashes
         pattern = r'(crc32c|md5)=([A-Za-z0-9+/=]+)'
         google_hashes = {}
         for google_hash in google_hash_list:
@@ -95,6 +107,7 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
                 raise MetadataError('Fail to parse HTTP response header: "x-goog-hash"')
             google_hashes.update({match.group(1): decode_and_hexlify_hashes(match.group(2))})
 
+        # Return a Python ``dict`` that can be used directly for metadata initialization
         return {
             'object_name': obj_name,
             'content_type': content_type,
@@ -109,9 +122,11 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
 
 
 class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata):
-    """The ``GoogleCloudFileMetadata`` object provides the full structure for files on the Google
-    Cloud Storage Provider.  It inherits two non-abstract classes: ``BaseGoogleCloudMetadata`` and
-    ``core_metadata.BaseFileMetadata``.
+    """This class provides a full structure of the files for the ``GoogleCloudProvider``.  It
+    inherits two concrete classes: ``BaseGoogleCloudMetadata`` and ``BaseFileMetadata``.
+
+    Refer to the file ``tests/googlecloud/fixtures/metadata/file-raw.json`` for an example of the
+    metadata Google Cloud Storage XML API returns via HTTP response headers.
     """
 
     @property
@@ -165,9 +180,11 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
 
 
 class GoogleCloudFolderMetadata(BaseGoogleCloudMetadata, metadata.BaseFolderMetadata):
-    """The ``GoogleCloudFolderMetadata`` object provides the full structure for folders on Google
-    Cloud Storage Provider.  It inherits two non-abstract classes: ``BaseGoogleCloudMetadata`` and
-    ``core_metadata.BaseFolderMetadata``.
+    """This class provides the full structure of the folders for the ``GoogleCloudProvider``.  It
+    inherits two concrete classes: ``BaseGoogleCloudMetadata`` and ``BaseFolderMetadata``.
+
+    Refer to the file ``tests/googlecloud/fixtures/metadata/folder-raw.json`` for an example of the
+    metadata Google Cloud Storage XML API returns via HTTP response headers.
     """
 
     @property
