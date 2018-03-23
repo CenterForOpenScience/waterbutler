@@ -62,7 +62,6 @@ class GoogleCloudProvider(BaseProvider):
                 'storage': {
                     'provider': 'change_me',
                     'bucket': 'change_me',
-                    'region': 'change_me',
                 },
             }
 
@@ -91,9 +90,6 @@ class GoogleCloudProvider(BaseProvider):
                 self.NAME,
                 message='Invalid or mal-formed service account credentials: {}'.format(str(exc))
             )
-
-        # `self.region` has no functional usage or impact
-        self.region = settings.get('region')
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
         return await self.validate_path(path)
