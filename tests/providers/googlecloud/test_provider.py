@@ -70,7 +70,6 @@ class TestProviderInit:
         assert mock_provider.NAME == 'googlecloud'
         assert mock_provider.BASE_URL == pd_settings.BASE_URL
         assert mock_provider.bucket == mock_settings.get('bucket')
-        assert mock_provider.region == mock_settings.get('region')
 
         json_creds = mock_creds.get('json_creds')
         assert mock_provider.creds is not None

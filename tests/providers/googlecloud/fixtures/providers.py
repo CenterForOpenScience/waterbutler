@@ -53,9 +53,9 @@ def mock_creds_2():
 
 @pytest.fixture()
 def mock_settings():
-    return {'bucket': 'gcloud-test.longzechen.com', 'region': 'US-EAST1'}
+    return {'bucket': 'gcloud-test.longzechen.com'}
 
 
 @pytest.fixture()
 def mock_settings_2():
-    return {'bucket': 'gcloud-test-2.longzechen.com', 'region': 'US-EAST1'}
+    return {'bucket': 'gcloud-test-2.longzechen.com'}
