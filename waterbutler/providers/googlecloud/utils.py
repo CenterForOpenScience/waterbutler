@@ -3,6 +3,7 @@ import base64
 import typing
 import binascii
 from urllib.parse import urlparse, quote
+
 from aiohttp import MultiDict, MultiDictProxy
 
 from waterbutler.core.path import WaterButlerPath
@@ -12,15 +13,16 @@ from waterbutler.core.exceptions import WaterButlerError
 def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:
     """Get the object name of the file or folder with the given Waterbutler Path.
 
-    Quirks:
+    .. note::
 
         Object Name is used by the Google Cloud Storage API (both XML and JSON) in the request path,
         queries and headers to identify the object.  Folders' names always end with a ``'/'`` and
         files' names never do. In addition, neither of them starts with a ``'/'``.
 
-    :param path: the WaterButler path of the object
-    :param is_folder: the folder flag
-    :rtype str:
+    :param path: the WaterButlerPath of the object
+    :type path: :class:`.WaterButlerPath`
+    :param bool is_folder: the folder flag
+    :rtype: str
     """
 
     return validate_path_or_name(path.path.lstrip('/'), is_folder=is_folder)
@@ -29,9 +31,9 @@ def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:
 def build_path(obj_name: str, is_folder: bool=False) -> str:
     """Convert the object name to a path string which can pass WaterButler path validation.
 
-    :param obj_name: the object name of the object
-    :param is_folder: the folder flag
-    :rtype str:
+    :param str obj_name: the object name of the object
+    :param bool is_folder: the folder flag
+    :rtype: str
     """
 
     return validate_path_or_name(
@@ -43,9 +45,9 @@ def build_path(obj_name: str, is_folder: bool=False) -> str:
 def validate_path_or_name(path_or_name: str, is_folder: bool=False) -> str:
     """Validate that path or object name.
 
-    :param path_or_name: the path or the object name
-    :param is_folder: the folder flag
-    :rtype str:
+    :param str path_or_name: the path or the object name
+    :param bool is_folder: the folder flag
+    :rtype: str
     """
 
     if is_folder:
@@ -59,12 +61,10 @@ def validate_path_or_name(path_or_name: str, is_folder: bool=False) -> str:
 def build_url(base: str, *segments, **query) -> str:
     """Build URL with ``'/'`` encoded in path segments and queries for Google Cloud API.
 
-    Quirk:
+    Objects' names in Google Cloud Storage contain ``'/'`` which must be encoded.  WB calls
+    :func:`urllib.parse.quote()` with optional argument ``safe=''``.  The default is ``safe='/'``.
 
-        Objects' names in Google Cloud Storage contain ``'/'`` which must be encoded.  WB calls
-        ``urllib.parse.quote()`` with optional argument ``safe=''``.  The default is ``safe='/'``.
-
-    :param base: the base URL
+    :param str base: the base URL
     :param segments: the path segments tuple
     :param query: the queries dictionary
     :rtype: str
@@ -98,14 +98,12 @@ def build_url(base: str, *segments, **query) -> str:
 def decode_and_hexlify_hashes(hash_str: str) -> typing.Union[str, None]:
     """Decode a Base64-encoded string and return a hexlified string.
 
-    Quirks:
+     This helper function inputs and outputs string.  However, both :func:`base64.b64decode()` and
+     :func:`binascii.hexlify()` operate on bytes.  WB must call ``.encode()`` and ``.decode()`` to
+     convert bytes and string back and forth.
 
-        This helper function inputs and outputs string.  However, both ``base64.b64decode()`` and
-        ``binascii.hexlify()`` operate on bytes.  WB must call ``.encode()`` and ``.decode()`` to
-        convert bytes and string back and forth.
-
-    :param hash_str: the Base64-encoded hash string
-    :rtype str:
+    :param str hash_str: the Base64-encoded hash string
+    :rtype: str or None
     """
 
     return binascii.hexlify(base64.b64decode(hash_str.encode())).decode() if hash_str else None
@@ -114,18 +112,20 @@ def decode_and_hexlify_hashes(hash_str: str) -> typing.Union[str, None]:
 def build_canonical_ext_headers_str(headers: dict) -> str:
     """Build a string for canonical extension headers, which is part of the string to sign.
 
-    Quirks:
+    .. note::
 
-        Google Cloud Storage has very strict rules for building this string. See: https://cloud.goog
-        le.com/storage/docs/access-control/signed-urls#about-canonical-extension-headers
+        Google Cloud Storage has very strict rules for building this string. See:
+        https://cloud.google.com/storage/docs/access-control/signed-urls#about-canonical-extension-headers
 
-        For this very limited version of the Google Cloud provider, only ``_intra_copy_file`` uses
-        the canonical extension header and it uses only one.  There is no need for extra effort to
-        remove ``x-goog-encryption-key`` and ``x-goog-encryption-key-sha256`` or to perform a lexi-
-        cographical sort.  TODO [Phase 2]: fully implement this function when needed
+        For this very limited version of the Google Cloud provider, only
+        :meth:`GoogleCloudProvider._intra_copy_file` uses the canonical extension header and it
+        uses only one.  There is no need for extra effort to remove ``x-goog-encryption-key`` and
+        ``x-goog-encryption-key-sha256`` or to perform a lexicographical sort.
 
-    :param headers: the canonical extension headers
-    :rtype str:
+        *TODO [Phase 2]: fully implement this function when needed*
+
+    :param dict headers: the canonical extension headers
+    :rtype: str
     """
 
     # Return ``''`` instead of ``None`` so that it can be properly concatenated
@@ -145,31 +145,31 @@ def build_canonical_ext_headers_str(headers: dict) -> str:
 def verify_raw_google_hash_header(google_hash: str) -> bool:
     """Verify the format of the raw value of the "x-goog-hash" header.
 
-    Note: For now this method is used for test only.
+    Note: For now this method is used for tests only.
 
-    :param google_hash: the raw value of the "x-goog-hash" header
-    :rtype bool:
+    :param str google_hash: the raw value of the "x-goog-hash" header
+    :rtype: bool
     """
 
     return bool(re.match(r'(crc32c=[A-Za-z0-9+/=]+),(md5=[A-Za-z0-9+/=]+)', google_hash))
 
 
 def get_multi_dict_from_python_dict(resp_headers_dict: dict) -> MultiDictProxy:
-    """Construct an ``aiohttp.CIMultiDict`` instance from a Python dictionary.
+    """Construct an :class:`aiohttp.MultiDictProxy` instance from a Python dictionary.
 
     Note: For now, this method is used for test only.
 
-    Quirks:
+    .. note::
 
         Neither Python dictionary nor JSON supports multi-value key.  The response headers returned
-        by ``aiohttp`` is of immutable type ``aiohttp.CIMultiDictProxy`` while the one returned by
-        ``aiohttpretty`` is of ``aiohttp.CIMultiDict``.
+        by `aiohttp` is of immutable type :class:`aiohttp.MultiDictProxy` while the one returned by
+        `aiohttpretty` is of :class:`aiohttp.MultiDict`.
 
-        WB tests use the ``aiohttp.MultiDict`` type for both files and folders during modification
-        and returns the ``aiohttp.MultiDictProxy`` type to imitate the behavior of `aiohttp`.
+        WB tests use the :class:`aiohttp.MultiDict` type for both files and folders during modification
+        and returns the :class:`aiohttp.MultiDictProxy` type to imitate the behavior of `aiohttp`.
 
-    :param resp_headers_dict: the raw response headers dictionary
-    :rtype MultiDictProxy:
+    :param dict resp_headers_dict: the raw response headers dictionary
+    :rtype: :class:`aiohttp.MultiDictProxy`
     """
 
     resp_headers = MultiDict(resp_headers_dict)
