@@ -1,8 +1,9 @@
-import re
 import os
+import re
 import abc
 import typing
 import logging
+
 from aiohttp import MultiDict, MultiDictProxy
 
 from waterbutler.core import metadata
@@ -14,12 +15,12 @@ logger = logging.getLogger(__name__)
 
 class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
     """This class provides the base structure of both files and folders metadata for the
-    ``GoogleCloudProvider``.  It is an abstract class and does not implements all abstract methods
-    and properties in ``BaseMetadata``.
+    :class:`.GoogleCloudProvider`.  It is an abstract class and does not implement all abstract
+    methods and properties in :class:`.BaseMetadata`.
 
-    Quirks - Objects in Google Cloud Storage
+    Quirks:
 
-        Google sees both files and folders as objects.
+    * Google sees both files and folders as objects.
     """
 
     @property
@@ -31,18 +32,14 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
         return self.build_path(self.raw.get('object_name', None))
 
     @classmethod
-    def get_metadata_from_resp_headers(
-            cls,
-            obj_name: str,
-            resp_headers: MultiDictProxy
-    ) -> dict:
+    def get_metadata_from_resp_headers(cls, obj_name: str, resp_headers: MultiDictProxy) -> dict:
         """Retrieve the metadata from HTTP response headers.
 
         Quirks - Google Cloud Customized Headers:
 
             Google provides several customized headers that contain what WB needs for metadata.
 
-            CRC32C and MD5: "x-goog-hash"
+            **CRC32C and MD5: "x-goog-hash"**
 
             See: https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooghash
 
@@ -54,7 +51,7 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
             Alphabets: 1. The Standard Base 64 Alphabet: [A-Za-z0-9+/=] and 2.  The "URL and File-
             name safe" Base 64 Alphabet: [A-Za-z0-9-_=].  Google Cloud uses the standard one.
 
-            SIZE: "x-goog-stored-content-length"
+            **SIZE: "x-goog-stored-content-length"**
 
             https://cloud.google.com/storage/docs/xml-api/reference-headers#xgoogstoredcontentlength
 
@@ -63,7 +60,7 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
             individual requests for the object." Do not use the "Content-Length" header, it is the
             length of the response body, not the size of the object.
 
-            Version: "x-goog-generation"
+            **Version: "x-goog-generation"**
 
             https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooggeneration
 
@@ -73,19 +70,19 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
             and the other for ``created_utc``.  Set ``created_utc`` to ``None`` and build the path
             from the ``obj_name``.
 
-        Quirks - ``aiohttp`` Response Headers:
+        Quirks - `aiohttp` Response Headers:
 
-            ``aiohttp`` is able to parse the raw hash header, retrieve both hashes and store them in
+            `aiohttp` is able to parse the raw hash header, retrieve both hashes and store them in
             a dictionary where one key can have multiple values. This ``resp_headers`` is of type
-            ``aiohttp.CIMultiDictProxy``, which is immutable. WB calls its ``.getall(key)`` method
-            to return a list of all values that matches the key.
+            :class:`aiohttp.CIMultiDictProxy`, which is immutable. WB calls its ``.getall(key)``
+            method to return a list of all values that matches the key.
 
             The raw hash google header ``x-goog-hash: crc32c=Tf8tmw==,md5=mkaUfJxiLXeSEl2OpExGOA==``
             becomes ``{"x-goog-hash": "crc32c=Tf8tmw==", "md5": "mkaUfJxiLXeSEl2OpExGOA=="}``
 
         :param obj_name: the "Object Name" of the file or folder
         :param resp_headers: the response headers of the metadata request
-        :rtype dict:
+        :rtype: dict
         """
 
         # HTTP Response Headers
@@ -126,11 +123,11 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
 
 
 class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata):
-    """This class provides a full structure of the files for the ``GoogleCloudProvider``.  It
-    inherits two concrete classes: ``BaseGoogleCloudMetadata`` and ``BaseFileMetadata``.
+    """This class provides a full structure of the files for the :class:`.GoogleCloudProvider`.  It
+    inherits two concrete classes: :class:`.BaseGoogleCloudMetadata` and :class:`.BaseFileMetadata`.
 
-    Refer to the file ``tests/googlecloud/fixtures/metadata/file-raw.json`` for an example of the
-    metadata Google Cloud Storage XML API returns via HTTP response headers.
+    Refer to the file ``tests/providers/googlecloud/fixtures/metadata/file-raw.json`` for an
+    example of the metadata Google Cloud Storage XML API returns via HTTP response headers.
     """
 
     @property
@@ -164,16 +161,15 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
         return self.raw.get('extra', None)
 
     @classmethod
-    def new_from_resp_headers(
-            cls,
-            obj_name: str,
-            resp_headers: typing.Union[MultiDict, MultiDictProxy]
-    ):
-        """Construct an instance of ``GoogleCloudFileMetadata`` from the response headers returned.
+    def new_from_resp_headers(cls, obj_name: str,
+                              resp_headers: typing.Union[MultiDict, MultiDictProxy]):
+        """Construct an instance of :class:`.GoogleCloudFileMetadata` from the response headers
+        returned.
 
-        :param obj_name: the object name
+        :param str obj_name: the object name
         :param resp_headers: the response headers
-        :rtype GoogleCloudFileMetadata:
+        :type resp_headers: :class:`aiohttp.MultiDict` or :class:`MultiDictProxy`
+        :rtype: :class:`.GoogleCloudFileMetadata`
         """
 
         if not obj_name:
@@ -182,7 +178,7 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
         if not resp_headers:
             raise MetadataError('Metadata init failed: missing response headers.')
 
-        if not isinstance(resp_headers, MultiDict) and not isinstance(resp_headers, MultiDictProxy):
+        if not (isinstance(resp_headers, MultiDict) or isinstance(resp_headers, MultiDictProxy)):
             raise MetadataError('Metadata init failed: invalid response headers.')
 
         parsed_resp_headers = cls.get_metadata_from_resp_headers(obj_name, resp_headers)
@@ -191,11 +187,12 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
 
 
 class GoogleCloudFolderMetadata(BaseGoogleCloudMetadata, metadata.BaseFolderMetadata):
-    """This class provides the full structure of the folders for the ``GoogleCloudProvider``.  It
-    inherits two concrete classes: ``BaseGoogleCloudMetadata`` and ``BaseFolderMetadata``.
+    """This class provides the full structure of the folders for the :class:`.GoogleCloudProvider`.
+    It inherits two concrete classes: :class:`.BaseGoogleCloudMetadata` and
+    :class:`.BaseFolderMetadata`.
 
-    Refer to the file ``tests/googlecloud/fixtures/metadata/folder-raw.json`` for an example of the
-    metadata Google Cloud Storage XML API returns via HTTP response headers.
+    Refer to the file ``tests/providers/googlecloud/fixtures/metadata/folder-raw.json`` for an
+    example of the metadata Google Cloud Storage XML API returns via HTTP response headers.
     """
 
     @property
@@ -203,12 +200,15 @@ class GoogleCloudFolderMetadata(BaseGoogleCloudMetadata, metadata.BaseFolderMeta
         return os.path.split(self.path.rstrip('/'))[1]
 
     @classmethod
-    def new_from_resp_headers(cls, obj_name: str, resp_headers: MultiDictProxy):
-        """Construct an instance of ``GoogleCloudFileMetadata`` from the response headers returned.
+    def new_from_resp_headers(cls, obj_name: str,
+                              resp_headers: typing.Union[MultiDict, MultiDictProxy]):
+        """Construct an instance of :class:`.GoogleCloudFolderMetadata` from the response headers
+        returned.
 
-        :param obj_name: the object name
+        :param str obj_name: the object name
         :param resp_headers: the response headers
-        :rtype GoogleCloudFolderMetadata:
+        :type resp_headers: :class:`aiohttp.MultiDict` or :class:`MultiDictProxy`
+        :rtype: :class:`.GoogleCloudFolderMetadata`
         """
 
         if not obj_name:
@@ -217,7 +217,7 @@ class GoogleCloudFolderMetadata(BaseGoogleCloudMetadata, metadata.BaseFolderMeta
         if not resp_headers:
             raise MetadataError('Metadata init failed: missing response headers.')
 
-        if not isinstance(resp_headers, MultiDict) and not isinstance(resp_headers, MultiDictProxy):
+        if not (isinstance(resp_headers, MultiDict) or isinstance(resp_headers, MultiDictProxy)):
             raise MetadataError('Metadata init failed: invalid response headers.')
 
         parsed_resp_headers = cls.get_metadata_from_resp_headers(obj_name, resp_headers)
