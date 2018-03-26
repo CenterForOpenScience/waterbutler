@@ -31,6 +31,7 @@ def settings():
         'name': 'A look at wizards',
     }
 
+
 @pytest.fixture
 def native_file_metadata():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
@@ -65,10 +66,18 @@ def dataset_metadata_object():
             'Dataset Test Version'
         )
 
+
 @pytest.fixture
 def file_metadata_object():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
         return DataverseFileMetadata(json.load(fp)['native_file_metadata']['datafile'], 'latest')
+
+
+@pytest.fixture
+def csv_file_metadata_object():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+        return DataverseFileMetadata(json.load(fp)['csv_native_file_metadata']['datafile'],
+                                                                                    'latest')
 
 
 @pytest.fixture

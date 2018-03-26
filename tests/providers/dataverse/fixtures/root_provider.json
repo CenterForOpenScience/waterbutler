@@ -258,6 +258,22 @@
       "label":"thefile.txt",
       "version":1
    },
+   "csv_native_file_metadata":{
+      "datafile":{
+         "contentType":"text/tab-separated-values",
+         "description":"",
+         "filename":"%2Fusr%2Flocal%2Fglassfish4%2Fglassfish%2Fdomains%2Fdomain1%2Ffiles%2F10.5072%2FFK2%2F232XYH%2F14c7a73d734-8383551cc713",
+         "id":20,
+         "md5":"6b50249f91258397fc5cb7d5a4127e15",
+         "name":"thefile.tab",
+         "originalFormatLabel":"Comma Separated Values",
+         "originalFileFormat": "text/csv"
+      },
+      "datasetVersionId":5,
+      "description":"",
+      "label":"thefile.tab",
+      "version":1
+   },
    "checksum_mismatch_dataset_metadata":{
       "data":{
          "createTime":"2015-04-02T13:21:59Z",
