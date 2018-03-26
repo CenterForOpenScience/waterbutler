@@ -8,18 +8,16 @@ import pytest
 import aiohttpretty
 
 from waterbutler.core import exceptions
-from waterbutler.providers.googlecloud import utils
-from waterbutler.providers.googlecloud import settings
 from waterbutler.core.streams import FileStreamReader, ResponseStreamReader
-from waterbutler.providers.googlecloud import GoogleCloudProvider, GoogleCloudFileMetadata
+from waterbutler.providers.googlecloud.metadata import GoogleCloudFileMetadata
+from waterbutler.providers.googlecloud import utils, settings, GoogleCloudProvider
 
 from tests.providers.googlecloud.fixtures.providers import (mock_auth,
                                                             mock_auth_2,
                                                             mock_creds,
                                                             mock_creds_2,
                                                             mock_settings,
-                                                            mock_settings_2,
-                                                            )
+                                                            mock_settings_2)
 
 from tests.providers.googlecloud.fixtures.files import (file_raw,
                                                         file_name,
@@ -31,8 +29,7 @@ from tests.providers.googlecloud.fixtures.files import (file_raw,
                                                         meta_file_copy_raw,
                                                         file_2_wb_path,
                                                         file_2_obj_name,
-                                                        file_2_copy_obj_name,
-                                                        )
+                                                        file_2_copy_obj_name)
 
 from tests.providers.googlecloud.fixtures.folders import folder_wb_path, folder_obj_name
 
@@ -108,15 +105,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file(
-            self,
-            mock_time,
-            mock_provider,
-            file_wb_path,
-            meta_file_raw,
-            meta_file_parsed
-    ):
-
+    async def test_metadata_file(self, mock_time, mock_provider, file_wb_path, meta_file_raw,
+                                 meta_file_parsed):
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
         signed_url = mock_provider._build_and_sign_url('HEAD', file_obj_name, **{})
 
@@ -138,12 +128,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_object_401_unauthorized(
-            self,
-            mock_time,
-            mock_provider,
-            file_wb_path
-    ):
+    async def test_metadata_object_401_unauthorized(self, mock_time, mock_provider, file_wb_path):
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
         signed_url = mock_provider._build_and_sign_url('HEAD', file_obj_name, **{})
 
@@ -161,12 +146,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_object_404_not_found(
-            self,
-            mock_time,
-            mock_provider,
-            file_wb_path
-    ):
+    async def test_metadata_object_404_not_found(self, mock_time, mock_provider, file_wb_path):
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
         signed_url = mock_provider._build_and_sign_url('HEAD', file_obj_name, **{})
 
@@ -213,13 +193,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_file(
-            self,
-            mock_time,
-            mock_provider,
-            file_wb_path,
-            file_raw
-    ):
+    async def test_download_file(self, mock_time, mock_provider, file_wb_path, file_raw):
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
         signed_url = mock_provider._build_and_sign_url('GET', file_obj_name, **{})
 
@@ -239,14 +213,8 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_file_with_accept_url(
-            self,
-            mock_time,
-            mock_provider,
-            file_wb_path,
-            file_name
-    ):
-
+    async def test_download_file_with_accept_url(self, mock_time, mock_provider, file_wb_path,
+                                                 file_name):
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
         query = {'response-content-disposition': 'attachment; filename={}'.format(file_name)}
         signed_url = mock_provider._build_and_sign_url('GET', file_obj_name, **query)
@@ -277,16 +245,8 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_file(
-            self,
-            mock_time,
-            mock_provider,
-            file_wb_path,
-            meta_file_raw,
-            meta_file_parsed,
-            meta_file_upload_raw,
-            file_stream_file
-    ):
+    async def test_upload_file(self, mock_time, mock_provider, file_wb_path, meta_file_raw,
+                               meta_file_parsed, meta_file_upload_raw, file_stream_file):
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
 
         signed_url_upload = mock_provider._build_and_sign_url('PUT', file_obj_name, **{})
@@ -318,15 +278,9 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_file_checksum_mismatch(
-            self,
-            mock_time,
-            mock_provider,
-            file_wb_path,
-            meta_file_raw,
-            meta_file_upload_raw,
-            file_stream_file
-    ):
+    async def test_upload_file_checksum_mismatch(self, mock_time, mock_provider, file_wb_path,
+                                                 meta_file_raw, meta_file_upload_raw,
+                                                 file_stream_file):
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
 
         signed_url_upload = mock_provider._build_and_sign_url('PUT', file_obj_name, **{})
@@ -396,20 +350,12 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_file(
-            self,
-            mock_time,
-            mock_provider,
-            file_wb_path,
-            file_2_wb_path,
-            meta_file_raw,
-            meta_file_parsed,
-            meta_file_copy_raw
-    ):
+    async def test_intra_copy_file(self, mock_time, mock_provider, file_wb_path, file_2_wb_path,
+                                   meta_file_raw, meta_file_parsed, meta_file_copy_raw):
         src_file_path = file_2_wb_path
         dest_file_path = file_wb_path
         src_file_obj_name = utils.get_obj_name(src_file_path, is_folder=False)
-        dest_file_obj_name =utils.get_obj_name(dest_file_path, is_folder=False)
+        dest_file_obj_name = utils.get_obj_name(dest_file_path, is_folder=False)
 
         object_name_with_bucket = '{}/{}'.format(mock_provider.bucket, src_file_obj_name)
         canonical_ext_headers = {'x-goog-copy-source': object_name_with_bucket}
@@ -447,19 +393,12 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_file_not_found(
-            self,
-            mock_time,
-            mock_provider,
-            file_wb_path,
-            file_2_wb_path,
-            meta_file_raw,
-            meta_file_copy_raw
-    ):
+    async def test_intra_copy_file_not_found(self, mock_time, mock_provider, file_wb_path,
+                                             file_2_wb_path, meta_file_raw, meta_file_copy_raw):
         src_file_path = file_2_wb_path
         dest_file_path = file_wb_path
         src_file_obj_name = utils.get_obj_name(src_file_path, is_folder=False)
-        dest_file_obj_name =utils.get_obj_name(dest_file_path, is_folder=False)
+        dest_file_obj_name = utils.get_obj_name(dest_file_path, is_folder=False)
 
         object_name_with_bucket = '{}/{}'.format(mock_provider.bucket, src_file_obj_name)
         canonical_ext_headers = {'x-goog-copy-source': object_name_with_bucket}

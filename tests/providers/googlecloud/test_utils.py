@@ -1,26 +1,24 @@
 import json
 import time
 from unittest import mock
-from aiohttp import MultiDictProxy
 from urllib.parse import quote, unquote
 
 import furl
 import pytest
+from aiohttp import MultiDictProxy
 
 from tests.providers.googlecloud.fixtures.files import (file_wb_path,
                                                         meta_file_raw,
                                                         file_obj_name,
                                                         file_2_obj_name,
-                                                        file_2_copy_obj_name,
-                                                        )
+                                                        file_2_copy_obj_name)
 
 from tests.providers.googlecloud.fixtures.providers import (mock_auth,
                                                             mock_auth_2,
                                                             mock_creds,
                                                             mock_creds_2,
                                                             mock_settings,
-                                                            mock_settings_2,
-                                                            )
+                                                            mock_settings_2)
 
 from tests.providers.googlecloud.fixtures.folders import folder_obj_name, folder_wb_path
 
@@ -86,13 +84,7 @@ class TestBuildAndSignURL:
         expected = 'x-goog-copy-source:{}\n'.format(object_name_with_bucket)
         assert canonical_ext_headers_str == expected
 
-    def test_build_and_sign_metadata_url(
-            self,
-            mock_time,
-            expires,
-            mock_provider,
-            file_2_obj_name
-    ):
+    def test_build_and_sign_metadata_url(self, mock_time, expires, mock_provider, file_2_obj_name):
         signed_url = mock_provider._build_and_sign_url('HEAD', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
@@ -108,13 +100,7 @@ class TestBuildAndSignURL:
             'JbQ8at8IuQ%3D%3D'
         )
 
-    def test_build_and_sign_upload_url(
-            self,
-            mock_time,
-            expires,
-            mock_provider,
-            file_2_obj_name
-    ):
+    def test_build_and_sign_upload_url(self, mock_time, expires, mock_provider, file_2_obj_name):
         signed_url = mock_provider._build_and_sign_url('PUT', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
@@ -130,13 +116,7 @@ class TestBuildAndSignURL:
             'y3vlYjTDRwkUiAFKAw%3D%3D'
         )
 
-    def test_build_and_sign_download_url(
-            self,
-            mock_time,
-            expires,
-            mock_provider,
-            file_2_obj_name
-    ):
+    def test_build_and_sign_download_url(self, mock_time, expires, mock_provider, file_2_obj_name):
         signed_url = mock_provider._build_and_sign_url('GET', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
@@ -152,13 +132,7 @@ class TestBuildAndSignURL:
             'txbML11F4KRj%2Bw%3D%3D'
         )
 
-    def test_build_and_sign_delete_url(
-            self,
-            mock_time,
-            expires,
-            mock_provider,
-            file_2_obj_name
-    ):
+    def test_build_and_sign_delete_url(self, mock_time, expires, mock_provider, file_2_obj_name):
         signed_url = mock_provider._build_and_sign_url('DELETE', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
@@ -174,14 +148,8 @@ class TestBuildAndSignURL:
             '%2FK0VtKoc%2FAoAa9%2BdLgvA%3D%3D'
         )
 
-    def test_build_and_sign_copy_url(
-            self,
-            mock_time,
-            expires,
-            mock_provider,
-            file_2_obj_name,
-            file_2_copy_obj_name
-    ):
+    def test_build_and_sign_copy_url(self, mock_time, expires, mock_provider, file_2_obj_name,
+                                     file_2_copy_obj_name):
         object_name_with_bucket = '{}/{}'.format(mock_provider.bucket, file_2_obj_name)
         canonical_ext_headers = {'x-goog-copy-source': object_name_with_bucket}
         signed_url = mock_provider._build_and_sign_url(
@@ -224,6 +192,11 @@ class TestHash:
 
         google_hash = 'crc32c=Tf8tmw==,md5=mkaUfJxiLXeSEl2OpExGOA=='
         assert utils.verify_raw_google_hash_header(google_hash)
+
+    def test_verify_bad_raw_google_hash_header(self):
+
+        google_hash = 'this cant possibly be right'
+        assert utils.verify_raw_google_hash_header(google_hash) == False
 
     def test_decode_and_hexlify_hashes(self):
 

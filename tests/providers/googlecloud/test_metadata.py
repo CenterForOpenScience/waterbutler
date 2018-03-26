@@ -1,9 +1,7 @@
 import json
-from aiohttp import MultiDict
 
 import pytest
-
-from tests.providers.googlecloud.fixtures.providers import mock_auth, mock_creds, mock_settings
+from aiohttp import MultiDict
 
 from tests.providers.googlecloud.fixtures.files import (file_name,
                                                         file_wb_path,
@@ -11,29 +9,20 @@ from tests.providers.googlecloud.fixtures.files import (file_name,
                                                         meta_file_raw,
                                                         meta_file_extra,
                                                         meta_file_parsed,
-                                                        meta_file_resp_headers_raw,
-                                                        )
-
+                                                        meta_file_resp_headers_raw)
 from tests.providers.googlecloud.fixtures.folders import (folder_name,
                                                           folder_wb_path,
                                                           folder_obj_name,
                                                           meta_folder_raw,
                                                           meta_folder_parsed,
-                                                          meta_folder_resp_headers_raw,
-                                                          )
+                                                          meta_folder_resp_headers_raw)
 
 from waterbutler.core import exceptions
 from waterbutler.providers.googlecloud import utils
-from waterbutler.providers.googlecloud import (GoogleCloudProvider,
-                                               BaseGoogleCloudMetadata,
-                                               GoogleCloudFileMetadata,
-                                               GoogleCloudFolderMetadata,
-                                               )
+from waterbutler.providers.googlecloud.metadata import (BaseGoogleCloudMetadata,
+                                                        GoogleCloudFileMetadata,
+                                                        GoogleCloudFolderMetadata)
 
-
-@pytest.fixture()
-def mock_provider(mock_auth, mock_creds, mock_settings):
-    return GoogleCloudProvider(mock_auth, mock_creds, mock_settings)
 
 
 class TestMetadataInitialization:
