@@ -1,28 +1,29 @@
+import json
 import time
-from urllib.parse import quote, unquote
 from unittest import mock
+from urllib.parse import quote, unquote
 
 import furl
 import pytest
+from aiohttp import MultiDictProxy
+
+from tests.providers.googlecloud.fixtures.files import (file_wb_path,
+                                                        meta_file_raw,
+                                                        file_obj_name,
+                                                        file_2_obj_name,
+                                                        file_2_copy_obj_name)
 
 from tests.providers.googlecloud.fixtures.providers import (mock_auth,
                                                             mock_auth_2,
                                                             mock_creds,
                                                             mock_creds_2,
                                                             mock_settings,
-                                                            mock_settings_2,
-                                                            )
+                                                            mock_settings_2)
 
 from tests.providers.googlecloud.fixtures.folders import folder_obj_name, folder_wb_path
 
-from tests.providers.googlecloud.fixtures.files import (file_wb_path,
-                                                        meta_file_raw,
-                                                        file_obj_name,
-                                                        file_2_obj_name,
-                                                        file_2_copy_obj_name,
-                                                        )
-
 from waterbutler.providers.googlecloud import utils
+from waterbutler.providers.googlecloud import settings
 from waterbutler.providers.googlecloud import GoogleCloudProvider
 
 
@@ -35,6 +36,11 @@ def mock_provider(mock_auth, mock_creds, mock_settings):
 def mock_time(monkeypatch):
     mock_time = mock.Mock(return_value=1234567890.0)
     monkeypatch.setattr(time, 'time', mock_time)
+
+
+@pytest.fixture
+def expires():
+    return 1234567890 + settings.SIGNATURE_EXPIRATION
 
 
 class TestPathAndNameForObjects:
@@ -78,18 +84,13 @@ class TestBuildAndSignURL:
         expected = 'x-goog-copy-source:{}\n'.format(object_name_with_bucket)
         assert canonical_ext_headers_str == expected
 
-    def test_build_and_sign_metadata_url(
-            self,
-            mock_time,
-            mock_provider,
-            file_2_obj_name
-    ):
+    def test_build_and_sign_metadata_url(self, mock_time, expires, mock_provider, file_2_obj_name):
         signed_url = mock_provider._build_and_sign_url('HEAD', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
         assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
-        assert url.args.get('Expires') == '1234567950'
+        assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
         assert url.args.get('Signature') == unquote(
             'ndhn7AZQQvy1cyriphHgA3DEQeShTbCTnqTMyRK2X5eOsmCQ2YQBnAIC7dfvLgA%2Bx0h57UAXY88gNdXo1Qlm'
@@ -99,18 +100,13 @@ class TestBuildAndSignURL:
             'JbQ8at8IuQ%3D%3D'
         )
 
-    def test_build_and_sign_upload_url(
-            self,
-            mock_time,
-            mock_provider,
-            file_2_obj_name
-    ):
+    def test_build_and_sign_upload_url(self, mock_time, expires, mock_provider, file_2_obj_name):
         signed_url = mock_provider._build_and_sign_url('PUT', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
         assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
-        assert url.args.get('Expires') == '1234567950'
+        assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
         assert url.args.get('Signature') == unquote(
             'adVO2pVvFmUdS824inIBBzly63m5gbBYKP%2FAs910n%2FyX7zPTncyCQBKP9lq6nB%2BDnEvd5Pv5l9rjtMuX'
@@ -120,18 +116,13 @@ class TestBuildAndSignURL:
             'y3vlYjTDRwkUiAFKAw%3D%3D'
         )
 
-    def test_build_and_sign_download_url(
-            self,
-            mock_time,
-            mock_provider,
-            file_2_obj_name
-    ):
+    def test_build_and_sign_download_url(self, mock_time, expires, mock_provider, file_2_obj_name):
         signed_url = mock_provider._build_and_sign_url('GET', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
         assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
-        assert url.args.get('Expires') == '1234567950'
+        assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
         assert url.args.get('Signature') == unquote(
             'lC0Wc5VDE65cVk%2F3RSvO5YA9%2Fw8KMu201oR2cOmWkoJR%2FJcvV3lknK3VVh%2F4gQnbteM1RByBpKwZez'
@@ -141,18 +132,13 @@ class TestBuildAndSignURL:
             'txbML11F4KRj%2Bw%3D%3D'
         )
 
-    def test_build_and_sign_delete_url(
-            self,
-            mock_time,
-            mock_provider,
-            file_2_obj_name
-    ):
+    def test_build_and_sign_delete_url(self, mock_time, expires, mock_provider, file_2_obj_name):
         signed_url = mock_provider._build_and_sign_url('DELETE', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
         assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
-        assert url.args.get('Expires') == '1234567950'
+        assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
         assert url.args.get('Signature') == unquote(
             'euS%2FNjjQDP%2FYJtFa99WnEjlyi0MDZjruI9bnsqvrvl1ngSDDdpm99SNltETfJCpy7eE6hU6WKntXJj6Zfo'
@@ -162,13 +148,8 @@ class TestBuildAndSignURL:
             '%2FK0VtKoc%2FAoAa9%2BdLgvA%3D%3D'
         )
 
-    def test_build_and_sign_copy_url(
-            self,
-            mock_time,
-            mock_provider,
-            file_2_obj_name,
-            file_2_copy_obj_name
-    ):
+    def test_build_and_sign_copy_url(self, mock_time, expires, mock_provider, file_2_obj_name,
+                                     file_2_copy_obj_name):
         object_name_with_bucket = '{}/{}'.format(mock_provider.bucket, file_2_obj_name)
         canonical_ext_headers = {'x-goog-copy-source': object_name_with_bucket}
         signed_url = mock_provider._build_and_sign_url(
@@ -181,7 +162,7 @@ class TestBuildAndSignURL:
 
         assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_copy_obj_name, safe=''))
-        assert url.args.get('Expires') == '1234567950'
+        assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
         assert url.args.get('Signature') == unquote(
             'wC2tSJtDlhfv1gKOFdPk9L3PmyRIHId2ehqKEBDuiZ0XG2bGH9duno6PmzDqc9yAmC8OHKCHTVt6QOvAcF4%2F'
@@ -195,10 +176,27 @@ class TestBuildAndSignURL:
 
 class TestHash:
 
+    def test_get_multi_dict_from_json(self, meta_file_raw):
+
+        resp_headers_json = json.loads(meta_file_raw)
+        resp_headers_dict = utils.get_multi_dict_from_python_dict(dict(resp_headers_json))
+        assert resp_headers_dict and isinstance(resp_headers_dict, MultiDictProxy)
+
+        google_hashes = resp_headers_dict.getall('x-goog-hash')
+        assert len(google_hashes) == 2
+
+        for google_hash in google_hashes:
+            assert google_hash.startswith('crc32c=') or google_hash.startswith('md5=')
+
     def test_verify_raw_google_hash_header(self):
 
         google_hash = 'crc32c=Tf8tmw==,md5=mkaUfJxiLXeSEl2OpExGOA=='
         assert utils.verify_raw_google_hash_header(google_hash)
+
+    def test_verify_bad_raw_google_hash_header(self):
+
+        google_hash = 'this cant possibly be right'
+        assert utils.verify_raw_google_hash_header(google_hash) == False
 
     def test_decode_and_hexlify_hashes(self):
 
