@@ -4,6 +4,7 @@
 .env
 .git
 .idea
+.python-version
 **/*.ipynb*
 **/*.pyc
 **/__pycache__

@@ -1,0 +1,15 @@
+HTTP/1.1 200
+status: 200
+x-guploader-uploadid: AEnB2UqnkocmrBC8O6OpcP4_QMoMhiAW90upu3UeTHw7qsIKurwf-rWeDrv0DlY056DYYCrhxnDpwyiReB6t294lKhDLFKdslQ
+etag: "9e780e1c4ee28c44642160b349b3aab0"
+x-goog-generation: 1520451312696796
+x-goog-metageneration: 1
+x-goog-hash: crc32c=Lupd+A==,md5=nngOHE7ijERkIWCzSbOqsA==
+x-goog-stored-content-length: 10124
+x-goog-stored-content-encoding: identity
+content-type: application/xml; charset=UTF-8
+content-length: 175
+vary: Origin
+date: Wed, 07 Mar 2018 19:35:12 GMT
+server: UploadServer
+alt-svc: hq=":443"; ma=2592000; quic=51303431; quic=51303339; quic=51303335,quic=":443"; ma=2592000; v="41,39,35"

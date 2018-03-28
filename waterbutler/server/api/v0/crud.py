@@ -5,7 +5,6 @@ from http import HTTPStatus
 
 import tornado.web
 import tornado.gen
-import tornado.httputil
 import tornado.platform.asyncio
 
 from waterbutler.core import mime_types
@@ -63,7 +62,7 @@ class CRUDHandler(core.BaseProviderHandler):
             raise tornado.web.HTTPError(status_code=400)
 
         if 'Range' in self.request.headers:
-            request_range = tornado.httputil._parse_request_range(self.request.headers['Range'])
+            request_range = utils.parse_request_range(self.request.headers['Range'])
         else:
             request_range = None
 
