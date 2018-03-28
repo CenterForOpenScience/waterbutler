@@ -2,6 +2,25 @@
 ChangeLog
 *********
 
+0.38.0 (2018-03-28)
+===================
+- Fix: WaterButler now handles Range header requests correctly!  There was an off-by-one error where
+WB was returning one byte more than requested.  This manifested in Safari being unable to load
+videos rendered by MFR.  Safari requests the first two bytes of a video before issuing a full
+request.  When WB returns three bytes, Safari refuses to try to render the file.  Safari can now
+render videos from most providers that support Range headers.  Unfortunately, it still struggles
+with osfstorage for reasons that are still being investigated.  (thanks, @abought and @johetordoff!)
+- Feature: WaterButler now logs download and download-as-zip requests to the callback given by the
+auth provider.  This is intended to allow the OSF (the default auth provider) to better log download
+counts for files.  If WB detects that a request originates from MFR, it will relay that on to the
+callback, so the auth provider can account for that when compiling statistics.
+- Feature: Add a new limited provider for Google Cloud Storage!  A limited provider is one that can
+be used as a data-storage backend provider for osfstorage.  It does NOT have a corresponding OSF
+addon interface, nor does it support the full range of WB actions.  It has been tested locally, but
+has yet to be tested in a staging or production environment, so EARLY ADOPT AT YOUR OWN RISK!
+- Fix: Stop installing aiohttpretty in editable mode to avoid containers hanging while awaiting user
+input.
+
 0.37.1 (2018-02-06)
 ===================
 - Feature: Increase default move/copy task timeout to 20s.  WaterButler will now wait 20 seconds for
