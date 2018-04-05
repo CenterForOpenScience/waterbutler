@@ -1,15 +1,13 @@
-import typing
 import logging
+from typing import Tuple
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
+from waterbutler.core import exceptions, provider, streams
 
-from waterbutler.providers.bitbucket import settings
 from waterbutler.providers.bitbucket.path import BitbucketPath
-from waterbutler.providers.bitbucket.metadata import BitbucketFileMetadata
-from waterbutler.providers.bitbucket.metadata import BitbucketFolderMetadata
-from waterbutler.providers.bitbucket.metadata import BitbucketRevisionMetadata
+from waterbutler.providers.bitbucket import settings as pd_settings
+from waterbutler.providers.bitbucket.metadata import (BitbucketFileMetadata,
+                                                      BitbucketFolderMetadata,
+                                                      BitbucketRevisionMetadata, )
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +33,8 @@ class BitbucketProvider(provider.BaseProvider):
     """
 
     NAME = 'bitbucket'
-    BASE_URL = settings.BASE_URL
-    VIEW_URL = settings.VIEW_URL
+    BASE_URL = pd_settings.BASE_URL
+    VIEW_URL = pd_settings.VIEW_URL
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -183,11 +181,13 @@ class BitbucketProvider(provider.BaseProvider):
             for item in valid_revisions
         ]
 
-    async def download(self, path: BitbucketPath, range: typing.Tuple[int, int]=None,
-                       **kwargs):  # type: ignore
-        '''Get the stream to the specified file on bitbucket
-        :param str path: The path to the file on bitbucket
-        '''
+    async def download(self, path: BitbucketPath,  # type: ignore
+                       range: Tuple[int, int]=None, **kwargs) -> streams.ResponseStreamReader:
+        """Get the stream to the specified file on Bitbucket
+
+        :param path: The path to the file on Bitbucket
+        :param range: the range header
+        """
         metadata = await self.metadata(path)
 
         logger.debug('requested-range:: {}'.format(range))
