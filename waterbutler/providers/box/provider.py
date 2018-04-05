@@ -198,7 +198,7 @@ class BoxProvider(provider.BaseProvider):
                          dest_provider: provider.BaseProvider,
                          src_path: wb_path.WaterButlerPath,
                          dest_path: wb_path.WaterButlerPath) \
-            -> typing.Tuple[typing.Union[BoxFileMetadata, BoxFolderMetadata], bool]:
+            -> typing.Tuple[BaseBoxMetadata, bool]:
         if dest_path.identifier is not None:
             await dest_provider.delete(dest_path)
 
@@ -223,10 +223,12 @@ class BoxProvider(provider.BaseProvider):
 
         return await self._intra_move_copy_metadata(dest_path, data)
 
-    async def intra_move(self,  # type: ignore
-                         dest_provider: provider.BaseProvider,
-                         src_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[BaseBoxMetadata, bool]:
+    async def intra_move(
+            self,
+            dest_provider: provider.BaseProvider,
+            src_path: wb_path.WaterButlerPath,
+            dest_path: wb_path.WaterButlerPath
+    ) -> typing.Tuple[BaseBoxMetadata, bool]:
         if dest_path.identifier is not None and str(dest_path).lower() != str(src_path).lower():
             await dest_provider.delete(dest_path)
 
@@ -455,8 +457,7 @@ class BoxProvider(provider.BaseProvider):
                 expects=(200, ), throws=exceptions.MetadataError,
             ) as resp:
                 data = await resp.json()
-                # FIXME: Usage does not match function call signature!  Dead code or bug?
-                return data if raw else self._serialize_item(data)
+                return data if raw else self._serialize_item(data, path)
 
         # Box maximum limit is 1000
         page_count, page_total, limit = 0, None, 1000
@@ -507,7 +508,11 @@ class BoxProvider(provider.BaseProvider):
             box_path = await self.validate_path(child.path)
             await self.delete(box_path)
 
-    async def _intra_move_copy_metadata(self, path, data: dict) -> BaseBoxMetadata:
+    async def _intra_move_copy_metadata(
+            self,
+            path: wb_path.WaterButlerPath,
+            data: dict
+    ) -> typing.Tuple[BaseBoxMetadata, bool]:
         """Return appropriate metadata from intra_copy/intra_move actions. If `data` respresents
         a folder, will fetch and include `data`'s children.
         """
@@ -517,5 +522,5 @@ class BoxProvider(provider.BaseProvider):
             return self._serialize_item(data, path), created
         else:
             folder = self._serialize_item(data, path)
-            folder._children = await self._get_folder_meta(path)
+            folder._children = await self._get_folder_meta(path)  # type: ignore
             return folder, created
