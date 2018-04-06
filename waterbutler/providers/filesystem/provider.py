@@ -1,18 +1,17 @@
 import os
 import shutil
-import typing
 import logging
 import datetime
 import mimetypes
+from typing import Tuple, Union
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
+from waterbutler.core import exceptions, provider
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.streams import FileStreamReader, PartialFileStreamReader
 
-from waterbutler.providers.filesystem import settings
-from waterbutler.providers.filesystem.metadata import FileSystemFileMetadata
-from waterbutler.providers.filesystem.metadata import FileSystemFolderMetadata
+from waterbutler.providers.filesystem import settings as pd_settings
+from waterbutler.providers.filesystem.metadata import (FileSystemFileMetadata,
+                                                       FileSystemFolderMetadata, )
 
 logger = logging.getLogger(__name__)
 
@@ -57,19 +56,15 @@ class FileSystemProvider(provider.BaseProvider):
         shutil.move(src_path.full_path, dest_path.full_path)
         return (await dest_provider.metadata(dest_path)), not exists
 
-    async def download(self, path, revision=None, range: typing.Tuple[int, int]=None, **kwargs):
+    async def download(self, path: WaterButlerPath, range: Tuple[int, int]=None,   # type: ignore
+                       **kwargs) -> Union[FileStreamReader, PartialFileStreamReader]:
         if not os.path.exists(path.full_path):
-            raise exceptions.DownloadError(
-                'Could not retrieve file \'{0}\''.format(path),
-                code=404,
-            )
-
+            raise exceptions.DownloadError('Could not retrieve file \'{0}\''.format(path), code=404)
         file_pointer = open(path.full_path, 'rb')
         logger.debug('requested-range:: {}'.format(range))
         if range is not None and range[1] is not None:
-            return streams.PartialFileStreamReader(file_pointer, range)
-
-        return streams.FileStreamReader(file_pointer)
+            return PartialFileStreamReader(file_pointer, range)
+        return FileStreamReader(file_pointer)
 
     async def upload(self, stream, path, **kwargs):
         created = not (await self.exists(path))
@@ -77,10 +72,10 @@ class FileSystemProvider(provider.BaseProvider):
         os.makedirs(os.path.split(path.full_path)[0], exist_ok=True)
 
         with open(path.full_path, 'wb') as file_pointer:
-            chunk = await stream.read(settings.CHUNK_SIZE)
+            chunk = await stream.read(pd_settings.CHUNK_SIZE)
             while chunk:
                 file_pointer.write(chunk)
-                chunk = await stream.read(settings.CHUNK_SIZE)
+                chunk = await stream.read(pd_settings.CHUNK_SIZE)
 
         metadata = await self.metadata(path)
         return metadata, created
