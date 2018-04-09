@@ -30,6 +30,9 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         'errors': errors,
     }
 
+    if request:
+        log_payload['request_metadata'] = request
+
     if start_time:
         log_payload['email'] = time.time() - start_time > task_settings.WAIT_TIMEOUT
 
