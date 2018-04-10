@@ -8,17 +8,27 @@ import functools
 import itertools
 from urllib import parse
 
-import furl
 import aiohttp
+import furl
 
-from waterbutler.core import streams
 from waterbutler.core import exceptions
-from waterbutler.core import path as wb_path
-from waterbutler import settings as wb_settings
+from waterbutler.core.metadata import (
+    BaseMetadata,
+    BaseFileMetadata,
+    BaseFolderMetadata
+)
 from waterbutler.core.metrics import MetricsRecord
-from waterbutler.core import metadata as wb_metadata
-from waterbutler.core.utils import ZipStreamGenerator
-from waterbutler.core.utils import RequestHandlerContext
+from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.streams import (
+    BaseStream,
+    ResponseStreamRenderer,
+    ZipStreamRenderer
+)
+from waterbutler.core.utils import (
+    RequestHandlerContext,
+    ZipStreamGenerator
+)
+from waterbutler.settings import OP_CONCURRENCY
 
 
 logger = logging.getLogger(__name__)
@@ -198,8 +208,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     async def move(self,
                    dest_provider: 'BaseProvider',
-                   src_path: wb_path.WaterButlerPath,
-                   dest_path: wb_path.WaterButlerPath,
+                   src_path: WaterButlerPath,
+                   dest_path: WaterButlerPath,
                    rename: str=None,
                    conflict: str='replace',
                    handle_naming: bool=True) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
@@ -256,8 +266,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     async def copy(self,
                    dest_provider: 'BaseProvider',
-                   src_path: wb_path.WaterButlerPath,
-                   dest_path: wb_path.WaterButlerPath,
+                   src_path: WaterButlerPath,
+                   dest_path: WaterButlerPath,
                    rename: str=None, conflict: str='replace',
                    handle_naming: bool=True) \
             -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
@@ -304,8 +314,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def _folder_file_op(self,
                               func: typing.Callable,
                               dest_provider: 'BaseProvider',
-                              src_path: wb_path.WaterButlerPath,
-                              dest_path: wb_path.WaterButlerPath,
+                              src_path: WaterButlerPath,
+                              dest_path: WaterButlerPath,
                               **kwargs) -> typing.Tuple[wb_metadata.BaseFolderMetadata, bool]:
         """Recursively apply func to src/dest path.
 
@@ -342,9 +352,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         # Metadata returns a union, which confuses mypy
         self.provider_metrics.append('_folder_file_ops.item_counts', len(items))  # type: ignore
 
-        for i in range(0, len(items), wb_settings.OP_CONCURRENCY):  # type: ignore
+        for i in range(0, len(items), OP_CONCURRENCY):  # type: ignore
             futures = []
-            for item in items[i:i + wb_settings.OP_CONCURRENCY]:  # type: ignore
+            for item in items[i:i + OP_CONCURRENCY]:  # type: ignore
                 futures.append(asyncio.ensure_future(
                     func(
                         dest_provider,
@@ -369,10 +379,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return folder, created
 
     async def handle_naming(self,
-                            src_path: wb_path.WaterButlerPath,
-                            dest_path: wb_path.WaterButlerPath,
+                            src_path: WaterButlerPath,
+                            dest_path: WaterButlerPath,
                             rename: str=None,
-                            conflict: str='replace') -> wb_path.WaterButlerPath:
+                            conflict: str='replace') -> WaterButlerPath:
         """Given a :class:`.WaterButlerPath` and the desired name, handle any potential naming issues.
 
         i.e.:
@@ -412,7 +422,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     def can_intra_copy(self,
                        other: 'BaseProvider',
-                       path: wb_path.WaterButlerPath=None) -> bool:
+                       path: WaterButlerPath=None) -> bool:
         """Indicates if a quick copy can be performed between the current provider and `other`.
 
         .. note::
@@ -426,7 +436,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     def can_intra_move(self,
                        other: 'BaseProvider',
-                       path: wb_path.WaterButlerPath=None) -> bool:
+                       path: WaterButlerPath=None) -> bool:
         """Indicates if a quick move can be performed between the current provider and `other`.
 
         .. note::
@@ -440,8 +450,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     async def intra_copy(self,
                          dest_provider: 'BaseProvider',
-                         source_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
+                         source_path: WaterButlerPath,
+                         dest_path: WaterButlerPath) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
         """If the provider supports copying files and/or folders within itself by some means other
         than download/upload, then ``can_intra_copy`` should return ``True``.  This method will
         implement the copy.  It accepts the destination provider, a source path, and the
@@ -458,8 +468,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     async def intra_move(self,
                          dest_provider: 'BaseProvider',
-                         src_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
+                         src_path: WaterButlerPath,
+                         dest_path: WaterButlerPath) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
         """If the provider supports moving files and/or folders within itself by some means other
         than download/upload/delete, then ``can_intra_move`` should return ``True``.  This method
         will implement the move.  It accepts the destination provider, a source path, and the
@@ -476,7 +486,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         await self.delete(src_path)
         return data, created
 
-    async def exists(self, path: wb_path.WaterButlerPath, **kwargs) \
+    async def exists(self, path: WaterButlerPath, **kwargs) \
             -> typing.Union[bool, wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
         """Check for existence of WaterButlerPath
 
@@ -497,9 +507,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return False
 
     async def handle_name_conflict(self,
-                                   path: wb_path.WaterButlerPath,
+                                   path: WaterButlerPath,
                                    conflict: str='replace',
-                                   **kwargs) -> typing.Tuple[wb_path.WaterButlerPath, bool]:
+                                   **kwargs) -> typing.Tuple[WaterButlerPath, bool]:
         """Check WaterButlerPath and resolve conflicts
 
         Given a WaterButlerPath and a conflict resolution pattern determine
@@ -531,9 +541,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return path, False
 
     async def revalidate_path(self,
-                              base: wb_path.WaterButlerPath,
+                              base: WaterButlerPath,
                               path: str,
-                              folder: bool=False) -> wb_path.WaterButlerPath:
+                              folder: bool=False) -> WaterButlerPath:
         """Take a path and a base path and build a WaterButlerPath representing `/base/path`.  For
         id-based providers, this will need to lookup the id of the new child object.
 
@@ -544,7 +554,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         return base.child(path, folder=folder)
 
-    async def zip(self, path: wb_path.WaterButlerPath, **kwargs) -> asyncio.StreamReader:
+    async def zip(self, path: WaterButlerPath, **kwargs) -> asyncio.StreamReader:
         """Streams a Zip archive of the given folder
 
         :param  path: ( :class:`.WaterButlerPath` ) The folder to compress
@@ -555,7 +565,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             meta_data = [meta_data]  # type: ignore
             path = path.parent
 
-        return streams.ZipStreamReader(ZipStreamGenerator(self, path, *meta_data))  # type: ignore
+        return ZipStreamReader(ZipStreamGenerator(self, path, *meta_data))  # type: ignore
 
     def shares_storage_root(self, other: 'BaseProvider') -> bool:
         """Returns True if ``self`` and ``other`` both point to the same storage root.  Used to
@@ -574,7 +584,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def download(self, src_path: wb_path.WaterButlerPath, **kwargs) -> streams.ResponseStreamReader:
+    async def download(self, src_path: WaterButlerPath, **kwargs) -> ResponseStreamReader:
         """Download a file from this provider.
 
         :param src_path: ( :class:`.WaterButlerPath` ) Path to the file to be downloaded
@@ -585,7 +595,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def upload(self, stream: streams.BaseStream, path: wb_path.WaterButlerPath, *args, **kwargs) \
+    async def upload(self, stream: BaseStream, path: WaterButlerPath, *args, **kwargs) \
             -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
         """Uploads the given stream to the provider.  Returns the metadata for the newly created
         file and a boolean indicating whether the file is completely new (``True``) or overwrote
@@ -600,7 +610,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def delete(self, src_path: wb_path.WaterButlerPath, **kwargs) -> None:
+    async def delete(self, src_path: WaterButlerPath, **kwargs) -> None:
         """
         :param src_path: ( :class:`.WaterButlerPath` ) Path to be deleted
         :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
@@ -610,7 +620,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def metadata(self, path: wb_path.WaterButlerPath, **kwargs) \
+    async def metadata(self, path: WaterButlerPath, **kwargs) \
             -> typing.Union[wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
         """Get metadata about the specified resource from this provider. Will be a :class:`list`
         if the resource is a directory otherwise an instance of
@@ -629,7 +639,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def validate_v1_path(self, path: str, **kwargs) -> wb_path.WaterButlerPath:
+    async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
         """API v1 requires that requests against folder endpoints always end with a slash, and
         requests against files never end with a slash.  This method checks the provider's metadata
         for the given id and throws a 404 Not Found if the implicit and explicit types don't
@@ -650,7 +660,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def validate_path(self, path: str, **kwargs) -> wb_path.WaterButlerPath:
+    async def validate_path(self, path: str, **kwargs) -> WaterButlerPath:
         """Validates paths passed in via the v0 API.  v0 paths are much less strict than v1 paths.
         They may represent things that exist or something that should be created.  As such, the goal
         of ``validate_path`` is to split the path into its component parts and attempt to determine
@@ -671,18 +681,18 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     def path_from_metadata(self,
-                           parent_path: wb_path.WaterButlerPath,
-                           meta_data: wb_metadata.BaseMetadata) -> wb_path.WaterButlerPath:
+                           parent_path: WaterButlerPath,
+                           meta_data: wb_metadata.BaseMetadata) -> WaterButlerPath:
         return parent_path.child(meta_data.name, _id=meta_data.path.strip('/'),
                                  folder=meta_data.is_folder)
 
-    async def revisions(self, path: wb_path.WaterButlerPath, **kwargs):
+    async def revisions(self, path: WaterButlerPath, **kwargs):
         """Return a list of :class:`.BaseFileRevisionMetadata` objects representing the revisions
         available for the file at ``path``.
         """
         return []  # TODO Raise 405 by default h/t @rliebz
 
-    async def create_folder(self, path: wb_path.WaterButlerPath,
+    async def create_folder(self, path: WaterButlerPath,
                             **kwargs) -> wb_metadata.BaseFolderMetadata:
         """Create a folder in the current provider at `path`. Returns a `BaseFolderMetadata` object
         if successful.  May throw a 409 Conflict if a directory with the same name already exists.
