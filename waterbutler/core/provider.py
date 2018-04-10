@@ -206,14 +206,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def request(self, *args, **kwargs):
         return RequestHandlerContext(self.make_request(*args, **kwargs))
 
-    async def move(self,
-                   dest_provider: 'BaseProvider',
-                   src_path: WaterButlerPath,
-                   dest_path: WaterButlerPath,
-                   rename: str=None,
-                   conflict: str='replace',
-                   handle_naming: bool=True) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
-        """Moves a file or folder from the current provider to the specified one
+    async def move(
+        self,
+        dest_provider: 'BaseProvider',
+        src_path: WaterButlerPath,
+        dest_path: WaterButlerPath,
+        rename: str=None,
+        conflict: str='replace',
+        handle_naming: bool=True
+    ) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+        """
+        Moves a file or folder from the current provider to the specified one
         Performs a copy and then a delete.
         Calls :func:`BaseProvider.intra_move` if possible.
 
@@ -264,13 +267,28 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         return meta_data, created
 
-    async def copy(self,
-                   dest_provider: 'BaseProvider',
-                   src_path: WaterButlerPath,
-                   dest_path: WaterButlerPath,
-                   rename: str=None, conflict: str='replace',
-                   handle_naming: bool=True) \
-            -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+    async def copy(
+        self,
+        dest_provider: 'BaseProvider',
+        src_path: WaterButlerPath,
+        dest_path: WaterButlerPath,
+        rename: str=None,
+        conflict: str='replace',
+        handle_naming: bool=True
+    ) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+        """
+        Copies a file or folder from the current provider to the specified one
+        Performs a copy and then a delete.
+        Calls :func:`BaseProvider.intra_move` if possible.
+
+        :param dest_provider: ( :class:`.BaseProvider` ) The provider to copy to
+        :param src_path: ( :class:`.WaterButlerPath` ) Path to where the resource can be found
+        :param dest_path: ( :class:`.WaterButlerPath` ) Path to where the resource will be copied
+        :param rename: ( :class:`str` ) The desired name of the resulting path, may be incremented
+        :param conflict: ( :class:`str` ) What to do in the event of a name conflict, ``replace`` or ``keep``
+        :param handle_naming: ( :class:`bool` ) If a naming conflict is detected, should it be automatically handled?
+        """
+
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
 
@@ -291,8 +309,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         # files and folders shouldn't overwrite themselves
         if (
-                self.shares_storage_root(dest_provider) and
-                src_path.materialized_path == dest_path.materialized_path
+            self.shares_storage_root(dest_provider)
+            and src_path.materialized_path == dest_path.materialized_path
         ):
             raise exceptions.OverwriteSelfError(src_path)
 
@@ -311,13 +329,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         return await dest_provider.upload(download_stream, dest_path)
 
-    async def _folder_file_op(self,
-                              func: typing.Callable,
-                              dest_provider: 'BaseProvider',
-                              src_path: WaterButlerPath,
-                              dest_path: WaterButlerPath,
-                              **kwargs) -> typing.Tuple[wb_metadata.BaseFolderMetadata, bool]:
-        """Recursively apply func to src/dest path.
+    async def _folder_file_op(
+        self,
+        func: typing.Callable,
+        dest_provider: 'BaseProvider',
+        src_path: WaterButlerPath,
+        dest_path: WaterButlerPath,
+    ) -> typing.Tuple[wb_metadata.BaseFolderMetadata, bool]:
+        """
+        Recursively apply func to src/dest path.
 
         Called from: func: copy and move if src_path.is_dir.
 
@@ -355,7 +375,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         for i in range(0, len(items), OP_CONCURRENCY):  # type: ignore
             futures = []
             for item in items[i:i + OP_CONCURRENCY]:  # type: ignore
-                futures.append(asyncio.ensure_future(
+                future = asyncio.ensure_future(
                     func(
                         dest_provider,
                         # TODO figure out a way to cut down on all the requests made here
@@ -363,7 +383,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
                         (await dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
                         handle_naming=False,
                     )
-                ))
+                )
+                futures.append(future)
 
                 if item.is_folder:
                     await futures[-1]
@@ -378,12 +399,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         return folder, created
 
-    async def handle_naming(self,
-                            src_path: WaterButlerPath,
-                            dest_path: WaterButlerPath,
-                            rename: str=None,
-                            conflict: str='replace') -> WaterButlerPath:
-        """Given a :class:`.WaterButlerPath` and the desired name, handle any potential naming issues.
+    async def handle_naming(
+        self,
+        src_path: WaterButlerPath,
+        dest_path: WaterButlerPath,
+        rename: str=None,
+        conflict: str='replace'
+    ) -> WaterButlerPath:
+        """
+        Given a :class:`.WaterButlerPath` and the desired name, handle any potential naming issues.
 
         i.e.:
 
