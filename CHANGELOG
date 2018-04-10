@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.38.1 (2018-04-10)
+===================
+- Fix: Don't log 206 Partial requests to the download callback.  Most of these are for streaming
+video or resumable downloads and shouldn't be tallied as a download.
+
 0.38.0 (2018-03-28)
 ===================
 - Fix: WaterButler now handles Range header requests correctly!  There was an off-by-one error where
