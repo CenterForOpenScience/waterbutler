@@ -143,13 +143,24 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     def on_finish(self):
         status, method = self.get_status(), self.request.method.upper()
+
         # If the response code is not within the 200-302 range, the request was a HEAD or OPTIONS,
-        # or the response code is 202 no callbacks should be sent and no metrics collected.
-        # For 202s, celery will send its own callback.  Osfstorage and s3 can return 302s for file
-        # downloads, which should be tallied.
-        if any((method in ('HEAD', 'OPTIONS'), status == 202, status > 302, status < 200)):
+        # the response code is 202, or the response was a 206 partial request, then no callbacks
+        # should be sent and no metrics collected.  For 202s, celery will send its own callback.
+        # Osfstorage and s3 can return 302s for file downloads, which should be tallied.
+        if any((method in ('HEAD', 'OPTIONS'), status in (202, 206), status > 302, status < 200)):
             return
 
+        # WB doesn't send along Range headers when requesting signed urls, expecting the client
+        # to forward them along with the redirect request (as curl and Postman do).  Before
+        # rejecting 302s with partials, start logging instances of them to see how common they
+        # are.  That information will be used to decide if direct+Range requests should be logged
+        # or not.  For now, continue to log.
+        if status == 302 and 'Range' in self.request.headers:
+            logger.info('Received a direct-to-provider download request (302 response) with '
+                        'Range header: {}'.format(self.request.headers['Range']))
+
+        # Don't log metadata requests.
         if method == 'GET' and 'meta' in self.request.query_arguments:
             return
 
