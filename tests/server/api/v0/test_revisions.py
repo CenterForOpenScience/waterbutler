@@ -1,9 +1,8 @@
 import json
 from unittest import mock
 
-from tornado import testing
-
 from tests import utils
+from tornado import testing
 
 
 class TestRevisionHandler(utils.HandlerTestCase):

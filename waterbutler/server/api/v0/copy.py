@@ -1,8 +1,8 @@
 import time
 
 from waterbutler import tasks
-from waterbutler.server.api.v0 import core
 from waterbutler.core import remote_logging
+from waterbutler.server.api.v0 import core
 
 
 class CopyHandler(core.BaseCrossProviderHandler):

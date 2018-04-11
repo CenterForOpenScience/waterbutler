@@ -1,19 +1,17 @@
-import io
-import os
-import json
-import time
-import hashlib
 import functools
+import hashlib
+import io
+import json
+import os
+import time
 from unittest import mock
 
+import aiohttp
+import aiohttp.multidict
+import aiohttpretty
 import furl
 import pytest
-import aiohttp
-import aiohttpretty
-import aiohttp.multidict
-
-from waterbutler.core import streams
-from waterbutler.core import exceptions
+from waterbutler.core import exceptions, streams
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.cloudfiles import CloudFilesProvider
 from waterbutler.providers.cloudfiles import settings as cloud_settings

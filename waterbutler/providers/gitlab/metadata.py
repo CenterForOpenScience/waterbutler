@@ -1,10 +1,7 @@
 import logging
 
 from furl import furl
-
-from waterbutler.core import utils
-from waterbutler.core import metadata
-
+from waterbutler.core import metadata, utils
 
 logger = logging.getLogger(__name__)
 

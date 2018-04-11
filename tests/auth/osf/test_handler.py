@@ -2,15 +2,15 @@ from unittest import mock
 
 import pytest
 import tornado
-
 from tests import utils
 from tests.server.api.v1.utils import ServerTestCase
-
 from waterbutler.auth.osf import settings
-from waterbutler.core.auth import AuthType
 from waterbutler.auth.osf.handler import OsfAuthHandler
-from waterbutler.core.exceptions import (UnsupportedHTTPMethodError,
-                                            UnsupportedActionError)
+from waterbutler.core.auth import AuthType
+from waterbutler.core.exceptions import (
+    UnsupportedActionError,
+    UnsupportedHTTPMethodError
+)
 
 
 class TestOsfAuthHandler(ServerTestCase):

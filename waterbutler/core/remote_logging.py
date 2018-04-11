@@ -1,16 +1,17 @@
-import json
-import time
 import asyncio
+import json
 import logging
+import time
 
 import aiohttp
-# from geoip import geolite2
-
 from waterbutler import settings
 from waterbutler.core import utils
-from waterbutler.sizes import KBs, MBs, GBs
-from waterbutler.version import __version__
+from waterbutler.sizes import GBs, KBs, MBs
 from waterbutler.tasks import settings as task_settings
+from waterbutler.version import __version__
+
+# from geoip import geolite2
+
 
 
 logger = logging.getLogger(__name__)

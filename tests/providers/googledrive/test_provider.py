@@ -1,30 +1,30 @@
-import io
-import os
 import copy
+import io
 import json
+import os
 from http import client
 from urllib import parse
 
-import pytest
 import aiohttpretty
-
-from waterbutler.core import streams
-from waterbutler.core import exceptions
+import pytest
+from tests.providers.googledrive.fixtures import (
+    error_fixtures,
+    revision_fixtures,
+    root_provider_fixtures,
+    sharing_fixtures
+)
+from waterbutler.core import exceptions, streams
 from waterbutler.core.path import WaterButlerPath
-
-from waterbutler.providers.googledrive import settings as ds
 from waterbutler.providers.googledrive import GoogleDriveProvider
+from waterbutler.providers.googledrive import settings as ds
 from waterbutler.providers.googledrive import utils as drive_utils
+from waterbutler.providers.googledrive.metadata import (
+    GoogleDriveFileMetadata,
+    GoogleDriveFileRevisionMetadata,
+    GoogleDriveFolderMetadata,
+    GoogleDriveRevision
+)
 from waterbutler.providers.googledrive.provider import GoogleDrivePath
-from waterbutler.providers.googledrive.metadata import (GoogleDriveRevision,
-                                                        GoogleDriveFileMetadata,
-                                                        GoogleDriveFolderMetadata,
-                                                        GoogleDriveFileRevisionMetadata)
-
-from tests.providers.googledrive.fixtures import(error_fixtures,
-                                                 sharing_fixtures,
-                                                 revision_fixtures,
-                                                 root_provider_fixtures)
 
 
 @pytest.fixture

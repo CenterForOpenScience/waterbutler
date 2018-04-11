@@ -1,9 +1,8 @@
 import json
 from http import HTTPStatus
 
-from tornado import testing
-
 from tests import utils
+from tornado import testing
 from waterbutler.version import __version__
 
 

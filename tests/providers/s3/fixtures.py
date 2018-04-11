@@ -2,12 +2,11 @@ import os
 from collections import OrderedDict
 
 import pytest
-
 from waterbutler.providers.s3.metadata import (
-    S3FileMetadataHeaders,
     S3FileMetadata,
-    S3FolderMetadata,
+    S3FileMetadataHeaders,
     S3FolderKeyMetadata,
+    S3FolderMetadata,
     S3Revision
 )
 
@@ -150,5 +149,3 @@ def revision_metadata_object():
     )
 
     return S3Revision(content)
-
-

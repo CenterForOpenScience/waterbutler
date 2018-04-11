@@ -1,5 +1,5 @@
-import uuid
 import asyncio
+import uuid
 
 from waterbutler.core.streams.base import BaseStream, MultiStream, StringStream
 

@@ -1,21 +1,19 @@
-import os
+import contextlib
+import errno
+import functools
 import glob
 import json
-import errno
 import logging
-import functools
-import contextlib
+import os
 import subprocess
 from http import HTTPStatus
 
 import aiohttp
 from celery.utils.log import get_task_logger
-
 from waterbutler.core import signing
-from waterbutler.tasks.app import app, client
 from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.tasks import exceptions
-
+from waterbutler.tasks.app import app, client
 
 logger = get_task_logger(__name__)
 logger.setLevel(logging.INFO)

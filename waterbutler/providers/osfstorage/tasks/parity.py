@@ -1,13 +1,11 @@
-import os
 import asyncio
 import hashlib
+import os
 
 from waterbutler.core import streams
-from waterbutler.core.utils import async_retry
-from waterbutler.core.utils import make_provider
-
-from waterbutler.providers.osfstorage.tasks import utils
+from waterbutler.core.utils import async_retry, make_provider
 from waterbutler.providers.osfstorage import settings as osf_settings
+from waterbutler.providers.osfstorage.tasks import utils
 
 
 @utils.task

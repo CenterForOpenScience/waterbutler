@@ -1,6 +1,5 @@
-from waterbutler.core import metadata
 import waterbutler.core.utils as core_utils
-
+from waterbutler.core import metadata
 from waterbutler.providers.googledrive import utils
 
 

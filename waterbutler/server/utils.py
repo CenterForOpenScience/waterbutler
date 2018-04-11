@@ -1,5 +1,4 @@
 import tornado.iostream
-
 from waterbutler.server import settings
 
 CORS_ACCEPT_HEADERS = [

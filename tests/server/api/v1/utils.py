@@ -3,7 +3,6 @@ import os
 
 from tornado import testing
 from tornado.platform.asyncio import AsyncIOMainLoop
-
 from waterbutler.server.app import make_app
 
 

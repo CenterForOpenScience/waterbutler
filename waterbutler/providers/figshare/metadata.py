@@ -1,6 +1,5 @@
 from waterbutler.core import metadata
 from waterbutler.core.provider import build_url
-
 from waterbutler.providers.figshare import settings
 
 

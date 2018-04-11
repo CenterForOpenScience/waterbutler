@@ -2,7 +2,6 @@ import hashlib
 
 from waterbutler import settings
 
-
 config = settings.child('SERVER_CONFIG')
 
 ADDRESS = config.get('ADDRESS', 'localhost')

@@ -1,11 +1,10 @@
+import abc
+import logging
 import os
 import re
-import abc
 import typing
-import logging
 
 from aiohttp import MultiDict, MultiDictProxy
-
 from waterbutler.core import metadata
 from waterbutler.core.exceptions import MetadataError
 from waterbutler.providers.googlecloud.utils import decode_and_hexlify_hashes

@@ -1,11 +1,9 @@
-from celery import Celery
-from celery.signals import task_failure
-
 from raven import Client
 
+from celery import Celery
+from celery.signals import task_failure
 from waterbutler.settings import config
 from waterbutler.tasks import settings as tasks_settings
-
 
 app = Celery()
 app.config_from_object(tasks_settings)

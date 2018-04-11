@@ -1,5 +1,4 @@
 import pytest
-
 from waterbutler.providers.bitbucket.path import BitbucketPath
 
 COMMIT_SHA = 'abcea54a123'

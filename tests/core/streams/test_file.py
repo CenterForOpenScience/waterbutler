@@ -1,9 +1,7 @@
 import os
 
 import pytest
-
 from waterbutler.core import streams
-
 
 DUMMY_FILE = os.path.join(os.path.dirname(__file__), 'fixtures/dummy.txt')
 

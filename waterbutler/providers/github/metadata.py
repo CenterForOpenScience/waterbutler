@@ -1,7 +1,6 @@
 import os
 
 from furl import furl
-
 from waterbutler.core import metadata
 
 

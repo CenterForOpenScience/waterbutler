@@ -1,4 +1,6 @@
+import aiohttpretty
 from waterbutler import settings
+
 # Clear all celery settings
 settings.config['TASKS_CONFIG'] = {
     'WAIT_TIME_OUT': 30,
@@ -6,7 +8,6 @@ settings.config['TASKS_CONFIG'] = {
     'CELERY_RESULT_BACKEND': 'redis://'
 }
 
-import aiohttpretty
 
 
 def pytest_configure(config):

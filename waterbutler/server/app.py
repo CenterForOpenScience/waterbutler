@@ -1,19 +1,18 @@
-import os
-import signal
 import asyncio
 import logging
+import os
+import signal
 from functools import partial
 
-import tornado.web
-import tornado.platform.asyncio
 from raven.contrib.tornado import AsyncSentryClient
 
+import tornado.platform.asyncio
+import tornado.web
 from waterbutler import settings
-from waterbutler.server.api import v0
-from waterbutler.server.api import v1
 from waterbutler.server import handlers
-from waterbutler.version import __version__
 from waterbutler.server import settings as server_settings
+from waterbutler.server.api import v0, v1
+from waterbutler.version import __version__
 
 logger = logging.getLogger(__name__)
 

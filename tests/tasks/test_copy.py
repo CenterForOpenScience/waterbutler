@@ -1,19 +1,17 @@
+import asyncio
+import copy as cp
+import hashlib
 import sys
 import time
-import copy as cp
-import asyncio
-import hashlib
 from unittest import mock
 
 import celery
 import pytest
-
+import tests.utils as test_utils
 from waterbutler import tasks  # noqa
 from waterbutler.core import remote_logging
 from waterbutler.core import utils as core_utils
 from waterbutler.core.path import WaterButlerPath
-
-import tests.utils as test_utils
 
 # Hack to get the module, not the function
 copy = sys.modules['waterbutler.tasks.copy']

@@ -1,10 +1,13 @@
 import pytest
-
-from waterbutler.providers.dropbox.metadata import (DropboxFileMetadata,
-                                                    DropboxFolderMetadata,
-                                                    DropboxRevision)
-
-from tests.providers.dropbox.fixtures import provider_fixtures, revision_fixtures
+from tests.providers.dropbox.fixtures import (
+    provider_fixtures,
+    revision_fixtures
+)
+from waterbutler.providers.dropbox.metadata import (
+    DropboxFileMetadata,
+    DropboxFolderMetadata,
+    DropboxRevision
+)
 
 
 class TestDropboxMetadata:

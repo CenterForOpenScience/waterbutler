@@ -2,14 +2,17 @@ import json
 import typing
 from http import HTTPStatus
 
+from waterbutler.core import exceptions as core_exceptions
 from waterbutler.core import provider, streams
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.core import exceptions as core_exceptions
-
-from waterbutler.providers.dropbox import settings as provider_settings
 from waterbutler.providers.dropbox import exceptions as provider_exceptions
-from waterbutler.providers.dropbox.metadata import (BaseDropboxMetadata, DropboxFileMetadata,
-                                                    DropboxFolderMetadata, DropboxRevision)
+from waterbutler.providers.dropbox import settings as provider_settings
+from waterbutler.providers.dropbox.metadata import (
+    BaseDropboxMetadata,
+    DropboxFileMetadata,
+    DropboxFolderMetadata,
+    DropboxRevision
+)
 
 
 class DropboxProvider(provider.BaseProvider):

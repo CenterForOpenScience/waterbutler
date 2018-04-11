@@ -1,9 +1,9 @@
-import zlib
-import time
-import struct
 import asyncio
-import zipfile
 import binascii
+import struct
+import time
+import zipfile
+import zlib
 
 from waterbutler.core.streams.base import BaseStream, MultiStream, StringStream
 

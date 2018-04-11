@@ -1,13 +1,15 @@
 import pytest
-
+from tests.providers.box.fixtures import (
+    intra_fixtures,
+    revision_fixtures,
+    root_provider_fixtures
+)
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.box.metadata import (BoxFolderMetadata,
-                                                BoxFileMetadata,
-                                                BoxRevision)
-
-from tests.providers.box.fixtures import(intra_fixtures,
-                                         revision_fixtures,
-                                         root_provider_fixtures)
+from waterbutler.providers.box.metadata import (
+    BoxFileMetadata,
+    BoxFolderMetadata,
+    BoxRevision
+)
 
 
 class TestBoxMetadata:

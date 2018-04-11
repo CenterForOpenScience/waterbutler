@@ -1,25 +1,22 @@
 import abc
-import time
-import typing
 import asyncio
-import logging
-import weakref
 import functools
 import itertools
+import logging
+import time
+import typing
+import weakref
 from urllib import parse
 
-import furl
 import aiohttp
-
-from waterbutler.core import streams
-from waterbutler.core import exceptions
-from waterbutler.core import path as wb_path
+import furl
 from waterbutler import settings as wb_settings
-from waterbutler.core.metrics import MetricsRecord
+from waterbutler.core import exceptions
 from waterbutler.core import metadata as wb_metadata
-from waterbutler.core.utils import ZipStreamGenerator
-from waterbutler.core.utils import RequestHandlerContext
-
+from waterbutler.core import path as wb_path
+from waterbutler.core import streams
+from waterbutler.core.metrics import MetricsRecord
+from waterbutler.core.utils import RequestHandlerContext, ZipStreamGenerator
 
 logger = logging.getLogger(__name__)
 _THROTTLES = weakref.WeakKeyDictionary()  # type: weakref.WeakKeyDictionary

@@ -1,30 +1,25 @@
-import os
-import hashlib
 import functools
+import hashlib
+import os
+import xml.sax.saxutils
 from urllib import parse
 
 import xmltodict
-
-import xml.sax.saxutils
-
 from boto import config as boto_config
-from boto.compat import BytesIO  # type: ignore
-from boto.utils import compute_md5
 from boto.auth import get_auth_handler
-from boto.s3.connection import S3Connection
-from boto.s3.connection import OrdinaryCallingFormat
-
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
+from boto.compat import BytesIO  # type: ignore
+from boto.s3.connection import OrdinaryCallingFormat, S3Connection
+from boto.utils import compute_md5
+from waterbutler.core import exceptions, provider, streams
 from waterbutler.core.path import WaterButlerPath
-
 from waterbutler.providers.s3 import settings
-from waterbutler.providers.s3.metadata import S3Revision
-from waterbutler.providers.s3.metadata import S3FileMetadata
-from waterbutler.providers.s3.metadata import S3FolderMetadata
-from waterbutler.providers.s3.metadata import S3FolderKeyMetadata
-from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
+from waterbutler.providers.s3.metadata import (
+    S3FileMetadata,
+    S3FileMetadataHeaders,
+    S3FolderKeyMetadata,
+    S3FolderMetadata,
+    S3Revision
+)
 
 
 class S3Provider(provider.BaseProvider):

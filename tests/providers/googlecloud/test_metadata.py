@@ -2,27 +2,30 @@ import json
 
 import pytest
 from aiohttp import MultiDict
-
-from tests.providers.googlecloud.fixtures.files import (file_name,
-                                                        file_wb_path,
-                                                        file_obj_name,
-                                                        meta_file_raw,
-                                                        meta_file_extra,
-                                                        meta_file_parsed,
-                                                        meta_file_resp_headers_raw)
-from tests.providers.googlecloud.fixtures.folders import (folder_name,
-                                                          folder_wb_path,
-                                                          folder_obj_name,
-                                                          meta_folder_raw,
-                                                          meta_folder_parsed,
-                                                          meta_folder_resp_headers_raw)
-
+from tests.providers.googlecloud.fixtures.files import (
+    file_name,
+    file_obj_name,
+    file_wb_path,
+    meta_file_extra,
+    meta_file_parsed,
+    meta_file_raw,
+    meta_file_resp_headers_raw
+)
+from tests.providers.googlecloud.fixtures.folders import (
+    folder_name,
+    folder_obj_name,
+    folder_wb_path,
+    meta_folder_parsed,
+    meta_folder_raw,
+    meta_folder_resp_headers_raw
+)
 from waterbutler.core import exceptions
 from waterbutler.providers.googlecloud import utils
-from waterbutler.providers.googlecloud.metadata import (BaseGoogleCloudMetadata,
-                                                        GoogleCloudFileMetadata,
-                                                        GoogleCloudFolderMetadata)
-
+from waterbutler.providers.googlecloud.metadata import (
+    BaseGoogleCloudMetadata,
+    GoogleCloudFileMetadata,
+    GoogleCloudFolderMetadata
+)
 
 
 class TestMetadataInitialization:

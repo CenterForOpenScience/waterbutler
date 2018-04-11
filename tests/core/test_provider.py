@@ -1,9 +1,8 @@
-import pytest
-
-from tests import utils
 from unittest import mock
-from waterbutler.core import metadata
-from waterbutler.core import exceptions
+
+import pytest
+from tests import utils
+from waterbutler.core import exceptions, metadata
 
 
 @pytest.fixture

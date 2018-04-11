@@ -1,5 +1,4 @@
 import pytest
-
 from waterbutler.providers.figshare.path import FigsharePath
 
 

@@ -1,8 +1,7 @@
-import os
 import asyncio
+import os
 
 import agent
-
 from waterbutler.core.streams.base import BaseStream
 
 

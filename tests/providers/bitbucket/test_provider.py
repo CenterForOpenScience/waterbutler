@@ -1,17 +1,15 @@
-import pytest
-
 import aiohttpretty
-
-from waterbutler.core import exceptions
-
-from waterbutler.providers.bitbucket import BitbucketProvider
-from waterbutler.providers.bitbucket.provider import BitbucketPath
-from waterbutler.providers.bitbucket import settings as bitbucket_settings
-from waterbutler.providers.bitbucket.metadata import BitbucketFileMetadata
-from waterbutler.providers.bitbucket.metadata import BitbucketFolderMetadata
-from waterbutler.providers.bitbucket.metadata import BitbucketRevisionMetadata
-
+import pytest
 from tests.providers.bitbucket import fixtures
+from waterbutler.core import exceptions
+from waterbutler.providers.bitbucket import BitbucketProvider
+from waterbutler.providers.bitbucket import settings as bitbucket_settings
+from waterbutler.providers.bitbucket.metadata import (
+    BitbucketFileMetadata,
+    BitbucketFolderMetadata,
+    BitbucketRevisionMetadata
+)
+from waterbutler.providers.bitbucket.provider import BitbucketPath
 
 
 @pytest.fixture

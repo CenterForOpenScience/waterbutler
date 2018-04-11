@@ -1,12 +1,14 @@
 import pytest
+from tests.providers.osfstorage.fixtures import (
+    file_metadata,
+    file_metadata_object,
+    file_path,
+    folder_metadata,
+    folder_metadata_object,
+    revision_metadata_object,
+    revisions_metadata
+)
 
-from tests.providers.osfstorage.fixtures import (file_path,
-                                                 file_metadata,
-                                                 file_metadata_object,
-                                                 folder_metadata,
-                                                 folder_metadata_object,
-                                                 revisions_metadata,
-                                                 revision_metadata_object)
 
 class TestFileMetadata:
 

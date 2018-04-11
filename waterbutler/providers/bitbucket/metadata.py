@@ -1,7 +1,6 @@
 from email.utils import parseaddr
 
 from furl import furl
-
 from waterbutler.core import metadata
 
 

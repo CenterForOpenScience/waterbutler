@@ -3,11 +3,9 @@ import os
 import zipfile
 
 import pytest
-
+from tests.utils import temp_files
 from waterbutler.core import streams
 from waterbutler.core.utils import AsyncIterator
-
-from tests.utils import temp_files
 
 
 class TestZipStreamReader:

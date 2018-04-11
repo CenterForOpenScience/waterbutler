@@ -1,7 +1,6 @@
 import asyncio
 
-from waterbutler.core.streams.base import StringStream
-from waterbutler.core.streams.base import MultiStream
+from waterbutler.core.streams.base import MultiStream, StringStream
 
 
 class JSONStream(MultiStream):
