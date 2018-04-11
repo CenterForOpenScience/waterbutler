@@ -201,7 +201,7 @@ class TestDownload:
         path = WaterButlerPath('/triangles.txt', _ids=(provider.folder, item['id']))
 
         metadata_url = provider.build_url('files', item['id'])
-        content_url = provider.build_url('files', item['id'], 'content', **{'version': revision})
+        content_url = provider.build_url('files', item['id'], 'content', version=revision)
 
         aiohttpretty.register_json_uri('GET', metadata_url, body=item)
         aiohttpretty.register_uri('GET', content_url, body=b'better', auto_length=True)
