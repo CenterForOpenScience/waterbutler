@@ -9,9 +9,11 @@ from waterbutler.core import exceptions, provider, signing, streams, utils
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.utils import RequestHandlerContext
 from waterbutler.providers.osfstorage import settings
-from waterbutler.providers.osfstorage.metadata import (OsfStorageFileMetadata,
-                                                       OsfStorageFolderMetadata,
-                                                       OsfStorageRevisionMetadata)
+from waterbutler.providers.osfstorage.metadata import (
+    OsfStorageFileMetadata,
+    OsfStorageFolderMetadata,
+    OsfStorageRevisionMetadata
+)
 from waterbutler.providers.osfstorage.tasks import backup, parity
 
 logger = logging.getLogger(__name__)

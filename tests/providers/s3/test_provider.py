@@ -9,19 +9,24 @@ from urllib import parse
 
 import aiohttpretty
 import pytest
-from tests.providers.s3.fixtures import (auth, credentials, file_content,
-                                         file_header_metadata,
-                                         file_metadata_headers_object,
-                                         file_metadata_object,
-                                         folder_and_contents,
-                                         folder_empty_metadata,
-                                         folder_item_metadata,
-                                         folder_key_metadata_object,
-                                         folder_metadata,
-                                         folder_single_item_metadata,
-                                         revision_metadata_object, settings,
-                                         single_version_metadata,
-                                         version_metadata)
+from tests.providers.s3.fixtures import (
+    auth,
+    credentials,
+    file_content,
+    file_header_metadata,
+    file_metadata_headers_object,
+    file_metadata_object,
+    folder_and_contents,
+    folder_empty_metadata,
+    folder_item_metadata,
+    folder_key_metadata_object,
+    folder_metadata,
+    folder_single_item_metadata,
+    revision_metadata_object,
+    settings,
+    single_version_metadata,
+    version_metadata
+)
 from tests.utils import MockCoroutine
 from waterbutler.core import exceptions, metadata, streams
 from waterbutler.core.path import WaterButlerPath

@@ -11,11 +11,13 @@ from waterbutler.core import exceptions, provider, streams
 from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
 from waterbutler.providers.googledrive import settings as pd_settings
 from waterbutler.providers.googledrive import utils
-from waterbutler.providers.googledrive.metadata import (BaseGoogleDriveMetadata,
-                                                        GoogleDriveFileMetadata,
-                                                        GoogleDriveFileRevisionMetadata,
-                                                        GoogleDriveFolderMetadata,
-                                                        GoogleDriveRevision)
+from waterbutler.providers.googledrive.metadata import (
+    BaseGoogleDriveMetadata,
+    GoogleDriveFileMetadata,
+    GoogleDriveFileRevisionMetadata,
+    GoogleDriveFolderMetadata,
+    GoogleDriveRevision
+)
 
 
 def clean_query(query: str):

@@ -1,12 +1,16 @@
 from unittest import mock
 
 import pytest
-from tests.core.streams.fixtures import (MockResponse, MockResponseNoContent,
-                                         MockResponseNoContentLength,
-                                         mock_content, mock_content_eof,
-                                         mock_response_stream_reader,
-                                         mock_response_stream_reader_no_content,
-                                         mock_response_stream_reader_no_size)
+from tests.core.streams.fixtures import (
+    MockResponse,
+    MockResponseNoContent,
+    MockResponseNoContentLength,
+    mock_content,
+    mock_content_eof,
+    mock_response_stream_reader,
+    mock_response_stream_reader_no_content,
+    mock_response_stream_reader_no_size
+)
 
 
 class TestResponseStreamReader:

@@ -1,10 +1,12 @@
 import pytest
-from tests.providers.s3.fixtures import (file_header_metadata,
-                                         file_metadata_headers_object,
-                                         file_metadata_object,
-                                         folder_key_metadata_object,
-                                         folder_metadata_object,
-                                         revision_metadata_object)
+from tests.providers.s3.fixtures import (
+    file_header_metadata,
+    file_metadata_headers_object,
+    file_metadata_object,
+    folder_key_metadata_object,
+    folder_metadata_object,
+    revision_metadata_object
+)
 
 
 class TestFileMetadataHeaders:

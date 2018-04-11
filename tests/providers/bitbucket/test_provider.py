@@ -4,9 +4,11 @@ from tests.providers.bitbucket import fixtures
 from waterbutler.core import exceptions
 from waterbutler.providers.bitbucket import BitbucketProvider
 from waterbutler.providers.bitbucket import settings as bitbucket_settings
-from waterbutler.providers.bitbucket.metadata import (BitbucketFileMetadata,
-                                                      BitbucketFolderMetadata,
-                                                      BitbucketRevisionMetadata)
+from waterbutler.providers.bitbucket.metadata import (
+    BitbucketFileMetadata,
+    BitbucketFolderMetadata,
+    BitbucketRevisionMetadata
+)
 from waterbutler.providers.bitbucket.provider import BitbucketPath
 
 

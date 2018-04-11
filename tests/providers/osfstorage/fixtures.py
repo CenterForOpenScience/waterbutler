@@ -8,9 +8,11 @@ import pytest
 from tests import utils
 from waterbutler.core import streams
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.osfstorage.metadata import (OsfStorageFileMetadata,
-                                                       OsfStorageFolderMetadata,
-                                                       OsfStorageRevisionMetadata)
+from waterbutler.providers.osfstorage.metadata import (
+    OsfStorageFileMetadata,
+    OsfStorageFolderMetadata,
+    OsfStorageRevisionMetadata
+)
 from waterbutler.providers.osfstorage.provider import OSFStorageProvider
 
 

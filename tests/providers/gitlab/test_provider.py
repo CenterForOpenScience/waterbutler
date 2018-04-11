@@ -6,8 +6,10 @@ from tests.providers.gitlab import fixtures
 from waterbutler.core import exceptions, streams
 from waterbutler.providers.gitlab import GitLabProvider
 from waterbutler.providers.gitlab import settings as gitlab_settings
-from waterbutler.providers.gitlab.metadata import (GitLabFileMetadata,
-                                                   GitLabFolderMetadata)
+from waterbutler.providers.gitlab.metadata import (
+    GitLabFileMetadata,
+    GitLabFolderMetadata
+)
 from waterbutler.providers.gitlab.path import GitLabPath
 
 

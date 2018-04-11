@@ -7,19 +7,23 @@ from urllib import parse
 
 import aiohttpretty
 import pytest
-from tests.providers.googledrive.fixtures import (error_fixtures,
-                                                  revision_fixtures,
-                                                  root_provider_fixtures,
-                                                  sharing_fixtures)
+from tests.providers.googledrive.fixtures import (
+    error_fixtures,
+    revision_fixtures,
+    root_provider_fixtures,
+    sharing_fixtures
+)
 from waterbutler.core import exceptions, streams
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.googledrive import GoogleDriveProvider
 from waterbutler.providers.googledrive import settings as ds
 from waterbutler.providers.googledrive import utils as drive_utils
-from waterbutler.providers.googledrive.metadata import (GoogleDriveFileMetadata,
-                                                        GoogleDriveFileRevisionMetadata,
-                                                        GoogleDriveFolderMetadata,
-                                                        GoogleDriveRevision)
+from waterbutler.providers.googledrive.metadata import (
+    GoogleDriveFileMetadata,
+    GoogleDriveFileRevisionMetadata,
+    GoogleDriveFolderMetadata,
+    GoogleDriveRevision
+)
 from waterbutler.providers.googledrive.provider import GoogleDrivePath
 
 

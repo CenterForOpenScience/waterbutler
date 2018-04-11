@@ -2,10 +2,12 @@ import re
 
 import pytest
 from tests.providers.github.fixtures import metadata_fixtures
-from waterbutler.providers.github.metadata import (GitHubFileContentMetadata,
-                                                   GitHubFileTreeMetadata,
-                                                   GitHubFolderContentMetadata,
-                                                   GitHubFolderTreeMetadata)
+from waterbutler.providers.github.metadata import (
+    GitHubFileContentMetadata,
+    GitHubFileTreeMetadata,
+    GitHubFolderContentMetadata,
+    GitHubFolderTreeMetadata
+)
 
 
 class TestGitHubMetadata:

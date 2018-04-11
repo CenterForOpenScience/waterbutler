@@ -10,8 +10,12 @@ from tests import utils as test_utils
 from waterbutler.core import signing
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.osfstorage import settings as osf_settings
-from waterbutler.providers.osfstorage.tasks import (backup, exceptions, parity,
-                                                    utils)
+from waterbutler.providers.osfstorage.tasks import (
+    backup,
+    exceptions,
+    parity,
+    utils
+)
 
 EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
 

@@ -6,10 +6,12 @@ import typing
 
 import aiohttp
 from waterbutler.core import exceptions, provider, streams
-from waterbutler.providers.gitlab.metadata import (BaseGitLabMetadata,
-                                                   GitLabFileMetadata,
-                                                   GitLabFolderMetadata,
-                                                   GitLabRevision)
+from waterbutler.providers.gitlab.metadata import (
+    BaseGitLabMetadata,
+    GitLabFileMetadata,
+    GitLabFolderMetadata,
+    GitLabRevision
+)
 from waterbutler.providers.gitlab.path import GitLabPath
 
 logger = logging.getLogger(__name__)

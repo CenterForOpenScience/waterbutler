@@ -8,11 +8,13 @@ import furl
 from waterbutler.core import exceptions, provider, streams
 from waterbutler.providers.github import settings as pd_settings
 from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
-from waterbutler.providers.github.metadata import (GitHubFileContentMetadata,
-                                                   GitHubFileTreeMetadata,
-                                                   GitHubFolderContentMetadata,
-                                                   GitHubFolderTreeMetadata,
-                                                   GitHubRevision)
+from waterbutler.providers.github.metadata import (
+    GitHubFileContentMetadata,
+    GitHubFileTreeMetadata,
+    GitHubFolderContentMetadata,
+    GitHubFolderTreeMetadata,
+    GitHubRevision
+)
 from waterbutler.providers.github.path import GitHubPath
 
 logger = logging.getLogger(__name__)

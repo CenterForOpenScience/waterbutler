@@ -8,8 +8,10 @@ from waterbutler.core import exceptions, provider, streams
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.utils import AsyncIterator
 from waterbutler.providers.dataverse import settings as pd_settings
-from waterbutler.providers.dataverse.metadata import (DataverseDatasetMetadata,
-                                                      DataverseRevision)
+from waterbutler.providers.dataverse.metadata import (
+    DataverseDatasetMetadata,
+    DataverseRevision
+)
 
 logger = logging.getLogger(__name__)
 

@@ -6,30 +6,44 @@ from unittest import mock
 import aiohttpretty
 import pytest
 from tests import utils
-from tests.providers.osfstorage.fixtures import (auth, credentials,
-                                                 download_path,
-                                                 download_response,
-                                                 file_content, file_like,
-                                                 file_lineage, file_metadata,
-                                                 file_metadata_object,
-                                                 file_path, file_stream,
-                                                 folder_children_metadata,
-                                                 folder_lineage,
-                                                 folder_metadata, folder_path,
-                                                 mock_time, provider,
-                                                 provider_and_mock,
-                                                 provider_and_mock2,
-                                                 revision_metadata_object,
-                                                 revisions_metadata, root_path,
-                                                 settings, upload_path,
-                                                 upload_response)
+from tests.providers.osfstorage.fixtures import (
+    auth,
+    credentials,
+    download_path,
+    download_response,
+    file_content,
+    file_like,
+    file_lineage,
+    file_metadata,
+    file_metadata_object,
+    file_path,
+    file_stream,
+    folder_children_metadata,
+    folder_lineage,
+    folder_metadata,
+    folder_path,
+    mock_time,
+    provider,
+    provider_and_mock,
+    provider_and_mock2,
+    revision_metadata_object,
+    revisions_metadata,
+    root_path,
+    settings,
+    upload_path,
+    upload_response
+)
 from waterbutler.core import exceptions, metadata
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.osfstorage.metadata import (OsfStorageFileMetadata,
-                                                       OsfStorageFolderMetadata,
-                                                       OsfStorageRevisionMetadata)
-from waterbutler.providers.osfstorage.settings import (FILE_PATH_COMPLETE,
-                                                       FILE_PATH_PENDING)
+from waterbutler.providers.osfstorage.metadata import (
+    OsfStorageFileMetadata,
+    OsfStorageFolderMetadata,
+    OsfStorageRevisionMetadata
+)
+from waterbutler.providers.osfstorage.settings import (
+    FILE_PATH_COMPLETE,
+    FILE_PATH_PENDING
+)
 
 
 def build_signed_url_without_auth(provider, method, *segments, **params):

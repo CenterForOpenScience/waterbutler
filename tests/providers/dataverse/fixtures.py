@@ -2,9 +2,11 @@ import json
 import os
 
 import pytest
-from waterbutler.providers.dataverse.metadata import (DataverseDatasetMetadata,
-                                                      DataverseFileMetadata,
-                                                      DataverseRevision)
+from waterbutler.providers.dataverse.metadata import (
+    DataverseDatasetMetadata,
+    DataverseFileMetadata,
+    DataverseRevision
+)
 
 
 @pytest.fixture

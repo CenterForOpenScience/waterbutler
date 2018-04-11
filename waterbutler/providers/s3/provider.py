@@ -13,10 +13,13 @@ from boto.utils import compute_md5
 from waterbutler.core import exceptions, provider, streams
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.s3 import settings
-from waterbutler.providers.s3.metadata import (S3FileMetadata,
-                                               S3FileMetadataHeaders,
-                                               S3FolderKeyMetadata,
-                                               S3FolderMetadata, S3Revision)
+from waterbutler.providers.s3.metadata import (
+    S3FileMetadata,
+    S3FileMetadataHeaders,
+    S3FolderKeyMetadata,
+    S3FolderMetadata,
+    S3Revision
+)
 
 
 class S3Provider(provider.BaseProvider):

@@ -7,8 +7,10 @@ from tests.server.api.v1.utils import ServerTestCase
 from waterbutler.auth.osf import settings
 from waterbutler.auth.osf.handler import OsfAuthHandler
 from waterbutler.core.auth import AuthType
-from waterbutler.core.exceptions import (UnsupportedActionError,
-                                         UnsupportedHTTPMethodError)
+from waterbutler.core.exceptions import (
+    UnsupportedActionError,
+    UnsupportedHTTPMethodError
+)
 
 
 class TestOsfAuthHandler(ServerTestCase):

@@ -1,7 +1,9 @@
 import pytest
-from tests.providers.dataverse.fixtures import (dataset_metadata_object,
-                                                file_metadata_object,
-                                                revision_metadata_object)
+from tests.providers.dataverse.fixtures import (
+    dataset_metadata_object,
+    file_metadata_object,
+    revision_metadata_object
+)
 
 
 class TestDatasetMetadata:

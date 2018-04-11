@@ -2,9 +2,11 @@ import os
 
 import pytest
 from waterbutler.providers.owncloud import OwnCloudProvider
-from waterbutler.providers.owncloud.metadata import (OwnCloudFileMetadata,
-                                                     OwnCloudFileRevisionMetadata,
-                                                     OwnCloudFolderMetadata)
+from waterbutler.providers.owncloud.metadata import (
+    OwnCloudFileMetadata,
+    OwnCloudFileRevisionMetadata,
+    OwnCloudFolderMetadata
+)
 
 
 @pytest.fixture

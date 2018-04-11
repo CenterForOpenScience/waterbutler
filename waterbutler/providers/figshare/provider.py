@@ -7,9 +7,11 @@ from typing import Tuple
 
 from waterbutler.core import exceptions, provider, streams
 from waterbutler.providers.figshare import settings as pd_settings
-from waterbutler.providers.figshare.metadata import (FigshareFileMetadata,
-                                                     FigshareFileRevisionMetadata,
-                                                     FigshareFolderMetadata)
+from waterbutler.providers.figshare.metadata import (
+    FigshareFileMetadata,
+    FigshareFileRevisionMetadata,
+    FigshareFolderMetadata
+)
 from waterbutler.providers.figshare.path import FigsharePath
 
 logger = logging.getLogger(__name__)

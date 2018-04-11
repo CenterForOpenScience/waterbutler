@@ -4,19 +4,25 @@ from http import HTTPStatus
 
 import aiohttpretty
 import pytest
-from tests.providers.dropbox.fixtures import (error_fixtures,
-                                              provider_fixtures,
-                                              revision_fixtures)
+from tests.providers.dropbox.fixtures import (
+    error_fixtures,
+    provider_fixtures,
+    revision_fixtures
+)
 from waterbutler.core import exceptions as core_exceptions
 from waterbutler.core import metadata as core_metadata
 from waterbutler.core import streams
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.dropbox import DropboxProvider
-from waterbutler.providers.dropbox.exceptions import (DropboxNamingConflictError,
-                                                      DropboxUnhandledConflictError)
-from waterbutler.providers.dropbox.metadata import (DropboxFileMetadata,
-                                                    DropboxFolderMetadata,
-                                                    DropboxRevision)
+from waterbutler.providers.dropbox.exceptions import (
+    DropboxNamingConflictError,
+    DropboxUnhandledConflictError
+)
+from waterbutler.providers.dropbox.metadata import (
+    DropboxFileMetadata,
+    DropboxFolderMetadata,
+    DropboxRevision
+)
 
 
 @pytest.fixture

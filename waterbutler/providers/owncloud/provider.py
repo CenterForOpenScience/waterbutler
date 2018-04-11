@@ -2,8 +2,9 @@ import aiohttp
 from waterbutler.core import exceptions, provider, streams
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.owncloud import utils
-from waterbutler.providers.owncloud.metadata import \
+from waterbutler.providers.owncloud.metadata import (
     OwnCloudFileRevisionMetadata
+)
 
 
 class OwnCloudProvider(provider.BaseProvider):

@@ -9,17 +9,22 @@ from http import client
 import aiohttpretty
 import furl
 import pytest
-from tests.providers.github.fixtures import (crud_fixtures, provider_fixtures,
-                                             revision_fixtures)
+from tests.providers.github.fixtures import (
+    crud_fixtures,
+    provider_fixtures,
+    revision_fixtures
+)
 from waterbutler.core import exceptions, streams
 from waterbutler.providers.github import GitHubProvider
 from waterbutler.providers.github import settings as github_settings
 from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
-from waterbutler.providers.github.metadata import (GitHubFileContentMetadata,
-                                                   GitHubFileTreeMetadata,
-                                                   GitHubFolderContentMetadata,
-                                                   GitHubFolderTreeMetadata,
-                                                   GitHubRevision)
+from waterbutler.providers.github.metadata import (
+    GitHubFileContentMetadata,
+    GitHubFileTreeMetadata,
+    GitHubFolderContentMetadata,
+    GitHubFolderTreeMetadata,
+    GitHubRevision
+)
 from waterbutler.providers.github.path import GitHubPath
 
 

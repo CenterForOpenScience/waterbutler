@@ -1,11 +1,14 @@
 import pytest
-from tests.providers.owncloud.fixtures import (file_metadata_object,
-                                               file_metadata_object_less_info,
-                                               folder_metadata_object,
-                                               folder_metadata_object_less_info,
-                                               revision_metadata_object)
-from waterbutler.providers.owncloud.metadata import \
+from tests.providers.owncloud.fixtures import (
+    file_metadata_object,
+    file_metadata_object_less_info,
+    folder_metadata_object,
+    folder_metadata_object_less_info,
+    revision_metadata_object
+)
+from waterbutler.providers.owncloud.metadata import (
     OwnCloudFileRevisionMetadata
+)
 
 
 class TestFileMetadata:

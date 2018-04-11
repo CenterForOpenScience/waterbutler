@@ -6,21 +6,30 @@ from urllib.parse import quote, unquote
 import furl
 import pytest
 from aiohttp import MultiDictProxy
-from tests.providers.googlecloud.fixtures.files import (file_2_copy_obj_name,
-                                                        file_2_obj_name,
-                                                        file_obj_name,
-                                                        file_wb_path,
-                                                        meta_file_raw)
-from tests.providers.googlecloud.fixtures.folders import (folder_obj_name,
-                                                          folder_wb_path)
-from tests.providers.googlecloud.fixtures.providers import (mock_auth,
-                                                            mock_auth_2,
-                                                            mock_creds,
-                                                            mock_creds_2,
-                                                            mock_settings,
-                                                            mock_settings_2)
-from waterbutler.providers.googlecloud import (GoogleCloudProvider, settings,
-                                               utils)
+from tests.providers.googlecloud.fixtures.files import (
+    file_2_copy_obj_name,
+    file_2_obj_name,
+    file_obj_name,
+    file_wb_path,
+    meta_file_raw
+)
+from tests.providers.googlecloud.fixtures.folders import (
+    folder_obj_name,
+    folder_wb_path
+)
+from tests.providers.googlecloud.fixtures.providers import (
+    mock_auth,
+    mock_auth_2,
+    mock_creds,
+    mock_creds_2,
+    mock_settings,
+    mock_settings_2
+)
+from waterbutler.providers.googlecloud import (
+    GoogleCloudProvider,
+    settings,
+    utils
+)
 
 
 @pytest.fixture()

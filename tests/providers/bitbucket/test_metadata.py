@@ -1,11 +1,18 @@
 import pytest
-from waterbutler.providers.bitbucket.metadata import (BitbucketFileMetadata,
-                                                      BitbucketFolderMetadata,
-                                                      BitbucketRevisionMetadata)
+from waterbutler.providers.bitbucket.metadata import (
+    BitbucketFileMetadata,
+    BitbucketFolderMetadata,
+    BitbucketRevisionMetadata
+)
 from waterbutler.providers.bitbucket.path import BitbucketPath
 
-from .fixtures import (file_metadata, folder_metadata, owner, repo,
-                       revision_metadata)
+from .fixtures import (
+    file_metadata,
+    folder_metadata,
+    owner,
+    repo,
+    revision_metadata
+)
 
 COMMIT_SHA = '123abc456def'
 
