@@ -1,7 +1,6 @@
 import os
 
 import pytest
-
 from waterbutler.providers.filesystem.metadata import (FileSystemFileMetadata,
                                                        FileSystemFolderMetadata)
 

@@ -1,20 +1,16 @@
-import json
 import base64
-import typing
-import aiohttp
+import json
 import logging
 import mimetypes
+import typing
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
-
-from waterbutler.providers.gitlab.path import GitLabPath
+import aiohttp
+from waterbutler.core import exceptions, provider, streams
 from waterbutler.providers.gitlab.metadata import (BaseGitLabMetadata,
-                                                   GitLabRevision,
                                                    GitLabFileMetadata,
-                                                   GitLabFolderMetadata)
-
+                                                   GitLabFolderMetadata,
+                                                   GitLabRevision)
+from waterbutler.providers.gitlab.path import GitLabPath
 
 logger = logging.getLogger(__name__)
 

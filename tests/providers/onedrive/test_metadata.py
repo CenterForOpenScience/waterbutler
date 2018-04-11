@@ -1,12 +1,10 @@
 import pytest
-
-from waterbutler.providers.onedrive.path import OneDrivePath
+from tests.providers.onedrive.fixtures import (revision_fixtures,
+                                               root_provider_fixtures)
 from waterbutler.providers.onedrive.metadata import (OneDriveFileMetadata,
                                                      OneDriveFolderMetadata,
                                                      OneDriveRevisionMetadata)
-
-from tests.providers.onedrive.fixtures import (revision_fixtures,
-                                               root_provider_fixtures)
+from waterbutler.providers.onedrive.path import OneDrivePath
 
 
 class TestOneDriveMetadata:

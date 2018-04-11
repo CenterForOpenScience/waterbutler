@@ -1,17 +1,16 @@
-import json
 import asyncio
 import hashlib
+import json
 import logging
-from typing import Tuple
 from http import HTTPStatus
+from typing import Tuple
 
 from waterbutler.core import exceptions, provider, streams
-
-from waterbutler.providers.figshare.path import FigsharePath
 from waterbutler.providers.figshare import settings as pd_settings
 from waterbutler.providers.figshare.metadata import (FigshareFileMetadata,
-                                                     FigshareFolderMetadata,
-                                                     FigshareFileRevisionMetadata, )
+                                                     FigshareFileRevisionMetadata,
+                                                     FigshareFolderMetadata)
+from waterbutler.providers.figshare.path import FigsharePath
 
 logger = logging.getLogger(__name__)
 

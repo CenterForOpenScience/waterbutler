@@ -2,12 +2,11 @@ import logging
 from typing import Tuple
 
 from waterbutler.core import exceptions, provider, streams
-
-from waterbutler.providers.bitbucket.path import BitbucketPath
 from waterbutler.providers.bitbucket import settings as pd_settings
 from waterbutler.providers.bitbucket.metadata import (BitbucketFileMetadata,
                                                       BitbucketFolderMetadata,
-                                                      BitbucketRevisionMetadata, )
+                                                      BitbucketRevisionMetadata)
+from waterbutler.providers.bitbucket.path import BitbucketPath
 
 logger = logging.getLogger(__name__)
 

@@ -1,18 +1,14 @@
 import hashlib
 
-import pytest
 import aiohttpretty
-
-from waterbutler.core import streams
-from waterbutler.core import exceptions
-
-from waterbutler.providers.gitlab import GitLabProvider
-from waterbutler.providers.gitlab.path import GitLabPath
-from waterbutler.providers.gitlab import settings as gitlab_settings
-from waterbutler.providers.gitlab.metadata import GitLabFileMetadata
-from waterbutler.providers.gitlab.metadata import GitLabFolderMetadata
-
+import pytest
 from tests.providers.gitlab import fixtures
+from waterbutler.core import exceptions, streams
+from waterbutler.providers.gitlab import GitLabProvider
+from waterbutler.providers.gitlab import settings as gitlab_settings
+from waterbutler.providers.gitlab.metadata import (GitLabFileMetadata,
+                                                   GitLabFolderMetadata)
+from waterbutler.providers.gitlab.path import GitLabPath
 
 
 @pytest.fixture

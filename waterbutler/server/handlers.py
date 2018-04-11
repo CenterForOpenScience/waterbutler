@@ -1,5 +1,4 @@
 import tornado.web
-
 from waterbutler.version import __version__
 
 

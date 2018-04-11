@@ -1,10 +1,8 @@
 import json
 
-from tornado import testing
-
-from waterbutler.core.path import WaterButlerPath
-
 from tests import utils
+from tornado import testing
+from waterbutler.core.path import WaterButlerPath
 
 
 class TestMoveHandler(utils.MultiProviderHandlerTestCase):

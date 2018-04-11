@@ -1,8 +1,9 @@
 import xml.etree.ElementTree as ET
 from urllib import parse
+
 from waterbutler.core import exceptions
-from waterbutler.providers.owncloud.metadata import OwnCloudFileMetadata
-from waterbutler.providers.owncloud.metadata import OwnCloudFolderMetadata
+from waterbutler.providers.owncloud.metadata import (OwnCloudFileMetadata,
+                                                     OwnCloudFolderMetadata)
 
 
 def strip_dav_path(path):

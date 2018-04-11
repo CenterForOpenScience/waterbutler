@@ -1,11 +1,10 @@
 import os
 
 import pytest
-
 from waterbutler.providers.owncloud import OwnCloudProvider
 from waterbutler.providers.owncloud.metadata import (OwnCloudFileMetadata,
-                                                     OwnCloudFolderMetadata,
-                                                     OwnCloudFileRevisionMetadata)
+                                                     OwnCloudFileRevisionMetadata,
+                                                     OwnCloudFolderMetadata)
 
 
 @pytest.fixture
@@ -144,4 +143,3 @@ def file_metadata_unparsable_response():
     with open(os.path.join(os.path.dirname(__file__),
                            'fixtures/file_metadata_unparsable_response.xml'), 'r') as fp:
         return fp.read()
-

@@ -1,18 +1,15 @@
 import json
-import typing
 import logging
+import typing
 from http import HTTPStatus
 from urllib import parse as urlparse
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
-
+from waterbutler.core import exceptions, provider, streams
 from waterbutler.providers.onedrive import settings
-from waterbutler.providers.onedrive.path import OneDrivePath
 from waterbutler.providers.onedrive.metadata import (OneDriveFileMetadata,
                                                      OneDriveFolderMetadata,
                                                      OneDriveRevisionMetadata)
+from waterbutler.providers.onedrive.path import OneDrivePath
 
 logger = logging.getLogger(__name__)
 

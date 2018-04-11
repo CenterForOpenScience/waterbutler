@@ -1,19 +1,17 @@
 import asyncio
-import os
-import sys
 import copy
+import os
 import shutil
+import sys
 import tempfile
 from unittest import mock
 
 import pytest
 from tornado import testing
 from tornado.platform.asyncio import AsyncIOMainLoop
-
-from waterbutler.core import metadata
-from waterbutler.core import provider
-from waterbutler.server.app import make_app
+from waterbutler.core import metadata, provider
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.server.app import make_app
 
 
 class MockCoroutine(mock.Mock):

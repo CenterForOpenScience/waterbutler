@@ -1,5 +1,5 @@
-import base64
 import asyncio
+import base64
 
 
 class Base64EncodeStream(asyncio.StreamReader):

@@ -1,10 +1,8 @@
-import logging
 import functools
+import logging
 from urllib import parse
 
-from waterbutler.core.path import WaterButlerPath
-from waterbutler.core.path import WaterButlerPathPart
-
+from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
 
 logger = logging.getLogger(__name__)
 

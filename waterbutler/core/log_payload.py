@@ -1,7 +1,7 @@
+import logging
+
 from waterbutler.constants import IDENTIFIER_PATHS
 from waterbutler.core.path import WaterButlerPath
-
-import logging
 
 logger = logging.getLogger(__name__)
 

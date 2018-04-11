@@ -1,9 +1,9 @@
-import pytest
+import functools
 import random
 import string
-import functools
 from unittest import mock
 
+import pytest
 from waterbutler.core import streams
 
 

@@ -1,13 +1,10 @@
-import os
-import pickle
 import asyncio
 import functools
+import os
+import pickle
 
 from celery.backends.base import DisabledBackend
-
-from waterbutler.tasks import app
-from waterbutler.tasks import settings
-from waterbutler.tasks import exceptions
+from waterbutler.tasks import app, exceptions, settings
 
 
 def ensure_event_loop():

@@ -1,10 +1,9 @@
-import os
-import json
 import asyncio
+import json
+import os
 
-from boto.glacier.layer2 import Layer2
 from boto.glacier.exceptions import UnexpectedHTTPResponseError
-
+from boto.glacier.layer2 import Layer2
 from waterbutler.core.utils import async_retry
 from waterbutler.providers.osfstorage.tasks import utils
 

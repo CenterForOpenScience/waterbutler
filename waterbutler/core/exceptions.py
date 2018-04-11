@@ -1,7 +1,6 @@
 import json
 from http import HTTPStatus
 
-
 DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request to {response.url}'
 
 

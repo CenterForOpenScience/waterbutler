@@ -1,9 +1,8 @@
 import abc
-import typing
 import hashlib
+import typing
 
 import furl
-
 from waterbutler.core import utils
 from waterbutler.server import settings
 

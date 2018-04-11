@@ -1,11 +1,11 @@
-import tornado.web
-import tornado.gen
-import tornado.iostream
 from raven.contrib.tornado import SentryMixin
 
+import tornado.gen
+import tornado.iostream
+import tornado.web
 from waterbutler import tasks
-from waterbutler.server import utils
 from waterbutler.core import exceptions
+from waterbutler.server import utils
 
 
 class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler, SentryMixin):

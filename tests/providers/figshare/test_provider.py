@@ -1,19 +1,15 @@
 import io
 import json
 
-import pytest
 import aiohttpretty
-
-from waterbutler.core import streams
-from waterbutler.core import exceptions
-from waterbutler.providers.figshare import metadata
-from waterbutler.providers.figshare import provider
-from waterbutler.providers.figshare.path import FigsharePath
-from waterbutler.providers.figshare.settings import PRIVATE_IDENTIFIER, MAX_PAGE_SIZE
-
-from tests.providers.figshare.fixtures import (crud_fixtures,
-                                               error_fixtures,
+import pytest
+from tests.providers.figshare.fixtures import (crud_fixtures, error_fixtures,
                                                root_provider_fixtures)
+from waterbutler.core import exceptions, streams
+from waterbutler.providers.figshare import metadata, provider
+from waterbutler.providers.figshare.path import FigsharePath
+from waterbutler.providers.figshare.settings import (MAX_PAGE_SIZE,
+                                                     PRIVATE_IDENTIFIER)
 
 
 @pytest.fixture

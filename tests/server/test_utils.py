@@ -1,10 +1,8 @@
 from unittest import mock
 
 import pytest
-from tornado import testing
-
 from tests.server.api.v1.utils import ServerTestCase
-
+from tornado import testing
 from waterbutler.server.utils import CORsMixin, parse_request_range
 
 
@@ -188,4 +186,3 @@ class TestRangeParsing():
     def test_range_parsing(self, range_header, expected):
         result = parse_request_range(range_header)
         assert result == expected
-

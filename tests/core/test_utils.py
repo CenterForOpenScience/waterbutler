@@ -2,7 +2,6 @@ import asyncio
 from unittest import mock
 
 import pytest
-
 from waterbutler.core import utils
 
 

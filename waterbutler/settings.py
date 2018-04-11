@@ -1,7 +1,7 @@
-import os
 import json
 import logging
 import logging.config
+import os
 
 
 class SettingsDict(dict):

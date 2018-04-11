@@ -1,7 +1,7 @@
-import pytest
 import functools
 from unittest import mock
 
+import pytest
 from waterbutler.core import streams
 
 

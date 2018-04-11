@@ -1,35 +1,27 @@
 import io
 from http import client
 
-import pytest
 import aiohttpretty
-
-from waterbutler.core import streams
-from waterbutler.core import exceptions
+import pytest
+from tests import utils
+from tests.providers.owncloud.fixtures import (auth, credentials,
+                                               credentials_2,
+                                               credentials_host_with_trailing_slash,
+                                               file_content, file_metadata,
+                                               file_metadata_object,
+                                               file_metadata_unparsable_response,
+                                               folder_contents_metadata,
+                                               folder_list, folder_metadata,
+                                               moved_folder_metadata,
+                                               moved_parent_folder_metadata,
+                                               provider,
+                                               provider_different_credentials,
+                                               settings)
+from waterbutler.core import exceptions, streams
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.owncloud import OwnCloudProvider
 from waterbutler.providers.owncloud.metadata import (OwnCloudFileMetadata,
                                                      OwnCloudFileRevisionMetadata)
-
-from tests import utils
-from tests.providers.owncloud.fixtures import (
-    provider,
-    provider_different_credentials,
-    auth,
-    settings,
-    credentials,
-    credentials_2,
-    credentials_host_with_trailing_slash,
-    file_content,
-    file_metadata,
-    folder_contents_metadata,
-    file_metadata_object,
-    folder_list,
-    folder_metadata,
-    file_metadata_unparsable_response,
-    moved_folder_metadata,
-    moved_parent_folder_metadata
-)
 
 
 @pytest.fixture

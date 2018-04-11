@@ -1,7 +1,5 @@
 import pytest
-
 from waterbutler.providers.github import exceptions
-
 
 
 class TestExceptionSerialization:

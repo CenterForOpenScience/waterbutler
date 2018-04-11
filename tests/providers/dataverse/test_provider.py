@@ -1,27 +1,21 @@
-import pytest
-
 import io
 import json
 from http import client
 
 import aiohttpretty
-
-from waterbutler.core import streams
-from waterbutler.core import exceptions
+import pytest
+from tests.providers.dataverse.fixtures import (auth,
+                                                checksum_mismatch_dataset_metadata,
+                                                credentials,
+                                                empty_native_dataset_metadata,
+                                                native_dataset_metadata,
+                                                native_file_metadata, settings)
+from waterbutler.core import exceptions, streams
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.dataverse import settings as dvs
 from waterbutler.providers.dataverse import DataverseProvider
-from waterbutler.providers.dataverse.metadata import DataverseFileMetadata, DataverseRevision
-
-from tests.providers.dataverse.fixtures import (
-    native_file_metadata,
-    native_dataset_metadata,
-    empty_native_dataset_metadata,
-    checksum_mismatch_dataset_metadata,
-    auth,
-    credentials,
-    settings
-)
+from waterbutler.providers.dataverse import settings as dvs
+from waterbutler.providers.dataverse.metadata import (DataverseFileMetadata,
+                                                      DataverseRevision)
 
 
 @pytest.fixture

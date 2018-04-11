@@ -1,19 +1,15 @@
-import pytest
-
 import os
 
-from waterbutler.providers.googledrive.provider import GoogleDrivePath
-from waterbutler.providers.googledrive.provider import GoogleDrivePathPart
-from waterbutler.providers.googledrive.metadata import GoogleDriveRevision
-from waterbutler.providers.googledrive.metadata import GoogleDriveFileMetadata
-from waterbutler.providers.googledrive.metadata import GoogleDriveFolderMetadata
-
-from tests.providers.googledrive.fixtures import(
-    error_fixtures,
-    root_provider_fixtures,
-    revision_fixtures,
-    sharing_fixtures,
-)
+import pytest
+from tests.providers.googledrive.fixtures import (error_fixtures,
+                                                  revision_fixtures,
+                                                  root_provider_fixtures,
+                                                  sharing_fixtures)
+from waterbutler.providers.googledrive.metadata import (GoogleDriveFileMetadata,
+                                                        GoogleDriveFolderMetadata,
+                                                        GoogleDriveRevision)
+from waterbutler.providers.googledrive.provider import (GoogleDrivePath,
+                                                        GoogleDrivePathPart)
 
 
 @pytest.fixture

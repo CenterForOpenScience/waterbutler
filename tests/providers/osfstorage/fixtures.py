@@ -1,19 +1,17 @@
 import io
-import os
 import json
+import os
 import time
 from unittest import mock
 
 import pytest
-
+from tests import utils
 from waterbutler.core import streams
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.osfstorage.provider import OSFStorageProvider
 from waterbutler.providers.osfstorage.metadata import (OsfStorageFileMetadata,
                                                        OsfStorageFolderMetadata,
                                                        OsfStorageRevisionMetadata)
-
-from tests import utils
+from waterbutler.providers.osfstorage.provider import OSFStorageProvider
 
 
 @pytest.fixture

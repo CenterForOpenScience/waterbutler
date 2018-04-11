@@ -1,41 +1,31 @@
-import os
-import io
-import time
 import base64
 import hashlib
-import aiohttpretty
+import io
+import os
+import time
 from http import client
-from urllib import parse
 from unittest import mock
+from urllib import parse
 
+import aiohttpretty
 import pytest
-
-from waterbutler.core import (streams,
-                              metadata,
-                              exceptions)
-from waterbutler.providers.s3 import S3Provider
-from waterbutler.core.path import WaterButlerPath
-
+from tests.providers.s3.fixtures import (auth, credentials, file_content,
+                                         file_header_metadata,
+                                         file_metadata_headers_object,
+                                         file_metadata_object,
+                                         folder_and_contents,
+                                         folder_empty_metadata,
+                                         folder_item_metadata,
+                                         folder_key_metadata_object,
+                                         folder_metadata,
+                                         folder_single_item_metadata,
+                                         revision_metadata_object, settings,
+                                         single_version_metadata,
+                                         version_metadata)
 from tests.utils import MockCoroutine
-from tests.providers.s3.fixtures import (
-    auth,
-    credentials,
-    settings,
-    file_content,
-    folder_metadata,
-    folder_single_item_metadata,
-    folder_item_metadata,
-    version_metadata,
-    single_version_metadata,
-    folder_metadata,
-    folder_and_contents,
-    folder_empty_metadata,
-    file_header_metadata,
-    file_metadata_headers_object,
-    file_metadata_object,
-    folder_key_metadata_object,
-    revision_metadata_object
-)
+from waterbutler.core import exceptions, metadata, streams
+from waterbutler.core.path import WaterButlerPath
+from waterbutler.providers.s3 import S3Provider
 
 
 @pytest.fixture

@@ -1,22 +1,15 @@
-import pytest
-
 import io
 from http import client
 
 import aiohttpretty
-
-from waterbutler.core import streams
-from waterbutler.core import exceptions
+import pytest
+from tests.providers.box.fixtures import (intra_fixtures, revision_fixtures,
+                                          root_provider_fixtures)
+from waterbutler.core import exceptions, streams
 from waterbutler.core.path import WaterButlerPath
-
 from waterbutler.providers.box import BoxProvider
-from waterbutler.providers.box.metadata import (BoxRevision,
-                                                BoxFileMetadata,
-                                                BoxFolderMetadata)
-
-from tests.providers.box.fixtures import(intra_fixtures,
-                                         revision_fixtures,
-                                         root_provider_fixtures)
+from waterbutler.providers.box.metadata import (BoxFileMetadata,
+                                                BoxFolderMetadata, BoxRevision)
 
 
 @pytest.fixture

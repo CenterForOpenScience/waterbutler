@@ -2,14 +2,13 @@ import json
 from http import HTTPStatus
 
 from waterbutler import tasks
-from waterbutler.sizes import MBs
-from waterbutler.core import exceptions
-from waterbutler.server import settings
-from waterbutler.core.auth import AuthType
-from waterbutler.core import remote_logging
-from waterbutler.server.auth import AuthHandler
-from waterbutler.core.utils import make_provider
 from waterbutler.constants import DEFAULT_CONFLICT
+from waterbutler.core import exceptions, remote_logging
+from waterbutler.core.auth import AuthType
+from waterbutler.core.utils import make_provider
+from waterbutler.server import settings
+from waterbutler.server.auth import AuthHandler
+from waterbutler.sizes import MBs
 
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
 

@@ -1,13 +1,10 @@
 import pytest
-
-from tests.providers.s3.fixtures import (
-    file_metadata_headers_object,
-    file_header_metadata,
-    file_metadata_object,
-    folder_metadata_object,
-    folder_key_metadata_object,
-    revision_metadata_object
-)
+from tests.providers.s3.fixtures import (file_header_metadata,
+                                         file_metadata_headers_object,
+                                         file_metadata_object,
+                                         folder_key_metadata_object,
+                                         folder_metadata_object,
+                                         revision_metadata_object)
 
 
 class TestFileMetadataHeaders:
@@ -131,4 +128,3 @@ class TestRevisionsMetadata:
         revision_metadata_object.raw['IsLatest'] = 'false'
 
         assert revision_metadata_object.version == '3/L4kqtJl40Nr8X8gdRQBpUMLUo'
-

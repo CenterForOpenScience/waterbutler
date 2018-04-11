@@ -1,14 +1,11 @@
 import datetime
 
+import aiohttp
 import jwe
 import jwt
-import aiohttp
-
-from waterbutler.core import exceptions
 from waterbutler.auth.osf import settings
-from waterbutler.core.auth import (BaseAuthHandler,
-                                    AuthType)
-
+from waterbutler.core import exceptions
+from waterbutler.core.auth import AuthType, BaseAuthHandler
 
 JWE_KEY = jwe.kdf(settings.JWE_SECRET.encode(), settings.JWE_SALT.encode())
 

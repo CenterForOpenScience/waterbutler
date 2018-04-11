@@ -1,6 +1,6 @@
-import pytest
 from unittest import mock
 
+import pytest
 from waterbutler.server.api.v1.provider.metadata import MetadataMixin
 
 
