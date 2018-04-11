@@ -659,45 +659,45 @@ class TestIntraMoveCopy:
             provider_fixtures,
             error_fixtures
     ):
-        url = provider.build_url('files', 'delete_v2')
-        path = await provider.validate_path('/The past')
-        data = {'path': path.full_path}
-        aiohttpretty.register_json_uri('POST', url, data=data, status=HTTPStatus.OK)
+        delete_path = await provider.validate_path('/The past')
+        delete_data = {'path': path.full_path}
+        delete_url = provider.build_url('files', 'delete_v2')
+        aiohttpretty.register_json_uri(
+            'POST',
+            delete_url,
+            data=delete_data,
+            status=HTTPStatus.OK
+        )
 
         src_path = WaterButlerPath('/pfile', prepend=provider.folder)
         dest_path = WaterButlerPath('/pfile_renamed', prepend=provider.folder)
-
-        url = provider.build_url('files', 'copy_v2')
-        data = {
+        rename_conflict_folder_metadata = error_fixtures['rename_conflict_folder_metadata']
+        imc_metadata = provider_fixtures['intra_move_copy_file_metadata_v2']
+        copy_data = {
             'from_path': src_path.full_path.rstrip('/'),
             'to_path': dest_path.full_path.rstrip('/')
         }
-        aiohttpretty.register_json_uri('POST', url, **{
-            "responses": [
-                {
-                    'headers': {'Content-Type': 'application/json'},
-                    'data': data,
-                    'body': json.dumps(error_fixtures['rename_conflict_folder_metadata']).encode('utf-8'),
-                    'status': HTTPStatus.CONFLICT
-                },
-                {
-                    'headers': {'Content-Type': 'application/json'},
-                    'data': data,
-                    'body': json.dumps(provider_fixtures['intra_move_copy_file_metadata_v2']).encode('utf-8')
-                },
-            ]
-        })
+        copy_responses = [
+            {
+                'headers': {'Content-Type': 'application/json'},
+                'data': copy_data,
+                'body': json.dumps(rename_conflict_folder_metadata).encode('utf-8'),
+                'status': HTTPStatus.CONFLICT
+            },
+            {
+                'headers': {'Content-Type': 'application/json'},
+                'data': copy_data,
+                'body': json.dumps(imc_metadata).encode('utf-8')
+            },
+        ]
+        copy_url = provider.build_url('files', 'copy_v2')
+        aiohttpretty.register_json_uri('POST', copy_url, responses=copy_responses)
+
+        expected = (DropboxFileMetadata(imc_metadata['metadata'], provider.folder), False)
 
         result = await provider.intra_copy(provider, src_path, dest_path)
-        expected = (
-            DropboxFileMetadata(
-                provider_fixtures['intra_move_copy_file_metadata_v2']['metadata'],
-                provider.folder
-            ),
-            False
-        )
 
-        assert expected == result
+        assert result == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -919,16 +919,26 @@ class TestIntraMoveCopy:
 class TestOperations:
 
     def test_will_self_overwrite(self, provider, other_provider):
-        src_path = WaterButlerPath('/50 shades of nope.txt',
-                                   _ids=(provider.folder, '12231'))
-        dest_path = WaterButlerPath('/50 shades of nope2223.txt',
-                                    _ids=(provider.folder, '2342sdfsd'))
-
-        result = provider.will_self_overwrite(other_provider, src_path, dest_path)
-        assert result is False
+        src_path = WaterButlerPath(
+            '/50 shades of nope.txt',
+            _ids=(provider.folder, '12231')
+        )
 
         result = provider.will_self_overwrite(other_provider, src_path, src_path)
         assert result is True
+
+    def test_wont_self_overwrite(self, provider, other_provider):
+        src_path = WaterButlerPath(
+            '/50 shades of nope.txt',
+            _ids=(provider.folder, '12231')
+        )
+        dest_path = WaterButlerPath(
+            '/50 shades of nope2223.txt',
+            _ids=(provider.folder, '2342sdfsd')
+        )
+
+        result = provider.will_self_overwrite(other_provider, src_path, dest_path)
+        assert result is False
 
     def test_can_intra_copy(self, provider):
         assert provider.can_intra_copy(provider)

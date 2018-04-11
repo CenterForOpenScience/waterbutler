@@ -220,8 +220,8 @@ class OrphanSelfError(InvalidParameters):
     in removal of a directory containing the file or folder to be copied or moved.
     """
     def __init__(self, path):
-        super().__init__('Unable to move or copy \'{}\'. Moving or copying a folder onto parent '
-                         'folder of same name with "replace" is not supported.'.format(path))
+        super().__init__('''Unable to move or copy \'{}\'. Moving or copying a folder onto parent
+            folder of same name with "replace" is not supported.'''.format(path))
 
 
 class UnsupportedOperationError(ProviderError):

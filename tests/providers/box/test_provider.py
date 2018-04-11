@@ -164,13 +164,17 @@ class TestValidatePath:
     async def test_validate_path(self, provider, root_provider_fixtures):
         provider.folder = '0'
         folder_id = '0'
+        response_body = root_provider_fixtures['revalidate_metadata']
 
-        good_url = provider.build_url('folders', folder_id, 'items',
-                                      fields='id,name,type', limit=1000)
+        good_url = provider.build_url(
+            'folders',
+            folder_id,
+            'items',
+            fields='id,name,type',
+            limit=1000
+        )
 
-        aiohttpretty.register_json_uri('GET', good_url,
-                                       body=root_provider_fixtures['revalidate_metadata'],
-                                       status=200)
+        aiohttpretty.register_json_uri('GET', good_url, body=response_body, status=200)
 
         result = await provider.validate_path('/bulbasaur')
         assert result == WaterButlerPath('/bulbasaur', folder=False)
@@ -377,22 +381,23 @@ class TestDelete:
     @pytest.mark.aiohttpretty
     async def test_delete_root(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['file_metadata']['entries'][0]
+        list_response_body = root_provider_fixtures['one_entry_folder_list_metadata']
         path = WaterButlerPath('/newfile', _ids=(provider.folder, item['id']))
         root_path = WaterButlerPath('/', _ids=('0'))
 
-        url = provider.build_url('folders', root_path.identifier, 'items',
-                                 fields='id,name,size,modified_at,etag,total_count',
-                                 offset=(0), limit=1000)
-        aiohttpretty.register_json_uri(
-            'GET',
-            url,
-            body=root_provider_fixtures['one_entry_folder_list_metadata']
+        list_url = provider.build_url(
+            'folders',
+            root_path.identifier,
+            'items',
+            fields='id,name,size,modified_at,etag,total_count',
+            offset=(0),
+            limit=1000
         )
-
         url = provider.build_url('files', item['id'], fields='id,name,path_collection')
         delete_url = provider.build_url('files', path.identifier)
-        aiohttpretty.register_json_uri('get', url,
-                                       body=root_provider_fixtures['file_metadata']['entries'][0])
+
+        aiohttpretty.register_json_uri('GET', list_url, body=list_response_body)
+        aiohttpretty.register_json_uri('GET', url, body=item)
         aiohttpretty.register_json_uri('DELETE', delete_url, status=204)
 
         await provider.delete(root_path, 1)
@@ -647,9 +652,10 @@ class TestIntraCopy:
         expected_folder = BoxFolderMetadata(item, dest_path)
         expected_folder._children = []
         for child_item in list_metadata['entries']:
-            child_path = dest_path.child(child_item['name'],
-                                         folder=(child_item['type'] == 'folder'))
-
+            child_path = dest_path.child(
+                child_item['name'],
+                folder=(child_item['type'] == 'folder')
+            )
             serialized_child = provider._serialize_item(child_item, child_path)
             expected_folder._children.append(serialized_child)
         expected = (expected_folder, True)
@@ -660,10 +666,12 @@ class TestIntraCopy:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_folder_replace(self,
-                                             provider,
-                                             intra_fixtures,
-                                             root_provider_fixtures):
+    async def test_intra_copy_folder_replace(
+        self,
+        provider,
+        intra_fixtures,
+        root_provider_fixtures
+    ):
         item = intra_fixtures['intra_folder_metadata']
         list_metadata = root_provider_fixtures['folder_list_metadata']
 
@@ -672,9 +680,14 @@ class TestIntraCopy:
 
         file_url = provider.build_url('folders', src_path.identifier, 'copy')
         delete_url = provider.build_url('folders', dest_path.identifier, recursive=True)
-        list_url = provider.build_url('folders', item['id'], 'items',
-                                      fields='id,name,size,modified_at,etag,total_count',
-                                      offset=0, limit=1000)
+        list_url = provider.build_url(
+            'folders',
+            item['id'],
+            'items',
+            fields='id,name,size,modified_at,etag,total_count',
+            offset=0,
+            limit=1000
+        )
 
         aiohttpretty.register_json_uri('GET', list_url, body=list_metadata)
         aiohttpretty.register_uri('DELETE', delete_url, status=204)
@@ -683,9 +696,10 @@ class TestIntraCopy:
         expected_folder = BoxFolderMetadata(item, dest_path)
         expected_folder._children = []
         for child_item in list_metadata['entries']:
-            child_path = dest_path.child(child_item['name'],
-                                         folder=(child_item['type'] == 'folder'))
-
+            child_path = dest_path.child(
+                child_item['name'],
+                folder=(child_item['type'] == 'folder')
+            )
             serialized_child = provider._serialize_item(child_item, child_path)
             expected_folder._children.append(serialized_child)
         expected = (expected_folder, False)
@@ -718,8 +732,10 @@ class TestIntraMove:
     async def test_intra_move_file_replace(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['file_metadata']['entries'][0]
         src_path = WaterButlerPath('/name.txt', _ids=(provider, item['id']))
-        dest_path = WaterButlerPath('/charmander/name.txt',
-                                    _ids=(provider, item['id'], 'YgzZejrj834j'))
+        dest_path = WaterButlerPath(
+            '/charmander/name.txt',
+            _ids=(provider, item['id'], 'YgzZejrj834j')
+        )
 
         file_url = provider.build_url('files', src_path.identifier)
         delete_url = provider.build_url('files', dest_path.identifier)
@@ -765,21 +781,31 @@ class TestIntraMove:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_move_folder_replace(self,
-                                             provider,
-                                             intra_fixtures,
-                                             root_provider_fixtures):
+    async def test_intra_move_folder_replace(
+        self,
+        provider,
+        intra_fixtures,
+        root_provider_fixtures
+    ):
         item = intra_fixtures['intra_folder_metadata']
         list_metadata = root_provider_fixtures['folder_list_metadata']
 
         src_path = WaterButlerPath('/name/', _ids=(provider, item['id']))
-        dest_path = WaterButlerPath('/charmander/name/', _ids=(provider, item['id'], '7759994812'))
+        dest_path = WaterButlerPath(
+            '/charmander/name/',
+            _ids=(provider, item['id'], '7759994812')
+        )
 
         file_url = provider.build_url('folders', src_path.identifier)
         delete_url = provider.build_url('folders', dest_path.identifier, recursive=True)
-        list_url = provider.build_url('folders', item['id'], 'items',
-                                      fields='id,name,size,modified_at,etag,total_count',
-                                      offset=0, limit=1000)
+        list_url = provider.build_url(
+            'folders',
+            item['id'],
+            'items',
+            fields='id,name,size,modified_at,etag,total_count',
+            offset=0,
+            limit=1000
+        )
 
         aiohttpretty.register_json_uri('PUT', file_url, body=item)
         aiohttpretty.register_uri('DELETE', delete_url, status=204)
@@ -788,9 +814,10 @@ class TestIntraMove:
         expected_folder = BoxFolderMetadata(item, dest_path)
         expected_folder._children = []
         for child_item in list_metadata['entries']:
-            child_path = dest_path.child(child_item['name'],
-                                         folder=(child_item['type'] == 'folder'))
-
+            child_path = dest_path.child(
+                child_item['name'],
+                folder=(child_item['type'] == 'folder')
+            )
             serialized_child = provider._serialize_item(child_item, child_path)
             expected_folder._children.append(serialized_child)
         expected = (expected_folder, False)
@@ -875,10 +902,14 @@ class TestCreateFolder:
 class TestOperations:
 
     def test_will_self_overwrite(self, provider, other_provider):
-        src_path = WaterButlerPath('/50 shades of nope.txt',
-                                    _ids=(provider.folder, '12231'))
-        dest_path = WaterButlerPath('/50 shades of nope2223.txt',
-                                    _ids=(provider.folder, '2342sdfsd'))
+        src_path = WaterButlerPath(
+            '/50 shades of nope.txt',
+            _ids=(provider.folder, '12231')
+        )
+        dest_path = WaterButlerPath(
+            '/50 shades of nope2223.txt',
+            _ids=(provider.folder, '2342sdfsd')
+        )
 
         result = provider.will_self_overwrite(other_provider, src_path, dest_path)
         assert result is False

@@ -40,32 +40,44 @@ class TestBaseProvider:
 
     @pytest.mark.asyncio
     async def test_will_orphan_dest_is_file(self, provider1):
-        src_path =  WaterButlerPath('/folder1/folder1/',
-                                    _ids=['root', 'folder', 'Folder'],
-                                    folder=True)
-        dest_path = WaterButlerPath('/folder1/',
-                                    _ids=['root','folder'],
-                                    folder=False)
+        src_path = WaterButlerPath(
+            '/folder1/folder1/',
+            _ids=['root', 'folder', 'Folder'],
+            folder=True
+        )
+        dest_path = WaterButlerPath(
+            '/folder1/',
+            _ids=['root','folder'],
+            folder=False
+        )
         assert provider1.replace_will_orphan(src_path, dest_path) == False
 
     @pytest.mark.asyncio
     async def test_will_orphan_dest_different_names(self, provider1):
-        src_path =  WaterButlerPath('/folder1/folder1/',
-                                    _ids=['root', 'folder', 'Folder'],
-                                    folder=True)
-        dest_path = WaterButlerPath('/folder2/',
-                                    _ids=['root','folder'],
-                                    folder=True)
+        src_path =  WaterButlerPath(
+            '/folder1/folder1/',
+            _ids=['root', 'folder', 'Folder'],
+            folder=True
+        )
+        dest_path = WaterButlerPath(
+            '/folder2/',
+            _ids=['root','folder'],
+            folder=True
+        )
         assert provider1.replace_will_orphan(src_path, dest_path) == False
 
     @pytest.mark.asyncio
     async def test_will_orphan_dest_different_branch(self, provider1):
-        src_path =  WaterButlerPath('/other_folder/folder1/',
-                                    _ids=['root', 'other_folder', 'Folder'],
-                                    folder=True)
-        dest_path = WaterButlerPath('/folder1/',
-                                    _ids=['root','folder'],
-                                    folder=True)
+        src_path =  WaterButlerPath(
+            '/other_folder/folder1/',
+            _ids=['root', 'other_folder', 'Folder'],
+            folder=True
+        )
+        dest_path = WaterButlerPath(
+            '/folder1/',
+            _ids=['root','folder'],
+            folder=True
+        )
         assert provider1.replace_will_orphan(src_path, dest_path) == False
 
     @pytest.mark.asyncio
@@ -482,6 +494,7 @@ class TestMove:
 
         with pytest.raises(exceptions.OrphanSelfError) as exc:
             await provider1.move(provider1, src_path, dest_path)
+
         assert exc.value.code == 400
         assert exc.typename == 'OrphanSelfError'
 

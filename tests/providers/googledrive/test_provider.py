@@ -1492,8 +1492,10 @@ class TestCreateFolder:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_raises_non_404(self, provider):
-        path = WaterButlerPath('/hugo/kim/pins/', _ids=(provider.folder['id'],
-                                                        'something', 'something', None))
+        path = WaterButlerPath(
+            '/hugo/kim/pins/',
+            _ids=(provider.folder['id'], 'something', 'something', None)
+        )
 
         url = provider.build_url('files')
         aiohttpretty.register_json_uri('POST', url, status=418)
@@ -1517,14 +1519,11 @@ class TestIntraFunctions:
     async def test_intra_move_file(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['docs_file_metadata']
         src_path = WaterButlerPath('/unsure.txt', _ids=('0', item['id']))
-        dest_path = WaterButlerPath('/really/unsure.txt', _ids=('0',
-                                                                'yy42kcj', 'rrjk42k'))
+        dest_path = WaterButlerPath('/really/unsure.txt', _ids=('0', 'yy42kcj', 'rrjk42k'))
 
         url = provider.build_url('files', src_path.identifier)
         data = json.dumps({
-            'parents': [{
-                'id': dest_path.parent.identifier
-            }],
+            'parents': [{'id': dest_path.parent.identifier}],
             'title': dest_path.name
         }),
         aiohttpretty.register_json_uri('PATCH', url, data=data, body=item)
@@ -1533,8 +1532,8 @@ class TestIntraFunctions:
         del_url_body = json.dumps({'labels': {'trashed': 'true'}})
         aiohttpretty.register_uri('PUT', delete_url, body=del_url_body, status=200)
 
-        result, created = await provider.intra_move(provider, src_path, dest_path)
         expected = GoogleDriveFileMetadata(item, dest_path)
+        result, _ = await provider.intra_move(provider, src_path, dest_path)
 
         assert result == expected
         assert aiohttpretty.has_call(method='PUT', uri=delete_url)
@@ -1544,14 +1543,11 @@ class TestIntraFunctions:
     async def test_intra_move_folder(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['folder_metadata']
         src_path = WaterButlerPath('/unsure/', _ids=('0', item['id']))
-        dest_path = WaterButlerPath('/really/unsure/', _ids=('0',
-                                                             '42jdkerf', '7ejGjeajr'))
+        dest_path = WaterButlerPath('/really/unsure/', _ids=('0', '42jdkerf', '7ejGjeajr'))
 
         url = provider.build_url('files', src_path.identifier)
         data = json.dumps({
-            'parents': [{
-                'id': dest_path.parent.identifier
-            }],
+            'parents': [{'id': dest_path.parent.identifier}],
             'title': dest_path.name
         }),
         aiohttpretty.register_json_uri('PATCH', url, data=data, body=item)
@@ -1580,13 +1576,10 @@ class TestIntraFunctions:
     async def test_intra_copy_file(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['docs_file_metadata']
         src_path = WaterButlerPath('/unsure.txt', _ids=('0', item['id']))
-        dest_path = WaterButlerPath('/really/unsure.txt', _ids=('0',
-                                                                '312kjfe', '4ckk2lkl3'))
+        dest_path = WaterButlerPath('/really/unsure.txt', _ids=('0', '312kjfe', '4ckk2lkl3'))
         url = provider.build_url('files', src_path.identifier, 'copy')
         data = json.dumps({
-            'parents': [{
-                'id': dest_path.parent.identifier
-            }],
+            'parents': [{'id': dest_path.parent.identifier}],
             'title': dest_path.name
         }),
         aiohttpretty.register_json_uri('POST', url, data=data, body=item)

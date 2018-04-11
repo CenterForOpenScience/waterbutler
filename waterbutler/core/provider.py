@@ -197,13 +197,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def request(self, *args, **kwargs):
         return RequestHandlerContext(self.make_request(*args, **kwargs))
 
-    async def move(self,
-                   dest_provider: 'BaseProvider',
-                   src_path: wb_path.WaterButlerPath,
-                   dest_path: wb_path.WaterButlerPath,
-                   rename: str=None,
-                   conflict: str='replace',
-                   handle_conflicts: bool=True) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+    async def move(
+        self,
+        dest_provider: 'BaseProvider',
+        src_path: wb_path.WaterButlerPath,
+        dest_path: wb_path.WaterButlerPath,
+        rename: str=None,
+        conflict: str='replace',
+        handle_conflicts: bool=True
+    ) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
         """Moves a file or folder from the current provider to the specified one
         Performs a copy and then a delete.
         Calls :func:`BaseProvider.intra_move` if possible.
@@ -225,7 +227,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
         })
 
         if handle_conflicts:
-
             dest_path = await dest_provider.handle_conflicts(
                 self,
                 src_path,
@@ -251,13 +252,25 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         return meta_data, created
 
-    async def copy(self,
-                   dest_provider: 'BaseProvider',
-                   src_path: wb_path.WaterButlerPath,
-                   dest_path: wb_path.WaterButlerPath,
-                   rename: str=None, conflict: str='replace',
-                   handle_conflicts: bool=True) \
-            -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+    async def copy(
+        self,
+        dest_provider: 'BaseProvider',
+        src_path: wb_path.WaterButlerPath,
+        dest_path: wb_path.WaterButlerPath,
+        rename: str=None,
+        conflict: str='replace',
+        handle_conflicts: bool=True
+    ) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+        """CoreProvider.copy
+        Performs a copy
+
+        :param dest_provider: ( :class:`BaseProvider`) The provider to copy to
+        :param src_path: ( :class:`WaterButlerPath` ) Path to where the resource can be found
+        :param dest_path: ( :class:`WaterButlerPath` ) Path to there the resource will be moved
+        :param rename: ( :class:`str` ) The desired name of the resulting path, may be incremented
+        :param conflict: ( :class:`str' ) What to do in the event of a name conflict; ``replace`` or ``keep``
+        :param handle_conflicts: ( :class:`bool` ) If true, will run the handle conflicts
+        """
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_conflicts': handle_conflicts}
 
@@ -268,7 +281,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
         })
 
         if handle_conflicts:
-
             dest_path = await dest_provider.handle_conflicts(
                 self,
                 src_path,
@@ -343,7 +355,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                         dest_provider,
                         # TODO figure out a way to cut down on all the requests made here
                         (await self.revalidate_path(src_path, item.name, folder=item.is_folder)),
-                        # I don't think dest_provider needs to be revalidated at this point.
+                        # `dest_provider` may not need to be revalidated at this point.
                         # 'def move' and 'def copy are the only methods calling _folder_file_op
                         # both move and copy already call handle_conflicts
                         # which is why the next line down sets handle_conflicts=False
@@ -366,12 +378,14 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         return folder, created
 
-    async def handle_conflicts(self,
-                               src_provider,
-                               src_path: wb_path.WaterButlerPath,
-                               dest_path: wb_path.WaterButlerPath,
-                               rename: str=None,
-                               conflict: str='replace') -> wb_path.WaterButlerPath:
+    async def handle_conflicts(
+        self,
+        src_provider,
+        src_path: wb_path.WaterButlerPath,
+        dest_path: wb_path.WaterButlerPath,
+        rename: str=None,
+        conflict: str='replace'
+    ) -> wb_path.WaterButlerPath:
         """Given a :class:`.WaterButlerPath` and the desired name, handle any potential naming issues.
 
         i.e.:
@@ -393,10 +407,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         :rtype: :class:`.WaterButlerPath`
 
-        self is the destination provider
-        dest_path may be 1. The folder path into which the src will be moved/copied/uploaded
-                         2. The file path that will be overwritten with new content
-                         3. None in the case of unvalidated path for ID based provider
+        ``self`` is the destination provider
+        ``dest_path`` may be:
+            1. The folder path into which the src will be moved/copied/uploaded
+            2. The file path that will be overwritten with new content
+            3. None in the case of unvalidated path for ID based provider
         """
 
         if src_path.is_dir and dest_path.is_file:
@@ -415,8 +430,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                 if self.will_self_overwrite(src_provider, src_path, dest_path):
                     raise exceptions.OverwriteSelfError(src_path)
 
-        # files and folders shouldn't overwrite themselves
-        # TODO: how is this different from above will_self_overwrite call?
+        # Files and folders shouldn't overwrite themselves
         if (
             self.shares_storage_root(src_provider) and
             src_path.materialized_path == dest_path.materialized_path
@@ -424,9 +438,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
             raise exceptions.OverwriteSelfError(src_path)
 
         if (
-            self == src_provider and
-            conflict == 'replace' and
-            self.replace_will_orphan(src_path, dest_path)
+            self == src_provider
+            and conflict == 'replace'
+            and self.replace_will_orphan(src_path, dest_path)
         ):
             raise exceptions.OrphanSelfError(src_path)
 
@@ -434,13 +448,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         return dest_path
 
-    def will_self_overwrite(self,
-                            dest_provider: 'BaseProvider',
-                            src_path: wb_path.WaterButlerPath,
-                            dest_path: wb_path.WaterButlerPath) -> bool:
-        """ Return wether a move or copy operation will result in a self-overwrite.
+    def will_self_overwrite(
+        self,
+        dest_provider: 'BaseProvider',
+        src_path: wb_path.WaterButlerPath,
+        dest_path: wb_path.WaterButlerPath
+    ) -> bool:
+        """Return wether a move or copy operation will result in a self-overwrite.
 
-       .. note::
+        .. note::
             Defaults to False
             Overridden by providers that need to run this check
 
@@ -517,16 +533,18 @@ class BaseProvider(metaclass=abc.ABCMeta):
         await self.delete(src_path)
         return data, created
 
-    def replace_will_orphan(self,
-                            src_path: wb_path.WaterButlerPath,
-                            dest_path: wb_path.WaterButlerPath) -> bool:
+    def replace_will_orphan(
+        self,
+        src_path: wb_path.WaterButlerPath,
+        dest_path: wb_path.WaterButlerPath
+    ) -> bool:
         """Check if copy/move conflict=replace will orphan src_path.
 
         Assumes src_provider == dest_provider and conflict == 'replace' have already been checked.
         This can be an expensive operation. Should be used as last resort. Should be overridden if
         provider has a cheaper option.
         """
-        if not dest_path.kind == 'folder':
+        if not dest_path.is_dir:
             return False
         if src_path.name != dest_path.name:
             return False

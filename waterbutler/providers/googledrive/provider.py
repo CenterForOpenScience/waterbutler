@@ -144,15 +144,22 @@ class GoogleDriveProvider(provider.BaseProvider):
         return self == other
 
     def can_intra_copy(self, other: provider.BaseProvider, path=None) -> bool:
-        # gdrive doesn't support intra-copy on folders
+        # Google Drive doesn't support intra-copy on folders
         return self == other and (path and path.is_file)
 
-    async def intra_move(self,  # type: ignore
-         dest_provider: provider.BaseProvider,
-         src_path: WaterButlerPath,
-         dest_path: WaterButlerPath
+    async def intra_move(
+        self,  # type: ignore
+        dest_provider: provider.BaseProvider,
+        src_path: WaterButlerPath,
+        dest_path: WaterButlerPath
     ) -> Tuple[BaseGoogleDriveMetadata, bool]:
+        """Move a file where the source and destination are both on Google Drive
 
+        :param dest_provider: ( :class:`.BaseProvider` ) The provider to check against
+        :param  src_path: ( :class:`.WaterButlerPath` ) The move/copy source path
+        :param  dest_path: ( :class:`.WaterButlerPath` ) The move/copy destination path
+        :rtype: :class:`Tuple[BaseGoogleDriveMetadata, bool]`
+        """
         if src_path.identifier == dest_path.identifier:
             raise exceptions.IntraCopyError(
                 "Cannot overwrite a file with itself",
@@ -196,10 +203,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         src_path: WaterButlerPath,
         dest_path: WaterButlerPath
     ) -> Tuple[GoogleDriveFileMetadata, bool]:
-        """
-        Copy file where src and dest are both on Google Drive.
-        """
-
+        """Copy file where src and dest are both on Google Drive."""
         if src_path.identifier == dest_path.identifier:
             raise exceptions.IntraCopyError(
                 "Cannot overwrite a file with itself",

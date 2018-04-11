@@ -377,10 +377,14 @@ class TestRevisions:
 class TestOperations:
 
     def test_will_self_overwrite(self, provider):
-        src_path = WaterButlerPath('/50 shades of nope.txt',
-                                    _ids=(provider.folder, '12231'))
-        dest_path = WaterButlerPath('/50 shades of nope2223.txt',
-                                    _ids=(provider.folder, '2342sdfsd'))
+        src_path = WaterButlerPath(
+            '/50 shades of nope.txt',
+            _ids=(provider.folder, '12231')
+        )
+        dest_path = WaterButlerPath(
+            '/50 shades of nope2223.txt',
+            _ids=(provider.folder, '2342sdfsd')
+        )
 
         result = provider.will_self_overwrite(provider, src_path, dest_path)
         assert result is False
