@@ -384,18 +384,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
                         handle_naming=False,
                     )
                 )
-                futures.append(future)
-
                 if item.is_folder:
-                    await futures[-1]
+                    await future
+                futures.append(future)
 
             if not futures:
                 continue
 
             done, _ = await asyncio.wait(futures, return_when=asyncio.FIRST_EXCEPTION)
 
-            for fut in done:
-                folder.children.append(fut.result()[0])
+            for future in done:
+                folder.children.append(future.result()[0])
 
         return folder, created
 
