@@ -247,9 +247,9 @@ class SwiftProvider(provider.BaseProvider):
 
         if folder_precheck:
             if (await self.exists(path)):
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
             if (await self.exists(await self.validate_path('/' + path.path[:-1]))):
-                raise exceptions.FolderNamingConflict(str(path))
+                raise exceptions.FolderNamingConflict(path.name)
 
         resp = await self.make_request(
             'PUT',
