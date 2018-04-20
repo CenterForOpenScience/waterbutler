@@ -85,6 +85,7 @@ async def push_metadata(version_id, callback_url, metadata):
         data=json.dumps(data),
         headers={'Content-Type': 'application/json'},
     )
+    await response.release()
 
     if response.status != HTTPStatus.OK:
         raise Exception('Failed to report archive completion, got status '
