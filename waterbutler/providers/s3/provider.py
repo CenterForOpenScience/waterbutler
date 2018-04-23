@@ -44,9 +44,6 @@ class S3Provider(provider.BaseProvider):
     """
     NAME = 's3'
 
-    NONCHUNKED_UPLOAD_LIMIT = 128000000  # 128 MB
-    CHUNK_SIZE = 64000000  # 64 MB
-
     def __init__(self, auth, credentials, settings):
         """
         .. note::
@@ -195,7 +192,7 @@ class S3Provider(provider.BaseProvider):
 
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
 
-        if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
+        if stream.size > settings.NONCHUNKED_UPLOAD_LIMIT:
             await self._chunked_upload(stream, path)
         else:
             stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
@@ -367,7 +364,7 @@ class S3Provider(provider.BaseProvider):
         return xmltodict.parse(upload_session_metadata, strip_whitespace=False)
 
     async def _upload_part(self, stream, path, session_data, chunk_number):
-        chunk = await stream.read(self.CHUNK_SIZE)
+        chunk = await stream.read(settings.CHUNK_SIZE)
         headers = {
             'Content-Length': str(len(chunk))
         }
@@ -401,7 +398,7 @@ class S3Provider(provider.BaseProvider):
     async def _upload_parts(self, stream, path, session_data):
 
         return await asyncio.gather(*[self._upload_part(stream, path, session_data, i)
-            for i, _ in enumerate(range(0, stream.size, self.CHUNK_SIZE))])
+            for i, _ in enumerate(range(0, stream.size, settings.CHUNK_SIZE))])
 
     async def _complete_multipart_upload(self, path, session_data, parts_metadata):
 
