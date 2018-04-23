@@ -274,31 +274,33 @@ class S3Provider(provider.BaseProvider):
             'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']
         }
 
-        resp = await self.make_request(
-            'DELETE',
-            lambda: self.bucket.new_key(path.path).generate_url(
-                settings.TEMP_URL_SECS,
+        while True:
+
+            resp = await self.make_request(
                 'DELETE',
-                query_parameters=params,
-                headers=headers
-            ),
-            skip_auto_headers={'CONTENT-TYPE'},
-            headers=headers,
-            params=params,
-            expects=(204,),
-            throws=exceptions.UploadError
-        )
-        await resp.release()
+                lambda: self.bucket.new_key(path.path).generate_url(
+                    settings.TEMP_URL_SECS,
+                    'DELETE',
+                    query_parameters=params,
+                    headers=headers
+                ),
+                skip_auto_headers={'CONTENT-TYPE'},
+                headers=headers,
+                params=params,
+                expects=(204,),
+                throws=exceptions.UploadError
+            )
+            await resp.release()
 
-        uploaded_chunks_list = xmltodict.parse(
-            await self._list_uploaded_chunks(path, session_data),
-            strip_whitespace=False)
+            uploaded_chunks_list = xmltodict.parse(
+                await self._list_uploaded_chunks(path, session_data),
+                strip_whitespace=False)
 
-        try:
-            if len(uploaded_chunks_list["ListPartsResult"]["Part"]) > 0:
-                self._abort_chunked_upload(path)
-        except:
-            return
+            try:
+                if len(uploaded_chunks_list["ListPartsResult"]["Part"]) > 0:
+                    continue
+            except:
+                break
 
     async def _list_uploaded_chunks(self, path, session_data):
         """
