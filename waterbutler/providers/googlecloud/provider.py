@@ -3,6 +3,7 @@ import base64
 import typing
 import hashlib
 import logging
+import functools
 from http import HTTPStatus
 
 from google.oauth2 import service_account
@@ -169,7 +170,7 @@ class GoogleCloudProvider(BaseProvider):
 
         req_method = 'PUT'
         obj_name = utils.get_obj_name(path, is_folder=False)
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
+        signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
         headers = {'Content-Length': str(stream.size)}
 
         resp = await self.make_request(
@@ -228,10 +229,11 @@ class GoogleCloudProvider(BaseProvider):
         if accept_url:
             display_name = kwargs.get('displayName', path.name)
             query = {'response-content-disposition': 'attachment; filename={}'.format(display_name)}
+            # There is no need to delay URL building and signing
             signed_url = self._build_and_sign_url(req_method, obj_name, **query)  # type: ignore
             return signed_url
 
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
+        signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
         resp = await self.make_request(
             req_method,
             signed_url,
@@ -390,7 +392,7 @@ class GoogleCloudProvider(BaseProvider):
 
         req_method = 'HEAD'
         obj_name = utils.get_obj_name(path, is_folder=is_folder)
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
+        signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
 
         resp = await self.make_request(
             req_method,
@@ -420,7 +422,7 @@ class GoogleCloudProvider(BaseProvider):
 
         req_method = 'DELETE'
         obj_name = utils.get_obj_name(path, is_folder=False)
-        signed_url = self._build_and_sign_url(req_method, obj_name, **{})  # type: ignore
+        signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
 
         resp = await self.make_request(
             req_method,
@@ -469,7 +471,8 @@ class GoogleCloudProvider(BaseProvider):
         headers.update(canonical_ext_headers)
 
         dest_obj_name = utils.get_obj_name(dest_path, is_folder=False)
-        signed_url = self._build_and_sign_url(  # type: ignore
+        signed_url = functools.partial(
+            self._build_and_sign_url,
             req_method,
             dest_obj_name,
             canonical_ext_headers=canonical_ext_headers,
