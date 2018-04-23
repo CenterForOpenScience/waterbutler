@@ -2,6 +2,7 @@ import os
 import glob
 import json
 import errno
+import shutil
 import logging
 import functools
 import contextlib
@@ -133,6 +134,20 @@ def task(*args, **kwargs):
     if len(args) == 1 and callable(args[0]):
         return _create_task()(args[0])
     return _create_task(*args, **kwargs)
+
+
+@task
+def _cleanup(self, results, local_complete_dir):
+    """Task to cleanup after running post-upload tasks.  Currently just removes the local directory
+    that contains the cached copy of the file and any generated files.
+
+    As of April 2018, the post-upload tasks are a backup to glacier and generation / upload of
+    parity volumes. Removing the ``local_complete_dir`` removes the artifacts of these tasks.
+
+    :param list results: list of results from finished tasks in chord (ignored)
+    :param str local_complete_dir: dir where temp files are stored
+    """
+    shutil.rmtree(local_complete_dir)
 
 
 def get_countdown(attempt, init_delay, max_delay, backoff):
