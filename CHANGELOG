@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+0.38.2 (2018-04-23)
+===================
+- Fix: Delay construction of Google Cloud signed urls until right before issuing them.  The provider
+was building them outside of the retry loop, resulting in slow-to-fail requests having their
+signatures expire before all subsequent retries could be issued.
+
 0.38.1 (2018-04-10)
 ===================
 - Fix: Don't log 206 Partial requests to the download callback.  Most of these are for streaming
