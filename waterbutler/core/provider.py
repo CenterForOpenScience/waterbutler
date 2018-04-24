@@ -175,10 +175,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if range:
             kwargs['headers']['Range'] = self._build_range_header(range)
 
-        if callable(url):
-            url = url()
         while retry >= 0:
             try:
+                if callable(url):
+                    url = url()
                 self.provider_metrics.incr('requests.count')
                 self.provider_metrics.append('requests.urls', url)
                 response = await aiohttp.request(method, url, *args, **kwargs)
