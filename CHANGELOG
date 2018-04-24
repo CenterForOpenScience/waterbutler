@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.38.4 (2018-04-24)
+===================
+- Fix: Evoke url-generating functions *inside* the make_request retry loop to make sure signed
+urls are as fresh as possible.
+
 0.38.3 (2018-04-24)
 ===================
 - Fix: Remove temporary files after osfstorage provider has completed its archiving and
