@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.38.3 (2018-04-24)
+===================
+- Fix: Remove temporary files after osfstorage provider has completed its archiving and
+parity-generation tasks.
+
 0.38.2 (2018-04-23)
 ===================
 - Fix: Delay construction of Google Cloud signed urls until right before issuing them.  The provider
