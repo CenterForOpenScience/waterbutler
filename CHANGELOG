@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.38.5 (2018-04-24)
+===================
+- Fix: Don't overwrite evokable url with generated url inside the make_request retry loop.  Third
+time's the charm, right?
+
 0.38.4 (2018-04-24)
 ===================
 - Fix: Evoke url-generating functions *inside* the make_request retry loop to make sure signed
