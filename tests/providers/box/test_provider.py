@@ -880,11 +880,8 @@ class TestOperations:
         dest_path = WaterButlerPath('/50 shades of nope2223.txt',
                                     _ids=(provider.folder, '2342sdfsd'))
 
-        result = provider.will_self_overwrite(other_provider, src_path, dest_path)
-        assert result is False
-
-        result = provider.will_self_overwrite(other_provider, src_path, src_path)
-        assert result is True
+        assert provider.will_self_overwrite(other_provider, src_path, dest_path) is False
+        assert provider.will_self_overwrite(other_provider, src_path, src_path) is True
 
     def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names() is False

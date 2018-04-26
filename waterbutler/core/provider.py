@@ -445,9 +445,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
                             dest_provider: 'BaseProvider',
                             src_path: wb_path.WaterButlerPath,
                             dest_path: wb_path.WaterButlerPath) -> bool:
-        """ Return wether a move or copy operation will result in a self-overwrite.
+        """Return wether a move or copy operation will result in a self-overwrite.
 
-       .. note::
+        .. note::
             Defaults to False
             Overridden by providers that need to run this check
 

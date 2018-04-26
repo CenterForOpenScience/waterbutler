@@ -1608,11 +1608,8 @@ class TestOperationsOrMisc:
         src_path = GoogleDrivePath('/root/Gear1.stl', _ids=['0', '10', '11'])
         dest_path = GoogleDrivePath('/root/Gear23123.stl', _ids=['0', '10', '12'])
 
-        result = provider.will_self_overwrite(other_provider, src_path, dest_path)
-        assert result is False
-
-        result = provider.will_self_overwrite(other_provider, src_path, src_path)
-        assert result is True
+        assert provider.will_self_overwrite(other_provider, src_path, dest_path)  is False
+        assert provider.will_self_overwrite(other_provider, src_path, src_path) is True
 
     def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names() is True
