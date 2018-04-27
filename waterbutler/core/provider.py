@@ -438,9 +438,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
             raise exceptions.OverwriteSelfError(src_path)
 
         if (
-            self == src_provider
-            and conflict == 'replace'
-            and self.replace_will_orphan(src_path, dest_path)
+            self == src_provider and
+            conflict == 'replace' and
+            self.replace_will_orphan(src_path, dest_path)
         ):
             raise exceptions.OrphanSelfError(src_path)
 
