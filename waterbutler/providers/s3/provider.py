@@ -1,10 +1,10 @@
 import os
 import hashlib
+import asyncio
 import functools
 from urllib import parse
-import asyncio
-import xmltodict
 
+import xmltodict
 import xml.sax.saxutils
 
 from boto import config as boto_config
@@ -192,44 +192,47 @@ class S3Provider(provider.BaseProvider):
 
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
 
-        if stream.size > settings.NONCHUNKED_UPLOAD_LIMIT:
-            await self._chunked_upload(stream, path)
+        if stream.size < settings.NONCHUNKED_UPLOAD_LIMIT:
+            await self._contiguous_upload(stream, path)
         else:
-            stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
-
-            headers = {'Content-Length': str(stream.size)}
-
-            # this is usually set in boto.s3.key.generate_url, but do it here
-            # do be explicit about our header payloads for signing purposes
-            if self.encrypt_uploads:
-                headers['x-amz-server-side-encryption'] = 'AES256'
-
-            upload_url = functools.partial(
-                self.bucket.new_key(path.path).generate_url,
-                settings.TEMP_URL_SECS,
-                'PUT',
-                headers=headers,
-            )
-            resp = await self.make_request(
-                'PUT',
-                upload_url,
-                data=stream,
-                skip_auto_headers={'CONTENT-TYPE'},
-                headers=headers,
-                expects=(200, 201, ),
-                throws=exceptions.UploadError,
-            )
-            # md5 is returned as ETag header as long as server side encryption is not used.
-            if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
-                raise exceptions.UploadChecksumMismatchError()
-
-            await resp.release()
+            await self._chunked_upload(stream, path)
 
         return (await self.metadata(path, **kwargs)), not exists
 
+    async def _contiguous_upload(self, stream, path):
+        """Do the upload with one request."""
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+
+        headers = {'Content-Length': str(stream.size)}
+
+        # this is usually set in boto.s3.key.generate_url, but do it here
+        # do be explicit about our header payloads for signing purposes
+        if self.encrypt_uploads:
+            headers['x-amz-server-side-encryption'] = 'AES256'
+
+        upload_url = functools.partial(
+            self.bucket.new_key(path.path).generate_url,
+            settings.TEMP_URL_SECS,
+            'PUT',
+            headers=headers,
+        )
+        resp = await self.make_request(
+            'PUT',
+            upload_url,
+            data=stream,
+            skip_auto_headers={'CONTENT-TYPE'},
+            headers=headers,
+            expects=(200, 201),
+            throws=exceptions.UploadError
+        )
+        # md5 is returned as ETag header as long as server side encryption is not used.
+        if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
+            raise exceptions.UploadChecksumMismatchError()
+
+        await resp.release()
+
     async def _chunked_upload(self, stream, path) -> None:
-        """
-        Uploads the given stream to S3 over multiple chunks of data, made up of 3 steps.
+        """Uploads the given stream to S3 over multiple chunks of data, made up of 3 steps.
 
         :param waterbutler.core.streams.RequestWrapper stream: The stream to upload to S3
         :param waterbutler.path.WaterBulterPath path: The full path of the key to upload to/into
@@ -250,21 +253,20 @@ class S3Provider(provider.BaseProvider):
         await self._complete_multipart_upload(path, session_data, parts_metadata)
 
     async def _abort_chunked_upload(self, path, session_data):
-        """
-        Sends an abort request to amazon s3. Triggers s3 to release storage
-        that was allocated to the parts during the upload. This request must be
-        sent if an upload is not going to be completed because the storage will
+        """Sends an abort request to amazon s3.
+
+        Triggers s3 to release storage that was allocated to the parts during the upload. This
+        request must be sent if an upload is not going to be completed because the storage will
         incur charges if not released.
 
-        If a chunk upload request is in progress when the abort request it
-        proccessed by amazon, that storage will not be cleared. To make sure
-        this is clear, we check the list of parts uploaded after sending the
-        abort request.
+        If a chunk upload request is in progress when the abort request it proccessed by amazon,
+        that storage will not be cleared. To make sure this is clear, we check the list of parts
+        uploaded after sending the abort request.
 
-        If anything here errors, we should be sure to notify the user to check
-        their s3 account, that the upload failed, but they may still be charged
-        for storage, and that they should manually ensure any unwanted files
-        are removed. This condition should be logged for debugging purposes.
+        If anything here errors, we should be sure to notify the user to check their s3 account,
+        that the upload failed, but they may still be charged for storage, and that they should
+        manually ensure any unwanted files are removed. This condition should be logged for
+        debugging purposes.
 
         https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadAbort.html
         """
@@ -303,9 +305,7 @@ class S3Provider(provider.BaseProvider):
                 break
 
     async def _list_uploaded_chunks(self, path, session_data):
-        """
-        Lists the uploaded parts that are currently uploaded for a given upload
-        session.
+        """Lists the uploaded parts that are currently uploaded for a given upload session.
 
         https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadListParts.html
         """
