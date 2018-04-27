@@ -1,12 +1,15 @@
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
+import logging
+from typing import Tuple
 
-from waterbutler.providers.bitbucket import settings
+from waterbutler.core import exceptions, provider, streams
+
 from waterbutler.providers.bitbucket.path import BitbucketPath
-from waterbutler.providers.bitbucket.metadata import BitbucketFileMetadata
-from waterbutler.providers.bitbucket.metadata import BitbucketFolderMetadata
-from waterbutler.providers.bitbucket.metadata import BitbucketRevisionMetadata
+from waterbutler.providers.bitbucket import settings as pd_settings
+from waterbutler.providers.bitbucket.metadata import (BitbucketFileMetadata,
+                                                      BitbucketFolderMetadata,
+                                                      BitbucketRevisionMetadata, )
+
+logger = logging.getLogger(__name__)
 
 
 class BitbucketProvider(provider.BaseProvider):
@@ -25,11 +28,13 @@ class BitbucketProvider(provider.BaseProvider):
       error.
 
     * I think bitbucket lets you name branches the same as commits.  Then how does it resolve them?
+
+    * Bitbucket doesn't respect Range header on downloads for either v1.0 or v2.0 API
     """
 
     NAME = 'bitbucket'
-    BASE_URL = settings.BASE_URL
-    VIEW_URL = settings.VIEW_URL
+    BASE_URL = pd_settings.BASE_URL
+    VIEW_URL = pd_settings.VIEW_URL
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -176,18 +181,24 @@ class BitbucketProvider(provider.BaseProvider):
             for item in valid_revisions
         ]
 
-    async def download(self, path: BitbucketPath, **kwargs):  # type: ignore
-        '''Get the stream to the specified file on bitbucket
-        :param str path: The path to the file on bitbucket
-        '''
+    async def download(self, path: BitbucketPath,  # type: ignore
+                       range: Tuple[int, int]=None, **kwargs) -> streams.ResponseStreamReader:
+        """Get the stream to the specified file on Bitbucket
+
+        :param path: The path to the file on Bitbucket
+        :param range: the range header
+        """
         metadata = await self.metadata(path)
 
+        logger.debug('requested-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
             self._build_v1_repo_url('raw', path.commit_sha, *path.path_tuple()),
+            range=range,
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
+        logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
 
         return streams.ResponseStreamReader(resp, size=metadata.size)
 

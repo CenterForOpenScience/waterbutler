@@ -1,21 +1,23 @@
 import copy
 import json
 import hashlib
+import logging
+from typing import Tuple
 
 import furl
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
+from waterbutler.core import exceptions, provider, streams
 
-from waterbutler.providers.github import settings
 from waterbutler.providers.github.path import GitHubPath
-from waterbutler.providers.github.metadata import GitHubRevision
-from waterbutler.providers.github.metadata import GitHubFileContentMetadata
-from waterbutler.providers.github.metadata import GitHubFolderContentMetadata
-from waterbutler.providers.github.metadata import GitHubFileTreeMetadata
-from waterbutler.providers.github.metadata import GitHubFolderTreeMetadata
+from waterbutler.providers.github import settings as pd_settings
 from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
+from waterbutler.providers.github.metadata import (GitHubRevision,
+                                                   GitHubFileContentMetadata,
+                                                   GitHubFolderContentMetadata,
+                                                   GitHubFileTreeMetadata,
+                                                   GitHubFolderTreeMetadata, )
+
+logger = logging.getLogger(__name__)
 
 
 GIT_EMPTY_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -47,10 +49,13 @@ class GitHubProvider(provider.BaseProvider):
       to page through the tree.  Since move, copy, and folder delete operations rely on whole-tree
       replacement, they cannot be reliably supported for large repos.  Attempting to use them will
       throw a 501 Not Implemented error.
+
+    * GitHub doesn't respect Range header on downloads
+
     """
     NAME = 'github'
-    BASE_URL = settings.BASE_URL
-    VIEW_URL = settings.VIEW_URL
+    BASE_URL = pd_settings.BASE_URL
+    VIEW_URL = pd_settings.VIEW_URL
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -171,20 +176,24 @@ class GitHubProvider(provider.BaseProvider):
     async def intra_move(self, dest_provider, src_path, dest_path):
         return (await self._do_intra_move_or_copy(src_path, dest_path, False))
 
-    async def download(self, path, revision=None, **kwargs):
-        '''Get the stream to the specified file on github
-        :param str path: The path to the file on github
-        :param str ref: The git 'ref' a branch or commit sha at which to get the file from
-        :param str fileSha: The sha of file to be downloaded if specifed path will be ignored
-        :param dict kwargs: Ignored
-        '''
+    async def download(self, path: GitHubPath, range: Tuple[int, int]=None,  # type: ignore
+                       revision=None, **kwargs) -> streams.ResponseStreamReader:
+        """Get the stream to the specified file on github
+        :param GitHubPath path: The path to the file on github
+        :param range: The range header
+        :param revision:
+        :param dict kwargs: Additional kwargs are ignored
+        """
+
         data = await self.metadata(path, revision=revision)
         file_sha = path.file_sha or data.extra['fileSha']
 
+        logger.debug('requested-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
             self.build_repo_url('git', 'blobs', file_sha),
             headers={'Accept': 'application/vnd.github.v3.raw'},
+            range=range,
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
@@ -241,7 +250,7 @@ class GitHubProvider(provider.BaseProvider):
             'tree': tree['sha'],
             'parents': [latest_sha],
             'committer': self.committer,
-            'message': message or (settings.UPDATE_FILE_MESSAGE if exists else settings.UPLOAD_FILE_MESSAGE),
+            'message': message or (pd_settings.UPDATE_FILE_MESSAGE if exists else pd_settings.UPLOAD_FILE_MESSAGE),
         })
 
         # Doesn't return anything useful
@@ -280,9 +289,9 @@ class GitHubProvider(provider.BaseProvider):
         else:
             await self._delete_file(path, message, **kwargs)
 
-    async def metadata(self, path, **kwargs):
+    async def metadata(self, path: GitHubPath, **kwargs):  # type: ignore
         """Get Metadata about the requested file or folder
-        :param str path: The path to a file or folder
+        :param GitHubPath path: The path to a file or folder
         :rtype dict: if file, metadata object describing the file
         :rtype list: if folder, array of metadata objects describing contents
         """
@@ -309,7 +318,7 @@ class GitHubProvider(provider.BaseProvider):
 
         assert self.name is not None
         assert self.email is not None
-        message = message or settings.UPLOAD_FILE_MESSAGE
+        message = message or pd_settings.UPLOAD_FILE_MESSAGE
 
         keep_path = path.child('.gitkeep')
 
@@ -318,7 +327,7 @@ class GitHubProvider(provider.BaseProvider):
             'path': keep_path.path,
             'committer': self.committer,
             'branch': path.branch_ref,
-            'message': message or settings.UPLOAD_FILE_MESSAGE
+            'message': message or pd_settings.UPLOAD_FILE_MESSAGE
         }
 
         resp = await self.make_request(
@@ -351,7 +360,7 @@ class GitHubProvider(provider.BaseProvider):
             'sha': sha,
             'branch': path.branch_ref,
             'committer': self.committer,
-            'message': message or settings.DELETE_FILE_MESSAGE,
+            'message': message or pd_settings.DELETE_FILE_MESSAGE,
         }
 
         resp = await self.make_request(
@@ -365,6 +374,16 @@ class GitHubProvider(provider.BaseProvider):
         await resp.release()
 
     async def _delete_folder(self, path, message=None, **kwargs):
+        message = message or pd_settings.DELETE_FOLDER_MESSAGE
+        # _create_tree fails with empty tree (422 Invalid tree info), so catch it if this folder
+        # is the last contents of this repository and use _delete_root_folder_contents instead.
+        if path.parent.is_root:
+            root_metadata = await self.metadata(path.parent)
+            if len(root_metadata) == 1:
+                if root_metadata[0].materialized_path == path.materialized_path:
+                    await self._delete_root_folder_contents(path, message=message, **kwargs)
+                    return
+
         branch_data = await self._fetch_branch(path.branch_ref)
 
         old_commit_sha = branch_data['commit']['sha']
@@ -429,7 +448,6 @@ class GitHubProvider(provider.BaseProvider):
             tree_sha = tree_data['sha']
 
         # Create a new commit which references our top most tree change.
-        message = message or settings.DELETE_FOLDER_MESSAGE
         commit_resp = await self.make_request(
             'POST',
             self.build_repo_url('git', 'commits'),
@@ -469,7 +487,7 @@ class GitHubProvider(provider.BaseProvider):
         branch_data = await self._fetch_branch(path.branch_ref)
         old_commit_sha = branch_data['commit']['sha']
         tree_sha = GIT_EMPTY_SHA
-        message = message or settings.DELETE_FOLDER_MESSAGE
+        message = message or pd_settings.DELETE_FOLDER_MESSAGE
         commit_resp = await self.make_request(
             'POST',
             self.build_repo_url('git', 'commits'),
@@ -615,7 +633,7 @@ class GitHubProvider(provider.BaseProvider):
 
     def _web_view(self, path):
         segments = (self.owner, self.repo, 'blob', path.branch_ref, path.path)
-        return provider.build_url(settings.VIEW_URL, *segments)
+        return provider.build_url(pd_settings.VIEW_URL, *segments)
 
     async def _metadata_folder(self, path, **kwargs):
         ref = path.branch_ref
@@ -722,7 +740,7 @@ class GitHubProvider(provider.BaseProvider):
         if src_path.is_file:
             assert len(blobs) == 1, 'Found multiple targets'
 
-        commit_msg = settings.COPY_MESSAGE if is_copy else settings.MOVE_MESSAGE
+        commit_msg = pd_settings.COPY_MESSAGE if is_copy else pd_settings.MOVE_MESSAGE
         commit = None
 
         if src_path.branch_ref == dest_path.branch_ref:

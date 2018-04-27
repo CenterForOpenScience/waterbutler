@@ -16,7 +16,7 @@ BROKER_URL = config.get(
     )
 )
 
-WAIT_TIMEOUT = int(config.get('WAIT_TIMEOUT', 15))
+WAIT_TIMEOUT = int(config.get('WAIT_TIMEOUT', 20))
 WAIT_INTERVAL = float(config.get('WAIT_INTERVAL', 0.5))
 ADHOC_BACKEND_PATH = config.get('ADHOC_BACKEND_PATH', '/tmp')
 
@@ -25,10 +25,9 @@ CELERY_DEFAULT_QUEUE = config.get('CELERY_DEFAULT_QUEUE', 'waterbutler')
 CELERY_QUEUES = (
     Queue('waterbutler', Exchange('waterbutler'), routing_key='waterbutler'),
 )
-# CELERY_ALWAYS_EAGER = config.get('CELERY_ALWAYS_EAGER', True)
 CELERY_ALWAYS_EAGER = config.get_bool('CELERY_ALWAYS_EAGER', False)
-# CELERY_RESULT_BACKEND = config.get('CELERY_RESULT_BACKEND', 'redis://')
-CELERY_RESULT_BACKEND = config.get_nullable('CELERY_RESULT_BACKEND', None)
+CELERY_RESULT_BACKEND = config.get_nullable('CELERY_RESULT_BACKEND', 'amqp')
+CELERY_RESULT_PERSISTENT = config.get_bool('CELERY_RESULT_PERSISTENT', True)
 CELERY_DISABLE_RATE_LIMITS = config.get_bool('CELERY_DISABLE_RATE_LIMITS', True)
 CELERY_TASK_RESULT_EXPIRES = int(config.get('CELERY_TASK_RESULT_EXPIRES', 60))
 CELERY_IMPORTS = [

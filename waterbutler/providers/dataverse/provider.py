@@ -1,22 +1,28 @@
 import hashlib
+import logging
 import tempfile
+from typing import Tuple
 from http import HTTPStatus
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
-from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.utils import AsyncIterator
+from waterbutler.core.path import WaterButlerPath
+from waterbutler.core import exceptions, provider, streams
 
-from waterbutler.providers.dataverse import settings
-from waterbutler.providers.dataverse.metadata import DataverseRevision
-from waterbutler.providers.dataverse.metadata import DataverseDatasetMetadata
+from waterbutler.providers.dataverse import settings as pd_settings
+from waterbutler.providers.dataverse.metadata import (DataverseRevision,
+                                                      DataverseDatasetMetadata, )
+
+logger = logging.getLogger(__name__)
 
 
 class DataverseProvider(provider.BaseProvider):
     """Provider for Dataverse
 
     API Docs: http://guides.dataverse.org/en/4.5/api/
+
+    Quirks:
+
+    * Dataverse doesn't respect Range header on downloads
 
     """
 
@@ -105,16 +111,17 @@ class DataverseProvider(provider.BaseProvider):
             return self._metadata_cache[version]
         return sum(self._metadata_cache.values(), [])
 
-    async def download(self, path, revision=None, range=None, **kwargs):
+    async def download(self, path: WaterButlerPath, revision: str=None,  # type: ignore
+                       range: Tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
         """Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from Dataverse is not 200
 
-        :param str path: Path to the file you want to download
+        :param WaterButlerPath path: Path to the file you want to download
         :param str revision: Used to verify if file is in selected dataset
-
-            - 'latest' to check draft files
-            - 'latest-published' to check published files
-            - None to check all data
+                - 'latest' to check draft files
+                - 'latest-published' to check published files
+                - None to check all data
+        :param Tuple[int, int] range: the range header
         :param dict \*\*kwargs: Additional arguments that are ignored
         :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
@@ -122,9 +129,10 @@ class DataverseProvider(provider.BaseProvider):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
+        logger.debug('request-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
-            self.build_url(settings.DOWN_BASE_URL, path.identifier, key=self.token),
+            self.build_url(pd_settings.DOWN_BASE_URL, path.identifier, key=self.token),
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
@@ -166,7 +174,7 @@ class DataverseProvider(provider.BaseProvider):
 
         resp = await self.make_request(
             'POST',
-            self.build_url(settings.EDIT_MEDIA_BASE_URL, 'study', self.doi),
+            self.build_url(pd_settings.EDIT_MEDIA_BASE_URL, 'study', self.doi),
             headers=dv_headers,
             auth=(self.token, ),
             data=file_stream,
@@ -195,7 +203,7 @@ class DataverseProvider(provider.BaseProvider):
 
         resp = await self.make_request(
             'DELETE',
-            self.build_url(settings.EDIT_MEDIA_BASE_URL, 'file', path.identifier),
+            self.build_url(pd_settings.EDIT_MEDIA_BASE_URL, 'file', path.identifier),
             auth=(self.token, ),
             expects=(204, ),
             throws=exceptions.DeleteError,
@@ -256,7 +264,7 @@ class DataverseProvider(provider.BaseProvider):
             return (await self._get_all_data())
 
         url = self.build_url(
-            settings.JSON_BASE_URL.format(self._id, version),
+            pd_settings.JSON_BASE_URL.format(self._id, version),
             key=self.token,
         )
         resp = await self.make_request(

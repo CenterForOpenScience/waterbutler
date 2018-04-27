@@ -1,13 +1,18 @@
 import os
 import glob
+import json
 import errno
+import shutil
 import logging
 import functools
 import contextlib
 import subprocess
+from http import HTTPStatus
 
+import aiohttp
 from celery.utils.log import get_task_logger
 
+from waterbutler.core import signing
 from waterbutler.tasks.app import app, client
 from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.tasks import exceptions
@@ -66,6 +71,28 @@ def create_parity_files(file_path, redundancy=5):
         ]
 
 
+async def push_metadata(version_id, callback_url, metadata):
+    signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
+    data = signing.sign_data(
+        signer,
+        {
+            'version': version_id,
+            'metadata': metadata,
+        },
+    )
+    response = await aiohttp.request(
+        'PUT',
+        callback_url,
+        data=json.dumps(data),
+        headers={'Content-Type': 'application/json'},
+    )
+    await response.release()
+
+    if response.status != HTTPStatus.OK:
+        raise Exception('Failed to report archive completion, got status '
+                        'code {}'.format(response.status))
+
+
 def sanitize_request(request):
     """Return dictionary of request attributes, excluding args and kwargs. Used
     to ensure that potentially sensitive values aren't logged or sent to Sentry.
@@ -107,6 +134,20 @@ def task(*args, **kwargs):
     if len(args) == 1 and callable(args[0]):
         return _create_task()(args[0])
     return _create_task(*args, **kwargs)
+
+
+@task
+def _cleanup(self, results, local_complete_dir):
+    """Task to cleanup after running post-upload tasks.  Currently just removes the local directory
+    that contains the cached copy of the file and any generated files.
+
+    As of April 2018, the post-upload tasks are a backup to glacier and generation / upload of
+    parity volumes. Removing the ``local_complete_dir`` removes the artifacts of these tasks.
+
+    :param list results: list of results from finished tasks in chord (ignored)
+    :param str local_complete_dir: dir where temp files are stored
+    """
+    shutil.rmtree(local_complete_dir)
 
 
 def get_countdown(attempt, init_delay, max_delay, backoff):

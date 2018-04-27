@@ -1,13 +1,16 @@
 import os
 import json
 import asyncio
+import logging
 
 import pytz
-import tornado.httputil
 from dateutil.parser import parse as datetime_parser
 
-from waterbutler.core import mime_types
 from waterbutler.server import utils
+from waterbutler.core import mime_types
+from waterbutler.core.streams import ResponseStreamReader
+
+logger = logging.getLogger(__name__)
 
 
 # TODO split this into metadata.py and data.py
@@ -62,7 +65,9 @@ class MetadataMixin:
         if 'Range' not in self.request.headers:
             request_range = None
         else:
-            request_range = tornado.httputil._parse_request_range(self.request.headers['Range'])
+            logger.debug('Range header is: {}'.format(self.request.headers['Range']))
+            request_range = utils.parse_request_range(self.request.headers['Range'])
+            logger.debug('Range header parsed as: {}'.format(request_range))
 
         version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
         stream = await self.provider.download(
@@ -85,6 +90,7 @@ class MetadataMixin:
         if stream.content_type is not None:
             self.set_header('Content-Type', stream.content_type)
 
+        logger.debug('stream size is: {}'.format(stream.size))
         if stream.size is not None:
             self.set_header('Content-Length', str(stream.size))
 
@@ -100,6 +106,11 @@ class MetadataMixin:
             self.set_header('Content-Type', mime_types[ext])
 
         await self.write_stream(stream)
+
+        if getattr(stream, 'partial', False) and isinstance(stream, ResponseStreamReader):
+            await stream.response.release()
+
+        logger.debug('bytes received is: {}'.format(self.bytes_downloaded))
 
     async def file_metadata(self):
         version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)

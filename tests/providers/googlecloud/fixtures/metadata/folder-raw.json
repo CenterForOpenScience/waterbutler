@@ -1,0 +1,20 @@
+{
+    "status": "200",
+    "x-guploader-uploadid": "AEnB2Upsxq_Zbxm4P6nxIr-6ItkLusxZyvKuR-tB0-IFKSQW2srs41AbAVzXgjyX9HIRSkVaDPpCX4H7l_lu-fsan_WF4WoU5Q",
+    "date": "Tue, 06 Mar 2018 18:42:49 GMT",
+    "cache-control": "no-cache",
+    "expires": "Tue, 06 Mar 2018 18:42:49 GMT",
+    "last-modified": "Thu, 01 Mar 2018 18:54:16 GMT",
+    "etag": "\"d41d8cd98f00b204e9800998ecf8427e\"",
+    "x-goog-generation": "1519930456327097",
+    "x-goog-metageneration": "1",
+    "x-goog-stored-content-encoding": "identity",
+    "x-goog-stored-content-length": "0",
+    "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+    "x-goog-hash": "crc32c=AAAAAA==,md5=1B2M2Y8AsgTpgAmY7PhCfg==",
+    "x-goog-storage-class": "REGIONAL",
+    "accept-ranges": "bytes",
+    "content-length": "0",
+    "server": "UploadServer",
+    "alt-svc": "hq=\":443\"; ma=2592000; quic=51303431; quic=51303339; quic=51303338; quic=51303337; quic=51303335,quic=\":443\"; ma=2592000; v=\"41,39,38,37,35\""
+}

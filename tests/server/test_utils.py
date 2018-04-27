@@ -1,11 +1,12 @@
-import pytest
 from unittest import mock
 
+import pytest
 from tornado import testing
 
 from tests.server.api.v1.utils import ServerTestCase
 
-from waterbutler.server.utils import CORsMixin
+from waterbutler.server.utils import CORsMixin, parse_request_range
+
 
 class MockHandler(CORsMixin):
 
@@ -166,3 +167,25 @@ class TestCORsMixin(ServerTestCase):
             assert 'Access-Control-Allow-Credentials' not in self.handler.headers
             assert 'Access-Control-Allow-Headers' not in self.handler.headers
             assert 'Access-Control-Expose-Headers' not in self.handler.headers
+
+
+class TestRangeParsing():
+
+    @pytest.mark.parametrize("range_header,expected", [
+        ('bytes=0-1',      (0, 1)),
+        ('bytes=28-45',    (28, 45)),
+        ('bytes=2-2',      (2, 2)),
+        ('bytes=0-',       (0, None)),
+        ('bytes=6-',       (6, None)),
+        ('bytes=',         None),
+        ('foo=42',         None),
+        ('bytes=1-2,6-10', None),
+        ('bytes=-6',       None),
+        ('bytes=-0',       None),
+        ('bytes=6-1',      None),
+        ('bytes=-3-5',     None),
+    ])
+    def test_range_parsing(self, range_header, expected):
+        result = parse_request_range(range_header)
+        assert result == expected
+

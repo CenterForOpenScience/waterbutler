@@ -3,6 +3,10 @@ import json
 import uuid
 import shutil
 import hashlib
+import logging
+import tempfile
+
+from celery import chord
 
 from waterbutler.core import utils
 from waterbutler.core import signing
@@ -15,10 +19,12 @@ from waterbutler.core.utils import RequestHandlerContext
 from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.tasks import backup
 from waterbutler.providers.osfstorage.tasks import parity
+from waterbutler.providers.osfstorage.tasks import utils as task_utils
 from waterbutler.providers.osfstorage.metadata import OsfStorageFileMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageFolderMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageRevisionMetadata
 
+logger = logging.getLogger(__name__)
 
 QUERY_METHODS = ('GET', 'DELETE')
 
@@ -311,17 +317,31 @@ class OSFStorageProvider(provider.BaseProvider):
         provider = self.make_provider(self.settings)
         local_pending_path = os.path.join(settings.FILE_PATH_PENDING, pending_name)
         remote_pending_path = await provider.validate_path('/' + pending_name)
+        logger.debug('upload: local_pending_path::{}'.format(local_pending_path))
+        logger.debug('upload: remote_pending_path::{}'.format(remote_pending_path))
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
         stream.add_writer('sha256', streams.HashStreamWriter(hashlib.sha256))
 
-        with open(local_pending_path, 'wb') as file_pointer:
-            stream.add_writer('file', file_pointer)
-            await provider.upload(stream, remote_pending_path, check_created=False, fetch_metadata=False, **kwargs)
+        try:
+            with open(local_pending_path, 'wb') as file_pointer:
+                stream.add_writer('file', file_pointer)
+                await provider.upload(stream, remote_pending_path, check_created=False,
+                                      fetch_metadata=False, **kwargs)
+        except Exception as exc:
+            # If we fail to upload to the remote storage provider, then delete the copy of the file
+            # from the local provider, too.  The user will have to reupload the file to local
+            # anyway, and this will avoid filling up the local disk with unused pending files.
+            try:
+                os.remove(local_pending_path)
+            except OSError as os_exc:
+                raise exceptions.UploadFailedError('Upload failed, please try again.') from os_exc
+            raise exceptions.UploadFailedError('Upload failed, please try again.') from exc
 
         complete_name = stream.writers['sha256'].hexdigest
-        local_complete_path = os.path.join(settings.FILE_PATH_COMPLETE, complete_name)
+        local_complete_dir = tempfile.mkdtemp(dir=settings.FILE_PATH_COMPLETE)
+        local_complete_path = os.path.join(local_complete_dir, complete_name)
         remote_complete_path = await provider.validate_path('/' + complete_name)
 
         try:
@@ -366,18 +386,35 @@ class OSFStorageProvider(provider.BaseProvider):
             data = await response.json()
 
         if settings.RUN_TASKS and data.pop('archive', True):
-            parity.main(
-                local_complete_path,
-                self.parity_credentials,
-                self.parity_settings,
+            # Run parity generation task and glacier upload task, then remove cache dir
+            # after both have completed. The max_retries arg is necessary. If not set and
+            # one of the tasks encounters an error, the chord will retry forever until the
+            # queue is emptied.
+            chord([
+                parity._parity_create_files.s(
+                    local_complete_path,
+                    data['version'],
+                    self.build_url('hooks', 'metadata') + '/',
+                    self.parity_credentials,
+                    self.parity_settings,
+                ),
+                backup._push_file_archive.s(
+                    local_complete_path,
+                    data['version'],
+                    self.build_url('hooks', 'metadata') + '/',
+                    self.archive_credentials,
+                    self.archive_settings,
+                ),
+            ])(
+                task_utils._cleanup.s(local_complete_dir),
+                max_retries=settings.TASK_CLEANUP_MAX_RETRIES,
+                interval=settings.TASK_CLEANUP_INTERVAL
             )
-            backup.main(
-                local_complete_path,
-                data['version'],
-                self.build_url('hooks', 'metadata') + '/',
-                self.archive_credentials,
-                self.archive_settings,
-            )
+        else:
+            try:
+                shutil.rmtree(local_complete_dir)
+            except FileNotFoundError:
+                pass
 
         name = path.name
 

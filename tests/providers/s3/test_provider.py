@@ -253,6 +253,21 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_download_range(self, provider, mock_time):
+        path = WaterButlerPath('/muhtriangle')
+        response_headers = {'response-content-disposition': 'attachment'}
+        url = provider.bucket.new_key(path.path).generate_url(100,
+                                                              response_headers=response_headers)
+        aiohttpretty.register_uri('GET', url, body=b'de', auto_length=True, status=206)
+
+        result = await provider.download(path, range=(0, 1))
+        assert result.partial
+        content = await result.read()
+        assert content == b'de'
+        assert aiohttpretty.has_call(method='GET', uri=url, headers={'Range': 'bytes=0-1'})
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_download_version(self, provider, mock_time):
         path = WaterButlerPath('/muhtriangle')
         url = provider.bucket.new_key(path.path).generate_url(
@@ -262,7 +277,7 @@ class TestCRUD:
         )
         aiohttpretty.register_uri('GET', url, body=b'delicious', auto_length=True)
 
-        result = await provider.download(path, version='someversion')
+        result = await provider.download(path, revision='someversion')
         content = await result.read()
 
         assert content == b'delicious'

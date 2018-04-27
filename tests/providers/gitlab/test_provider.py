@@ -78,29 +78,36 @@ class TestValidatePath:
         body = fixtures.default_branches['default_branch']
         aiohttpretty.register_json_uri('GET', default_branch_url, body=body, status=200)
 
+        commit_sha_url = 'http://base.url/api/v4/projects/123/repository/branches/master'
+        commit_sha_body = fixtures.default_branches['get_commit_sha']
+        aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
+
         root_path = await provider.validate_v1_path(path)
 
         assert root_path.is_dir
         assert root_path.is_root
-        assert root_path.commit_sha is None
+        assert root_path.commit_sha == '5e4718bd52874cf373dad0e9ca602a9a36f87e5c'
         assert root_path.branch_name == 'master'
         assert root_path.extra == {
-            'commitSha': None,
+            'commitSha': '5e4718bd52874cf373dad0e9ca602a9a36f87e5c',
             'branchName': 'master',
         }
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_validate_v1_root_by_branch(self, provider):
-        path = '/'
-        root_path = await provider.validate_v1_path(path, branch='otherbranch')
+        commit_sha_url = 'http://base.url/api/v4/projects/123/repository/branches/otherbranch'
+        commit_sha_body = fixtures.default_branches['get_commit_sha']
+        aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
+
+        root_path = await provider.validate_v1_path('/', branch='otherbranch')
 
         assert root_path.is_dir
         assert root_path.is_root
-        assert root_path.commit_sha is None
+        assert root_path.commit_sha == '5e4718bd52874cf373dad0e9ca602a9a36f87e5c'
         assert root_path.branch_name == 'otherbranch'
         assert root_path.extra == {
-            'commitSha': None,
+            'commitSha': '5e4718bd52874cf373dad0e9ca602a9a36f87e5c',
             'branchName': 'otherbranch',
         }
 
@@ -137,15 +144,18 @@ class TestValidatePath:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_validate_v1_root_by_revision_branch(self, provider):
-        path = '/'
-        root_path = await provider.validate_v1_path(path, revision='otherbranch')
+        commit_sha_url = 'http://base.url/api/v4/projects/123/repository/branches/otherbranch'
+        commit_sha_body = fixtures.default_branches['get_commit_sha']
+        aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
+
+        root_path = await provider.validate_v1_path('/', revision='otherbranch')
 
         assert root_path.is_dir
         assert root_path.is_root
-        assert root_path.commit_sha is None
+        assert root_path.commit_sha == '5e4718bd52874cf373dad0e9ca602a9a36f87e5c'
         assert root_path.branch_name == 'otherbranch'
         assert root_path.extra == {
-            'commitSha': None,
+            'commitSha': '5e4718bd52874cf373dad0e9ca602a9a36f87e5c',
             'branchName': 'otherbranch',
         }
 
@@ -487,6 +497,22 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_download_range(self, provider):
+        path = '/folder1/file.py'
+        gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 3))
+
+        url = ('http://base.url/api/v4/projects/123/repository/files'
+               '/folder1%2Ffile.py?ref=a1b2c3d4')
+        aiohttpretty.register_json_uri('GET', url, body={'content': 'aGVsbG8='})
+
+        result = await provider.download(gl_path, branch='master', range=(0, 1))
+        assert result.partial
+        assert await result.read() == b'he'  # body content after base64 decoding and slice
+        assert aiohttpretty.has_call(method='GET', uri=url,
+                                     headers={'Range': 'bytes=0-1', 'PRIVATE-TOKEN': 'naps'})
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_download_file_ruby_response(self, provider):
         """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
         path = '/folder1/folder2/file'
@@ -498,6 +524,23 @@ class TestDownload:
 
         result = await provider.download(gl_path)
         assert await result.read() == b'rolf\n'
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_file_ruby_response_range(self, provider):
+        """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
+        path = '/folder1/folder2/file'
+        gl_path = GitLabPath(path, _ids=([(None, 'my-branch')] * 4))
+
+        url = ('http://base.url/api/v4/projects/123/repository/files/'
+               'folder1%2Ffolder2%2Ffile?ref=my-branch')
+        aiohttpretty.register_uri('GET', url, body=fixtures.weird_ruby_response())
+
+        result = await provider.download(gl_path, range=(0, 1))
+        assert result.partial
+        assert await result.read() == b'ro'
+        assert aiohttpretty.has_call(method='GET', uri=url,
+                                     headers={'Range': 'bytes=0-1', 'PRIVATE-TOKEN': 'naps'})
 
 
 class TestReadOnlyProvider:

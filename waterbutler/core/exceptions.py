@@ -188,6 +188,13 @@ class UploadChecksumMismatchError(ProviderError):
         super().__init__(message, code=code)
 
 
+class UploadFailedError(ProviderError):
+    def __init__(self, message=None, code=HTTPStatus.INTERNAL_SERVER_ERROR):
+        if message is None:
+            message = 'Upload Failed'
+        super().__init__(message, code=code)
+
+
 class NotFoundError(ProviderError):
     def __init__(self, path, code=HTTPStatus.NOT_FOUND, is_user_error=True):
         super().__init__(
@@ -236,6 +243,17 @@ class UnexportableFileTypeError(DownloadError):
         if not message:
             message = 'The file "{}" is not exportable'.format(path)
         super().__init__(message, code=HTTPStatus.BAD_REQUEST, is_user_error=is_user_error)
+
+
+class InvalidProviderConfigError(ProviderError):
+    """Error for provider init failure due to invalid (include missing) settings and credentials"""
+    def __init__(self, provider_name, message=None):
+        base_message = 'Invalid provider configuration for {}'.format(provider_name)
+        if not message:
+            message = base_message
+        else:
+            message = '{}: {}'.format(base_message, message)
+        super().__init__(message, code=HTTPStatus.BAD_REQUEST, is_user_error=False)
 
 
 async def exception_from_response(resp, error=UnhandledProviderError, **kwargs):

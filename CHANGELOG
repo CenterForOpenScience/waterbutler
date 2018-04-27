@@ -2,6 +2,108 @@
 ChangeLog
 *********
 
+0.38.6 (2018-04-25)
+===================
+- Fix: `CELERY_RESULT_PERSISTENT` should default to True, now that `amqp` is the default result
+backend.
+
+0.38.5 (2018-04-24)
+===================
+- Fix: Don't overwrite evokable url with generated url inside the make_request retry loop.  Third
+time's the charm, right?
+
+0.38.4 (2018-04-24)
+===================
+- Fix: Evoke url-generating functions *inside* the make_request retry loop to make sure signed
+urls are as fresh as possible.
+
+0.38.3 (2018-04-24)
+===================
+- Fix: Remove temporary files after osfstorage provider has completed its archiving and
+parity-generation tasks.
+
+0.38.2 (2018-04-23)
+===================
+- Fix: Delay construction of Google Cloud signed urls until right before issuing them.  The provider
+was building them outside of the retry loop, resulting in slow-to-fail requests having their
+signatures expire before all subsequent retries could be issued.
+
+0.38.1 (2018-04-10)
+===================
+- Fix: Don't log 206 Partial requests to the download callback.  Most of these are for streaming
+video or resumable downloads and shouldn't be tallied as a download.
+
+0.38.0 (2018-03-28)
+===================
+- Fix: WaterButler now handles Range header requests correctly!  There was an off-by-one error where
+WB was returning one byte more than requested.  This manifested in Safari being unable to load
+videos rendered by MFR.  Safari requests the first two bytes of a video before issuing a full
+request.  When WB returns three bytes, Safari refuses to try to render the file.  Safari can now
+render videos from most providers that support Range headers.  Unfortunately, it still struggles
+with osfstorage for reasons that are still being investigated.  (thanks, @abought and @johetordoff!)
+- Feature: WaterButler now logs download and download-as-zip requests to the callback given by the
+auth provider.  This is intended to allow the OSF (the default auth provider) to better log download
+counts for files.  If WB detects that a request originates from MFR, it will relay that on to the
+callback, so the auth provider can account for that when compiling statistics.
+- Feature: Add a new limited provider for Google Cloud Storage!  A limited provider is one that can
+be used as a data-storage backend provider for osfstorage.  It does NOT have a corresponding OSF
+addon interface, nor does it support the full range of WB actions.  It has been tested locally, but
+has yet to be tested in a staging or production environment, so EARLY ADOPT AT YOUR OWN RISK!
+- Fix: Stop installing aiohttpretty in editable mode to avoid containers hanging while awaiting user
+input.
+
+0.37.1 (2018-02-06)
+===================
+- Feature: Increase default move/copy task timeout to 20s.  WaterButler will now wait 20 seconds for
+move/copy tasks to complete before backgrounding the task and returning a 202 Accepted.
+
+0.37.0 (2018-01-26)
+===================
+- ANNOUNCEMENT!  The WaterButler v0 API is once again DEPRECATED!  COS has removed the last remnants
+of it from the OSF (thanks, @alexschiller!) and has moved entirely to the v1 API.  It will be
+removed in the first release after *April 1*.  If you depend on v0, please get in contact with us
+(contact@cos.io) before then.
+- Feature: Don't re-compress already-zipped files when downloading a directory as a zip.  Re-zipping
+wastes CPU time and will tend to result in larger zips overall.  (thanks, @johnetordoff!)
+- Feature: Add a unique request ID to WaterButler's response headers to help with tracking down
+errors.  (thanks, @johnetordoff!)
+- Fix: Use the correct revision parameter name for fetching Amazon S3 revisions.  S3 revisions are
+an optional feature that must be turned on via the AWS interface.  (thanks, @TomBaxter!)
+- Fix: Allow the GitHub to delete a folder in the repository root when it's the only remaining
+object.  (thanks, @TomBaxter!)
+- Fix: Purge osfstorage uploads from the pending directory when the upload to the backend storage
+provider fails.  (thanks, @johnetordoff!)
+- Fix: Return a 400 Bad Request when a user tries to copy a root folder to another provider without
+setting the `rename` parameter.  (thanks, @AddisonSchiller!)
+- Fix: Don't send invalid payloads to WaterButler's metrics tracking service.  (thanks,
+@AddisonSchiller!)
+- Fix: Compute correct name for nested folders in the filesystem provider.  (thanks,
+@AddisonSchiller & @johnetordoff!)
+- Fix: Remove obsolete and unused `unsizable` flag from ResponseStreamReader.  (thanks,
+@AddisonSchiller & @johnetordoff!)
+- Code: Upgrade the Dropbox provider to only use Dropbox's v2 endpoints.  (thanks, @johnetordoff!)
+- Code: Update WaterButler to support setuptools versions greater than v30.4.0. WaterButler's
+`__version__` declaration has moved from `waterbutler.__init__` to `waterbutler.version`.  (thanks,
+@johnetordoff!)
+- Code: Distinguish between provider actions and authentication actions in the v1 move/copy code.
+
+0.36.2 (2017-12-20)
+===================
+- Feature: Log osfstorage parity file metadata back to the OSF after upload.
+
+0.36.1 (2017-12-11)
+===================
+- Fix: Update OneDrive metadata to report the correct materialized name.
+
+0.36.0 (2017-12-05)
+===================
+- Feature: WaterButler now supports two new read-only providers, GitLab and Microsoft OneDrive!
+Read-only providers support browsing, downloading, downloading-as-zip, getting file revision
+history, and copying from connected repositories.  Thanks to the following devs for their hard
+work!
+ - GitLab: @danielneis, @luismulinari, @rafaeldelucena
+ - OneDrive: @caseyrygt, @alexandr-melnikov-dev-pro, @johnetordoff
+
 0.35.0 (2017-11-13)
 ===================
 - Feature: Allow copying from public resources with the OSF provider.  WaterButler had been
@@ -40,7 +142,7 @@ This bypasses the 10 second wait for shutdown when running it in Docker.
 
 0.33.1 (2017-09-05)
 ===================
-- Reject requests for Box IDs if the ID is valid, but the file or folder is outside of the
+- Fix: Reject requests for Box IDs if the ID is valid, but the file or folder is outside of the
 project root.  (thanks, @AddisonSchiller!)
 
 0.33.0 (2017-08-09)
