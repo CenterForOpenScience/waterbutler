@@ -202,7 +202,7 @@ class BoxProvider(provider.BaseProvider):
         dest_provider: provider.BaseProvider,
         src_path: WaterButlerPath,
         dest_path: WaterButlerPath
-    ) -> typing.Tuple[typing.Union[BoxFileMetadata, BoxFolderMetadata], bool]:
+    ) -> Tuple[typing.Union[BoxFileMetadata, BoxFolderMetadata], bool]:
         """Copy a file if the src and dest are both on Box.
         """
 
@@ -288,7 +288,7 @@ class BoxProvider(provider.BaseProvider):
                        path: WaterButlerPath, revision: str=None, range: Tuple[int, int]=None,
                        **kwargs) -> streams.ResponseStreamReader:
         if path.identifier is None:
-            raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404) 
+            raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
         query = {}
         if revision and revision != path.identifier:
             query['version'] = revision
