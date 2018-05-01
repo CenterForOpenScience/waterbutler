@@ -44,7 +44,7 @@ class GoogleCloudProvider(BaseProvider):
     # Provider Name
     NAME = 'googlecloud'
 
-    # BASE URL for JSON API
+    # BASE URL for XML API
     BASE_URL = pd_settings.BASE_URL
 
     # EXPIRATION for Signed Request/URL for XML API
