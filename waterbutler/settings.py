@@ -69,6 +69,15 @@ class SettingsDict(dict):
         value = self.get(key, default)
         return None if value == '' else value
 
+    def get_object(self, key, default=None):
+        """Fetch a config value and interpret as a Python object or list. Since envvars are
+        always strings, interpret values of type `str` as JSON object or array. Otherwise assume
+        the type is already a python object."""
+        value = self.get(key, default)
+        if isinstance(value, str):
+            value = json.loads(value)
+        return value
+
     def full_key(self, key):
         """The name of the envvar which corresponds to this key."""
         return '{}_{}'.format(self.parent, key) if self.parent else key
