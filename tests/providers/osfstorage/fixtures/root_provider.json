@@ -30,7 +30,8 @@
       "path": "/59a9b637b7d1c903ab5a8f58",
       "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
       "size": 1,
-      "version": 2
+      "version": 2,
+      "latestVersionSeen": null
     },
     {
       "checkout": null,
@@ -45,7 +46,8 @@
       "path": "/59a9b628b7d1c903ab5a8f52",
       "sha256": "043be9ff919762f0dc36fff0222cd90c753ce28b39feb52112be9360c476ef88",
       "size": 5596,
-      "version": 1
+      "version": 1,
+      "latestVersionSeen": null
     },
     {
       "checkout": null,
@@ -60,7 +62,8 @@
       "path": "/59a5adb9b7d1c901cd40f0e9",
       "sha256": "65ce4e767e3da8c4c79315904976b0cc23a18f4e318124878ba9b89348b10e91",
       "size": 75009223,
-      "version": 1
+      "version": 1,
+      "latestVersionSeen": null
     }
   ],
   "file_metadata": {
@@ -77,7 +80,8 @@
     "path": "/59a9b628b7d1c903ab5a8f52",
     "sha256": "043be9ff919762f0dc36fff0222cd90c753ce28b39feb52112be9360c476ef88",
     "size": 5596,
-    "version": 1
+    "version": 1,
+    "latestVersionSeen": null
   },
   "revisions_metadata": {
     "revisions": [

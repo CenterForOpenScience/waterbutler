@@ -257,26 +257,46 @@ class InvalidProviderConfigError(ProviderError):
 
 
 async def exception_from_response(resp, error=UnhandledProviderError, **kwargs):
-    """Build and return, not raise, an exception from a response object
+    """Build and return, not raise, an exception from a response object.
 
-    :param Response resp: An aiohttp.Response stream with a non 200 range status
+    Quirks:
+
+    ``resp.json()`` will throw the warning "Attempt to decode JSON with unexpected mimetype: %s" if
+    the "Content-Type" is not of a json type.  The warning is an expected one.  However, providers
+    such as S3 and GoogleCloud which use XML API endpoints pollute the WB celery log with this
+    warning when checking file existence before each copy/move.  In addition, some 404 responses
+    have a string body regardless of the provided "Content-Type".
+
+    Current fix is skip parsing the body for HEAD requests.  We cannot simply rely on the header
+    "Content-Type" to decide whether to call ``.json()`` or ``.read()``.  The warning should be
+    logged at a level that it is useful but not annoying.
+
+    :param resp: An ``aiohttp.ClientResponse`` stream with a non-200 range status
+    :type resp: :class:`aiohttp.ClientResponse`
     :param Exception error: The type of exception to be raised
-    :param dict \*\*kwargs: Additional context to extract information from
-
-    :rtype :class:`WaterButlerError`:
+    :param dict \*\*kwargs: Additional context is ignored
+    :rtype: :class:`WaterButlerError`
     """
+
+    if resp.method.upper() == 'HEAD':
+        # HEAD requests must have an empty body
+        await resp.release()
+        return error(DEFAULT_ERROR_MSG.format(response=resp), code=resp.status)
+
     try:
-        # Try to make an exception from our received json
+        # Try to parse response body as JSON.
         data = await resp.json()
         return error(data, code=resp.status)
-    except Exception:
+    except (TypeError, json.JSONDecodeError):
         pass
 
     try:
+        # Try to parse response as String.
         data = await resp.read()
         return error({'response': data.decode('utf-8')}, code=resp.status)
     except TypeError:
         pass
 
-    # When all else fails return the most generic return message
+    # When all else fails, return the most generic return message.
+    await resp.release()
     return error(DEFAULT_ERROR_MSG.format(response=resp), code=resp.status)

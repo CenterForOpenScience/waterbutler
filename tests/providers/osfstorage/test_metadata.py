@@ -31,7 +31,8 @@ class TestFileMetadata:
                 'md5': 'eb3f7cc15ba7b6effb2186284185c5cf',
                 'sha256': '043be9ff919762f0dc36fff0222cd90c753ce28b39feb52112be9360c476ef88'
             },
-            'version': 1
+            'version': 1,
+            'latestVersionSeen': None
         }
 
         assert file_metadata_object.extra == extra_expected

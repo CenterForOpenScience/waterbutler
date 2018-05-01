@@ -41,5 +41,19 @@ PARITY_RETRY_WARN_IDX = config.get_nullable('PARITY_RETRY_WARN_IDX', None)
 PARITY_CONTAINER_NAME = config.get_nullable('PARITY_CONTAINER_NAME', None)
 PARITY_REDUNDANCY = int(config.get('PARITY_REDUNDANCY', 5))
 PARITY_PROVIDER_NAME = config.get('PARITY_PROVIDER_NAME', 'cloudfiles')
-PARITY_PROVIDER_CREDENTIALS = config.get('PARITY_PROVIDER_CREDENTIALS', {})
-PARITY_PROVIDER_SETTINGS = config.get('PARITY_PROVIDER_SETTINGS', {})
+PARITY_PROVIDER_CREDENTIALS = config.get_object('PARITY_PROVIDER_CREDENTIALS', {})
+PARITY_PROVIDER_SETTINGS = config.get_object('PARITY_PROVIDER_SETTINGS', {})
+
+# POST-TASK CLEANUP OPTIONS
+#
+# Task cleanup happens after the tasks have successfully finished.  A chord is used to monitor
+# the status of the tasks.  If either task fails, the chord will check on their status after
+# waiting the interval set below.  Chord retries are linear, while task retries are exponential.
+# It is possible for a task to succeed after the chord has given up.  In this case, the cleanup
+# will not be run, and the temp dir will need to be cleaned manually.  This is not expected to
+# happen frequently, so the default settings are arbitrary and simplisitic.  A more complex
+# calculation involving the task backoff parameters defined above could be done, but will not be
+# investigated until need is proven.
+
+TASK_CLEANUP_MAX_RETRIES = int(config.get('TASK_CLEANUP_MAX_RETRIES', 10))
+TASK_CLEANUP_INTERVAL = int(config.get('TASK_CLEANUP_INTERVAL', 60))
