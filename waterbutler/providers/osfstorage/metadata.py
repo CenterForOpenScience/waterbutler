@@ -79,6 +79,24 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
 
     @property
     def extra(self):
+        """osfstorage-specific metadata for files.
+
+        * ``guid``: Always `None`.  Added in anticipation of OSF-side support, which was then
+          abandoned after technical consideration.  Left in to avoid breaking clients that expect
+          the key to be present.
+
+        * ``version``: The version number of the *most recent* version, not the requested version.
+
+        * ``downloads``: Number of times the file has been downloaded.
+
+        * ``checkout``: Whether this file has been checked-out and is therefore read-only to all
+          but the user who has checked it out.
+
+        * ``latestVersionSeen``: Whether the requesting user has seen the most recent version of
+          the file.  `True` if so.  `False` if a newer version exists that the user has not yet
+          seen.  `None` if the user has not seen *any* version of the file.
+
+        """
         return {
             'guid': self.raw.get('guid', None),
             'version': self.raw['version'],
