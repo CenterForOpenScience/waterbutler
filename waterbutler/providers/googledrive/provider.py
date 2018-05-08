@@ -1,25 +1,23 @@
 import os
 import json
-import typing
 import hashlib
 import functools
 from urllib import parse
 from http import HTTPStatus
+from typing import List, Sequence, Tuple, Union
 
 import furl
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
-from waterbutler.core import path as wb_path
+from waterbutler.core import exceptions, provider, streams
+from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
 
-from waterbutler.providers.googledrive import settings
-from waterbutler.providers.googledrive import utils as drive_utils
-from waterbutler.providers.googledrive.metadata import (BaseGoogleDriveMetadata,
+from waterbutler.providers.googledrive import utils
+from waterbutler.providers.googledrive import settings as pd_settings
+from waterbutler.providers.googledrive.metadata import (GoogleDriveRevision,
+                                                        BaseGoogleDriveMetadata,
                                                         GoogleDriveFileMetadata,
-                                                        GoogleDriveFileRevisionMetadata,
                                                         GoogleDriveFolderMetadata,
-                                                        GoogleDriveRevision)
+                                                        GoogleDriveFileRevisionMetadata, )
 
 
 def clean_query(query: str):
@@ -28,13 +26,13 @@ def clean_query(query: str):
     return query.replace('\\', r'\\').replace("'", r"\'")
 
 
-class GoogleDrivePathPart(wb_path.WaterButlerPathPart):
+class GoogleDrivePathPart(WaterButlerPathPart):
     DECODE = parse.unquote
     # TODO: mypy lacks a syntax to define kwargs for callables
     ENCODE = functools.partial(parse.quote, safe='')  # type: ignore
 
 
-class GoogleDrivePath(wb_path.WaterButlerPath):
+class GoogleDrivePath(WaterButlerPath):
     PART_CLASS = GoogleDrivePathPart
 
 
@@ -73,7 +71,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     value will always return a 404 Not Found.
     """
     NAME = 'googledrive'
-    BASE_URL = settings.BASE_URL
+    BASE_URL = pd_settings.BASE_URL
     FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 
     # https://developers.google.com/drive/v2/web/about-permissions#roles
@@ -107,9 +105,9 @@ class GoogleDriveProvider(provider.BaseProvider):
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 
     async def revalidate_path(self,
-                              base: wb_path.WaterButlerPath,
+                              base: WaterButlerPath,
                               name: str,
-                              folder: bool = None) -> wb_path.WaterButlerPath:
+                              folder: bool=None) -> WaterButlerPath:
         # TODO Redo the logic here folders names ending in /s
         # Will probably break
         if '/' in name.lstrip('/') and '%' not in name:
@@ -135,22 +133,17 @@ class GoogleDriveProvider(provider.BaseProvider):
     def default_headers(self) -> dict:
         return {'authorization': 'Bearer {}'.format(self.token)}
 
-    def can_intra_move(self,
-                       other: provider.BaseProvider,
-                       path=None) -> bool:
+    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
         return self == other
 
-    def can_intra_copy(self,
-                       other: provider.BaseProvider,
-                       path=None) -> bool:
+    def can_intra_copy(self, other: provider.BaseProvider, path=None) -> bool:
         # gdrive doesn't support intra-copy on folders
         return self == other and (path and path.is_file)
 
     async def intra_move(self,  # type: ignore
                          dest_provider: provider.BaseProvider,
-                         src_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) \
-                         -> typing.Tuple[BaseGoogleDriveMetadata, bool]:
+                         src_path: WaterButlerPath,
+                         dest_path: WaterButlerPath) -> Tuple[BaseGoogleDriveMetadata, bool]:
         self.metrics.add('intra_move.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -184,9 +177,8 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def intra_copy(self,
                          dest_provider: provider.BaseProvider,
-                         src_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) \
-                         -> typing.Tuple[GoogleDriveFileMetadata, bool]:
+                         src_path: WaterButlerPath,
+                         dest_path: WaterButlerPath) -> Tuple[GoogleDriveFileMetadata, bool]:
         self.metrics.add('intra_copy.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -213,8 +205,8 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def download(self,  # type: ignore
                        path: GoogleDrivePath,
                        revision: str=None,
-                       range: typing.Tuple[int, int]=None,
-                       **kwargs) -> streams.BaseStream:  # type: ignore
+                       range: Tuple[int, int]=None,
+                       **kwargs) -> streams.BaseStream:
         """Download the file at `path`.  If `revision` is present, attempt to download that revision
         of the file.  See **Revisions** in the class doctring for an explanation of this provider's
         revision handling.   The actual revision handling is done in `_file_metadata()`.
@@ -236,7 +228,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         download_resp = await self.make_request(
             'GET',
-            metadata.raw.get('downloadUrl') or drive_utils.get_export_link(metadata.raw),  # type: ignore
+            metadata.raw.get('downloadUrl') or utils.get_export_link(metadata.raw),  # type: ignore
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
@@ -254,8 +246,11 @@ class GoogleDriveProvider(provider.BaseProvider):
         stream.name = metadata.export_name  # type: ignore
         return stream
 
-    async def upload(self, stream, path: wb_path.WaterButlerPath, *args, **kwargs) \
-            -> typing.Tuple[GoogleDriveFileMetadata, bool]:
+    async def upload(self,
+                     stream,
+                     path: WaterButlerPath,
+                     *args,
+                     **kwargs) -> Tuple[GoogleDriveFileMetadata, bool]:
         assert path.is_file
 
         if path.identifier:
@@ -280,7 +275,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                      confirm_delete: int=0,
                      **kwargs) -> None:
         """Given a WaterButlerPath, delete that path
-        :param GoogleDrivePath: Path to be deleted
+        :param GoogleDrivePath path: Path to be deleted
         :param int confirm_delete: Must be 1 to confirm root folder delete
         :rtype: None
         :raises: :class:`waterbutler.core.exceptions.NotFoundError`
@@ -329,9 +324,10 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def metadata(self,  # type: ignore
                        path: GoogleDrivePath,
-                       raw: bool = False,
+                       raw: bool=False,
                        revision=None,
-                       **kwargs) -> typing.Union[dict, BaseGoogleDriveMetadata, typing.List[typing.Union[BaseGoogleDriveMetadata, dict]]]:
+                       **kwargs) -> Union[dict, BaseGoogleDriveMetadata,
+                                          List[Union[BaseGoogleDriveMetadata, dict]]]:
         if path.identifier is None:
             raise exceptions.MetadataError('{} not found'.format(str(path)), code=404)
 
@@ -340,7 +336,8 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         return await self._file_metadata(path, revision=revision, raw=raw)
 
-    async def revisions(self, path: GoogleDrivePath, **kwargs) -> typing.List[GoogleDriveRevision]:  # type: ignore
+    async def revisions(self, path: GoogleDrivePath,  # type: ignore
+                        **kwargs) -> List[GoogleDriveRevision]:
         """Returns list of revisions for the file at ``path``.
 
         Google Drive will not allow a user to view the revision list of a file if they only have
@@ -375,13 +372,14 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         # Use dummy ID if no revisions found
         metadata = await self.metadata(path, raw=True)
-        return [GoogleDriveRevision({
+        revision = {
             'modifiedDate': metadata['modifiedDate'],  # type: ignore
-            'id': metadata['etag'] + settings.DRIVE_IGNORE_VERSION,
-        })]
+            'id': metadata['etag'] + pd_settings.DRIVE_IGNORE_VERSION,  # type: ignore
+        }
+        return [GoogleDriveRevision(revision), ]
 
     async def create_folder(self,
-                            path: wb_path.WaterButlerPath,
+                            path: WaterButlerPath,
                             folder_precheck: bool=True,
                             **kwargs) -> GoogleDriveFolderMetadata:
         GoogleDrivePath.validate_folder(path)
@@ -413,12 +411,12 @@ class GoogleDriveProvider(provider.BaseProvider):
         return parent_path.child(metadata.export_name, _id=metadata.id, folder=metadata.is_folder)
 
     def _build_upload_url(self, *segments, **query):
-        return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
+        return provider.build_url(pd_settings.BASE_UPLOAD_URL, *segments, **query)
 
     def _serialize_item(self,
-                        path: wb_path.WaterButlerPath,
+                        path: WaterButlerPath,
                         item: dict,
-                        raw: bool=False) -> typing.Union[BaseGoogleDriveMetadata, dict]:
+                        raw: bool=False) -> Union[BaseGoogleDriveMetadata, dict]:
         if raw:
             return item
         if item['mimeType'] == self.FOLDER_MIME_TYPE:
@@ -438,7 +436,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def _start_resumable_upload(self,
                                       created: bool,
-                                      segments: typing.Sequence[str],
+                                      segments: Sequence[str],
                                       size,
                                       metadata: dict) -> str:
         async with self.request(
@@ -455,7 +453,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             location = furl.furl(resp.headers['LOCATION'])
         return location.args['upload_id']
 
-    async def _finish_resumable_upload(self, segments: typing.Sequence[str], stream, upload_id):
+    async def _finish_resumable_upload(self, segments: Sequence[str], stream, upload_id):
         async with self.request(
             'PUT',
             self._build_upload_url('files', *segments, uploadType='resumable', upload_id=upload_id),
@@ -488,7 +486,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             part_name, part_is_folder = current_part[0], current_part[1]
             name, ext = os.path.splitext(part_name)
             if not part_is_folder and ext in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
-                gd_ext = drive_utils.get_mimetype_from_ext(ext)
+                gd_ext = utils.get_mimetype_from_ext(ext)
                 query = "title = '{}' " \
                         "and trashed = false " \
                         "and mimeType = '{}'".format(clean_query(name), gd_ext)
@@ -572,12 +570,13 @@ class GoogleDriveProvider(provider.BaseProvider):
             item['version'] = revisions_data['items'][-1]['id']
         else:
             # If there are no revisions use etag as vid
-            item['version'] = item['etag'] + settings.DRIVE_IGNORE_VERSION
+            item['version'] = item['etag'] + pd_settings.DRIVE_IGNORE_VERSION
 
         return self._serialize_item(path, item, raw=raw)
 
-    async def _folder_metadata(self, path: wb_path.WaterButlerPath, raw: bool=False) \
-            -> typing.List[typing.Union[BaseGoogleDriveMetadata, dict]]:
+    async def _folder_metadata(self,
+                               path: WaterButlerPath,
+                               raw: bool=False) -> List[Union[BaseGoogleDriveMetadata, dict]]:
         query = self._build_query(path.identifier)
         built_url = self.build_url('files', q=query, alt='json', maxResults=1000)
         full_resp = []
@@ -599,7 +598,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def _file_metadata(self,
                              path: GoogleDrivePath,
                              revision: str=None,
-                             raw: bool=False):
+                             raw: bool=False) -> Union[dict, BaseGoogleDriveMetadata]:
         """ Returns metadata for the file identified by `path`.  If the `revision` arg is set,
         will attempt to return metadata for the given revision of the file.  If the revision does
         not exist, ``_file_metadata`` will throw a 404.
@@ -632,7 +631,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         self.metrics.add('_file_metadata.got_revision', revision is not None)
 
-        valid_revision = revision and not revision.endswith(settings.DRIVE_IGNORE_VERSION)
+        valid_revision = revision and not revision.endswith(pd_settings.DRIVE_IGNORE_VERSION)
         if revision:
             self.metrics.add('_file_metadata.revision_is_valid', valid_revision)
 
@@ -660,17 +659,17 @@ class GoogleDriveProvider(provider.BaseProvider):
         user_role = data['userPermission']['role']
         self.metrics.add('_file_metadata.user_role', user_role)
         can_access_revisions = user_role in self.ROLES_ALLOWING_REVISIONS
-        if drive_utils.is_docs_file(data):
+        if utils.is_docs_file(data):
             if can_access_revisions:
                 return await self._handle_docs_versioning(path, data, raw=raw)
             else:
                 # Revisions are not available for some sharing configurations. If revisions list is
                 # empty, use the etag of the file plus a sentinel string as a dummy revision ID.
-                data['version'] = data['etag'] + settings.DRIVE_IGNORE_VERSION
+                data['version'] = data['etag'] + pd_settings.DRIVE_IGNORE_VERSION
 
         return data if raw else GoogleDriveFileMetadata(data, path)
 
-    async def _delete_folder_contents(self, path: wb_path.WaterButlerPath) -> None:
+    async def _delete_folder_contents(self, path: WaterButlerPath) -> None:
         """Given a WaterButlerPath, delete all contents of folder
 
         :param WaterButlerPath path: Folder to be emptied

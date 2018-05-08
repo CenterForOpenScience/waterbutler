@@ -1,16 +1,17 @@
 import json
-import typing
 import asyncio
 import hashlib
 import logging
+from typing import Tuple
 from http import HTTPStatus
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
+from waterbutler.core import exceptions, provider, streams
 
 from waterbutler.providers.figshare.path import FigsharePath
-from waterbutler.providers.figshare import metadata, settings
+from waterbutler.providers.figshare import settings as pd_settings
+from waterbutler.providers.figshare.metadata import (FigshareFileMetadata,
+                                                     FigshareFolderMetadata,
+                                                     FigshareFileRevisionMetadata, )
 
 logger = logging.getLogger(__name__)
 
@@ -91,10 +92,10 @@ class FigshareProvider:
 
 class BaseFigshareProvider(provider.BaseProvider):
     NAME = 'figshare'
-    BASE_URL = settings.BASE_URL
-    VIEW_URL = settings.VIEW_URL
-    DOWNLOAD_URL = settings.DOWNLOAD_URL
-    VALID_CONTAINER_TYPES = settings.VALID_CONTAINER_TYPES
+    BASE_URL = pd_settings.BASE_URL
+    VIEW_URL = pd_settings.VIEW_URL
+    DOWNLOAD_URL = pd_settings.DOWNLOAD_URL
+    VALID_CONTAINER_TYPES = pd_settings.VALID_CONTAINER_TYPES
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -166,22 +167,23 @@ class BaseFigshareProvider(provider.BaseProvider):
         """
         return path.rstrip('/').split('/')
 
-    async def download(self, path, range: typing.Tuple[int, int]=None, **kwargs):
+    async def download(self, path: FigsharePath,  # type: ignore
+                       range: Tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
         """Download the file identified by ``path`` from this project.
 
         :param FigsharePath path: FigsharePath to file you want to download
-        :rtype ResponseStreamReader:
+        :rtype streams.ResponseStreamReader:
         """
         if not path.is_file:
             raise exceptions.NotFoundError(str(path))
 
         file_metadata = await self.metadata(path)
-        download_url = file_metadata.extra['downloadUrl']
+        download_url = file_metadata.extra['downloadUrl']  # type: ignore
         if download_url is None:
             raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)
 
         logger.debug('requested-range:: {}'.format(range))
-        params = {} if file_metadata.is_public else {'token': self.token}
+        params = {} if file_metadata.is_public else {'token': self.token}  # type: ignore
         resp = await self.make_request(
             'GET',
             download_url,
@@ -206,7 +208,7 @@ class BaseFigshareProvider(provider.BaseProvider):
     async def revisions(self, path, **kwargs):
         # Public articles have revisions, but projects, collections, and private articles do not.
         # For now, return a single Revision labeled "latest".
-        return [metadata.FigshareFileRevisionMetadata()]
+        return [FigshareFileRevisionMetadata()]
 
     async def _upload_file(self, article_id, name, stream):
         """Uploads a file to Figshare and returns the file id.
@@ -225,7 +227,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         # 2. Get upload url and file parts info
         # added sleep() as file was not availble right away after getting 201 back.
         # polling with HEADs is another possible solution
-        await asyncio.sleep(settings.FILE_CREATE_WAIT)
+        await asyncio.sleep(pd_settings.FILE_CREATE_WAIT)
         upload_url, parts = await self._get_file_upload_url(article_id, file_id)
 
         # 3. Upload parts
@@ -273,7 +275,7 @@ class BaseFigshareProvider(provider.BaseProvider):
             await resp.release()
             raise exceptions.ProviderError(
                 'Could not get upload_url. File creation may have taken more '
-                'than {} seconds to finish.'.format(str(settings.FILE_CREATE_WAIT)))
+                'than {} seconds to finish.'.format(str(pd_settings.FILE_CREATE_WAIT)))
 
         upload_json = await resp.json()
         upload_url = upload_json['upload_url']
@@ -349,7 +351,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         for item in articles:
             if '/articles/' + article_id in item['url']:
                 article_name = item['title']
-                if settings.PRIVATE_IDENTIFIER not in item['url']:
+                if pd_settings.PRIVATE_IDENTIFIER not in item['url']:
                     is_public = True
 
         article_segments = (*self.root_path_parts, 'articles', article_id)
@@ -375,7 +377,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
             expects=(200, ),
         )
         article_json = await article_response.json()
-        if article_json['defined_type'] in settings.FOLDER_TYPES:
+        if article_json['defined_type'] in pd_settings.FOLDER_TYPES:
             if not path[-1] == '/':
                 raise exceptions.NotFoundError('Folder paths must end with "/".  {} not found.'.format(path))
             return FigsharePath('/' + article_name + '/', _ids=(self.container_id, article_id),
@@ -417,7 +419,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         for item in articles:
             if '/articles/' + article_id in item['url']:
                 article_name = item['title']
-                if settings.PRIVATE_IDENTIFIER not in item['url']:
+                if pd_settings.PRIVATE_IDENTIFIER not in item['url']:
                     is_public = True
 
         article_segments = (*self.root_path_parts, 'articles', article_id)
@@ -443,7 +445,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         )
         if article_response.status == 200:
             article_json = await article_response.json()
-            if article_json['defined_type'] in settings.FOLDER_TYPES:
+            if article_json['defined_type'] in pd_settings.FOLDER_TYPES:
                 # Case of v0 file creation
                 if file_id:
                     ids = ('', article_id, '')
@@ -504,7 +506,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
             for article_json in children
         ])
         for article in articles:
-            is_folder = article['defined_type'] in settings.FOLDER_TYPES
+            is_folder = article['defined_type'] in pd_settings.FOLDER_TYPES
             article_id = str(article['id'])
             article_name = str(article['title'])
             if folder != is_folder:
@@ -543,7 +545,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                 expects=(200, ),
             )
             parent_json = await parent_resp.json()
-            if not parent_json['defined_type'] in settings.FOLDER_TYPES:
+            if not parent_json['defined_type'] in pd_settings.FOLDER_TYPES:
                 del path._parts[1]
 
         # Create article or retrieve article_id from existing article
@@ -604,7 +606,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         )
         article_json = await get_article_response.json()
 
-        return metadata.FigshareFolderMetadata(article_json)
+        return FigshareFolderMetadata(article_json)
 
     async def delete(self, path, confirm_delete=0, **kwargs):
         """Delete the entity at ``path``.
@@ -644,7 +646,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                 expects=(200, ),
             )
             article_json = await article_response.json()
-            if article_json['defined_type'] in settings.FOLDER_TYPES:
+            if article_json['defined_type'] in pd_settings.FOLDER_TYPES:
                 delete_path = ('articles', path.parts[1]._id, 'files', path.parts[2]._id)
             else:
                 delete_path = (*self.root_path_parts, 'articles', path.parts[1]._id)
@@ -687,16 +689,16 @@ class FigshareProjectProvider(BaseFigshareProvider):
         article_json = await article_response.json()
 
         if len(path.parts) == 2:
-            if article_json['defined_type'] not in settings.FOLDER_TYPES:
+            if article_json['defined_type'] not in pd_settings.FOLDER_TYPES:
                 raise exceptions.NotFoundError(str(path))
             contents = []
             for file in article_json['files']:
-                contents.append(metadata.FigshareFileMetadata(article_json, raw_file=file))
+                contents.append(FigshareFileMetadata(article_json, raw_file=file))
             return contents
         elif len(path.parts) == 3:
             for file in article_json['files']:
                 if file['id'] == int(path.parts[2].identifier):
-                    return metadata.FigshareFileMetadata(article_json, raw_file=file)
+                    return FigshareFileMetadata(article_json, raw_file=file)
             raise exceptions.NotFoundError(path.path)
         else:
             raise exceptions.NotFoundError('{} is not a valid path.'.format(path))
@@ -717,10 +719,10 @@ class FigshareProjectProvider(BaseFigshareProvider):
             expects=(200, ),
         )
         article_json = await response.json()
-        if article_json['defined_type'] in settings.FOLDER_TYPES:
-            return metadata.FigshareFolderMetadata(article_json)
+        if article_json['defined_type'] in pd_settings.FOLDER_TYPES:
+            return FigshareFolderMetadata(article_json)
         elif article_json['files']:
-            return metadata.FigshareFileMetadata(article_json)
+            return FigshareFileMetadata(article_json)
 
         return None  # article without attached file
 
@@ -749,7 +751,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
             resp = await self.make_request(
                 'GET',
                 self.build_url(False, *self.root_path_parts, 'articles'),
-                params={'page': str(page), 'page_size': str(settings.MAX_PAGE_SIZE)},
+                params={'page': str(page), 'page_size': str(pd_settings.MAX_PAGE_SIZE)},
                 expects=(200, ),
             )
             articles = await resp.json()
@@ -910,7 +912,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
                 expects=(200, ),
             )
             parent_json = await parent_resp.json()
-            if not parent_json['defined_type'] in settings.FOLDER_TYPES:
+            if not parent_json['defined_type'] in pd_settings.FOLDER_TYPES:
                 del path._parts[1]
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
@@ -963,12 +965,12 @@ class FigshareArticleProvider(BaseFigshareProvider):
         if path.is_root:  # list files in article
             contents = []
             for file in article['files']:
-                contents.append(metadata.FigshareFileMetadata(article, raw_file=file))
+                contents.append(FigshareFileMetadata(article, raw_file=file))
             return contents
         elif len(path.parts) == 2:  # metadata for a particular file
             for file in article['files']:
                 if str(file['id']) == path.parts[1].identifier:
-                    return metadata.FigshareFileMetadata(article, raw_file=file)
+                    return FigshareFileMetadata(article, raw_file=file)
 
         # Invalid path, e.g. /422313/67709/1234
         raise exceptions.NotFoundError(str(path))

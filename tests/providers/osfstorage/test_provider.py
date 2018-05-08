@@ -175,8 +175,8 @@ class TestDelete:
         provider.validate_path = utils.MockCoroutine(return_value=file_path)
         provider.delete = utils.MockCoroutine()
 
-        children_url, params = build_signed_url_without_auth(provider, 'GET',
-                                                             folder_path.identifier, 'children')
+        children_url, params = build_signed_url_without_auth(provider, 'GET', folder_path.identifier,
+                                                             'children', user_id=provider.auth['id'])
         aiohttpretty.register_json_uri('GET', children_url, params=params, status=200,
                                        body=folder_children_metadata)
 
@@ -193,7 +193,7 @@ class TestMetadata:
     async def test_provider_metadata_empty(self, provider, folder_path, mock_time):
 
         url, params = build_signed_url_without_auth(provider, 'GET', folder_path.identifier,
-                                                    'children')
+                                                    'children', user_id=provider.auth['id'])
         aiohttpretty.register_json_uri('GET', url, params=params, status_code=200, body=[])
 
         res = await provider.metadata(folder_path)
@@ -207,7 +207,7 @@ class TestMetadata:
                                             mock_time):
 
         url, params = build_signed_url_without_auth(provider, 'GET', folder_path.identifier,
-                                                    'children')
+                                                    'children', user_id=provider.auth['id'])
         aiohttpretty.register_json_uri('GET', url, params=params, status=200,
                                        body=folder_children_metadata)
 
@@ -560,7 +560,7 @@ class TestValidatePath:
     async def test_revalidate_path_new(self, provider, folder_path, folder_children_metadata,
                                        mock_time):
         url, params = build_signed_url_without_auth(provider, 'GET', folder_path.identifier,
-                                                    'children')
+                                                    'children', user_id=provider.auth['id'])
         aiohttpretty.register_json_uri('GET', url, params=params, status=200,
                                        body=folder_children_metadata)
 
@@ -573,7 +573,7 @@ class TestValidatePath:
     async def test_revalidate_path_existing(self, provider, folder_path, folder_children_metadata,
                                             mock_time):
         url, params = build_signed_url_without_auth(provider, 'GET', folder_path.identifier,
-                                                    'children')
+                                                    'children', user_id=provider.auth['id'])
         aiohttpretty.register_json_uri('GET', url, params=params, status=200,
                                        body=folder_children_metadata)
 
