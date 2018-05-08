@@ -2,6 +2,19 @@
 ChangeLog
 *********
 
+0.39.0 (2018-05-08)
+===================
+- Feature: WaterButler now lets osfstorage know who the requesting user is when listing folder
+contents, so that it can return metadata about whether the user has seen the most recent version
+of the file.  (thanks, @erinspace!)
+- Feature: WaterButler includes metadata about the request in the logging callback to help the
+logger tally more accurate download counts.  (thanks, @johnetordoff!)
+- Feature: Stop logging revisions metadata requests to logging callback.  (thanks, @johnetordoff!)
+- Fix: Don't try to decode the body of HEAD requests that error.  HEAD requests don't have bodies!
+- Code: Clean up existing mypy annotations and add new ones.  WaterButler still isn't 100% clean,
+but it's getting there!
+- Code: Allow passing JSON-encoded objects as config settings via environment variables.
+
 0.38.6 (2018-04-25)
 ===================
 - Fix: `CELERY_RESULT_PERSISTENT` should default to True, now that `amqp` is the default result
