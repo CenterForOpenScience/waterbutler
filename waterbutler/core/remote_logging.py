@@ -3,6 +3,7 @@ import time
 import asyncio
 import logging
 
+import furl
 import aiohttp
 # from geoip import geolite2
 
@@ -49,7 +50,9 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         log_payload['provider'] = log_payload['metadata']['provider']
 
     if action in ['download_file', 'download_zip']:
-        is_mfr_render = settings.MFR_IDENTIFYING_HEADER in request['request']['headers']
+        referrer_domain = furl.furl(request['referrer']['url']).remove(path=True).url
+        is_mfr_render = settings.MFR_IDENTIFYING_HEADER in request['request']['headers'] or \
+                        referrer_domain == settings.MFR_DOMAIN
         log_payload['action_meta']['is_mfr_render'] = is_mfr_render
 
     resp = await utils.send_signed_request('PUT', auth['callback_url'], log_payload)
