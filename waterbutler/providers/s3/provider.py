@@ -1,6 +1,7 @@
 import os
-import hashlib
 import asyncio
+import hashlib
+import logging
 import functools
 from urllib import parse
 
@@ -25,6 +26,9 @@ from waterbutler.providers.s3.metadata import S3FileMetadata
 from waterbutler.providers.s3.metadata import S3FolderMetadata
 from waterbutler.providers.s3.metadata import S3FolderKeyMetadata
 from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
+
+
+logger = logging.getLogger(__name__)
 
 
 class S3Provider(provider.BaseProvider):
@@ -174,7 +178,7 @@ class S3Provider(provider.BaseProvider):
             'GET',
             url,
             range=range,
-            expects=(200, 206),
+            expects={200, 206},
             throws=exceptions.DownloadError,
         )
 
@@ -222,7 +226,7 @@ class S3Provider(provider.BaseProvider):
             data=stream,
             skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
-            expects=(200, 201),
+            expects={200, 201},
             throws=exceptions.UploadError
         )
         # md5 is returned as ETag header as long as server side encryption is not used.
@@ -246,7 +250,8 @@ class S3Provider(provider.BaseProvider):
         # Step 2. Break stream into parts and upload them
         try:
             parts_metadata = await self._upload_parts(stream, path, session_data)
-        except:
+        except Exception as err:
+            logger.error("The upload failed : {!r}".format(err))
             return await self._abort_chunked_upload(path, session_data)
 
         # Step 3. Commit the parts and end the upload session
@@ -289,20 +294,24 @@ class S3Provider(provider.BaseProvider):
                 skip_auto_headers={'CONTENT-TYPE'},
                 headers=headers,
                 params=params,
-                expects=(204,),
+                expects={204},
                 throws=exceptions.UploadError
             )
             await resp.release()
 
             uploaded_chunks_list = xmltodict.parse(
                 await self._list_uploaded_chunks(path, session_data),
-                strip_whitespace=False)
+                strip_whitespace=False
+            )
 
             try:
                 if len(uploaded_chunks_list["ListPartsResult"]["Part"]) > 0:
                     continue
-            except:
+            except KeyError:
                 break
+            except Exception as err:
+                # Technically possible to be a TypeError? if s3 is Bad and this does `len(Int)`
+                logger.error("Something naughty happened: {!r}".format(err))
 
     async def _list_uploaded_chunks(self, path, session_data):
         """Lists the uploaded parts that are currently uploaded for a given upload session.
@@ -326,7 +335,7 @@ class S3Provider(provider.BaseProvider):
             skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
             params=params,
-            expects=(200, 201),
+            expects={200, 201},
             throws=exceptions.UploadError
         )
         chunk_list = await resp.read()
@@ -334,8 +343,7 @@ class S3Provider(provider.BaseProvider):
         return chunk_list
 
     async def _create_upload_session(self, path: WaterButlerPath) -> dict:
-        """
-        Creates an amazon s3 chunked upload session. s3 uses a session to
+        """Creates an amazon s3 chunked upload session. s3 uses a session to
         keep track of the particular upload chunks that are associated with
         each other.
 
@@ -359,13 +367,15 @@ class S3Provider(provider.BaseProvider):
             headers=headers,
             skip_auto_headers={'CONTENT-TYPE'},
             params=params,
-            expects=(200, 201,),
+            expects={200, 201},
             throws=exceptions.UploadError,
         )
         upload_session_metadata = await resp.read()
         return xmltodict.parse(upload_session_metadata, strip_whitespace=False)
 
     async def _upload_part(self, stream, path, session_data, chunk_number):
+        """Upload a single part for a multipart upload session
+        """
         chunk = await stream.read(settings.CHUNK_SIZE)
         headers = {
             'Content-Length': str(len(chunk))
@@ -391,19 +401,25 @@ class S3Provider(provider.BaseProvider):
             skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
             params=params,
-            expects=(200, 201,),
+            expects={200, 201},
             throws=exceptions.UploadError,
         )
         await resp.release()
         return resp.headers
 
     async def _upload_parts(self, stream, path, session_data):
-
-        return await asyncio.gather(*[self._upload_part(stream, path, session_data, i)
-            for i, _ in enumerate(range(0, stream.size, settings.CHUNK_SIZE))])
+        """Upload all the parts of a multipart upload. Set off all the requests
+        as soon as the data to perform the request is able, and wait for all
+        the requests to complete.
+        """
+        return await asyncio.gather(*[
+            self._upload_part(stream, path, session_data, i)
+            for i, _ in enumerate(range(0, stream.size, settings.CHUNK_SIZE))
+        ])
 
     async def _complete_multipart_upload(self, path, session_data, parts_metadata):
-
+        """Perform cleanup for the multipart upload, closing the session, etc
+        """
         params = {
             'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']
         }
@@ -439,7 +455,7 @@ class S3Provider(provider.BaseProvider):
             data=payload,
             headers=headers,
             params=params,
-            expects=(200, 201),
+            expects={200, 201},
             throws=exceptions.UploadError,
         )
         await resp.release()
@@ -465,7 +481,7 @@ class S3Provider(provider.BaseProvider):
             resp = await self.make_request(
                 'DELETE',
                 self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
-                expects=(200, 204, ),
+                expects={200, 204},
                 throws=exceptions.DeleteError,
             )
             await resp.release()
