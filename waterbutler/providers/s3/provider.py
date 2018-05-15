@@ -251,8 +251,8 @@ class S3Provider(provider.BaseProvider):
         try:
             parts_metadata = await self._upload_parts(stream, path, session_data)
         except Exception as err:
-            logger.error("The upload failed : {!r}".format(err))
-            return await self._abort_chunked_upload(path, session_data)
+            await self._abort_chunked_upload(path, session_data)
+            raise exceptions.UploadError("An error occurred during a multipart upload: {!r}".format(err))
 
         # Step 3. Commit the parts and end the upload session
         await self._complete_multipart_upload(path, session_data, parts_metadata)

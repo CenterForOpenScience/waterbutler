@@ -454,10 +454,11 @@ class TestCRUD:
         self,
         provider,
         file_stream,
+        file_content,
         mock_time
     ):
         path = WaterButlerPath('/foobah')
-
+        url = provider.bucket.new_key(path.path).generate_url(100, 'PUT', encrypt_key=True)
         assert file_stream.size == 6
 
         provider.NONCHUNKED_UPLOAD_LIMIT = 5
@@ -465,6 +466,11 @@ class TestCRUD:
         provider._chunked_upload = MockCoroutine()
         provider.metadata = MockCoroutine()
         provider.handle_naming = mock.Mock()
+
+        content_md5 = hashlib.md5(file_content).hexdigest()
+        headers = {'ETag': '"{}"'.format(content_md5)}
+
+        aiohttpretty.register_uri('PUT', url, status=200, headers=headers)
 
         await provider.upload(file_stream, path)
 
