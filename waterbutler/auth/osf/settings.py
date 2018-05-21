@@ -19,3 +19,5 @@ if not settings.DEBUG:
 JWE_SALT = (JWE_SALT or 'yusaltydough')
 JWE_SECRET = (JWE_SECRET or 'CirclesAre4Squares')
 JWT_SECRET = (JWT_SECRET or 'ILiekTrianglesALot')
+
+MFR_ACTION_HEADER = config.get('MFR_ACTION_HEADER', 'X-Cos-Mfr-Request-Action')
