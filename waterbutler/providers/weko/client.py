@@ -80,48 +80,58 @@ class Item(object):
 class Connection(object):
     host = None
     token = None
+    username = None
+    password = None
 
-    def __init__(self, host, token):
+    def __init__(self, host, token=None, username=None, password=None):
         self.host = host
         self.token = token
+        self.username = username
+        self.password = password
 
     def get_login_user(self, default_user=None):
-        headers = {"Authorization": "Bearer " + self.token}
-        resp = requests.get(self.host + 'servicedocument.php', headers=headers)
+        resp = requests.get(self.host + 'servicedocument.php',
+                            **self._requests_args())
         if resp.status_code != 200:
             resp.raise_for_status()
+        if self.username is not None:
+            default_user = self.username
         return resp.headers.get('X-WEKO-Login-User', default_user)
 
     def get(self, path):
-        headers = {"Authorization": "Bearer " + self.token}
-        resp = requests.get(self.host + path, headers=headers)
+        resp = requests.get(self.host + path, **self._requests_args())
         if resp.status_code != 200:
             resp.raise_for_status()
         tree = etree.parse(BytesIO(resp.content))
         return tree
 
     def get_url(self, url):
-        headers = {"Authorization": "Bearer " + self.token}
-        resp = requests.get(url, headers=headers)
+        resp = requests.get(url, **self._requests_args())
         if resp.status_code != 200:
             resp.raise_for_status()
         tree = etree.parse(BytesIO(resp.content))
         return tree
 
     def delete_url(self, url):
-        headers = {"Authorization": "Bearer " + self.token}
-        resp = requests.delete(url, headers=headers)
+        resp = requests.delete(url, **self._requests_args())
         if resp.status_code != 200:
             resp.raise_for_status()
 
-    def post_url(self, url, stream, headers={}):
-        headers = headers.copy()
-        headers["Authorization"] = "Bearer " + self.token
-        resp = requests.post(url, headers=headers, data=stream)
+    def post_url(self, url, stream, default_headers={}):
+        resp = requests.post(url, data=stream,
+                             **self._requests_args(default_headers.copy()))
         if resp.status_code != 200:
             resp.raise_for_status()
         tree = etree.parse(BytesIO(resp.content))
         return tree
+
+    def _requests_args(self, headers={}):
+        if self.token is not None:
+            headers = headers.copy()
+            headers['Authorization'] = 'Bearer ' + self.token
+            return {'headers': headers}
+        else:
+            return {'auth': (self.username, self.password), 'headers': headers}
 
 
 def itemId(url, default_value=None):
@@ -135,44 +145,20 @@ def itemId(url, default_value=None):
         return default_value
 
 
-def _connect(host, token):
+def _connect(sword_url, token=None, username=None, password=None):
     try:
-        return Connection(host, token)
+        return Connection(sword_url, token=token,
+                          username=username, password=password)
     except ConnectionError:
         return None
 
 
-def connect_from_settings(weko_settings, node_settings):
-    if not (node_settings and node_settings.external_account):
-        return None
-
-    host = weko_settings.REPOSITORIES[node_settings.external_account.provider_id.split('@')[-1]]['host']
-    token = node_settings.external_account.oauth_key
-
+def connect_or_error(sword_url, token=None, username=None, password=None):
     try:
-        return Connection(host, token)
-    except ConnectionError:
-        return None
-
-
-def connect_or_error(host, token):
-    try:
-        connection = _connect(host, token)
-        if not connection:
-            raise exceptions.ProviderError("Unavailable")
-        return connection
+        return Connection(sword_url, token=token,
+                          username=username, password=password)
     except ConnectionError:
         raise exceptions.ProviderError("Unavailable")
-
-
-def connect_from_settings_or_401(weko_settings, node_settings):
-    if not (node_settings and node_settings.external_account):
-        return None
-
-    host = weko_settings.REPOSITORIES[node_settings.external_account.provider_id.split('@')[-1]]['host']
-    token = node_settings.external_account.oauth_key
-
-    return connect_or_error(host, token)
 
 
 def get_all_indices(connection):
@@ -267,7 +253,7 @@ def post(connection, insert_index_id, stream, stream_size):
         "Content-Length": str(stream_size),
         "insert_index": str(insert_index_id)
     }
-    resp = connection.post_url(target, stream, headers=weko_headers)
+    resp = connection.post_url(target, stream, default_headers=weko_headers)
     logger.info(etree.tostring(resp))
     for index, elem in enumerate(resp.findall('.//{%s}content' % ATOM_NAMESPACE)):
         src = elem.attrib['src']
@@ -311,7 +297,7 @@ def create_index(connection, title_ja=None, title_en=None, relation=None):
         "Content-Type": "text/xml",
         "Content-Length": str(len(stream)),
     }
-    root = connection.post_url(target, stream, headers=weko_headers)
+    root = connection.post_url(target, stream, default_headers=weko_headers)
     logger.info('Result: {}'.format(etree.tostring(root)))
     return index_id
 

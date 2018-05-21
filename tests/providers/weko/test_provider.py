@@ -29,10 +29,10 @@ def auth():
     }
 
 
-@pytest.fixture
-def credentials():
+@pytest.fixture(scope='module', params=['token', 'password'])
+def credentials(request):
     return {
-        'token': 'open inside',
+        request.param: 'open inside',
         'user_id': 'requester'
     }
 
