@@ -202,7 +202,7 @@ class BoxProvider(provider.BaseProvider):
         dest_provider: provider.BaseProvider,
         src_path: WaterButlerPath,
         dest_path: WaterButlerPath
-    ) -> Tuple[typing.Union[BoxFileMetadata, BoxFolderMetadata], bool]:
+    ) -> Tuple[Union[BoxFileMetadata, BoxFolderMetadata], bool]:
         """Copy a file if the src and dest are both on Box.
         """
 
