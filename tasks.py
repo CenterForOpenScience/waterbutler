@@ -64,7 +64,7 @@ def test(ctx, verbose=False, types=False):
     if types:
         mypy(ctx)
 
-    cmd = 'py.test --cov-report term-missing --cov waterbutler tests'
+    cmd = 'py.test --cov-report term-missing --cov waterbutler tests --pdb'
     if verbose:
         cmd += ' -v'
     ctx.run(cmd, pty=True)
