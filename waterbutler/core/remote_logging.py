@@ -3,6 +3,7 @@ import time
 import asyncio
 import logging
 
+import furl
 import aiohttp
 # from geoip import geolite2
 
@@ -22,6 +23,7 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
     """PUT a logging payload back to the callback given by the auth provider."""
 
     auth = getattr(destination, 'auth', source.auth)
+    ref_url_domain = ''
     log_payload = {
         'action': action,
         'action_meta': {},
@@ -37,6 +39,11 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
             'referrer': request['referrer']['url'],
             'user_agent': request['tech']['ua'],
         }
+        referrer = request['referrer']['url']
+        if referrer:
+            ref_url = furl.furl(request['referrer']['url'])
+            ref_url_port = ':{}'.format(ref_url.port) if ref_url.port else ''
+            ref_url_domain = '{}://{}{}'.format(ref_url.scheme, ref_url.host, ref_url_port)
 
     if start_time:
         log_payload['email'] = time.time() - start_time > task_settings.WAIT_TIMEOUT
@@ -49,7 +56,8 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         log_payload['provider'] = log_payload['metadata']['provider']
 
     if action in ['download_file', 'download_zip']:
-        is_mfr_render = settings.MFR_IDENTIFYING_HEADER in request['request']['headers']
+        is_mfr_render = (ref_url_domain == settings.MFR_DOMAIN or
+                         settings.MFR_IDENTIFYING_HEADER in request['request']['headers'])
         log_payload['action_meta']['is_mfr_render'] = is_mfr_render
 
     resp = await utils.send_signed_request('PUT', auth['callback_url'], log_payload)
