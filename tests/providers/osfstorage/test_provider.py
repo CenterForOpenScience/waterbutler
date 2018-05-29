@@ -25,7 +25,7 @@ from tests.providers.osfstorage.fixtures import (auth, credentials, settings, pr
                                                  revisions_metadata, revision_metadata_object,
                                                  download_response, download_path,
                                                  upload_response, upload_path, root_path,
-                                                 mock_time)
+                                                 mock_time, provider_other, )
 
 
 def build_signed_url_without_auth(provider, method, *segments, **params):
@@ -481,14 +481,34 @@ class TestIntraMove:
 
 class TestUtils:
 
-    def test_intra_move_copy_utils(self, provider):
-        assert provider.can_duplicate_names()
+    def test_is_same_region_true(self, provider):
+        assert provider.is_same_region(provider)
+
+    def test_is_same_region_false(self, provider, provider_other):
+        assert not provider.is_same_region(provider_other)
+
+    def test_is_same_region_error(self, provider):
+
+        with pytest.raises(AssertionError) as exc:
+            provider.is_same_region(str())
+        assert str(exc.value) == 'Cannot compare region for providers of different provider ' \
+                                 'classes.'
+
+    def test_can_intra_move_copy_true(self, provider):
 
         assert provider.can_intra_copy(provider)
         assert provider.can_intra_move(provider)
 
+    def test_can_intra_move_copy_false_region_mismatch(self, provider, provider_other):
+        assert not provider.can_intra_copy(provider_other)
+        assert not provider.can_intra_move(provider_other)
+
+    def test_can_intra_move_copy_false_class_mismatch(self, provider):
         assert not provider.can_intra_copy(str())
         assert not provider.can_intra_move(str())
+
+    def test_can_duplicate_names(self, provider):
+        assert provider.can_duplicate_names()
 
     def test_make_provider(self, provider):
         pass

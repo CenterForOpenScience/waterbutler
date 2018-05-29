@@ -70,7 +70,6 @@ class GoogleCloudProvider(BaseProvider):
         #         'storage': {
         #             'provider': 'change_me',
         #             'bucket': 'change_me',
-        #             'region': 'change_me',
         #         },
         #     }
         #
