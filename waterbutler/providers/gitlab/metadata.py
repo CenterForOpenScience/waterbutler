@@ -16,12 +16,13 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
         self._path_obj = path
 
     @property
-    def id(self) -> str:
-        return self.build_path()
-
-    @property
     def provider(self) -> str:
         return 'gitlab'
+
+    # GitLab is a path-based provider and uses the default ``revalidate_path()``.
+    @property
+    def id(self) -> str:
+        return self.path
 
     @property
     def path(self) -> str:

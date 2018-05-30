@@ -13,12 +13,13 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
         self._path_obj = path_obj
 
     @property
-    def id(self):
-        return self.raw.get('id')
-
-    @property
     def provider(self):
         return 'onedrive'
+
+    # OneDrive is an id-based provider and uses its own ``revalidate_path()``.
+    @property
+    def id(self):
+        return self.raw.get('id')
 
     @property
     def materialized_path(self):

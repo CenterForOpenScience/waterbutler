@@ -136,10 +136,10 @@ class BaseMetadata(metaclass=abc.ABCMeta):
     @property
     @abc.abstractmethod
     def id(self) -> str:
-        """
-        This property consolidated "path-based" ids and "id-based" ids under a single property. This
-        makes inter provider move/copies easier. This should be identical to the path object
-        identifier as this is used to revalidate paths.
+        """ This property consolidates path-based and id-based file/folder/object identity under a
+        single one: ``id``, which makes inter provider move/copy actions easier.  For path-based
+        providers, the value is identical to ``path`` property.  For id-based providers, it is the
+        raw identity by definition (``self.raw['id']`` for most providers).
         """
         raise NotImplementedError
 

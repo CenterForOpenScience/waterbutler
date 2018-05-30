@@ -20,6 +20,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
         else:
             self.raw_file = self.raw['files'][0]
 
+    # FigShare are id-based providers and use their own ``revalidate_path()``.
     @property
     def id(self):
         return self.raw_file['id']
@@ -116,6 +117,7 @@ class FigshareFolderMetadata(BaseFigshareMetadata, metadata.BaseFolderMetadata):
     considered folders.
     """
 
+    # FigShare are id-based providers
     @property
     def id(self):
         return self.raw['id']

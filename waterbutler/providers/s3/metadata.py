@@ -6,12 +6,13 @@ from waterbutler.core import metadata
 class S3Metadata(metadata.BaseMetadata):
 
     @property
-    def id(self):
-        return self.path
-
-    @property
     def provider(self):
         return 's3'
+
+    # S3 is a path-based provider and uses the default ``revalidate_path()``.
+    @property
+    def id(self):
+        return self.path
 
     @property
     def name(self):

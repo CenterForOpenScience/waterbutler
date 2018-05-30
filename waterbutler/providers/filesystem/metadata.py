@@ -10,12 +10,13 @@ class BaseFileSystemMetadata(metadata.BaseMetadata):
         self._folder = folder
 
     @property
-    def id(self):
-        return self.build_path(self.raw['path'])
-
-    @property
     def provider(self):
         return 'filesystem'
+
+    # FileSystem is a path-based provider and uses the default ``revalidate_path()``.
+    @property
+    def id(self):
+        return self.path
 
     def build_path(self, path):
         # TODO write a test for this
