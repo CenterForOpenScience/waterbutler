@@ -97,7 +97,7 @@ class BoxProvider(provider.BaseProvider):
         response = None
         if obj_id.isdecimal():
             response = await self.make_request(
-                'get',
+                'GET',
                 self.build_url(files_or_folders, obj_id, fields='id,name,path_collection'),
                 expects=(200, 404, 405),
                 throws=exceptions.MetadataError,
