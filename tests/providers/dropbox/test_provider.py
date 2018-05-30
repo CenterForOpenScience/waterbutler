@@ -660,7 +660,7 @@ class TestIntraMoveCopy:
             error_fixtures
     ):
         delete_path = await provider.validate_path('/The past')
-        delete_data = {'path': path.full_path}
+        delete_data = {'path': delete_path.full_path}
         delete_url = provider.build_url('files', 'delete_v2')
         aiohttpretty.register_json_uri(
             'POST',
