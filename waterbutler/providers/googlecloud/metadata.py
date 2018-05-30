@@ -28,6 +28,10 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
         return 'googlecloud'
 
     @property
+    def id(self) -> str:
+        return self.path
+
+    @property
     def path(self) -> str:
         return self.build_path(self.raw.get('object_name', None))
 
