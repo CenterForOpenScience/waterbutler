@@ -145,11 +145,17 @@ class OSFStorageProvider(provider.BaseProvider):
     def can_duplicate_names(self):
         return True
 
+    def is_same_region(self, other):
+        assert isinstance(other, self.__class__), 'Cannot compare region for providers of ' \
+                                                  'different provider classes.'
+        # For 1-to-1 bucket-region mapping, bucket is the same if and only if region is the same
+        return self.settings['storage']['bucket'] == other.settings['storage']['bucket']
+
     def can_intra_copy(self, other, path=None):
-        return isinstance(other, self.__class__)
+        return isinstance(other, self.__class__) and self.is_same_region(other)
 
     def can_intra_move(self, other, path=None):
-        return isinstance(other, self.__class__)
+        return isinstance(other, self.__class__) and self.is_same_region(other)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
         created = True
