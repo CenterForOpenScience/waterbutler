@@ -15,6 +15,9 @@ class TestDropboxMetadata:
         assert data.name == 'Getting_Started.pdf'
         assert data.path == '/Getting_Started.pdf'
         assert data.size == 124778
+        assert data.size_as_int == 124778
+        assert type(data.size_as_int) == int
+
         assert data.modified == '2016-06-13T19:08:17Z'
         assert data.created_utc is None
         assert data.content_type is None
@@ -40,7 +43,8 @@ class TestDropboxMetadata:
             'modified': '2016-06-13T19:08:17Z',
             'modified_utc': '2016-06-13T19:08:17+00:00',
             'created_utc': None,
-            'size': 124778
+            'size': 124778,
+            'sizeInt': 124778,
         }
         assert data.kind == 'file'
         assert data.materialized_path == '/Getting_Started.pdf'
@@ -75,6 +79,7 @@ class TestDropboxMetadata:
                 'modified_utc': '2016-06-13T19:08:17+00:00',
                 'created_utc': None,
                 'size': 124778,
+                'sizeInt': 124778,
                 'resource': 'jverwz'
             },
             'links': {
@@ -115,6 +120,7 @@ class TestDropboxMetadata:
                 'etag': 'bbd6cc654c4a3ca1124b69fccb392ec9754e18e9094effb525192509f8e1b901',
                 'resource': 'mucuew',
                 'size': None,
+                'sizeInt': None,
             },
             'links': {
                 'move': link_url,

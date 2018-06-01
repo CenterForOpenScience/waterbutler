@@ -277,6 +277,7 @@ class TestMetadata:
             'name': 'file',
             'kind': 'file',
             'size': 123,
+            'sizeInt': 123,
             'provider':'gitlab',
             'path': path,
             'materialized': path,

@@ -93,6 +93,7 @@ class TestGoogleCloudFileMetadata:
         assert metadata.created_utc is None
         assert metadata.etag == '9a46947c9c622d7792125d8ea44c4638'
         assert metadata.size == 85
+        assert metadata.size_as_int == 85
         assert metadata.extra == dict(metadata_extra)
 
 
