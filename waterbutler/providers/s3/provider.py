@@ -1,5 +1,4 @@
 import os
-import asyncio
 import hashlib
 import logging
 import functools
@@ -412,10 +411,11 @@ class S3Provider(provider.BaseProvider):
         as soon as the data to perform the request is able, and wait for all
         the requests to complete.
         """
-        return await asyncio.gather(*[
-            self._upload_part(stream, path, session_data, i)
-            for i, _ in enumerate(range(0, stream.size, settings.CHUNK_SIZE))
-        ])
+
+        metadata = []
+        for i, _ in enumerate(range(0, stream.size, settings.CHUNK_SIZE)):
+            metadata.append(await self._upload_part(stream, path, session_data, i))
+        return metadata
 
     async def _complete_multipart_upload(self, path, session_data, parts_metadata):
         """Perform cleanup for the multipart upload, closing the session, etc

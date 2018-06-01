@@ -458,7 +458,7 @@ class TestCRUD:
         mock_time
     ):
         path = WaterButlerPath('/foobah')
-        url = provider.bucket.new_key(path.path).generate_url(100, 'PUT', encrypt_key=True)
+        url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
         assert file_stream.size == 6
 
         provider.NONCHUNKED_UPLOAD_LIMIT = 5
