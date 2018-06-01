@@ -38,6 +38,8 @@ class TestFileMetadata:
         assert file_metadata_object.kind == 'file'
         assert file_metadata_object.file_id == '20'
         assert file_metadata_object.name == 'thefile.txt'
+        assert file_metadata_object.size is None
+        assert file_metadata_object.size_as_int is None
         assert file_metadata_object.path == '/20'
         assert file_metadata_object.materialized_path == '/thefile.txt'
         assert not file_metadata_object.size

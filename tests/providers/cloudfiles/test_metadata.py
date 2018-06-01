@@ -43,6 +43,8 @@ class TestCloudfilesMetadata:
         assert data.path == '/file.txt'
         assert data.provider == 'cloudfiles'
         assert data.size == 216945
+        assert type(data.size_as_int) == int
+        assert data.size_as_int == 216945
         assert data.modified == 'Mon, 22 Dec 2014 19:01:02 GMT'
         assert data.created_utc is None
         assert data.content_type == 'text/plain'
@@ -117,6 +119,8 @@ class TestCloudfilesMetadata:
         assert data.provider == 'cloudfiles'
         assert data.path == '/similar.file'
         assert data.size == 190
+        assert data.size_as_int == 190
+        assert type(data.size_as_int) == int
         assert data.modified == '2014-12-19T23:22:14.728640'
         assert data.created_utc is None
         assert data.content_type == 'application/x-www-form-urlencoded;charset=utf-8'
