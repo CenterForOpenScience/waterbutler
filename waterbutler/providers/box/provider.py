@@ -506,11 +506,7 @@ class BoxProvider(provider.BaseProvider):
             folder._children = await self._get_folder_meta(path)  # type: ignore
             return folder, created
 
-    async def _chunked_upload(
-        self,
-        path: WaterButlerPath,
-        data: bytes
-    ) -> dict:
+    async def _chunked_upload(self, path: WaterButlerPath, data: bytes) -> dict:
         """Chunked uploading allows us to upload large files over several requests, Box's chunked
         uploading process has 4 steps.
         """
@@ -518,19 +514,19 @@ class BoxProvider(provider.BaseProvider):
         data_sha = base64.standard_b64encode(hashlib.sha1(data).digest()).decode()
 
         # Step 2 create an upload session with box and recieve session id.
-        session_data = await self._create_upload_session(path, data)
+        session_data = await self._create_chunked_upload_session(path, data)
 
-        # Step 3 split the data into chunks and upload them to box.
-        parts = await self._upload_parts(data, session_data)
+        try:
+            # Step A.3 split the data into chunks and upload them to box.
+            parts = await self._upload_chunks(data, session_data)
 
-        # Step 4 complete the session and return the upload file's metadata.
-        return await self._complete_session(session_data, parts, data_sha)
+            # Step A.4 complete the session and return the upload file's metadata.
+            return await self._complete_chunked_upload_session(session_data, parts, data_sha)
 
-    async def _create_upload_session(
-        self,
-        path: WaterButlerPath,
-        data: bytes
-    ) -> dict:
+        except exceptions.UploadError:
+            return await self._abort_chunked_upload(session_data, data_sha)
+
+    async def _create_chunked_upload_session(self, path: WaterButlerPath, data: bytes) -> dict:
         """Create an upload session to use with a chunked upload.
 
         An upload session is used by Box to identify which chunks correlate to
@@ -551,11 +547,7 @@ class BoxProvider(provider.BaseProvider):
         ) as resp:
             return await resp.json()
 
-    async def _upload_parts(
-        self,
-        data: bytes,
-        session_data: dict
-    ):
+    async def _upload_chunks(self, data: bytes, session_data: dict):
         """Upload the parts of the file
         """
         parts = {'parts': []}
@@ -585,17 +577,34 @@ class BoxProvider(provider.BaseProvider):
 
         return parts
 
-    async def _complete_session(self,
-                             session_data: dict,
-                             parts: dict,
-                             data_sha: str) -> dict:
+    async def _complete_chunked_upload_session(self, session_data: dict, parts: dict,
+                                               data_sha: str) -> dict:
         async with self.request(
             'POST',
             self._build_upload_url('files', 'upload_sessions', session_data['id'], 'commit'),
             data=json.dumps(parts),
-            headers={'Content-Type:': 'application/json',
-                     'Digest': 'sha={}'.format(data_sha)
-                     },
+            headers={
+                'Content-Type:': 'application/json',
+                'Digest': 'sha={}'.format(data_sha)
+            },
+            expects=(201,),
+            throws=exceptions.UploadError,
+        ) as resp:
+            entry = (await resp.json())['entries'][0]
+
+        return entry
+
+    async def _abort_chunked_upload(self, session_data: dict, data_sha: str) -> bool:
+        """Abort a chunked upload session. This discards all data uploaded
+        during the session. It cannot be undone.
+        """
+        async with self.request(
+            'DELETE',
+            self._build_upload_url('files', 'upload_sessions', session_data['id']),
+            headers={
+                'Content-Type:': 'application/json',
+                'Digest': 'sha={}'.format(data_sha)
+            },
             expects=(201,),
             throws=exceptions.UploadError,
         ) as resp:
