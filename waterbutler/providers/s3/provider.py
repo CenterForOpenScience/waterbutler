@@ -200,21 +200,21 @@ class S3Provider(provider.BaseProvider):
     async def _contiguous_upload(self, stream, path):
         """Uploads the given stream in one request.
         """
+
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
 
         headers = {'Content-Length': str(stream.size)}
-
         # this is usually set in boto.s3.key.generate_url, but do it here
         # do be explicit about our header payloads for signing purposes
         if self.encrypt_uploads:
             headers['x-amz-server-side-encryption'] = 'AES256'
-
         upload_url = functools.partial(
             self.bucket.new_key(path.path).generate_url,
             settings.TEMP_URL_SECS,
             'PUT',
             headers=headers,
         )
+
         resp = await self.make_request(
             'PUT',
             upload_url,
@@ -227,7 +227,6 @@ class S3Provider(provider.BaseProvider):
         # md5 is returned as ETag header as long as server side encryption is not used.
         if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
             raise exceptions.UploadChecksumMismatchError()
-
         await resp.release()
 
     async def _chunked_upload(self, stream, path):
@@ -239,15 +238,19 @@ class S3Provider(provider.BaseProvider):
         # Session upload id is the only info we need
         session_upload_id = session_data['InitiateMultipartUploadResult']['UploadId']
 
-        # Step 2. Break stream into parts and upload them
         try:
+            # Step 2. Break stream into chunks and upload them one by one
             parts_metadata = await self._upload_parts(stream, path, session_upload_id)
+            # Step 3. Commit the parts and end the upload session
+            await self._complete_multipart_upload(path, session_upload_id, parts_metadata)
         except Exception as err:
-            await self._abort_chunked_upload(path, session_upload_id)
-            raise exceptions.UploadError("An error occurred during a multipart upload: {!r}".format(err))
-
-        # Step 3. Commit the parts and end the upload session
-        await self._complete_multipart_upload(path, session_upload_id, parts_metadata)
+            msg = 'An unexpected error has occurred during the multi-part upload.'
+            logger.error('{} upload_id={} error={!r}'.format(msg, session_upload_id, err))
+            aborted = await self._abort_chunked_upload(path, session_upload_id)
+            if aborted:
+                msg += '  The abort action failed to clean up the temporary file parts generated ' \
+                       'during the upload process.  Please manually remove them.'
+            raise exceptions.UploadError(msg)
 
     async def _create_upload_session(self, path):
         """This operation initiates a multipart upload and returns an upload ID. This upload ID is
@@ -258,7 +261,10 @@ class S3Provider(provider.BaseProvider):
         Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadInitiate.html
         """
 
-        headers = {'x-amz-server-side-encryption': 'AES256'}
+        headers = {}
+        # "Initiate Multipart Upload" supports AWS server-side encryption
+        if self.encrypt_uploads:
+            headers = {'x-amz-server-side-encryption': 'AES256'}
         params = {'uploads': ''}
         upload_url = functools.partial(
             self.bucket.new_key(path.path).generate_url,
@@ -294,6 +300,9 @@ class S3Provider(provider.BaseProvider):
 
         chunk = await stream.read(settings.CHUNK_SIZE)
         headers = {'Content-Length': str(len(chunk))}
+        # TODO: is this necessary given that `_create_upload_session` already sets it
+        if self.encrypt_uploads:
+            headers['x-amz-server-side-encryption'] = 'AES256'
         params = {
             'partNumber': str(chunk_number + 1),
             'uploadId': session_upload_id,
