@@ -40,7 +40,10 @@ class S3Provider(provider.BaseProvider):
 
     * A GET prefix query against a non-existent path returns 200
     """
+
     NAME = 's3'
+    CHUNK_SIZE = settings.CHUNK_SIZE
+    CONTIGUOUS_UPLOAD_SIZE_LIMIT = settings.CONTIGUOUS_UPLOAD_SIZE_LIMIT
 
     def __init__(self, auth, credentials, settings):
         """
@@ -190,7 +193,7 @@ class S3Provider(provider.BaseProvider):
 
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
 
-        if stream.size < settings.CONTIGUOUS_UPLOAD_SIZE_LIMIT:
+        if stream.size < self.CONTIGUOUS_UPLOAD_SIZE_LIMIT:
             await self._contiguous_upload(stream, path)
         else:
             await self._chunked_upload(stream, path)
@@ -290,7 +293,7 @@ class S3Provider(provider.BaseProvider):
         """
 
         metadata = []
-        for i, _ in enumerate(range(0, stream.size, settings.CHUNK_SIZE)):
+        for i, _ in enumerate(range(0, stream.size, self.CHUNK_SIZE)):
             metadata.append(await self._upload_part(stream, path, session_upload_id, i))
         return metadata
 
@@ -298,11 +301,8 @@ class S3Provider(provider.BaseProvider):
         """Uploads a single part/chunk of the given stream to S3.
         """
 
-        chunk = await stream.read(settings.CHUNK_SIZE)
+        chunk = await stream.read(self.CHUNK_SIZE)
         headers = {'Content-Length': str(len(chunk))}
-        # TODO: is this necessary given that `_create_upload_session` already sets it
-        if self.encrypt_uploads:
-            headers['x-amz-server-side-encryption'] = 'AES256'
         params = {
             'partNumber': str(chunk_number + 1),
             'uploadId': session_upload_id,
@@ -367,7 +367,8 @@ class S3Provider(provider.BaseProvider):
                 await self._list_uploaded_chunks(path, session_upload_id),
                 strip_whitespace=False
             )
-            if len(uploaded_chunks_list["ListPartsResult"]["Part"]) == 0:
+            part_list = uploaded_chunks_list['ListPartsResult'].get('Part', [])
+            if len(part_list) == 0:
                 # Abort is successful when there is no part left
                 logger.debug('Multi-part upload has been successfully aborted: '
                              'retries={} upload_id={}'.format(iteration_count, session_upload_id))
@@ -418,8 +419,7 @@ class S3Provider(provider.BaseProvider):
                 ['<Part><PartNumber>{}</PartNumber><ETag>{}</ETag></Part>'.format(
                     i + 1,
                     xml.sax.saxutils.escape(part['ETAG'])
-                )
-                for i, part in enumerate(parts_metadata)]
+                ) for i, part in enumerate(parts_metadata)]
             ),
             '</CompleteMultipartUpload>',
         ]).encode('utf-8')
