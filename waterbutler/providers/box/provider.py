@@ -53,7 +53,7 @@ class BoxProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         response = await self.make_request(
-            'get',
+            'GET',
             self.build_url(files_or_folders, obj_id, fields='id,name,path_collection'),
             expects=(200, 404,),
             throws=exceptions.MetadataError,
