@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.39.1 (2018-06-05)
+===================
+- Code: Pin base docker image to python:3.5-slim-jessie.  3.5-slim was recently updated to Debian
+stretch, and WaterButler has not yet been verified to work on it.
+
 0.39.0 (2018-05-08)
 ===================
 - Feature: WaterButler now lets osfstorage know who the requesting user is when listing folder
