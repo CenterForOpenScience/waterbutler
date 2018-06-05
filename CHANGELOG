@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.39.2 (2018-06-05)
+===================
+- Fix: Brown-paper-bag release: actually change version in the code.
+
 0.39.1 (2018-06-05)
 ===================
 - Code: Pin base docker image to python:3.5-slim-jessie.  3.5-slim was recently updated to Debian
