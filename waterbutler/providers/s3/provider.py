@@ -341,7 +341,8 @@ class S3Provider(provider.BaseProvider):
             headers=headers
         )
 
-        while True:
+        iteration_count = 0
+        while iteration_count <= settings.CHUNKED_UPLOAD_MAX_ABORT_RETRIES:
             resp = await self.make_request(
                 'DELETE',
                 abort_url,
@@ -352,18 +353,22 @@ class S3Provider(provider.BaseProvider):
                 throws=exceptions.UploadError
             )
             await resp.release()
+
             uploaded_chunks_list = xmltodict.parse(
                 await self._list_uploaded_chunks(path, session_upload_id),
                 strip_whitespace=False
             )
-            try:
-                if len(uploaded_chunks_list["ListPartsResult"]["Part"]) > 0:
-                    continue
-            except KeyError:
-                break
-            except Exception as err:
-                # Technically possible to be a TypeError? if s3 is Bad and this does `len(Int)`
-                logger.error("Something naughty happened: {!r}".format(err))
+            if len(uploaded_chunks_list["ListPartsResult"]["Part"]) == 0:
+                # Abort is successful when there is no part left
+                logger.debug('Multi-part upload has been successfully aborted: '
+                             'retries={} upload_id={}'.format(iteration_count, session_upload_id))
+                return True
+            iteration_count += 1
+
+        # Abort has failed
+        logger.error('Multi-part upload has failed to abort: '
+                     'retries={} upload_id={}'.format(iteration_count, session_upload_id))
+        return False
 
     async def _list_uploaded_chunks(self, path, session_upload_id):
         """This operation lists the parts that have been uploaded for a specific multipart upload.
