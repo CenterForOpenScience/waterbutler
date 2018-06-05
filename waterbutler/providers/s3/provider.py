@@ -338,6 +338,12 @@ class S3Provider(provider.BaseProvider):
         empty.
 
         Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadAbort.html
+
+        Quirks:
+
+        If the ABORT request is successful, the session may be deleted when the LIST PARTS request
+        is made.  The criteria for successful abort thus is ether LIST PARTS request returns 404 or
+        returns 200 with an empty parts list.
         """
 
         headers = {}
@@ -351,7 +357,10 @@ class S3Provider(provider.BaseProvider):
         )
 
         iteration_count = 0
+        is_aborted = False
         while iteration_count <= settings.CHUNKED_UPLOAD_MAX_ABORT_RETRIES:
+
+            # ABORT
             resp = await self.make_request(
                 'DELETE',
                 abort_url,
@@ -363,21 +372,30 @@ class S3Provider(provider.BaseProvider):
             )
             await resp.release()
 
-            uploaded_chunks_list = xmltodict.parse(
-                await self._list_uploaded_chunks(path, session_upload_id),
-                strip_whitespace=False
-            )
-            part_list = uploaded_chunks_list['ListPartsResult'].get('Part', [])
-            if len(part_list) == 0:
+            # LIST PARTS
+            resp_xml, session_deleted = await self._list_uploaded_chunks(path, session_upload_id)
+
+            if session_deleted:
+                # Abort is successful if the session has been deleted
+                is_aborted = True
+                break
+
+            uploaded_chunks_list = xmltodict.parse(resp_xml, strip_whitespace=False)
+            parsed_parts_list = uploaded_chunks_list['ListPartsResult'].get('Part', [])
+            if len(parsed_parts_list) == 0:
                 # Abort is successful when there is no part left
-                logger.debug('Multi-part upload has been successfully aborted: '
-                             'retries={} upload_id={}'.format(iteration_count, session_upload_id))
-                return True
+                is_aborted = True
+                break
+
             iteration_count += 1
 
-        # Abort has failed
-        logger.error('Multi-part upload has failed to abort: '
-                     'retries={} upload_id={}'.format(iteration_count, session_upload_id))
+        if is_aborted:
+            logger.debug('Multi-part upload has been successfully aborted: retries={} '
+                        'upload_id={}'.format(iteration_count, session_upload_id))
+            return True
+
+        logger.error('Multi-part upload has failed to abort: retries={} '
+                     'upload_id={}'.format(iteration_count, session_upload_id))
         return False
 
     async def _list_uploaded_chunks(self, path, session_upload_id):
@@ -402,10 +420,13 @@ class S3Provider(provider.BaseProvider):
             skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
             params=params,
-            expects=(200, 201, ),
+            expects=(200, 201, 404, ),
             throws=exceptions.UploadError
         )
-        return await resp.read()
+        session_deleted = resp.status == 404
+        resp_xml = await resp.read()
+
+        return resp_xml, session_deleted
 
     async def _complete_multipart_upload(self, path, session_upload_id, parts_metadata):
         """This operation completes a multipart upload by assembling previously uploaded parts.
