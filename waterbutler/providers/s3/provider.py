@@ -6,26 +6,21 @@ from urllib import parse
 
 import xmltodict
 import xml.sax.saxutils
-
-from boto import config as boto_config
 from boto.compat import BytesIO  # type: ignore
 from boto.utils import compute_md5
 from boto.auth import get_auth_handler
-from boto.s3.connection import S3Connection
-from boto.s3.connection import OrdinaryCallingFormat
-
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
-from waterbutler.core.path import WaterButlerPath
+from boto import config as boto_config
+from boto.s3.connection import S3Connection, OrdinaryCallingFormat
 
 from waterbutler.providers.s3 import settings
-from waterbutler.providers.s3.metadata import S3Revision
-from waterbutler.providers.s3.metadata import S3FileMetadata
-from waterbutler.providers.s3.metadata import S3FolderMetadata
-from waterbutler.providers.s3.metadata import S3FolderKeyMetadata
-from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
-
+from waterbutler.core.path import WaterButlerPath
+from waterbutler.core import streams, provider, exceptions
+from waterbutler.providers.s3.metadata import (S3Revision,
+                                               S3FileMetadata,
+                                               S3FolderMetadata,
+                                               S3FolderKeyMetadata,
+                                               S3FileMetadataHeaders,
+                                               )
 
 logger = logging.getLogger(__name__)
 
@@ -80,14 +75,14 @@ class S3Provider(provider.BaseProvider):
                 'GET',
                 functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
                 params=params,
-                expects=(200, 404),
+                expects=(200, 404, ),
                 throws=exceptions.MetadataError,
             )
         else:
             resp = await self.make_request(
                 'HEAD',
                 functools.partial(self.bucket.new_key(path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
-                expects=(200, 404),
+                expects=(200, 404, ),
                 throws=exceptions.MetadataError,
             )
 
@@ -177,7 +172,7 @@ class S3Provider(provider.BaseProvider):
             'GET',
             url,
             range=range,
-            expects={200, 206},
+            expects=(200, 206, ),
             throws=exceptions.DownloadError,
         )
 
@@ -188,9 +183,9 @@ class S3Provider(provider.BaseProvider):
 
         :param waterbutler.core.streams.RequestWrapper stream: The stream to put to S3
         :param str path: The full path of the key to upload to/into
-
         :rtype: dict, bool
         """
+
         await self._check_region()
 
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
@@ -203,7 +198,8 @@ class S3Provider(provider.BaseProvider):
         return (await self.metadata(path, **kwargs)), not exists
 
     async def _contiguous_upload(self, stream, path):
-        """Do the upload with one request."""
+        """Uploads the given stream in one request.
+        """
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
 
         headers = {'Content-Length': str(stream.size)}
@@ -225,7 +221,7 @@ class S3Provider(provider.BaseProvider):
             data=stream,
             skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
-            expects={200, 201},
+            expects=(200, 201, ),
             throws=exceptions.UploadError
         )
         # md5 is returned as ETag header as long as server side encryption is not used.
@@ -234,13 +230,8 @@ class S3Provider(provider.BaseProvider):
 
         await resp.release()
 
-    async def _chunked_upload(self, stream, path) -> None:
-        """Uploads the given stream to S3 over multiple chunks of data, made up of 3 steps.
-
-        :param waterbutler.core.streams.RequestWrapper stream: The stream to upload to S3
-        :param waterbutler.path.WaterBulterPath path: The full path of the key to upload to/into
-
-        :return None
+    async def _chunked_upload(self, stream, path):
+        """Uploads the given stream to S3 over multiple chunks
         """
 
         # Step 1. Create a multi-part upload session
@@ -256,97 +247,13 @@ class S3Provider(provider.BaseProvider):
         # Step 3. Commit the parts and end the upload session
         await self._complete_multipart_upload(path, session_data, parts_metadata)
 
-    async def _abort_chunked_upload(self, path, session_data):
-        """Sends an abort request to amazon s3.
+    async def _create_upload_session(self, path):
+        """This operation initiates a multipart upload and returns an upload ID. This upload ID is
+        used to associate all of the parts in the specific multipart upload. You specify this upload
+        ID in each of your subsequent upload part requests (see Upload Part). You also include this
+        upload ID in the final request to either complete or abort the multipart upload request.
 
-        Triggers s3 to release storage that was allocated to the parts during the upload. This
-        request must be sent if an upload is not going to be completed because the storage will
-        incur charges if not released.
-
-        If a chunk upload request is in progress when the abort request it proccessed by amazon,
-        that storage will not be cleared. To make sure this is clear, we check the list of parts
-        uploaded after sending the abort request.
-
-        If anything here errors, we should be sure to notify the user to check their s3 account,
-        that the upload failed, but they may still be charged for storage, and that they should
-        manually ensure any unwanted files are removed. This condition should be logged for
-        debugging purposes.
-
-        https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadAbort.html
-        """
-
-        headers = {}
-        params = {
-            'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']
-        }
-
-        while True:
-
-            resp = await self.make_request(
-                'DELETE',
-                lambda: self.bucket.new_key(path.path).generate_url(
-                    settings.TEMP_URL_SECS,
-                    'DELETE',
-                    query_parameters=params,
-                    headers=headers
-                ),
-                skip_auto_headers={'CONTENT-TYPE'},
-                headers=headers,
-                params=params,
-                expects={204},
-                throws=exceptions.UploadError
-            )
-            await resp.release()
-
-            uploaded_chunks_list = xmltodict.parse(
-                await self._list_uploaded_chunks(path, session_data),
-                strip_whitespace=False
-            )
-
-            try:
-                if len(uploaded_chunks_list["ListPartsResult"]["Part"]) > 0:
-                    continue
-            except KeyError:
-                break
-            except Exception as err:
-                # Technically possible to be a TypeError? if s3 is Bad and this does `len(Int)`
-                logger.error("Something naughty happened: {!r}".format(err))
-
-    async def _list_uploaded_chunks(self, path, session_data):
-        """Lists the uploaded parts that are currently uploaded for a given upload session.
-
-        https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadListParts.html
-        """
-
-        headers = {}
-        params = {
-            'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']
-        }
-
-        resp = await self.make_request(
-            'GET',
-            lambda: self.bucket.new_key(path.path).generate_url(
-                settings.TEMP_URL_SECS,
-                'GET',
-                query_parameters=params,
-                headers=headers
-            ),
-            skip_auto_headers={'CONTENT-TYPE'},
-            headers=headers,
-            params=params,
-            expects={200, 201},
-            throws=exceptions.UploadError
-        )
-        chunk_list = await resp.read()
-        await resp.release()
-        return chunk_list
-
-    async def _create_upload_session(self, path: WaterButlerPath) -> dict:
-        """Creates an amazon s3 chunked upload session. s3 uses a session to
-        keep track of the particular upload chunks that are associated with
-        each other.
-
-        https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadInitiate.html
+        Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadInitiate.html
         """
 
         headers = {'x-amz-server-side-encryption': 'AES256'}
@@ -366,15 +273,25 @@ class S3Provider(provider.BaseProvider):
             headers=headers,
             skip_auto_headers={'CONTENT-TYPE'},
             params=params,
-            expects={200, 201},
+            expects=(200, 201, ),
             throws=exceptions.UploadError,
         )
         upload_session_metadata = await resp.read()
         return xmltodict.parse(upload_session_metadata, strip_whitespace=False)
 
-    async def _upload_part(self, stream, path, session_data, chunk_number):
-        """Upload a single part for a multipart upload session
+    async def _upload_parts(self, stream, path, session_data):
+        """Uploads a single part/chunk of the given stream to S3.
         """
+
+        metadata = []
+        for i, _ in enumerate(range(0, stream.size, settings.CHUNK_SIZE)):
+            metadata.append(await self._upload_part(stream, path, session_data, i))
+        return metadata
+
+    async def _upload_part(self, stream, path, session_data, chunk_number):
+        """Uploads all parts/chunks of the given stream to S3 one by one.
+        """
+
         chunk = await stream.read(settings.CHUNK_SIZE)
         headers = {
             'Content-Length': str(len(chunk))
@@ -400,26 +317,101 @@ class S3Provider(provider.BaseProvider):
             skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
             params=params,
-            expects={200, 201},
+            expects=(200, 201, ),
             throws=exceptions.UploadError,
         )
         await resp.release()
         return resp.headers
 
-    async def _upload_parts(self, stream, path, session_data):
-        """Upload all the parts of a multipart upload. Set off all the requests
-        as soon as the data to perform the request is able, and wait for all
-        the requests to complete.
+    async def _abort_chunked_upload(self, path, session_data):
+        """This operation aborts a multipart upload. After a multipart upload is aborted, no
+        additional parts can be uploaded using that upload ID. The storage consumed by any
+        previously uploaded parts will be freed. However, if any part uploads are currently in
+        progress, those part uploads might or might not succeed. As a result, it might be necessary
+        to abort a given multipart upload multiple times in order to completely free all storage
+        consumed by all parts. To verify that all parts have been removed, so you don't get charged
+        for the part storage, you should call the List Parts operation and ensure the parts list is
+        empty.
+
+        Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadAbort.html
         """
 
-        metadata = []
-        for i, _ in enumerate(range(0, stream.size, settings.CHUNK_SIZE)):
-            metadata.append(await self._upload_part(stream, path, session_data, i))
-        return metadata
+        headers = {}
+        params = {
+            'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']
+        }
+        abort_url = functools.partial(
+            self.bucket.new_key(path.path).generate_url,
+            settings.TEMP_URL_SECS,
+            'DELETE',
+            query_parameters=params,
+            headers=headers
+        )
+
+        while True:
+
+            resp = await self.make_request(
+                'DELETE',
+                abort_url,
+                skip_auto_headers={'CONTENT-TYPE'},
+                headers=headers,
+                params=params,
+                expects=(204, ),
+                throws=exceptions.UploadError
+            )
+            await resp.release()
+
+            uploaded_chunks_list = xmltodict.parse(
+                await self._list_uploaded_chunks(path, session_data),
+                strip_whitespace=False
+            )
+
+            try:
+                if len(uploaded_chunks_list["ListPartsResult"]["Part"]) > 0:
+                    continue
+            except KeyError:
+                break
+            except Exception as err:
+                # Technically possible to be a TypeError? if s3 is Bad and this does `len(Int)`
+                logger.error("Something naughty happened: {!r}".format(err))
+
+    async def _list_uploaded_chunks(self, path, session_data):
+        """This operation lists the parts that have been uploaded for a specific multipart upload.
+
+        Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadListParts.html
+        """
+
+        headers = {}
+        params = {
+            'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']
+        }
+        list_url = functools.partial(
+            self.bucket.new_key(path.path).generate_url,
+            settings.TEMP_URL_SECS,
+            'GET',
+            query_parameters=params,
+            headers=headers
+        )
+
+        resp = await self.make_request(
+            'GET',
+            list_url,
+            skip_auto_headers={'CONTENT-TYPE'},
+            headers=headers,
+            params=params,
+            expects=(200, 201, ),
+            throws=exceptions.UploadError
+        )
+        chunk_list = await resp.read()
+        await resp.release()
+        return chunk_list
 
     async def _complete_multipart_upload(self, path, session_data, parts_metadata):
-        """Perform cleanup for the multipart upload, closing the session, etc
+        """This operation completes a multipart upload by assembling previously uploaded parts.
+
+        Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
         """
+
         params = {
             'uploadId': session_data['InitiateMultipartUploadResult']['UploadId']
         }
@@ -455,7 +447,7 @@ class S3Provider(provider.BaseProvider):
             data=payload,
             headers=headers,
             params=params,
-            expects={200, 201},
+            expects=(200, 201, ),
             throws=exceptions.UploadError,
         )
         await resp.release()
@@ -481,7 +473,7 @@ class S3Provider(provider.BaseProvider):
             resp = await self.make_request(
                 'DELETE',
                 self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
-                expects={200, 204},
+                expects=(200, 204, ),
                 throws=exceptions.DeleteError,
             )
             await resp.release()
@@ -639,7 +631,7 @@ class S3Provider(provider.BaseProvider):
             'PUT',
             functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
             skip_auto_headers={'CONTENT-TYPE'},
-            expects=(200, 201),
+            expects=(200, 201, ),
             throws=exceptions.CreateFolderError
         ):
             return S3FolderMetadata({'Prefix': path.path})
