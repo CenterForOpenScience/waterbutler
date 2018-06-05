@@ -1,4 +1,4 @@
-FROM python:3.5-slim
+FROM python:3.5-slim-jessie
 
 RUN usermod -d /home www-data && chown www-data:www-data /home
 
