@@ -148,6 +148,10 @@ class OSFStorageProvider(provider.BaseProvider):
     def is_same_region(self, other):
         assert isinstance(other, self.__class__), 'Cannot compare region for providers of ' \
                                                   'different provider classes.'
+
+        # Region does not apply to local development with filesystem as storage backend.
+        if self.settings['storage']['provider'] == 'filesystem':
+            return True
         # For 1-to-1 bucket-region mapping, bucket is the same if and only if region is the same
         return self.settings['storage']['bucket'] == other.settings['storage']['bucket']
 
