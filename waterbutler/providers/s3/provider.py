@@ -225,7 +225,7 @@ class S3Provider(provider.BaseProvider):
             skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
             expects=(200, 201, ),
-            throws=exceptions.UploadError
+            throws=exceptions.UploadError,
         )
         # md5 is returned as ETag header as long as server side encryption is not used.
         if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
@@ -274,7 +274,7 @@ class S3Provider(provider.BaseProvider):
             settings.TEMP_URL_SECS,
             'POST',
             query_parameters=params,
-            headers=headers
+            headers=headers,
         )
         resp = await self.make_request(
             'POST',
@@ -353,7 +353,7 @@ class S3Provider(provider.BaseProvider):
             settings.TEMP_URL_SECS,
             'DELETE',
             query_parameters=params,
-            headers=headers
+            headers=headers,
         )
 
         iteration_count = 0
@@ -368,7 +368,7 @@ class S3Provider(provider.BaseProvider):
                 headers=headers,
                 params=params,
                 expects=(204, ),
-                throws=exceptions.UploadError
+                throws=exceptions.UploadError,
             )
             await resp.release()
 
@@ -391,7 +391,7 @@ class S3Provider(provider.BaseProvider):
 
         if is_aborted:
             logger.debug('Multi-part upload has been successfully aborted: retries={} '
-                        'upload_id={}'.format(iteration_count, session_upload_id))
+                         'upload_id={}'.format(iteration_count, session_upload_id))
             return True
 
         logger.error('Multi-part upload has failed to abort: retries={} '
