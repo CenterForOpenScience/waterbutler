@@ -105,6 +105,13 @@ class OsfAuthHandler(BaseAuthHandler):
                 osf_action = post_action_map[action.lower()]
             except KeyError:
                 raise exceptions.UnsupportedActionError(method, supported=post_action_map.keys())
+        elif method == 'head' and settings.MFR_ACTION_HEADER in request.headers:
+            mfr_action_map = {'render': 'render', 'export': 'export'}
+            mfr_action = request.headers[settings.MFR_ACTION_HEADER].lower()
+            try:
+                osf_action = mfr_action_map[mfr_action]
+            except KeyError:
+                raise exceptions.UnsupportedActionError(mfr_action, supported=mfr_action_map.keys())
         else:
             try:
                 osf_action = self.ACTION_MAP[method]
