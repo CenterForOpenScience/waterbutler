@@ -105,15 +105,17 @@ async def send_signed_request(method, url, payload):
     ))
 
 
-def normalize_datetime(date_string):
-    if date_string is None:
+def normalize_datetime(date):
+    if date is None:
         return None
-    parsed_datetime = dateutil.parser.parse(date_string)
-    if not parsed_datetime.tzinfo:
-        parsed_datetime = parsed_datetime.replace(tzinfo=pytz.UTC)
-    parsed_datetime = parsed_datetime.astimezone(tz=pytz.UTC)
-    parsed_datetime = parsed_datetime.replace(microsecond=0)
-    return parsed_datetime.isoformat()
+    if isinstance(date, str):
+        date = dateutil.parser.parse(date)
+    if not date.tzinfo:
+        date = date.replace(tzinfo=pytz.UTC)
+    date = date.astimezone(tz=pytz.UTC)
+    date = date.replace(microsecond=0)
+    return date.isoformat()
+
 
 
 class ZipStreamGenerator:

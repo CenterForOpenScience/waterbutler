@@ -14,6 +14,10 @@ from boto.auth import get_auth_handler
 from boto.s3.connection import S3Connection
 from boto.s3.connection import OrdinaryCallingFormat
 
+import boto3
+from botocore.client import Config
+from botocore.exceptions import ClientError
+
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
@@ -45,7 +49,7 @@ class S3Provider(provider.BaseProvider):
     NAME = 's3'
 
     def __init__(self, auth, credentials, settings):
-        """
+        """Initialize S3Provider
         .. note::
 
             Neither `S3Connection#__init__` nor `S3Connection#get_bucket`
@@ -57,10 +61,30 @@ class S3Provider(provider.BaseProvider):
         """
         super().__init__(auth, credentials, settings)
 
-        self.connection = S3Connection(credentials['access_key'],
-                credentials['secret_key'], calling_format=OrdinaryCallingFormat())
+        self.s3 = boto3.resource(
+            's3',
+            endpoint_url='http://{}:{}'.format(
+                credentials['host'],
+                credentials['port']
+            ),
+            aws_access_key_id=credentials['access_key'],
+            aws_secret_access_key=credentials['secret_key'],
+            config=Config(signature_version='s3v4'),
+            region_name='us-east-1'
+        )
+
+        self.connection = S3Connection(
+            credentials['access_key'],
+            credentials['secret_key'],
+            calling_format=OrdinaryCallingFormat(),
+            host=credentials['host'],
+            port=credentials['port'],
+            is_secure=False
+        )
+        self.bucket_name = settings['bucket']
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
+        self.encrypt_uploads = False
         self.region = None
 
     async def validate_v1_path(self, path, **kwargs):
@@ -347,27 +371,29 @@ class S3Provider(provider.BaseProvider):
         :rtype list:
         """
         await self._check_region()
-
         query_params = {'prefix': path.path, 'delimiter': '/', 'versions': ''}
         url = functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
-        resp = await self.make_request(
-            'GET',
-            url,
-            params=query_params,
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
-        content = await resp.read()
-        versions = xmltodict.parse(content)['ListVersionsResult'].get('Version') or []
+        try:
+            resp = await self.make_request(
+                'GET',
+                url,
+                params=query_params,
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+            content = await resp.read()
+            versions = xmltodict.parse(content)['ListVersionsResult'].get('Version') or []
 
-        if isinstance(versions, dict):
-            versions = [versions]
+            if isinstance(versions, dict):
+                versions = [versions]
 
-        return [
-            S3Revision(item)
-            for item in versions
-            if item['Key'] == path.path
-        ]
+            return [
+                S3Revision(item)
+                for item in versions
+                if item['Key'] == path.path
+            ]
+        except:
+            return []
 
     async def metadata(self, path, revision=None, **kwargs):
         """Get Metadata about the requested file or folder
@@ -394,9 +420,10 @@ class S3Provider(provider.BaseProvider):
             if (await self.exists(path)):
                 raise exceptions.FolderNamingConflict(path.name)
 
+        url = functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT')
         async with self.request(
             'PUT',
-            functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
+            url,
             skip_auto_headers={'CONTENT-TYPE'},
             expects=(200, 201),
             throws=exceptions.CreateFolderError
@@ -406,52 +433,52 @@ class S3Provider(provider.BaseProvider):
     async def _metadata_file(self, path, revision=None):
         await self._check_region()
 
-        if revision == 'Latest':
-            revision = None
-        resp = await self.make_request(
-            'HEAD',
-            functools.partial(
-                self.bucket.new_key(path.path).generate_url,
-                settings.TEMP_URL_SECS,
-                'HEAD',
-                query_parameters={'versionId': revision} if revision else None
-            ),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
-        await resp.release()
-        return S3FileMetadataHeaders(path.path, resp.headers)
+        if (
+            revision == 'Latest' or
+            revision == '' or
+            not revision
+        ):
+            obj = self.s3.Object(
+                self.bucket.name,
+                path.path
+            )
+        else:
+            obj = self.s3.ObjectVersion(
+                self.bucket.name,
+                path.path,
+                revision
+            )
+        try:
+            obj.load()
+        except ClientError as err:
+            if err.response['Error']['Code'] == '404':
+                raise exceptions.NotFoundError(str(path))
+            else:
+                raise err
+
+        return S3FileMetadataHeaders(path.path, obj)
 
     async def _metadata_folder(self, path):
-        await self._check_region()
-
-        params = {'prefix': path.path, 'delimiter': '/'}
-        resp = await self.make_request(
-            'GET',
-            functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
-            params=params,
-            expects=(200, ),
-            throws=exceptions.MetadataError,
+        """Get metadata about the contents of a bucket. This is either the
+        contents at the root of the bucket, or a folder has
+        been selected as a prefix by the user
+        """
+        bucket = self.s3.Bucket(self.bucket_name)
+        result = bucket.meta.client.list_objects(
+            Bucket=bucket.name,
+            Prefix=path.path,
+            Delimiter='/'
         )
-
-        contents = await resp.read()
-
-        parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
-
-        contents = parsed.get('Contents', [])
-        prefixes = parsed.get('CommonPrefixes', [])
+        prefixes = result.get('CommonPrefixes', [])
+        contents = result.get('Contents', [])
 
         if not contents and not prefixes and not path.is_root:
             # If contents and prefixes are empty then this "folder"
             # must exist as a key with a / at the end of the name
             # if the path is root there is no need to test if it exists
-            resp = await self.make_request(
-                'HEAD',
-                functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            )
-            await resp.release()
+
+            obj = self.s3.Object(self.bucket_name, path.path)
+            obj.load()
 
         if isinstance(contents, dict):
             contents = [contents]
@@ -459,10 +486,7 @@ class S3Provider(provider.BaseProvider):
         if isinstance(prefixes, dict):
             prefixes = [prefixes]
 
-        items = [
-            S3FolderMetadata(item)
-            for item in prefixes
-        ]
+        items = [S3FolderMetadata(item) for item in prefixes]
 
         for content in contents:
             if content['Key'] == path.path:
@@ -486,7 +510,7 @@ class S3Provider(provider.BaseProvider):
 
         Region Naming: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
         """
-        if self.region is None:
+        if self.region is "Chewbacca":
             self.region = await self._get_bucket_region()
             if self.region == 'EU':
                 self.region = 'eu-west-1'

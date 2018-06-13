@@ -1,6 +1,7 @@
 import os
 
 from waterbutler.core import metadata
+from waterbutler.core import utils
 
 
 class S3Metadata(metadata.BaseMetadata):
@@ -18,9 +19,11 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     def __init__(self, path, headers):
         self._path = path
+        self.obj = headers
+        self._etag = None
         # Cast to dict to clone as the headers will
         # be destroyed when the request leaves scope
-        super().__init__(dict(headers))
+        super().__init__(headers)
 
     @property
     def path(self):
@@ -28,15 +31,15 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def size(self):
-        return self.raw['CONTENT-LENGTH']
+        return self.obj.content_length
 
     @property
     def content_type(self):
-        return self.raw['CONTENT-TYPE']
+        return self.obj.content_type
 
     @property
     def modified(self):
-        return self.raw['LAST-MODIFIED']
+        return utils.normalize_datetime(self.obj.last_modified)
 
     @property
     def created_utc(self):
@@ -44,16 +47,19 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return self.raw['ETAG'].replace('"', '')
+        if self._etag:
+            return self._etag
+        else:
+            self._etag = self.obj.e_tag.replace('"', '')
+            return self._etag
 
     @property
     def extra(self):
-        md5 = self.raw['ETAG'].replace('"', '')
         return {
-            'md5': md5,
-            'encryption': self.raw.get('X-AMZ-SERVER-SIDE-ENCRYPTION', ''),
+            'md5': self.etag,
+            'encryption': self.obj.server_side_encryption,
             'hashes': {
-                'md5': md5,
+                'md5': self.etag,
             },
         }
 
@@ -70,7 +76,7 @@ class S3FileMetadata(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def modified(self):
-        return self.raw['LastModified']
+        return self.raw['LastModified'].isoformat()
 
     @property
     def created_utc(self):
