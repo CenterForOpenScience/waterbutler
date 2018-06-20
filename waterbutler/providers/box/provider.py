@@ -291,32 +291,7 @@ class BoxProvider(provider.BaseProvider):
             data = await stream.read()
             entry = await self._chunked_upload(path, data)
         else:
-            stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
-
-            data_stream = streams.FormDataStream(
-                attributes=json.dumps({
-                    'name': path.name,
-                    'parent': {
-                        'id': path.parent.identifier
-                    }
-                })
-            )
-            data_stream.add_file('file', stream, path.name, disposition='form-data')
-
-            async with self.request(
-                'POST',
-                self._build_upload_url(
-                    *filter(lambda x: x is not None, ('files', path.identifier, 'content'))),
-                data=data_stream,
-                headers=data_stream.headers,
-                expects=(201,),
-                throws=exceptions.UploadError,
-            ) as resp:
-                data = await resp.json()
-
-            entry = data['entries'][0]
-            if stream.writers['sha1'].hexdigest != entry['sha1']:
-                raise exceptions.UploadChecksumMismatchError()
+            entry = await self._contiguous_upload(stream, path)
 
         created = path.identifier is None
         path._parts[-1]._id = entry['id']
@@ -505,6 +480,42 @@ class BoxProvider(provider.BaseProvider):
             folder = self._serialize_item(data, path)
             folder._children = await self._get_folder_meta(path)  # type: ignore
             return folder, created
+
+    async def _contiguous_upload(self,  # type: ignore
+                                 stream: streams.BaseStream, path: WaterButlerPath):
+        """Contiguous Upload
+
+        Uploads a file to Box using a single request. This can only be called
+        if the file is below the maximum size that can be uploaded using a
+        single request.
+        """
+        assert stream.size <= self.NONCHUNKED_UPLOAD_LIMIT
+        stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
+
+        data_stream = streams.FormDataStream(
+            attributes=json.dumps({
+                'name': path.name,
+                'parent': {'id': path.parent.identifier}
+            })
+        )
+        data_stream.add_file('file', stream, path.name, disposition='form-data')
+
+        async with self.request(
+            'POST',
+            self._build_upload_url(
+                *filter(lambda x: x is not None, ('files', path.identifier, 'content'))),
+            data=data_stream,
+            headers=data_stream.headers,
+            expects=(201,),
+            throws=exceptions.UploadError,
+        ) as resp:
+            data = await resp.json()
+
+        entry = data['entries'][0]
+        if stream.writers['sha1'].hexdigest != entry['sha1']:
+            raise exceptions.UploadChecksumMismatchError()
+
+        return entry
 
     async def _chunked_upload(self, path: WaterButlerPath, data: bytes) -> dict:
         """Chunked uploading allows us to upload large files over several requests, Box's chunked
