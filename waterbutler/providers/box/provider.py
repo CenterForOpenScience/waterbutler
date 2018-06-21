@@ -2,6 +2,7 @@ import json
 import base64
 import hashlib
 import logging
+from asyncio import sleep
 from http import HTTPStatus
 from typing import List, Tuple, Union
 
@@ -9,6 +10,7 @@ import aiohttp
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core import exceptions, streams, provider
+from waterbutler.core.exceptions import RetryChunkedUploadCommit
 
 from waterbutler.providers.box import settings as pd_settings
 from waterbutler.providers.box.metadata import (BaseBoxMetadata, BoxRevision,
@@ -532,7 +534,11 @@ class BoxProvider(provider.BaseProvider):
             parts = await self._upload_chunks(data, session_data)
 
             # Step A.4 complete the session and return the upload file's metadata.
-            return await self._complete_chunked_upload_session(session_data, parts, data_sha)
+            while True:
+                try:
+                    return await self._complete_chunked_upload_session(session_data, parts, data_sha)
+                except RetryChunkedUploadCommit:
+                    continue
 
         except exceptions.UploadError:
             return await self._abort_chunked_upload(session_data, data_sha)
@@ -590,6 +596,15 @@ class BoxProvider(provider.BaseProvider):
 
     async def _complete_chunked_upload_session(self, session_data: dict, parts: dict,
                                                data_sha: str) -> dict:
+        """Completes the chunked upload session
+
+        lets Box know that the parts have all been uploaded, and it can
+        reconstruct the file from its individual parts.
+
+        If not all the parts have finished uploading, Box will
+
+        https://developer.box.com/reference#commit-upload
+        """
         async with self.request(
             'POST',
             self._build_upload_url('files', 'upload_sessions', session_data['id'], 'commit'),
@@ -598,9 +613,12 @@ class BoxProvider(provider.BaseProvider):
                 'Content-Type:': 'application/json',
                 'Digest': 'sha={}'.format(data_sha)
             },
-            expects=(201,),
+            expects=(201, 202),
             throws=exceptions.UploadError,
         ) as resp:
+            if resp.status == 202:
+                await sleep(resp.headers['Retry-After'])
+                raise RetryChunkedUploadCommit()
             entry = (await resp.json())['entries'][0]
 
         return entry
@@ -608,6 +626,8 @@ class BoxProvider(provider.BaseProvider):
     async def _abort_chunked_upload(self, session_data: dict, data_sha: str) -> bool:
         """Abort a chunked upload session. This discards all data uploaded
         during the session. It cannot be undone.
+
+        https://developer.box.com/reference#abort
         """
         async with self.request(
             'DELETE',
