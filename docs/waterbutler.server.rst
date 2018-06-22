@@ -1,9 +1,6 @@
 waterbutler.server package
 ==========================
 
-Submodules
-----------
-
 waterbutler.server.app module
 -----------------------------
 
