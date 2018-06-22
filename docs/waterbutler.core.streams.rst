@@ -1,5 +1,5 @@
-Streams
-=======
+waterbutler.core.streams package
+================================
 
 BaseStream
 ----------

@@ -1,9 +1,6 @@
 waterbutler.tasks package
 =========================
 
-Submodules
-----------
-
 waterbutler.tasks.app module
 ----------------------------
 

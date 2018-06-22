@@ -2,7 +2,7 @@ waterbutler.core package
 ========================
 
 waterbutler.core.auth module
-----------------------------------
+----------------------------
 
 .. automodule:: waterbutler.core.auth
     :members:
@@ -13,6 +13,14 @@ waterbutler.core.exceptions module
 ----------------------------------
 
 .. automodule:: waterbutler.core.exceptions
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+waterbutler.core.log_payload module
+-----------------------------------
+
+.. automodule:: waterbutler.core.logging
     :members:
     :undoc-members:
     :show-inheritance:
@@ -33,10 +41,35 @@ waterbutler.core.metadata module
     :undoc-members:
     :show-inheritance:
 
+waterbutler.core.metrics module
+-------------------------------
+
+.. automodule:: waterbutler.core.metrics
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 waterbutler.core.path module
---------------------------------
+----------------------------
 
 .. automodule:: waterbutler.core.path
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+waterbutler.core.provider module
+--------------------------------
+
+.. automodule:: waterbutler.core.provider
+    :members:
+    :undoc-members:
+    :show-inheritance:
+    :noindex:
+
+waterbutler.core.remote_logging module
+--------------------------------------
+
+.. automodule:: waterbutler.core.remote_logging
     :members:
     :undoc-members:
     :show-inheritance:
@@ -49,7 +82,6 @@ waterbutler.core.signing module
     :undoc-members:
     :show-inheritance:
 
-
 waterbutler.core.utils module
 -----------------------------
 
@@ -57,7 +89,6 @@ waterbutler.core.utils module
     :members:
     :undoc-members:
     :show-inheritance:
-
 
 Module contents
 ---------------

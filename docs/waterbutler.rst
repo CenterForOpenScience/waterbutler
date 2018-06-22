@@ -1,18 +1,13 @@
 waterbutler package
 ===================
 
-Subpackages
------------
+waterbutler.constants module
+----------------------------
 
-.. toctree::
-
-    waterbutler.core
-    waterbutler.providers
-    waterbutler.server
-    waterbutler.tasks
-
-Submodules
-----------
+.. automodule:: waterbutler.constants
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 waterbutler.settings module
 ---------------------------
@@ -22,6 +17,21 @@ waterbutler.settings module
     :undoc-members:
     :show-inheritance:
 
+waterbutler.sizes module
+------------------------
+
+.. automodule:: waterbutler.sizes
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+waterbutler.version module
+--------------------------
+
+.. automodule:: waterbutler.version
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Module contents
 ---------------
@@ -30,3 +40,4 @@ Module contents
     :members:
     :undoc-members:
     :show-inheritance:
+
