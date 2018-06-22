@@ -7,6 +7,7 @@ import tempfile
 from unittest import mock
 
 import pytest
+import tornado
 from tornado import testing
 from tornado.platform.asyncio import AsyncIOMainLoop
 
@@ -14,6 +15,7 @@ from waterbutler.core import metadata
 from waterbutler.core import provider
 from waterbutler.server.app import make_app
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.streams.file import FileStreamReader
 
 
 class MockCoroutine(mock.Mock):
@@ -24,6 +26,9 @@ class MockCoroutine(mock.Mock):
     async def __call__(self, *args, **kwargs):
         return super().__call__(*args, **kwargs)
 
+    def assert_awaited_once(self):
+        assert self.call_count == 1
+
 
 class MockFileMetadata(metadata.BaseFileMetadata):
     provider = 'MockProvider'
@@ -31,8 +36,8 @@ class MockFileMetadata(metadata.BaseFileMetadata):
     size = 1337
     etag = 'etag'
     path = '/Foo.name'
-    modified = 'never'
-    modified_utc = 'never'
+    modified = '9/25/2017'
+    modified_utc = '1991-09-25T19:20:30.45+01:00'
     created_utc = 'always'
     content_type = 'application/octet-stream'
 
@@ -64,6 +69,25 @@ class MockFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
         super().__init__({})
 
 
+class MockStream(FileStreamReader):
+    content_type = 'application/octet-stream'
+    size = 1334
+
+    def __init__(self):
+        super().__init__(tempfile.TemporaryFile())
+
+
+class MockRequestBody(tornado.concurrent.Future):
+
+    def __await__(self):
+        yield None
+
+
+class MockWriter(object):
+    write = mock.Mock()
+    drain = MockCoroutine()
+
+
 class MockProvider(provider.BaseProvider):
     NAME = 'MockProvider'
     copy = None
@@ -85,8 +109,12 @@ class MockProvider(provider.BaseProvider):
         self.upload = MockCoroutine()
         self.download = MockCoroutine()
         self.metadata = MockCoroutine()
-        self.validate_v1_path = MockCoroutine()
-        self.revalidate_path = MockCoroutine()
+        self.revalidate_path = MockCoroutine(
+            side_effect=lambda base, path, *args, **kwargs: base.child(path, *args, **kwargs))
+        self.validate_v1_path = MockCoroutine(
+            side_effect=lambda path,  **kwargs: WaterButlerPath(path, **kwargs))
+        self.validate_path = MockCoroutine(
+            side_effect=lambda path, **kwargs: WaterButlerPath(path, **kwargs))
 
 
 class MockProvider1(provider.BaseProvider):

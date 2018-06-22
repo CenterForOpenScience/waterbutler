@@ -239,7 +239,7 @@ class OneDriveProvider(provider.BaseProvider):
         :rtype: OneDriveMetadata
         :rtype: list(OneDriveFileMetadata|OneDriveFolderMetadata)
         :return: either a OneDriveFileMetada for a single file or an array of either
-        `OneDriveFileMetadata` or `OneDriveFolderMetadata` objects
+            `OneDriveFileMetadata` or `OneDriveFolderMetadata` objects
         """
         logger.debug('metadata identifier::{} path::{}'.format(path.identifier, path))
 

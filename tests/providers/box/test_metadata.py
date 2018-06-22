@@ -20,6 +20,8 @@ class TestBoxMetadata:
         assert data.path == '/5000948880'
         assert data.provider == 'box'
         assert data.size == 629644
+        assert data.size_as_int == 629644
+        assert type(data.size_as_int) == int
         assert data.modified == '2012-12-12T11:04:26-08:00'
         assert data.created_utc == '2012-12-12T18:55:30+00:00'
         assert data.content_type is None
@@ -48,7 +50,8 @@ class TestBoxMetadata:
             'modified': '2012-12-12T11:04:26-08:00',
             'modified_utc': '2012-12-12T19:04:26+00:00',
             'created_utc': '2012-12-12T18:55:30+00:00',
-            'size': 629644
+            'size': 629644,
+            'sizeInt': 629644,
         }
         assert data.kind == 'file'
         assert data.modified_utc == '2012-12-12T19:04:26+00:00'
@@ -72,6 +75,7 @@ class TestBoxMetadata:
                 'modified_utc': '2012-12-12T19:04:26+00:00',
                 'created_utc': '2012-12-12T18:55:30+00:00',
                 'size': 629644,
+                'sizeInt': 629644,
                 'resource': 'cn42d'
             },
             'links': {
@@ -113,7 +117,8 @@ class TestBoxMetadata:
                 'materialized': '/moveablefolder/',
                 'etag': '299a515e98fe1c548c6fe6141d01a43e739cf965b0d324aa0961924162f7af79',
                 'resource': '7ycmyr',
-                'size': None
+                'size': None,
+                'sizeInt': None,
             },
             'links': {
                 'move': 'http://localhost:7777/v1/resources/7ycmyr/providers/box/36833297084/',

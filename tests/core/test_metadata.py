@@ -34,10 +34,11 @@ class TestBaseMetadata:
             'materialized': '/Foo.name',
             'etag': etag,
             'contentType': 'application/octet-stream',
-            'modified': 'never',
-            'modified_utc': 'never',
+            'modified': '9/25/2017',
+            'modified_utc': '1991-09-25T19:20:30.45+01:00',
             'created_utc': 'always',
             'size': 1337,
+            'sizeInt': 1337,
             'resource': 'n0d3z',
         }
         assert 'new_folder' not in serialized['links']
@@ -63,6 +64,7 @@ class TestBaseMetadata:
             'materialized': '/Bar/',
             'etag': etag,
             'size': None,
+            'sizeInt': None,
             'resource': 'n0d3z',
         }
         assert serialized['links']['new_folder'].endswith(link_suffix + '?kind=folder')
@@ -88,10 +90,11 @@ class TestBaseMetadata:
             'materialized': '/Foo.name',
             'etag': etag,
             'contentType': 'application/octet-stream',
-            'modified': 'never',
-            'modified_utc': 'never',
+            'modified': '9/25/2017',
+            'modified_utc': '1991-09-25T19:20:30.45+01:00',
             'created_utc': 'always',
             'size': 1337,
+            'sizeInt': 1337,
         }
 
     def test_file_revision_json_api_serialize(self):

@@ -211,6 +211,7 @@ class TestMoveTask:
             'modified_utc': metadata.modified_utc,
             'created_utc': metadata.created_utc,
             'size': metadata.size,
+            'sizeInt': metadata.size_as_int,
         }
 
     def test_starttime_override(self, event_loop, providers, bundles, callback, mock_time):

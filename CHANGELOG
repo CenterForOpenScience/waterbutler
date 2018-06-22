@@ -2,6 +2,15 @@
 ChangeLog
 *********
 
+0.40.0 (2018-06-22)
+===================
+- Feature: Listen for MFR-originating metadata requests and relay the nature of the request to
+the OSF. This will allow the OSF to tally better metrics on file views.
+- Feature: Add new "sizeInt" file metadata field. Some providers return file size as a string.
+The "size" field in WaterButler's file metadata follows this behavior.  The "sizeInt" field will
+always be an integer (if file size is available) or `null` (if not).
+- Code: Expand tests for WaterButler's APIv1 server.
+
 0.39.2 (2018-06-05)
 ===================
 - Fix: Brown-paper-bag release: actually change version in the code.

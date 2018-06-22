@@ -200,7 +200,25 @@ def provider_and_mock2(monkeypatch, auth, credentials, settings):
 
 @pytest.fixture
 def provider(auth, credentials, settings):
+    settings.update({
+        'storage': {
+            'provider': 'googlecloud',
+            'bucket': 'mock_bucket_1',
+        }
+    })
     return OSFStorageProvider(auth, credentials, settings)
+
+
+@pytest.fixture
+def provider_other(auth, credentials, settings):
+    settings_other = dict(settings)
+    settings_other.update({
+        'storage': {
+            'provider': 'googlecloud',
+            'bucket': 'mock_bucket_2',
+        }
+    })
+    return OSFStorageProvider(auth, credentials, settings_other)
 
 
 @pytest.fixture

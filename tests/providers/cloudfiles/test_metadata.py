@@ -43,6 +43,8 @@ class TestCloudfilesMetadata:
         assert data.path == '/file.txt'
         assert data.provider == 'cloudfiles'
         assert data.size == 216945
+        assert type(data.size_as_int) == int
+        assert data.size_as_int == 216945
         assert data.modified == 'Mon, 22 Dec 2014 19:01:02 GMT'
         assert data.created_utc is None
         assert data.content_type == 'text/plain'
@@ -69,7 +71,8 @@ class TestCloudfilesMetadata:
             'modified': 'Mon, 22 Dec 2014 19:01:02 GMT',
             'modified_utc': '2014-12-22T19:01:02+00:00',
             'created_utc': None,
-            'size': 216945
+            'size': 216945,
+            'sizeInt': 216945,
         }
 
         assert data.json_api_serialized('cn42d') == {
@@ -92,6 +95,7 @@ class TestCloudfilesMetadata:
                 'modified_utc': '2014-12-22T19:01:02+00:00',
                 'created_utc': None,
                 'size': 216945,
+                'sizeInt': 216945,
                 'resource': 'cn42d'
             },
             'links': {
@@ -117,6 +121,8 @@ class TestCloudfilesMetadata:
         assert data.provider == 'cloudfiles'
         assert data.path == '/similar.file'
         assert data.size == 190
+        assert data.size_as_int == 190
+        assert type(data.size_as_int) == int
         assert data.modified == '2014-12-19T23:22:14.728640'
         assert data.created_utc is None
         assert data.content_type == 'application/x-www-form-urlencoded;charset=utf-8'
@@ -142,7 +148,8 @@ class TestCloudfilesMetadata:
             'modified': '2014-12-19T23:22:14.728640',
             'modified_utc': '2014-12-19T23:22:14+00:00',
             'created_utc': None,
-            'size': 190
+            'size': 190,
+            'sizeInt': 190,
         }
 
         assert data.json_api_serialized('cn42d') == {
@@ -165,6 +172,7 @@ class TestCloudfilesMetadata:
                 'modified_utc': '2014-12-19T23:22:14+00:00',
                 'created_utc': None,
                 'size': 190,
+                'sizeInt': 190,
                 'resource': 'cn42d'
             },
             'links': {
@@ -222,7 +230,8 @@ class TestCloudfilesMetadata:
                 'materialized': '/level1/',
                 'etag': '69cf764abe6f2e90dc81fb4218e15f202f9b99bcd1963cf2d5f011629d6f0d8a',
                 'resource': 'cn42d',
-                'size': None
+                'size': None,
+                'sizeInt': None
             },
             'links': {
                 'move': 'http://localhost:7777/v1/resources/cn42d/providers/cloudfiles/level1/',
