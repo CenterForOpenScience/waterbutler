@@ -64,7 +64,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if method != 'post':
             self.auth = await auth_handler.get(self.resource, provider, self.request)
             self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
-            self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
+            self.path = await self.provider.validate_v1_path(self.path, params=self.arguments)
 
         self.target_path = None
 
