@@ -324,7 +324,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         assert src_path.is_dir, 'src_path must be a directory'
         assert asyncio.iscoroutinefunction(func), 'func must be a coroutine'
-
         try:
             await dest_provider.delete(dest_path)
             created = False
