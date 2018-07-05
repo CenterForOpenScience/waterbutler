@@ -5,6 +5,7 @@ import logging
 from typing import Tuple
 from http import HTTPStatus
 
+from waterbutler.core.streams import CutoffStream
 from waterbutler.core import exceptions, provider, streams
 
 from waterbutler.providers.figshare.path import FigsharePath
@@ -296,10 +297,14 @@ class BaseFigshareProvider(provider.BaseProvider):
         for part in parts:
             size = part['endOffset'] - part['startOffset'] + 1
             part_number = part['partNo']
+            upload_stream = CutoffStream(stream, cutoff=size)
+            logger.debug('File part {}: stream-size:{} want-size:{}'.format(part_number,
+                                                                            stream.size, size))
             upload_response = await self.make_request(
                 'PUT',
                 upload_url + '/' + str(part_number),
-                data=stream.read(size),
+                headers={'Content-Length': str(size)},
+                data=upload_stream,
                 expects=(200, ),
             )
             await upload_response.release()

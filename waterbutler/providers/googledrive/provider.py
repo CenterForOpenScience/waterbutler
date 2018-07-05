@@ -235,7 +235,8 @@ class GoogleDriveProvider(provider.BaseProvider):
         )
 
         if metadata.size is not None:  # type: ignore
-            return streams.ResponseStreamReader(download_resp, size=metadata.size)  # type: ignore
+            return streams.ResponseStreamReader(download_resp,
+                                                size=metadata.size_as_int)  # type: ignore
 
         # google docs, not drive files, have no way to get the file size
         # must buffer the entire file into memory
