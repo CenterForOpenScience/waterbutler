@@ -3,6 +3,14 @@ import asyncio
 
 
 class BaseStream(asyncio.StreamReader, metaclass=abc.ABCMeta):
+    """A wrapper class around an existing stream that supports teeing to multiple reader and writer
+    objects.  Though it inherits from `asyncio.StreamReader` it does not implement/augment all of
+    its methods.  Only ``read()`` implements the teeing behavior; ``readexactly``, ``readline``,
+    and ``readuntil`` do not.
+
+    Classes that inherit from `BaseStream` must implement a ``_read()`` method that reads ``size``
+    bytes from its source and returns it.
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -100,6 +108,52 @@ class MultiStream(asyncio.StreamReader):
         except IndexError:
             self.stream = None
             self.feed_eof()
+
+
+class CutoffStream(asyncio.StreamReader):
+    """A wrapper around an existing stream that terminates after pulling off the specified number
+    of bytes.  Useful for segmenting an existing stream into parts suitable for chunked upload
+    interfaces.
+
+    This class only subclasses `asyncio.StreamReader` to take advantage of the `isinstance`-based
+    stream-reading interface of aiohttp v0.18.2. It implements a ``read()`` method with the same
+    signature as `StreamReader` that does the bookkeeping to know how many bytes to request from
+    the stream attribute.
+
+    :param stream: a stream object to wrap
+    :param int cutoff: number of bytes to read before stopping
+    """
+
+    def __init__(self, stream, cutoff):
+        super().__init__()
+        self.stream = stream
+        self._cutoff = cutoff
+        self._thus_far = 0
+        self._size = min(cutoff, stream.size)
+
+    @property
+    def size(self):
+        """The lesser of the wrapped stream's size or the cutoff."""
+        return self._size
+
+    async def read(self, n=-1):
+        """Read ``n`` bytes from the stream. ``n`` is a chunk size, not the full size of the
+        stream.  If ``n`` is -1, read ``cutoff`` bytes.  If ``n`` is a positive integer, read
+        that many bytes as long as the total number of bytes read so far does not exceed
+        ``cutoff``.
+        """
+        if n < 0:
+            return await self.stream.read(self._cutoff)
+
+        n = min(n, self._cutoff - self._thus_far)
+
+        chunk = b''
+        while self.stream and (len(chunk) < n):
+            subchunk = await self.stream.read(n - len(chunk))
+            chunk += subchunk
+            self._thus_far += len(subchunk)
+
+        return chunk
 
 
 class StringStream(BaseStream):

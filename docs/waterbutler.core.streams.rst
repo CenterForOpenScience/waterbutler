@@ -7,8 +7,6 @@ BaseStream
 .. autoclass:: waterbutler.core.streams.BaseStream
     :members:
     :undoc-members:
-    :show-inheritance:
-    :inherited-members:
 
 ResponseStreamReader
 --------------------
@@ -72,3 +70,10 @@ FormDataStream
     :undoc-members:
     :show-inheritance:
     :inherited-members:
+
+CutoffStream
+------------
+
+.. autoclass:: waterbutler.core.streams.CutoffStream
+    :members:
+    :undoc-members:
