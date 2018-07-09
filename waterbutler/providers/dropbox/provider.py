@@ -251,35 +251,39 @@ class DropboxProvider(provider.BaseProvider):
                      path: WaterButlerPath,
                      conflict: str='replace',
                      **kwargs) -> typing.Tuple[DropboxFileMetadata, bool]:
+
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         path_arg = {"path": path.full_path}
         if conflict == 'replace':
             path_arg['mode'] = 'overwrite'
 
         if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
-            data = await self._chunked_upload(stream, path_arg)
+            data = await self._chunked_upload(stream, path)
         else:
-            resp = await self.make_request(
-                'POST',
-                self._build_content_url('files', 'upload'),
-                headers={
-                    'Content-Type': 'application/octet-stream',
-                    'Dropbox-API-Arg': json.dumps(path_arg),
-                    'Content-Length': str(stream.size),
-                },
-                data=stream,
-                expects=(200, 409,),
-                throws=core_exceptions.UploadError,
-            )
-            data = await resp.json()
-            if resp.status == 409:
-                self.dropbox_conflict_error_handler(data, path.path)
+            data = await self._contiguous_upload(stream, path)
 
         return DropboxFileMetadata(data, self.folder), not exists
 
-    async def _chunked_upload(self,
-                              stream: streams.BaseStream,
-                              path_arg: dict) -> dict:
+    async def _contiguous_upload(self, stream: streams.BaseStream, path: WaterButlerPath) -> dict:
+        resp = await self.make_request(
+            'POST',
+            self._build_content_url('files', 'upload'),
+            headers={
+                'Content-Type': 'application/octet-stream',
+                'Dropbox-API-Arg': json.dumps({'path': path.full_path}),
+                'Content-Length': str(stream.size),
+            },
+            data=stream,
+            expects=(200, 409,),
+            throws=core_exceptions.UploadError,
+        )
+
+        data = await resp.json()
+        if resp.status == 409:
+            self.dropbox_conflict_error_handler(data, path.path)
+        return data
+
+    async def _chunked_upload(self, stream: streams.BaseStream, path: WaterButlerPath) -> dict:
         """Chunked uploading is a 3 step process.
 
         First a session is created, this session connects each of the chunks as
@@ -290,6 +294,8 @@ class DropboxProvider(provider.BaseProvider):
         When all of the parts have finished uploading, the session that was
         created is completed, and dropbox rearranges all the chunks that were
         uploaded to reform the complete file.
+
+        https://www.dropbox.com/developers-v1/core/docs#chunked-upload
         """
 
         # 1. creates a upload session and retrieves session id to upload parts.
@@ -299,7 +305,7 @@ class DropboxProvider(provider.BaseProvider):
         await self._upload_parts(stream, session_id)
 
         # 3. completes session and returns the uploaded files' metadata.
-        return await self._complete_session(stream, session_id, path_arg)
+        return await self._complete_session(stream, session_id, path)
 
     async def _create_upload_session(self) -> str:
 
@@ -315,39 +321,56 @@ class DropboxProvider(provider.BaseProvider):
         )
         return (await resp.json())['session_id']
 
-    async def _upload_parts(self, stream: streams.BaseStream, session_id: str):
-
-        for i in range(0, stream.size, self.CHUNK_SIZE):
-            upload_args = {
-                'close': False,
-                'cursor': {
-                    'session_id': session_id,
-                    'offset': i
-                }
+    async def _upload_parts(self,
+                            stream: streams.BaseStream,
+                            session_id: str) -> None:
+        """Uploads all of the parts that compose the file to Dropbox.
+        """
+        upload_args = {
+            'close': False,
+            'cursor': {
+                'session_id': session_id,
+                'offset': None
             }
-            resp = await self.make_request(
-                'POST',
-                self._build_content_url('files', 'upload_session', 'append_v2'),
-                headers={
-                    'Content-Type': 'application/octet-stream',
-                    'Dropbox-API-Arg': json.dumps(upload_args),
-                },
-                data=stream.read(self.CHUNK_SIZE),
-                expects=(200, ),
-                throws=core_exceptions.UploadError,
+        }
+        for i in range(0, stream.size, self.CHUNK_SIZE):
+            upload_args['cursor']['offset'] = i
+            await self._upload_part(
+                upload_args,
+                stream
             )
-            await resp.release()
 
-    async def _complete_session(self, stream: streams.BaseStream,
+    async def _upload_part(self,
+                           upload_args: dict,
+                           stream: streams.BaseStream) -> None:
+        """Uploads a single part for a Dropbox chunked upload session.
+        """
+        resp = await self.make_request(
+            'POST',
+            self._build_content_url('files', 'upload_session', 'append_v2'),
+            headers={
+                'Content-Type': 'application/octet-stream',
+                'Dropbox-API-Arg': json.dumps(upload_args),
+            },
+            data=stream.read(self.CHUNK_SIZE),
+            expects=(200, ),
+            throws=core_exceptions.UploadError,
+        )
+        await resp.release()
+
+    async def _complete_session(self,
+                                stream: streams.BaseStream,
                                 session_id: str,
-                                path_arg: dict) -> dict:
+                                path: WaterButlerPath) -> dict:
 
         upload_args = {
             'cursor': {
                 'session_id': session_id,
-                'offset': stream.size
+                'offset': stream.size,
             },
-            'commit': path_arg
+            'commit': {
+                "path": path.full_path,
+            },
         }
 
         resp = await self.make_request(
@@ -360,6 +383,7 @@ class DropboxProvider(provider.BaseProvider):
             expects=(200, ),
             throws=core_exceptions.UploadError,
         )
+
         return await resp.json()
 
     async def delete(self, path: WaterButlerPath, confirm_delete: int=0,  # type: ignore
