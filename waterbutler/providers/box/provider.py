@@ -534,14 +534,22 @@ class BoxProvider(provider.BaseProvider):
             parts = await self._upload_chunks(data, session_data)
 
             # Step A.4 complete the session and return the upload file's metadata.
-            while True:
+            retry = 10
+            while retry > 0:
+                --retry
                 try:
                     return await self._complete_chunked_upload_session(session_data, parts, data_sha)
                 except RetryChunkedUploadCommit:
                     continue
 
-        except exceptions.UploadError:
-            return await self._abort_chunked_upload(session_data, data_sha)
+        except Exception as err:
+            msg = 'An unexpected error has occurred during the multi-part upload.'
+            logger.error('{} upload_id={} error={!r}'.format(msg, session_data, err))
+            aborted = await self._abort_chunked_upload(session_data, data_sha)
+            if aborted:
+                msg += '  The abort action failed to clean up the temporary file parts generated ' \
+                    'during the upload process.  Please manually remove them.'
+            raise exceptions.UploadError(msg)
 
     async def _create_chunked_upload_session(self, path: WaterButlerPath, data: bytes) -> dict:
         """Create an upload session to use with a chunked upload.
@@ -636,9 +644,7 @@ class BoxProvider(provider.BaseProvider):
                 'Content-Type:': 'application/json',
                 'Digest': 'sha={}'.format(data_sha)
             },
-            expects=(201,),
+            expects=(204,),
             throws=exceptions.UploadError,
-        ) as resp:
-            entry = (await resp.json())['entries'][0]
-
-        return entry
+        ):
+            return True
