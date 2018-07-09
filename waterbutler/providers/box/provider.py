@@ -28,7 +28,7 @@ class BoxProvider(provider.BaseProvider):
 
     NAME = 'box'
     BASE_URL = pd_settings.BASE_URL
-    NONCHUNKED_UPLOAD_LIMIT = 50000000  # 50 MB
+    NONCHUNKED_UPLOAD_LIMIT = pd_settings.NONCHUNKED_UPLOAD_LIMIT  # 50MB Default
 
     def __init__(self, auth, credentials, settings):
         """Initialize a `BoxProvider` instance
