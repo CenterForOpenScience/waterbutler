@@ -227,10 +227,11 @@ class S3Provider(provider.BaseProvider):
             expects=(200, 201, ),
             throws=exceptions.UploadError,
         )
+        await resp.release()
+
         # md5 is returned as ETag header as long as server side encryption is not used.
         if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
             raise exceptions.UploadChecksumMismatchError()
-        await resp.release()
 
     async def _chunked_upload(self, stream, path):
         """Uploads the given stream to S3 over multiple chunks
