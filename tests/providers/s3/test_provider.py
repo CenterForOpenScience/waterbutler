@@ -540,6 +540,36 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_chunked_upload_upload_parts_remainder(self, provider,
+                                                         upload_parts_headers_list):
+
+        file_stream = streams.StringStream('abcdefghijklmnopqrst')
+        assert file_stream.size == 20
+        provider.CHUNK_SIZE = 9
+
+        side_effect = json.loads(upload_parts_headers_list).get('headers_list')
+        assert len(side_effect) == 3
+
+        provider._upload_part = MockCoroutine(side_effect=side_effect)
+        path = WaterButlerPath('/foobah')
+        upload_id = 'EXAMPLEJZ6e0YupT2h66iePQCc9IEbYbDUy4RTpMeoSMLPRp8Z5o1u' \
+                    '8feSRonpvnWsKKG35tI2LB9VDPiCgTy.Gq2VxQLYjrue4Nq.NBdqI-'
+
+        parts_metadata = await provider._upload_parts(file_stream, path, upload_id)
+
+        assert provider._upload_part.call_count == 3
+        provider._upload_part.assert_has_calls([
+            mock.call(file_stream, path, upload_id, 1, 9),
+            mock.call(file_stream, path, upload_id, 2, 9),
+            mock.call(file_stream, path, upload_id, 3, 2),
+        ])
+        assert len(parts_metadata) == 3
+        assert parts_metadata == side_effect
+
+        provider.CHUNK_SIZE = pd_settings.CHUNK_SIZE
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_chunked_upload_upload_part(self, provider, file_stream,
                                               upload_parts_headers_list,
                                               mock_time):
@@ -551,7 +581,7 @@ class TestCRUD:
         upload_id = 'EXAMPLEJZ6e0YupT2h66iePQCc9IEbYbDUy4RTpMeoSMLPRp8Z5o1u' \
                     '8feSRonpvnWsKKG35tI2LB9VDPiCgTy.Gq2VxQLYjrue4Nq.NBdqI-'
         params = {
-            'partNumber': str(chunk_number + 1),
+            'partNumber': str(chunk_number),
             'uploadId': upload_id,
         }
         headers = {'Content-Length': str(provider.CHUNK_SIZE)}
@@ -566,7 +596,8 @@ class TestCRUD:
         part_headers = {k.upper(): v for k, v in part_headers.items()}
         aiohttpretty.register_uri('PUT', upload_part_url, status=200, headers=part_headers)
 
-        part_metadata = await provider._upload_part(file_stream, path, upload_id, chunk_number)
+        part_metadata = await provider._upload_part(file_stream, path, upload_id, chunk_number,
+                                                    provider.CHUNK_SIZE)
 
         assert aiohttpretty.has_call(method='PUT', uri=upload_part_url)
         assert part_headers == part_metadata

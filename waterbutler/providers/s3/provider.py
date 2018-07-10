@@ -294,18 +294,27 @@ class S3Provider(provider.BaseProvider):
         """
 
         metadata = []
-        for i, _ in enumerate(range(0, stream.size, self.CHUNK_SIZE)):
-            metadata.append(await self._upload_part(stream, path, session_upload_id, i))
+        parts = [self.CHUNK_SIZE for i in range(0, stream.size // self.CHUNK_SIZE)]
+        if stream.size % self.CHUNK_SIZE:
+            parts.append(stream.size - (len(parts) * self.CHUNK_SIZE))
+        logger.debug('Multipart upload segment sizes: {}'.format(parts))
+        for chunk_number, chunk_size in enumerate(parts):
+            logger.debug('  uploading part {} with size {}'.format(chunk_number + 1, chunk_size))
+            metadata.append(await self._upload_part(stream, path, session_upload_id,
+                                                    chunk_number + 1, chunk_size))
         return metadata
 
-    async def _upload_part(self, stream, path, session_upload_id, chunk_number):
+    async def _upload_part(self, stream, path, session_upload_id, chunk_number, chunk_size):
         """Uploads a single part/chunk of the given stream to S3.
+
+        :param int chunk_number: sequence number of chunk. 1-indexed.
         """
 
-        chunk = await stream.read(self.CHUNK_SIZE)
-        headers = {'Content-Length': str(len(chunk))}
+        cutoff_stream = streams.CutoffStream(stream, cutoff=chunk_size)
+
+        headers = {'Content-Length': str(chunk_size)}
         params = {
-            'partNumber': str(chunk_number + 1),
+            'partNumber': str(chunk_number),
             'uploadId': session_upload_id,
         }
         upload_url = functools.partial(
@@ -318,7 +327,7 @@ class S3Provider(provider.BaseProvider):
         resp = await self.make_request(
             'PUT',
             upload_url,
-            data=chunk,
+            data=cutoff_stream,
             skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
             params=params,
