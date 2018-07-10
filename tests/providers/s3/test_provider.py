@@ -481,13 +481,13 @@ class TestCRUD:
 
         aiohttpretty.register_uri('POST', init_url, body=create_session_resp, status=200)
 
-        session_metadata = await provider._create_upload_session(path)
+        session_id = await provider._create_upload_session(path)
         expected_session_id = 'EXAMPLEJZ6e0YupT2h66iePQCc9IEbYbDUy4RTpMeoSMLPRp8Z5o1u' \
                               '8feSRonpvnWsKKG35tI2LB9VDPiCgTy.Gq2VxQLYjrue4Nq.NBdqI-'
 
         assert aiohttpretty.has_call(method='POST', uri=init_url)
-        assert session_metadata is not None
-        assert session_metadata['InitiateMultipartUploadResult']['UploadId'] == expected_session_id
+        assert session_id is not None
+        assert session_id == expected_session_id
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -505,13 +505,13 @@ class TestCRUD:
 
         aiohttpretty.register_uri('POST', init_url, body=create_session_resp, status=200)
 
-        session_metadata = await provider._create_upload_session(path)
+        session_id = await provider._create_upload_session(path)
         expected_session_id = 'EXAMPLEJZ6e0YupT2h66iePQCc9IEbYbDUy4RTpMeoSMLPRp8Z5o1u' \
                               '8feSRonpvnWsKKG35tI2LB9VDPiCgTy.Gq2VxQLYjrue4Nq.NBdqI-'
 
         assert aiohttpretty.has_call(method='POST', uri=init_url)
-        assert session_metadata is not None
-        assert session_metadata['InitiateMultipartUploadResult']['UploadId'] == expected_session_id
+        assert session_id is not None
+        assert session_id == expected_session_id
 
         provider.encrypt_uploads = False
 

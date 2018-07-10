@@ -237,9 +237,7 @@ class S3Provider(provider.BaseProvider):
         """
 
         # Step 1. Create a multi-part upload session
-        session_data = await self._create_upload_session(path)
-        # Session upload id is the only info we need
-        session_upload_id = session_data['InitiateMultipartUploadResult']['UploadId']
+        session_upload_id = await self._create_upload_session(path)
 
         try:
             # Step 2. Break stream into chunks and upload them one by one
@@ -286,7 +284,9 @@ class S3Provider(provider.BaseProvider):
             throws=exceptions.UploadError,
         )
         upload_session_metadata = await resp.read()
-        return xmltodict.parse(upload_session_metadata, strip_whitespace=False)
+        session_data = xmltodict.parse(upload_session_metadata, strip_whitespace=False)
+        # Session upload id is the only info we need
+        return session_data['InitiateMultipartUploadResult']['UploadId']
 
     async def _upload_parts(self, stream, path, session_upload_id):
         """Uploads all parts/chunks of the given stream to S3 one by one.
