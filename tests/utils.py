@@ -1,19 +1,17 @@
-import asyncio
 import os
 import sys
 import copy
 import shutil
+import asyncio
 import tempfile
 from unittest import mock
 
 import pytest
-import tornado
-from tornado import testing
+from tornado import concurrent, testing
 from tornado.platform.asyncio import AsyncIOMainLoop
 
-from waterbutler.core import metadata
-from waterbutler.core import provider
 from waterbutler.server.app import make_app
+from waterbutler.core import metadata, provider
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.streams.file import FileStreamReader
 
@@ -77,7 +75,7 @@ class MockStream(FileStreamReader):
         super().__init__(tempfile.TemporaryFile())
 
 
-class MockRequestBody(tornado.concurrent.Future):
+class MockRequestBody(concurrent.Future):
 
     def __await__(self):
         yield None
