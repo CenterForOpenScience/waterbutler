@@ -2,6 +2,7 @@ import os
 import hashlib
 import functools
 from urllib import parse
+import logging
 
 import xmltodict
 
@@ -24,11 +25,14 @@ from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.s3 import settings
+from waterbutler.providers.s3.streams import S3ResponseBodyStream
 from waterbutler.providers.s3.metadata import S3Revision
 from waterbutler.providers.s3.metadata import S3FileMetadata
 from waterbutler.providers.s3.metadata import S3FolderMetadata
 from waterbutler.providers.s3.metadata import S3FolderKeyMetadata
 from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
+
+logger = logging.getLogger(__name__)
 
 
 class S3Provider(provider.BaseProvider):
@@ -63,14 +67,15 @@ class S3Provider(provider.BaseProvider):
 
         self.s3 = boto3.resource(
             's3',
-            endpoint_url='http://{}:{}'.format(
+            endpoint_url='http{}://{}:{}'.format(
+                's' if credentials['encrypted'] else '',
                 credentials['host'],
                 credentials['port']
             ),
             aws_access_key_id=credentials['access_key'],
             aws_secret_access_key=credentials['secret_key'],
-            config=Config(signature_version='s3v4'),
-            region_name='us-east-1'
+            #config=Config(signature_version='s3v4'),
+            #region_name='us-east-1'
         )
 
         self.connection = S3Connection(
@@ -88,6 +93,7 @@ class S3Provider(provider.BaseProvider):
         self.region = None
 
     async def validate_v1_path(self, path, **kwargs):
+        logger.info("Validate")
         await self._check_region()
 
         if path == '/':
@@ -96,26 +102,9 @@ class S3Provider(provider.BaseProvider):
         implicit_folder = path.endswith('/')
 
         if implicit_folder:
-            params = {'prefix': path, 'delimiter': '/'}
-            resp = await self.make_request(
-                'GET',
-                functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
-                params=params,
-                expects=(200, 404),
-                throws=exceptions.MetadataError,
-            )
+            self._metadata_folder(path)
         else:
-            resp = await self.make_request(
-                'HEAD',
-                functools.partial(self.bucket.new_key(path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
-                expects=(200, 404),
-                throws=exceptions.MetadataError,
-            )
-
-        await resp.release()
-
-        if resp.status == 404:
-            raise exceptions.NotFoundError(str(path))
+            self._metadata_file(path)
 
         return WaterButlerPath(path)
 
@@ -168,40 +157,34 @@ class S3Provider(provider.BaseProvider):
         :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
+        logger.info("Download")
         await self._check_region()
+
+        get_kwargs = {}
 
         if not path.is_file:
             raise exceptions.DownloadError('No file specified for download', code=400)
 
-        if not revision or revision.lower() == 'latest':
-            query_parameters = None
-        else:
-            query_parameters = {'versionId': revision}
+        if range:
+            get_kwargs['Range'] = 'bytes={}-{}'.format('', '')
 
         if kwargs.get('displayName'):
-            response_headers = {'response-content-disposition': 'attachment; filename*=UTF-8\'\'{}'.format(parse.quote(kwargs['displayName']))}
+            get_kwargs['ResponseContentDisposition'] = 'attachment; filename*=UTF-8\'\'{}'.format(parse.quote(kwargs['displayName']))
         else:
-            response_headers = {'response-content-disposition': 'attachment'}
+            get_kwargs['ResponseContentDisposition'] = 'attachment'
 
-        url = functools.partial(
-            self.bucket.new_key(path.path).generate_url,
-            settings.TEMP_URL_SECS,
-            query_parameters=query_parameters,
-            response_headers=response_headers
-        )
+        if revision:
+            get_kwargs['VersionId'] = revision
 
-        if accept_url:
-            return url()
+        try:
+            res = self.s3.Object(
+                self.bucket_name,
+                path.path
+            ).get(**get_kwargs)
+        except:
+            raise exceptions.DownloadError()
 
-        resp = await self.make_request(
-            'GET',
-            url,
-            range=range,
-            expects=(200, 206),
-            throws=exceptions.DownloadError,
-        )
-
-        return streams.ResponseStreamReader(resp)
+        return S3ResponseBodyStream(res)
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
         """Uploads the given stream to S3
@@ -211,6 +194,7 @@ class S3Provider(provider.BaseProvider):
 
         :rtype: dict, bool
         """
+        logger.info("Upload")
         await self._check_region()
 
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
@@ -251,6 +235,7 @@ class S3Provider(provider.BaseProvider):
         :param str path: The path of the key to delete
         :param int confirm_delete: Must be 1 to confirm root folder delete
         """
+        logger.info("Delete")
         await self._check_region()
 
         if path.is_root:
@@ -288,6 +273,7 @@ class S3Provider(provider.BaseProvider):
         To fully delete an occupied folder, we must delete all of the comprising
         objects.  Amazon provides a bulk delete operation to simplify this.
         """
+        logger.info('delete_folder')
         await self._check_region()
 
         more_to_come = True
@@ -373,6 +359,7 @@ class S3Provider(provider.BaseProvider):
         await self._check_region()
         query_params = {'prefix': path.path, 'delimiter': '/', 'versions': ''}
         url = functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
+        logger.info("revisions")
         try:
             resp = await self.make_request(
                 'GET',
@@ -401,12 +388,13 @@ class S3Provider(provider.BaseProvider):
         :param WaterButlerPath path: The path to a key or folder
         :rtype: dict or list
         """
+        logger.info("metadata")
         await self._check_region()
 
         if path.is_dir:
-            return (await self._metadata_folder(path))
+            return (await self._metadata_folder(path.path))
 
-        return (await self._metadata_file(path, revision=revision))
+        return (await self._metadata_file(path.path, revision=revision))
 
     async def create_folder(self, path, folder_precheck=True, **kwargs):
         """
@@ -432,6 +420,7 @@ class S3Provider(provider.BaseProvider):
 
     async def _metadata_file(self, path, revision=None):
         await self._check_region()
+        logger.info("metadata_file")
 
         if (
             revision == 'Latest' or
@@ -440,44 +429,47 @@ class S3Provider(provider.BaseProvider):
         ):
             obj = self.s3.Object(
                 self.bucket.name,
-                path.path
+                path
             )
         else:
             obj = self.s3.ObjectVersion(
                 self.bucket.name,
-                path.path,
+                path,
                 revision
             )
         try:
             obj.load()
         except ClientError as err:
             if err.response['Error']['Code'] == '404':
-                raise exceptions.NotFoundError(str(path))
+                raise exceptions.NotFoundError(path)
             else:
                 raise err
 
-        return S3FileMetadataHeaders(path.path, obj)
+        return S3FileMetadataHeaders(path, obj)
 
     async def _metadata_folder(self, path):
         """Get metadata about the contents of a bucket. This is either the
         contents at the root of the bucket, or a folder has
         been selected as a prefix by the user
         """
+        logger.info("metadata_folder")
         bucket = self.s3.Bucket(self.bucket_name)
         result = bucket.meta.client.list_objects(
             Bucket=bucket.name,
-            Prefix=path.path,
+            Prefix=path,
             Delimiter='/'
         )
         prefixes = result.get('CommonPrefixes', [])
         contents = result.get('Contents', [])
 
-        if not contents and not prefixes and not path.is_root:
+        if not contents and not prefixes and not path == "":
+            import pdb
+            pdb.set_trace()
             # If contents and prefixes are empty then this "folder"
             # must exist as a key with a / at the end of the name
             # if the path is root there is no need to test if it exists
 
-            obj = self.s3.Object(self.bucket_name, path.path)
+            obj = self.s3.Object(self.bucket_name, path)
             obj.load()
 
         if isinstance(contents, dict):
@@ -489,7 +481,7 @@ class S3Provider(provider.BaseProvider):
         items = [S3FolderMetadata(item) for item in prefixes]
 
         for content in contents:
-            if content['Key'] == path.path:
+            if content['Key'] == path:
                 continue
 
             if content['Key'].endswith('/'):
@@ -510,6 +502,7 @@ class S3Provider(provider.BaseProvider):
 
         Region Naming: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
         """
+        logger.info("check_region")
         if self.region is "Chewbacca":
             self.region = await self._get_bucket_region()
             if self.region == 'EU':
