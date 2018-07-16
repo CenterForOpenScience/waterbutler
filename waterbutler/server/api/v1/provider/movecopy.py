@@ -98,10 +98,17 @@ class MoveCopyMixin:
         self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
 
         if auth_action == 'rename':  # 'rename' implies the file/folder does not change location
+
+            if not self.json.get('rename'):
+                raise exceptions.InvalidParameters('Rename is required for renaming')
+            self.provider.validate_rename(self.json.get('rename'), self.path.is_dir)
+
             self.dest_auth = self.auth
             self.dest_provider = self.provider
             self.dest_path = self.path.parent
             self.dest_resource = self.resource
+
+            provider_action = 'move'
         else:
             path = self.json.get('path', None)
             if path is None:

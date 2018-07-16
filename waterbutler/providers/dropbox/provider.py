@@ -52,6 +52,7 @@ class DropboxProvider(provider.BaseProvider):
     Quirks: Dropbox paths are case-insensitive.
     """
     NAME = 'dropbox'
+    FORBIDDEN_FILENAME_CHARS = ['/']
     BASE_URL = provider_settings.BASE_URL
 
     def __init__(self, auth, credentials, settings):

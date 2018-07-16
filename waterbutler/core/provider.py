@@ -83,6 +83,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
     """
 
     BASE_URL = None
+    FORBIDDEN_FILENAME_CHARS = []
+    FORBIDDEN_FOLDERNAME_CHARS = ['/']
 
     def __init__(self, auth: dict,
                  credentials: dict,
@@ -410,6 +412,24 @@ class BaseProvider(metaclass=abc.ABCMeta):
         dest_path, _ = await self.handle_name_conflict(dest_path, conflict=conflict)
 
         return dest_path
+
+    def validate_rename(self, name, folder):
+        """Some providers don't allow files or folders to be renamed with slashes or special
+        characters this function weeds out those illegal names before we make the request
+        """
+        if not name:
+            raise exceptions.InvalidParameters('Rename parameter is required for renaming')
+
+        elif folder and any((char in self.FORBIDDEN_FOLDERNAME_CHARS) for char in name):
+            bad_chars = ', '.join([char for char in self.FORBIDDEN_FOLDERNAME_CHARS if char in name])
+            raise exceptions.InvalidParameters("New folder name contains forbidden character(s) {}".format(bad_chars))
+
+        elif not folder and any((char in self.FORBIDDEN_FILENAME_CHARS) for char in name):
+            bad_chars = ', '.join([char for char in self.FORBIDDEN_FILENAME_CHARS if char in name])
+            raise exceptions.InvalidParameters("New file name contains forbidden character(s) {}".format(bad_chars))
+
+        else:
+            return name
 
     def can_intra_copy(self,
                        other: 'BaseProvider',
