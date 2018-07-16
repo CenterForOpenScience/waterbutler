@@ -55,8 +55,8 @@ class DropboxProvider(provider.BaseProvider):
     """
     NAME = 'dropbox'
     BASE_URL = pd_settings.BASE_URL
-    NONCHUNKED_UPLOAD_LIMIT = 150000000  # 150 MB
-    CHUNK_SIZE = 4000000  # 4 MB
+    CONTIGUOUS_UPLOAD_SIZE_LIMIT = pd_settings.CONTIGUOUS_UPLOAD_SIZE_LIMIT
+    CHUNK_SIZE = pd_settings.CHUNK_SIZE
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -259,7 +259,7 @@ class DropboxProvider(provider.BaseProvider):
         if conflict == 'replace':
             path_arg['mode'] = 'overwrite'
 
-        if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
+        if stream.size > self.CONTIGUOUS_UPLOAD_SIZE_LIMIT:
             data = await self._chunked_upload(stream, path)
         else:
             data = await self._contiguous_upload(stream, path)
