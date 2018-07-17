@@ -1,4 +1,5 @@
 import os
+import itertools
 import hashlib
 import functools
 from urllib import parse
@@ -74,8 +75,8 @@ class S3Provider(provider.BaseProvider):
             ),
             aws_access_key_id=credentials['access_key'],
             aws_secret_access_key=credentials['secret_key'],
-            #config=Config(signature_version='s3v4'),
-            #region_name='us-east-1'
+            # config=Config(signature_version='s3v4'),
+            # region_name='us-east-1'
         )
 
         self.connection = S3Connection(
@@ -94,19 +95,20 @@ class S3Provider(provider.BaseProvider):
 
     async def validate_v1_path(self, path, **kwargs):
         logger.info("Validate")
-        await self._check_region()
+
+        wb_path = WaterButlerPath(path)
 
         if path == '/':
-            return WaterButlerPath(path)
+            return wb_path
 
         implicit_folder = path.endswith('/')
 
         if implicit_folder:
-            self._metadata_folder(path)
+            await self._metadata_folder(wb_path.path)
         else:
-            self._metadata_file(path)
+            await self._metadata_file(wb_path.path)
 
-        return WaterButlerPath(path)
+        return wb_path
 
     async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
@@ -124,7 +126,6 @@ class S3Provider(provider.BaseProvider):
         """Copy key from one S3 bucket to another. The credentials specified in
         `dest_provider` must have read access to `source.bucket`.
         """
-        await self._check_region()
         exists = await dest_provider.exists(dest_path)
 
         dest_key = dest_provider.bucket.new_key(dest_path.path)
@@ -158,7 +159,6 @@ class S3Provider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
         logger.info("Download")
-        await self._check_region()
 
         get_kwargs = {}
 
@@ -195,7 +195,6 @@ class S3Provider(provider.BaseProvider):
         :rtype: dict, bool
         """
         logger.info("Upload")
-        await self._check_region()
 
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
@@ -207,26 +206,41 @@ class S3Provider(provider.BaseProvider):
         if self.encrypt_uploads:
             headers['x-amz-server-side-encryption'] = 'AES256'
 
-        upload_url = functools.partial(
-            self.bucket.new_key(path.path).generate_url,
-            settings.TEMP_URL_SECS,
-            'PUT',
-            headers=headers,
+        resp = self.s3.Object(
+            self.bucket_name,
+            path.path
+        ).put(
+            Body=(await stream.read())  # NBeeds to calculate hash inside boto - some issue with not implementing buffer api.
         )
+
+        """
+        bucket = self.s3.Bucket(self.bucket_name)
+        sign_url = lambda: bucket.meta.client.generate_presigned_url(
+            ClientMethod='put_object',
+            Params={
+                'Bucket': self.bucket_name,
+                'Key': path.path,
+                'ContentLength': str(stream.size)
+            },
+            ExpiresIn=settings.TEMP_URL_SECS,
+            HttpMethod='PUT',
+        )
+
         resp = await self.make_request(
             'PUT',
-            upload_url,
+            sign_url,
             data=stream,
             skip_auto_headers={'CONTENT-TYPE'},
             headers=headers,
             expects=(200, 201, ),
             throws=exceptions.UploadError,
         )
+        """
+
         # md5 is returned as ETag header as long as server side encryption is not used.
-        if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
+        if stream.writers['md5'].hexdigest != resp['ETag'].replace('"', ''):
             raise exceptions.UploadChecksumMismatchError()
 
-        await resp.release()
         return (await self.metadata(path, **kwargs)), not exists
 
     async def delete(self, path, confirm_delete=0, **kwargs):
@@ -235,9 +249,6 @@ class S3Provider(provider.BaseProvider):
         :param str path: The path of the key to delete
         :param int confirm_delete: Must be 1 to confirm root folder delete
         """
-        logger.info("Delete")
-        await self._check_region()
-
         if path.is_root:
             if not confirm_delete == 1:
                 raise exceptions.DeleteError(
@@ -246,23 +257,40 @@ class S3Provider(provider.BaseProvider):
                 )
 
         if path.is_file:
-            resp = await self.make_request(
-                'DELETE',
-                self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
-                expects=(200, 204, ),
-                throws=exceptions.DeleteError,
-            )
-            await resp.release()
+            await self._delete_file(path, **kwargs)
         else:
             await self._delete_folder(path, **kwargs)
+
+    async def _delete_file(self, path, **kwargs):
+        """Deletes a single object located at a certain key.
+
+        Called from: func: delete if path.is_file
+
+        """
+        bucket = self.s3.Bucket(self.bucket_name)
+        sign_url = lambda: bucket.meta.client.generate_presigned_url(
+            'delete_object',
+            Params={
+                'Bucket': self.bucket_name,
+                'Key': path.path
+            },
+            ExpiresIn=settings.TEMP_URL_SECS,
+            HttpMethod='DELETE',
+        )
+        resp = await self.make_request(
+            'DELETE',
+            sign_url,
+            expects={200, 204},
+            throws=exceptions.DeleteError,
+        )
+        await resp.release()
 
     async def _delete_folder(self, path, **kwargs):
         """Query for recursive contents of folder and delete in batches of 1000
 
         Called from: func: delete if not path.is_file
 
-        Calls: func: self._check_region
-               func: self.make_request
+        Calls: func: self.make_request
                func: self.bucket.generate_url
 
         :param *ProviderPath path: Path to be deleted
@@ -273,82 +301,16 @@ class S3Provider(provider.BaseProvider):
         To fully delete an occupied folder, we must delete all of the comprising
         objects.  Amazon provides a bulk delete operation to simplify this.
         """
-        logger.info('delete_folder')
-        await self._check_region()
-
-        more_to_come = True
-        content_keys = []
-        query_params = {'prefix': path.path}
-        marker = None
-
-        while more_to_come:
-            if marker is not None:
-                query_params['marker'] = marker
-
-            resp = await self.make_request(
-                'GET',
-                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=query_params),
-                params=query_params,
-                expects=(200, ),
-                throws=exceptions.MetadataError,
+        for page in self.s3.meta.client.get_paginator('list_objects').paginate(
+            Bucket=self.bucket_name,
+            Prefix=path.path
+        ):
+            self.s3.meta.client.delete_objects(
+                Bucket=self.bucket_name,
+                Delete={
+                    'Objects': [{'Key': item['Key']} for item in page['Contents']]
+                }
             )
-
-            contents = await resp.read()
-            parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
-            more_to_come = parsed.get('IsTruncated') == 'true'
-            contents = parsed.get('Contents', [])
-
-            if isinstance(contents, dict):
-                contents = [contents]
-
-            content_keys.extend([content['Key'] for content in contents])
-            if len(content_keys) > 0:
-                marker = content_keys[-1]
-
-        # Query against non-existant folder does not return 404
-        if len(content_keys) == 0:
-            raise exceptions.NotFoundError(str(path))
-
-        while len(content_keys) > 0:
-            key_batch = content_keys[:1000]
-            del content_keys[:1000]
-
-            payload = '<?xml version="1.0" encoding="UTF-8"?>'
-            payload += '<Delete>'
-            payload += ''.join(map(
-                lambda x: '<Object><Key>{}</Key></Object>'.format(xml.sax.saxutils.escape(x)),
-                key_batch
-            ))
-            payload += '</Delete>'
-            payload = payload.encode('utf-8')
-            md5 = compute_md5(BytesIO(payload))
-
-            query_params = {'delete': ''}
-            headers = {
-                'Content-Length': str(len(payload)),
-                'Content-MD5': md5[1],
-                'Content-Type': 'text/xml',
-            }
-
-            # We depend on a customized version of boto that can make query parameters part of
-            # the signature.
-            url = functools.partial(
-                self.bucket.generate_url,
-                settings.TEMP_URL_SECS,
-                'POST',
-                query_parameters=query_params,
-                headers=headers,
-            )
-            resp = await self.make_request(
-                'POST',
-                url,
-                params=query_params,
-                data=payload,
-                headers=headers,
-                expects=(200, 204, ),
-                throws=exceptions.DeleteError,
-            )
-            await resp.release()
 
     async def revisions(self, path, **kwargs):
         """Get past versions of the requested key
@@ -356,7 +318,6 @@ class S3Provider(provider.BaseProvider):
         :param str path: The path to a key
         :rtype list:
         """
-        await self._check_region()
         query_params = {'prefix': path.path, 'delimiter': '/', 'versions': ''}
         url = functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
         logger.info("revisions")
@@ -389,10 +350,10 @@ class S3Provider(provider.BaseProvider):
         :rtype: dict or list
         """
         logger.info("metadata")
-        await self._check_region()
 
         if path.is_dir:
-            return (await self._metadata_folder(path.path))
+            return  (await self._metadata_folder(path.path))
+            #    #  store a hash of these args and the result in redis?
 
         return (await self._metadata_file(path.path, revision=revision))
 
@@ -400,26 +361,27 @@ class S3Provider(provider.BaseProvider):
         """
         :param str path: The path to create a folder at
         """
-        await self._check_region()
-
+        logger.info("Create_folder")
         WaterButlerPath.validate_folder(path)
 
         if folder_precheck:
+            # We should have already validated the path at this point - we
+            # should store the value so when we're here we dont make an extra
+            # request.
+            # If the folder exists, why do we need to throw? the user has asked
+            # us to make sure a folder with a certain name exists in the
+            # provider, if it already exsists, can we return Not Modified?
             if (await self.exists(path)):
                 raise exceptions.FolderNamingConflict(path.name)
 
-        url = functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT')
-        async with self.request(
-            'PUT',
-            url,
-            skip_auto_headers={'CONTENT-TYPE'},
-            expects=(200, 201),
-            throws=exceptions.CreateFolderError
-        ):
-            return S3FolderMetadata({'Prefix': path.path})
+        self.s3.Object(
+            self.bucket_name,
+            path.path
+        ).put()
+        # throws=exceptions.CreateFolderError
+        return S3FolderMetadata({'Prefix': path.path})
 
     async def _metadata_file(self, path, revision=None):
-        await self._check_region()
         logger.info("metadata_file")
 
         if (
@@ -454,24 +416,29 @@ class S3Provider(provider.BaseProvider):
         """
         logger.info("metadata_folder")
         bucket = self.s3.Bucket(self.bucket_name)
-        result = bucket.meta.client.list_objects(
-            Bucket=bucket.name,
-            Prefix=path,
-            Delimiter='/'
-        )
+        logger.info("LIST_OBJECTS")
+        result = bucket.meta.client.list_objects(Bucket=bucket.name, Prefix=path, Delimiter='/')
         prefixes = result.get('CommonPrefixes', [])
         contents = result.get('Contents', [])
-
+        logger.info(bucket)
+        logger.info(result)
+        logger.info(prefixes)
+        logger.info(contents)
         if not contents and not prefixes and not path == "":
-            import pdb
-            pdb.set_trace()
             # If contents and prefixes are empty then this "folder"
             # must exist as a key with a / at the end of the name
             # if the path is root there is no need to test if it exists
 
             obj = self.s3.Object(self.bucket_name, path)
-            obj.load()
-
+            try:
+                logger.info("Trying to load object")
+                logger.info(path)
+                obj.load()
+            except ClientError as err:
+                if err.response['Error']['Code'] == '404':
+                    raise exceptions.NotFoundError(path)
+                else:
+                    raise err
         if isinstance(contents, dict):
             contents = [contents]
 
@@ -490,44 +457,3 @@ class S3Provider(provider.BaseProvider):
                 items.append(S3FileMetadata(content))
 
         return items
-
-    async def _check_region(self):
-        """Lookup the region via bucket name, then update the host to match.
-
-        Manually constructing the connection hostname allows us to use OrdinaryCallingFormat
-        instead of SubdomainCallingFormat, which can break on buckets with periods in their name.
-        The default region, US East (N. Virginia), is represented by the empty string and does not
-        require changing the host.  Ireland is represented by the string 'EU', with the host
-        parameter 'eu-west-1'.  All other regions return the host parameter as the region name.
-
-        Region Naming: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
-        """
-        logger.info("check_region")
-        if self.region is "Chewbacca":
-            self.region = await self._get_bucket_region()
-            if self.region == 'EU':
-                self.region = 'eu-west-1'
-
-            if self.region != '':
-                self.connection.host = self.connection.host.replace('s3.', 's3-' + self.region + '.', 1)
-                self.connection._auth_handler = get_auth_handler(
-                    self.connection.host, boto_config, self.connection.provider, self.connection._required_auth_capability())
-
-        self.metrics.add('region', self.region)
-
-    async def _get_bucket_region(self):
-        """Bucket names are unique across all regions.
-
-       Endpoint doc:
-       http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGETlocation.html
-        """
-        resp = await self.make_request(
-            'GET',
-            functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters={'location': ''}),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
-
-        contents = await resp.read()
-        parsed = xmltodict.parse(contents, strip_whitespace=False)
-        return parsed['LocationConstraint'].get('#text', '')

@@ -20,5 +20,10 @@ class S3ResponseBodyStream(BaseStream):
     def size(self):
         return self._size
 
-    async def _read(self, n=-1):
-        return self.streaming_body.read(amt=n)
+    async def _read(self, n=None):
+        n = self._size if n is None else n
+
+        chunk = self.streaming_body.read(amt=n)
+        if not chunk:
+            self.feed_eof()
+        return chunk

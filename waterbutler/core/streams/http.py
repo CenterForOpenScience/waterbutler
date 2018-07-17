@@ -179,6 +179,7 @@ class RequestStreamReader(BaseStream):
         super().__init__()
         self.inner = inner
         self.request = request
+        self.offset = 0
 
     @property
     def size(self):
@@ -187,12 +188,16 @@ class RequestStreamReader(BaseStream):
     def at_eof(self):
         return self.inner.at_eof()
 
+    def tell(self):
+        return self.offset
+
     async def _read(self, size):
         if self.inner.at_eof():
             return b''
         if size < 0:
             return (await self.inner.read(size))
         try:
+            self.offset += size
             return (await self.inner.readexactly(size))
         except asyncio.IncompleteReadError as e:
             return e.partial
