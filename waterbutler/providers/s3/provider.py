@@ -213,30 +213,6 @@ class S3Provider(provider.BaseProvider):
             Body=(await stream.read())  # NBeeds to calculate hash inside boto - some issue with not implementing buffer api.
         )
 
-        """
-        bucket = self.s3.Bucket(self.bucket_name)
-        sign_url = lambda: bucket.meta.client.generate_presigned_url(
-            ClientMethod='put_object',
-            Params={
-                'Bucket': self.bucket_name,
-                'Key': path.path,
-                'ContentLength': str(stream.size)
-            },
-            ExpiresIn=settings.TEMP_URL_SECS,
-            HttpMethod='PUT',
-        )
-
-        resp = await self.make_request(
-            'PUT',
-            sign_url,
-            data=stream,
-            skip_auto_headers={'CONTENT-TYPE'},
-            headers=headers,
-            expects=(200, 201, ),
-            throws=exceptions.UploadError,
-        )
-        """
-
         # md5 is returned as ETag header as long as server side encryption is not used.
         if stream.writers['md5'].hexdigest != resp['ETag'].replace('"', ''):
             raise exceptions.UploadChecksumMismatchError()
