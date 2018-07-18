@@ -7,28 +7,13 @@ import tempfile
 from unittest import mock
 
 import pytest
-import aiohttp
-from tornado import testing
-from tornado.concurrent import Future
+from tornado import concurrent, testing
 from tornado.platform.asyncio import AsyncIOMainLoop
 
 from waterbutler.server.app import make_app
 from waterbutler.core import metadata, provider
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.streams.file import FileStreamReader
-
-
-class MockStream(aiohttp.streams.StreamReader):
-    def __init__(self, data):
-        super().__init__()
-        if isinstance(data, str):
-            data = data.encode('UTF-8')
-        elif not isinstance(data, bytes):
-            raise TypeError('Data must be either str or bytes, found {!r}'.format(type(data)))
-
-        self.size = len(data)
-        self.feed_data(data)
-        self.feed_eof()
 
 
 class MockCoroutine(mock.Mock):
@@ -90,7 +75,7 @@ class MockStream(FileStreamReader):
         super().__init__(tempfile.TemporaryFile())
 
 
-class MockRequestBody(Future):
+class MockRequestBody(concurrent.Future):
 
     def __await__(self):
         yield None

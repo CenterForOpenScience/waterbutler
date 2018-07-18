@@ -50,13 +50,13 @@
       },
       "property_groups":[
         {
-          "template_id":"ptid:1a5n2i6d3OYEAAAAAAAAAYa",
-          "fields":[
-            {
-              "name":"Security Policy",
-              "value":"Confidential"
-            }
-          ]
+           "template_id":"ptid:1a5n2i6d3OYEAAAAAAAAAYa",
+           "fields":[
+              {
+                 "name":"Security Policy",
+                 "value":"Confidential"
+              }
+           ]
         }
       ]
     }
@@ -126,34 +126,6 @@
     },
     "expires":"2047-08-22T15:34:03Z",
     "copy_reference":"AAAAAFuyfRE5aWhyemZmaTJzZXc"
-  },
-  "folder_with_hasmore_metadata":{
-    "has_more":true,
-    "entries":[
-      {
-        "name":"randomfolder",
-        "path_lower":"/conflict folder/randomfolder",
-        ".tag":"folder",
-        "path_display":"/conflict folder/randomfolder",
-        "id":"id:jki_ZJstdSAAAAAAAAAACw"
-      },
-      {
-        "server_modified":"2017-08-25T17:14:41Z",
-        "path_lower":"/conflict folder/1dragon.rtf",
-        ".tag":"file",
-        "size":364,
-        "client_modified":"2017-08-25T17:14:41Z",
-        "name":"1dragon.rtf",
-        "content_hash":"060a25a56cfce28e8aefa8e32a55ff9e890cbd714cabb156e5feb41f9a7b1624",
-        "rev":"45bb27d11",
-        "path_display":"/conflict folder/1dragon.rtf",
-        "id":"id:jki_ZJstdSAAAAAAAAAACQ"
-      }
-    ],
-    "cursor":"AAHv3crtaRWT0SKHClfYwa4vmR72KjiW1wjLYSE3BLatCZSJ6pJnD4nWlmAXCZPDXGrxMaIZ0lrRMMAxACEmhJn47aYQCyb1pgOhYqWyinyADa99SpqL2gxdKsq-3I0nUrWd3AaGUiw6GzH5Lg8i_FYy2YyeLkETb7tjRTc6KUTjHCjD61T4A3ZYiNrDp_cSxWg"
-  },
-  "session_metadata":{
-    "session_id":"test session id"
   },
   "intra_move_copy_file_metadata_v2":{
     "metadata":{
@@ -230,5 +202,8 @@
       "name":"rename.rtf",
       "server_modified":"2017-08-29T15:37:04Z"
     }
+  },
+  "session_metadata":{
+    "session_id":"test session id"
   }
 }

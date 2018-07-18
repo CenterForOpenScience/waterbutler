@@ -1,74 +1,33 @@
-import io
 import json
 from http import HTTPStatus
 
 import pytest
 import aiohttpretty
 
-from waterbutler.core import streams
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core import metadata as core_metadata
 from waterbutler.core import exceptions as core_exceptions
 
-from waterbutler.providers.dropbox import DropboxProvider
 from waterbutler.providers.dropbox.metadata import (DropboxRevision,
                                                     DropboxFileMetadata,
                                                     DropboxFolderMetadata)
 from waterbutler.providers.dropbox.exceptions import (DropboxNamingConflictError,
                                                       DropboxUnhandledConflictError)
+from waterbutler.providers.dropbox.settings import CHUNK_SIZE, CONTIGUOUS_UPLOAD_SIZE_LIMIT
 
-from tests.providers.dropbox.fixtures import (
-    stream_10_MB,
-    provider_fixtures,
-    revision_fixtures,
-    error_fixtures
-)
-
-@pytest.fixture
-def auth():
-    return {'name': 'cat', 'email': 'cat@cat.com'}
-
-
-@pytest.fixture
-def credentials():
-    return {'token': 'wrote harry potter'}
-
-
-@pytest.fixture
-def other_credentials():
-    return {'token': 'did not write harry potter'}
-
-
-@pytest.fixture
-def settings():
-    return {'folder': '/Photos'}
-
-
-@pytest.fixture
-def provider(auth, credentials, settings):
-    return DropboxProvider(auth, credentials, settings)
-
-
-@pytest.fixture
-def other_provider(auth, other_credentials, settings):
-    return DropboxProvider(auth, other_credentials, settings)
-
-
-# file stream fixtures
-
-@pytest.fixture
-def file_content():
-    return b'SLEEP IS FOR THE WEAK GO SERVE STREAMS'
-
-
-@pytest.fixture
-def file_like(file_content):
-    return io.BytesIO(file_content)
-
-
-@pytest.fixture
-def file_stream(file_like):
-    return streams.FileStreamReader(file_like)
+from tests.utils import MockCoroutine
+from tests.providers.dropbox.fixtures import (auth,
+                                              settings,
+                                              provider,
+                                              file_like,
+                                              credentials,
+                                              file_stream,
+                                              file_content,
+                                              other_provider,
+                                              error_fixtures,
+                                              other_credentials,
+                                              provider_fixtures,
+                                              revision_fixtures,)
 
 
 def build_folder_metadata_data(path):
@@ -247,7 +206,68 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_create_upload_session(self, provider, provider_fixtures):
+    async def test_upload_limit_contiguous_upload(self, provider, file_stream):
+
+        assert file_stream.size == 38
+        provider.CONTIGUOUS_UPLOAD_SIZE_LIMIT = 40
+
+        provider.metadata = MockCoroutine()
+        provider._contiguous_upload = MockCoroutine()
+        provider._chunked_upload = MockCoroutine()
+
+        path = WaterButlerPath('/foobah')
+        await provider.upload(file_stream, path)
+
+        assert provider._contiguous_upload.called_with(file_stream, path)
+        assert not provider._chunked_upload.called
+
+        provider.CONTIGUOUS_UPLOAD_SIZE_LIMIT = CONTIGUOUS_UPLOAD_SIZE_LIMIT
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_limit_chunked_upload(self, provider, provider_fixtures, file_stream):
+
+        assert file_stream.size == 38
+        provider.CHUNK_SIZE = 4
+        provider.CONTIGUOUS_UPLOAD_SIZE_LIMIT = 15
+
+        provider.metadata = MockCoroutine()
+        provider._contiguous_upload = MockCoroutine()
+        provider._chunked_upload = MockCoroutine()
+
+        path = WaterButlerPath('/foobah')
+        await provider.upload(file_stream, path)
+
+        assert provider._chunked_upload.called_with(file_stream, path)
+        assert not provider._contiguous_upload.called
+
+        provider.CHUNK_SIZE = CHUNK_SIZE
+        provider.CONTIGUOUS_UPLOAD_SIZE_LIMIT = CONTIGUOUS_UPLOAD_SIZE_LIMIT
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_chunked_upload(self, provider, file_stream, provider_fixtures):
+
+        assert file_stream.size == 38
+        provider.CHUNK_SIZE = 4
+
+        session_id = provider_fixtures['session_metadata']['session_id']
+        provider._create_upload_session = MockCoroutine(return_value=session_id)
+        provider._upload_parts = MockCoroutine()
+        provider._complete_session = MockCoroutine()
+
+        path = WaterButlerPath('/foobah')
+        await provider._chunked_upload(file_stream, path)
+
+        assert provider._create_upload_session.called
+        assert provider._upload_parts.called_with(file_stream, session_id)
+        assert provider._complete_session.called_with(file_stream, path, session_id)
+
+        provider.CHUNK_SIZE = CHUNK_SIZE
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_chunked_upload_create_upload_session(self, provider, provider_fixtures):
 
         url = provider._build_content_url('files', 'upload_session', 'start')
 
@@ -255,49 +275,85 @@ class TestCRUD:
             'POST',
             url,
             status=200,
-            body=provider_fixtures['session_metadata']
+            body=provider_fixtures.get('session_metadata', '')
         )
 
         session_id = await provider._create_upload_session()
 
-        assert session_id == 'test session id'
+        assert session_id == provider_fixtures['session_metadata']['session_id']
         assert aiohttpretty.has_call(method='POST', uri=url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_parts(self, provider, stream_10_MB):
+    async def test_chunked_upload_upload_parts(self, provider, file_stream, provider_fixtures):
 
-        url = provider._build_content_url('files', 'upload_session', 'append_v2')
+        assert file_stream.size == 38
+        provider.CHUNK_SIZE = 4
 
-        aiohttpretty.register_json_uri('POST', url, status=200)
-        await provider._upload_parts(stream_10_MB, 'session id')
+        session_id = provider_fixtures['session_metadata']['session_id']
+        provider._upload_part = MockCoroutine()
 
-        assert len(aiohttpretty.calls) == 3
-        for call in aiohttpretty.calls:
-            assert call['method'] == 'POST'
-            assert call['uri'] == url
+        await provider._upload_parts(file_stream, session_id)
+        assert provider._upload_part.call_count == 10
+
+        upload_args = {
+            'close': False,
+            'cursor': {'session_id': session_id, 'offset': 0, }
+        }
+        for i in range(0, 9):
+            upload_args['cursor']['offset'] = i * 4
+            assert provider._upload_part.called_once_with(file_stream, provider.CHUNK_SIZE,
+                                                          upload_args)
+        upload_args['cursor']['offset'] = 36
+        assert provider._upload_part.called_once_with(file_stream, 2, upload_args)
+
+        provider.CHUNK_SIZE = CHUNK_SIZE
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_complete_session(self, provider, stream_10_MB, provider_fixtures):
+    async def test_chunked_upload_upload_part(self, provider, file_stream, provider_fixtures):
 
-        url = provider._build_content_url('files', 'upload_session', 'finish')
+        assert file_stream.size == 38
+        provider.CHUNK_SIZE = 4
 
+        session_id = provider_fixtures['session_metadata']['session_id']
+        upload_args = {
+            'close': False,
+            'cursor': {'session_id': session_id, 'offset': 20, }
+        }
+
+        upload_part_url = provider._build_content_url('files', 'upload_session', 'append_v2')
+        aiohttpretty.register_json_uri('POST', upload_part_url, status=200)
+
+        await provider._upload_part(file_stream, provider.CHUNK_SIZE, upload_args)
+
+        assert aiohttpretty.has_call(method='POST', uri=upload_part_url)
+
+        provider.CHUNK_SIZE = CHUNK_SIZE
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_complete_session(self, provider, file_stream, provider_fixtures):
+
+        assert file_stream.size == 38
+        provider.CHUNK_SIZE = 4
+
+        path = WaterButlerPath('/foobah')
+        session_id = provider_fixtures['session_metadata']['session_id']
+
+        complete_part_url = provider._build_content_url('files', 'upload_session', 'finish')
         aiohttpretty.register_json_uri(
             'POST',
-            url,
+            complete_part_url,
             status=200,
-            body=provider_fixtures['file_metadata']
+            body=provider_fixtures.get('file_metadata', None)
         )
+        metadata = await provider._complete_session(file_stream, session_id, path)
 
-        upload_data = await provider._complete_session(
-            stream_10_MB,
-            'session id',
-            {'path': 'hedgehogs'}
-        )
+        assert metadata == provider_fixtures['file_metadata']
+        assert aiohttpretty.has_call(method='POST', uri=complete_part_url)
 
-        assert upload_data == provider_fixtures['file_metadata']
-        assert aiohttpretty.has_call(method='POST', uri=url)
+        provider.CHUNK_SIZE = CHUNK_SIZE
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
