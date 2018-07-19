@@ -138,7 +138,7 @@ class S3Revision(metadata.BaseFileRevisionMetadata):
 
     @property
     def modified(self):
-        return self.raw['LastModified']
+        return utils.normalize_datetime(self.raw['LastModified'])
 
     @property
     def extra(self):

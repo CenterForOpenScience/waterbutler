@@ -40,6 +40,7 @@ class OsfAuthHandler(BaseAuthHandler):
         return query_params
 
     async def make_request(self, params, headers, cookies):
+        data = None
         try:
             response = await aiohttp.request(
                 'get',

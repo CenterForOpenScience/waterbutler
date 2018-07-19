@@ -36,6 +36,7 @@ from waterbutler.providers.s3.metadata import S3FileMetadataHeaders
 logger = logging.getLogger(__name__)
 
 
+
 class S3Provider(provider.BaseProvider):
     """Provider for Amazon's S3 cloud storage service.
 
@@ -64,8 +65,10 @@ class S3Provider(provider.BaseProvider):
         :param dict credentials: Dict containing `access_key` and `secret_key`
         :param dict settings: Dict containing `bucket`
         """
+        logger.info("__init__")
         super().__init__(auth, credentials, settings)
 
+        logger.info("About to create resource")
         self.s3 = boto3.resource(
             's3',
             endpoint_url='http{}://{}:{}'.format(
@@ -75,27 +78,23 @@ class S3Provider(provider.BaseProvider):
             ),
             aws_access_key_id=credentials['access_key'],
             aws_secret_access_key=credentials['secret_key'],
-            # config=Config(signature_version='s3v4'),
-            # region_name='us-east-1'
         )
+        logger.info("Resource created")
 
-        self.connection = S3Connection(
-            credentials['access_key'],
-            credentials['secret_key'],
-            calling_format=OrdinaryCallingFormat(),
-            host=credentials['host'],
-            port=credentials['port'],
-            is_secure=False
-        )
+        logger.info("About to create bucket")
+        self.bucket = self.s3.Bucket(settings['bucket'])
+        logger.info("About to load bucket")
+        self.bucket.load()
+        logger.info("Bucket loaded")
+
         self.bucket_name = settings['bucket']
-        self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
         self.encrypt_uploads = False
         self.region = None
 
     async def validate_v1_path(self, path, **kwargs):
-        logger.info("Validate")
 
+        logger.info("validate_v1_path")
         wb_path = WaterButlerPath(path)
 
         if path == '/':
@@ -111,21 +110,26 @@ class S3Provider(provider.BaseProvider):
         return wb_path
 
     async def validate_path(self, path, **kwargs):
+        logger.info("validate_path")
         return WaterButlerPath(path)
 
     def can_duplicate_names(self):
+        logger.info("can_duplicate_names")
         return True
 
     def can_intra_copy(self, dest_provider, path=None):
+        logger.info("can_intra_copy")
         return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
 
     def can_intra_move(self, dest_provider, path=None):
+        logger.info("can_intra_move")
         return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
 
     async def intra_copy(self, dest_provider, source_path, dest_path):
         """Copy key from one S3 bucket to another. The credentials specified in
         `dest_provider` must have read access to `source.bucket`.
         """
+        logger.info("intra_copy")
         exists = await dest_provider.exists(dest_path)
 
         dest_key = dest_provider.bucket.new_key(dest_path.path)
@@ -158,8 +162,7 @@ class S3Provider(provider.BaseProvider):
         :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
-        logger.info("Download")
-
+        logger.info("download")
         get_kwargs = {}
 
         if not path.is_file:
@@ -178,7 +181,7 @@ class S3Provider(provider.BaseProvider):
 
         try:
             res = self.s3.Object(
-                self.bucket_name,
+                self.bucket.name,
                 path.path
             ).get(**get_kwargs)
         except:
@@ -194,8 +197,7 @@ class S3Provider(provider.BaseProvider):
 
         :rtype: dict, bool
         """
-        logger.info("Upload")
-
+        logger.info("upload")
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
 
@@ -210,7 +212,7 @@ class S3Provider(provider.BaseProvider):
             self.bucket_name,
             path.path
         ).put(
-            Body=(await stream.read())  # NBeeds to calculate hash inside boto - some issue with not implementing buffer api.
+            Body=(await stream.read())  # Needs to calculate hash inside boto so can't do a request manually? - some issue with not implementing buffer api.
         )
 
         # md5 is returned as ETag header as long as server side encryption is not used.
@@ -225,6 +227,7 @@ class S3Provider(provider.BaseProvider):
         :param str path: The path of the key to delete
         :param int confirm_delete: Must be 1 to confirm root folder delete
         """
+        logger.info("delete")
         if path.is_root:
             if not confirm_delete == 1:
                 raise exceptions.DeleteError(
@@ -243,11 +246,11 @@ class S3Provider(provider.BaseProvider):
         Called from: func: delete if path.is_file
 
         """
-        bucket = self.s3.Bucket(self.bucket_name)
-        sign_url = lambda: bucket.meta.client.generate_presigned_url(
+        logger.info("_delete_file")
+        sign_url = lambda: self.bucket.meta.client.generate_presigned_url(
             'delete_object',
             Params={
-                'Bucket': self.bucket_name,
+                'Bucket': self.bucket.name,
                 'Key': path.path
             },
             ExpiresIn=settings.TEMP_URL_SECS,
@@ -277,12 +280,13 @@ class S3Provider(provider.BaseProvider):
         To fully delete an occupied folder, we must delete all of the comprising
         objects.  Amazon provides a bulk delete operation to simplify this.
         """
+        logger.info("_delete_folder")
         for page in self.s3.meta.client.get_paginator('list_objects').paginate(
-            Bucket=self.bucket_name,
+            Bucket=self.bucket.name,
             Prefix=path.path
         ):
-            self.s3.meta.client.delete_objects(
-                Bucket=self.bucket_name,
+            self.s3.meta.client.delete_objects(  # Signing a delete_objects url with boto3 requires witchcraft
+                Bucket=self.bucket.name,
                 Delete={
                     'Objects': [{'Key': item['Key']} for item in page['Contents']]
                 }
@@ -294,29 +298,23 @@ class S3Provider(provider.BaseProvider):
         :param str path: The path to a key
         :rtype list:
         """
-        query_params = {'prefix': path.path, 'delimiter': '/', 'versions': ''}
-        url = functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
         logger.info("revisions")
         try:
-            resp = await self.make_request(
-                'GET',
-                url,
-                params=query_params,
-                expects=(200, ),
-                throws=exceptions.MetadataError,
+            resp = self.bucket.meta.client.list_object_versions(
+                Bucket=self.bucket.name,
+                Delimiter='/',
+                Prefix=path.path
             )
-            content = await resp.read()
-            versions = xmltodict.parse(content)['ListVersionsResult'].get('Version') or []
-
-            if isinstance(versions, dict):
-                versions = [versions]
+            versions = resp['Versions']
 
             return [
                 S3Revision(item)
                 for item in versions
                 if item['Key'] == path.path
             ]
-        except:
+
+        except Exception as err:
+            logger.info(err)
             return []
 
     async def metadata(self, path, revision=None, **kwargs):
@@ -328,7 +326,7 @@ class S3Provider(provider.BaseProvider):
         logger.info("metadata")
 
         if path.is_dir:
-            return  (await self._metadata_folder(path.path))
+            return (await self._metadata_folder(path.path))
             #    #  store a hash of these args and the result in redis?
 
         return (await self._metadata_file(path.path, revision=revision))
@@ -337,29 +335,26 @@ class S3Provider(provider.BaseProvider):
         """
         :param str path: The path to create a folder at
         """
-        logger.info("Create_folder")
+        logger.info("create_folder")
         WaterButlerPath.validate_folder(path)
 
         if folder_precheck:
-            # We should have already validated the path at this point - we
+            # We should have already validated the path at this point? - we
             # should store the value so when we're here we dont make an extra
             # request.
-            # If the folder exists, why do we need to throw? the user has asked
-            # us to make sure a folder with a certain name exists in the
-            # provider, if it already exsists, can we return Not Modified?
             if (await self.exists(path)):
                 raise exceptions.FolderNamingConflict(path.name)
 
-        self.s3.Object(
-            self.bucket_name,
-            path.path
-        ).put()
-        # throws=exceptions.CreateFolderError
+        self.bucket.meta.client.put_object(
+            Bucket=self.bucket.name,
+            Key=path.path
+        )
         return S3FolderMetadata({'Prefix': path.path})
 
     async def _metadata_file(self, path, revision=None):
-        logger.info("metadata_file")
-
+        """Load metadata for a single object in the bucket.
+        """
+        logger.info("_metadata_file")
         if (
             revision == 'Latest' or
             revision == '' or
@@ -376,7 +371,9 @@ class S3Provider(provider.BaseProvider):
                 revision
             )
         try:
+            logger.info("About to load")
             obj.load()
+            logger.info("After load")
         except ClientError as err:
             if err.response['Error']['Code'] == '404':
                 raise exceptions.NotFoundError(path)
@@ -390,25 +387,17 @@ class S3Provider(provider.BaseProvider):
         contents at the root of the bucket, or a folder has
         been selected as a prefix by the user
         """
-        logger.info("metadata_folder")
-        bucket = self.s3.Bucket(self.bucket_name)
-        logger.info("LIST_OBJECTS")
-        result = bucket.meta.client.list_objects(Bucket=bucket.name, Prefix=path, Delimiter='/')
+        logger.info("_metadata_folder")
+        result = self.bucket.meta.client.list_objects(Bucket=self.bucket.name, Prefix=path, Delimiter='/')
         prefixes = result.get('CommonPrefixes', [])
         contents = result.get('Contents', [])
-        logger.info(bucket)
-        logger.info(result)
-        logger.info(prefixes)
-        logger.info(contents)
         if not contents and not prefixes and not path == "":
             # If contents and prefixes are empty then this "folder"
             # must exist as a key with a / at the end of the name
             # if the path is root there is no need to test if it exists
 
-            obj = self.s3.Object(self.bucket_name, path)
+            obj = self.s3.Object(self.bucket.name, path)
             try:
-                logger.info("Trying to load object")
-                logger.info(path)
                 obj.load()
             except ClientError as err:
                 if err.response['Error']['Code'] == '404':

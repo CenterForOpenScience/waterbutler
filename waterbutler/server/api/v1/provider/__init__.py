@@ -36,7 +36,18 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     POST_VALIDATORS = {'put': 'postvalidate_put'}
     PATTERN = r'/resources/(?P<resource>(?:\w|\d)+)/providers/(?P<provider>(?:\w|\d)+)(?P<path>/.*/?)'
 
+    mutex = False
+
     async def prepare(self, *args, **kwargs):
+
+
+        while self.mutex:
+            logger.info("Deferring request...")
+            await asyncio.sleep(1)
+        ProviderHandler.mutex = True
+
+        logger.info("Handling new request!!")
+        logger.info([h for h in self.request.headers.get_all()])
         method = self.request.method.lower()
 
         # TODO Find a nicer way to handle this
@@ -128,6 +139,14 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         else:
             self.body += chunk
 
+    def finish(self):
+        logger.info("REQUEST FINISHED")
+        import pdb
+        pdb.set_trace()
+        ProviderHandler.mutex = False
+        super().finish()
+
+
     async def prepare_stream(self):
         """Sets up an asyncio pipe from client to server
         Only called on PUT when path is to a file
@@ -173,6 +192,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         }[method]()
 
         self._send_hook(action)
+
 
     def _send_hook(self, action):
         source = None
