@@ -348,7 +348,8 @@ class DropboxProvider(provider.BaseProvider):
             expects=(200, ),
             throws=core_exceptions.UploadError
         )
-        return (await resp.json()).get('session_id', None)
+        data = await resp.json()
+        return data['session_id']
 
     async def _upload_parts(self, stream: streams.BaseStream, session_id: str) -> None:
         """Determines the necessary partitioning of the stream (based on max chunk size), and
