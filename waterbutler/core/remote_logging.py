@@ -130,7 +130,8 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
                 {  # private
                     'name': 'keen:ip_to_geo',
                     'input': {
-                        'ip': 'tech.ip'
+                        'ip': 'tech.ip',
+                        'remove_ip_property': True,
                     },
                     'output': 'geo',
                 },
