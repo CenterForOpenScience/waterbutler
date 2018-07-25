@@ -5,7 +5,6 @@ import logging
 
 import furl
 import aiohttp
-# from geoip import geolite2
 
 from waterbutler import settings
 from waterbutler.core import utils
@@ -80,10 +79,6 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
     if settings.KEEN_PRIVATE_PROJECT_ID is None:
         return
 
-    location = None
-    # if request['ip'] and re.match('\d+\.\d+\.\d+\.\d+', request['ip']):  # needs IPv4 format
-    #     location = geolite2.lookup(request['ip'])
-
     keen_payload = {
         'meta': {
             'wb_version': __version__,
@@ -92,9 +87,9 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
         },
         'request': request['request'],  # .info added via keen addons
         'tech': request['tech'],  # .info added via keen addons
-        'anon': {
-            'continent': getattr(location, 'continent', None),
-            'country': getattr(location, 'country', None),
+        'anon': {  # intended for anonymized geolocation, never implemented
+            'continent': None,
+            'country': None,
         },
         'action': {
             'type': action,
