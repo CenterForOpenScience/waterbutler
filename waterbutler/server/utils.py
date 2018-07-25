@@ -8,6 +8,7 @@ CORS_ACCEPT_HEADERS = [
     'Authorization',
     'Cache-Control',
     'X-Requested-With',
+    'X-CSRFToken',
 ]
 
 CORS_EXPOSE_HEADERS = [
