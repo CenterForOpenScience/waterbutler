@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+0.40.1 (2018-07-25)
+===================
+- Feature: Add `X-CSRFToken` to list of acceptable CORS headers.
+- Feature: Tell Keen analytics to strip ip on upload.
+- Code: Remove never-implemented anonymous geolocation code.
+
 0.40.0 (2018-06-22)
 ===================
 - Feature: Listen for MFR-originating metadata requests and relay the nature of the request to
