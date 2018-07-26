@@ -20,7 +20,7 @@ waterbutler.core.exceptions module
 waterbutler.core.log_payload module
 -----------------------------------
 
-.. automodule:: waterbutler.core.logging
+.. automodule:: waterbutler.core.log_payload
     :members:
     :undoc-members:
     :show-inheritance:
