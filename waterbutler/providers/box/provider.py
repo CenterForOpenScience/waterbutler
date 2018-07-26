@@ -2,6 +2,7 @@ import json
 import base64
 import hashlib
 import logging
+import tempfile
 from asyncio import sleep
 from http import HTTPStatus
 from typing import List, Tuple, Union
@@ -28,7 +29,9 @@ class BoxProvider(provider.BaseProvider):
 
     NAME = 'box'
     BASE_URL = pd_settings.BASE_URL
-    NONCHUNKED_UPLOAD_LIMIT = pd_settings.NONCHUNKED_UPLOAD_LIMIT  # 50MB Default
+    NONCHUNKED_UPLOAD_LIMIT = pd_settings.NONCHUNKED_UPLOAD_LIMIT  # 50MB default
+    TEMP_CHUNK_SIZE = pd_settings.TEMP_CHUNK_SIZE  # 32KiB default
+    UPLOAD_COMMIT_RETRIES = pd_settings.UPLOAD_COMMIT_RETRIES
 
     def __init__(self, auth, credentials, settings):
         """Initialize a `BoxProvider` instance
@@ -284,16 +287,19 @@ class BoxProvider(provider.BaseProvider):
     async def upload(self,  # type: ignore
                      stream: streams.BaseStream, path: WaterButlerPath, conflict: str='replace',
                      **kwargs) -> Tuple[BoxFileMetadata, bool]:
+        """Upload a file to Box.  If the file is less than ``NONCHUNKED_UPLOAD_LIMIT``, upload in
+        a single request.  Otherwise, use Box's chunked upload interface to send it across multiple
+        requests.
+        """
 
         if path.identifier and conflict == 'keep':
             path, _ = await self.handle_name_conflict(path, conflict=conflict, kind='folder')
             path._parts[-1]._id = None
 
         if stream.size > self.NONCHUNKED_UPLOAD_LIMIT:
-            data = await stream.read()
-            entry = await self._chunked_upload(path, data)
+            entry = await self._chunked_upload(path, stream)
         else:
-            entry = await self._contiguous_upload(stream, path)
+            entry = await self._contiguous_upload(path, stream)
 
         created = path.identifier is None
         path._parts[-1]._id = entry['id']
@@ -483,13 +489,11 @@ class BoxProvider(provider.BaseProvider):
             folder._children = await self._get_folder_meta(path)  # type: ignore
             return folder, created
 
-    async def _contiguous_upload(self,  # type: ignore
-                                 stream: streams.BaseStream, path: WaterButlerPath):
-        """Contiguous Upload
+    async def _contiguous_upload(self, path: WaterButlerPath, stream: streams.BaseStream) -> dict:
+        """Upload a file to Box using a single request. This will only be called if the file is
+        smaller than the ``NONCHUNKED_UPLOAD_LIMIT``.
 
-        Uploads a file to Box using a single request. This can only be called
-        if the file is below the maximum size that can be uploaded using a
-        single request.
+        API Docs: https://developer.box.com/reference#upload-a-file
         """
         assert stream.size <= self.NONCHUNKED_UPLOAD_LIMIT
         stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
@@ -502,13 +506,17 @@ class BoxProvider(provider.BaseProvider):
         )
         data_stream.add_file('file', stream, path.name, disposition='form-data')
 
+        if path.identifier is not None:
+            segments = ['files', path.identifier, 'content']
+        else:
+            segments = ['files', 'content']
+
         async with self.request(
             'POST',
-            self._build_upload_url(
-                *filter(lambda x: x is not None, ('files', path.identifier, 'content'))),
+            self._build_upload_url(*segments),
             data=data_stream,
             headers=data_stream.headers,
-            expects=(201,),
+            expects=(201, ),
             throws=exceptions.UploadError,
         ) as resp:
             data = await resp.json()
@@ -519,26 +527,38 @@ class BoxProvider(provider.BaseProvider):
 
         return entry
 
-    async def _chunked_upload(self, path: WaterButlerPath, data: bytes) -> dict:
-        """Chunked uploading allows us to upload large files over several requests, Box's chunked
-        uploading process has 4 steps.
-        """
-        # Step 1 get the sha of all the data you will upload and base 64 encode it.
-        data_sha = base64.standard_b64encode(hashlib.sha1(data).digest()).decode()
+    async def _chunked_upload(self, path: WaterButlerPath, stream: streams.BaseStream) -> dict:
+        """Upload a large file to Box over multiple requests. This method will be used if the
+        file to upload is larger than ``NONCHUNKED_UPLOAD_LIMIT``.  Checksum verification is built
+        into this process, so manual verification is not needed.
 
-        # Step 2 create an upload session with box and recieve session id.
-        session_data = await self._create_chunked_upload_session(path, data)
+        API Docs: https://developer.box.com/reference#chunked-upload
+        """
+
+        # Step 1: Add a sha1 calculator. The final sha1 will be needed to complete the session
+        stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
+
+        # Step 2: Create an upload session with Box and recieve session id.
+        session_data = await self._create_chunked_upload_session(path, stream)
+        logger.debug('chunked upload session data: {}'.format(json.dumps(session_data)))
+
+        metadata = None
 
         try:
-            # Step A.3 split the data into chunks and upload them to box.
-            parts = await self._upload_chunks(data, session_data)
+            # Step 3. Split the data into parts and upload them to box.
+            parts_manifest = await self._upload_parts(stream, session_data)
+            logger.debug('chunked upload parts manifest: {}'.format(json.dumps(parts_manifest)))
 
-            # Step A.4 complete the session and return the upload file's metadata.
-            retry = 10
+            data_sha = base64.standard_b64encode(stream.writers['sha1'].digest).decode()
+
+            # Step 4. Complete the session and return the uploaded file's metadata.
+            retry = self.UPLOAD_COMMIT_RETRIES
             while retry > 0:
                 --retry
                 try:
-                    return await self._complete_chunked_upload_session(session_data, parts, data_sha)
+                    metadata = await self._complete_chunked_upload_session(session_data,
+                                                                           parts_manifest, data_sha)
+                    break
                 except RetryChunkedUploadCommit:
                     continue
 
@@ -546,77 +566,127 @@ class BoxProvider(provider.BaseProvider):
             msg = 'An unexpected error has occurred during the multi-part upload.'
             logger.error('{} upload_id={} error={!r}'.format(msg, session_data, err))
             aborted = await self._abort_chunked_upload(session_data, data_sha)
-            if aborted:
+            if not aborted:
                 msg += '  The abort action failed to clean up the temporary file parts generated ' \
                     'during the upload process.  Please manually remove them.'
             raise exceptions.UploadError(msg)
 
-    async def _create_chunked_upload_session(self, path: WaterButlerPath, data: bytes) -> dict:
+        return metadata
+
+    async def _create_chunked_upload_session(self, path: WaterButlerPath,
+                                             stream: streams.BaseStream) -> dict:
         """Create an upload session to use with a chunked upload.
 
-        An upload session is used by Box to identify which chunks correlate to
-        which upload. When the upload has completed this session will need to
-        be closed
+        The upload session metadata contains a session identifier, the partitioning scheme, and
+        urls to the chunked upload endpoints. When the upload has completed the session will need
+        to be closed.
+
+        API Docs: https://developer.box.com/reference#create-session-new-file
         """
+
+        if path.identifier is not None:
+            segments = ['files', path.identifier, 'upload_sessions']
+        else:
+            segments = ['files', 'upload_sessions']
+
         async with self.request(
             'POST',
-            self._build_upload_url('files', 'upload_sessions'),
+            self._build_upload_url(*segments),
             data=json.dumps({
                 'folder_id': self.folder,
-                'file_size': len(bytearray(data)),
+                'file_size': stream.size,
                 'file_name': path.name
             }),
             headers={'Content-Type': 'application/json'},
-            expects={201},
+            expects=(201, ),
             throws=exceptions.UploadError,
         ) as resp:
             return await resp.json()
 
-    async def _upload_chunks(self, data: bytes, session_data: dict):
-        """Upload the parts of the file
+    async def _upload_parts(self, stream: streams.BaseStream, session_data: dict) -> list:
+        """Calculate the partitioning scheme and upload the parts of the stream.  Returns a list
+        of metadata objects for each part, as reported by Box.  This list will be used to finialize
+        the upload.
         """
-        parts = {'parts': []}
-        upload_size = len(data)
 
-        for start_bytes in range(0, upload_size, session_data['part_size']):
-            chunk = data[start_bytes: start_bytes + session_data['part_size']]
-            chunk_size = len(chunk)  # Final chunk size != session_data['part_size']
-            chunk_sha = base64.standard_b64encode(hashlib.sha1(chunk).digest()).decode()
+        part_max_size = session_data['part_size']
+        parts = [part_max_size for _ in range(0, stream.size // part_max_size)]
+        if stream.size % part_max_size:
+            parts.append(stream.size - (len(parts) * part_max_size))
+        logger.debug('Stream will be partitioned into {} with the following '
+                     'sizes: {}'.format(len(parts), parts))
 
-            byte_range = self._build_range_header((start_bytes, start_bytes + chunk_size - 1))
-            byte_range = str(byte_range).replace('=', ' ') + '/{}'.format(upload_size)
+        start_offset, manifest = 0, []
+        for part_id, part_size in enumerate(parts):
+            logging.debug('Uploading part {}, with size {} bytes, starting '
+                          'at offset {}'.format(part_id, part_size, start_offset))
+            part_metadata = await self._upload_part(stream, str(part_id), part_size, start_offset,
+                                                    session_data['id'])
+            manifest.append(part_metadata)
+            start_offset += part_size
 
-            async with self.request(
-                'PUT',
-                self._build_upload_url('files', 'upload_sessions', session_data['id']),
-                data=chunk,
-                headers={
-                    'Content-Range': byte_range,
-                    'Content-Type:': 'application/octet-stream',
-                    'Digest': 'sha={}'.format(chunk_sha)
-                },
-                expects=(201, 200),
-                throws=exceptions.UploadError,
-            ) as resp:
-                parts['parts'].append((await resp.json())['part'])
+        return manifest
 
-        return parts
+    async def _upload_part(self, stream: streams.BaseStream, part_id: str, part_size: int,
+                           start_offset: int, session_id: str) -> dict:
+        """Upload one part/chunk of the given stream to Box.
 
-    async def _complete_chunked_upload_session(self, session_data: dict, parts: dict,
+        Box requires that the sha of the part be sent along in the headers of the request.  To do
+        this WB must write the stream segment to disk before uploading.  The part sha is calculated
+        as the tempfile is written.
+
+        API Docs: https://developer.box.com/reference#upload-part
+        """
+
+        cutoff_stream = streams.CutoffStream(stream, cutoff=part_size)
+        part_hasher_name = 'part-{}-sha1'.format(part_id)
+        stream.add_writer(part_hasher_name, streams.HashStreamWriter(hashlib.sha1))
+
+        f = tempfile.TemporaryFile()
+        chunk = await cutoff_stream.read(self.TEMP_CHUNK_SIZE)
+        while chunk:
+            f.write(chunk)
+            chunk = await cutoff_stream.read(self.TEMP_CHUNK_SIZE)
+        file_stream = streams.FileStreamReader(f)
+
+        part_sha = stream.writers[part_hasher_name].digest
+        part_sha_b64 = base64.standard_b64encode(part_sha).decode()
+        stream.remove_writer(part_hasher_name)
+
+        byte_range = self._build_range_header((start_offset, start_offset + part_size - 1))
+        content_range = str(byte_range).replace('=', ' ') + '/{}'.format(stream.size)
+
+        async with self.request(
+            'PUT',
+            self._build_upload_url('files', 'upload_sessions', session_id),
+            headers={
+                # ``Content-Length`` is required for ``asyncio`` to use inner chunked stream read
+                'Content-Length': str(part_size),
+                'Content-Range': content_range,
+                'Content-Type:': 'application/octet-stream',
+                'Digest': 'sha={}'.format(part_sha_b64)
+            },
+            data=file_stream,
+            expects=(201, 200),
+            throws=exceptions.UploadError,
+        ) as resp:
+            data = await resp.json()
+
+        f.close()
+        return data['part']
+
+    async def _complete_chunked_upload_session(self, session_data: dict, parts_manifest: list,
                                                data_sha: str) -> dict:
-        """Completes the chunked upload session
-
-        lets Box know that the parts have all been uploaded, and it can
-        reconstruct the file from its individual parts.
-
-        If not all the parts have finished uploading, Box will
+        """Completes the chunked upload session.  Lets Box know that the parts have all been
+        uploaded, and that it can reconstruct the file from its individual parts.
 
         https://developer.box.com/reference#commit-upload
         """
+
         async with self.request(
             'POST',
             self._build_upload_url('files', 'upload_sessions', session_data['id'], 'commit'),
-            data=json.dumps(parts),
+            data=json.dumps({'parts': parts_manifest}),
             headers={
                 'Content-Type:': 'application/json',
                 'Digest': 'sha={}'.format(data_sha)
@@ -624,27 +694,32 @@ class BoxProvider(provider.BaseProvider):
             expects=(201, 202),
             throws=exceptions.UploadError,
         ) as resp:
-            if resp.status == 202:
+            if resp.status == HTTPStatus.ACCEPTED:
+                await resp.release()
                 await sleep(resp.headers['Retry-After'])
-                raise RetryChunkedUploadCommit()
-            entry = (await resp.json())['entries'][0]
+                raise RetryChunkedUploadCommit('Failed to commit chunked upload')
+            data = await resp.json()
+            entry = data['entries'][0]
 
         return entry
 
     async def _abort_chunked_upload(self, session_data: dict, data_sha: str) -> bool:
-        """Abort a chunked upload session. This discards all data uploaded
-        during the session. It cannot be undone.
+        """Aborts a chunked upload session. This discards all data uploaded during the session.
+        This operation cannot be undone.
 
-        https://developer.box.com/reference#abort
+        API Docs: https://developer.box.com/reference#abort
+
+        :rtype: bool
+        :return: `True` if abort request succeeded, `False` otherwise.
         """
-        async with self.request(
+        resp = await self.make_request(
             'DELETE',
             self._build_upload_url('files', 'upload_sessions', session_data['id']),
             headers={
                 'Content-Type:': 'application/json',
                 'Digest': 'sha={}'.format(data_sha)
             },
-            expects=(204,),
-            throws=exceptions.UploadError,
-        ):
-            return True
+        )
+
+        await resp.release()
+        return resp.status == HTTPStatus.NO_CONTENT
