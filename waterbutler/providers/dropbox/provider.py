@@ -280,8 +280,16 @@ class DropboxProvider(provider.BaseProvider):
     async def _chunked_upload(self,
                               stream: streams.BaseStream,
                               path_arg: dict) -> dict:
-        """
-        Chunked uploading is a 3 step process where a file is uploaded across multiple requests.
+        """Chunked uploading is a 3 step process.
+
+        First a session is created, this session connects each of the chunks as
+        they are uploaded.
+
+        The file is split into multiple parts, and uploaded across multiple requests.
+
+        When all of the parts have finished uploading, the session that was
+        created is completed, and dropbox rearranges all the chunks that were
+        uploaded to reform the complete file.
         """
 
         # 1. creates a upload session and retrieves session id to upload parts.
