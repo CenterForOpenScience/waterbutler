@@ -256,7 +256,9 @@ class DropboxProvider(provider.BaseProvider):
                      path: WaterButlerPath,
                      conflict: str='replace',
                      **kwargs) -> typing.Tuple[DropboxFileMetadata, bool]:
-
+        """Upload file stream to Dropbox.  If file exceeds `CONTIGUOUS_UPLOAD_SIZE_LIMIT`, Dropbox's
+        multipart upload endpoints will be used.
+        """
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         path_arg = {"path": path.full_path}
         if conflict == 'replace':
@@ -270,6 +272,13 @@ class DropboxProvider(provider.BaseProvider):
         return DropboxFileMetadata(data, self.folder), not exists
 
     async def _contiguous_upload(self, stream: streams.BaseStream, path: WaterButlerPath) -> dict:
+        """Upload file in a single request.
+
+        API Docs: https://www.dropbox.com/developers/documentation/http/documentation#files-upload
+
+        :rtype: `dict`
+        :return: A `dict` of metadata about the file just uploaded.
+        """
         resp = await self.make_request(
             'POST',
             self._build_content_url('files', 'upload'),
@@ -298,7 +307,7 @@ class DropboxProvider(provider.BaseProvider):
         API Docs: https://www.dropbox.com/developers/documentation/http/documentation#files-upload_session-append
 
         Finally, when all of the parts have finished uploading, send a complete session request to
-        let Dropbox combine the uploaded data save it to the given file path.
+        let Dropbox combine the uploaded data and save it to the given file path.
         API Docs: https://www.dropbox.com/developers/documentation/http/documentation#files-upload_session-finish
 
         Quirks:
@@ -323,7 +332,10 @@ class DropboxProvider(provider.BaseProvider):
         where the size of the file is greater than 150 MB. This call starts a new upload session
         with the given data."
 
-        Ref: https://www.dropbox.com/developers/documentation/http/documentation#files-upload_session-start
+        API Docs: https://www.dropbox.com/developers/documentation/http/documentation#files-upload_session-start
+
+        :rtype: str
+        :return: session identifier
         """
 
         resp = await self.make_request(
@@ -339,7 +351,8 @@ class DropboxProvider(provider.BaseProvider):
         return (await resp.json()).get('session_id', None)
 
     async def _upload_parts(self, stream: streams.BaseStream, session_id: str) -> None:
-        """Repeatedly upload all parts/chunks of the given stream to Dropbox one by one.
+        """Determines the necessary partitioning of the stream (based on max chunk size), and
+        calls `_upload_part` for each partition.
         """
 
         upload_args = {
@@ -372,7 +385,7 @@ class DropboxProvider(provider.BaseProvider):
         "Append more data to an upload session. When the parameter close is set, this call will
         close the session. A single request should not upload more than 150 MB. ..."
 
-        Ref: https://www.dropbox.com/developers/documentation/http/documentation#files-upload_session-append
+        API Docs: https://www.dropbox.com/developers/documentation/http/documentation#files-upload_session-append
         """
 
         cutoff_stream = streams.CutoffStream(stream, cutoff=chunk_size)
@@ -400,7 +413,10 @@ class DropboxProvider(provider.BaseProvider):
         "Finish an upload session and save the uploaded data to the given file path. ... The maximum
         size of a file one can upload to an upload session is 350 GB."
 
-        Ref: https://www.dropbox.com/developers/documentation/http/documentation#files-upload_session-finish
+        API Docs: https://www.dropbox.com/developers/documentation/http/documentation#files-upload_session-finish
+
+        :rtype: `dict`
+        :return: A `dict` of metadata about the file just uploaded.
         """
 
         upload_args = {
