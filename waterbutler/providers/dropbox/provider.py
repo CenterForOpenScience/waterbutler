@@ -6,10 +6,12 @@ from waterbutler.core import provider, streams
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core import exceptions as core_exceptions
 
-from waterbutler.providers.dropbox import settings
-from waterbutler.providers.dropbox import exceptions as provider_exceptions
-from waterbutler.providers.dropbox.metadata import (BaseDropboxMetadata, DropboxFileMetadata,
-                                                    DropboxFolderMetadata, DropboxRevision)
+from waterbutler.providers.dropbox import settings as pd_settings
+from waterbutler.providers.dropbox import exceptions as pd_exceptions
+from waterbutler.providers.dropbox.metadata import (DropboxRevision,
+                                                    BaseDropboxMetadata,
+                                                    DropboxFileMetadata,
+                                                    DropboxFolderMetadata, )
 
 
 class DropboxProvider(provider.BaseProvider):
@@ -52,7 +54,7 @@ class DropboxProvider(provider.BaseProvider):
     Quirks: Dropbox paths are case-insensitive.
     """
     NAME = 'dropbox'
-    BASE_URL = settings.BASE_URL
+    BASE_URL = pd_settings.BASE_URL
     NONCHUNKED_UPLOAD_LIMIT = 150000000  # 150 MB
     CHUNK_SIZE = 4000000  # 4 MB
 
@@ -111,10 +113,10 @@ class DropboxProvider(provider.BaseProvider):
                 if error_type['.tag'] == 'not_found':
                     raise core_exceptions.NotFoundError(error_path)
                 if 'conflict' in error_type:
-                    raise provider_exceptions.DropboxNamingConflictError(error_path)
+                    raise pd_exceptions.DropboxNamingConflictError(error_path)
             if data['error'].get('reason', False) and 'conflict' in data['error']['reason']['.tag']:
-                raise provider_exceptions.DropboxNamingConflictError(error_path)
-        raise provider_exceptions.DropboxUnhandledConflictError(str(data))
+                raise pd_exceptions.DropboxNamingConflictError(error_path)
+        raise pd_exceptions.DropboxUnhandledConflictError(str(data))
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
         if path == '/':
@@ -180,7 +182,7 @@ class DropboxProvider(provider.BaseProvider):
                     throws=core_exceptions.IntraCopyError,
                 )
             data = data['metadata']
-        except provider_exceptions.DropboxNamingConflictError:
+        except pd_exceptions.DropboxNamingConflictError:
             await dest_provider.delete(dest_path)
             resp, _ = await self.intra_copy(dest_provider, src_path, dest_path)
             return resp, False
@@ -211,7 +213,7 @@ class DropboxProvider(provider.BaseProvider):
                 throws=core_exceptions.IntraMoveError,
             )
             data = data['metadata']
-        except provider_exceptions.DropboxNamingConflictError:
+        except pd_exceptions.DropboxNamingConflictError:
             await dest_provider.delete(dest_path)
             resp, _ = await self.intra_move(dest_provider, src_path, dest_path)
             return resp, False
@@ -496,7 +498,7 @@ class DropboxProvider(provider.BaseProvider):
         return self == dest_provider  # dropbox can only intra move on same account
 
     def _build_content_url(self, *segments, **query):
-        return provider.build_url(settings.BASE_CONTENT_URL, *segments, **query)
+        return provider.build_url(pd_settings.BASE_CONTENT_URL, *segments, **query)
 
     async def _delete_folder_contents(self, path: WaterButlerPath, **kwargs) -> None:
         """Delete the contents of a folder. For use against provider root.
