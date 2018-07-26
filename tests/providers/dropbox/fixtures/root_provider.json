@@ -202,5 +202,8 @@
       "name":"rename.rtf",
       "server_modified":"2017-08-29T15:37:04Z"
     }
+  },
+  "session_metadata":{
+    "session_id":"test session id"
   }
 }

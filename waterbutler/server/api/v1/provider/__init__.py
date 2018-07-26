@@ -147,7 +147,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         # the response code is 202, or the response was a 206 partial request, then no callbacks
         # should be sent and no metrics collected.  For 202s, celery will send its own callback.
         # Osfstorage and s3 can return 302s for file downloads, which should be tallied.
-        if any((method in ('HEAD', 'OPTIONS'), status in (202, 206), status > 302, status < 200)):
+        if any({
+            method in {'HEAD', 'OPTIONS'},
+            status in {202, 206},
+            status > 302,
+            status < 200
+        }):
             return
 
         # WB doesn't send along Range headers when requesting signed urls, expecting the client
