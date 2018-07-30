@@ -17,7 +17,7 @@ class S3Metadata(metadata.BaseMetadata):
 
 class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
-    def __init__(self, path, headers):
+    def __init__(self, path, s3_object=None, headers=None):
         self._path = path
         self.obj = headers
         self._etag = None
@@ -31,15 +31,15 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def size(self):
-        return self.obj.content_length
+        return self.raw['CONTENT-LENGTH']
 
     @property
     def content_type(self):
-        return self.obj.content_type
+        return self.raw['CONTENT-TYPE']
 
     @property
     def modified(self):
-        return utils.normalize_datetime(self.obj.last_modified)
+        return self.raw['LAST-MODIFIED']
 
     @property
     def created_utc(self):
@@ -47,17 +47,15 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        if self._etag:
-            return self._etag
-        else:
-            self._etag = self.obj.e_tag.replace('"', '')
-            return self._etag
+        if self._etag is None:
+            self._etag = self.raw['ETAG'].replace('"', '')
+        return self._etag
 
     @property
     def extra(self):
         return {
             'md5': self.etag,
-            'encryption': self.obj.server_side_encryption,
+            'encryption': self.raw.get('X-AMZ-SERVER-SIDE-ENCRYPTION', ''),
             'hashes': {
                 'md5': self.etag,
             },
@@ -76,7 +74,7 @@ class S3FileMetadata(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def modified(self):
-        return self.raw['LastModified'].isoformat()
+        return self.raw['LastModified']
 
     @property
     def created_utc(self):
