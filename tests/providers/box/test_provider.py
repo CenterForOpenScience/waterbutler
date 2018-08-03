@@ -2,7 +2,7 @@ import pytest
 
 import io
 import json
-from http import client
+from http import HTTPStatus
 
 import aiohttpretty
 
@@ -91,7 +91,7 @@ class TestValidatePath:
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/' + file_id + '/')
 
-        assert exc.value.code == client.NOT_FOUND
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + file_id)
 
@@ -118,7 +118,7 @@ class TestValidatePath:
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/' + folder_id)
 
-        assert exc.value.code == client.NOT_FOUND
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + folder_id + '/')
 
@@ -644,7 +644,7 @@ class TestMetadata:
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.metadata(path)
 
-        assert exc.value.code == client.NOT_FOUND
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
 
 class TestRevisions:
