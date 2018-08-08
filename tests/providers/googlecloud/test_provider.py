@@ -216,9 +216,10 @@ class TestCRUD:
     async def test_download_file_with_accept_url(self, mock_time, mock_provider, file_wb_path,
                                                  file_name):
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
-        query = {'response-content-disposition': 'attachment; filename={}'.format(file_name)}
+        query = {'response-content-disposition': 'attachment; filename*=UTF-8\'\'text-file-1.txt'}
         signed_url = mock_provider._build_and_sign_url('GET', file_obj_name, **query)
-        return_url = await mock_provider.download(file_wb_path, accept_url=True, display_name=file_name)
+        return_url = await mock_provider.download(file_wb_path, accept_url=True,
+                                                  display_name=file_name)
 
         assert not aiohttpretty.has_call(method='GET', uri=signed_url)
         assert isinstance(return_url, str)

@@ -4,6 +4,7 @@ import asyncio
 import logging
 import functools
 import dateutil.parser
+from urllib import parse
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
@@ -114,6 +115,26 @@ def normalize_datetime(date_string):
     parsed_datetime = parsed_datetime.astimezone(tz=pytz.UTC)
     parsed_datetime = parsed_datetime.replace(microsecond=0)
     return parsed_datetime.isoformat()
+
+
+def encode_for_disposition(filename):
+    """Convert given filename into utf-8 octets, then percent encode them.
+
+    See RFC-5987, Section 3.2.1 for description of how to encode the ``value-chars`` portion of
+    ``ext-value``. WB will always use utf-8 encoding (see `make_disposition`), so that encoding
+    is hard-coded here.
+
+    :param str filename: a filename to encode
+    """
+    return parse.quote(filename.encode('utf-8'))
+
+
+def make_disposition(filename):
+    if not filename:
+        return 'attachment'
+    else:
+        encoded_filename = encode_for_disposition(filename)
+        return 'attachment; filename*=UTF-8\'\'{}'.format(encoded_filename)
 
 
 class ZipStreamGenerator:
