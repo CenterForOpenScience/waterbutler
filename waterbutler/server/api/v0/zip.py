@@ -1,5 +1,5 @@
-from waterbutler.server import utils
 from waterbutler.server.api.v0 import core
+from waterbutler.core.utils import make_disposition
 
 
 class ZipHandler(core.BaseProviderHandler):
@@ -15,7 +15,7 @@ class ZipHandler(core.BaseProviderHandler):
         self.set_header('Content-Type', 'application/zip')
         self.set_header(
             'Content-Disposition',
-            utils.make_disposition(zipfile_name + '.zip')
+            make_disposition(zipfile_name + '.zip')
         )
 
         result = await self.provider.zip(**self.arguments)

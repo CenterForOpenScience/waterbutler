@@ -10,6 +10,7 @@ from google.oauth2 import service_account
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
+from waterbutler.core.utils import make_disposition
 from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStreamReader
 from waterbutler.core.exceptions import (WaterButlerError, MetadataError, NotFoundError,
                                          CopyError, UploadError, DownloadError, DeleteError,
@@ -227,7 +228,7 @@ class GoogleCloudProvider(BaseProvider):
 
         if accept_url:
             display_name = kwargs.get('displayName', path.name)
-            query = {'response-content-disposition': 'attachment; filename={}'.format(display_name)}
+            query = {'response-content-disposition': make_disposition(display_name)}
             # There is no need to delay URL building and signing
             signed_url = self._build_and_sign_url(req_method, obj_name, **query)  # type: ignore
             return signed_url

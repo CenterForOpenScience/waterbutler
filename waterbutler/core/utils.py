@@ -4,6 +4,7 @@ import asyncio
 import logging
 import functools
 import dateutil.parser
+from urllib import parse
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
@@ -114,6 +115,18 @@ def normalize_datetime(date_string):
     parsed_datetime = parsed_datetime.astimezone(tz=pytz.UTC)
     parsed_datetime = parsed_datetime.replace(microsecond=0)
     return parsed_datetime.isoformat()
+
+
+def make_disposition(filename):
+    encoded_ext_value = encode_header_extended_value(filename)
+    # return 'attachment; filename="{}"'.format(filename.replace('"', '\\"'))
+    return 'attachment; filename*=UTF-8\'\'{}'.format(encoded_ext_value)
+
+
+def encode_header_extended_value(value):
+    codepoints = value.encode()
+    percent_codepoints = parse.quote(codepoints)
+    return percent_codepoints
 
 
 class ZipStreamGenerator:
