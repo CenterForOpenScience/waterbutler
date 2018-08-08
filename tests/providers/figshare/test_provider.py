@@ -1249,7 +1249,7 @@ class TestArticleCRUD:
         with pytest.raises(exceptions.DownloadError) as e:
             await article_provider.download(path)
 
-        assert e.value.code == 403
+        assert e.value.code == 404
         assert e.value.message == 'Download not available'
 
     @pytest.mark.asyncio

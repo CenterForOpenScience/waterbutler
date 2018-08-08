@@ -5,6 +5,8 @@ import logging
 from typing import Tuple
 from http import HTTPStatus
 
+import aiohttp
+
 from waterbutler.core.streams import CutoffStream
 from waterbutler.core import exceptions, provider, streams
 
@@ -190,10 +192,20 @@ class BaseFigshareProvider(provider.BaseProvider):
             download_url,
             range=range,
             params=params,
+            allow_redirects=False,
         )
-        if resp.status == 404:
+
+        if resp.status >= 400:
             await resp.release()
-            raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)
+            raise exceptions.DownloadError('Download not available', code=resp.status)
+
+        if resp.status in (302, 301):
+            await resp.release()
+            if range:
+                resp = await aiohttp.request('GET', resp.headers['location'],
+                                             headers={'Range': self._build_range_header(range)})
+            else:
+                resp = await aiohttp.request('GET', resp.headers['location'])
 
         return streams.ResponseStreamReader(resp)
 
