@@ -1,18 +1,12 @@
-
-import os
-import socket
-import asyncio
 from http import HTTPStatus
 import logging
 
+from raven.contrib.tornado import SentryMixin
 import tornado.web
 import tornado.gen
 import tornado.platform.asyncio
 
-from waterbutler.core import mime_types
-from waterbutler.server import utils
-from waterbutler.server.api.v0 import core
-from waterbutler.core.streams import RequestStreamReader
+from waterbutler.server.utils import CORsMixin
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +23,7 @@ def list_or_value(value):
 
 
 @tornado.web.stream_request_body
-class DownloadRedirectHandler(core.BaseProviderHandler):
+class DownloadRedirectHandler(tornado.web.RequestHandler, CORsMixin, SentryMixin):
 
     async def prepare(self):
 
@@ -49,12 +43,12 @@ class DownloadRedirectHandler(core.BaseProviderHandler):
         direct = TRUTH_MAP[self.arguments.get('accept_url', 'true').lower()]
         version = self.arguments.get('version', self.arguments.get('revision', None))
 
-        v1_url = '/v1/resources/{resource}/providers/{provider}{path}?{direct}{revision}'.format(
+        v1_url = '/v1/resources/{resource}/providers/{provider}/{path}?{direct}{version}'.format(
             resource=resource,
             provider=provider,
             path=path,
             direct='direct=&' if direct else '',
-            version='version={}&'.format(self.arguments['version']) if version else ''
+            version='version={}&'.format(version) if version else ''
         )
 
         logger.info('Redirecting a v0 download request to v1')
