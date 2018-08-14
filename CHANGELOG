@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.40.2 (2018-08-08)
+===================
+- Fix: Fix download of public figshare files.
+
 0.40.1 (2018-07-25)
 ===================
 - Feature: Add `X-CSRFToken` to list of acceptable CORS headers.

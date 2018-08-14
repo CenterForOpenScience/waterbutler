@@ -24,6 +24,7 @@ class TestExceptionSerialization:
         exceptions.MetadataError,
         exceptions.RevisionsError,
         exceptions.UploadError,
+        exceptions.RetryChunkedUploadCommit,
         exceptions.FolderNamingConflict,
         exceptions.NamingConflict,
         exceptions.ProviderNotFound,

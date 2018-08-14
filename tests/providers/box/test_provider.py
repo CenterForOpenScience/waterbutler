@@ -1,8 +1,8 @@
-import pytest
-
 import io
-from http import client
+import json
+from http import HTTPStatus
 
+import pytest
 import aiohttpretty
 
 from waterbutler.core import streams
@@ -13,10 +13,12 @@ from waterbutler.providers.box import BoxProvider
 from waterbutler.providers.box.metadata import (BoxRevision,
                                                 BoxFileMetadata,
                                                 BoxFolderMetadata)
+from waterbutler.providers.box.settings import NONCHUNKED_UPLOAD_LIMIT
 
-from tests.providers.box.fixtures import(intra_fixtures,
-                                         revision_fixtures,
-                                         root_provider_fixtures)
+from tests.utils import MockCoroutine
+from tests.providers.box.fixtures import (intra_fixtures,
+                                          revision_fixtures,
+                                          root_provider_fixtures,)
 
 
 @pytest.fixture
@@ -58,6 +60,11 @@ def file_content():
 
 
 @pytest.fixture
+def file_sha_b64():
+    return 'KrIc0sRT6ELxGc/oX3hZvabgltE='
+
+
+@pytest.fixture
 def file_like(file_content):
     return io.BytesIO(file_content)
 
@@ -90,7 +97,7 @@ class TestValidatePath:
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/' + file_id + '/')
 
-        assert exc.value.code == client.NOT_FOUND
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + file_id)
 
@@ -117,7 +124,7 @@ class TestValidatePath:
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/' + folder_id)
 
-        assert exc.value.code == client.NOT_FOUND
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + folder_id + '/')
 
@@ -320,6 +327,208 @@ class TestUpload:
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='POST', uri=upload_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_limit_contiguous_upload(self, provider, file_stream):
+
+        assert file_stream.size == 38
+        provider.NONCHUNKED_UPLOAD_LIMIT = 40
+
+        provider.metadata = MockCoroutine()
+        provider._contiguous_upload = MockCoroutine(return_value={'id': '345'})
+        provider._chunked_upload = MockCoroutine()
+
+        path = WaterButlerPath('/foobah/', _ids=('0', '1'))
+        await provider.upload(file_stream, path)
+
+        assert provider._contiguous_upload.called_with(file_stream, path)
+        assert not provider._chunked_upload.called
+
+        provider.NONCHUNKED_UPLOAD_LIMIT = NONCHUNKED_UPLOAD_LIMIT
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_limit_chunked_upload(self, provider, file_stream):
+
+        assert file_stream.size == 38
+        provider.NONCHUNKED_UPLOAD_LIMIT = 15
+
+        provider.metadata = MockCoroutine()
+        provider._contiguous_upload = MockCoroutine()
+        provider._chunked_upload = MockCoroutine(return_value={'id': '345'})
+
+        path = WaterButlerPath('/foobah/', _ids=('0', '1'))
+        await provider.upload(file_stream, path)
+
+        assert provider._chunked_upload.called_with(file_stream, path)
+        assert not provider._contiguous_upload.called
+
+        provider.NONCHUNKED_UPLOAD_LIMIT = NONCHUNKED_UPLOAD_LIMIT
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_chunked_upload(self, provider, file_stream, file_sha_b64,
+                                  root_provider_fixtures):
+
+        assert file_stream.size == 38
+
+        session_metadata = root_provider_fixtures['create_session_metadata']
+        parts_manifest = [
+            root_provider_fixtures['upload_part_one'],
+            root_provider_fixtures['upload_part_two'],
+        ]
+        file_metadata = root_provider_fixtures['upload_commit_metadata']
+
+        provider._create_chunked_upload_session = MockCoroutine(return_value=session_metadata)
+        provider._upload_parts = MockCoroutine(return_value=parts_manifest)
+        provider._complete_chunked_upload_session = MockCoroutine(return_value=file_metadata)
+
+        path = WaterButlerPath('/foobah/', _ids=('0', '1'))
+        await provider._chunked_upload(path, file_stream)
+
+        assert provider._create_chunked_upload_session.called_with(path, file_stream)
+        assert provider._upload_parts.called_with(file_stream, session_metadata)
+        assert provider._complete_chunked_upload_session.called_with(session_metadata,
+                                                                     parts_manifest,
+                                                                     file_sha_b64)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_upload_session_new_file(self, provider, root_provider_fixtures,
+                                                  file_stream):
+        """Check that the chunked upload session creation makes a request to the correct url when
+        creating a new file.
+        """
+
+        path = WaterButlerPath('/newfile', _ids=(provider.folder, None))
+        session_url = provider._build_upload_url('files', 'upload_sessions')
+
+        create_session_metadata = root_provider_fixtures['create_session_metadata']
+        aiohttpretty.register_json_uri(
+            'POST',
+            session_url,
+            status=201,
+            body=create_session_metadata
+        )
+
+        session_data = await provider._create_chunked_upload_session(path, file_stream)
+
+        assert root_provider_fixtures['create_session_metadata'] == session_data
+        assert aiohttpretty.has_call(method='POST', uri=session_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_upload_session_existing_file(self, provider, root_provider_fixtures,
+                                                       file_stream):
+        """Check that the chunked upload session creation makes a request to the correct url when
+        updating an existing file.
+        """
+
+        path = WaterButlerPath('/newfile', _ids=(provider.folder, '2345'))
+
+        session_url = 'https://upload.box.com/api/2.0/files/2345/upload_sessions'
+        create_session_metadata = root_provider_fixtures['create_session_metadata']
+        aiohttpretty.register_json_uri(
+            'POST',
+            session_url,
+            status=201,
+            body=create_session_metadata
+        )
+
+        session_data = await provider._create_chunked_upload_session(path, file_stream)
+
+        assert root_provider_fixtures['create_session_metadata'] == session_data
+        assert aiohttpretty.has_call(method='POST', uri=session_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_parts(self, provider, root_provider_fixtures):
+
+        responses = [
+            {
+                'body': json.dumps(root_provider_fixtures['upload_part_one']),
+                'status': 201
+            },
+            {
+                'body': json.dumps(root_provider_fixtures['upload_part_two']),
+                'status': 201
+            }
+        ]
+
+        session_url = 'https://upload.box.com/api/2.0/files/upload_sessions/fake_session_id'
+        aiohttpretty.register_json_uri(
+            'PUT',
+            session_url,
+            status=HTTPStatus.CREATED,
+            responses=responses
+        )
+
+        session_metadata = root_provider_fixtures['create_session_metadata']
+        stream = streams.StringStream('tenbytestr'.encode() * 2)
+        parts_metadata = await provider._upload_parts(stream, session_metadata)
+
+        expected_response = [
+            {
+                'offset': 10,
+                'part_id': '37B0FB1B',
+                'sha1': '3ff00d99585b8da363f9f9955e791ed763e111c1',
+                'size': 10
+            },
+            {
+                'offset': 20,
+                'part_id': '1872DEDA',
+                'sha1': '0ae5fc290c5c5414cdda245ab712a8440376284a',
+                'size': 10
+            }
+        ]
+
+        assert parts_metadata == expected_response
+
+        assert len(aiohttpretty.calls) == 2
+        for call in aiohttpretty.calls:
+            assert call['method'] == 'PUT'
+            assert call['uri'] == session_url
+
+        call_one = aiohttpretty.calls[0]
+        assert call_one['headers'] == {
+            'Authorization': 'Bearer wrote harry potter',
+            'Content-Length': '10',
+            'Content-Range': 'bytes 0-9/20',
+            'Content-Type:': 'application/octet-stream',
+            'Digest': 'sha={}'.format('pz4mZbOEOesBeUhR1THUF1Oq1bI=')
+        }
+
+        call_two = aiohttpretty.calls[1]
+        assert call_two['headers'] == {
+            'Authorization': 'Bearer wrote harry potter',
+            'Content-Length': '10',
+            'Content-Range': 'bytes 10-19/20',
+            'Content-Type:': 'application/octet-stream',
+            'Digest': 'sha={}'.format('pz4mZbOEOesBeUhR1THUF1Oq1bI=')
+        }
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_complete_chunked_upload_session(self, provider, root_provider_fixtures):
+        commit_url = 'https://upload.box.com/api/2.0/files/upload_sessions/fake_session_id/commit'
+
+        aiohttpretty.register_json_uri(
+            'POST',
+            commit_url,
+            status=201,
+            body=root_provider_fixtures['upload_commit_metadata']
+        )
+
+        session_metadata = root_provider_fixtures['create_session_metadata']
+        entry = await provider._complete_chunked_upload_session(
+            session_metadata,
+            root_provider_fixtures['formated_parts'],
+            'fake_sha'
+        )
+
+        assert root_provider_fixtures['upload_commit_metadata']['entries'][0] == entry
+        assert aiohttpretty.has_call(method='POST', uri=commit_url)
 
 
 class TestDelete:
@@ -539,7 +748,7 @@ class TestMetadata:
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.metadata(path)
 
-        assert exc.value.code == client.NOT_FOUND
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
 
 class TestRevisions:
