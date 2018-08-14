@@ -1,4 +1,3 @@
-from http import HTTPStatus
 import logging
 
 from raven.contrib.tornado import SentryMixin
