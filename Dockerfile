@@ -6,7 +6,6 @@ RUN usermod -d /home www-data && chown www-data:www-data /home
 RUN apt-get update \
     && apt-get install -y \
         git \
-        par2 \
         libevent-dev \
         libxml2-dev \
         libxslt1-dev \

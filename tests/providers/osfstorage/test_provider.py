@@ -9,7 +9,6 @@ import aiohttpretty
 from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.providers.osfstorage.settings import FILE_PATH_COMPLETE, FILE_PATH_PENDING
 from waterbutler.providers.osfstorage.metadata import (OsfStorageFileMetadata,
                                                        OsfStorageFolderMetadata,
                                                        OsfStorageRevisionMetadata)
@@ -618,19 +617,18 @@ class TestValidatePath:
         assert len(wb_path_v0._parts) == 3
         assert wb_path_v0.name == '59a9b628b7d1c903ab5a8f52'
 
+
 class TestUploads:
 
-    def patch_tasks(self, monkeypatch):
+    def patch_uuid(self, monkeypatch):
         basepath = 'waterbutler.providers.osfstorage.provider.{}'
-        monkeypatch.setattr(basepath.format('os.rename'), lambda *_: None)
-        monkeypatch.setattr(basepath.format('settings.RUN_TASKS'), False)
         monkeypatch.setattr(basepath.format('uuid.uuid4'), lambda: 'patched_path')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_upload_new(self, monkeypatch, provider_and_mock, file_stream,
                               upload_response, upload_path, mock_time):
-        self.patch_tasks(monkeypatch)
+        self.patch_uuid(monkeypatch)
 
         url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
         aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
@@ -658,7 +656,7 @@ class TestUploads:
     @pytest.mark.aiohttpretty
     async def test_upload_existing(self, monkeypatch, provider_and_mock, file_stream, upload_path,
                                    upload_response, mock_time):
-        self.patch_tasks(monkeypatch)
+        self.patch_uuid(monkeypatch)
         provider, inner_provider = provider_and_mock
 
         url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
@@ -692,7 +690,7 @@ class TestUploads:
     @pytest.mark.aiohttpretty
     async def test_upload_catch_non_404_errors(self, monkeypatch, provider_and_mock, file_stream,
                                                upload_path, mock_time):
-        self.patch_tasks(monkeypatch)
+        self.patch_uuid(monkeypatch)
         provider, inner_provider = provider_and_mock
 
         url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
@@ -705,55 +703,9 @@ class TestUploads:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_and_tasks(self, monkeypatch, provider_and_mock, file_stream,
-                                    upload_response, credentials, settings, mock_time):
-        provider, inner_provider = provider_and_mock
-        basepath = 'waterbutler.providers.osfstorage.provider.{}'
-        path = WaterButlerPath('/' + upload_response['data']['name'],
-                               _ids=('Test', upload_response['data']['id']))
-        url = 'https://waterbutler.io/{}/children/'.format(path.parent.identifier)
-
-        # mock_parity = mock.Mock()
-        # mock_backup = mock.Mock()
-        inner_provider.move.return_value = (utils.MockFileMetadata(), True)
-        inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
-
-        aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
-        # monkeypatch.setattr(basepath.format('backup._push_file_archive'), mock_backup)
-        # monkeypatch.setattr(basepath.format('parity._parity_create_files'), mock_parity)
-        monkeypatch.setattr(basepath.format('settings.RUN_TASKS'), False)
-        monkeypatch.setattr(basepath.format('os.rename'), lambda *_: None)
-        monkeypatch.setattr(basepath.format('uuid.uuid4'), lambda: 'uniquepath')
-
-        res, created = await provider.upload(file_stream, path)
-
-        assert created is True
-        assert res.name == '[TEST]'
-        assert res.extra['version'] == 8
-        assert res.provider == 'osfstorage'
-        assert res.extra['downloads'] == 0
-        assert res.extra['checkout'] is None
-
-        inner_provider.upload.assert_called_once_with(file_stream, WaterButlerPath('/uniquepath'),
-                                                      check_created=False, fetch_metadata=False)
-        # complete_path = os.path.join(FILE_PATH_COMPLETE, local_complete_dir,
-        #                              file_stream.writers['sha256'].hexdigest)
-        # mock_parity.assert_called_once_with(complete_path, upload_response['version'],
-        #                                     'https://waterbutler.io/hooks/metadata/',
-        #                                     credentials['parity'], settings['parity'])
-        # mock_backup.assert_called_once_with(complete_path, upload_response['version'],
-        #                                     'https://waterbutler.io/hooks/metadata/',
-        #                                     credentials['archive'], settings['archive'])
-        expected_path = WaterButlerPath('/' + file_stream.writers['sha256'].hexdigest)
-        inner_provider.metadata.assert_called_once_with(expected_path)
-        inner_provider.move.assert_called_once_with(inner_provider, WaterButlerPath('/uniquepath'),
-                                                    expected_path)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
     async def test_upload_fails(self, monkeypatch, provider_and_mock, file_stream, upload_response,
                                 mock_time):
-        self.patch_tasks(monkeypatch)
+        self.patch_uuid(monkeypatch)
         provider, inner_provider = provider_and_mock
         path = WaterButlerPath('/{}'.format(upload_response['data']['name']),
                                _ids=('Test', upload_response['data']['id']))
@@ -766,7 +718,6 @@ class TestUploads:
         with pytest.raises(Exception):
             await provider.upload(file_stream, path)
 
-        assert not os.path.isfile(FILE_PATH_PENDING + '/patched_path')
         inner_provider.upload.assert_called_once_with(
             file_stream,
             WaterButlerPath('/patched_path'),
