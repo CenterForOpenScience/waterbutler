@@ -163,6 +163,10 @@ class UploadError(UnhandledProviderError):
     pass
 
 
+class RetryChunkedUploadCommit(WaterButlerError):
+    pass
+
+
 class FolderNamingConflict(ProviderError):
     def __init__(self, name):
         super().__init__('Cannot create folder "{}", because a file or folder already exists '

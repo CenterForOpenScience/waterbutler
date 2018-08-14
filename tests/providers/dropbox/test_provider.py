@@ -225,7 +225,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_limit_chunked_upload(self, provider, provider_fixtures, file_stream):
+    async def test_upload_limit_chunked_upload(self, provider, file_stream):
 
         assert file_stream.size == 38
         provider.CHUNK_SIZE = 4
