@@ -1,6 +1,7 @@
 import os
 import json
 import uuid
+import typing
 import hashlib
 import logging
 
@@ -10,6 +11,7 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.metadata import BaseMetadata
 from waterbutler.core.utils import RequestHandlerContext
 
 from waterbutler.providers.osfstorage import settings
@@ -324,6 +326,72 @@ class OSFStorageProvider(provider.BaseProvider):
             # save new folder's id into the WaterButlerPath object. logs will need it later.
             path._parts[-1]._id = resp_json['data']['path'].strip('/')
             return OsfStorageFolderMetadata(resp_json['data'], str(path))
+
+    async def move(self,
+                   dest_provider: provider.BaseProvider,
+                   src_path: WaterButlerPath,
+                   dest_path: WaterButlerPath,
+                   rename: str=None,
+                   conflict: str='replace',
+                   handle_naming: bool=True) -> typing.Tuple[BaseMetadata, bool]:
+        """Override parent's move to support cross-region osfstorage moves while preserving guids
+        and versions. Delegates to :meth:`.BaseProvider.move` when destination is not osfstorage.
+        If both providers are in the same region (i.e. `.can_intra_move` is true), then calls that.
+        Otherwise, will grab a download stream from the source region, send it to the destination
+        region, *then* execute an `.intra_move` to update the file metada in-place.
+        """
+
+        # when moving to non-osfstorage, default move is fine
+        if dest_provider.NAME != 'osfstorage':
+            return await super().move(dest_provider, src_path, dest_path, rename=rename,
+                                      conflict=conflict, handle_naming=handle_naming)
+
+        args = (dest_provider, src_path, dest_path)
+        kwargs = {'rename': rename, 'conflict': conflict}
+
+        self.provider_metrics.add('move', {
+            'got_handle_naming': handle_naming,
+            'conflict': conflict,
+            'got_rename': rename is not None,
+        })
+
+        if handle_naming:
+            dest_path = await dest_provider.handle_naming(
+                src_path,
+                dest_path,
+                rename=rename,
+                conflict=conflict,
+            )
+            args = (dest_provider, src_path, dest_path)
+            kwargs = {}
+
+        # files and folders shouldn't overwrite themselves
+        if (
+            self.shares_storage_root(dest_provider) and
+            src_path.materialized_path == dest_path.materialized_path
+        ):
+            raise exceptions.OverwriteSelfError(src_path)
+
+        self.provider_metrics.add('move.can_intra_move', False)
+        if self.can_intra_move(dest_provider, src_path):
+            self.provider_metrics.add('move.can_intra_move', True)
+            return await self.intra_move(*args)
+
+        if src_path.is_dir:
+            meta_data, created = await self._folder_file_op(self.move, *args, **kwargs)  # type: ignore
+            await self.delete(src_path)
+        else:
+            download_stream = await self.download(src_path)
+            if getattr(download_stream, 'name', None):
+                dest_path.rename(download_stream.name)
+
+            await dest_provider._send_to_storage_provider(download_stream,  # type: ignore
+                                                          dest_path, **kwargs)
+            meta_data, created = await self.intra_move(dest_provider, src_path, dest_path)
+
+        return meta_data, created
+
+    # ========== private ==========
 
     async def _item_metadata(self, path, revision=None):
         async with self.signed_request(
