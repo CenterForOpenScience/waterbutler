@@ -234,57 +234,10 @@ class OSFStorageProvider(provider.BaseProvider):
         issuer.
         """
 
-        pending_name = str(uuid.uuid4())
-        provider = self.make_provider(self.settings)
-        remote_pending_path = await provider.validate_path('/' + pending_name)
-        logger.debug('upload: remote_pending_path::{}'.format(remote_pending_path))
-
-        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
-        stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
-        stream.add_writer('sha256', streams.HashStreamWriter(hashlib.sha256))
-
-        await provider.upload(stream, remote_pending_path, check_created=False,
-                              fetch_metadata=False, **kwargs)
-
-        complete_name = stream.writers['sha256'].hexdigest
-        remote_complete_path = await provider.validate_path('/' + complete_name)
-
-        try:
-            metadata = await provider.metadata(remote_complete_path)
-        except exceptions.MetadataError as e:
-            if e.code != 404:
-                raise
-            metadata, _ = await provider.move(provider, remote_pending_path, remote_complete_path)
-        else:
-            await provider.delete(remote_pending_path)
-
+        metadata = await self._send_to_storage_provider(stream, path, **kwargs)
         metadata = metadata.serialized()
 
-        async with self.signed_request(
-            'POST',
-            self.build_url(path.parent.identifier, 'children'),
-            expects=(200, 201),
-            data=json.dumps({
-                'name': path.name,
-                'user': self.auth['id'],
-                'settings': self.settings['storage'],
-                'metadata': metadata,
-                'hashes': {
-                    'md5': stream.writers['md5'].hexdigest,
-                    'sha1': stream.writers['sha1'].hexdigest,
-                    'sha256': stream.writers['sha256'].hexdigest,
-                },
-                'worker': {
-                    'host': os.uname()[1],
-                    # TODO: Include additional information
-                    'address': None,
-                    'version': self.__version__,
-                },
-            }),
-            headers={'Content-Type': 'application/json'},
-        ) as response:
-            created = response.status == 201
-            data = await response.json()
+        data, created = await self._send_to_metadata_provider(stream, path, metadata, **kwargs)
 
         name = path.name
 
@@ -445,3 +398,71 @@ class OSFStorageProvider(provider.BaseProvider):
         folder_meta.children = await dest_provider._children_metadata(dest_path)
 
         return folder_meta, created
+
+    async def _send_to_storage_provider(self, stream, path, **kwargs):
+        """Send uploaded file data to the storage provider, where it will be stored w/o metadata
+        in a content-addressable format.
+
+        :return: metadata of the file as it exists on the storage provider
+        """
+
+        pending_name = str(uuid.uuid4())
+        provider = self.make_provider(self.settings)
+        remote_pending_path = await provider.validate_path('/' + pending_name)
+        logger.debug('upload: remote_pending_path::{}'.format(remote_pending_path))
+
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+        stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
+        stream.add_writer('sha256', streams.HashStreamWriter(hashlib.sha256))
+
+        await provider.upload(stream, remote_pending_path, check_created=False,
+                              fetch_metadata=False, **kwargs)
+
+        complete_name = stream.writers['sha256'].hexdigest
+        remote_complete_path = await provider.validate_path('/' + complete_name)
+
+        try:
+            metadata = await provider.metadata(remote_complete_path)
+        except exceptions.MetadataError as e:
+            if e.code != 404:
+                raise
+            metadata, _ = await provider.move(provider, remote_pending_path, remote_complete_path)
+        else:
+            await provider.delete(remote_pending_path)
+
+        return metadata
+
+    async def _send_to_metadata_provider(self, stream, path, metadata, **kwargs):
+        """Send metadata about the uploaded file (including its location on the storage provider) to
+        the OSF.
+
+        :return: metadata of the file and a bool indicating if the file was newly created
+        """
+
+        async with self.signed_request(
+            'POST',
+            self.build_url(path.parent.identifier, 'children'),
+            expects=(200, 201),
+            data=json.dumps({
+                'name': path.name,
+                'user': self.auth['id'],
+                'settings': self.settings['storage'],
+                'metadata': metadata,
+                'hashes': {
+                    'md5': stream.writers['md5'].hexdigest,
+                    'sha1': stream.writers['sha1'].hexdigest,
+                    'sha256': stream.writers['sha256'].hexdigest,
+                },
+                'worker': {
+                    'host': os.uname()[1],
+                    # TODO: Include additional information
+                    'address': None,
+                    'version': self.__version__,
+                },
+            }),
+            headers={'Content-Type': 'application/json'},
+        ) as response:
+            created = response.status == 201
+            data = await response.json()
+
+        return data, created
