@@ -138,7 +138,7 @@ class TestValidatePath:
 
         dir_listing_body =  test_fixtures['subfolder_dir_listing']
         base_commit = dir_listing_body['node']
-        dir_listing_url = provider._build_repo_url('src', 'main-branch', 'subfolder')  + '/'
+        dir_listing_url = provider._build_v1_repo_url('src', 'main-branch', 'subfolder')  + '/'
         aiohttpretty.register_json_uri('GET', dir_listing_url, body=dir_listing_body)
 
         path = '/subfolder/.gitkeep'

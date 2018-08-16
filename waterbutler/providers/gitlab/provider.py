@@ -110,9 +110,10 @@ class GitLabProvider(provider.BaseProvider):
             branch_name = await self._fetch_default_branch()
 
         if path == '/':
-            return GitLabPath(path, _ids=[(commit_sha, branch_name)])
+            gl_path = GitLabPath(path, _ids=[(commit_sha, branch_name)])
+        else:
+            gl_path = GitLabPath(path)
 
-        gl_path = GitLabPath(path)
         for part in gl_path.parts:
             part._id = (commit_sha, branch_name)
 

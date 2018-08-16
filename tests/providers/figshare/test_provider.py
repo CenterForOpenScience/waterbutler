@@ -596,36 +596,64 @@ class TestProjectCRUD:
         list_articles_url = project_provider.build_url(False, *root_parts, 'articles')
         validate_article_url = project_provider.build_url(False, *root_parts, 'articles', file_name)
 
-        aiohttpretty.register_json_uri('GET', list_articles_url,
-                                       body=root_provider_fixtures['list_project_articles'],
-                                       params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
-        aiohttpretty.register_json_uri('GET', list_articles_url, body=[],
-                                       params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
+        aiohttpretty.register_json_uri(
+            'GET',
+            list_articles_url,
+            body=root_provider_fixtures['list_project_articles'],
+            params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)}
+        )
+        aiohttpretty.register_json_uri(
+            'GET',
+            list_articles_url,
+            body=[],
+            params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)}
+        )
         aiohttpretty.register_uri('GET', validate_article_url, status=404)
-        path = await project_provider.validate_path('/' + file_name)
         path = FigsharePath('/' + file_name, _ids=('', ''), folder=False, is_public=False)
 
         article_id = str(crud_fixtures['upload_article_metadata']['id'])
         file_metadata = root_provider_fixtures['get_file_metadata']
         create_article_url = project_provider.build_url(False, *root_parts, 'articles')
         create_file_url = project_provider.build_url(False, 'articles', article_id, 'files')
-        file_url = project_provider.build_url(False, 'articles', article_id, 'files',
-                                              str(file_metadata['id']))
+        file_url = project_provider.build_url(
+            False,
+            'articles',
+            article_id,
+            'files',
+            str(file_metadata['id'])
+        )
         get_article_url = project_provider.build_url(False, *root_parts, 'articles', article_id)
         upload_url = file_metadata['upload_url']
 
-        aiohttpretty.register_json_uri('POST', create_article_url,
-                                       body=crud_fixtures['create_article_metadata'], status=201)
-        aiohttpretty.register_json_uri('POST', create_file_url,
-                                       body=crud_fixtures['create_file_metadata'], status=201)
-        aiohttpretty.register_json_uri('GET', file_url,
-                                       body=file_metadata)
-        aiohttpretty.register_json_uri('GET', upload_url,
-                                       body=root_provider_fixtures['get_upload_metadata'])
+        aiohttpretty.register_json_uri(
+            'POST',
+            create_article_url,
+            body=crud_fixtures['create_article_metadata'],
+            status=201
+        )
+        aiohttpretty.register_json_uri(
+            'POST',
+            create_file_url,
+            body=crud_fixtures['create_file_metadata'],
+            status=201
+        )
+        aiohttpretty.register_json_uri(
+            'GET',
+            file_url,
+            body=file_metadata
+        )
+        aiohttpretty.register_json_uri(
+            'GET',
+            upload_url,
+            body=root_provider_fixtures['get_upload_metadata']
+        )
         aiohttpretty.register_uri('PUT', '{}/1'.format(upload_url), status=200)
         aiohttpretty.register_uri('POST', file_url, status=202)
-        aiohttpretty.register_json_uri('GET', get_article_url,
-                                       body=crud_fixtures['upload_article_metadata'])
+        aiohttpretty.register_json_uri(
+            'GET',
+            get_article_url,
+            body=crud_fixtures['upload_article_metadata']
+        )
 
         # md5 hash calculation is being hacked around.  see test class docstring
         result, created = await project_provider.upload(file_stream, path)
@@ -636,9 +664,7 @@ class TestProjectCRUD:
         assert aiohttpretty.has_call(
             method='POST',
             uri=create_article_url,
-            data=json.dumps({
-                'title': 'barricade.gif',
-            })
+            data=json.dumps({'title': 'barricade.gif'})
         )
         assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
         assert aiohttpretty.has_call(method='POST', uri=create_file_url)

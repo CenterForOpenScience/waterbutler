@@ -108,9 +108,12 @@ class TestValidatePath:
         good_url = provider.build_url('folders', folder_id, fields='id,name,path_collection')
         bad_url = provider.build_url('files', folder_id, fields='id,name,path_collection')
 
-        aiohttpretty.register_json_uri('get', good_url,
-                                       body=root_provider_fixtures['folder_object_metadata'],
-                                       status=200)
+        aiohttpretty.register_json_uri(
+            'get',
+            good_url,
+            body=root_provider_fixtures['folder_object_metadata'],
+            status=200
+        )
         aiohttpretty.register_uri('get', bad_url, status=404)
         try:
             wb_path = await provider.validate_path('/' + folder_id + '/')
@@ -139,20 +142,6 @@ class TestValidatePath:
 
         assert e.value.message == 'Could not retrieve file or directory /bulbasaur'
         assert e.value.code == 404
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_validate_path(self, provider, root_provider_fixtures):
-        provider.folder = '0'
-        folder_id = '0'
-
-        good_url = provider.build_url('folders', folder_id, 'items', fields='id,name,type', limit=1000)
-        aiohttpretty.register_json_uri('GET', good_url,
-                                       body=root_provider_fixtures['revalidate_metadata'],
-                                       status=200)
-
-        result = await provider.validate_path('/bulbasaur')
-        assert result == WaterButlerPath('/bulbasaur', folder=False)
 
 
 class TestDownload:

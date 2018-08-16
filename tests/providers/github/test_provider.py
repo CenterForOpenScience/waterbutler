@@ -205,50 +205,6 @@ class TestValidatePath:
         assert exc.value.code == client.BAD_REQUEST
 
     @pytest.mark.asyncio
-    async def test_validate_path(self, provider):
-        path = await provider.validate_path('/this/is/my/path')
-
-        assert path.is_dir is False
-        assert path.is_file is True
-        assert path.name == 'path'
-        assert isinstance(path.identifier, tuple)
-        assert path.identifier == (provider.default_branch, None)
-        assert path.parts[0].identifier == (provider.default_branch, None)
-
-    @pytest.mark.asyncio
-    async def test_validate_path_passes_branch(self, provider):
-        path = await provider.validate_path('/this/is/my/path', branch='NotMaster')
-
-        assert path.is_dir is False
-        assert path.is_file is True
-        assert path.name == 'path'
-        assert isinstance(path.identifier, tuple)
-        assert path.identifier == ('NotMaster', None)
-        assert path.parts[0].identifier == ('NotMaster', None)
-
-    @pytest.mark.asyncio
-    async def test_validate_path_passes_ref(self, provider):
-        path = await provider.validate_path('/this/is/my/path', ref='NotMaster')
-
-        assert path.is_dir is False
-        assert path.is_file is True
-        assert path.name == 'path'
-        assert isinstance(path.identifier, tuple)
-        assert path.identifier == ('NotMaster', None)
-        assert path.parts[0].identifier == ('NotMaster', None)
-
-    @pytest.mark.asyncio
-    async def test_validate_path_passes_file_sha(self, provider):
-        path = await provider.validate_path('/this/is/my/path', fileSha='Thisisasha')
-
-        assert path.is_dir is False
-        assert path.is_file is True
-        assert path.name == 'path'
-        assert isinstance(path.identifier, tuple)
-        assert path.identifier == (provider.default_branch, 'Thisisasha')
-        assert path.parts[0].identifier == (provider.default_branch, None)
-
-    @pytest.mark.asyncio
     async def test_revalidate_path(self, provider):
         path = '/'
         child_path = 'grass.txt'

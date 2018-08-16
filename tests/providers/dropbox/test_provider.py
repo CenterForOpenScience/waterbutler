@@ -8,26 +8,35 @@ from waterbutler.core.path import WaterButlerPath
 from waterbutler.core import metadata as core_metadata
 from waterbutler.core import exceptions as core_exceptions
 
-from waterbutler.providers.dropbox.metadata import (DropboxRevision,
-                                                    DropboxFileMetadata,
-                                                    DropboxFolderMetadata)
-from waterbutler.providers.dropbox.exceptions import (DropboxNamingConflictError,
-                                                      DropboxUnhandledConflictError)
-from waterbutler.providers.dropbox.settings import CHUNK_SIZE, CONTIGUOUS_UPLOAD_SIZE_LIMIT
+from waterbutler.providers.dropbox.metadata import (
+    DropboxRevision,
+    DropboxFileMetadata,
+    DropboxFolderMetadata
+)
+from waterbutler.providers.dropbox.exceptions import (
+    DropboxNamingConflictError,
+    DropboxUnhandledConflictError
+)
+from waterbutler.providers.dropbox.settings import (
+    CHUNK_SIZE,
+    CONTIGUOUS_UPLOAD_SIZE_LIMIT
+)
 
 from tests.utils import MockCoroutine
-from tests.providers.dropbox.fixtures import (auth,
-                                              settings,
-                                              provider,
-                                              file_like,
-                                              credentials,
-                                              file_stream,
-                                              file_content,
-                                              other_provider,
-                                              error_fixtures,
-                                              other_credentials,
-                                              provider_fixtures,
-                                              revision_fixtures,)
+from tests.providers.dropbox.fixtures import (
+    auth,
+    settings,
+    provider,
+    file_like,
+    credentials,
+    file_stream,
+    file_content,
+    other_provider,
+    error_fixtures,
+    other_credentials,
+    provider_fixtures,
+    revision_fixtures,
+)
 
 
 def build_folder_metadata_data(path):
@@ -86,8 +95,18 @@ class TestValidatePath:
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
 
+    @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_returns_path_obj(self, provider):
+    async def test_returns_path_obj(self, provider, provider_fixtures):
+        metadata_url = provider.build_url('files', 'get_metadata')
+        data = {"path": '/thisisapath'}
+        aiohttpretty.register_json_uri(
+            'POST',
+            metadata_url,
+            data=data,
+            body=provider_fixtures['file_metadata']
+        )
+
         path = await provider.validate_path('/thisisapath')
 
         assert path.is_file
@@ -96,7 +115,16 @@ class TestValidatePath:
         assert provider.folder in path.full_path
 
     @pytest.mark.asyncio
-    async def test_with_folder(self, provider):
+    @pytest.mark.aiohttpretty
+    async def test_with_folder(self, provider, provider_fixtures):
+        data = {"path": "/Photos"}
+        metadata_url = provider.build_url('files', 'get_metadata')
+        aiohttpretty.register_json_uri(
+            'POST',
+            metadata_url,
+            data=data,
+            body=provider_fixtures['folder_metadata']
+        )
         path = await provider.validate_path('/this/isa/folder/')
 
         assert path.is_dir
@@ -131,7 +159,7 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_download_not_found(self, provider, error_fixtures):
-        path = await provider.validate_path('/vectors.txt')
+        path = WaterButlerPath('/vectors.txt', prepend=provider.folder)
         url = provider._build_content_url('files', 'download')
         aiohttpretty.register_json_uri(
             'POST',
@@ -170,7 +198,7 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_upload(self, provider, provider_fixtures, error_fixtures, file_stream):
-        path = await provider.validate_path('/phile')
+        path = WaterButlerPath('/phile', prepend=provider.folder)
         metadata_url = provider.build_url('files', 'get_metadata')
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri(
@@ -351,7 +379,7 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_delete_file(self, provider):
         url = provider.build_url('files', 'delete_v2')
-        path = await provider.validate_path('/The past')
+        path = WaterButlerPath('/The past', prepend=provider.folder)
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data, status=HTTPStatus.OK)
 
@@ -387,10 +415,15 @@ class TestCRUD:
             status=HTTPStatus.OK
         )
 
-        path2 = await provider.validate_path('/photos/flower.jpg')
+        path2 = WaterButlerPath('/photos/flower.jpg', prepend=provider.folder)
         url = provider.build_url('files', 'delete_v2')
         data = {'path': provider.folder.rstrip('/') + '/' + path2.path.rstrip('/')}
         aiohttpretty.register_json_uri('POST', url, data=data, status=HTTPStatus.OK)
+        provider.validate_path = MockCoroutine(
+            side_effect=[
+                WaterButlerPath('/photos/flower.jpg')
+            ]
+        )
 
         await provider.delete(path, 1)
 
@@ -423,7 +456,7 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_revision_metadata(self, provider, revision_fixtures):
-        path = await provider.validate_path('/testfile')
+        path = WaterButlerPath('/testfile', prepend=provider.folder)
         url = provider.build_url('files', 'get_metadata')
         revision = 'c5bb27d11'
         data = {'path': 'rev:' + revision}
@@ -763,7 +796,7 @@ class TestIntraMoveCopy:
             error_fixtures
     ):
         url = provider.build_url('files', 'delete_v2')
-        path = await provider.validate_path('/The past')
+        path = WaterButlerPath('/The past', prepend=provider.folder)
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data, status=HTTPStatus.OK)
 
@@ -916,7 +949,7 @@ class TestIntraMoveCopy:
     @pytest.mark.aiohttpretty
     async def test_intra_move_replace_file(self, provider, provider_fixtures, error_fixtures):
         url = provider.build_url('files', 'delete_v2')
-        path = await provider.validate_path('/The past')
+        path = WaterButlerPath('/The past', prepend=provider.folder)
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data, status=HTTPStatus.OK)
 
@@ -960,7 +993,7 @@ class TestIntraMoveCopy:
     @pytest.mark.aiohttpretty
     async def test_intra_move_replace_folder(self, provider, provider_fixtures, error_fixtures):
         url = provider.build_url('files', 'delete_v2')
-        path = await provider.validate_path('/newfolder/')
+        path = WaterButlerPath('/newfolder/', prepend=provider.folder)
         data = {'path': path.full_path}
         aiohttpretty.register_json_uri('POST', url, data=data, status=HTTPStatus.OK)
 

@@ -113,7 +113,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     async def test_download_not_found(self, provider):
-        path = await provider.validate_path('/missing.txt')
+        path = WaterButlerPath('/missing.txt', prepend=provider.folder)
 
         with pytest.raises(exceptions.DownloadError):
             await provider.download(path)
@@ -126,7 +126,7 @@ class TestCRUD:
         file_content = b'Test Upload Content'
         file_stream = streams.StringStream(file_content)
 
-        path = await provider.validate_path(file_path)
+        path = WaterButlerPath(file_path, prepend=provider.folder)
         metadata, created = await provider.upload(file_stream, path)
 
         assert metadata.name == file_name
@@ -160,7 +160,7 @@ class TestCRUD:
         file_content = b'Test New Nested Content'
         file_stream = streams.FileStreamReader(io.BytesIO(file_content))
 
-        path = await provider.validate_path(file_path)
+        path = WaterButlerPath(file_path, prepend=provider.folder)
         metadata, created = await provider.upload(file_stream, path)
 
         assert metadata.name == file_name
@@ -242,7 +242,7 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     async def test_metadata_missing(self, provider):
-        path = await provider.validate_path('/missing.txt')
+        path = WaterButlerPath('/missing.txt', prepend=provider.folder)
 
         with pytest.raises(exceptions.MetadataError):
             await provider.metadata(path)
@@ -252,8 +252,10 @@ class TestIntra:
 
     @pytest.mark.asyncio
     async def test_intra_copy_file(self, provider):
-        src_path = await provider.validate_path('/flower.jpg')
-        dest_path = await provider.validate_path('/subfolder/flower.jpg')
+        """
+        """
+        src_path = WaterButlerPath('/flower.jpg', prepend=provider.folder)
+        dest_path = WaterButlerPath('/subfolder/flower.jpg', prepend=provider.folder)
 
         result = await provider.intra_copy(provider, src_path, dest_path)
 
@@ -265,8 +267,8 @@ class TestIntra:
 
     @pytest.mark.asyncio
     async def test_intra_move_folder(self, provider):
-        src_path = await provider.validate_path('/subfolder/')
-        dest_path = await provider.validate_path('/other_subfolder/subfolder/')
+        src_path = WaterButlerPath('/subfolder/', prepend=provider.folder)
+        dest_path = WaterButlerPath('/other_subfolder/subfolder/', prepend=provider.folder)
 
         result = await provider.intra_move(provider, src_path, dest_path)
 
@@ -277,8 +279,10 @@ class TestIntra:
 
     @pytest.mark.asyncio
     async def test_intra_move_file(self, provider):
-        src_path = await provider.validate_path('/flower.jpg')
-        dest_path = await provider.validate_path('/subfolder/flower.jpg')
+        """Test the `intra_move` method
+        """
+        src_path = WaterButlerPath('/flower.jpg', prepend=provider.folder)
+        dest_path = WaterButlerPath('/subfolder/flower.jpg', prepend=provider.folder)
 
         result = await provider.intra_move(provider, src_path, dest_path)
 

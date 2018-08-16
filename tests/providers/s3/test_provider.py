@@ -253,33 +253,6 @@ class TestValidatePath:
 
         assert exc.value.code == client.NOT_FOUND
 
-    @pytest.mark.asyncio
-    async def test_normal_name(self, provider, mock_time):
-        path = await provider.validate_path('/this/is/a/path.txt')
-        assert path.name == 'path.txt'
-        assert path.parent.name == 'a'
-        assert path.is_file
-        assert not path.is_dir
-        assert not path.is_root
-
-    @pytest.mark.asyncio
-    async def test_folder(self, provider, mock_time):
-        path = await provider.validate_path('/this/is/a/folder/')
-        assert path.name == 'folder'
-        assert path.parent.name == 'a'
-        assert not path.is_file
-        assert path.is_dir
-        assert not path.is_root
-
-    @pytest.mark.asyncio
-    async def test_root(self, provider, mock_time):
-        path = await provider.validate_path('/this/is/a/folder/')
-        assert path.name == 'folder'
-        assert path.parent.name == 'a'
-        assert not path.is_file
-        assert path.is_dir
-        assert not path.is_root
-
 
 class TestCRUD:
 
