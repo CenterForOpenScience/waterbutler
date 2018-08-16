@@ -66,30 +66,6 @@ class OsfAuthHandler(BaseAuthHandler):
         except (jwt.InvalidTokenError, KeyError):
             raise exceptions.AuthError(data, code=response.status)
 
-    async def fetch(self, request, bundle):
-        """Used for v0"""
-        headers = {'Content-Type': 'application/json'}
-
-        if 'Authorization' in request.headers:
-            headers['Authorization'] = request.headers['Authorization']
-
-        cookie = request.query_arguments.get('cookie')
-        if cookie:
-            cookie = cookie[0].decode()
-
-        view_only = request.query_arguments.get('view_only')
-        if view_only:
-            view_only = view_only[0].decode()
-
-        payload = (await self.make_request(
-            self.build_payload(bundle, cookie=cookie, view_only=view_only),
-            headers,
-            dict(request.cookies)
-        ))
-
-        payload['auth']['callback_url'] = payload['callback_url']
-        return payload
-
     async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE):
         """Used for v1"""
         method = request.method.lower()
