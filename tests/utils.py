@@ -94,7 +94,6 @@ class MockProvider(provider.BaseProvider):
     upload = None
     download = None
     metadata = None
-    validate_v1_path = None
     validate_path = None
     revalidate_path = None
     can_duplicate_names = True
@@ -109,8 +108,6 @@ class MockProvider(provider.BaseProvider):
         self.metadata = MockCoroutine()
         self.revalidate_path = MockCoroutine(
             side_effect=lambda base, path, *args, **kwargs: base.child(path, *args, **kwargs))
-        self.validate_v1_path = MockCoroutine(
-            side_effect=lambda path,  **kwargs: WaterButlerPath(path, **kwargs))
         self.validate_path = MockCoroutine(
             side_effect=lambda path, **kwargs: WaterButlerPath(path, **kwargs))
 
@@ -118,9 +115,6 @@ class MockProvider(provider.BaseProvider):
 class MockProvider1(provider.BaseProvider):
 
     NAME = 'MockProvider1'
-
-    async def validate_v1_path(self, path, **kwargs):
-        return await self.validate_path(path, **kwargs)
 
     async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)

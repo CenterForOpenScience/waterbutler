@@ -66,7 +66,7 @@ class GitHubProvider(provider.BaseProvider):
         self.repo = self.settings['repo']
         self.metrics.add('repo', {'repo': self.repo, 'owner': self.owner})
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         if not getattr(self, '_repo', None):
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
@@ -94,35 +94,6 @@ class GitHubProvider(provider.BaseProvider):
         await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
 
         path = GitHubPath(path)
-        for part in path.parts:
-            part._id = (branch_ref, None)
-
-        # TODO Validate that filesha is a valid sha
-        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
-        self.metrics.add('file_sha_given', True if kwargs.get('fileSha') else False)
-
-        return path
-
-    async def validate_path(self, path, **kwargs):
-        if not getattr(self, '_repo', None):
-            self._repo = await self._fetch_repo()
-            self.default_branch = self._repo['default_branch']
-
-        path = GitHubPath(path)
-        branch_ref, ref_from = None, None
-        if kwargs.get('ref'):
-            branch_ref = kwargs.get('ref')
-            ref_from = 'query_ref'
-        elif kwargs.get('branch'):
-            branch_ref = kwargs.get('branch')
-            ref_from = 'query_branch'
-        else:
-            branch_ref = self.default_branch
-            ref_from = 'default_branch'
-        if isinstance(branch_ref, list):
-            raise exceptions.InvalidParameters('Only one ref or branch may be given.')
-        self.metrics.add('branch_ref_from', ref_from)
-
         for part in path.parts:
             part._id = (branch_ref, None)
 

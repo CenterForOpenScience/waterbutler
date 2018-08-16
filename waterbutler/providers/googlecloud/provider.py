@@ -98,9 +98,6 @@ class GoogleCloudProvider(BaseProvider):
                 message='Invalid or mal-formed service account credentials: {}'.format(str(exc))
             )
 
-    async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
-        return await self.validate_path(path)
-
     async def validate_path(self, path: str, **kwargs) -> WaterButlerPath:
         return WaterButlerPath(path)
 

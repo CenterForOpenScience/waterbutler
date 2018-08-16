@@ -12,24 +12,28 @@ from waterbutler.core.streams import FileStreamReader, ResponseStreamReader
 from waterbutler.providers.googlecloud.metadata import GoogleCloudFileMetadata
 from waterbutler.providers.googlecloud import utils, settings, GoogleCloudProvider
 
-from tests.providers.googlecloud.fixtures.providers import (mock_auth,
-                                                            mock_auth_2,
-                                                            mock_creds,
-                                                            mock_creds_2,
-                                                            mock_settings,
-                                                            mock_settings_2)
+from tests.providers.googlecloud.fixtures.providers import (
+    mock_auth,
+    mock_auth_2,
+    mock_creds,
+    mock_creds_2,
+    mock_settings,
+    mock_settings_2
+)
 
-from tests.providers.googlecloud.fixtures.files import (file_raw,
-                                                        file_name,
-                                                        file_wb_path,
-                                                        file_obj_name,
-                                                        meta_file_raw,
-                                                        meta_file_parsed,
-                                                        meta_file_upload_raw,
-                                                        meta_file_copy_raw,
-                                                        file_2_wb_path,
-                                                        file_2_obj_name,
-                                                        file_2_copy_obj_name)
+from tests.providers.googlecloud.fixtures.files import (
+    file_raw,
+    file_name,
+    file_wb_path,
+    file_obj_name,
+    meta_file_raw,
+    meta_file_parsed,
+    meta_file_upload_raw,
+    meta_file_copy_raw,
+    file_2_wb_path,
+    file_2_obj_name,
+    file_2_copy_obj_name
+)
 
 from tests.providers.googlecloud.fixtures.folders import folder_wb_path, folder_obj_name
 
@@ -73,14 +77,14 @@ class TestProviderInit:
 class TestValidatePath:
 
     @pytest.mark.asyncio
-    async def test_validate_v1_path_file(self, mock_provider, file_wb_path):
+    async def test_validate_path_file(self, mock_provider, file_wb_path):
         file_path = '/{}'.format(file_wb_path.path)
         assert file_path.startswith('/') and not file_path.endswith('/')
         wb_path = await mock_provider.validate_path(file_path)
         assert wb_path == file_wb_path
 
     @pytest.mark.asyncio
-    async def test_validate_v1_path_folder(self, mock_provider, folder_wb_path):
+    async def test_validate_path_folder(self, mock_provider, folder_wb_path):
         folder_path = '/{}'.format(folder_wb_path.path)
         assert folder_path.startswith('/') and folder_path.endswith('/')
         wb_path = await mock_provider.validate_path(folder_path)

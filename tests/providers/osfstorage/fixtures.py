@@ -172,7 +172,7 @@ def provider_and_mock(monkeypatch, auth, credentials, settings):
     mock_provider.upload = utils.MockCoroutine()
     mock_provider.download = utils.MockCoroutine()
     mock_provider.metadata = utils.MockCoroutine()
-    mock_provider.validate_v1_path = utils.MockCoroutine()
+    mock_provider.validate_path = utils.MockCoroutine()
     mock_provider._children_metadata = utils.MockCoroutine()
 
     mock_make_provider = mock.Mock(return_value=mock_provider)
@@ -190,7 +190,7 @@ def provider_and_mock2(monkeypatch, auth, credentials, settings):
     mock_provider.upload = utils.MockCoroutine()
     mock_provider.download = utils.MockCoroutine()
     mock_provider.metadata = utils.MockCoroutine()
-    mock_provider.validate_v1_path = utils.MockCoroutine()
+    mock_provider.validate_path = utils.MockCoroutine()
     mock_provider._children_metadata = utils.MockCoroutine()
 
     mock_make_provider = mock.Mock(return_value=mock_provider)

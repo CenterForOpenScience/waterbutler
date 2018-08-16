@@ -67,27 +67,23 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_root(self, provider):
-        assert WaterButlerPath('/', prepend=provider.folder) == await provider.validate_v1_path('/')
+    async def test_validate_path_root(self, provider):
+        assert WaterButlerPath('/', prepend=provider.folder) == await provider.validate_path('/')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, file_metadata):
+    async def test_validate_path_file(self, provider, file_metadata):
         path = WaterButlerPath('/triangles.txt', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
         try:
-            wb_path_v1 = await provider.validate_v1_path('/triangles.txt')
+            wb_path = await provider.validate_path('/triangles.txt')
         except Exception as exc:
             pytest.fail(str(exc))
 
-        wb_path_v0 = await provider.validate_path('/triangles.txt')
-
-        assert wb_path_v1 == wb_path_v0
-
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider, folder_metadata):
+    async def test_validate_path_folder(self, provider, folder_metadata):
         path = WaterButlerPath('/myfolder/', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
         aiohttpretty.register_uri('PROPFIND',
@@ -96,13 +92,9 @@ class TestValidatePath:
                                   auto_length=True,
                                   status=207)
         try:
-            wb_path_v1 = await provider.validate_v1_path('/myfolder/')
+            wb_path = await provider.validate_path('/myfolder/')
         except Exception as exc:
             pytest.fail(str(exc))
-
-        wb_path_v0 = await provider.validate_path('/myfolder/')
-
-        assert wb_path_v1 == wb_path_v0
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -116,16 +108,11 @@ class TestValidatePath:
                                   status=207)
 
         with pytest.raises(exceptions.NotFoundError):
-            await provider.validate_v1_path('/triangles.txt')
-
-        try:
             await provider.validate_path('/triangles.txt')
-        except Exception as exc:
-            pytest.fail(str(exc))
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_v1_own_cloud_404(self, provider, file_metadata_unparsable_response):
+    async def test_own_cloud_404(self, provider, file_metadata_unparsable_response):
         path = WaterButlerPath('/triangles.txt', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
         aiohttpretty.register_uri('PROPFIND',
@@ -135,7 +122,7 @@ class TestValidatePath:
                                   status=404)
 
         with pytest.raises(exceptions.NotFoundError):
-            await provider.validate_v1_path('/triangles.txt')
+            await provider.validate_path('/triangles.txt')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -149,7 +136,7 @@ class TestValidatePath:
                                   status=207)
 
         with pytest.raises(exceptions.NotFoundError):
-            await provider.validate_v1_path('/triangles.txt')
+            await provider.validate_path('/triangles.txt')
 
 
 class TestCRUD:

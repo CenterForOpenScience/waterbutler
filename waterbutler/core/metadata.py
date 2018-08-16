@@ -33,10 +33,6 @@ class BaseMetadata(metaclass=abc.ABCMeta):
     def serialized(self) -> dict:
         """Returns a dict of primitives suitable for serializing into JSON.
 
-        .. note::
-
-            This method determines the output of API v0 and v1.
-
         :rtype: dict
         """
         return {

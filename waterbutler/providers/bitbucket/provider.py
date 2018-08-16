@@ -61,7 +61,9 @@ class BitbucketProvider(provider.BaseProvider):
     def default_headers(self) -> dict:
         return {'Authorization': 'Bearer {}'.format(self.token)}
 
-    async def validate_v1_path(self, path: str, **kwargs) -> BitbucketPath:
+    async def validate_path(self, path: str, **kwargs) -> BitbucketPath:
+        """Validate a path
+        """
         commit_sha = kwargs.get('commitSha')
         branch_name = kwargs.get('branch')
 
@@ -105,33 +107,6 @@ class BitbucketProvider(provider.BaseProvider):
 
         return path_obj
 
-    async def validate_path(self, path: str, **kwargs) -> BitbucketPath:
-        commit_sha = kwargs.get('commitSha')
-        branch_name = kwargs.get('branch')
-
-        # revision query param could be commit sha OR branch
-        # take a guess which one it will be.
-        revision = kwargs.get('revision', None)
-        if revision is not None:
-            try:
-                int(revision, 16)  # is revision valid hex?
-            except (TypeError, ValueError):
-                branch_name = revision
-            else:
-                commit_sha = revision
-
-        if not commit_sha and not branch_name:
-            branch_name = await self._fetch_default_branch()
-
-        if path == '/':
-            return BitbucketPath(path, _ids=[(commit_sha, branch_name)])
-
-        path_obj = BitbucketPath(path)
-        for part in path_obj.parts:
-            part._id = (commit_sha, branch_name)
-
-        return path_obj
-
     def path_from_metadata(self,  # type: ignore
                            parent_path: BitbucketPath,
                            metadata) -> BitbucketPath:
@@ -152,7 +127,7 @@ class BitbucketProvider(provider.BaseProvider):
     async def revisions(self, path: BitbucketPath, **kwargs) -> list:  # type: ignore
         """Returns a list of revisions for a file.  As a VCS, Bitbucket doesn't have a single
         canonical history for a file.  The revisions returned will be those of the file starting
-        with the reference supplied to or inferred by validate_v1_path().
+        with the reference supplied to or inferred by validate_path().
 
         https://confluence.atlassian.com/bitbucket/repository-resource-1-0-296095202.html#repositoryResource1.0-GETsthehistoryofafileinachangeset
 

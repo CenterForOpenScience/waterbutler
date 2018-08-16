@@ -86,11 +86,11 @@ class TestPolymorphism:
         assert article_provider.article_id == article_settings['container_id']
 
 
-class TestProjectV1ValidatePath:
+class TestProjectValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder_article(self, project_provider, root_provider_fixtures):
+    async def test_validate_path_folder_article(self, project_provider, root_provider_fixtures):
         item = root_provider_fixtures['folder_article_metadata']
         file_id = str(item['id'])
         path = '/{}/'.format(file_id)
@@ -106,7 +106,7 @@ class TestProjectV1ValidatePath:
                                        params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
         aiohttpretty.register_json_uri('GET', article_url, body=item)
 
-        result = await project_provider.validate_v1_path(path)
+        result = await project_provider.validate_path(path)
         expected = FigsharePath('/{}/'.format(item['title']),
                                 _ids=(project_provider.container_id, file_id),
                                 folder=True,
@@ -116,7 +116,7 @@ class TestProjectV1ValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder_article_bad_path(self, project_provider,
+    async def test_validate_path_folder_article_bad_path(self, project_provider,
                                                             root_provider_fixtures):
         item = root_provider_fixtures['folder_article_metadata']
         file_id = str(item['id'])
@@ -134,14 +134,14 @@ class TestProjectV1ValidatePath:
         aiohttpretty.register_json_uri('GET', article_url, body=item)
 
         with pytest.raises(exceptions.NotFoundError) as e:
-            await project_provider.validate_v1_path(path)
+            await project_provider.validate_path(path)
 
         assert e.value.code == 404
         assert aiohttpretty.has_call(method='GET', uri=article_url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder_article_bad_type(self, project_provider,
+    async def test_validate_path_folder_article_bad_type(self, project_provider,
                                                             root_provider_fixtures):
         item = root_provider_fixtures['folder_article_metadata']
         file_id = str(item['id'])
@@ -162,42 +162,42 @@ class TestProjectV1ValidatePath:
         aiohttpretty.register_json_uri('GET', article_url, body=item)
 
         with pytest.raises(exceptions.NotFoundError) as e:
-            await project_provider.validate_v1_path(path)
+            await project_provider.validate_path(path)
 
         assert e.value.code == 404
         assert aiohttpretty.has_call(method='GET', uri=article_url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_validate_v1_path_root(self, project_provider):
+    async def test_project_validate_path_root(self, project_provider):
         path = '/'
 
-        result = await project_provider.validate_v1_path(path)
+        result = await project_provider.validate_path(path)
         expected = FigsharePath(path, _ids=('', ), folder=True, is_public=False)
 
         assert result == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_article_validate_v1_path_invalid_path(self, article_provider):
+    async def test_article_validate_path_invalid_path(self, article_provider):
         with pytest.raises(exceptions.InvalidPathError) as e:
-            await article_provider.validate_v1_path('/this/is/an/invalid/path')
+            await article_provider.validate_path('/this/is/an/invalid/path')
 
         assert e.value.code == 400
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_invalid_path(self, project_provider):
+    async def test_validate_path_invalid_path(self, project_provider):
         path = 'whatever'
 
         with pytest.raises(exceptions.InvalidPathError) as e:
-            await project_provider.validate_v1_path(path)
+            await project_provider.validate_path(path)
 
         assert e.value.code == 400
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file_article(self, project_provider, root_provider_fixtures):
+    async def test_validate_path_file_article(self, project_provider, root_provider_fixtures):
         file_item = root_provider_fixtures['file_metadata']
         item = root_provider_fixtures['file_article_metadata']
         file_id = str(item['files'][0]['id'])
@@ -217,7 +217,7 @@ class TestProjectV1ValidatePath:
 
         aiohttpretty.register_json_uri('GET', article_url, body=file_item)
 
-        result = await project_provider.validate_v1_path(path)
+        result = await project_provider.validate_path(path)
         expected = FigsharePath('/{}/{}'.format(item['title'], file_item['name']),
                                 _ids=(project_provider.container_id, file_id),
                                 folder=False, is_public=False)
@@ -226,7 +226,7 @@ class TestProjectV1ValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file_article_public(self, project_provider,
+    async def test_validate_path_file_article_public(self, project_provider,
                                                         root_provider_fixtures):
         file_item = root_provider_fixtures['file_metadata_public']
         item = root_provider_fixtures['file_article_metadata']
@@ -247,7 +247,7 @@ class TestProjectV1ValidatePath:
 
         aiohttpretty.register_json_uri('GET', article_url, body=file_item)
 
-        result = await project_provider.validate_v1_path(path)
+        result = await project_provider.validate_path(path)
         expected = FigsharePath('/{}/{}'.format(item['title'], file_item['name']),
                                 _ids=(project_provider.container_id, file_id),
                                 folder=False, is_public=False)
@@ -256,7 +256,7 @@ class TestProjectV1ValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file_article_bad_path(self, project_provider,
+    async def test_validate_path_file_article_bad_path(self, project_provider,
                                                           root_provider_fixtures):
         file_item = root_provider_fixtures['file_metadata']
         item = root_provider_fixtures['file_article_metadata']
@@ -278,26 +278,26 @@ class TestProjectV1ValidatePath:
         aiohttpretty.register_json_uri('GET', article_url, body=file_item)
 
         with pytest.raises(exceptions.NotFoundError) as e:
-            await project_provider.validate_v1_path(path)
+            await project_provider.validate_path(path)
 
         assert e.value.code == 404
 
 
-class TestArticleV1ValidatePath:
+class TestArticleValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_article_validate_v1_path_root(self, article_provider):
+    async def test_article_validate_path_root(self, article_provider):
         path = '/'
 
-        result = await article_provider.validate_v1_path(path)
+        result = await article_provider.validate_path(path)
         expected = FigsharePath(path, _ids=('', ), folder=True, is_public=False)
 
         assert result == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_article_validate_v1_path(self, article_provider, root_provider_fixtures):
+    async def test_article_validate_path(self, article_provider, root_provider_fixtures):
         item = root_provider_fixtures['file_metadata']
         file_id = item['id']
         path = '/' + str(file_id)
@@ -306,7 +306,7 @@ class TestArticleV1ValidatePath:
 
         aiohttpretty.register_json_uri('GET', url, body=item)
 
-        result = await article_provider.validate_v1_path(path)
+        result = await article_provider.validate_path(path)
         expected = FigsharePath('/' + item['name'], _ids=('', file_id), folder=False,
                                 is_public=False)
 

@@ -83,7 +83,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
 
-    async def validate_v1_path(self, path: str, **kwargs) -> GoogleDrivePath:
+    async def validate_path(self, path: str, **kwargs) -> GoogleDrivePath:
         if path == '/':
             return GoogleDrivePath('/', _ids=[self.folder['id']], folder=True)
 
@@ -93,14 +93,6 @@ class GoogleDriveProvider(provider.BaseProvider):
         if parts[-1]['id'] is None or implicit_folder != explicit_folder:
             raise exceptions.NotFoundError(str(path))
 
-        names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
-        return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
-
-    async def validate_path(self, path: str, **kwargs) -> GoogleDrivePath:
-        if path == '/':
-            return GoogleDrivePath('/', _ids=[self.folder['id']], folder=True)
-
-        parts = await self._resolve_path_to_ids(path)
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
         return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
 

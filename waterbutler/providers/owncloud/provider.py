@@ -73,7 +73,7 @@ class OwnCloudProvider(provider.BaseProvider):
         """
         return super().shares_storage_root(other) and self.credentials == other.credentials
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         """Verifies that ``path`` exists and if so, returns a WaterButlerPath object that
         represents it. WebDAV returns 200 for a single file, 207 for a multipart (folder), and 404
         for Does Not Exist.
@@ -108,33 +108,6 @@ class OwnCloudProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(full_path.full_path)
         return full_path
 
-    async def validate_path(self, path, **kwargs):
-        """Similar to `validate_v1_path`, but will not throw a 404 if the path doesn't yet exist.
-        Instead, returns a WaterButlerPath object for the potential path (such as before uploads).
-
-        :param str path: user-supplied path to validate
-        :return: WaterButlerPath object representing ``path``
-        :rtype: :class:`waterbutler.core.path.WaterButlerPath`
-        """
-        if path == '/':
-            return WaterButlerPath(path, prepend=self.folder)
-        full_path = WaterButlerPath(path, prepend=self.folder)
-        response = await self.make_request('PROPFIND',
-            self._webdav_url_ + full_path.full_path,
-            expects=(200, 207, 404),
-            throws=exceptions.MetadataError,
-            auth=self._auth,
-            connector=self.connector(),
-        )
-        content = await response.content.read()
-        await response.release()
-
-        try:
-            await utils.parse_dav_response(content, '/')
-        except exceptions.NotFoundError:
-            pass
-        return full_path
-
     async def download(self, path, accept_url=False, range=None, **kwargs):
         """Creates a stream for downloading files from the remote host. If the metadata query for
         the file has no size metadata, downloads to memory.
@@ -142,11 +115,13 @@ class OwnCloudProvider(provider.BaseProvider):
         :param waterbutler.core.path.WaterButlerPath path: user-supplied path to download
         :raises: `waterbutler.core.exceptions.DownloadError`
         """
-
-        self.metrics.add('download', {
-            'got_accept_url': accept_url is False,
-            'got_range': range is not None,
-        })
+        self.metrics.add(
+            'download',
+            {
+                'got_accept_url': accept_url is False,
+                'got_range': range is not None,
+            }
+        )
         download_resp = await self.make_request(
             'GET',
             self._webdav_url_ + path.full_path,

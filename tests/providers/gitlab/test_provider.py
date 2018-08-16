@@ -72,7 +72,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_root(self, provider):
+    async def test_validate_root(self, provider):
         path = '/'
         default_branch_url = 'http://base.url/api/v4/projects/123'
         body = fixtures.default_branches['default_branch']
@@ -82,7 +82,7 @@ class TestValidatePath:
         commit_sha_body = fixtures.default_branches['get_commit_sha']
         aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
 
-        root_path = await provider.validate_v1_path(path)
+        root_path = await provider.validate_path(path)
 
         assert root_path.is_dir
         assert root_path.is_root
@@ -95,12 +95,12 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_root_by_branch(self, provider):
+    async def test_validate_root_by_branch(self, provider):
         commit_sha_url = 'http://base.url/api/v4/projects/123/repository/branches/otherbranch'
         commit_sha_body = fixtures.default_branches['get_commit_sha']
         aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
 
-        root_path = await provider.validate_v1_path('/', branch='otherbranch')
+        root_path = await provider.validate_path('/', branch='otherbranch')
 
         assert root_path.is_dir
         assert root_path.is_root
@@ -113,9 +113,9 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_root_by_commit_sha(self, provider):
+    async def test_validate_root_by_commit_sha(self, provider):
         path = '/'
-        root_path = await provider.validate_v1_path(path, commitSha='a1b2c3d4')
+        root_path = await provider.validate_path(path, commitSha='a1b2c3d4')
 
         assert root_path.is_dir
         assert root_path.is_root
@@ -128,9 +128,9 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_root_by_revision_sha(self, provider):
+    async def test_validate_root_by_revision_sha(self, provider):
         path = '/'
-        root_path = await provider.validate_v1_path(path, revision='a1b2c3d4')
+        root_path = await provider.validate_path(path, revision='a1b2c3d4')
 
         assert root_path.is_dir
         assert root_path.is_root
@@ -143,12 +143,12 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_root_by_revision_branch(self, provider):
+    async def test_validate_root_by_revision_branch(self, provider):
         commit_sha_url = 'http://base.url/api/v4/projects/123/repository/branches/otherbranch'
         commit_sha_body = fixtures.default_branches['get_commit_sha']
         aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
 
-        root_path = await provider.validate_v1_path('/', revision='otherbranch')
+        root_path = await provider.validate_path('/', revision='otherbranch')
 
         assert root_path.is_dir
         assert root_path.is_root
@@ -161,14 +161,14 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider):
+    async def test_validate_path_file(self, provider):
         path = '/folder1/file1'
         url = ('http://base.url/api/v4/projects/123/repository/tree'
                '?path=folder1/&page=1&per_page={}&ref=a1b2c3d4'.format(provider.MAX_PAGE_SIZE))
         aiohttpretty.register_json_uri('GET', url, body=fixtures.simple_tree())
 
         try:
-            file_path = await provider.validate_v1_path(path, commitSha='a1b2c3d4',
+            file_path = await provider.validate_path(path, commitSha='a1b2c3d4',
                                                         branch='master')
         except Exception as exc:
             pytest.fail(str(exc))
@@ -199,18 +199,18 @@ class TestValidatePath:
         }
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path(path + '/', commitSha='a1b2c3d4')
+            await provider.validate_path(path + '/', commitSha='a1b2c3d4')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider):
+    async def test_validate_path_folder(self, provider):
         path = '/files/lfs/'
         url = ('http://base.url/api/v4/projects/123/repository/tree'
                '?path=files/&page=1&per_page={}&ref=a1b2c3d4'.format(provider.MAX_PAGE_SIZE))
         aiohttpretty.register_json_uri('GET', url, body=fixtures.subfolder_tree())
 
         try:
-            folder_path = await provider.validate_v1_path(path, commitSha='a1b2c3d4',
+            folder_path = await provider.validate_path(path, commitSha='a1b2c3d4',
                                                           branch='master')
         except Exception as exc:
             pytest.fail(str(exc))
@@ -237,7 +237,7 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', default_branch_url, body={}, status=404)
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            root_path = await provider.validate_v1_path(path)
+            root_path = await provider.validate_path(path)
         assert exc.value.code == 404
 
     @pytest.mark.asyncio
@@ -249,7 +249,7 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', default_branch_url, body={"default_branch": None})
 
         with pytest.raises(exceptions.UninitializedRepositoryError) as exc:
-            root_path = await provider.validate_v1_path(path)
+            root_path = await provider.validate_path(path)
         assert exc.value.code == 400
 
 

@@ -61,15 +61,11 @@ class OneDriveProvider(provider.BaseProvider):
 
     dont_escape_these = ",;[]'$#@&!~()+-_=:/"
 
-    # ========== __init__ ==========
-
     def __init__(self, auth, credentials, settings):
         logger.debug('__init__ auth::{} settings::{}'.format(auth, settings))
         super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
-
-    # ========== properties ==========
 
     @property
     def default_headers(self) -> dict:
@@ -79,12 +75,10 @@ class OneDriveProvider(provider.BaseProvider):
         """
         return {'Authorization': 'bearer {}'.format(self.token)}
 
-    # ========== methods ==========
-
-    async def validate_v1_path(self, path: str, **kwargs) -> OneDrivePath:
+    async def validate_path(self, path: str, **kwargs) -> OneDrivePath:
         """validate that ``path`` exists and matches the implicit semantics.
 
-        See `provider.BaseProvider.validate_v1_path` for more.
+        See `provider.BaseProvider.validate_path` for more.
 
         :param str path: A string representing the requested path. This will be everthing after
                          the provider name in the url.
@@ -93,58 +87,6 @@ class OneDriveProvider(provider.BaseProvider):
         :rtype: OneDrivePath
         :return: a OneDrivePath object representing the new path.
         """
-        logger.debug('validate_v1_path self::{} path::{} kwargs::{}'.format(repr(self),
-                                                                            path, kwargs))
-
-        if path == '/':
-            return OneDrivePath(path, _ids=[self.folder])
-
-        resp = await self.make_request(
-            'GET', self._build_item_url(path),
-            expects=(200, ),
-            throws=exceptions.MetadataError
-        )
-        logger.debug('validate_v1_path resp::{}'.format(repr(resp)))
-        data = await resp.json()
-        logger.debug('validate_v1_path data::{}'.format(json.dumps(data)))
-
-        implicit_folder = path.endswith('/')
-        explicit_folder = data.get('folder', None) is not None
-        if implicit_folder != explicit_folder:
-            raise exceptions.NotFoundError(path)
-
-        # If base folder isn't root or the immediate parent of the requested path, then we need
-        # to verify that it actually is an ancestor of path.  Otherwise, a malicious user could
-        # try to get access to a file outside of the configured root.
-        base_folder = None
-        if self.folder != 'root' and self.folder != data['parentReference']['id']:
-            base_folder_resp = await self.make_request(
-                'GET', self._build_item_url(self.folder),
-                expects=(200, ),
-                throws=exceptions.MetadataError
-            )
-            logger.debug('validate_v1_path base_folder_resp::{}'.format(repr(base_folder_resp)))
-            base_folder = await base_folder_resp.json()
-            logger.debug('validate_v1_path base_folder::{}'.format(json.dumps(base_folder)))
-
-            base_full_path = urlparse.quote(
-                '{}/{}/'.format(
-                    urlparse.unquote(base_folder['parentReference']['path']),
-                    base_folder['name']
-                ),
-                self.dont_escape_these
-            )
-
-            if not data['parentReference']['path'].startswith(base_full_path):
-                # the requested file is NOT a child of self.folder
-                raise exceptions.NotFoundError(path)
-
-        od_path = OneDrivePath.new_from_response(data, self.folder,
-                                                 base_folder_metadata=base_folder)
-        logger.debug('validate_v1_path od_path.parts::{}'.format(repr(od_path._parts)))
-        return od_path
-
-    async def validate_path(self, path: str, **kwargs) -> OneDrivePath:
         logger.debug('validate_path self::{} path::{} kwargs::{}'.format(repr(self), path, kwargs))
 
         if path == '/':
@@ -158,6 +100,11 @@ class OneDriveProvider(provider.BaseProvider):
         logger.debug('validate_path resp::{}'.format(repr(resp)))
         data = await resp.json()
         logger.debug('validate_path data::{}'.format(json.dumps(data)))
+
+        implicit_folder = path.endswith('/')
+        explicit_folder = data.get('folder', None) is not None
+        if implicit_folder != explicit_folder:
+            raise exceptions.NotFoundError(path)
 
         # If base folder isn't root or the immediate parent of the requested path, then we need
         # to verify that it actually is an ancestor of path.  Otherwise, a malicious user could
@@ -183,7 +130,7 @@ class OneDriveProvider(provider.BaseProvider):
 
             if not data['parentReference']['path'].startswith(base_full_path):
                 # the requested file is NOT a child of self.folder
-                raise exceptions.NotFoundError(path)  # TESTME
+                raise exceptions.NotFoundError(path)
 
         od_path = OneDrivePath.new_from_response(data, self.folder,
                                                  base_folder_metadata=base_folder)
@@ -324,7 +271,7 @@ class OneDriveProvider(provider.BaseProvider):
                         raise exceptions.UnexportableFileTypeError(str(path))
                     break
         else:
-            # TODO: we should be able to get the download url from validate_v1_path
+            # TODO: we should be able to get the download url from validate_path
             metadata_resp = await self.make_request(
                 'GET',
                 self._build_drive_url(*path.api_identifier),

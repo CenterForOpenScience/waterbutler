@@ -283,11 +283,11 @@ def revision_metadata():
     }
 
 
-# fixtures for testing permutations of validate_v1_path & co.
+# Fixtures for testing permutations of path validation.
 with open(os.path.join(os.path.dirname(__file__), 'fixtures/validate_path.json'), 'r') as fp:
     validate_path = json.load(fp)
 
 
-# fixtures for testing file revision metadata
+# Fixtures for testing file revision metadata
 with open(os.path.join(os.path.dirname(__file__), 'fixtures/revisions.json'), 'r') as fp:
     revisions = json.load(fp)

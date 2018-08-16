@@ -120,7 +120,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, provider_fixtures):
+    async def test_validate_path_file(self, provider, provider_fixtures):
         branch_url = provider.build_repo_url('branches', provider.default_branch)
         tree_url = provider.build_repo_url(
             'git', 'trees',
@@ -135,10 +135,10 @@ class TestValidatePath:
 
         blob_path = 'file.txt'
 
-        result = await provider.validate_v1_path('/' + blob_path)
+        result = await provider.validate_path('/' + blob_path)
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + blob_path + '/')
+            await provider.validate_path('/' + blob_path + '/')
 
         expected = GitHubPath('/' + blob_path, _ids=[(provider.default_branch, '')])
 
@@ -147,11 +147,11 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_root(self, provider):
+    async def test_validate_path_root(self, provider):
         path = '/'
 
-        result = await provider.validate_v1_path(path, branch=provider.default_branch)
-        no_branch_result = await provider.validate_v1_path(path)
+        result = await provider.validate_path(path, branch=provider.default_branch)
+        no_branch_result = await provider.validate_path(path)
 
         expected = GitHubPath(path, _ids=[(provider.default_branch, '')])
 
@@ -160,7 +160,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider, provider_fixtures):
+    async def test_validate_path_folder(self, provider, provider_fixtures):
         branch_url = provider.build_repo_url('branches', provider.default_branch)
         tree_url = provider.build_repo_url(
             'git', 'trees',
@@ -182,10 +182,10 @@ class TestValidatePath:
             (provider.default_branch, None)]
         )
 
-        result = await provider.validate_v1_path('/' + tree_path + '/')
+        result = await provider.validate_path('/' + tree_path + '/')
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + tree_path)
+            await provider.validate_path('/' + tree_path)
 
         assert exc.value.code == client.NOT_FOUND
         assert result == expected
@@ -195,7 +195,7 @@ class TestValidatePath:
     async def test_reject_multiargs(self, provider):
 
         with pytest.raises(exceptions.InvalidParameters) as exc:
-            await provider.validate_v1_path('/foo', ref=['bar', 'baz'])
+            await provider.validate_path('/foo', ref=['bar', 'baz'])
 
         assert exc.value.code == client.BAD_REQUEST
 

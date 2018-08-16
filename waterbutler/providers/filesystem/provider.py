@@ -29,7 +29,7 @@ class FileSystemProvider(provider.BaseProvider):
         self.folder = self.settings['folder']
         os.makedirs(self.folder, exist_ok=True)
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
         if not os.path.exists(self.folder + path):
             raise exceptions.NotFoundError(str(path))
 
@@ -38,9 +38,6 @@ class FileSystemProvider(provider.BaseProvider):
         if implicit_folder != explicit_folder:
             raise exceptions.NotFoundError(str(path))
 
-        return WaterButlerPath(path, prepend=self.folder)
-
-    async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path, prepend=self.folder)
 
     def can_duplicate_names(self):

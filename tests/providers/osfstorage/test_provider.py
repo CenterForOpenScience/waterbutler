@@ -294,7 +294,7 @@ class TestIntraCopy:
         dest_provider, dest_mock = provider_and_mock2
         dest_mock.nid = 'abcde'
         dest_mock._children_metadata = utils.MockCoroutine(return_value=folder_children_metadata)
-        dest_mock.validate_v1_path = utils.MockCoroutine(
+        dest_mock.validate_path = utils.MockCoroutine(
             return_value=WaterButlerPath('/folder1/', _ids=('rootId', 'folder1'))
         )
 
@@ -322,10 +322,10 @@ class TestIntraCopy:
         assert isinstance(folder_meta, OsfStorageFolderMetadata)
         assert len(folder_meta.children) == 4
         dest_mock._children_metadata.assert_called_once_with(WaterButlerPath('/folder1/'))
-        assert dest_mock.validate_v1_path.call_count == 1
+        assert dest_mock.validate_path.call_count == 1
 
         src_mock._children_metadata.assert_not_called()
-        src_mock.validate_v1_path.assert_not_called()
+        src_mock.validate_path.assert_not_called()
 
 
     @pytest.mark.asyncio
@@ -368,7 +368,7 @@ class TestIntraCopy:
 
         dest_provider, dest_mock = provider_and_mock2
         dest_mock.nid = 'abcde'
-        dest_mock.validate_v1_path = utils.MockCoroutine(
+        dest_mock.validate_path = utils.MockCoroutine(
             return_value=WaterButlerPath('/file', _ids=('rootId', 'fileId'))
         )
 
@@ -411,7 +411,7 @@ class TestIntraMove:
         dest_provider, dest_mock = provider_and_mock2
         dest_mock.nid = 'abcde'
         dest_mock._children_metadata = utils.MockCoroutine(return_value=folder_children_metadata)
-        dest_mock.validate_v1_path = utils.MockCoroutine(
+        dest_mock.validate_path = utils.MockCoroutine(
             return_value=WaterButlerPath('/folder1/', _ids=('rootId', 'folder1'))
         )
 
@@ -438,10 +438,10 @@ class TestIntraMove:
         assert isinstance(folder_meta, OsfStorageFolderMetadata)
         assert len(folder_meta.children) == 4
         dest_mock._children_metadata.assert_called_once_with(WaterButlerPath('/folder1/'))
-        assert dest_mock.validate_v1_path.call_count == 1
+        assert dest_mock.validate_path.call_count == 1
 
         src_mock._children_metadata.assert_not_called()
-        src_mock.validate_v1_path.assert_not_called()
+        src_mock.validate_path.assert_not_called()
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -519,7 +519,6 @@ class TestValidatePath:
     @pytest.mark.aiohttpretty
     async def test_validate_path_root(self, provider, root_path, mock_time):
         assert root_path == await provider.validate_path('/')
-        assert root_path == await provider.validate_v1_path('/')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -530,16 +529,14 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', url, params=params, status=200, body=file_lineage)
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + file_id + '/')
+            await provider.validate_path('/' + file_id + '/')
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = await provider.validate_path('/' + file_id)
-        wb_path_v1 = await provider.validate_v1_path('/' + file_id)
+        wb_path = await provider.validate_path('/' + file_id)
 
         expected = WaterButlerPath('/doc.rst')
-        assert wb_path_v0 == expected
-        assert wb_path_v1 == expected
+        assert wb_path == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -550,14 +547,10 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', url, params=params, status=200, body=folder_lineage)
 
         with pytest.raises(exceptions.NotFoundError):
-            await provider.validate_v1_path('/' + folder_id)
+            await provider.validate_path('/' + folder_id)
 
-        wb_path_v0 = await provider.validate_path('/' + folder_id)
-        wb_path_v1 = await provider.validate_v1_path('/' + folder_id + '/')
-
-        expected = WaterButlerPath('/New Folder/')
-        assert wb_path_v0 == expected
-        assert wb_path_v1 == expected
+        wb_path = await provider.validate_path('/' + folder_id + '/')
+        assert wb_path == WaterButlerPath('/New Folder/')
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -568,11 +561,11 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', url, params=params, status=404, body=file_lineage)
 
         with pytest.raises(exceptions.UnhandledProviderError):
-            await provider.validate_v1_path('/' + file_id)
+            await provider.validate_path('/' + file_id)
 
-        wb_path_v0 = await provider.validate_path('/' + file_id)
+        wb_path = await provider.validate_path('/' + file_id)
 
-        assert wb_path_v0 == WaterButlerPath(file_lineage['data'][0]['path'], prepend=None)
+        assert wb_path == WaterButlerPath(file_lineage['data'][0]['path'], prepend=None)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -613,10 +606,10 @@ class TestValidatePath:
         url, params = build_signed_url_without_auth(provider, 'GET', 'New%20Folder', 'lineage')
         aiohttpretty.register_json_uri('GET', url, params=params, status=200, body=folder_lineage)
 
-        wb_path_v0 = await provider.validate_path('New Folder/' + file_id)
+        wb_path = await provider.validate_path('New Folder/' + file_id)
 
-        assert len(wb_path_v0._parts) == 3
-        assert wb_path_v0.name == '59a9b628b7d1c903ab5a8f52'
+        assert len(wb_path._parts) == 3
+        assert wb_path.name == '59a9b628b7d1c903ab5a8f52'
 
 class TestUploads:
 

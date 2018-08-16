@@ -64,7 +64,9 @@ class S3Provider(provider.BaseProvider):
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
         self.region = None
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
+        """Validate a path
+        """
         await self._check_region()
 
         if path == '/':
@@ -94,9 +96,6 @@ class S3Provider(provider.BaseProvider):
         if resp.status == 404:
             raise exceptions.NotFoundError(str(path))
 
-        return WaterButlerPath(path)
-
-    async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 
     def can_duplicate_names(self):

@@ -52,36 +52,28 @@ def setup_filesystem(provider):
 class TestValidatePath:
 
     @pytest.mark.asyncio
-    async def test_validate_v1_path_file(self, provider):
+    async def test_validate_path_file(self, provider):
         try:
-            wb_path_v1 = await provider.validate_v1_path('/flower.jpg')
+            wb_path = await provider.validate_path('/flower.jpg')
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/flower.jpg/')
+            await provider.validate_path('/flower.jpg/')
 
         assert exc.value.code == client.NOT_FOUND
-
-        wb_path_v0 = await provider.validate_path('/flower.jpg')
-
-        assert wb_path_v1 == wb_path_v0
 
     @pytest.mark.asyncio
-    async def test_validate_v1_path_folder(self, provider):
+    async def test_validate_path_folder(self, provider):
         try:
-            wb_path_v1 = await provider.validate_v1_path('/subfolder/')
+            wb_path = await provider.validate_path('/subfolder/')
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/subfolder')
+            await provider.validate_path('/subfolder')
 
         assert exc.value.code == client.NOT_FOUND
-
-        wb_path_v0 = await provider.validate_path('/subfolder/')
-
-        assert wb_path_v1 == wb_path_v0
 
 
 class TestCRUD:

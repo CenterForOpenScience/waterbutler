@@ -48,7 +48,7 @@ class BoxProvider(provider.BaseProvider):
         self.token = self.credentials['token']  # type: str
         self.folder = self.settings['folder']  # type: str
 
-    async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
+    async def validate_path(self, path: str, **kwargs) -> WaterButlerPath:
         if path == '/':
             return WaterButlerPath('/', _ids=[self.folder])
 
@@ -85,70 +85,6 @@ class BoxProvider(provider.BaseProvider):
         names, ids = ('',) + names[ids.index(self.folder) + 1:], ids[ids.index(self.folder):]
 
         return WaterButlerPath('/'.join(names), _ids=ids, folder=path.endswith('/'))
-
-    async def validate_path(self, path: str, **kwargs) -> WaterButlerPath:
-        if path == '/':
-            return WaterButlerPath('/', _ids=[self.folder])
-
-        try:
-            obj_id, new_name = path.strip('/').split('/')
-        except ValueError:
-            obj_id, new_name = path.strip('/'), None
-
-        if path.endswith('/') or new_name is not None:
-            files_or_folders = 'folders'
-        else:
-            files_or_folders = 'files'
-
-        # Box file ids must be a valid base10 number
-        response = None
-        if obj_id.isdecimal():
-            response = await self.make_request(
-                'get',
-                self.build_url(files_or_folders, obj_id, fields='id,name,path_collection'),
-                expects=(200, 404, 405),
-                throws=exceptions.MetadataError,
-            )
-            if response.status in (404, 405):
-                await response.release()
-                response = None
-
-        if response is None:
-            if new_name is not None:
-                raise exceptions.MetadataError('Could not find {}'.format(path), code=404)
-
-            return await self.revalidate_path(
-                WaterButlerPath('/', _ids=[self.folder]),
-                obj_id,
-                folder=path.endswith('/')
-            )
-        else:
-            data = await response.json()  # .json releases the response
-
-            if self.folder != '0':  # don't allow files outside project root
-                path_ids = [entry['id'] for entry in data['path_collection']['entries']]
-                if self.folder not in path_ids:
-                    raise exceptions.NotFoundError(path)
-
-            names, ids = zip(*[
-                (x['name'], x['id'])
-                for x in
-                data['path_collection']['entries'] + [data]
-            ])
-
-            try:
-                names, ids = ('',) + names[ids.index(self.folder) + 1:], ids[ids.index(self.folder):]
-            except ValueError:
-                raise Exception  # TODO
-
-        is_folder = path.endswith('/')
-
-        ret = WaterButlerPath('/'.join(names), _ids=ids, folder=is_folder)
-
-        if new_name is not None:
-            return await self.revalidate_path(ret, new_name, folder=is_folder)
-
-        return ret
 
     async def revalidate_path(self, base: WaterButlerPath, path: str,
                               folder: bool=None) -> WaterButlerPath:

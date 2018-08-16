@@ -61,18 +61,15 @@ class DataverseProvider(provider.BaseProvider):
     def can_duplicate_names(self):
         return False
 
-    async def validate_v1_path(self, path, **kwargs):
-        if path != '/' and path.endswith('/'):
-            raise exceptions.NotFoundError(str(path))
-
-        return await self.validate_path(path, **kwargs)
-
     async def validate_path(self, path, revision=None, **kwargs):
         """Ensure path is in configured dataset
 
         :param str path: The path to a file
         :param list metadata: List of file metadata from _get_data
         """
+        if path != '/' and path.endswith('/'):
+            raise exceptions.NotFoundError(str(path))
+
         self.metrics.add('validate_path.revision', revision)
         if path == '/':
             wbpath = WaterButlerPath('/')

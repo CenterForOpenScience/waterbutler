@@ -44,8 +44,6 @@ If the user is interacting with WaterButler via the OSF, the diagram looks like 
 
 Only one auth provider so far, the OSF.
 
-Two APIs, v0 and v1.  v0 is deprecated.
-
 
 Terminology
 -----------

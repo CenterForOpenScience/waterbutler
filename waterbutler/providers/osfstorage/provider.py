@@ -45,6 +45,8 @@ class OSFStorageProvider(provider.BaseProvider):
     NAME = 'osfstorage'
 
     def __init__(self, auth, credentials, settings):
+        """Initialize the provider instance
+        """
         super().__init__(auth, credentials, settings)
         self.nid = settings['nid']
         self.root_id = settings['rootId']
@@ -57,7 +59,9 @@ class OSFStorageProvider(provider.BaseProvider):
         self.archive_settings = settings.get('archive')
         self.archive_credentials = credentials.get('archive')
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_path(self, path, **kwargs):
+        """Validate a path
+        """
         if path == '/':
             return WaterButlerPath('/', _ids=[self.root_id], folder=True)
 
@@ -78,37 +82,6 @@ class OSFStorageProvider(provider.BaseProvider):
         names, ids = zip(*[(x['name'], x['id']) for x in reversed(data['data'])])
 
         return WaterButlerPath('/'.join(names), _ids=ids, folder=explicit_folder)
-
-    async def validate_path(self, path, **kwargs):
-        if path == '/':
-            return WaterButlerPath('/', _ids=[self.root_id], folder=True)
-
-        ends_with_slash = path.endswith('/')
-
-        try:
-            path, name = path.strip('/').split('/')
-        except ValueError:
-            path, name = path, None
-
-        async with self.signed_request(
-            'GET',
-            self.build_url(path, 'lineage'),
-            expects=(200, 404)
-        ) as resp:
-
-            if resp.status == 404:
-                return WaterButlerPath(path, _ids=(self.root_id, None), folder=path.endswith('/'))
-
-            data = await resp.json()
-
-        is_folder = data['data'][0]['kind'] == 'folder'
-        names, ids = zip(*[(x['name'], x['id']) for x in reversed(data['data'])])
-        if name is not None:
-            ids += (None, )
-            names += (name, )
-            is_folder = ends_with_slash
-
-        return WaterButlerPath('/'.join(names), _ids=ids, folder=is_folder)
 
     async def revalidate_path(self, base, path, folder=False):
         assert base.is_dir
@@ -188,7 +161,7 @@ class OSFStorageProvider(provider.BaseProvider):
             return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
 
         folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
-        dest_path = await dest_provider.validate_v1_path(data['path'])
+        dest_path = await dest_provider.validate_path(data['path'])
         folder_meta.children = await dest_provider._children_metadata(dest_path)
 
         return folder_meta, created
@@ -220,7 +193,7 @@ class OSFStorageProvider(provider.BaseProvider):
             return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
 
         folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
-        dest_path = await dest_provider.validate_v1_path(data['path'])
+        dest_path = await dest_provider.validate_path(data['path'])
         folder_meta.children = await dest_provider._children_metadata(dest_path)
 
         return folder_meta, created

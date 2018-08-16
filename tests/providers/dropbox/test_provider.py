@@ -39,7 +39,7 @@ class TestValidatePath:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     @pytest.mark.parametrize('settings', [{'folder': '/'}])
-    async def test_validate_v1_path_file(self, provider, provider_fixtures):
+    async def test_validate_path_file(self, provider, provider_fixtures):
         file_path = '/Photos/Getting_Started.pdf'
         data = {"path": file_path}
         metadata_url = provider.build_url('files', 'get_metadata')
@@ -51,24 +51,20 @@ class TestValidatePath:
         )
 
         try:
-            wb_path_v1 = await provider.validate_v1_path(file_path)
+            wb_path = await provider.validate_path(file_path)
         except Exception as exc:
             pytest.fail(str(exc))
-            wb_path_v1 = None
+            wb_path = None
 
         with pytest.raises(core_exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path(file_path + '/')
+            await provider.validate_path(file_path + '/')
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
-
-        wb_path_v0 = await provider.validate_path(file_path)
-
-        assert wb_path_v1 == wb_path_v0
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     @pytest.mark.parametrize('settings', [{'folder': '/'}])
-    async def test_validate_v1_path_folder(self, provider, provider_fixtures):
+    async def test_validate_path_folder(self, provider, provider_fixtures):
         folder_path = '/Photos'
         data = {"path": folder_path}
         metadata_url = provider.build_url('files', 'get_metadata')
@@ -80,19 +76,15 @@ class TestValidatePath:
         )
 
         try:
-            wb_path_v1 = await provider.validate_v1_path(folder_path + '/')
+            wb_path = await provider.validate_path(folder_path + '/')
         except Exception as exc:
             pytest.fail(str(exc))
-            wb_path_v1 = None
+            wb_path = None
 
         with pytest.raises(core_exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path(folder_path)
+            await provider.validate_path(folder_path)
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
-
-        wb_path_v0 = await provider.validate_path(folder_path + '/')
-
-        assert wb_path_v1 == wb_path_v0
 
     @pytest.mark.asyncio
     async def test_returns_path_obj(self, provider):
@@ -113,8 +105,8 @@ class TestValidatePath:
         assert provider.folder in path.full_path
 
     @pytest.mark.asyncio
-    async def test_validate_v1_path_base(self, provider):
-        path = await provider.validate_v1_path('/')
+    async def test_validate_path_base(self, provider):
+        path = await provider.validate_path('/')
 
         assert path.is_dir
         assert len(path.parts) == 1
