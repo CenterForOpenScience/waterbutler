@@ -95,7 +95,7 @@ class MoveCopyMixin:
             self.auth['credentials'],
             self.auth['settings']
         )
-        self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
+        self.path = await self.provider.validate_path(self.path, **self.arguments)
 
         if auth_action == 'rename':  # 'rename' implies the file/folder does not change location
             self.dest_auth = self.auth

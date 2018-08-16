@@ -45,7 +45,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_root(self, provider):
+    async def test_validate_path_root(self, provider):
         test_fixtures = fixtures.validate_path
 
         default_branch_body = test_fixtures['default_branch']
@@ -53,15 +53,12 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', default_branch_url, body=default_branch_body)
 
         try:
-            wb_path_v1 = await provider.validate_v1_path('/')
+            wb_path = await provider.validate_path('/')
         except Exception as exc:
             pytest.fail(str(exc))
 
-        wb_path_v0 = await provider.validate_path('/')
-
-        assert wb_path_v1 == wb_path_v0
-        assert wb_path_v1.branch_name == default_branch_body['name']
-        assert wb_path_v1.commit_sha == None
+        assert wb_path.branch_name == default_branch_body['name']
+        assert wb_path.commit_sha == None
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -69,7 +66,7 @@ class TestValidatePath:
         ('/foo-file.txt', 'file'),
         ('/foo-dir/',     'folder'),
     ])
-    async def test_validate_v1_path(self, provider, path, kind):
+    async def test_validate_path(self, provider, path, kind):
         test_fixtures = fixtures.validate_path
 
         default_branch_body = test_fixtures['default_branch']
@@ -82,19 +79,16 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', dir_listing_url, body=dir_listing_body)
 
         try:
-            wb_path_v1 = await provider.validate_v1_path(path)
+            wb_path = await provider.validate_path(path)
         except Exception as exc:
             pytest.fail(str(exc))
 
-        wb_path_v0 = await provider.validate_path(path)
-
-        assert wb_path_v1 == wb_path_v0
-        assert wb_path_v1.branch_name == default_branch
+        assert wb_path.branch_name == default_branch
         # TODO: assert commitSha
 
         bad_path = path.rstrip('/') if kind == 'folder' else path + '/'
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path(bad_path)
+            await provider.validate_path(bad_path)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -104,7 +98,7 @@ class TestValidatePath:
         ('revision',  'bleep-blorp',  'branch_name'),
         ('revision',  '345def023ab29', 'commit_sha'),
     ])
-    async def test_validate_v1_path_commit_sha(self, provider, arg_name, arg_val, attr_name):
+    async def test_validate_path_commit_sha(self, provider, arg_name, arg_val, attr_name):
         test_fixtures = fixtures.validate_path
 
         dir_listing_body =  test_fixtures['root_dir_listing']
@@ -115,7 +109,7 @@ class TestValidatePath:
         path = '/foo-file.txt'
         kwargs = {arg_name: arg_val}
         try:
-            wb_path_v1 = await provider.validate_v1_path(path, **kwargs)
+            wb_path = await provider.validate_path(path, **kwargs)
         except Exception as exc:
             pytest.fail(str(exc))
 
@@ -130,19 +124,16 @@ class TestValidatePath:
         commit_sha = ref_val
         branch_name = None if attr_name == 'commit_sha' else arg_val
 
-        assert getattr(wb_path_v1, attr_name) == arg_val
-        assert wb_path_v1.ref == ref_val
-        assert wb_path_v1.extra == {
+        assert getattr(wb_path, attr_name) == arg_val
+        assert wb_path.ref == ref_val
+        assert wb_path.extra == {
             'commitSha': commit_sha,
             'branchName': branch_name,
         }
 
-        wb_path_v0 = await provider.validate_path(path, **kwargs)
-        assert wb_path_v1 == wb_path_v0
-
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_subfolder(self, provider):
+    async def test_validate_path_subfolder(self, provider):
         test_fixtures = fixtures.validate_path
 
         dir_listing_body =  test_fixtures['subfolder_dir_listing']
@@ -152,12 +143,9 @@ class TestValidatePath:
 
         path = '/subfolder/.gitkeep'
         try:
-            wb_path_v1 = await provider.validate_v1_path(path, branch='main-branch')
+            wb_path = await provider.validate_path(path, branch='main-branch')
         except Exception as exc:
             pytest.fail(str(exc))
-
-        wb_path_v0 = await provider.validate_path(path, branch='main-branch')
-        assert wb_path_v1 == wb_path_v0
 
 
 class TestRevisions:

@@ -49,9 +49,6 @@ class CloudFilesProvider(provider.BaseProvider):
         self.use_public = self.settings.get('use_public', True)
         self.metrics.add('region', self.region)
 
-    async def validate_v1_path(self, path, **kwargs):
-        return await self.validate_path(path, **kwargs)
-
     async def validate_path(self, path, **kwargs):
         return WaterButlerPath(path)
 

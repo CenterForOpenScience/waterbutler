@@ -4,7 +4,6 @@ Adding A New Provider
 The job of the provider is to translate our common RESTful API into actions against the external provider.  The WaterButler API v1 handler (waterbutler.server.api.v1.provider) accepts the incoming requests, builds the appropriate provider object, does some basic validation on the inputs, then passes the request data off to the provider action method.  A new provider will inherit from `waterbutler.core.provider.BaseProvider` and implement some or all of the following methods::
 
     validate_path()         abstract
-    validate_v1_path()      abstract
     download()              abstract
     metadata()              abstract
     upload()                abstract

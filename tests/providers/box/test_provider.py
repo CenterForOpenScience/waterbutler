@@ -78,7 +78,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, root_provider_fixtures):
+    async def test_validate_path_file(self, provider, root_provider_fixtures):
         file_id = '5000948880'
 
         good_url = provider.build_url('files', file_id, fields='id,name,path_collection')
@@ -90,45 +90,40 @@ class TestValidatePath:
         aiohttpretty.register_uri('get', bad_url, status=404)
 
         try:
-            wb_path_v1 = await provider.validate_v1_path('/' + file_id)
+            wb_path = await provider.validate_path('/' + file_id)
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + file_id + '/')
+            await provider.validate_path('/' + file_id + '/')
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
 
-        wb_path_v0 = await provider.validate_path('/' + file_id)
-
-        assert wb_path_v1 == wb_path_v0
-
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider, root_provider_fixtures):
+    async def test_validate_path_folder(self, provider, root_provider_fixtures):
         provider.folder = '0'
         folder_id = '11446498'
 
         good_url = provider.build_url('folders', folder_id, fields='id,name,path_collection')
         bad_url = provider.build_url('files', folder_id, fields='id,name,path_collection')
 
-        aiohttpretty.register_json_uri('get', good_url,
-                                       body=root_provider_fixtures['folder_object_metadata'],
-                                       status=200)
+        aiohttpretty.register_json_uri(
+            'get',
+            good_url,
+            body=root_provider_fixtures['folder_object_metadata'],
+            status=200
+        )
         aiohttpretty.register_uri('get', bad_url, status=404)
         try:
-            wb_path_v1 = await provider.validate_v1_path('/' + folder_id + '/')
+            wb_path = await provider.validate_path('/' + folder_id + '/')
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + folder_id)
+            await provider.validate_path('/' + folder_id)
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
-
-        wb_path_v0 = await provider.validate_path('/' + folder_id + '/')
-
-        assert wb_path_v1 == wb_path_v0
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -140,45 +135,13 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_root(self, provider):
-        path = await provider.validate_v1_path('/')
-        assert path.is_dir
-        assert len(path.parts) == 1
-        assert path.name == ''
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_bad_path(self, provider):
+    async def test_validate_path_bad_path(self, provider):
 
         with pytest.raises(exceptions.NotFoundError) as e:
-            await provider.validate_v1_path('/bulbasaur')
+            await provider.validate_path('/bulbasaur')
 
         assert e.value.message == 'Could not retrieve file or directory /bulbasaur'
         assert e.value.code == 404
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_validate_path_bad_path(self, provider):
-
-        with pytest.raises(exceptions.MetadataError) as e:
-            await provider.validate_path('/bulbasaur/charmander')
-
-        assert e.value.message == 'Could not find /bulbasaur/charmander'
-        assert e.value.code == 404
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_validate_path(self, provider, root_provider_fixtures):
-        provider.folder = '0'
-        folder_id = '0'
-
-        good_url = provider.build_url('folders', folder_id, 'items', fields='id,name,type', limit=1000)
-        aiohttpretty.register_json_uri('GET', good_url,
-                                       body=root_provider_fixtures['revalidate_metadata'],
-                                       status=200)
-
-        result = await provider.validate_path('/bulbasaur')
-        assert result == WaterButlerPath('/bulbasaur', folder=False)
 
 
 class TestDownload:

@@ -69,42 +69,10 @@ class GitLabProvider(provider.BaseProvider):
     def default_headers(self) -> dict:
         return {'PRIVATE-TOKEN': str(self.token)}
 
-    async def validate_v1_path(self, path: str, **kwargs) -> GitLabPath:
-        """Turns the string ``path`` into a `GitLabPath` object. See `validate_path` for details.
-        This method does much the same as `validate_path`, but does two extra validation steps.
-        First it checks to see if the object identified by ``path`` already exists in the repo,
-        throwing a 404 if not.  It then checks to make sure the v1 file/folder semantics are
-        respected.
-
-        :param str path: The path to a file/folder
-        :rtype: GitLabPath
-        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
-        """
-
-        gl_path = await self.validate_path(path, **kwargs)
-
-        if gl_path.commit_sha is None:
-            commit_sha = await self._get_commit_sha_for_branch(gl_path.branch_name)
-            gl_path.set_commit_sha(commit_sha)
-
-        if gl_path.is_root:
-            return gl_path
-
-        data = await self._fetch_tree_contents(gl_path.parent)
-
-        type_needed = 'tree' if gl_path.is_dir else 'blob'
-        found = [x for x in data if x['type'] == type_needed and x['name'] == gl_path.name]
-
-        if not found:
-            raise exceptions.NotFoundError(str(gl_path))
-
-        return gl_path
-
     async def validate_path(self, path: str, **kwargs) -> GitLabPath:
         """Turn the string ``path`` into a `GitLabPath` object. Will infer the branch/commit
         information from the query params or from the default branch for the repo if those are
-        not provided.  Does no validation to ensure that the entity described by ``path`` actually
-        exists.
+        not provided.
 
         Valid kwargs are ``commitSha``, ``branch``, and ``revision``.  If ``revision`` is given,
         its value will be assigned to the commit SHA if it is a valid base-16 number, or branch
@@ -113,8 +81,16 @@ class GitLabProvider(provider.BaseProvider):
         effort is made to ensure that they point to the same thing.  `GitLabPath` objects default
         to commit SHAs over branch names when building API calls, as a commit SHA is more specific.
 
+        Then we check to see if the object identified by ``path`` already exists in the repo,
+        throwing a 404 if not.  It then checks to make sure the file/folder semantics are
+        respected.
+
         :param str path: The path to a file
         :rtype: GitLabPath
+
+        :param str path: The path to a file/folder
+        :rtype: GitLabPath
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
         """
         commit_sha = kwargs.get('commitSha')
         branch_name = kwargs.get('branch')
@@ -134,11 +110,27 @@ class GitLabProvider(provider.BaseProvider):
             branch_name = await self._fetch_default_branch()
 
         if path == '/':
-            return GitLabPath(path, _ids=[(commit_sha, branch_name)])
+            gl_path = GitLabPath(path, _ids=[(commit_sha, branch_name)])
+        else:
+            gl_path = GitLabPath(path)
 
-        gl_path = GitLabPath(path)
         for part in gl_path.parts:
             part._id = (commit_sha, branch_name)
+
+        if gl_path.commit_sha is None:
+            commit_sha = await self._get_commit_sha_for_branch(gl_path.branch_name)
+            gl_path.set_commit_sha(commit_sha)
+
+        if gl_path.is_root:
+            return gl_path
+
+        data = await self._fetch_tree_contents(gl_path.parent)
+
+        type_needed = 'tree' if gl_path.is_dir else 'blob'
+        found = [x for x in data if x['type'] == type_needed and x['name'] == gl_path.name]
+
+        if not found:
+            raise exceptions.NotFoundError(str(gl_path))
 
         return gl_path
 

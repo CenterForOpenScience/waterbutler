@@ -78,20 +78,17 @@ class TestRootProviderValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_root(self, root_provider):
+    async def test_validate_path_root(self, root_provider):
         try:
-            wb_path_v1 = await root_provider.validate_v1_path('/')
+            wb_path = await root_provider.validate_path('/')
         except Exception as exc:
             pytest.fail(str(exc))
 
-        wb_path_v0 = await root_provider.validate_path('/')
-
-        assert wb_path_v1 == wb_path_v0
-        assert wb_path_v1.identifier == 'root'
+        assert wb_path.identifier == 'root'
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_validate_v1_path_file(self, root_provider, root_provider_fixtures):
+    async def test_validate_path_file(self, root_provider, root_provider_fixtures):
         file_id = root_provider_fixtures['file_id']
         file_metadata = root_provider_fixtures['file_metadata']
 
@@ -100,25 +97,20 @@ class TestRootProviderValidatePath:
 
         file_path = '/{}'.format(file_id)
         try:
-            wb_path_v1 = await root_provider.validate_v1_path(file_path)
+            wb_path = await root_provider.validate_path(file_path)
         except Exception as exc:
             pytest.fail(str(exc))
 
         file_name = '/{}'.format(file_metadata['name'])
-        assert str(wb_path_v1) == file_name
-        assert wb_path_v1.identifier == file_id
-
-        wb_path_v0 = await root_provider.validate_path(file_path)
-        assert str(wb_path_v0) == file_name
-
-        assert wb_path_v1 == wb_path_v0
+        assert str(wb_path) == file_name
+        assert wb_path.identifier == file_id
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await root_provider.validate_v1_path(file_path + '/')
+            await root_provider.validate_path(file_path + '/')
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_validate_v1_path_folder(self, root_provider, root_provider_fixtures):
+    async def test_validate_path_folder(self, root_provider, root_provider_fixtures):
         folder_id = root_provider_fixtures['folder_id']
         folder_metadata = root_provider_fixtures['folder_metadata']
 
@@ -128,40 +120,32 @@ class TestRootProviderValidatePath:
         folder_path = '/{}/'.format(folder_id)
         folder_name = '/{}/'.format(folder_metadata['name'])
         try:
-            wb_path_v1 = await root_provider.validate_v1_path(folder_path)
+            wb_path = await root_provider.validate_path(folder_path)
         except Exception as exc:
             pytest.fail(str(exc))
 
-        assert str(wb_path_v1) == folder_name
-        assert wb_path_v1.identifier == folder_id
-
-        wb_path_v0 = await root_provider.validate_path(folder_path)
-        assert str(wb_path_v0) == folder_name
-
-        assert wb_path_v1 == wb_path_v0
+        assert str(wb_path) == folder_name
+        assert wb_path.identifier == folder_id
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await root_provider.validate_v1_path(folder_path.rstrip('/'))
+            await root_provider.validate_path(folder_path.rstrip('/'))
 
 
 class TestSubfolderProviderValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_root(self, subfolder_provider, subfolder_provider_fixtures):
+    async def test_validate_path_root(self, subfolder_provider, subfolder_provider_fixtures):
         try:
-            wb_path_v1 = await subfolder_provider.validate_v1_path('/')
+            wb_path = await subfolder_provider.validate_path('/')
         except Exception as exc:
             pytest.fail(str(exc))
 
-        wb_path_v0 = await subfolder_provider.validate_path('/')
-
-        assert wb_path_v1 == wb_path_v0
-        assert wb_path_v1.identifier == subfolder_provider_fixtures['root_id']
+        assert wb_path.identifier == subfolder_provider_fixtures['root_id']
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_validate_v1_path_folder(self, subfolder_provider, subfolder_provider_fixtures):
+    async def test_validate_path_folder(self, subfolder_provider, subfolder_provider_fixtures):
         folder_id = subfolder_provider_fixtures['folder_id']
         folder_metadata = subfolder_provider_fixtures['folder_metadata']
 
@@ -171,24 +155,19 @@ class TestSubfolderProviderValidatePath:
         folder_path = '/{}/'.format(folder_id)
         folder_name = '/{}/'.format(folder_metadata['name'])
         try:
-            wb_path_v1 = await subfolder_provider.validate_v1_path(folder_path)
+            wb_path = await subfolder_provider.validate_path(folder_path)
         except Exception as exc:
             pytest.fail(str(exc))
 
-        assert str(wb_path_v1) == folder_name
-        assert wb_path_v1.identifier == folder_id
-
-        wb_path_v0 = await subfolder_provider.validate_path(folder_path)
-        assert str(wb_path_v0) == folder_name
-
-        assert wb_path_v1 == wb_path_v0
+        assert str(wb_path) == folder_name
+        assert wb_path.identifier == folder_id
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await subfolder_provider.validate_v1_path(folder_path.rstrip('/'))
+            await subfolder_provider.validate_path(folder_path.rstrip('/'))
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_validate_v1_path_file_is_child(self, subfolder_provider,
+    async def test_validate_path_file_is_child(self, subfolder_provider,
                                                   subfolder_provider_fixtures):
         """file is immediate child of provider base folder"""
         file_id = subfolder_provider_fixtures['file_id']
@@ -200,24 +179,19 @@ class TestSubfolderProviderValidatePath:
         file_path = '/{}'.format(file_id)
         file_name = '/{}'.format(file_metadata['name'])
         try:
-            wb_path_v1 = await subfolder_provider.validate_v1_path(file_path)
+            wb_path = await subfolder_provider.validate_path(file_path)
         except Exception as exc:
             pytest.fail(str(exc))
 
-        assert str(wb_path_v1) == file_name
-        assert wb_path_v1.identifier == file_id
-
-        wb_path_v0 = await subfolder_provider.validate_path(file_path)
-        assert str(wb_path_v0) == file_name
-
-        assert wb_path_v1 == wb_path_v0
+        assert str(wb_path) == file_name
+        assert wb_path.identifier == file_id
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await subfolder_provider.validate_v1_path(file_path + '/')
+            await subfolder_provider.validate_path(file_path + '/')
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_validate_v1_path_file_is_grandchild(self, subfolder_provider,
+    async def test_validate_path_file_is_grandchild(self, subfolder_provider,
                                                        subfolder_provider_fixtures):
         """file is *not* immediate child of provider base folder"""
         subfile_id = subfolder_provider_fixtures['subfile_id']
@@ -235,19 +209,15 @@ class TestSubfolderProviderValidatePath:
         subfile_name = '/{}/{}'.format(subfolder_provider_fixtures['folder_metadata']['name'],
                                        subfile_metadata['name'])
         try:
-            wb_path_v1 = await subfolder_provider.validate_v1_path(subfile_path)
+            wb_path = await subfolder_provider.validate_path(subfile_path)
         except Exception as exc:
             pytest.fail(str(exc))
-        assert str(wb_path_v1) == subfile_name
+        assert str(wb_path) == subfile_name
 
-        wb_path_v0 = await subfolder_provider.validate_path(subfile_path)
-        assert str(wb_path_v0) == subfile_name
-
-        assert wb_path_v1 == wb_path_v0
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio
-    async def test_validate_v1_path_file_is_outside_root(self, subfolder_provider,
+    async def test_validate_path_file_is_outside_root(self, subfolder_provider,
                                                          subfolder_provider_fixtures):
         """file is outside of the base storage root"""
         file_id = subfolder_provider_fixtures['outside_file_id']
@@ -263,7 +233,7 @@ class TestSubfolderProviderValidatePath:
 
         file_path = '/{}'.format(file_id)
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await subfolder_provider.validate_v1_path(file_path)
+            await subfolder_provider.validate_path(file_path)
 
         with pytest.raises(exceptions.NotFoundError) as exc:
             await subfolder_provider.validate_path(file_path)

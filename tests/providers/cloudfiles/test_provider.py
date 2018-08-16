@@ -651,13 +651,13 @@ class TestMetadata:
             await connected_provider.metadata(path)
 
 
-class TestV1ValidatePath:
+class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_v1_validate_path(self, connected_provider):
+    async def test_validate_path(self, connected_provider):
         path = '/ab4x3'
-        result = await connected_provider.validate_v1_path(path)
+        result = await connected_provider.validate_path(path)
 
         assert result.path == path.strip('/')
 

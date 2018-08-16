@@ -203,7 +203,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, search_for_file_response,
+    async def test_validate_path_file(self, provider, search_for_file_response,
                                          actual_file_response, no_folder_response):
         file_name = 'file.txt'
         file_id = '1234ideclarethumbwar'
@@ -225,22 +225,19 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', specific_url, body=actual_file_response)
 
         try:
-            wb_path_v1 = await provider.validate_v1_path('/' + file_name)
+            wb_path = await provider.validate_path('/' + file_name)
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + file_name + '/')
+            await provider.validate_path('/' + file_name + '/')
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = await provider.validate_path('/' + file_name)
-
-        assert wb_path_v1 == wb_path_v0
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider, search_for_folder_response,
+    async def test_validate_path_folder(self, provider, search_for_folder_response,
                                            actual_folder_response, no_file_response):
         folder_name = 'foofolder'
         folder_id = 'whyis6afraidof7'
@@ -262,25 +259,22 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', specific_url, body=actual_folder_response)
 
         try:
-            wb_path_v1 = await provider.validate_v1_path('/' + folder_name + '/')
+            wb_path = await provider.validate_path('/' + folder_name + '/')
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + folder_name)
+            await provider.validate_path('/' + folder_name)
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = await provider.validate_path('/' + folder_name + '/')
-
-        assert wb_path_v1 == wb_path_v0
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_root(self, provider):
+    async def test_validate_path_root(self, provider):
         path = '/'
 
-        result = await provider.validate_v1_path(path)
+        result = await provider.validate_path(path)
         expected = GoogleDrivePath('/', _ids=[provider.folder['id']], folder=True)
 
         assert result == expected

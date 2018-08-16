@@ -208,7 +208,7 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider, file_header_metadata, mock_time):
+    async def test_validate_path_file(self, provider, file_header_metadata, mock_time):
         file_path = 'foobah'
 
         params = {'prefix': '/' + file_path + '/', 'delimiter': '/'}
@@ -217,25 +217,21 @@ class TestValidatePath:
         aiohttpretty.register_uri('HEAD', good_metadata_url, headers=file_header_metadata)
         aiohttpretty.register_uri('GET', bad_metadata_url, params=params, status=404)
 
-        assert WaterButlerPath('/') == await provider.validate_v1_path('/')
+        assert WaterButlerPath('/') == await provider.validate_path('/')
 
         try:
-            wb_path_v1 = await provider.validate_v1_path('/' + file_path)
+            wb_path = await provider.validate_path('/' + file_path)
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + file_path + '/')
+            await provider.validate_path('/' + file_path + '/')
 
         assert exc.value.code == client.NOT_FOUND
 
-        wb_path_v0 = await provider.validate_path('/' + file_path)
-
-        assert wb_path_v1 == wb_path_v0
-
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider, folder_metadata, mock_time):
+    async def test_validate_path_folder(self, provider, folder_metadata, mock_time):
         folder_path = 'Photos'
 
         params = {'prefix': '/' + folder_path + '/', 'delimiter': '/'}
@@ -248,45 +244,14 @@ class TestValidatePath:
         aiohttpretty.register_uri('HEAD', bad_metadata_url, status=404)
 
         try:
-            wb_path_v1 = await provider.validate_v1_path('/' + folder_path + '/')
+            wb_path = await provider.validate_path('/' + folder_path + '/')
         except Exception as exc:
             pytest.fail(str(exc))
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + folder_path)
+            await provider.validate_path('/' + folder_path)
 
         assert exc.value.code == client.NOT_FOUND
-
-        wb_path_v0 = await provider.validate_path('/' + folder_path + '/')
-
-        assert wb_path_v1 == wb_path_v0
-
-    @pytest.mark.asyncio
-    async def test_normal_name(self, provider, mock_time):
-        path = await provider.validate_path('/this/is/a/path.txt')
-        assert path.name == 'path.txt'
-        assert path.parent.name == 'a'
-        assert path.is_file
-        assert not path.is_dir
-        assert not path.is_root
-
-    @pytest.mark.asyncio
-    async def test_folder(self, provider, mock_time):
-        path = await provider.validate_path('/this/is/a/folder/')
-        assert path.name == 'folder'
-        assert path.parent.name == 'a'
-        assert not path.is_file
-        assert path.is_dir
-        assert not path.is_root
-
-    @pytest.mark.asyncio
-    async def test_root(self, provider, mock_time):
-        path = await provider.validate_path('/this/is/a/folder/')
-        assert path.name == 'folder'
-        assert path.parent.name == 'a'
-        assert not path.is_file
-        assert path.is_dir
-        assert not path.is_root
 
 
 class TestCRUD:
