@@ -2,9 +2,30 @@
 ChangeLog
 *********
 
+0.41.0 (2018-08-15)
+===================
+- Feature: WaterButler now uses the multipart/chunked upload interfaces provided by Box, Dropbox,
+and Amazon S3 when the uploaded file size exceeds provider-defined thresholds.  These providers
+limit the size of files that can be uploaded in a single request and require multipart uploads for
+larger files.  WB itself does not provide a multipart upload interface, so uploads via WB will
+still appear to happen as a single request. The maximum file sizes for each provider at the time
+of this release are:
+  - Box: 250MB / 2GB / 5GB, depending on account type
+    https://community.box.com/t5/Upload-and-Download-Files-and/Understand-the-Maximum-File-Size-You-Can-Upload-to-Box/ta-p/50590
+  - Dropbox: 350GB
+    https://www.dropbox.com/help/space/upload-limitations
+  - S3: 5TB
+    https://aws.amazon.com/s3/faqs/ under "How much data can I store in Amazon S3"
+- Fix: Improve Figshare upload reliability, especially for cross-provider move/copies.  WaterButler
+was trying to slurp an entire file segment into memory before uploading to Figshare.  If the source
+feed was slow, the connection could time out before the transfer commenced, resulting in broken
+uploads on Figshare.  WB now streams chunks of the segment as it receives them, allowing the
+connection to stay open to completion.
+- Fix: Fix minor warning in documentation build.
+
 0.40.2 (2018-08-08)
 ===================
-- Fix: Fix download of public figshare files.
+- Fix: Fix download of public Figshare files.
 
 0.40.1 (2018-07-25)
 ===================
