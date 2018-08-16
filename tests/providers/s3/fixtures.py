@@ -3,13 +3,12 @@ from collections import OrderedDict
 
 import pytest
 
-from waterbutler.providers.s3.metadata import (
-    S3FileMetadataHeaders,
-    S3FileMetadata,
-    S3FolderMetadata,
-    S3FolderKeyMetadata,
-    S3Revision
-)
+from waterbutler.providers.s3.metadata import (S3Revision,
+                                               S3FileMetadata,
+                                               S3FolderMetadata,
+                                               S3FolderKeyMetadata,
+                                               S3FileMetadataHeaders,
+                                               )
 
 
 @pytest.fixture
@@ -152,3 +151,50 @@ def revision_metadata_object():
     return S3Revision(content)
 
 
+@pytest.fixture
+def create_session_resp():
+    file_path = 'fixtures/chunked_uploads/create_session_resp.xml'
+    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def generic_http_404_resp():
+    file_path = 'fixtures/chunked_uploads/generic_http_404_resp.xml'
+    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def generic_http_403_resp():
+    file_path = 'fixtures/chunked_uploads/generic_http_403_resp.xml'
+    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def list_parts_resp_empty():
+    file_path = 'fixtures/chunked_uploads/list_parts_resp_empty.xml'
+    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def list_parts_resp_not_empty():
+    file_path = 'fixtures/chunked_uploads/list_parts_resp_not_empty.xml'
+    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def complete_upload_resp():
+    file_path = 'fixtures/chunked_uploads/complete_upload_resp.xml'
+    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def upload_parts_headers_list():
+    file_path = 'fixtures/chunked_uploads/upload_parts_headers_list.json'
+    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+        return fp.read()

@@ -59,14 +59,36 @@ def mypy(ctx):
 
 
 @task
-def test(ctx, verbose=False, types=False):
+def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None):
+    """Run full or customized tests for WaterButler.
+
+    :param ctx: the ``invoke`` context
+    :param verbose: the flag to increase verbosity
+    :param types: the flag to enable ``mypy`` test
+    :param nocov: the flag to disable coverage
+    :param provider: limit the tests to the given provider only
+    :param path: limit the tests to the given path only
+    :return: None
+    """
+
     flake(ctx)
+
     if types:
         mypy(ctx)
 
-    cmd = 'py.test --cov-report term-missing --cov waterbutler tests'
-    if verbose:
-        cmd += ' -v'
+    # `--provider=` and `--path=` are mutually exclusive options
+    assert not (provider and path)
+    if path:
+        path = '/{}'.format(path) if path else ''
+    elif provider:
+        path = '/providers/{}/'.format(provider) if provider else ''
+    else:
+        path = ''
+
+    coverage = ' --cov-report term-missing --cov waterbutler' if not nocov else ''
+    verbose = '-v' if verbose else ''
+
+    cmd = 'py.test{} tests{} {}'.format(coverage, path, verbose)
     ctx.run(cmd, pty=True)
 
 
