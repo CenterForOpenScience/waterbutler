@@ -32,6 +32,7 @@ def credentials():
             'access_key': 'Dont dead',
             'secret_key': 'open inside',
         },
+        # TODO: obsolete settings, left in until removed from OSF
         'archive': {},
         'parity': {},
     }
@@ -47,6 +48,7 @@ def settings():
         'storage': {
             'provider': 'mock',
         },
+        # TODO: obsolete settings, left in until removed from OSF
         'archive': {},
         'parity': {},
     }
