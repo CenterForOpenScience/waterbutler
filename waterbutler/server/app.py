@@ -49,8 +49,6 @@ def make_app(debug):
 
 
 def serve():
-    tornado.platform.asyncio.AsyncIOMainLoop().install()
-
     app = make_app(server_settings.DEBUG)
 
     ssl_options = None
