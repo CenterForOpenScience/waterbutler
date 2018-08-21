@@ -48,6 +48,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             for key, value in self.request.query_arguments.items()
         }
 
+        # Going with version as its the most correct term
+        # TODO Change all references of revision to version @chrisseto
+        # revisions will still be accepted until necessary changes are made to OSF
+        self.requested_version = (self.get_query_argument('version', default=None) or
+                                  self.get_query_argument('revision', default=None))
+
         self.path = self.path_kwargs['path'] or '/'
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']

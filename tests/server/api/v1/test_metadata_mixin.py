@@ -146,7 +146,7 @@ class TestMetadataMixin:
     @pytest.mark.asyncio
     async def test_file_metadata_version(self, handler, mock_file_metadata):
         handler.provider.metadata = MockCoroutine(return_value=mock_file_metadata)
-        handler.request.query_arguments['version'] = ['version id']
+        handler.requested_version = 'version id'
 
         await handler.file_metadata()
 
