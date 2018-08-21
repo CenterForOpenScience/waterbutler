@@ -25,26 +25,6 @@ def app():
 
 
 @pytest.fixture
-def http_server_port():
-    """Port used by `http_server`.
-    """
-    return tornado.testing.bind_unused_port()
-
-
-@pytest.yield_fixture
-def io_loop():
-    """
-    Create a new `tornado.platform.asyncio.AsyncIOLoop` for each test case.
-    """
-    loop = tornado.platform.asyncio.AsyncIOLoop()
-    loop.make_current()
-    yield loop
-    loop.clear_current()
-    if not type(loop).initialized() or loop is not type(loop).instance():
-        loop.close(all_fds=True)
-
-
-@pytest.fixture
 def http_request():
     mocked_http_request = HTTPServerRequest(
         uri='/v1/resources/test/providers/test/path/mock',
