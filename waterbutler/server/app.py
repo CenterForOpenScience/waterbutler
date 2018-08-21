@@ -1,8 +1,8 @@
 import os
-import signal
+# import signal
 import asyncio
 import logging
-from functools import partial
+# from functools import partial
 
 import tornado.web
 import tornado.platform.asyncio
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def sig_handler(sig, frame):
-    io_loop = tornado.ioloop.IOLoop.instance()
+    io_loop = tornado.ioloop.IOLoop.current()
 
     def stop_loop():
         if len(asyncio.Task.all_tasks(io_loop)) == 0:
@@ -68,6 +68,7 @@ def serve():
 
     logger.info("Listening on {0}:{1}".format(server_settings.ADDRESS, server_settings.PORT))
 
-    signal.signal(signal.SIGTERM, partial(sig_handler))
-    asyncio.get_event_loop().set_debug(server_settings.DEBUG)
-    asyncio.get_event_loop().run_forever()
+    # signal.signal(signal.SIGTERM, partial(sig_handler))
+    tornado.ioloop.IOLoop.current().start()
+    # asyncio.get_event_loop().set_debug(server_settings.DEBUG)
+    # asyncio.get_event_loop().run_forever()

@@ -4,9 +4,17 @@ import pytest
 
 from tests.utils import MockCoroutine
 from waterbutler.core.path import WaterButlerPath
-from tests.server.api.v1.fixtures import (http_request, handler, handler_auth, mock_stream,
-                                          mock_partial_stream, mock_file_metadata,
-                                          mock_folder_children, mock_revision_metadata)
+from tests.server.api.v1.fixtures import (
+    app,
+    http_request,
+    handler,
+    handler_auth,
+    mock_stream,
+    mock_partial_stream,
+    mock_file_metadata,
+    mock_folder_children,
+    mock_revision_metadata
+)
 
 
 class TestMetadataMixin:
@@ -19,11 +27,9 @@ class TestMetadataMixin:
         await handler.header_file_metadata()
 
         assert handler._headers['Content-Length'] == '1337'
-        assert handler._headers['Last-Modified'] == b'Wed, 25 Sep 1991 18:20:30 GMT'
-        assert handler._headers['Content-Type'] == b'application/octet-stream'
-        expected = bytes(json.dumps(mock_file_metadata.json_api_serialized(handler.resource)),
-                         'latin-1')
-        assert handler._headers['X-Waterbutler-Metadata'] == expected
+        assert handler._headers['Last-Modified'] == 'Wed, 25 Sep 1991 18:20:30 GMT'
+        assert handler._headers['Content-Type'] == 'application/octet-stream'
+        assert handler._headers['X-Waterbutler-Metadata'] == json.dumps(mock_file_metadata.json_api_serialized(handler.resource))
 
     @pytest.mark.asyncio
     async def test_get_folder(self, handler, mock_folder_children):
@@ -86,10 +92,9 @@ class TestMetadataMixin:
 
         await handler.download_file()
 
-        assert handler._headers['Content-Length'] == bytes(str(mock_stream.size), 'latin-1')
-        assert handler._headers['Content-Type'] == bytes(mock_stream.content_type, 'latin-1')
-        assert handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'.format(
-            handler.path.name), 'latin-1')
+        assert handler._headers['Content-Length'] == str(mock_stream.size)
+        assert handler._headers['Content-Type'] == mock_stream.content_type
+        assert handler._headers['Content-Disposition'] == 'attachment;filename="{}"'.format(handler.path.name)
 
         handler.write_stream.assert_awaited_once()
 
@@ -102,8 +107,7 @@ class TestMetadataMixin:
 
         await handler.download_file()
 
-        assert handler._headers['Content-Range'] == bytes(mock_partial_stream.content_range,
-                                                          'latin-1')
+        assert handler._headers['Content-Range'] == mock_partial_stream.content_range
         assert handler.get_status() == 206
         handler.write_stream.assert_called_once_with(mock_partial_stream)
 
@@ -130,7 +134,7 @@ class TestMetadataMixin:
         await handler.download_file()
 
         handler.write_stream.assert_called_once_with(mock_stream)
-        assert handler._headers['Content-Type'] == bytes(mimetype, 'latin-1')
+        assert handler._headers['Content-Type'] == mimetype
 
     @pytest.mark.asyncio
     async def test_file_metadata(self, handler, mock_file_metadata):
@@ -173,8 +177,8 @@ class TestMetadataMixin:
 
         await handler.download_folder_as_zip()
 
-        assert handler._headers['Content-Type'] == bytes('application/zip', 'latin-1')
-        expected = bytes('attachment;filename="{}"'.format(handler.path.name + '.zip'), 'latin-1')
+        assert handler._headers['Content-Type'] == 'application/zip'
+        expected = 'attachment;filename="{}"'.format(handler.path.name + '.zip')
         assert handler._headers['Content-Disposition'] == expected
 
         handler.write_stream.assert_called_once_with(mock_stream)

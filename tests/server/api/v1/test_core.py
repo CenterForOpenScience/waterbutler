@@ -1,7 +1,13 @@
 from unittest import mock
 
-from tests.server.api.v1.fixtures import (http_request, handler, mock_exc_info, mock_exc_info_202,
-                                          mock_exc_info_http)
+from tests.server.api.v1.fixtures import (
+    app,
+    http_request,
+    handler,
+    mock_exc_info,
+    mock_exc_info_202,
+    mock_exc_info_http
+)
 
 
 class TestBaseHandler:

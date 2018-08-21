@@ -6,8 +6,14 @@ import pytest
 from tests.utils import MockCoroutine
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-from tests.server.api.v1.fixtures import (http_request, handler, handler_auth, mock_folder_metadata,
-                                          mock_file_metadata)
+from tests.server.api.v1.fixtures import (
+    app,
+    http_request,
+    handler,
+    handler_auth,
+    mock_folder_metadata,
+    mock_file_metadata
+)
 
 
 class TestValidatePut:

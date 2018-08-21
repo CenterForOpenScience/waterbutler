@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 from tornado.web import HTTPError
+import tornado.testing
 from tornado.httputil import HTTPServerRequest
 from tornado.http1connection import HTTP1ConnectionParameters
 
@@ -16,6 +17,31 @@ from waterbutler.tasks.exceptions import WaitTimeOutError
 from waterbutler.server.api.v1.provider import ProviderHandler
 from tests.utils import (MockProvider, MockFileMetadata, MockFolderMetadata,
                          MockFileRevisionMetadata, MockCoroutine, MockRequestBody, MockStream)
+
+
+@pytest.fixture
+def app():
+    return make_app(False)
+
+
+@pytest.fixture
+def http_server_port():
+    """Port used by `http_server`.
+    """
+    return tornado.testing.bind_unused_port()
+
+
+@pytest.yield_fixture
+def io_loop():
+    """
+    Create a new `tornado.platform.asyncio.AsyncIOLoop` for each test case.
+    """
+    loop = tornado.platform.asyncio.AsyncIOLoop()
+    loop.make_current()
+    yield loop
+    loop.clear_current()
+    if not type(loop).initialized() or loop is not type(loop).instance():
+        loop.close(all_fds=True)
 
 
 @pytest.fixture
@@ -33,8 +59,8 @@ def http_request():
 
 
 @pytest.fixture
-def handler(http_request):
-    mocked_handler = ProviderHandler(make_app(True), http_request)
+def handler(app, http_request):
+    mocked_handler = ProviderHandler(app, http_request)
 
     mocked_handler.path_kwargs = {
         'provider': 'test',
