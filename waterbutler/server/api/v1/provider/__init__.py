@@ -130,7 +130,15 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     async def prepare_stream(self):
         """Sets up an asyncio pipe from client to server
-        Only called on PUT when path is to a file
+        Only called on PUT when path is to a file.
+        
+        Creating a StreamWriter, StreamReader pair gives access to the 
+        StreamWriter.drain method which will pause writing until the in memory buffer
+        is below a certain threshold. This prevents entire files to be pulled into memory
+        when the client's connection to waterbutler was faster than
+        waterbutler's connection to the provider
+
+        https://github.com/CenterForOpenScience/waterbutler/commit/bb77d790284d8f575178c51d09991ae898a8e152
         """
         self.rsock, self.wsock = socket.socketpair()
 
