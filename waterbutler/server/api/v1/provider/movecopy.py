@@ -87,7 +87,9 @@ class MoveCopyMixin:
             provider,
             self.request,
             action=auth_action,
-            auth_type=AuthType.SOURCE
+            auth_type=AuthType.SOURCE,
+            path=self.path,
+            version=self.requested_version,
         )
         self.provider = make_provider(
             provider,

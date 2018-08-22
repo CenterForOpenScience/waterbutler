@@ -66,10 +66,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if method in self.PRE_VALIDATORS:
             getattr(self, self.PRE_VALIDATORS[method])()
 
-        # Delay setup of the provider when method is post, as we need to evaluate the json body action.
+        # Delay setup of the provider when method is post, as we need to evaluate the json body
+        # action.
         if method != 'post':
-            self.auth = await auth_handler.get(self.resource, provider, self.request)
-            self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
+            self.auth = await auth_handler.get(self.resource, provider, self.request,
+                                               path=self.path, version=self.requested_version)
+            self.provider = utils.make_provider(provider, self.auth['auth'],
+                                                self.auth['credentials'], self.auth['settings'])
             self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
 
         self.target_path = None
