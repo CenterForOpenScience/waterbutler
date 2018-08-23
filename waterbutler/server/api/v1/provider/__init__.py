@@ -1,5 +1,4 @@
 import uuid
-import socket
 import asyncio
 import logging
 from http import HTTPStatus
@@ -123,7 +122,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         """Note: Only called during uploads."""
         self.bytes_uploaded += len(chunk)
         if self.stream:
-            await self.writer.write(chunk)
+            await self.stream.feed_data(chunk)
         else:
             self.body += chunk
 
@@ -131,7 +130,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         """Sets up an asyncio pipe from client to server
         Only called on PUT when path is to a file.
         """
-        self.stream = RequestStreamReader(self.request, self.reader)
+        self.stream = RequestStreamReader(self.request)
         self.uploader = asyncio.ensure_future(self.provider.upload(self.stream, self.target_path))
 
     def on_finish(self):

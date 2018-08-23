@@ -14,6 +14,7 @@ from waterbutler.server.app import make_app
 from waterbutler.core import metadata, provider
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.streams.file import FileStreamReader
+from waterbutler.core.streams.http import RequestStreamReader
 
 
 class MockCoroutine(mock.Mock):
@@ -73,6 +74,14 @@ class MockStream(FileStreamReader):
 
     def __init__(self):
         super().__init__(tempfile.TemporaryFile())
+
+
+class MockRequestStream(RequestStreamReader):
+    content_type = 'application/octet-stream'
+    size = 1334
+
+    def __init__(self, request):
+        super().__init__(request)
 
 
 class MockRequestBody(concurrent.Future):

@@ -1,11 +1,15 @@
 import uuid
 import asyncio
-from collections import dequeue
+from asyncio import Future
+from asyncio.streams import _DEFAULT_LIMIT
+
 
 from tornado import gen, ioloop
-from tornado.concurrent import Future, future_set_result_unless_cancelled
 
 from waterbutler.core.streams.base import BaseStream, MultiStream, StringStream
+
+
+print(_DEFAULT_LIMIT)
 
 
 class FormDataStream(MultiStream):
@@ -183,7 +187,7 @@ class WritePendingError():
 
 class RequestStreamReader(BaseStream):
 
-    def __init__(self, request, inner, max_buffer_size=None):
+    def __init__(self, request, max_buffer_size=_DEFAULT_LIMIT):
         super().__init__()
         self.request = request
         self.max_buffer_size = max_buffer_size
@@ -215,6 +219,7 @@ class RequestStreamReader(BaseStream):
             self.pending_feed = (future, chunk)
 
             if timeout:
+                # Let a caller specify a maximum amount of time to wait.
                 def on_timeout():
                     if not future.done():
                         future.set_exception(gen.TimeoutError())

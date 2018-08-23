@@ -1,5 +1,4 @@
 import os
-import socket
 import asyncio
 from http import HTTPStatus
 
@@ -35,12 +34,7 @@ class CRUDHandler(core.BaseProviderHandler):
 
     async def prepare_stream(self):
         if self.request.method in self.STREAM_METHODS:
-            self.rsock, self.wsock = socket.socketpair()
-
-            self.reader, _ = await asyncio.open_unix_connection(sock=self.rsock)
-            _, self.writer = await asyncio.open_unix_connection(sock=self.wsock)
-
-            self.stream = RequestStreamReader(self.request, self.reader)
+            self.stream = RequestStreamReader(self.request)
 
             self.uploader = asyncio.ensure_future(self.provider.upload(self.stream,
                                                  **self.arguments))
@@ -51,8 +45,7 @@ class CRUDHandler(core.BaseProviderHandler):
         """Note: Only called during uploads."""
         self.bytes_uploaded += len(chunk)
         if self.stream:
-            self.writer.write(chunk)
-            await self.writer.drain()
+            await self.stream.feed_data(chunk)
 
     async def get(self):
         """Download a file."""
@@ -110,7 +103,7 @@ class CRUDHandler(core.BaseProviderHandler):
 
     async def put(self):
         """Upload a file."""
-        self.writer.write_eof()
+        self.stream.feed_eof()
 
         metadata, created = await self.uploader
 
