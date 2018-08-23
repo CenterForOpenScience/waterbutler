@@ -149,68 +149,10 @@ class OSFStorageProvider(provider.BaseProvider):
         return isinstance(other, self.__class__) and self.is_same_region(other)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
-        created = True
-        if dest_path.identifier:
-            created = False
-            await dest_provider.delete(dest_path)
-
-        async with self.signed_request(
-            'POST',
-            self.build_url('hooks', 'move'),
-            data=json.dumps({
-                'user': self.auth['id'],
-                'source': src_path.identifier,
-                'destination': {
-                    'name': dest_path.name,
-                    'node': dest_provider.nid,
-                    'parent': dest_path.parent.identifier
-                }
-            }),
-            headers={'Content-Type': 'application/json'},
-            expects=(200, 201)
-        ) as resp:
-            data = await resp.json()
-
-        if data['kind'] == 'file':
-            return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
-
-        folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
-        dest_path = await dest_provider.validate_v1_path(data['path'])
-        folder_meta.children = await dest_provider._children_metadata(dest_path)
-
-        return folder_meta, created
+        return await self._do_intra_move_or_copy('move', dest_provider, src_path, dest_path)
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
-        created = True
-        if dest_path.identifier:
-            created = False
-            await dest_provider.delete(dest_path)
-
-        async with self.signed_request(
-            'POST',
-            self.build_url('hooks', 'copy'),
-            data=json.dumps({
-                'user': self.auth['id'],
-                'source': src_path.identifier,
-                'destination': {
-                    'name': dest_path.name,
-                    'node': dest_provider.nid,
-                    'parent': dest_path.parent.identifier
-                }
-            }),
-            headers={'Content-Type': 'application/json'},
-            expects=(200, 201)
-        ) as resp:
-            data = await resp.json()
-
-        if data['kind'] == 'file':
-            return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
-
-        folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
-        dest_path = await dest_provider.validate_v1_path(data['path'])
-        folder_meta.children = await dest_provider._children_metadata(dest_path)
-
-        return folder_meta, created
+        return await self._do_intra_move_or_copy('copy', dest_provider, src_path, dest_path)
 
     def build_signed_url(self, method, url, data=None, params=None, ttl=100, **kwargs):
         signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
@@ -463,3 +405,43 @@ class OSFStorageProvider(provider.BaseProvider):
         for child in meta:
             osf_path = await self.validate_path(child.path)
             await self.delete(osf_path)
+
+    async def _do_intra_move_or_copy(self, action: str, dest_provider, src_path, dest_path):
+        """Update files and folders on osfstorage with a single request.
+
+        If the data of the file or the folder's children doesn't need to be copied to another
+        bucket, then doing an intra-move or intra-copy is just a matter of updating the entity
+        metadata in the OSF.  If something already exists at ``dest_path``, it must be deleted
+        before relocating the source to the new path.
+        """
+
+        created = True
+        if dest_path.identifier:
+            created = False
+            await dest_provider.delete(dest_path)
+
+        async with self.signed_request(
+            'POST',
+            self.build_url('hooks', action),
+            data=json.dumps({
+                'user': self.auth['id'],
+                'source': src_path.identifier,
+                'destination': {
+                    'name': dest_path.name,
+                    'node': dest_provider.nid,
+                    'parent': dest_path.parent.identifier
+                }
+            }),
+            headers={'Content-Type': 'application/json'},
+            expects=(200, 201)
+        ) as resp:
+            data = await resp.json()
+
+        if data['kind'] == 'file':
+            return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
+
+        folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
+        dest_path = await dest_provider.validate_v1_path(data['path'])
+        folder_meta.children = await dest_provider._children_metadata(dest_path)
+
+        return folder_meta, created

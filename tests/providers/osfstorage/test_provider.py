@@ -281,178 +281,33 @@ class TestRevisions:
             await provider.revisions(file_path)
 
 
-class TestIntraCopy:
+class TestIntraMoveCopy:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_intra_copy_folder(self, provider_and_mock, provider_and_mock2,
-                                     folder_children_metadata, mock_time):
-        src_provider, src_mock = provider_and_mock
-        src_mock.intra_copy = src_provider.intra_copy
+    @pytest.mark.parametrize("action, method_name", [
+        ('move', 'intra_move'),
+        ('copy', 'intra_copy'),
+    ])
+    async def test_intra_foo_folder(self, provider_and_mock, provider_and_mock2,
+                                    folder_children_metadata, mock_time, action, method_name):
 
-        dest_provider, dest_mock = provider_and_mock2
-        dest_mock.nid = 'abcde'
-        dest_mock._children_metadata = utils.MockCoroutine(return_value=folder_children_metadata)
-        dest_mock.validate_v1_path = utils.MockCoroutine(
-            return_value=WaterButlerPath('/folder1/', _ids=('rootId', 'folder1'))
+        src_provider, _ = provider_and_mock
+        src_provider.delete = utils.MockCoroutine()
+        src_provider.validate_v1_path = utils.MockCoroutine()
+        src_provider._children_metadata = utils.MockCoroutine()
+
+        dest_provider, _ = provider_and_mock2
+        dest_provider.delete = utils.MockCoroutine()
+        dest_provider.validate_v1_path = utils.MockCoroutine(
+            return_value=WaterButlerPath('/folder1/', _ids=('RootId', 'folder1'))
+        )
+        dest_provider._children_metadata = utils.MockCoroutine(
+            return_value=folder_children_metadata
         )
 
         src_path = WaterButlerPath('/folder1/', _ids=['RootId', 'folder1'], folder=True)
-        dest_path = WaterButlerPath('/folder1/', folder=True)
-
-        data=json.dumps({
-            'user': src_provider.auth['id'],
-            'source': src_path.identifier,
-            'destination': {
-                'name': dest_path.name,
-                'node': dest_provider.nid,
-                'parent': dest_path.parent.identifier
-            }
-        })
-        url, _, params = src_provider.build_signed_url('POST',
-                                                       'https://waterbutler.io/hooks/copy/',
-                                                       data=data)
-
-        body = {'path': '/folder1/', 'id': 'folder1', 'kind': 'folder', 'name': 'folder1'}
-        aiohttpretty.register_json_uri('POST', url, params=params, status=201, body=body)
-
-        folder_meta, created = await src_mock.intra_copy(dest_mock, src_path, dest_path)
-        assert created
-        assert isinstance(folder_meta, OsfStorageFolderMetadata)
-        assert len(folder_meta.children) == 4
-        dest_mock._children_metadata.assert_called_once_with(WaterButlerPath('/folder1/'))
-        assert dest_mock.validate_v1_path.call_count == 1
-
-        src_mock._children_metadata.assert_not_called()
-        src_mock.validate_v1_path.assert_not_called()
-
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_copy_file(self, provider_and_mock, provider_and_mock2,
-                                   file_metadata, mock_time):
-        src_provider, src_mock = provider_and_mock
-        src_mock.intra_copy = src_provider.intra_copy
-
-        dest_provider, dest_mock = provider_and_mock2
-        dest_mock.nid = 'abcde'
-
-        src_path = WaterButlerPath('/test_file', _ids=['RootId', 'fileId'], folder=False)
-        dest_path = WaterButlerPath('/folder1/', folder=True)
-
-        data=json.dumps({
-            'user': src_provider.auth['id'],
-            'source': src_path.identifier,
-            'destination': {
-                'name': dest_path.name,
-                'node': dest_provider.nid,
-                'parent': dest_path.parent.identifier
-            }
-        })
-
-        url, params = build_signed_url_without_auth(src_provider, 'POST', 'hooks', 'copy',data=data)
-        aiohttpretty.register_json_uri('POST', url, params=params, status=201, body=file_metadata)
-
-        file_meta, created = await src_mock.intra_copy(dest_mock, src_path, dest_path)
-        assert created == True
-        assert isinstance(file_meta, OsfStorageFileMetadata)
-        assert file_meta.name == 'doc.rst'
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_copy_file_overwrite(self, provider_and_mock, provider_and_mock2,
-                                             mock_time):
-        src_provider, src_mock = provider_and_mock
-        src_mock.intra_copy = src_provider.intra_copy
-
-        dest_provider, dest_mock = provider_and_mock2
-        dest_mock.nid = 'abcde'
-        dest_mock.validate_v1_path = utils.MockCoroutine(
-            return_value=WaterButlerPath('/file', _ids=('rootId', 'fileId'))
-        )
-
-        src_path = WaterButlerPath('/folder1/', _ids=['RootId', 'folder1'], folder=True)
-        dest_path = WaterButlerPath('/folder1/',_ids=['RootId', 'folder1'], folder=True)
-
-        data=json.dumps({
-            'user': src_provider.auth['id'],
-            'source': src_path.identifier,
-            'destination': {
-                'name': dest_path.name,
-                'node': dest_provider.nid,
-                'parent': dest_path.parent.identifier
-            }
-        })
-        url, _, params = src_provider.build_signed_url('POST',
-                                                       'https://waterbutler.io/hooks/copy/',
-                                                       data=data)
-
-        body = {'path': '/file', 'id': 'fileId', 'kind': 'file', 'name': 'file'}
-        aiohttpretty.register_json_uri('POST', url, params=params, status=201, body=body)
-
-        file_meta, created = await src_mock.intra_copy(dest_mock, src_path, dest_path)
-        assert not created
-        assert isinstance(file_meta, OsfStorageFileMetadata)
-        assert file_meta.name == 'file'
-
-
-class TestIntraMove:
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_move_folder(self, provider_and_mock, provider_and_mock2,
-                                     folder_children_metadata, mock_time):
-        src_provider, src_mock = provider_and_mock
-        assert src_provider.can_duplicate_names()
-
-        src_mock.intra_move = src_provider.intra_move
-
-        dest_provider, dest_mock = provider_and_mock2
-        dest_mock.nid = 'abcde'
-        dest_mock._children_metadata = utils.MockCoroutine(return_value=folder_children_metadata)
-        dest_mock.validate_v1_path = utils.MockCoroutine(
-            return_value=WaterButlerPath('/folder1/', _ids=('rootId', 'folder1'))
-        )
-
-        src_path = WaterButlerPath('/folder1/', _ids=['RootId', 'folder1'], folder=True)
-        dest_path = WaterButlerPath('/folder1/', _ids=['RootId', 'folder1'], folder=True)
-
-        data=json.dumps({
-            'user': src_provider.auth['id'],
-            'source': src_path.identifier,
-            'destination': {
-                'name': dest_path.name,
-                'node': dest_provider.nid,
-                'parent': dest_path.parent.identifier
-            }
-        })
-        url, _, params = src_provider.build_signed_url('POST', 'https://waterbutler.io/hooks/move/',
-                                                       data=data)
-
-        body = {'path': '/folder1/', 'id': 'folder1', 'kind': 'folder', 'name': 'folder1'}
-        aiohttpretty.register_json_uri('POST', url, params=params, status=201, body=body)
-
-        folder_meta, created = await src_mock.intra_move(dest_mock, src_path, dest_path)
-        assert created == False
-        assert isinstance(folder_meta, OsfStorageFolderMetadata)
-        assert len(folder_meta.children) == 4
-        dest_mock._children_metadata.assert_called_once_with(WaterButlerPath('/folder1/'))
-        assert dest_mock.validate_v1_path.call_count == 1
-
-        src_mock._children_metadata.assert_not_called()
-        src_mock.validate_v1_path.assert_not_called()
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_move_file(self, provider_and_mock, provider_and_mock2, mock_time):
-        src_provider, src_mock = provider_and_mock
-        src_mock.intra_move = src_provider.intra_move
-
-        dest_provider, dest_mock = provider_and_mock2
-        dest_mock.nid = 'abcde'
-
-        src_path = WaterButlerPath('/file', _ids=['RootId', 'fileId'], folder=False)
-        dest_path = WaterButlerPath('/folder1/', folder=True)
+        dest_path = WaterButlerPath('/folder1/', _ids=['RootId'], folder=True)
 
         data = json.dumps({
             'user': src_provider.auth['id'],
@@ -463,19 +318,194 @@ class TestIntraMove:
                 'parent': dest_path.parent.identifier
             }
         })
-        url, _, params = src_provider.build_signed_url(
-            'POST',
-            'https://waterbutler.io/hooks/move/',
-            data=data
-        )
-
-        body = {'path': '/file', 'id': 'fileId', 'kind': 'file', 'name': 'file'}
+        url, params = build_signed_url_without_auth(src_provider, 'POST', 'hooks', action,
+                                                    data=data)
+        body = {'path': '/folder1/', 'id': 'folder1', 'kind': 'folder', 'name': 'folder1'}
         aiohttpretty.register_json_uri('POST', url, params=params, status=201, body=body)
 
-        file_meta, created = await src_mock.intra_move(dest_mock, src_path, dest_path)
+        method = getattr(src_provider, method_name)
+        folder_meta, created = await method(dest_provider, src_path, dest_path)
+
+        assert created
+        assert isinstance(folder_meta, OsfStorageFolderMetadata)
+        assert len(folder_meta.children) == 4
+
+        # these should be called on dest_provider (if at all), not src_provider
+        src_provider.delete.assert_not_called()
+        src_provider.validate_v1_path.assert_not_called()
+        src_provider._children_metadata.assert_not_called()
+
+        # delete isn't called, b/c dest_path doesn't already exist
+        dest_provider.delete.assert_not_called()
+        dest_provider.validate_v1_path.assert_called_once_with('/folder1/')
+        dest_provider._children_metadata.assert_called_once_with(WaterButlerPath('/folder1/'))
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize("action, method_name", [
+        ('move', 'intra_move'),
+        ('copy', 'intra_copy'),
+    ])
+    async def test_intra_foo_file(self, provider_and_mock, provider_and_mock2,
+                                  file_metadata, mock_time, action, method_name):
+
+        src_provider, _ = provider_and_mock
+        src_provider.delete = utils.MockCoroutine()
+        src_provider.validate_v1_path = utils.MockCoroutine()
+        src_provider._children_metadata = utils.MockCoroutine()
+
+        dest_provider, _ = provider_and_mock2
+        dest_provider.delete = utils.MockCoroutine()
+        dest_provider.validate_v1_path = utils.MockCoroutine()
+        dest_provider._children_metadata = utils.MockCoroutine()
+
+        src_path = WaterButlerPath('/test_file', _ids=['RootId', 'fileId'], folder=False)
+        dest_path = WaterButlerPath('/folder1/test_file', _ids=['RootId', 'folderId'],
+                                    folder=False)
+
+        data = json.dumps({
+            'user': src_provider.auth['id'],
+            'source': src_path.identifier,
+            'destination': {
+                'name': dest_path.name,
+                'node': dest_provider.nid,
+                'parent': dest_path.parent.identifier
+            }
+        })
+
+        url, params = build_signed_url_without_auth(src_provider, 'POST', 'hooks', action,
+                                                    data=data)
+        aiohttpretty.register_json_uri('POST', url, params=params, status=201, body=file_metadata)
+
+        method = getattr(src_provider, method_name)
+        file_meta, created = await method(dest_provider, src_path, dest_path)
+
         assert created == True
         assert isinstance(file_meta, OsfStorageFileMetadata)
-        assert file_meta.name == 'file'
+        assert file_meta.name == 'doc.rst'
+
+        # these should be called on dest_provider (if at all), not src_provider
+        src_provider.delete.assert_not_called()
+        src_provider.validate_v1_path.assert_not_called()
+        src_provider._children_metadata.assert_not_called()
+
+        # delete isn't called, b/c dest_path doesn't already exist
+        # others aren't called b/c copied entity isa file
+        dest_provider.delete.assert_not_called()
+        dest_provider.validate_v1_path.assert_not_called()
+        dest_provider._children_metadata.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize("action, method_name", [
+        ('move', 'intra_move'),
+        ('copy', 'intra_copy'),
+    ])
+    async def test_intra_foo_folder_overwrite(self, provider_and_mock, provider_and_mock2,
+                                              folder_children_metadata, mock_time, action,
+                                              method_name):
+
+        src_provider, _ = provider_and_mock
+        src_provider.delete = utils.MockCoroutine()
+        src_provider.validate_v1_path = utils.MockCoroutine()
+        src_provider._children_metadata = utils.MockCoroutine()
+
+        dest_provider, _ = provider_and_mock2
+        dest_provider.delete = utils.MockCoroutine()
+        dest_provider.validate_v1_path = utils.MockCoroutine(
+            return_value=WaterButlerPath('/folder1/', _ids=('RootId', 'folder1'))
+        )
+        dest_provider._children_metadata = utils.MockCoroutine(
+            return_value=folder_children_metadata
+        )
+
+        src_path = WaterButlerPath('/folder1/', _ids=['RootId', 'folder1'], folder=True)
+        dest_path = WaterButlerPath('/folder1/', _ids=['RootId', 'doomedFolder'], folder=True)
+
+        data = json.dumps({
+            'user': src_provider.auth['id'],
+            'source': src_path.identifier,
+            'destination': {
+                'name': dest_path.name,
+                'node': dest_provider.nid,
+                'parent': dest_path.parent.identifier
+            }
+        })
+        url, params = build_signed_url_without_auth(src_provider, 'POST', 'hooks', action,
+                                                    data=data)
+        body = {'path': '/folder1/', 'id': 'folder1', 'kind': 'folder', 'name': 'folder1'}
+        aiohttpretty.register_json_uri('POST', url, params=params, status=201, body=body)
+
+        method = getattr(src_provider, method_name)
+        folder_meta, created = await method(dest_provider, src_path, dest_path)
+
+        assert not created
+        assert isinstance(folder_meta, OsfStorageFolderMetadata)
+        assert len(folder_meta.children) == 4
+
+        # these should be called on dest_provider (if at all), not src_provider
+        src_provider.delete.assert_not_called()
+        src_provider.validate_v1_path.assert_not_called()
+        src_provider._children_metadata.assert_not_called()
+
+        dest_provider.delete.assert_called_once_with(WaterButlerPath('/folder1/'))
+        dest_provider.validate_v1_path.assert_called_once_with('/folder1/')
+        dest_provider._children_metadata.assert_called_once_with(WaterButlerPath('/folder1/'))
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize("action, method_name", [
+        ('move', 'intra_move'),
+        ('copy', 'intra_copy'),
+    ])
+    async def test_intra_foo_file_overwrite(self, provider_and_mock, provider_and_mock2,
+                                            file_metadata, mock_time, action, method_name):
+
+        src_provider, _ = provider_and_mock
+        src_provider.delete = utils.MockCoroutine()
+        src_provider.validate_v1_path = utils.MockCoroutine()
+        src_provider._children_metadata = utils.MockCoroutine()
+
+        dest_provider, _ = provider_and_mock2
+        dest_provider.delete = utils.MockCoroutine()
+        dest_provider.validate_v1_path = utils.MockCoroutine()
+        dest_provider._children_metadata = utils.MockCoroutine()
+
+        src_path = WaterButlerPath('/test_file', _ids=['RootId', 'fileId'], folder=False)
+        dest_path = WaterButlerPath('/folder1/test_file',
+                                    _ids=['RootId', 'folder1Id', 'doomedFile'],
+                                    folder=False)
+
+        data = json.dumps({
+            'user': src_provider.auth['id'],
+            'source': src_path.identifier,
+            'destination': {
+                'name': dest_path.name,
+                'node': dest_provider.nid,
+                'parent': dest_path.parent.identifier
+            }
+        })
+
+        url, params = build_signed_url_without_auth(src_provider, 'POST', 'hooks', action,
+                                                    data=data)
+        aiohttpretty.register_json_uri('POST', url, params=params, status=201, body=file_metadata)
+
+        method = getattr(src_provider, method_name)
+        file_meta, created = await method(dest_provider, src_path, dest_path)
+
+        assert not created
+        assert isinstance(file_meta, OsfStorageFileMetadata)
+        assert file_meta.name == 'doc.rst'
+
+        # these should be called on dest_provider (if at all), not src_provider
+        src_provider.delete.assert_not_called()
+        src_provider.validate_v1_path.assert_not_called()
+        src_provider._children_metadata.assert_not_called()
+
+        # vvp & _cm aren't called b/c copied entity isa file
+        dest_provider.delete.assert_called_once_with(WaterButlerPath('/folder1/test_file'))
+        dest_provider.validate_v1_path.assert_not_called()
+        dest_provider._children_metadata.assert_not_called()
 
 
 class TestUtils:

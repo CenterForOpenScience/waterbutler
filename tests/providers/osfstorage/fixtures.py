@@ -166,6 +166,8 @@ def file_stream(file_like):
 
 @pytest.fixture
 def provider_and_mock(monkeypatch, auth, credentials, settings):
+    """Returns an OSFStorageProvider and a mock object representing the inner storage provider."""
+
     mock_provider = utils.MockProvider1({}, {}, {})
 
     mock_provider.copy = utils.MockCoroutine()
@@ -184,6 +186,8 @@ def provider_and_mock(monkeypatch, auth, credentials, settings):
 
 @pytest.fixture
 def provider_and_mock2(monkeypatch, auth, credentials, settings):
+    """Returns an OSFStorageProvider and a mock object representing the inner storage provider."""
+
     mock_provider = utils.MockProvider1({}, {}, {})
 
     mock_provider.copy = utils.MockCoroutine()
