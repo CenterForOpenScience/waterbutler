@@ -1492,8 +1492,10 @@ class TestCreateFolder:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_raises_non_404(self, provider):
-        path = WaterButlerPath('/hugo/kim/pins/', _ids=(provider.folder['id'],
-                                                        'something', 'something', None))
+        path = WaterButlerPath(
+            '/hugo/kim/pins/',
+            _ids=(provider.folder['id'], 'something', 'something', None)
+        )
 
         url = provider.build_url('files')
         aiohttpretty.register_json_uri('POST', url, status=418)
@@ -1516,25 +1518,22 @@ class TestIntraFunctions:
     @pytest.mark.aiohttpretty
     async def test_intra_move_file(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['docs_file_metadata']
-        src_path = WaterButlerPath('/unsure.txt', _ids=(provider.folder['id'], item['id']))
-        dest_path = WaterButlerPath('/really/unsure.txt', _ids=(provider.folder['id'],
-                                                                item['id'], item['id']))
+        src_path = WaterButlerPath('/unsure.txt', _ids=('0', item['id']))
+        dest_path = WaterButlerPath('/really/unsure.txt', _ids=('0', 'yy42kcj', 'rrjk42k'))
 
         url = provider.build_url('files', src_path.identifier)
         data = json.dumps({
-            'parents': [{
-                'id': dest_path.parent.identifier
-            }],
+            'parents': [{'id': dest_path.parent.identifier}],
             'title': dest_path.name
         }),
         aiohttpretty.register_json_uri('PATCH', url, data=data, body=item)
 
-        delete_url = provider.build_url('files', item['id'])
+        delete_url = provider.build_url('files', dest_path.identifier)
         del_url_body = json.dumps({'labels': {'trashed': 'true'}})
         aiohttpretty.register_uri('PUT', delete_url, body=del_url_body, status=200)
 
-        result, created = await provider.intra_move(provider, src_path, dest_path)
         expected = GoogleDriveFileMetadata(item, dest_path)
+        result, _ = await provider.intra_move(provider, src_path, dest_path)
 
         assert result == expected
         assert aiohttpretty.has_call(method='PUT', uri=delete_url)
@@ -1543,24 +1542,21 @@ class TestIntraFunctions:
     @pytest.mark.aiohttpretty
     async def test_intra_move_folder(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['folder_metadata']
-        src_path = WaterButlerPath('/unsure/', _ids=(provider.folder['id'], item['id']))
-        dest_path = WaterButlerPath('/really/unsure/', _ids=(provider.folder['id'],
-                                                             item['id'], item['id']))
+        src_path = WaterButlerPath('/unsure/', _ids=('0', item['id']))
+        dest_path = WaterButlerPath('/really/unsure/', _ids=('0', '42jdkerf', '7ejGjeajr'))
 
         url = provider.build_url('files', src_path.identifier)
         data = json.dumps({
-            'parents': [{
-                'id': dest_path.parent.identifier
-            }],
+            'parents': [{'id': dest_path.parent.identifier}],
             'title': dest_path.name
         }),
         aiohttpretty.register_json_uri('PATCH', url, data=data, body=item)
 
-        delete_url = provider.build_url('files', item['id'])
+        delete_url = provider.build_url('files', dest_path.identifier)
         del_url_body = json.dumps({'labels': {'trashed': 'true'}})
         aiohttpretty.register_uri('PUT', delete_url, body=del_url_body, status=200)
 
-        children_query = provider._build_query(dest_path.identifier)
+        children_query = provider._build_query(src_path.identifier)
         children_url = provider.build_url('files', q=children_query, alt='json', maxResults=1000)
         children_list = generate_list(3, **root_provider_fixtures['folder_metadata'])
         aiohttpretty.register_json_uri('GET', children_url, body=children_list)
@@ -1579,20 +1575,16 @@ class TestIntraFunctions:
     @pytest.mark.aiohttpretty
     async def test_intra_copy_file(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['docs_file_metadata']
-        src_path = WaterButlerPath('/unsure.txt', _ids=(provider.folder['id'], item['id']))
-        dest_path = WaterButlerPath('/really/unsure.txt', _ids=(provider.folder['id'],
-                                                                item['id'], item['id']))
-
+        src_path = WaterButlerPath('/unsure.txt', _ids=('0', item['id']))
+        dest_path = WaterButlerPath('/really/unsure.txt', _ids=('0', '312kjfe', '4ckk2lkl3'))
         url = provider.build_url('files', src_path.identifier, 'copy')
         data = json.dumps({
-            'parents': [{
-                'id': dest_path.parent.identifier
-            }],
+            'parents': [{'id': dest_path.parent.identifier}],
             'title': dest_path.name
         }),
         aiohttpretty.register_json_uri('POST', url, data=data, body=item)
 
-        delete_url = provider.build_url('files', item['id'])
+        delete_url = provider.build_url('files', dest_path.identifier)
         del_url_body = json.dumps({'labels': {'trashed': 'true'}})
         aiohttpretty.register_uri('PUT', delete_url, body=del_url_body, status=200)
 
@@ -1605,33 +1597,33 @@ class TestIntraFunctions:
 
 class TestOperationsOrMisc:
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_duplicate_names(self, provider):
+    def test_will_self_overwrite(self, provider, other_provider):
+        src_path = GoogleDrivePath('/root/Gear1.stl', _ids=['0', '10', '11'])
+        dest_path = GoogleDrivePath('/root/Gear23123.stl', _ids=['0', '10', '12'])
+
+        result = provider.will_self_overwrite(other_provider, src_path, dest_path)
+        assert result is False
+
+        result = provider.will_self_overwrite(other_provider, src_path, src_path)
+        assert result is True
+
+    def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names() is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_shares_storage_root(self, provider, other_provider):
+    def test_shares_storage_root(self, provider, other_provider):
         assert provider.shares_storage_root(other_provider) is True
         assert provider.shares_storage_root(provider) is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_move(self, provider, other_provider):
+    def test_can_intra_move(self, provider, other_provider):
         assert provider.can_intra_move(other_provider) is False
         assert provider.can_intra_move(provider) is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test__serialize_item_raw(self, provider, root_provider_fixtures):
+    def test__serialize_item_raw(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['docs_file_metadata']
 
         assert provider._serialize_item(None, item, True) == item
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_copy(self, provider, other_provider, root_provider_fixtures):
+    def test_can_intra_copy(self, provider, other_provider, root_provider_fixtures):
         item = root_provider_fixtures['list_file']['items'][0]
         path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
 
@@ -1668,7 +1660,7 @@ class TestOperationsOrMisc:
                                        body=error_fixtures['parts_file_missing_metadata'])
 
         with pytest.raises(exceptions.MetadataError) as e:
-            result = await provider._resolve_path_to_ids(file_name)
+            await provider._resolve_path_to_ids(file_name)
 
         assert e.value.message == '{} not found'.format(str(path))
         assert e.value.code == 404

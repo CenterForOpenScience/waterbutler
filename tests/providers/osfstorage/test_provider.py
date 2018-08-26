@@ -326,7 +326,6 @@ class TestIntraCopy:
         src_mock._children_metadata.assert_not_called()
         src_mock.validate_v1_path.assert_not_called()
 
-
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_intra_copy_file(self, provider_and_mock, provider_and_mock2,

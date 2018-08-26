@@ -60,7 +60,7 @@ class BoxProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         response = await self.make_request(
-            'get',
+            'GET',
             self.build_url(files_or_folders, obj_id, fields='id,name,path_collection'),
             expects=(200, 404,),
             throws=exceptions.MetadataError,
@@ -104,7 +104,7 @@ class BoxProvider(provider.BaseProvider):
         response = None
         if obj_id.isdecimal():
             response = await self.make_request(
-                'get',
+                'GET',
                 self.build_url(files_or_folders, obj_id, fields='id,name,path_collection'),
                 expects=(200, 404, 405),
                 throws=exceptions.MetadataError,
@@ -187,18 +187,38 @@ class BoxProvider(provider.BaseProvider):
         """Box settings include the root folder id, which is unique across projects for subfolders.
         But the root folder of a Box account always has an ID of 0.  This means that the root
         folders of two separate Box accounts would incorrectly test as being the same storage root.
-        Add a comparison of credentials to avoid this."""
+        Add a comparison of credentials to avoid this.
+        """
         return super().shares_storage_root(other) and self.credentials == other.credentials
 
-    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
+    def will_self_overwrite(self, dest_provider, src_path, dest_path):
+        return self.NAME == dest_provider.NAME and src_path.identifier == dest_path.identifier
+
+    def can_intra_move(
+        self,
+        other: provider.BaseProvider,
+        path: WaterButlerPath=None
+    ) -> bool:
         return self == other
 
     def can_intra_copy(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
         return self == other
 
-    async def intra_copy(self,  # type: ignore
-                         dest_provider: provider.BaseProvider, src_path: WaterButlerPath,
-                         dest_path: WaterButlerPath) -> Tuple[BaseBoxMetadata, bool]:
+    async def intra_copy(
+        self,  # type: ignore
+        dest_provider: provider.BaseProvider,
+        src_path: WaterButlerPath,
+        dest_path: WaterButlerPath
+    ) -> Tuple[Union[BoxFileMetadata, BoxFolderMetadata], bool]:
+        """Copy a file if the src and dest are both on Box.
+        """
+
+        if src_path.identifier == dest_path.identifier:
+            raise exceptions.IntraCopyError(
+                "Cannot overwrite a file with itself",
+                code=HTTPStatus.CONFLICT
+            )
+
         if dest_path.identifier is not None:
             await dest_provider.delete(dest_path)
 
@@ -223,9 +243,19 @@ class BoxProvider(provider.BaseProvider):
 
         return await self._intra_move_copy_metadata(dest_path, data)
 
-    async def intra_move(self,  # type: ignore
-                         dest_provider: provider.BaseProvider, src_path: WaterButlerPath,
-                         dest_path: WaterButlerPath) -> Tuple[BaseBoxMetadata, bool]:
+    async def intra_move(
+        self,  # type: ignore
+        dest_provider: provider.BaseProvider,
+        src_path: WaterButlerPath,
+        dest_path: WaterButlerPath
+    ) -> Tuple[BaseBoxMetadata, bool]:
+
+        if src_path.identifier == dest_path.identifier:
+            raise exceptions.IntraCopyError(
+                "Cannot overwrite a file with itself",
+                code=HTTPStatus.CONFLICT
+            )
+
         if dest_path.identifier is not None and str(dest_path).lower() != str(src_path).lower():
             await dest_provider.delete(dest_path)
 
@@ -266,7 +296,6 @@ class BoxProvider(provider.BaseProvider):
                        **kwargs) -> streams.ResponseStreamReader:
         if path.identifier is None:
             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
-
         query = {}
         if revision and revision != path.identifier:
             query['version'] = revision
