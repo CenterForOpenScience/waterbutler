@@ -2,10 +2,15 @@ import zlib
 import time
 import struct
 import asyncio
+import logging
 import zipfile
 import binascii
 
+from waterbutler.core.streams import settings
 from waterbutler.core.streams.base import BaseStream, MultiStream, StringStream
+
+logger = logging.getLogger(__name__)
+
 
 # for some reason python3.5 has this as (1 << 31) - 1, which is 0x7fffffff
 ZIP64_LIMIT = 0xffffffff - 1
@@ -131,8 +136,16 @@ class ZipLocalFile(MultiStream):
             date_time=time.localtime(time.time())[:6],
         )
 
+        already_zipped = False
+        for zip_ext in settings.ZIP_EXTENSIONS:
+            if self.zinfo.filename.endswith(zip_ext):
+                already_zipped = True
+                logger.info('   DONE!')
+                break
+
+        logger.debug('file is already compressed: {}'.format(already_zipped))
         # If the file is a `.zip`, set permission and turn off compression
-        if self.zinfo.filename.endswith('.zip'):
+        if already_zipped:
             self.zinfo.external_attr = 0o600 << 16      # -rw-------
             self.zinfo.compress_type = zipfile.ZIP_STORED
             self.compressor = None
