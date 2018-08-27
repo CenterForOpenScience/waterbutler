@@ -94,11 +94,9 @@ class CreateMixin:
         self.write({'data': self.metadata.json_api_serialized(self.resource)})
 
     async def upload_file(self):
-        self.writer.write_eof()
+        self.stream.feed_eof()
 
         self.metadata, created = await self.uploader
-        self.writer.close()
-        self.wsock.close()
         if created:
             self.set_status(201)
 

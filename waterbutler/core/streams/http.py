@@ -8,6 +8,9 @@ from tornado import gen, ioloop
 
 from waterbutler.core.streams.base import BaseStream, MultiStream, StringStream
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 print(_DEFAULT_LIMIT)
 
@@ -202,7 +205,11 @@ class RequestStreamReader(BaseStream):
         # Trying to write to the stream from several coroutines doesn't seem
         # like a great idea, so limit it to one event loop, one coroutine.
         if self.pending_feed is not None:
-            raise WritePendingError('Another coroutine is alreading waiting to write to this stream.')
+            # Make sure the pending future is complete.
+            future, chunk = self.pending_feed
+            if not future.done():
+                raise WritePendingError('Another coroutine is alreading waiting to write to this stream.')
+            self.pending_feed = None
 
         if not chunk:
             # Nothing to add to the stream.
@@ -217,6 +224,8 @@ class RequestStreamReader(BaseStream):
             # (Default limit still remains)
             assert self.pending_feed is None
             self.pending_feed = (future, chunk)
+
+            future.add_done_callback(lambda _: self.clear_pending_feed())
 
             if timeout:
                 # Let a caller specify a maximum amount of time to wait.
@@ -234,10 +243,14 @@ class RequestStreamReader(BaseStream):
         # Give the future back for it to get awaited somewhere.
         return future
 
+    def clear_pending_feed(self):
+        self.pending_feed = None
+
     def feed_nowait(self, future, chunk):
         # We can put the chunk on the buffer.
         self._buffer.extend(chunk)
         future.set_result(None)
+        self.clear_pending_feed()
 
         # Let a waiting read know there's data.
         self._wakeup_waiter()
@@ -245,5 +258,7 @@ class RequestStreamReader(BaseStream):
     async def _read(self, n=-1):
         data = await asyncio.StreamReader.read(self, n)
         if self.pending_feed is not None and len(self._buffer) <= self.max_buffer_size:
-            self.feed_nowait(*self.pending_feed)
+            future, chunk = self.pending_feed
+            if not future.done():
+                self.feed_nowait(future, chunk)
         return data
