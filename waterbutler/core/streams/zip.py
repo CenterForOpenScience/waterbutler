@@ -160,7 +160,7 @@ class ZipLocalFile(MultiStream):
             self.zinfo.external_attr = 0o600 << 16      # -rw-------
             self.zinfo.compress_type = zipfile.ZIP_DEFLATED
             self.compressor = zlib.compressobj(
-                zlib.Z_DEFAULT_COMPRESSION,
+                settings.ZIP_COMPRESSION_LEVEL,
                 zlib.DEFLATED,
                 -15,
             )
