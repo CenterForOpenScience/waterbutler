@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+0.41.3 (2018-08-27)
+===================
+- Feature: Make download-as-zip compression level a tunable configuration parameter.
+
 0.41.2 (2018-08-27)
 ===================
 - Fix: Brown-paper-bag release: Check in settings file needed for last fix.
