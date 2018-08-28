@@ -65,6 +65,9 @@ class GitHubProvider(provider.BaseProvider):
     RL_TOKEN_ADD_DELAY = pd_settings.RL_TOKEN_ADD_DELAY
     RL_MAX_AVAILABLE_TOKENS = pd_settings.RL_MAX_AVAILABLE_TOKENS
     RL_REQ_RATE_UPDATE_INTERVAL = pd_settings.RL_REQ_RATE_UPDATE_INTERVAL
+    RL_RESERVE_RATIO = pd_settings.RL_RESERVE_RATIO
+    RL_RESERVE_BASE = pd_settings.RL_RESERVE_BASE
+    RL_MIN_REQ_RATE = pd_settings.RL_MIN_REQ_RATE
 
     def __init__(self, auth, credentials, settings):
 
@@ -1225,35 +1228,36 @@ class GitHubProvider(provider.BaseProvider):
     def _rl_update_req_rate(self) -> None:
         """Calculate the rate at which WB should make requests.  Instead of maximizing the rate with
         ``$remaining  / $time_to_reset``, WB sets a lower one by reserving "20% of the total
-        number of remaining requests plus 10 extra ones". This ensures that WB won't run out of
-        tokens when there are a REASONABLE amount of additional requests made for the same user
-        during the move/copy process.
-
-        TODO: should the "10% + 10 extra", and the "1 request per 100 seconds" be configurable?
+        number of remaining requests plus 10 extra ones".  We want to make sure that some requests
+        are set aside for regular user interactions (e.g. reloading the page on the OSF). We also
+        want to handle the case where the user has initiated multiple move/copies from a
+        WB-connected GitHub repo.  Both of these parameters are tweakable via the GH provider
+        settings.py file.
         """
 
         # GitHub's rate limiting is per authenticated user. It is entirely probable that users are
-        # making additional requests that counts against the quota when the copy/move is in process.
+        # making additional requests that count against the quota when the copy/move is in process.
         #
-        # Reserve 10% of the total number of remaining requests plus 10 extra ones. This RESERVATION
-        # is critical for preventing the current provider instance from running out of tokens when
-        # additional calls are made for the same user on OSF.
+        # Reserve a portion (20% by default) of the total number of remaining requests plus a base
+        # number (100 by default). This reservation is critical for preventing the current provider
+        # instance from running out of tokens when additional calls are made for the same user on
+        # OSF. In addition, this should support at least 3 concurrent large move/copy actions.
         #
-        # However, if users try to copy/register multiple GitHub repos at the same time, WB may
-        # still reach the cap and the actions will fail.
-        #
-        # In practice, when rate limit is active, it usually starts at just over 1 call per second
-        # and gradually increases to around 2. At the very end of the reset period, it can gets a
-        # little larger than 2.
-        rl_reserved = self.rl_remaining // 10 + 10
+        rl_reserved = self.rl_remaining * self.RL_RESERVE_RATIO + self.RL_RESERVE_BASE
         now = time.time()
-        sec_till_reset = self.rl_reset - now
 
-        # It is possible that `rl_reserved` is less than `.rl_remaining`. Let y denote `rl_reserved`
-        # and x denote `.rl_remaining`, from `y = x/10 + 10 > x` we have `x < 100/9`.
         if rl_reserved > self.rl_remaining:
-            # TODO: Why 0.01 instead of 0.1 or 0.05? I will test it during 1st round of CR.
-            self.rl_req_rate = 0.01
+            # With the default setting, the number of reserved requests is greater or equal to the
+            # number of remaining requests when the latter is 125 or less. Set the reference request
+            # rate to the minimum value (0.01 by default) which allows only 36 requests in a hour.
+            # Given that 4 > 125 / 36 > 3, at least 3 concurrent move/copy actions are supported
+            # even in the worst case scenario.
+            self.rl_req_rate = self.RL_MIN_REQ_RATE
         else:
-            self.rl_req_rate = (self.rl_remaining - rl_reserved) / sec_till_reset
+            # Otherwise, calculate the reference request rate according to the adjusted number of
+            # remaining requests and the time between now and next limit reset. If no other major
+            # requests (i.e. another copy/move) are being made at the same time, this reference
+            # request rate keeps increasing slightly.
+            self.rl_req_rate = (self.rl_remaining - rl_reserved) / (self.rl_reset - now)
+
         self.rl_req_rate_updated = now

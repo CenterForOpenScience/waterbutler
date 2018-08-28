@@ -13,6 +13,7 @@ UPDATE_FILE_MESSAGE = config.get('UPDATE_FILE_MESSAGE', 'File updated on behalf 
 UPLOAD_FILE_MESSAGE = config.get('UPLOAD_FILE_MESSAGE', 'File uploaded on behalf of WaterButler')
 DELETE_FOLDER_MESSAGE = config.get('DELETE_FOLDER_MESSAGE', 'Folder deleted on behalf of WaterButler')
 
+
 # At some point in the near(?) future git will be changing its internal hash function from SHA-1
 # to SHA-256.  sha1-names are 40 hexdigits long and sha256-names are 64 hexdigits long.  At that
 # point, it seems probable that GitHub will update its API to accept both sha types. When that
@@ -26,11 +27,18 @@ DELETE_FOLDER_MESSAGE = config.get('DELETE_FOLDER_MESSAGE', 'Folder deleted on b
 #
 GITHUB_SHA_LENGTHS = [int(x) for x in config.get('GITHUB_SHA_LENGTHS', '40').split(' ')]
 
+
+# Config For GitHub Rate Limiting
+#
 # The time in seconds to wait before making another attempt to add more tokens
 RL_TOKEN_ADD_DELAY = int(config.get('RL_TOKEN_ADD_DELAY', 1))
-
-# The maximum number of available tokens allowed
-RL_MAX_AVAILABLE_TOKENS = int(config.get('RL_MAX_AVAILABLE_TOKENS', 10))
-
+# The maximum number of available tokens (requests) allowed
+RL_MAX_AVAILABLE_TOKENS = float(config.get('RL_MAX_AVAILABLE_TOKENS', 10.0))
 # The minimum interval in seconds between each request rate update.
-RL_REQ_RATE_UPDATE_INTERVAL = int(config.get('RL_REQ_RATE_UPDATE_INTERVAL', 60))
+RL_REQ_RATE_UPDATE_INTERVAL = int(config.get('RL_REQ_RATE_UPDATE_INTERVAL', 10))
+# The percentage of remaining requests to be reserved.
+RL_RESERVE_RATIO = float(config.get('RL_RESERVE_RATIO', 0.2))
+# The base number of requests to be reserved.
+RL_RESERVE_BASE = int(config.get('RL_RESERVE_BASE', 100))
+# The minimum request rate allowed.  Applies when the provider is near the reserve base.
+RL_MIN_REQ_RATE = float(config.get('RL_MIN_REQ_RATE', 0.01))
