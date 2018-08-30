@@ -157,12 +157,9 @@ class S3Provider(provider.BaseProvider):
         else:
             query_parameters = {'versionId': revision}
 
-        if kwargs.get('displayName'):
-            response_headers = {
-                'response-content-disposition': make_disposition(kwargs['displayName'])
-            }
-        else:
-            response_headers = {'response-content-disposition': 'attachment'}
+        response_headers = {
+            'response-content-disposition': make_disposition(kwargs.get('displayName'))
+        }
 
         url = functools.partial(
             self.bucket.new_key(path.path).generate_url,

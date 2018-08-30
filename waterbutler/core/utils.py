@@ -118,15 +118,12 @@ def normalize_datetime(date_string):
 
 
 def make_disposition(filename):
-    encoded_ext_value = encode_header_extended_value(filename)
-    # return 'attachment; filename="{}"'.format(filename.replace('"', '\\"'))
-    return 'attachment; filename*=UTF-8\'\'{}'.format(encoded_ext_value)
-
-
-def encode_header_extended_value(value):
-    codepoints = value.encode()
-    percent_codepoints = parse.quote(codepoints)
-    return percent_codepoints
+    if not filename:
+        return 'attachment'
+    else:
+        return 'attachment; filename*=UTF-8\'\'{}'.format(
+            parse.quote(filename.encode('utf-8'))
+        )
 
 
 class ZipStreamGenerator:
