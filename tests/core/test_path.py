@@ -1,10 +1,10 @@
-import pytest
 import functools
 from urllib import parse
 
+import pytest
+
 from waterbutler.core import exceptions
-from waterbutler.core.path import WaterButlerPath
-from waterbutler.core.path import WaterButlerPathPart
+from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
 
 
 class EncodedPathPart:

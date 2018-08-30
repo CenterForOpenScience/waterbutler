@@ -1,6 +1,6 @@
 import abc
-import typing
 import hashlib
+import typing
 
 import furl
 

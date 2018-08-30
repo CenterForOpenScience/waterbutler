@@ -1,6 +1,6 @@
-import json
 import base64
 import hashlib
+import json
 import logging
 import tempfile
 from asyncio import sleep
@@ -9,13 +9,16 @@ from typing import List, Tuple, Union
 
 import aiohttp
 
-from waterbutler.core.path import WaterButlerPath
-from waterbutler.core import exceptions, streams, provider
+from waterbutler.core import exceptions, provider, streams
 from waterbutler.core.exceptions import RetryChunkedUploadCommit
-
+from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.box import settings as pd_settings
-from waterbutler.providers.box.metadata import (BaseBoxMetadata, BoxRevision,
-                                                BoxFileMetadata, BoxFolderMetadata, )
+from waterbutler.providers.box.metadata import (
+    BaseBoxMetadata,
+    BoxFileMetadata,
+    BoxFolderMetadata,
+    BoxRevision
+)
 
 logger = logging.getLogger(__name__)
 

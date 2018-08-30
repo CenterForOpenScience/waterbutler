@@ -1,33 +1,37 @@
 import json
 from http import HTTPStatus
 
-import pytest
 import aiohttpretty
+import pytest
 
-from waterbutler.core.path import WaterButlerPath
-from waterbutler.core import metadata as core_metadata
-from waterbutler.core import exceptions as core_exceptions
-
-from waterbutler.providers.dropbox.metadata import (DropboxRevision,
-                                                    DropboxFileMetadata,
-                                                    DropboxFolderMetadata)
-from waterbutler.providers.dropbox.exceptions import (DropboxNamingConflictError,
-                                                      DropboxUnhandledConflictError)
-from waterbutler.providers.dropbox.settings import CHUNK_SIZE, CONTIGUOUS_UPLOAD_SIZE_LIMIT
-
+from tests.providers.dropbox.fixtures import (
+    auth,
+    credentials,
+    error_fixtures,
+    file_content,
+    file_like,
+    file_stream,
+    other_credentials,
+    other_provider,
+    provider,
+    provider_fixtures,
+    revision_fixtures,
+    settings
+)
 from tests.utils import MockCoroutine
-from tests.providers.dropbox.fixtures import (auth,
-                                              settings,
-                                              provider,
-                                              file_like,
-                                              credentials,
-                                              file_stream,
-                                              file_content,
-                                              other_provider,
-                                              error_fixtures,
-                                              other_credentials,
-                                              provider_fixtures,
-                                              revision_fixtures,)
+from waterbutler.core import exceptions as core_exceptions
+from waterbutler.core import metadata as core_metadata
+from waterbutler.core.path import WaterButlerPath
+from waterbutler.providers.dropbox.exceptions import (
+    DropboxNamingConflictError,
+    DropboxUnhandledConflictError
+)
+from waterbutler.providers.dropbox.metadata import (
+    DropboxFileMetadata,
+    DropboxFolderMetadata,
+    DropboxRevision
+)
+from waterbutler.providers.dropbox.settings import CHUNK_SIZE, CONTIGUOUS_UPLOAD_SIZE_LIMIT
 
 
 def build_folder_metadata_data(path):

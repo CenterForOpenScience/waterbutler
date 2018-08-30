@@ -1,50 +1,49 @@
-import os
-import io
-import xml
-import json
-import time
 import base64
 import hashlib
-import aiohttpretty
+import io
+import json
+import os
+import time
+import xml
 from http import client
-from urllib import parse
 from unittest import mock
+from urllib import parse
 
+import aiohttpretty
 import pytest
 from boto.compat import BytesIO
 from boto.utils import compute_md5
 
-from waterbutler.providers.s3 import S3Provider
-from waterbutler.core.path import WaterButlerPath
-from waterbutler.core import streams, metadata, exceptions
-from waterbutler.providers.s3 import settings as pd_settings
-
+from tests.providers.s3.fixtures import (
+    auth,
+    complete_upload_resp,
+    create_session_resp,
+    credentials,
+    file_content,
+    file_header_metadata,
+    file_metadata_headers_object,
+    file_metadata_object,
+    folder_and_contents,
+    folder_empty_metadata,
+    folder_item_metadata,
+    folder_key_metadata_object,
+    folder_metadata,
+    folder_single_item_metadata,
+    generic_http_403_resp,
+    generic_http_404_resp,
+    list_parts_resp_empty,
+    list_parts_resp_not_empty,
+    revision_metadata_object,
+    settings,
+    single_version_metadata,
+    upload_parts_headers_list,
+    version_metadata
+)
 from tests.utils import MockCoroutine
-from tests.providers.s3.fixtures import (auth,
-                                         settings,
-                                         credentials,
-                                         file_content,
-                                         folder_metadata,
-                                         folder_metadata,
-                                         version_metadata,
-                                         create_session_resp,
-                                         folder_and_contents,
-                                         complete_upload_resp,
-                                         file_header_metadata,
-                                         file_metadata_object,
-                                         folder_item_metadata,
-                                         generic_http_403_resp,
-                                         generic_http_404_resp,
-                                         list_parts_resp_empty,
-                                         folder_empty_metadata,
-                                         single_version_metadata,
-                                         revision_metadata_object,
-                                         upload_parts_headers_list,
-                                         list_parts_resp_not_empty,
-                                         folder_key_metadata_object,
-                                         folder_single_item_metadata,
-                                         file_metadata_headers_object,
-                                         )
+from waterbutler.core import exceptions, metadata, streams
+from waterbutler.core.path import WaterButlerPath
+from waterbutler.providers.s3 import S3Provider
+from waterbutler.providers.s3 import settings as pd_settings
 
 
 @pytest.fixture

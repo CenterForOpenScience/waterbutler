@@ -42,4 +42,3 @@ class TestGitHubPath:
 
         child_folder = parent.child('childfolder', folder=True)
         assert child_folder.identifier[0] == 'master'
-

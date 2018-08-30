@@ -1,10 +1,9 @@
 import os
 
+from kombu import Exchange, Queue
 from pkg_resources import iter_entry_points
-from kombu import Queue, Exchange
 
 from waterbutler import settings
-
 
 config = settings.child('TASKS_CONFIG')
 

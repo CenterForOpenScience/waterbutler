@@ -1,6 +1,9 @@
 import json
+
 import pytest
+
 from waterbutler.core import streams
+
 
 class TestJSONStream:
 
@@ -116,4 +119,3 @@ class TestJSONStream:
     #         },
     #         'justAStream': 'These are some words'
     #     }
-

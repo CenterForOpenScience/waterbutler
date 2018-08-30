@@ -1,8 +1,8 @@
+import abc
+import logging
 import os
 import re
-import abc
 import typing
-import logging
 
 from aiohttp import MultiDict, MultiDictProxy
 

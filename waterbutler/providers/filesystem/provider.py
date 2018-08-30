@@ -1,17 +1,18 @@
+import datetime
+import logging
+import mimetypes
 import os
 import shutil
-import logging
-import datetime
-import mimetypes
 from typing import Tuple, Union
 
 from waterbutler.core import exceptions, provider
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.streams import FileStreamReader, PartialFileStreamReader
-
 from waterbutler.providers.filesystem import settings as pd_settings
-from waterbutler.providers.filesystem.metadata import (FileSystemFileMetadata,
-                                                       FileSystemFolderMetadata, )
+from waterbutler.providers.filesystem.metadata import (
+    FileSystemFileMetadata,
+    FileSystemFolderMetadata
+)
 
 logger = logging.getLogger(__name__)
 

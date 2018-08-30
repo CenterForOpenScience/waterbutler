@@ -1,18 +1,19 @@
 import json
-import typing
 import logging
+import typing
 from http import HTTPStatus
 
+from waterbutler.core import exceptions as core_exceptions
 from waterbutler.core import provider, streams
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.core import exceptions as core_exceptions
-
-from waterbutler.providers.dropbox import settings as pd_settings
 from waterbutler.providers.dropbox import exceptions as pd_exceptions
-from waterbutler.providers.dropbox.metadata import (DropboxRevision,
-                                                    BaseDropboxMetadata,
-                                                    DropboxFileMetadata,
-                                                    DropboxFolderMetadata, )
+from waterbutler.providers.dropbox import settings as pd_settings
+from waterbutler.providers.dropbox.metadata import (
+    BaseDropboxMetadata,
+    DropboxFileMetadata,
+    DropboxFolderMetadata,
+    DropboxRevision
+)
 
 logger = logging.getLogger(__name__)
 

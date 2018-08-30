@@ -2,23 +2,16 @@ import io
 import json
 from http import HTTPStatus
 
-import pytest
 import aiohttpretty
+import pytest
 
-from waterbutler.core import streams
-from waterbutler.core import exceptions
-from waterbutler.core.path import WaterButlerPath
-
-from waterbutler.providers.box import BoxProvider
-from waterbutler.providers.box.metadata import (BoxRevision,
-                                                BoxFileMetadata,
-                                                BoxFolderMetadata)
-from waterbutler.providers.box.settings import NONCHUNKED_UPLOAD_LIMIT
-
+from tests.providers.box.fixtures import intra_fixtures, revision_fixtures, root_provider_fixtures
 from tests.utils import MockCoroutine
-from tests.providers.box.fixtures import (intra_fixtures,
-                                          revision_fixtures,
-                                          root_provider_fixtures,)
+from waterbutler.core import exceptions, streams
+from waterbutler.core.path import WaterButlerPath
+from waterbutler.providers.box import BoxProvider
+from waterbutler.providers.box.metadata import BoxFileMetadata, BoxFolderMetadata, BoxRevision
+from waterbutler.providers.box.settings import NONCHUNKED_UPLOAD_LIMIT
 
 
 @pytest.fixture

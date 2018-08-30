@@ -2,7 +2,6 @@ import zlib
 
 from waterbutler import settings
 
-
 config = settings.child('STREAMS_CONFIG')
 
 

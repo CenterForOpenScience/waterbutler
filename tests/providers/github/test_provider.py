@@ -1,32 +1,28 @@
-import io
-import os
-import copy
-import json
 import base64
+import copy
 import hashlib
+import io
+import json
+import os
 from http import client
 
+import aiohttpretty
 import furl
 import pytest
-import aiohttpretty
 
-from waterbutler.core import streams
-from waterbutler.core import exceptions
-
+from tests.providers.github.fixtures import crud_fixtures, provider_fixtures, revision_fixtures
+from waterbutler.core import exceptions, streams
 from waterbutler.providers.github import GitHubProvider
-from waterbutler.providers.github.path import GitHubPath
-from waterbutler.providers.github.metadata import (GitHubRevision,
-                                                   GitHubFileTreeMetadata,
-                                                   GitHubFolderTreeMetadata,
-                                                   GitHubFileContentMetadata,
-                                                   GitHubFolderContentMetadata)
 from waterbutler.providers.github import settings as github_settings
 from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
-
-
-from tests.providers.github.fixtures import (crud_fixtures,
-                                             revision_fixtures,
-                                             provider_fixtures)
+from waterbutler.providers.github.metadata import (
+    GitHubFileContentMetadata,
+    GitHubFileTreeMetadata,
+    GitHubFolderContentMetadata,
+    GitHubFolderTreeMetadata,
+    GitHubRevision
+)
+from waterbutler.providers.github.path import GitHubPath
 
 
 @pytest.fixture

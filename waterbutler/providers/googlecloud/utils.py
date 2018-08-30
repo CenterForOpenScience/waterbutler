@@ -1,13 +1,13 @@
-import re
 import base64
-import typing
 import binascii
-from urllib.parse import urlparse, quote
+import re
+import typing
+from urllib.parse import quote, urlparse
 
 from aiohttp import MultiDict, MultiDictProxy
 
-from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.exceptions import WaterButlerError
+from waterbutler.core.path import WaterButlerPath
 
 
 def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:

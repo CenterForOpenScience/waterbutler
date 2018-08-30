@@ -1,17 +1,16 @@
-import json
-import time
 import asyncio
+import json
 import logging
+import time
 
-import furl
 import aiohttp
+import furl
 
 from waterbutler import settings
 from waterbutler.core import utils
-from waterbutler.sizes import KBs, MBs, GBs
-from waterbutler.version import __version__
+from waterbutler.sizes import GBs, KBs, MBs
 from waterbutler.tasks import settings as task_settings
-
+from waterbutler.version import __version__
 
 logger = logging.getLogger(__name__)
 

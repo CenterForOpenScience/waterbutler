@@ -1,8 +1,8 @@
-import os
-import sys
-import copy
-import shutil
 import asyncio
+import copy
+import os
+import shutil
+import sys
 import tempfile
 from unittest import mock
 
@@ -10,10 +10,10 @@ import pytest
 from tornado import concurrent, testing
 from tornado.platform.asyncio import AsyncIOMainLoop
 
-from waterbutler.server.app import make_app
 from waterbutler.core import metadata, provider
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.streams.file import FileStreamReader
+from waterbutler.server.app import make_app
 
 
 class MockCoroutine(mock.Mock):

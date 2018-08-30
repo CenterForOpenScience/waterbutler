@@ -1,13 +1,22 @@
 import pytest
 
+from tests.server.api.v1.fixtures import (
+    celery_dest_copy_params,
+    celery_dest_copy_params_root,
+    celery_src_copy_params,
+    handler,
+    handler_auth,
+    http_request,
+    mock_file_metadata,
+    mock_inter,
+    mock_intra,
+    move_copy_args,
+    patch_auth_handler,
+    patch_make_provider_move_copy,
+    serialized_metadata,
+    serialized_request
+)
 from waterbutler.core import exceptions
-
-from tests.server.api.v1.fixtures import (http_request, handler, move_copy_args, handler_auth,
-                                          patch_auth_handler, serialized_request,
-                                          serialized_metadata, celery_src_copy_params,
-                                          celery_dest_copy_params, celery_dest_copy_params_root,
-                                          mock_intra, mock_inter, patch_make_provider_move_copy,
-                                          mock_file_metadata)
 
 
 @pytest.mark.usefixtures('patch_auth_handler', 'patch_make_provider_move_copy')

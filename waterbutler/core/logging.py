@@ -1,5 +1,5 @@
-import re
 import logging
+import re
 
 
 class MaskFormatter(logging.Formatter):

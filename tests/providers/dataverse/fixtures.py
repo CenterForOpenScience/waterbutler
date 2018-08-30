@@ -1,11 +1,12 @@
-import pytest
-import os
 import json
+import os
+
+import pytest
 
 from waterbutler.providers.dataverse.metadata import (
     DataverseDatasetMetadata,
-    DataverseRevision,
-    DataverseFileMetadata
+    DataverseFileMetadata,
+    DataverseRevision
 )
 
 

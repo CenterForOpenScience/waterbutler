@@ -1,10 +1,7 @@
 import aiohttp
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
+from waterbutler.core import exceptions, provider, streams
 from waterbutler.core.path import WaterButlerPath
-
 from waterbutler.providers.owncloud import utils
 from waterbutler.providers.owncloud.metadata import OwnCloudFileRevisionMetadata
 

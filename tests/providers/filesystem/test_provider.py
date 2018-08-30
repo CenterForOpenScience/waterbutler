@@ -1,15 +1,12 @@
-import pytest
-
 import io
 import os
 import shutil
 from http import client
 
-from waterbutler.core import streams
-from waterbutler.core import metadata
-from waterbutler.core import exceptions
-from waterbutler.core.path import WaterButlerPath
+import pytest
 
+from waterbutler.core import exceptions, metadata, streams
+from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.filesystem import FileSystemProvider
 from waterbutler.providers.filesystem.metadata import FileSystemFileMetadata
 

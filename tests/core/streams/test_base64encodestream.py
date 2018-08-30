@@ -1,7 +1,8 @@
-import pytest
 import base64
 import functools
 from unittest import mock
+
+import pytest
 
 from waterbutler.core import streams
 
@@ -49,4 +50,3 @@ class TestBase64Stream:
         stream = streams.Base64EncodeStream(streams.StringStream(data))
 
         assert len(expected) == int(stream.size)
-

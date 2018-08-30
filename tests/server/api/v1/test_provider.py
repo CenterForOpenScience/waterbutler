@@ -1,14 +1,18 @@
-from uuid import UUID
 from unittest import mock
+from uuid import UUID
 
 import pytest
 
+from tests.server.api.v1.fixtures import (
+    handler,
+    handler_auth,
+    http_request,
+    patch_auth_handler,
+    patch_make_provider_core
+)
+from tests.utils import MockCoroutine, MockProvider, MockStream, MockWriter
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.server.api.v1.provider import ProviderHandler, list_or_value
-
-from tests.utils import MockCoroutine, MockStream, MockWriter, MockProvider
-from tests.server.api.v1.fixtures import (http_request, handler, patch_auth_handler, handler_auth,
-                                          patch_make_provider_core)
 
 
 class TestUtils:
@@ -222,4 +226,3 @@ class TestProviderHandler:
 
         assert handler.on_finish() is None
         handler._send_hook.assert_called_once_with('delete')
-

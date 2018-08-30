@@ -1,25 +1,34 @@
-import time
 import base64
-import typing
+import functools
 import hashlib
 import logging
-import functools
+import time
+import typing
 from http import HTTPStatus
 
 from google.oauth2 import service_account
 
+from waterbutler.core.exceptions import (
+    CopyError,
+    DeleteError,
+    DownloadError,
+    InvalidProviderConfigError,
+    MetadataError,
+    NotFoundError,
+    UploadChecksumMismatchError,
+    UploadError,
+    WaterButlerError
+)
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
 from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStreamReader
-from waterbutler.core.exceptions import (WaterButlerError, MetadataError, NotFoundError,
-                                         CopyError, UploadError, DownloadError, DeleteError,
-                                         UploadChecksumMismatchError, InvalidProviderConfigError, )
-
-from waterbutler.providers.googlecloud import utils
 from waterbutler.providers.googlecloud import settings as pd_settings
-from waterbutler.providers.googlecloud.metadata import (BaseGoogleCloudMetadata,
-                                                        GoogleCloudFileMetadata,
-                                                        GoogleCloudFolderMetadata, )
+from waterbutler.providers.googlecloud import utils
+from waterbutler.providers.googlecloud.metadata import (
+    BaseGoogleCloudMetadata,
+    GoogleCloudFileMetadata,
+    GoogleCloudFolderMetadata
+)
 
 logger = logging.getLogger(__name__)
 

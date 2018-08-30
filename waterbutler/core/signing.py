@@ -1,8 +1,8 @@
+import base64
+import collections
 import hmac
 import json
 import time
-import base64
-import collections
 
 
 # Written by @jmcarp originally

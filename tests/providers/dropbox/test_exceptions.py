@@ -3,7 +3,6 @@ import pytest
 from waterbutler.providers.dropbox import exceptions
 
 
-
 class TestExceptionSerialization:
 
     @pytest.mark.parametrize('exception_class', [

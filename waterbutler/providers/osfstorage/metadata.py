@@ -1,5 +1,5 @@
-import pytz
 import dateutil.parser
+import pytz
 
 from waterbutler.core import metadata
 

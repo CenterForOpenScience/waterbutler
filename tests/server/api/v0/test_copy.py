@@ -2,9 +2,8 @@ import json
 
 from tornado import testing
 
-from waterbutler.core.path import WaterButlerPath
-
 from tests import utils
+from waterbutler.core.path import WaterButlerPath
 
 
 class TestCopyHandler(utils.MultiProviderHandlerTestCase):

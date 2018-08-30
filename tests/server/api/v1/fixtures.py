@@ -1,21 +1,28 @@
+import asyncio
+import json
 import os
 import sys
-import json
-import asyncio
 from unittest import mock
 
 import pytest
-from tornado.web import HTTPError
-from tornado.httputil import HTTPServerRequest
 from tornado.http1connection import HTTP1ConnectionParameters
+from tornado.httputil import HTTPServerRequest
+from tornado.web import HTTPError
 
 import waterbutler
-from waterbutler.server.app import make_app
+from tests.utils import (
+    MockCoroutine,
+    MockFileMetadata,
+    MockFileRevisionMetadata,
+    MockFolderMetadata,
+    MockProvider,
+    MockRequestBody,
+    MockStream
+)
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.tasks.exceptions import WaitTimeOutError
 from waterbutler.server.api.v1.provider import ProviderHandler
-from tests.utils import (MockProvider, MockFileMetadata, MockFolderMetadata,
-                         MockFileRevisionMetadata, MockCoroutine, MockRequestBody, MockStream)
+from waterbutler.server.app import make_app
+from waterbutler.tasks.exceptions import WaitTimeOutError
 
 
 @pytest.fixture
@@ -267,7 +274,3 @@ def serialized_metadata():
 def serialized_request():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json'), 'r') as fp:
         return json.load(fp)['serialized_request']
-
-
-
-

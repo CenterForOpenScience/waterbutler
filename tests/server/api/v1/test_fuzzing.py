@@ -1,12 +1,9 @@
-import pytest
 from http import client
 from unittest import mock
 
 import aiohttp
-
-from tornado import gen
-from tornado import testing
-from tornado import httpclient
+import pytest
+from tornado import gen, httpclient, testing
 
 from tests import utils
 from tests.server.api.v1.utils import ServerTestCase

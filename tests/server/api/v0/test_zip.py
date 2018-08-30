@@ -3,10 +3,9 @@ import zipfile
 
 from tornado import testing
 
+from tests import utils
 from waterbutler.core import streams
 from waterbutler.core.utils import AsyncIterator
-
-from tests import utils
 
 
 class TestZipHandler(utils.HandlerTestCase):

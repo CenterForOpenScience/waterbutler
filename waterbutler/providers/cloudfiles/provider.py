@@ -1,22 +1,21 @@
-import os
+import asyncio
+import functools
+import hashlib
 import hmac
 import json
+import os
 import time
-import asyncio
-import hashlib
-import functools
 
 import furl
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
+from waterbutler.core import exceptions, provider, streams
 from waterbutler.core.path import WaterButlerPath
-
 from waterbutler.providers.cloudfiles import settings
-from waterbutler.providers.cloudfiles.metadata import CloudFilesFileMetadata
-from waterbutler.providers.cloudfiles.metadata import CloudFilesFolderMetadata
-from waterbutler.providers.cloudfiles.metadata import CloudFilesHeaderMetadata
+from waterbutler.providers.cloudfiles.metadata import (
+    CloudFilesFileMetadata,
+    CloudFilesFolderMetadata,
+    CloudFilesHeaderMetadata
+)
 
 
 def ensure_connection(func):

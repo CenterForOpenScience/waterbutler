@@ -1,26 +1,27 @@
-import os
+import functools
 import hashlib
 import logging
-import functools
+import os
+import xml.sax.saxutils
 from urllib import parse
 
 import xmltodict
-import xml.sax.saxutils
-from boto.compat import BytesIO  # type: ignore
-from boto.utils import compute_md5
-from boto.auth import get_auth_handler
 from boto import config as boto_config
-from boto.s3.connection import S3Connection, OrdinaryCallingFormat
+from boto.auth import get_auth_handler
+from boto.compat import BytesIO  # type: ignore
+from boto.s3.connection import OrdinaryCallingFormat, S3Connection
+from boto.utils import compute_md5
 
-from waterbutler.providers.s3 import settings
+from waterbutler.core import exceptions, provider, streams
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.core import streams, provider, exceptions
-from waterbutler.providers.s3.metadata import (S3Revision,
-                                               S3FileMetadata,
-                                               S3FolderMetadata,
-                                               S3FolderKeyMetadata,
-                                               S3FileMetadataHeaders,
-                                               )
+from waterbutler.providers.s3 import settings
+from waterbutler.providers.s3.metadata import (
+    S3FileMetadata,
+    S3FileMetadataHeaders,
+    S3FolderKeyMetadata,
+    S3FolderMetadata,
+    S3Revision
+)
 
 logger = logging.getLogger(__name__)
 

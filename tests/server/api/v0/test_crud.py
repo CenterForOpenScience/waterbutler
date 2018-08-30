@@ -1,15 +1,11 @@
-import pytest
-
-import json
 import asyncio
+import json
 
-from tornado import testing
-from tornado import httpclient
-
-from waterbutler.core import streams
-from waterbutler.core import exceptions
+import pytest
+from tornado import httpclient, testing
 
 from tests import utils
+from waterbutler.core import exceptions, streams
 
 
 class TestCrudHandler(utils.HandlerTestCase):

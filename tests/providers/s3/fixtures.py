@@ -3,12 +3,13 @@ from collections import OrderedDict
 
 import pytest
 
-from waterbutler.providers.s3.metadata import (S3Revision,
-                                               S3FileMetadata,
-                                               S3FolderMetadata,
-                                               S3FolderKeyMetadata,
-                                               S3FileMetadataHeaders,
-                                               )
+from waterbutler.providers.s3.metadata import (
+    S3FileMetadata,
+    S3FileMetadataHeaders,
+    S3FolderKeyMetadata,
+    S3FolderMetadata,
+    S3Revision
+)
 
 
 @pytest.fixture

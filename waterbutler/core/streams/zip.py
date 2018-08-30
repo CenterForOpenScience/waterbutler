@@ -1,10 +1,10 @@
-import zlib
-import time
-import struct
 import asyncio
-import logging
-import zipfile
 import binascii
+import logging
+import struct
+import time
+import zipfile
+import zlib
 
 from waterbutler.core.streams import settings
 from waterbutler.core.streams.base import BaseStream, MultiStream, StringStream

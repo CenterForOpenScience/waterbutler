@@ -1,20 +1,17 @@
 import json
 import logging
 
-import tornado.web
 import tornado.gen
 import tornado.iostream
+import tornado.web
 from raven.contrib.tornado import SentryMixin
 
 from waterbutler import tasks
-from waterbutler.core import utils
-from waterbutler.core import signing
-from waterbutler.core import exceptions
-from waterbutler.server import settings
-from waterbutler.core import remote_logging
-from waterbutler.server.auth import AuthHandler
+from waterbutler.core import exceptions, remote_logging, signing, utils
 from waterbutler.core.log_payload import LogPayload
+from waterbutler.server import settings
 from waterbutler.server import utils as server_utils
+from waterbutler.server.auth import AuthHandler
 
 
 def list_or_value(value):

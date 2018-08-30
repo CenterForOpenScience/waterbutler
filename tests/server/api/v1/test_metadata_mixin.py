@@ -2,11 +2,18 @@ import json
 
 import pytest
 
+from tests.server.api.v1.fixtures import (
+    handler,
+    handler_auth,
+    http_request,
+    mock_file_metadata,
+    mock_folder_children,
+    mock_partial_stream,
+    mock_revision_metadata,
+    mock_stream
+)
 from tests.utils import MockCoroutine
 from waterbutler.core.path import WaterButlerPath
-from tests.server.api.v1.fixtures import (http_request, handler, handler_auth, mock_stream,
-                                          mock_partial_stream, mock_file_metadata,
-                                          mock_folder_children, mock_revision_metadata)
 
 
 class TestMetadataMixin:

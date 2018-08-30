@@ -1,10 +1,11 @@
 import pytest
 
+from tests.providers.onedrive.fixtures import (
+    path_fixtures,
+    root_provider_fixtures,
+    subfolder_provider_fixtures
+)
 from waterbutler.providers.onedrive.path import OneDrivePath
-
-from tests.providers.onedrive.fixtures import (path_fixtures,
-                                               root_provider_fixtures,
-                                               subfolder_provider_fixtures)
 
 
 class TestApiIdentifier:
@@ -111,4 +112,3 @@ class TestNewFromResponseSubfolderProvider:
         assert ids == [subfolder_provider_fixtures['root_id'],
                        subfolder_provider_fixtures['folder_id'],
                        subfolder_provider_fixtures['subfile_id']]
-
