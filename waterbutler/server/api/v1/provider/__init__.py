@@ -164,9 +164,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             logger.info('Received a direct-to-provider download request (302 response) with '
                         'Range header: {}'.format(self.request.headers['Range']))
 
-        # Don't log metadata requests.
+        # Don't log metadata requests, incl. anything with 'meta' or 'revisions' as a query arg.
+        # Folder requests w/o 'zip' as a query arg are treated as metadata requests, and should
+        # be ignored.
         if (method == 'GET' and ('meta' in self.request.query_arguments or
-                                 'revisions' in self.request.query_arguments)):
+                                 'revisions' in self.request.query_arguments or
+                                 (self.path.is_folder and
+                                  'zip' not in self.request.query_arguments))):
             return
 
         # Done here just because method is defined
