@@ -1,7 +1,7 @@
-import pytest
 from http import client
 from unittest import mock
 
+import pytest
 import aiohttp
 
 from tornado import gen
