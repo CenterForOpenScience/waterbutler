@@ -53,6 +53,42 @@ def settings():
         'parity': {},
     }
 
+@pytest.fixture
+def settings_region_one(settings):
+    settings_region_one = dict(settings)
+    settings_region_one.update({
+        'storage': {
+            'provider': 'googlecloud',
+            'bucket': 'mock_bucket_1',
+        }
+    })
+    return settings_region_one
+
+@pytest.fixture
+def settings_region_two(settings):
+    settings_region_two = dict(settings)
+    settings_region_two.update({
+        'storage': {
+            'provider': 'googlecloud',
+            'bucket': 'mock_bucket_2',
+        }
+    })
+    return settings_region_two
+
+@pytest.fixture
+def mock_inner_provider():
+    mock_provider = utils.MockProvider1({}, {}, {})
+
+    mock_provider.copy = utils.MockCoroutine()
+    mock_provider.move = utils.MockCoroutine()
+    mock_provider.delete = utils.MockCoroutine()
+    mock_provider.upload = utils.MockCoroutine()
+    mock_provider.download = utils.MockCoroutine()
+    mock_provider.metadata = utils.MockCoroutine()
+    mock_provider.validate_v1_path = utils.MockCoroutine()
+    mock_provider._children_metadata = utils.MockCoroutine()
+
+    return mock_provider
 
 @pytest.fixture
 def folder_children_metadata():
@@ -128,8 +164,8 @@ def revisions_metadata():
 
 
 @pytest.fixture
-def root_path(provider):
-    return WaterButlerPath('/', _ids=[provider.root_id], folder=True)
+def root_path(provider_one):
+    return WaterButlerPath('/', _ids=[provider_one.root_id], folder=True)
 
 
 @pytest.fixture
@@ -165,66 +201,29 @@ def file_stream(file_like):
 
 
 @pytest.fixture
-def provider_and_mock(monkeypatch, auth, credentials, settings):
+def provider_one(auth, credentials, settings_region_one):
+    return OSFStorageProvider(auth, credentials, settings_region_one)
+
+
+@pytest.fixture
+def provider_two(auth, credentials, settings_region_two):
+    return OSFStorageProvider(auth, credentials, settings_region_two)
+
+
+@pytest.fixture
+def provider_and_mock_one(monkeypatch, provider_one, mock_inner_provider):
     """Returns an OSFStorageProvider and a mock object representing the inner storage provider."""
-
-    mock_provider = utils.MockProvider1({}, {}, {})
-
-    mock_provider.copy = utils.MockCoroutine()
-    mock_provider.move = utils.MockCoroutine()
-    mock_provider.delete = utils.MockCoroutine()
-    mock_provider.upload = utils.MockCoroutine()
-    mock_provider.download = utils.MockCoroutine()
-    mock_provider.metadata = utils.MockCoroutine()
-    mock_provider.validate_v1_path = utils.MockCoroutine()
-    mock_provider._children_metadata = utils.MockCoroutine()
-
-    mock_make_provider = mock.Mock(return_value=mock_provider)
-    monkeypatch.setattr(OSFStorageProvider, 'make_provider', mock_make_provider)
-    return OSFStorageProvider(auth, credentials, settings), mock_provider
+    mock_make_provider = mock.Mock(return_value=mock_inner_provider)
+    monkeypatch.setattr(provider_one, 'make_provider', mock_make_provider)
+    return provider_one, mock_inner_provider
 
 
 @pytest.fixture
-def provider_and_mock2(monkeypatch, auth, credentials, settings):
+def provider_and_mock_two(monkeypatch, provider_two, mock_inner_provider):
     """Returns an OSFStorageProvider and a mock object representing the inner storage provider."""
-
-    mock_provider = utils.MockProvider1({}, {}, {})
-
-    mock_provider.copy = utils.MockCoroutine()
-    mock_provider.move = utils.MockCoroutine()
-    mock_provider.delete = utils.MockCoroutine()
-    mock_provider.upload = utils.MockCoroutine()
-    mock_provider.download = utils.MockCoroutine()
-    mock_provider.metadata = utils.MockCoroutine()
-    mock_provider.validate_v1_path = utils.MockCoroutine()
-    mock_provider._children_metadata = utils.MockCoroutine()
-
-    mock_make_provider = mock.Mock(return_value=mock_provider)
-    monkeypatch.setattr(OSFStorageProvider, 'make_provider', mock_make_provider)
-    return OSFStorageProvider(auth, credentials, settings), mock_provider
-
-
-@pytest.fixture
-def provider(auth, credentials, settings):
-    settings.update({
-        'storage': {
-            'provider': 'googlecloud',
-            'bucket': 'mock_bucket_1',
-        }
-    })
-    return OSFStorageProvider(auth, credentials, settings)
-
-
-@pytest.fixture
-def provider_other(auth, credentials, settings):
-    settings_other = dict(settings)
-    settings_other.update({
-        'storage': {
-            'provider': 'googlecloud',
-            'bucket': 'mock_bucket_2',
-        }
-    })
-    return OSFStorageProvider(auth, credentials, settings_other)
+    mock_make_provider = mock.Mock(return_value=mock_inner_provider)
+    monkeypatch.setattr(provider_two, 'make_provider', mock_make_provider)
+    return provider_two, mock_inner_provider
 
 
 @pytest.fixture
