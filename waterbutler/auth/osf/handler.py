@@ -1,4 +1,5 @@
 import datetime
+from urllib import parse
 
 import jwe
 import jwt
@@ -33,7 +34,7 @@ class OsfAuthHandler(BaseAuthHandler):
     def client(self):
         return AsyncHTTPClient()
 
-    def build_payload(self, request, resource=None, provider=None, action=None, auth_type=None):
+    def build_params(self, request, resource=None, provider=None, action=None, auth_type=None):
         bundle = {
             'nid': resource,
             'provider': provider,
@@ -162,8 +163,7 @@ class OsfAuthHandler(BaseAuthHandler):
         """Used for v1"""
 
         try:
-            import pdb
-            pdb.set_trace()
+
 
             auth_request = HTTPRequest(
                 url_concat(
@@ -179,6 +179,8 @@ class OsfAuthHandler(BaseAuthHandler):
                 method='GET',
                 headers=self.build_auth_headers(request),
             )
+            import pdb
+            pdb.set_trace()
 
             response = await self.client.fetch(auth_request)
             # response = await aiohttp.request(
@@ -189,7 +191,9 @@ class OsfAuthHandler(BaseAuthHandler):
             #     cookies=cookies
             # )
 
-        except:
+        except Exception as ex:
+            import pdb
+            pdb.set_trace()
             pass
         # except aiohttp.errors.ClientError:
         #     raise exceptions.AuthError('Unable to connect to auth sever', code=503)
