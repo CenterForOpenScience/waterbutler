@@ -138,6 +138,9 @@ class TestProviderHandler:
         assert handler.bytes_uploaded == 10
         handler.writer.write.assert_called_once_with(b'1234567890')
 
+
+class TestProviderHandlerFinish:
+
     @pytest.mark.asyncio
     async def test_on_finish_download_file(self, handler):
         handler.request.method = 'GET'
@@ -150,6 +153,7 @@ class TestProviderHandler:
     @pytest.mark.asyncio
     async def test_on_finish_download_zip(self, handler):
         handler.request.method = 'GET'
+        handler.request.query_arguments['zip'] = ''
         handler.path = WaterButlerPath('/folder/')
         handler._send_hook = mock.Mock()
 
@@ -157,8 +161,26 @@ class TestProviderHandler:
         handler._send_hook.assert_called_once_with('download_zip')
 
     @pytest.mark.asyncio
-    async def test_dont_send_hook_on_metadata(self, handler):
+    async def test_dont_send_hook_on_file_metadata(self, handler):
         handler.request.query_arguments['meta'] = ''
+        handler.request.method = 'GET'
+        handler._send_hook = mock.Mock()
+
+        assert handler.on_finish() is None
+        assert not handler._send_hook.called
+
+    @pytest.mark.asyncio
+    async def test_dont_send_hook_on_folder_metadata(self, handler):
+        handler.request.method = 'GET'
+        handler.path = WaterButlerPath('/folder/')
+        handler._send_hook = mock.Mock()
+
+        assert handler.on_finish() is None
+        assert not handler._send_hook.called
+
+    @pytest.mark.asyncio
+    async def test_dont_send_hook_for_revisions(self, handler):
+        handler.request.query_arguments['revisions'] = ''
         handler.request.method = 'GET'
         handler._send_hook = mock.Mock()
 
@@ -223,3 +245,47 @@ class TestProviderHandler:
         assert handler.on_finish() is None
         handler._send_hook.assert_called_once_with('delete')
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('method', [
+        ('HEAD'),
+        ('OPTIONS'),
+    ])
+    async def test_dont_send_hook_for_method(self, handler, method):
+        """Not all HTTP methods merit a callback."""
+
+        handler.request.method = method
+        handler._send_hook = mock.Mock()
+
+        assert handler.on_finish() is None
+        assert not handler._send_hook.called
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('status', [
+        (202), (206),
+        (303),
+        (400), (401), (403),
+        (500), (501), (502),
+    ])
+    async def test_dont_send_hook_for_status(self, handler, status):
+        """Callbacks are only called for successful, entirely complete respsonses.  See comments
+        in `on_finish` for further explanation."""
+
+        handler._status_code = status
+        handler._send_hook = mock.Mock()
+
+        assert handler.on_finish() is None
+        assert not handler._send_hook.called
+
+    @pytest.mark.asyncio
+    async def test_logging_direct_partial_download_file(self, handler):
+        """For now, make sure partial+direct download requests get logged.  Behaviour may be
+        changed in the future."""
+
+        handler.request.method = 'GET'
+        handler.path = WaterButlerPath('/file')
+        handler._status_code = 302
+        handler.request.headers['Range'] = 'fake-range'
+        handler._send_hook = mock.Mock()
+
+        assert handler.on_finish() is None
+        handler._send_hook.assert_called_once_with('download_file')
