@@ -97,7 +97,7 @@ class MetadataMixin:
         # Build `Content-Disposition` header from `displayName` override,
         # headers of provider response, or file path, whichever is truthy first
         name = self.get_query_argument('displayName', default=None) or getattr(stream, 'name', None) or self.path.name
-        self.set_header('Content-Disposition', utils.make_disposition(name))
+        self.set_header('Content-Disposition', utils.make_disposition(name).encode('unicode_escape'))
 
         _, ext = os.path.splitext(name)
         # If the file extention is in mime_types
