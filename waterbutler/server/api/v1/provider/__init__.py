@@ -48,6 +48,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             for key, value in self.request.query_arguments.items()
         }
 
+        # Going with version as its the most correct term
+        # TODO Change all references of revision to version @chrisseto
+        # revisions will still be accepted until necessary changes are made to OSF
+        self.requested_version = (self.get_query_argument('version', default=None) or
+                                  self.get_query_argument('revision', default=None))
+
         self.path = self.path_kwargs['path'] or '/'
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
@@ -60,10 +66,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if method in self.PRE_VALIDATORS:
             getattr(self, self.PRE_VALIDATORS[method])()
 
-        # Delay setup of the provider when method is post, as we need to evaluate the json body action.
+        # Delay setup of the provider when method is post, as we need to evaluate the json body
+        # action.
         if method != 'post':
-            self.auth = await auth_handler.get(self.resource, provider, self.request)
-            self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
+            self.auth = await auth_handler.get(self.resource, provider, self.request,
+                                               path=self.path, version=self.requested_version)
+            self.provider = utils.make_provider(provider, self.auth['auth'],
+                                                self.auth['credentials'], self.auth['settings'])
             self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
 
         self.target_path = None

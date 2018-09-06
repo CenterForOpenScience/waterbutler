@@ -43,6 +43,7 @@ def handler(http_request):
     }
     mocked_handler.path = '/test_path'
     mocked_handler.provider = MockProvider()
+    mocked_handler.requested_version = None
 
     mocked_handler.resource = 'test_source_resource'
     mocked_handler.metadata = MockFileMetadata()

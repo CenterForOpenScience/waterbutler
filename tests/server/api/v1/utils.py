@@ -1,5 +1,5 @@
-import asyncio
 import os
+import asyncio
 
 from tornado import testing
 from tornado.platform.asyncio import AsyncIOMainLoop

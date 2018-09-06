@@ -1,6 +1,7 @@
 import os
 import json
 import uuid
+import typing
 import hashlib
 import logging
 
@@ -10,6 +11,7 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.metadata import BaseMetadata
 from waterbutler.core.utils import RequestHandlerContext
 
 from waterbutler.providers.osfstorage import settings
@@ -149,68 +151,10 @@ class OSFStorageProvider(provider.BaseProvider):
         return isinstance(other, self.__class__) and self.is_same_region(other)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
-        created = True
-        if dest_path.identifier:
-            created = False
-            await dest_provider.delete(dest_path)
-
-        async with self.signed_request(
-            'POST',
-            self.build_url('hooks', 'move'),
-            data=json.dumps({
-                'user': self.auth['id'],
-                'source': src_path.identifier,
-                'destination': {
-                    'name': dest_path.name,
-                    'node': dest_provider.nid,
-                    'parent': dest_path.parent.identifier
-                }
-            }),
-            headers={'Content-Type': 'application/json'},
-            expects=(200, 201)
-        ) as resp:
-            data = await resp.json()
-
-        if data['kind'] == 'file':
-            return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
-
-        folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
-        dest_path = await dest_provider.validate_v1_path(data['path'])
-        folder_meta.children = await dest_provider._children_metadata(dest_path)
-
-        return folder_meta, created
+        return await self._do_intra_move_or_copy('move', dest_provider, src_path, dest_path)
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
-        created = True
-        if dest_path.identifier:
-            created = False
-            await dest_provider.delete(dest_path)
-
-        async with self.signed_request(
-            'POST',
-            self.build_url('hooks', 'copy'),
-            data=json.dumps({
-                'user': self.auth['id'],
-                'source': src_path.identifier,
-                'destination': {
-                    'name': dest_path.name,
-                    'node': dest_provider.nid,
-                    'parent': dest_path.parent.identifier
-                }
-            }),
-            headers={'Content-Type': 'application/json'},
-            expects=(200, 201)
-        ) as resp:
-            data = await resp.json()
-
-        if data['kind'] == 'file':
-            return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
-
-        folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
-        dest_path = await dest_provider.validate_v1_path(data['path'])
-        folder_meta.children = await dest_provider._children_metadata(dest_path)
-
-        return folder_meta, created
+        return await self._do_intra_move_or_copy('copy', dest_provider, src_path, dest_path)
 
     def build_signed_url(self, method, url, data=None, params=None, ttl=100, **kwargs):
         signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
@@ -292,57 +236,10 @@ class OSFStorageProvider(provider.BaseProvider):
         issuer.
         """
 
-        pending_name = str(uuid.uuid4())
-        provider = self.make_provider(self.settings)
-        remote_pending_path = await provider.validate_path('/' + pending_name)
-        logger.debug('upload: remote_pending_path::{}'.format(remote_pending_path))
-
-        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
-        stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
-        stream.add_writer('sha256', streams.HashStreamWriter(hashlib.sha256))
-
-        await provider.upload(stream, remote_pending_path, check_created=False,
-                              fetch_metadata=False, **kwargs)
-
-        complete_name = stream.writers['sha256'].hexdigest
-        remote_complete_path = await provider.validate_path('/' + complete_name)
-
-        try:
-            metadata = await provider.metadata(remote_complete_path)
-        except exceptions.MetadataError as e:
-            if e.code != 404:
-                raise
-            metadata, _ = await provider.move(provider, remote_pending_path, remote_complete_path)
-        else:
-            await provider.delete(remote_pending_path)
-
+        metadata = await self._send_to_storage_provider(stream, path, **kwargs)
         metadata = metadata.serialized()
 
-        async with self.signed_request(
-            'POST',
-            self.build_url(path.parent.identifier, 'children'),
-            expects=(200, 201),
-            data=json.dumps({
-                'name': path.name,
-                'user': self.auth['id'],
-                'settings': self.settings['storage'],
-                'metadata': metadata,
-                'hashes': {
-                    'md5': stream.writers['md5'].hexdigest,
-                    'sha1': stream.writers['sha1'].hexdigest,
-                    'sha256': stream.writers['sha256'].hexdigest,
-                },
-                'worker': {
-                    'host': os.uname()[1],
-                    # TODO: Include additional information
-                    'address': None,
-                    'version': self.__version__,
-                },
-            }),
-            headers={'Content-Type': 'application/json'},
-        ) as response:
-            created = response.status == 201
-            data = await response.json()
+        data, created = await self._send_to_metadata_provider(stream, path, metadata, **kwargs)
 
         name = path.name
 
@@ -430,6 +327,72 @@ class OSFStorageProvider(provider.BaseProvider):
             path._parts[-1]._id = resp_json['data']['path'].strip('/')
             return OsfStorageFolderMetadata(resp_json['data'], str(path))
 
+    async def move(self,
+                   dest_provider: provider.BaseProvider,
+                   src_path: WaterButlerPath,
+                   dest_path: WaterButlerPath,
+                   rename: str=None,
+                   conflict: str='replace',
+                   handle_naming: bool=True) -> typing.Tuple[BaseMetadata, bool]:
+        """Override parent's move to support cross-region osfstorage moves while preserving guids
+        and versions. Delegates to :meth:`.BaseProvider.move` when destination is not osfstorage.
+        If both providers are in the same region (i.e. `.can_intra_move` is true), then calls that.
+        Otherwise, will grab a download stream from the source region, send it to the destination
+        region, *then* execute an `.intra_move` to update the file metada in-place.
+        """
+
+        # when moving to non-osfstorage, default move is fine
+        if dest_provider.NAME != 'osfstorage':
+            return await super().move(dest_provider, src_path, dest_path, rename=rename,
+                                      conflict=conflict, handle_naming=handle_naming)
+
+        args = (dest_provider, src_path, dest_path)
+        kwargs = {'rename': rename, 'conflict': conflict}
+
+        self.provider_metrics.add('move', {
+            'got_handle_naming': handle_naming,
+            'conflict': conflict,
+            'got_rename': rename is not None,
+        })
+
+        if handle_naming:
+            dest_path = await dest_provider.handle_naming(
+                src_path,
+                dest_path,
+                rename=rename,
+                conflict=conflict,
+            )
+            args = (dest_provider, src_path, dest_path)
+            kwargs = {}
+
+        # files and folders shouldn't overwrite themselves
+        if (
+            self.shares_storage_root(dest_provider) and
+            src_path.materialized_path == dest_path.materialized_path
+        ):
+            raise exceptions.OverwriteSelfError(src_path)
+
+        self.provider_metrics.add('move.can_intra_move', False)
+        if self.can_intra_move(dest_provider, src_path):
+            self.provider_metrics.add('move.can_intra_move', True)
+            return await self.intra_move(*args)
+
+        if src_path.is_dir:
+            meta_data, created = await self._folder_file_op(self.move, *args, **kwargs)  # type: ignore
+            await self.delete(src_path)
+        else:
+            download_stream = await self.download(src_path)
+            if getattr(download_stream, 'name', None):
+                dest_path.rename(download_stream.name)
+
+            await dest_provider._send_to_storage_provider(download_stream,  # type: ignore
+                                                          dest_path, **kwargs)
+            meta_data, created = await self.intra_move(dest_provider, src_path, dest_path)
+
+        return meta_data, created
+
+    # ========== private ==========
+
     async def _item_metadata(self, path, revision=None):
         async with self.signed_request(
             'GET',
@@ -463,3 +426,111 @@ class OSFStorageProvider(provider.BaseProvider):
         for child in meta:
             osf_path = await self.validate_path(child.path)
             await self.delete(osf_path)
+
+    async def _do_intra_move_or_copy(self, action: str, dest_provider, src_path, dest_path):
+        """Update files and folders on osfstorage with a single request.
+
+        If the data of the file or the folder's children doesn't need to be copied to another
+        bucket, then doing an intra-move or intra-copy is just a matter of updating the entity
+        metadata in the OSF.  If something already exists at ``dest_path``, it must be deleted
+        before relocating the source to the new path.
+        """
+
+        created = True
+        if dest_path.identifier:
+            created = False
+            await dest_provider.delete(dest_path)
+
+        async with self.signed_request(
+            'POST',
+            self.build_url('hooks', action),
+            data=json.dumps({
+                'user': self.auth['id'],
+                'source': src_path.identifier,
+                'destination': {
+                    'name': dest_path.name,
+                    'node': dest_provider.nid,
+                    'parent': dest_path.parent.identifier
+                }
+            }),
+            headers={'Content-Type': 'application/json'},
+            expects=(200, 201)
+        ) as resp:
+            data = await resp.json()
+
+        if data['kind'] == 'file':
+            return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
+
+        folder_meta = OsfStorageFolderMetadata(data, str(dest_path))
+        dest_path = await dest_provider.validate_v1_path(data['path'])
+        folder_meta.children = await dest_provider._children_metadata(dest_path)
+
+        return folder_meta, created
+
+    async def _send_to_storage_provider(self, stream, path, **kwargs):
+        """Send uploaded file data to the storage provider, where it will be stored w/o metadata
+        in a content-addressable format.
+
+        :return: metadata of the file as it exists on the storage provider
+        """
+
+        pending_name = str(uuid.uuid4())
+        provider = self.make_provider(self.settings)
+        remote_pending_path = await provider.validate_path('/' + pending_name)
+        logger.debug('upload: remote_pending_path::{}'.format(remote_pending_path))
+
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+        stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
+        stream.add_writer('sha256', streams.HashStreamWriter(hashlib.sha256))
+
+        await provider.upload(stream, remote_pending_path, check_created=False,
+                              fetch_metadata=False, **kwargs)
+
+        complete_name = stream.writers['sha256'].hexdigest
+        remote_complete_path = await provider.validate_path('/' + complete_name)
+
+        try:
+            metadata = await provider.metadata(remote_complete_path)
+        except exceptions.MetadataError as e:
+            if e.code != 404:
+                raise
+            metadata, _ = await provider.move(provider, remote_pending_path, remote_complete_path)
+        else:
+            await provider.delete(remote_pending_path)
+
+        return metadata
+
+    async def _send_to_metadata_provider(self, stream, path, metadata, **kwargs):
+        """Send metadata about the uploaded file (including its location on the storage provider) to
+        the OSF.
+
+        :return: metadata of the file and a bool indicating if the file was newly created
+        """
+
+        async with self.signed_request(
+            'POST',
+            self.build_url(path.parent.identifier, 'children'),
+            expects=(200, 201),
+            data=json.dumps({
+                'name': path.name,
+                'user': self.auth['id'],
+                'settings': self.settings['storage'],
+                'metadata': metadata,
+                'hashes': {
+                    'md5': stream.writers['md5'].hexdigest,
+                    'sha1': stream.writers['sha1'].hexdigest,
+                    'sha256': stream.writers['sha256'].hexdigest,
+                },
+                'worker': {
+                    'host': os.uname()[1],
+                    # TODO: Include additional information
+                    'address': None,
+                    'version': self.__version__,
+                },
+            }),
+            headers={'Content-Type': 'application/json'},
+        ) as response:
+            created = response.status == 201
+            data = await response.json()
+
+        return data, created
