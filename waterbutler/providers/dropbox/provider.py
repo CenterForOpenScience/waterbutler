@@ -1,6 +1,7 @@
 import json
 import typing
 import logging
+import tempfile
 from http import HTTPStatus
 
 from waterbutler.core import provider, streams
@@ -276,26 +277,60 @@ class DropboxProvider(provider.BaseProvider):
 
         API Docs: https://www.dropbox.com/developers/documentation/http/documentation#files-upload
 
+        Quirks: Dropbox Rate Limiting
+
+        Making requests to Dropbox API via OAuth2 may be rate-limited with a 429 response.  The error message can be
+        "too_many_requests" which literally means too many request, or "too_many_write_operations" which means namespace
+        lock contentions has occurred.  Both can be solved by retry the request after the time indicated in the response
+        header "Retry-After".  In addition, Dropbox's rate-limiting algorithm is a black box.  They also keep trying
+        different ones.  This makes balancing the requests less effective.
+
+        References: https://www.dropbox.com/developers/reference/data-ingress-guide
+
+        Quirks: Retry Upload Load Requests
+
+        When an upload request finishes, the stream will have been consumed.  In order to retry such a request, WB needs
+        to cache a temporary local file from the incoming stream so both the initial request and retries can stream from
+        this file.
+
         :rtype: `dict`
         :return: A `dict` of metadata about the file just uploaded.
         """
-        resp = await self.make_request(
-            'POST',
-            self._build_content_url('files', 'upload'),
-            headers={
-                'Content-Type': 'application/octet-stream',
-                'Dropbox-API-Arg': json.dumps({'path': path.full_path}),
-                'Content-Length': str(stream.size),
-            },
-            data=stream,
-            expects=(200, 409,),
-            throws=core_exceptions.UploadError,
-        )
 
-        data = await resp.json()
-        if resp.status == 409:
-            self.dropbox_conflict_error_handler(data, path.path)
-        return data
+        file_cache = tempfile.TemporaryFile()
+        chunk = await stream.read()
+        while chunk:
+            file_cache.write(chunk)
+            chunk = await stream.read()
+
+        rate_limit_retry = 0
+        while rate_limit_retry < 2:
+            file_stream = streams.FileStreamReader(file_cache)
+            resp = await self.make_request(
+                'POST',
+                self._build_content_url('files', 'upload'),
+                headers={
+                    'Content-Type': 'application/octet-stream',
+                    'Dropbox-API-Arg': json.dumps({'path': path.full_path}),
+                    'Content-Length': str(file_stream.size),
+                },
+                data=file_stream,
+                expects=(200, 409, 429, ),
+                throws=core_exceptions.UploadError,
+            )
+            data = await resp.json()
+            if resp.status == 429:
+                rate_limit_retry += 1
+                logger.debug('Retry {} for {}'.format(rate_limit_retry, str(path)))
+                continue
+            elif resp.status == 409:
+                file_cache.close()
+                self.dropbox_conflict_error_handler(data, path.path)
+            else:
+                file_cache.close()
+                return data
+        file_cache.close()
+        raise core_exceptions.UploadError(message='Upload failed for {} due to rate limiting'.format(str(path)))
 
     async def _chunked_upload(self, stream: streams.BaseStream, path: WaterButlerPath) -> dict:
         """Chunked uploading is a 3-step process using Dropbox's "Upload Session".
