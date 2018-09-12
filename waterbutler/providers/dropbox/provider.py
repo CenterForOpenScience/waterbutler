@@ -61,6 +61,7 @@ class DropboxProvider(provider.BaseProvider):
     BASE_URL = pd_settings.BASE_URL
     CONTIGUOUS_UPLOAD_SIZE_LIMIT = pd_settings.CONTIGUOUS_UPLOAD_SIZE_LIMIT
     CHUNK_SIZE = pd_settings.CHUNK_SIZE
+    MAX_429_RETRIES = pd_settings.MAX_429_RETRIES
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -311,7 +312,7 @@ class DropboxProvider(provider.BaseProvider):
             chunk = await stream.read()
 
         rate_limit_retry = 0
-        while rate_limit_retry < 2:
+        while rate_limit_retry < self.MAX_429_RETRIES:
             file_stream = streams.FileStreamReader(file_cache)
             resp = await self.make_request(
                 'POST',
