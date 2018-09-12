@@ -103,8 +103,8 @@ def rate_limit_provider(provider):
 
     provider.task_id = 9876543210
     provider.rl_req_rate = 1
-    provider.rl_remaining = 100
-    provider.rl_reset = 200
+    provider.rl_remaining = 500
+    provider.rl_reset = 600
     provider.rl_req_rate_updated = 10
     provider.rl_available_tokens = 0
     provider.rl_tokens_updated = 90
@@ -1390,14 +1390,14 @@ class TestRateLimit:
         mock_provider = rate_limit_provider
         mock_provider._rl_update_req_rate()
 
-        assert mock_provider.rl_req_rate == 0.8
+        assert mock_provider.rl_req_rate == 0.6
         assert mock_provider.rl_req_rate_updated == 100
 
     # Test `_rl_update_req_rate()` when `.rl_remaining` is less then `rl_reserve`
     def test_update_rate_limit_under_reserve_limit(self, mock_time, rate_limit_provider):
 
         mock_provider = rate_limit_provider
-        mock_provider.rl_remaining = 10
+        mock_provider.rl_remaining = 100
         mock_provider._rl_update_req_rate()
 
         assert mock_provider.rl_req_rate == 0.01
@@ -1409,19 +1409,19 @@ class TestRateLimit:
         mock_provider = rate_limit_provider
         mock_provider._rl_add_more_tokens()
 
-        assert mock_provider.rl_req_rate == 0.8
+        assert mock_provider.rl_req_rate == 0.6
         assert mock_provider.rl_req_rate_updated == 100
-        assert mock_provider.rl_available_tokens == 8
+        assert mock_provider.rl_available_tokens == 6.0
         assert mock_provider.rl_tokens_updated == 100
 
     # Test `_rl_add_more_tokens()` when new tokens exceeds maximum tokens
     def test_add_new_rate_limit_tokens_max_tokens_enforced(self, mock_time, rate_limit_provider):
 
         mock_provider = rate_limit_provider
-        mock_provider.rl_tokens_updated = 10
+        mock_provider.rl_tokens_updated = 50
         mock_provider._rl_add_more_tokens()
 
-        assert mock_provider.rl_req_rate == 0.8
+        assert mock_provider.rl_req_rate == 0.6
         assert mock_provider.rl_req_rate_updated == 100
         assert mock_provider.rl_available_tokens == 10
         assert mock_provider.rl_tokens_updated == 100
@@ -1444,11 +1444,12 @@ class TestRateLimit:
 
         await mock_provider._rl_check_available_tokens()
 
-        assert mock_provider.rl_available_tokens == 7
-        assert mock_provider.rl_req_rate == 0.8
+        assert mock_provider.rl_available_tokens == 5
+        assert mock_provider.rl_req_rate == 0.6
         assert mock_provider.rl_req_rate_updated == 100
         assert mock_provider.rl_tokens_updated == 100
 
+    # Test that celery requests update the `rl_remaining` and `rl_reset` with resp headers
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_make_request_celery(self, mock_time, rate_limit_provider):
@@ -1471,6 +1472,7 @@ class TestRateLimit:
         assert mock_provider.rl_remaining == 1234
         assert mock_provider.rl_reset == 5678
 
+    # Test that non-celery ones don't update the `rl_remaining` and `rl_reset` with resp headers
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_make_request_not_celery(self, mock_time, rate_limit_provider):
@@ -1493,9 +1495,10 @@ class TestRateLimit:
             throws=exceptions.MetadataError,
         )
 
-        assert mock_provider.rl_remaining == 100
-        assert mock_provider.rl_reset == 200
+        assert mock_provider.rl_remaining == 500
+        assert mock_provider.rl_reset == 600
 
+    # Test that celery requests throw limit exceeded error
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_make_request_celery_rate_limit_error(self, mock_time, rate_limit_provider):
@@ -1524,6 +1527,7 @@ class TestRateLimit:
         assert exc.value.code == HTTPStatus.SERVICE_UNAVAILABLE
         assert '1970-01-01T01:34:38+00:00.' in exc.value.message
 
+    # Test that non-celery requests throw limit exceeded error
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_make_request_not_celery_rate_limit_error(self, mock_time, rate_limit_provider):
