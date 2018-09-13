@@ -865,3 +865,106 @@ class TestCrossRegionMove:
         src_provider.can_intra_move.assert_called_once_with(dst_provider, src_path)
         src_provider.intra_move.assert_called_once_with(dst_provider, src_path, dest_path)
         src_provider.download.assert_not_called()
+
+
+class TestCrossRegionCopy:
+
+    @pytest.mark.asyncio
+    async def test_copy_file(self, provider_one, provider_two, file_stream, upload_response):
+
+        # aliased for clarity
+        src_provider, dst_provider = provider_one, provider_two
+
+        src_provider.download = utils.MockCoroutine(return_value=file_stream)
+        src_provider.intra_copy = utils.MockCoroutine(return_value=(upload_response, True))
+        dst_provider._send_to_storage_provider = utils.MockCoroutine()
+
+        src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
+        dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        metadata, created = await src_provider.copy(dst_provider, src_path, dest_path,
+                                                    handle_naming=False);
+
+        assert metadata is not None
+        assert created is True
+
+        src_provider.download.assert_called_once_with(WaterButlerPath('/foo'))
+        dst_provider._send_to_storage_provider.assert_called_once_with(file_stream,
+                                                                       WaterButlerPath('/'),
+                                                                       rename=None,
+                                                                       conflict='replace')
+        src_provider.intra_copy.assert_called_once_with(dst_provider, WaterButlerPath('/foo'),
+                                                        WaterButlerPath('/'))
+
+    @pytest.mark.asyncio
+    async def test_copy_folder(self, provider_one, provider_two):
+
+        # aliased for clarity
+        src_provider, dst_provider = provider_one, provider_two
+
+        src_provider._folder_file_op = utils.MockCoroutine(return_value=(upload_response, True))
+
+        src_path = WaterButlerPath('/foo/', _ids=('Test', '56ab34'), folder=True)
+        dest_path = WaterButlerPath('/', _ids=('Test',), folder=True)
+
+        metadata, created = await src_provider.copy(dst_provider, src_path, dest_path,
+                                                    handle_naming=False);
+
+        assert metadata is not None
+        assert created is True
+
+        src_provider._folder_file_op.assert_called_once_with(src_provider.copy,
+                                                             dst_provider,
+                                                             WaterButlerPath('/foo/'),
+                                                             WaterButlerPath('/'),
+                                                             rename=None,
+                                                             conflict='replace')
+
+    @pytest.mark.asyncio
+    async def test_copy_cross_provider(self, monkeypatch, provider_one, provider_two):
+
+        # aliased for clarity
+        src_provider, dst_provider = provider_one, provider_two
+
+        src_provider.download = utils.MockCoroutine()
+        dst_provider.NAME = 'not-osfstorage'
+
+        core_copy = utils.MockCoroutine()
+        monkeypatch.setattr('waterbutler.core.provider.BaseProvider.copy', core_copy)
+
+        src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
+        dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        await src_provider.copy(dst_provider, src_path, dest_path, handle_naming=False);
+
+        core_copy.assert_called_once_with(dst_provider, src_path, dest_path, rename=None,
+                                          conflict='replace', handle_naming=False);
+        src_provider.download.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_copy_but_intra_copy(self, provider_one, auth, credentials,
+                                       settings_region_one):
+        """OSFStorageProvider.copy checks to see if intra_copy can be called as an optimization.
+        This is copied over from the `BaseProvider.copy()` implementation, and is unlikely to be
+        called in a real-world situation.  All calls to `OSFStorageProvider.copy()` have probably
+        passed through a `can_intra_copy` check already.  Nevertheless, let's test it to make sure
+        it behaves as expected."""
+
+        # aliased for clarity
+        src_provider = provider_one
+
+        settings_region_one['nid'] = 'fake-nid'
+        dst_provider = OSFStorageProvider(auth, credentials, settings_region_one)
+
+        src_provider.can_intra_copy = mock.Mock(return_value=True)
+        src_provider.intra_copy = utils.MockCoroutine()
+        src_provider.download = utils.MockCoroutine()
+
+        src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
+        dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        await src_provider.copy(dst_provider, src_path, dest_path, handle_naming=False);
+
+        src_provider.can_intra_copy.assert_called_once_with(dst_provider, src_path)
+        src_provider.intra_copy.assert_called_once_with(dst_provider, src_path, dest_path)
+        src_provider.download.assert_not_called()
