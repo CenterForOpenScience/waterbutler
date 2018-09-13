@@ -391,6 +391,72 @@ class OSFStorageProvider(provider.BaseProvider):
 
         return meta_data, created
 
+    async def copy(self,
+                   dest_provider: provider.BaseProvider,
+                   src_path: WaterButlerPath,
+                   dest_path: WaterButlerPath,
+                   rename: str=None,
+                   conflict: str='replace',
+                   handle_naming: bool=True) -> typing.Tuple[BaseMetadata, bool]:
+        """Override parent's copy to support cross-region osfstorage copies. Delegates to
+        :meth:`.BaseProvider.copy` when destination is not osfstorage. If both providers are in the
+        same region (i.e. `.can_intra_copy` is true), call `.intra_copy`. Otherwise, grab a
+        download stream from the source region, send it to the destination region, *then* execute
+        an `.intra_copy` to make new file metadata entries in the OSF.
+
+        This is needed because a same-region osfstorage copy will duplicate *all* the versions of
+        the file, but `.BaseProvider.copy` will only copy the most recent version.
+        """
+
+        # when moving to non-osfstorage, default move is fine
+        if dest_provider.NAME != 'osfstorage':
+            return await super().copy(dest_provider, src_path, dest_path, rename=rename,
+                                      conflict=conflict, handle_naming=handle_naming)
+
+        args = (dest_provider, src_path, dest_path)
+        kwargs = {'rename': rename, 'conflict': conflict}
+
+        self.provider_metrics.add('copy', {
+            'got_handle_naming': handle_naming,
+            'conflict': conflict,
+            'got_rename': rename is not None,
+        })
+
+        if handle_naming:
+            dest_path = await dest_provider.handle_naming(
+                src_path,
+                dest_path,
+                rename=rename,
+                conflict=conflict,
+            )
+            args = (dest_provider, src_path, dest_path)
+            kwargs = {}
+
+        # files and folders shouldn't overwrite themselves
+        if (
+            self.shares_storage_root(dest_provider) and
+            src_path.materialized_path == dest_path.materialized_path
+        ):
+            raise exceptions.OverwriteSelfError(src_path)
+
+        self.provider_metrics.add('copy.can_intra_copy', False)
+        if self.can_intra_copy(dest_provider, src_path):
+            self.provider_metrics.add('copy.can_intra_copy', True)
+            return await self.intra_copy(*args)
+
+        if src_path.is_dir:
+            meta_data, created = await self._folder_file_op(self.copy, *args, **kwargs)  # type: ignore
+        else:
+            download_stream = await self.download(src_path)
+            if getattr(download_stream, 'name', None):
+                dest_path.rename(download_stream.name)
+
+            await dest_provider._send_to_storage_provider(download_stream,  # type: ignore
+                                                          dest_path, **kwargs)
+            meta_data, created = await self.intra_copy(dest_provider, src_path, dest_path)
+
+        return meta_data, created
+
     # ========== private ==========
 
     async def _item_metadata(self, path, revision=None):
