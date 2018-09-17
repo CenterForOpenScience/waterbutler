@@ -260,31 +260,39 @@ class DropboxProvider(provider.BaseProvider):
         multipart upload endpoints will be used.
         """
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
-        path_arg = {"path": path.full_path}
-        if conflict == 'replace':
-            path_arg['mode'] = 'overwrite'
 
         if stream.size > self.CONTIGUOUS_UPLOAD_SIZE_LIMIT:
-            data = await self._chunked_upload(stream, path)
+            data = await self._chunked_upload(stream, path, conflict=conflict)
         else:
-            data = await self._contiguous_upload(stream, path)
+            data = await self._contiguous_upload(stream, path, conflict=conflict)
 
         return DropboxFileMetadata(data, self.folder), not exists
 
-    async def _contiguous_upload(self, stream: streams.BaseStream, path: WaterButlerPath) -> dict:
+    async def _contiguous_upload(self,
+                                 stream: streams.BaseStream,
+                                 path: WaterButlerPath,
+                                 conflict: str='replace') -> dict:
         """Upload file in a single request.
 
         API Docs: https://www.dropbox.com/developers/documentation/http/documentation#files-upload
 
+        :param stream: the stream to upload
+        :param path: the WB path of the file
+        :param conflict: whether to replace upon conflict
         :rtype: `dict`
-        :return: A `dict` of metadata about the file just uploaded.
+        :return: A dictionary of the metadata about the file just uploaded
         """
+
+        path_arg = {"path": path.full_path}
+        if conflict == 'replace':
+            path_arg['mode'] = 'overwrite'
+
         resp = await self.make_request(
             'POST',
             self._build_content_url('files', 'upload'),
             headers={
                 'Content-Type': 'application/octet-stream',
-                'Dropbox-API-Arg': json.dumps({'path': path.full_path}),
+                'Dropbox-API-Arg': json.dumps(path_arg),
                 'Content-Length': str(stream.size),
             },
             data=stream,
@@ -297,7 +305,8 @@ class DropboxProvider(provider.BaseProvider):
             self.dropbox_conflict_error_handler(data, path.path)
         return data
 
-    async def _chunked_upload(self, stream: streams.BaseStream, path: WaterButlerPath) -> dict:
+    async def _chunked_upload(self, stream: streams.BaseStream, path: WaterButlerPath,
+                              conflict: str='replace') -> dict:
         """Chunked uploading is a 3-step process using Dropbox's "Upload Session".
 
         First, start a new upload session and receive an upload session ID.
@@ -323,7 +332,7 @@ class DropboxProvider(provider.BaseProvider):
         await self._upload_parts(stream, session_id)
 
         # 3. Complete the session and return the uploaded file's metadata.
-        return await self._complete_session(stream, session_id, path)
+        return await self._complete_session(stream, session_id, path, conflict=conflict)
 
     async def _create_upload_session(self) -> str:
         """Create an upload session for chunked upload.
@@ -408,7 +417,7 @@ class DropboxProvider(provider.BaseProvider):
         await resp.release()
 
     async def _complete_session(self, stream: streams.BaseStream, session_id: str,
-                                path: WaterButlerPath) -> dict:
+                                path: WaterButlerPath, conflict: str='replace') -> dict:
         """Complete the chunked upload session.
 
         "Finish an upload session and save the uploaded data to the given file path. ... The maximum
@@ -416,14 +425,20 @@ class DropboxProvider(provider.BaseProvider):
 
         API Docs: https://www.dropbox.com/developers/documentation/http/documentation#files-upload_session-finish
 
+        :param stream: the stream to upload
+        :param session_id: the ID of the chunked upload session
+        :param path: the WB path of the file
+        :param conflict: whether to replace upon conflict
         :rtype: `dict`
-        :return: A `dict` of metadata about the file just uploaded.
+        :return: A dictionary of the metadata about the file just uploaded
         """
 
         upload_args = {
             'cursor': {'session_id': session_id, 'offset': stream.size, },
             'commit': {"path": path.full_path, },
         }
+        if conflict == 'replace':
+            upload_args['commit']['mode'] = 'overwrite'
 
         resp = await self.make_request(
             'POST',
