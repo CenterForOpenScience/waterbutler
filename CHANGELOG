@@ -2,6 +2,23 @@
 ChangeLog
 *********
 
+0.42.0 (2018-09-16)
+===================
+- Feature: Support multi-regional backend storage buckets in osfstorage. WaterButler now includes
+the path and version of the file when requesting auth from the OSF.  Different versions of a file
+may be stored in different regions and will therefore require different credentials and settings.
+This change also requires osfstorage to implement custom move() and copy() methods.  Cross-region
+osfstorage moves and copies are expected to preserve version history and linked guids.  This is
+normally handled by the intra_move() and intra_copy() methods, but those methods only operate on
+metadata and do not copy data from one region bucket to another. The new move() and copy() methods
+take care of copying the file data across regions before calling intra_move() and intra_copy() to
+update the metadata.
+- Fix: Stop logging folder metadata requests in v1.  A misunderstanding of the GET endpoint for
+folders causing some folder metadata requests to be logged as download-as-zip requests.
+- Code: Remove cold-archiving and parity-generating tasks from osfstorage.  These tasks are better
+done on the backend storage provider.
+- Code: Turn on branch coverage testing. Overall coverage has decreased to 90% with this change.
+
 0.41.3 (2018-08-27)
 ===================
 - Feature: Make download-as-zip compression level a tunable configuration parameter.

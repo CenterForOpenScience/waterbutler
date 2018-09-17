@@ -18,11 +18,7 @@ logger = logging.getLogger(__name__)
 class MetadataMixin:
 
     async def header_file_metadata(self):
-        # Going with version as its the most correct term
-        # TODO Change all references of revision to version @chrisseto
-        # revisions will still be accepted until necessary changes are made to OSF
-        version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
-        data = await self.provider.metadata(self.path, revision=version)
+        data = await self.provider.metadata(self.path, revision=self.requested_version)
 
         # Not setting etag for the moment
         # self.set_header('Etag', data.etag)  # This may not be appropriate
@@ -42,11 +38,7 @@ class MetadataMixin:
         if 'zip' in self.request.query_arguments:
             return (await self.download_folder_as_zip())
 
-        version = (
-            self.get_query_argument('version', default=None) or
-            self.get_query_argument('revision', default=None)
-        )
-
+        version = self.requested_version
         data = await self.provider.metadata(self.path, version=version, revision=version)
         return self.write({'data': [x.json_api_serialized(self.resource) for x in data]})
 
@@ -69,7 +61,7 @@ class MetadataMixin:
             request_range = utils.parse_request_range(self.request.headers['Range'])
             logger.debug('Range header parsed as: {}'.format(request_range))
 
-        version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
+        version = self.requested_version
         stream = await self.provider.download(
             self.path,
             revision=version,
@@ -113,10 +105,11 @@ class MetadataMixin:
         logger.debug('bytes received is: {}'.format(self.bytes_downloaded))
 
     async def file_metadata(self):
-        version = self.get_query_argument('version', default=None) or self.get_query_argument('revision', default=None)
+        version = self.requested_version
+        metadata = await self.provider.metadata(self.path, revision=version)
 
         return self.write({
-            'data': (await self.provider.metadata(self.path, revision=version)).json_api_serialized(self.resource)
+            'data': metadata.json_api_serialized(self.resource)
         })
 
     async def get_file_revisions(self):

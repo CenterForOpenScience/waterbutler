@@ -48,6 +48,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             for key, value in self.request.query_arguments.items()
         }
 
+        # Going with version as its the most correct term
+        # TODO Change all references of revision to version @chrisseto
+        # revisions will still be accepted until necessary changes are made to OSF
+        self.requested_version = (self.get_query_argument('version', default=None) or
+                                  self.get_query_argument('revision', default=None))
+
         self.path = self.path_kwargs['path'] or '/'
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
@@ -60,10 +66,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if method in self.PRE_VALIDATORS:
             getattr(self, self.PRE_VALIDATORS[method])()
 
-        # Delay setup of the provider when method is post, as we need to evaluate the json body action.
+        # Delay setup of the provider when method is post, as we need to evaluate the json body
+        # action.
         if method != 'post':
-            self.auth = await auth_handler.get(self.resource, provider, self.request)
-            self.provider = utils.make_provider(provider, self.auth['auth'], self.auth['credentials'], self.auth['settings'])
+            self.auth = await auth_handler.get(self.resource, provider, self.request,
+                                               path=self.path, version=self.requested_version)
+            self.provider = utils.make_provider(provider, self.auth['auth'],
+                                                self.auth['credentials'], self.auth['settings'])
             self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
 
         self.target_path = None
@@ -164,9 +173,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             logger.info('Received a direct-to-provider download request (302 response) with '
                         'Range header: {}'.format(self.request.headers['Range']))
 
-        # Don't log metadata requests.
+        # Don't log metadata requests, incl. anything with 'meta' or 'revisions' as a query arg.
+        # Folder requests w/o 'zip' as a query arg are treated as metadata requests, and should
+        # be ignored.
         if (method == 'GET' and ('meta' in self.request.query_arguments or
-                                 'revisions' in self.request.query_arguments)):
+                                 'revisions' in self.request.query_arguments or
+                                 (self.path.is_folder and
+                                  'zip' not in self.request.query_arguments))):
             return
 
         # Done here just because method is defined

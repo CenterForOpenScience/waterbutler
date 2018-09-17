@@ -59,9 +59,5 @@ setup(
             'onedrive = waterbutler.providers.onedrive:OneDriveProvider',
             'googlecloud = waterbutler.providers.googlecloud:GoogleCloudProvider',
         ],
-        'waterbutler.providers.tasks': [
-            'osfstorage_parity = waterbutler.providers.osfstorage.tasks.parity',
-            'osfstorage_backup = waterbutler.providers.osfstorage.tasks.backup',
-        ]
     },
 )

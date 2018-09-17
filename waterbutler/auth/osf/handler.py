@@ -90,7 +90,8 @@ class OsfAuthHandler(BaseAuthHandler):
         payload['auth']['callback_url'] = payload['callback_url']
         return payload
 
-    async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE):
+    async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE,
+                  path='', version=None):
         """Used for v1"""
         method = request.method.lower()
 
@@ -136,7 +137,9 @@ class OsfAuthHandler(BaseAuthHandler):
             self.build_payload({
                 'nid': resource,
                 'provider': provider,
-                'action': osf_action
+                'action': osf_action,
+                'path': path,
+                'version': version,
             }, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)

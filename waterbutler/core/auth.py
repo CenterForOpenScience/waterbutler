@@ -14,5 +14,6 @@ class BaseAuthHandler(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE):
+    async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE,
+                  path='', version=None):
         pass

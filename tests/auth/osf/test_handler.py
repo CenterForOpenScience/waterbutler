@@ -48,7 +48,7 @@ class TestOsfAuthHandler(ServerTestCase):
             for action in post_actions:
                 self.request.method = 'post'
                 await self.handler.get(resource, provider,
-                                            self.request, action=action, auth_type=auth_type)
+                                       self.request, action=action, auth_type=auth_type)
 
         for method in supported_methods:
             self.request.method = method
@@ -80,11 +80,15 @@ class TestOsfAuthHandler(ServerTestCase):
                 self.handler.build_payload.assert_called_with({
                     'nid': resource,
                     'provider': provider,
-                    'action': 'download'
+                    'action': 'download',
+                    'path': '',
+                    'version': None,
                 }, cookie=None, view_only=None)
             else:
                 self.handler.build_payload.assert_called_with({
                     'nid': resource,
                     'provider': provider,
-                    'action': 'upload'
+                    'action': 'upload',
+                    'path': '',
+                    'version': None,
                 }, cookie=None, view_only=None)
