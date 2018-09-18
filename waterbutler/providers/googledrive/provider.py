@@ -520,6 +520,8 @@ class GoogleDriveProvider(provider.BaseProvider):
                     # if we can't find an intermediate path part, that's an error
                     raise exceptions.MetadataError('{} not found'.format(str(path)),
                                                    code=HTTPStatus.NOT_FOUND)
+                if ext in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
+                    part_name = name
                 return ret + [{
                     'id': None,
                     'title': part_name,
