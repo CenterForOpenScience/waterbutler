@@ -1,14 +1,24 @@
 <img src="/docs/waterbutler.png?raw=true" width="25%" style="float:left;">
 
-# WaterButler
+# GakuNin RDM WaterButler
+
+### GakuNin RDM WaterButler is developed by forking [CenterForOpenScience/waterbutler](https://github.com/CenterForOpenScience/waterbutler)
+
 
 [![Documentation Status](https://readthedocs.org/projects/waterbutler/badge/?version=latest)](http://waterbutler.readthedocs.org/en/latest/?badge=latest)
 [![Code Climate](https://codeclimate.com/github/CenterForOpenScience/waterbutler/badges/gpa.svg)](https://codeclimate.com/github/CenterForOpenScience/waterbutler)
-[![Coverage Status](https://coveralls.io/repos/github/CenterForOpenScience/waterbutler/badge.svg)](https://coveralls.io/github/CenterForOpenScience/waterbutler)
 
-`master` Build Status: [![Build Status](https://travis-ci.org/CenterForOpenScience/waterbutler.svg?branch=master)](https://travis-ci.org/CenterForOpenScience/waterbutler)
+`master` Build Status: [![Build Status](https://travis-ci.org/RCOSDP/RDM-waterbutler.svg?branch=master)](https://travis-ci.org/RCOSDP/master)
 
-`develop` Build Status: [![Build Status](https://travis-ci.org/CenterForOpenScience/waterbutler.svg?branch=develop)](https://travis-ci.org/CenterForOpenScience/waterbutler)
+`develop` Build Status: [![Build Status](https://travis-ci.org/RCOSDP/RDM-waterbutler.svg?branch=develop)](https://travis-ci.org/RCOSDP/develop)
+
+`nii-mergework-201802` Build Status: [![Build Status](https://travis-ci.org/RCOSDP/RDM-waterbutler.svg?branch=nii-mergework-201802)](https://travis-ci.org/RCOSDP/RDM-waterbutler)
+
+`master`[![Coverage Status](https://coveralls.io/repos/github/RCOSDP/RDM-waterbutler/badge.svg?branch=master)](https://coveralls.io/github/RCOSDP/RDM-waterbutler?branch=master)
+
+`develop`[![Coverage Status](https://coveralls.io/repos/github/RCOSDP/RDM-waterbutler/badge.svg?branch=develop)](https://coveralls.io/github/RCOSDP/RDM-waterbutler?branch=develop)
+
+`nii-mergework-201802`[![Coverage Status](https://coveralls.io/repos/github/RCOSDP/RDM-waterbutler/badge.svg?branch=nii-mergework-201802)](https://coveralls.io/github/RCOSDP/RDM-waterbutler?branch=nii-mergework-201802)
 
 ### Compatibility
 
