@@ -33,7 +33,60 @@ class GoogleDrivePathPart(WaterButlerPathPart):
 
 
 class GoogleDrivePath(WaterButlerPath):
+    """This subclass needs to be modified in the future.
+
+        `add_ext_maybe`
+        `is_google_doc`
+        `materialized_path`
+        `path`
+
+    These have been added as a workaround for MFR.
+
+    The MFR needs an extension in order to render a gdrive document.
+    In the future, the MFR shoul be capable of defermining a file type using
+    the mime type to render the file.
+
+    In that case, the extension is no longer needed, and the methods and
+    properties noted above bocome obsolete.
+    """
     PART_CLASS = GoogleDrivePathPart
+
+    @property
+    def name(self) -> str:
+        """ Returns the name of the file or folder. """
+        ext = utils.get_format(
+            {'mimeType': self.file_type},
+            default={'ext': ''}
+        )['ext']
+        name = self._parts[-1].value
+        name = '{}{}'.format(super().name, ext)
+        print('name: ' + name)
+        return name
+
+    @property
+    def materialized_path(self) -> str:
+        ext = utils.get_format(
+            {'mimeType': self.file_type},
+            default={'ext': ''}
+        )['ext']
+        materialized = '{}{}'.format(super().materialized_path, ext)
+        return materialized
+
+    @property
+    def raw_path(self) -> str:
+        """Like `.path()`, but passes each path segment through the PathPart's
+        ENCODE function.
+        """
+        if len(self.parts) == 1:
+            return ''
+        ext = utils.get_format(
+            {'mimeType': self.file_type},
+            default={'ext': ''}
+        )['ext']
+        path = '/'.join([x.value for x in self.parts[1:]])
+        path = path + ('/' if self.is_dir else ext)
+        print('path: ' + path)
+        return path
 
 
 class GoogleDriveProvider(provider.BaseProvider):
@@ -89,12 +142,18 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         implicit_folder = path.endswith('/')
         parts = await self._resolve_path_to_ids(path)
+        print(parts)
         explicit_folder = parts[-1]['mimeType'] == self.FOLDER_MIME_TYPE
         if parts[-1]['id'] is None or implicit_folder != explicit_folder:
             raise exceptions.NotFoundError(str(path))
 
         names, ids = zip(*[(parse.quote(x['title'], safe=''), x['id']) for x in parts])
-        return GoogleDrivePath('/'.join(names), _ids=ids, folder='folder' in parts[-1]['mimeType'])
+        return GoogleDrivePath(
+            '/'.join(names),
+            _ids=ids,
+            folder='folder' in parts[-1]['mimeType'],
+            file_type=parts[-1]['mimeType']
+        )
 
     async def validate_path(self, path: str, **kwargs) -> GoogleDrivePath:
         if path == '/':

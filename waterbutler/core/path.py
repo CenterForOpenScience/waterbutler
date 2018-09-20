@@ -67,12 +67,13 @@ class WaterButlerPathPart:
 
 
 class WaterButlerPath:
-    """ A standardized and validated immutable WaterButler path.  This is our abstraction around
-    file paths in storage providers.  A WaterButlerPath is an array of WaterButlerPathPart objects.
-    Each PathPart has two important attributes, `value` and `_id`.  `value` is always the
-    human-readable component of the path. If the provider assigns ids to entities (see: Box, Google
-    Drive, OSFStorage), that id belongs in the `_id` attribute. If `/Foo/Bar/baz.txt` is stored on
-    Box, its path parts will be approximately::
+    """ A standardized and validated immutable WaterButler path.  This is our
+    abstraction around file paths in storage providers.  A WaterButlerPath is
+    an array of WaterButlerPathPart objects. Each PathPart has two important
+    attributes, `value` and `_id`.  `value` is always the human-readable
+    component of the path. If the provider assigns ids to entities (see: Box,
+    Google Drive, OSFStorage), that id belongs in the `_id` attribute. If
+    `/Foo/Bar/baz.txt` is stored on Box, its path parts will be approximately::
 
         [
           { value: '/',       _id: None, }, # must have root
@@ -81,16 +82,19 @@ class WaterButlerPath:
           { value: 'baz.txt', _id: '1113345897' },
         ]
 
-    If :func:`WaterButlerPath.identifier` is called on this object, it'll return the `_id` of the
-    last path part. :func:`WaterButlerPath.path` will return `/Foo/Bar/baz.txt`.
+    If :func:`WaterButlerPath.identifier` is called on this object, it'll
+    return the `_id` of the last path part. :func:`WaterButlerPath.path` will
+    return `/Foo/Bar/baz.txt`.
 
     A valid WaterButlerPath should always have a root path part.
 
-    Some providers, such as Google Drive, require paths to be encoded when used in URLs.
-    WaterButlerPathPart has `ENCODE` and `DECODE` class methods that handle this. The encoded path
-    is available through the `.raw_path()` method.
+    Some providers, such as Google Drive, require paths to be encoded when used
+    in URLs. WaterButlerPathPart has `ENCODE` and `DECODE` class methods that
+    handle this. The encoded path is available through the `.raw_path()`
+    method.
 
-    To get a human-readable materialized path, call `str()` on the WaterButlerPath.
+    To get a human-readable materialized path, call `str()` on the
+    WaterButlerPath.
 
     Representations::
 
@@ -156,7 +160,10 @@ class WaterButlerPath:
                  path: str,
                  _ids: typing.Sequence=(),
                  prepend: str=None,
-                 folder: bool=None, **kwargs) -> None:
+                 folder: bool=None,
+                 file_type: str=None,
+                 **kwargs) -> None:
+
         # TODO: Should probably be a static method
         self.__class__.generic_path_validation(path)  # type: ignore
 
@@ -182,6 +189,9 @@ class WaterButlerPath:
 
         if self.is_dir and not self._orig_path.endswith('/'):
             self._orig_path += '/'
+
+        self.file_type = file_type
+
 
     @property
     def is_root(self) -> bool:

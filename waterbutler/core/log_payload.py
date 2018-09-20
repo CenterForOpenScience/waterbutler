@@ -1,6 +1,8 @@
 from waterbutler.constants import IDENTIFIER_PATHS
 from waterbutler.core.path import WaterButlerPath
 
+from waterbutler.providers.googledrive import utils
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -44,16 +46,20 @@ class LogPayload:
             'resource': self.resource,
         }
         if self.metadata is None:
+
             payload.update({
                 'provider': self.provider.NAME,
                 'kind': self.path.kind,
                 'path': self.path.identifier_path if self.provider.NAME in IDENTIFIER_PATHS else '/' + self.path.raw_path,
                 'name': self.path.name,
                 'materialized': self.path.materialized_path,
+                'type': getattr(self.path, 'file_type', ''),
                 'extra': self.path.extra,
             })
         else:
             payload.update(self.metadata.serialized())
+
+        print(payload)
 
         return payload
 

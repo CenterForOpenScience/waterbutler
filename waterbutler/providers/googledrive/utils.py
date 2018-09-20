@@ -42,11 +42,11 @@ def get_mimetype_from_ext(ext):
             return format['mime_type']
 
 
-def get_format(metadata):
+def get_format(metadata, default=DOCS_DEFAULT_FORMAT):
     for format in DOCS_FORMATS:
         if format['mime_type'] == metadata['mimeType']:
             return format
-    return DOCS_DEFAULT_FORMAT
+    return default
 
 
 def get_extension(metadata):

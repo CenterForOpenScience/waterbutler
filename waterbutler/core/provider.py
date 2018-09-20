@@ -235,6 +235,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
             kwargs = {}
 
         # files and folders shouldn't overwrite themselves
+        print(src_path)
+        print(dest_path)
         if (
             self.shares_storage_root(dest_provider) and
             src_path.materialized_path == dest_path.materialized_path
