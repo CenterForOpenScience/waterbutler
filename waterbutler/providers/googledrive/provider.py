@@ -54,23 +54,13 @@ class GoogleDrivePath(WaterButlerPath):
     @property
     def name(self) -> str:
         """ Returns the name of the file or folder. """
-        ext = utils.get_format(
-            {'mimeType': self.file_type},
-            default={'ext': ''}
-        )['ext']
         name = self._parts[-1].value
-        name = '{}{}'.format(super().name, ext)
         print('name: ' + name)
         return name
 
     @property
     def materialized_path(self) -> str:
-        ext = utils.get_format(
-            {'mimeType': self.file_type},
-            default={'ext': ''}
-        )['ext']
-        materialized = '{}{}'.format(super().materialized_path, ext)
-        return materialized
+        return super().materialized_path
 
     @property
     def raw_path(self) -> str:
@@ -79,12 +69,8 @@ class GoogleDrivePath(WaterButlerPath):
         """
         if len(self.parts) == 1:
             return ''
-        ext = utils.get_format(
-            {'mimeType': self.file_type},
-            default={'ext': ''}
-        )['ext']
         path = '/'.join([x.value for x in self.parts[1:]])
-        path = path + ('/' if self.is_dir else ext)
+        path = path + ('/' if self.is_dir else '')
         print('path: ' + path)
         return path
 
@@ -140,6 +126,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         if path == '/':
             return GoogleDrivePath('/', _ids=[self.folder['id']], folder=True)
 
+        import pdb; pdb.set_trace()
         implicit_folder = path.endswith('/')
         parts = await self._resolve_path_to_ids(path)
         print(parts)
@@ -478,7 +465,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                         item: dict,
                         raw: bool=False) -> Union[BaseGoogleDriveMetadata, dict]:
         import pdb
-        pdb.set_trace()
+        #pdb.set_trace()
         if raw:
             return item
         if item['mimeType'] == self.FOLDER_MIME_TYPE:
@@ -547,25 +534,37 @@ class GoogleDriveProvider(provider.BaseProvider):
             current_part = parts.pop(0)
             part_name, part_is_folder = current_part[0], current_part[1]
             name, ext = os.path.splitext(part_name)
-            if not part_is_folder and ext in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
-                gd_ext = utils.get_mimetype_from_ext(ext)
-                query = "title = '{}' " \
-                        "and trashed = false " \
-                        "and mimeType = '{}'".format(clean_query(name), gd_ext)
+            if not part_is_folder:
+                query = '''
+                    title = '{}'
+                    and trashed = false
+                    and (
+                        mimeType = 'application/vnd.google-apps.form'
+                        or mimeType = 'application/vnd.google-apps.map'
+                        or mimeType = 'application/vnd.google-apps.document'
+                        or mimeType = 'application/vnd.google-apps.drawing'
+                        or mimeType = 'application/vnd.google-apps.presentation'
+                        or mimeType = 'application/vnd.google-apps.spreadsheet'
+                    )
+                '''.format(
+                    clean_query(part_name)
+                )
             else:
-                query = "title = '{}' " \
-                        "and trashed = false " \
-                        "and mimeType != 'application/vnd.google-apps.form' " \
-                        "and mimeType != 'application/vnd.google-apps.map' " \
-                        "and mimeType != 'application/vnd.google-apps.document' " \
-                        "and mimeType != 'application/vnd.google-apps.drawing' " \
-                        "and mimeType != 'application/vnd.google-apps.presentation' " \
-                        "and mimeType != 'application/vnd.google-apps.spreadsheet' " \
-                        "and mimeType {} '{}'".format(
-                            clean_query(part_name),
-                            '=' if part_is_folder else '!=',
-                            self.FOLDER_MIME_TYPE
-                        )
+                query = '''
+                    title = '{}'
+                    and trashed = false
+                    and mimeType != 'application/vnd.google-apps.form'
+                    and mimeType != 'application/vnd.google-apps.map'
+                    and mimeType != 'application/vnd.google-apps.document'
+                    and mimeType != 'application/vnd.google-apps.drawing'
+                    and mimeType != 'application/vnd.google-apps.presentation'
+                    and mimeType != 'application/vnd.google-apps.spreadsheet'
+                    and mimeType {} '{}'
+                '''.format(
+                    clean_query(part_name),
+                    '=' if part_is_folder else '!=',
+                    self.FOLDER_MIME_TYPE
+                )
             async with self.request(
                 'GET',
                 self.build_url('files', item_id, 'children', q=query, fields='items(id)'),
@@ -638,7 +637,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
         ser_item = self._serialize_item(path, item, raw=raw)
         import pdb
-        pdb.set_trace()
+        #pdb.set_trace()
         return ser_item
 
     async def _folder_metadata(self,
@@ -663,7 +662,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                 logger = logging.getLogger(__name__)
                 logger.debug('***\n  _folder_metadata()\n***')
                 import pdb
-                pdb.set_trace()
+                #pdb.set_trace()
                 built_url = resp_json.get('nextLink', None)
         return full_resp
 
@@ -736,14 +735,14 @@ class GoogleDriveProvider(provider.BaseProvider):
         if utils.is_docs_file(data):
             if can_access_revisions:
                 docs = await self._handle_docs_versioning(path, data, raw=raw)
-                pdb.set_trace()
+                #pdb.set_trace()
                 return docs
             else:
                 # Revisions are not available for some sharing configurations. If revisions list is
                 # empty, use the etag of the file plus a sentinel string as a dummy revision ID.
                 data['version'] = data['etag'] + pd_settings.DRIVE_IGNORE_VERSION
 
-        pdb.set_trace()
+        #pdb.set_trace()
         return data if raw else GoogleDriveFileMetadata(data, path)
 
     async def _delete_folder_contents(self, path: WaterButlerPath) -> None:
