@@ -59,8 +59,6 @@ class LogPayload:
         else:
             payload.update(self.metadata.serialized())
 
-        print(payload)
-
         return payload
 
     @property
