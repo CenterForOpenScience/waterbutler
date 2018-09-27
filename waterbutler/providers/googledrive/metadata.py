@@ -68,26 +68,16 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     @property
     def name(self):
         title = self._file_title
-        if self.is_google_doc:
-            ext = utils.get_extension(self.raw)
-            title += ext
         return title
 
     @property
     def path(self):
         path = '/' + self._path.raw_path
-        if self.is_google_doc:
-            ext = utils.get_extension(self.raw)
-            path += ext
         return path
 
     @property
     def materialized_path(self):
-        materialized = str(self._path)
-        if self.is_google_doc:
-            ext = utils.get_extension(self.raw)
-            materialized += ext
-        return materialized
+        return self._path.materialized_path
 
     @property
     def size(self):

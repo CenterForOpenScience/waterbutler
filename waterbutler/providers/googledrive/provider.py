@@ -477,6 +477,8 @@ class GoogleDriveProvider(provider.BaseProvider):
                         path: WaterButlerPath,
                         item: dict,
                         raw: bool=False) -> Union[BaseGoogleDriveMetadata, dict]:
+        import pdb
+        pdb.set_trace()
         if raw:
             return item
         if item['mimeType'] == self.FOLDER_MIME_TYPE:
@@ -634,7 +636,10 @@ class GoogleDriveProvider(provider.BaseProvider):
             # If there are no revisions use etag as vid
             item['version'] = item['etag'] + pd_settings.DRIVE_IGNORE_VERSION
 
-        return self._serialize_item(path, item, raw=raw)
+        ser_item = self._serialize_item(path, item, raw=raw)
+        import pdb
+        pdb.set_trace()
+        return ser_item
 
     async def _folder_metadata(self,
                                path: WaterButlerPath,
@@ -654,6 +659,11 @@ class GoogleDriveProvider(provider.BaseProvider):
                     self._serialize_item(path.child(item['title']), item, raw=raw)
                     for item in resp_json['items']
                 ])
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug('***\n  _folder_metadata()\n***')
+                import pdb
+                pdb.set_trace()
                 built_url = resp_json.get('nextLink', None)
         return full_resp
 
@@ -691,6 +701,8 @@ class GoogleDriveProvider(provider.BaseProvider):
         :return: a metadata for the googledoc or the raw response object from the GDrive API
         """
 
+        import pdb
+        pdb.set_trace()
         self.metrics.add('_file_metadata.got_revision', revision is not None)
 
         valid_revision = revision and not revision.endswith(pd_settings.DRIVE_IGNORE_VERSION)
@@ -723,12 +735,15 @@ class GoogleDriveProvider(provider.BaseProvider):
         can_access_revisions = user_role in self.ROLES_ALLOWING_REVISIONS
         if utils.is_docs_file(data):
             if can_access_revisions:
-                return await self._handle_docs_versioning(path, data, raw=raw)
+                docs = await self._handle_docs_versioning(path, data, raw=raw)
+                pdb.set_trace()
+                return docs
             else:
                 # Revisions are not available for some sharing configurations. If revisions list is
                 # empty, use the etag of the file plus a sentinel string as a dummy revision ID.
                 data['version'] = data['etag'] + pd_settings.DRIVE_IGNORE_VERSION
 
+        pdb.set_trace()
         return data if raw else GoogleDriveFileMetadata(data, path)
 
     async def _delete_folder_contents(self, path: WaterButlerPath) -> None:
