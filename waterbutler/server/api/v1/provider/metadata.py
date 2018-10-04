@@ -69,6 +69,7 @@ class MetadataMixin:
             range=request_range,
             accept_url='direct' not in self.request.query_arguments,
             mode=self.get_query_argument('mode', default=None),
+            display_name=self.get_query_argument('displayName', default=None),
         )
 
         if isinstance(stream, str):

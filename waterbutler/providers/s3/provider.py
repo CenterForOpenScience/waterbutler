@@ -157,8 +157,9 @@ class S3Provider(provider.BaseProvider):
         else:
             query_parameters = {'versionId': revision}
 
+        display_name = kwargs.get('display_name') or path.name
         response_headers = {
-            'response-content-disposition': make_disposition(kwargs.get('displayName'))
+            'response-content-disposition': make_disposition(display_name)
         }
 
         url = functools.partial(
