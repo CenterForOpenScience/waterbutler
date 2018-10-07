@@ -1,5 +1,8 @@
 import hashlib
 import asyncio
+import string
+import random
+
 import aiohttp
 import functools
 from urllib.parse import urlparse
@@ -22,6 +25,7 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.streams import StringStream
 
 from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFileMetadata
 from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFolderMetadata
@@ -214,23 +218,73 @@ class AzureBlobStorageProvider(provider.BaseProvider):
         """
 
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
-        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
-        headers = {'Content-Length': str(stream.size), 'x-ms-blob-type': 'BlockBlob'}
-
         assert not path.path.startswith('/')
+        block_id_list = []
+
+        while True:
+            size = 4 * 1024 * 1024  # 4MB
+
+            content = await stream.read(size)
+            sub_stream = StringStream(content)
+            content_length = sub_stream.size
+            if content_length == 0:
+                break
+
+            block_id = self._make_random_block_id()
+            block_id_list.append(block_id)
+
+            await self._put_block(sub_stream, path, block_id, conflict=conflict)
+
+        await self._put_block_list(path, block_id_list, conflict=conflict)
+
+        return (await self.metadata(path, **kwargs)), not exists
+
+    async def _put_block(self, stream, path, block_id, conflict='replace'):
+        path, exists = await self.handle_name_conflict(path, conflict=conflict)
+        assert not path.path.startswith('/')
+
+        query = {'comp': 'block', 'blockid': block_id}
+        headers = {'Content-Length': str(stream.size)}
 
         resp = await self.make_signed_request(
             'PUT',
             functools.partial(self.generate_urls, path.path),
             data=stream,
             headers=headers,
+            params=query,
             skip_auto_headers={'CONTENT-TYPE'},
             expects=(200, 201, 202, ),
             throws=exceptions.UploadError,
         )
         await resp.release()
 
-        return (await self.metadata(path, **kwargs)), not exists
+    async def _put_block_list(self, path, block_id_list, conflict='replace'):
+        path, exists = await self.handle_name_conflict(path, conflict=conflict)
+        assert not path.path.startswith('/')
+
+        xml = '<?xml version="1.0" encoding="utf-8"?><BlockList>' + \
+              ''.join(map(lambda x: '<Uncommitted>%s</Uncommitted>' % x, block_id_list)) + \
+              '</BlockList>'
+        stream = StringStream(xml)
+
+        query = {'comp': 'blocklist'}
+        headers = {'Content-Length': str(stream.size)}
+
+        resp = await self.make_signed_request(
+            'PUT',
+            functools.partial(self.generate_urls, path.path),
+            headers=headers,
+            params=query,
+            data=stream,
+            skip_auto_headers={'CONTENT-TYPE'},
+            expects=(200, 201, 202, ),
+            throws=exceptions.UploadError,
+        )
+        await resp.release()
+
+    def _make_random_block_id(self, k=32):
+        chars = string.ascii_letters + string.digits
+        return ''.join([random.choice(chars) for _ in range(k)])
 
     async def delete(self, path, confirm_delete=0, **kwargs):
         """Deletes the key at the specified path
