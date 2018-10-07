@@ -367,23 +367,30 @@ class TestMetadata:
     @pytest.mark.aiohttpretty
     async def test_upload(self, provider, file_content, file_stream, file_metadata, mock_time):
         path = WaterButlerPath('/foobah')
+        block_id = 'aaabbbccc'
+        block_req_params = {'comp': 'block', 'blockid': block_id}
+        block_list_req_params = {'comp': 'blocklist'}
         for url in provider.generate_urls(path.path):
-            aiohttpretty.register_uri('PUT', url, status=200)
+            aiohttpretty.register_uri('PUT', url, status=200, params=block_req_params)
+            aiohttpretty.register_uri('PUT', url, status=200, params=block_list_req_params)
         for metadata_url in provider.generate_urls(path.path):
             aiohttpretty.register_uri(
                 'HEAD',
                 metadata_url,
                 responses=[
                     {'status': 404},
+                    {'status': 404},
+                    {'status': 404},
                     {'headers': file_metadata},
                 ],
             )
 
-        metadata, created = await provider.upload(file_stream, path)
+        metadata, created = await provider.upload(file_stream, path, block_id_list=[block_id])
 
         assert metadata.kind == 'file'
         assert created
-        assert aiohttpretty.has_call(method='PUT', uri=url)
+        assert aiohttpretty.has_call(method='PUT', uri=url, params=block_req_params)
+        assert aiohttpretty.has_call(method='PUT', uri=url, params=block_list_req_params)
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
 
 
