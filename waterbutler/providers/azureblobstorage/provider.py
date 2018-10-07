@@ -31,6 +31,8 @@ from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFile
 from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFolderMetadata
 from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFileMetadataHeaders
 
+MAX_BLOCK_SIZE = 4 * 1024 * 1024  # 4MB
+
 
 class _Request(object):
 
@@ -219,21 +221,23 @@ class AzureBlobStorageProvider(provider.BaseProvider):
 
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         assert not path.path.startswith('/')
-        block_id_list = []
+        block_id_num = 0
+        block_id_list = kwargs.get('block_id_list', [])
 
+        sub_stream = StringStream(await stream.read(MAX_BLOCK_SIZE))
         while True:
-            size = 4 * 1024 * 1024  # 4MB
+            # upload at least one
+            if block_id_num >= len(block_id_list):
+                block_id_list.append(self._make_random_block_id())
 
-            content = await stream.read(size)
-            sub_stream = StringStream(content)
-            content_length = sub_stream.size
-            if content_length == 0:
-                break
-
-            block_id = self._make_random_block_id()
-            block_id_list.append(block_id)
+            block_id = block_id_list[block_id_num]
+            block_id_num += 1
 
             await self._put_block(sub_stream, path, block_id, conflict=conflict)
+
+            sub_stream = StringStream(await stream.read(MAX_BLOCK_SIZE))
+            if sub_stream.size == 0:
+                break
 
         await self._put_block_list(path, block_id_list, conflict=conflict)
 
