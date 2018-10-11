@@ -7,7 +7,8 @@ import aiohttp
 from waterbutler.core import exceptions
 from waterbutler.auth.osf import settings
 from waterbutler.core.auth import (BaseAuthHandler,
-                                    AuthType)
+                                   AuthType)
+from waterbutler.settings import MFR_IDENTIFYING_HEADER
 
 
 JWE_KEY = jwe.kdf(settings.JWE_SECRET.encode(), settings.JWE_SALT.encode())
@@ -123,6 +124,9 @@ class OsfAuthHandler(BaseAuthHandler):
 
         if 'Authorization' in request.headers:
             headers['Authorization'] = request.headers['Authorization']
+
+        if MFR_IDENTIFYING_HEADER in request.headers:
+            headers[MFR_IDENTIFYING_HEADER] = request.headers[MFR_IDENTIFYING_HEADER]
 
         cookie = request.query_arguments.get('cookie')
         if cookie:
