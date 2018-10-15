@@ -2,6 +2,7 @@
 from waterbutler.core.streams.base import BaseStream  # noqa
 from waterbutler.core.streams.base import MultiStream  # noqa
 from waterbutler.core.streams.base import CutoffStream  # noqa
+from waterbutler.core.streams.base import ByteStream  # noqa
 from waterbutler.core.streams.base import StringStream  # noqa
 from waterbutler.core.streams.base import EmptyStream  # noqa
 

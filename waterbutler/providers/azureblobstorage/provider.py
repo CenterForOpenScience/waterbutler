@@ -2,6 +2,7 @@ import hashlib
 import asyncio
 import string
 import random
+from collections import deque
 
 import aiohttp
 import functools
@@ -25,13 +26,14 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.core.streams import StringStream
+from waterbutler.core.streams import StringStream, ByteStream
 
 from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFileMetadata
 from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFolderMetadata
 from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFileMetadataHeaders
 
-MAX_BLOCK_SIZE = 4 * 1024 * 1024  # 4MB
+MAX_UPLOAD_BLOCK_SIZE = 4 * 1024 * 1024  # 4MB
+MAX_UPLOAD_ONCE_SIZE = 64 * 1024 * 1024  # 64MB
 
 
 class _Request(object):
@@ -210,43 +212,69 @@ class AzureBlobStorageProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp)
 
-    async def upload(self, stream, path, conflict='replace', **kwargs):
+    async def upload(self, stream, path, conflict='replace', parallel_num=2, **kwargs):
         """Uploads the given stream to Azure Blob Storage
 
         :param waterbutler.core.streams.RequestWrapper stream: The stream to put to Azure Blob Storage
         :param str path: The full path of the key to upload to/into
+        :param int parallel_num: The number of parallel uploads
 
         :rtype: dict, bool
         """
 
+        assert(parallel_num > 0)
+
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         assert not path.path.startswith('/')
-        block_id_num = 0
-        block_id_list = kwargs.get('block_id_list', [])
 
-        sub_stream = StringStream(await stream.read(MAX_BLOCK_SIZE))
-        while True:
-            # upload at least one
-            if block_id_num >= len(block_id_list):
-                block_id_list.append(self._make_random_block_id())
+        # upload stream at once if the stream size is less than or equal to MAX_UPLOAD_ONCE_SIZE,
+        # otherwise upload sub streams divided into MAX_UPLOAD_BLOCK_SIZE or less.
+        if stream.size <= MAX_UPLOAD_ONCE_SIZE:
+            await self._upload_at_once(stream, path)
+        else:
+            block_id_queue = deque(kwargs.get('block_id_list', []))
+            uploaded_block_id_list = []
+            lock = asyncio.Lock()
 
-            block_id = block_id_list[block_id_num]
-            block_id_num += 1
+            async def sub_upload():
+                while True:
+                    with await lock:
+                        sub_stream = ByteStream(await stream.read(MAX_UPLOAD_BLOCK_SIZE))
+                        if len(uploaded_block_id_list) > 0 and sub_stream.size == 0:
+                            return
 
-            await self._put_block(sub_stream, path, block_id, conflict=conflict)
+                        block_id = block_id_queue.popleft() \
+                            if len(block_id_queue) > 0 \
+                            else self._make_random_block_id()
 
-            sub_stream = StringStream(await stream.read(MAX_BLOCK_SIZE))
-            if sub_stream.size == 0:
-                break
+                        uploaded_block_id_list.append(block_id)
 
-        await self._put_block_list(path, block_id_list, conflict=conflict)
+                    await self._put_block(sub_stream, path, block_id)
+
+            tasks = [sub_upload() for _ in range(parallel_num)]
+            await asyncio.wait(tasks)
+
+            await self._put_block_list(path, uploaded_block_id_list)
 
         return (await self.metadata(path, **kwargs)), not exists
 
-    async def _put_block(self, stream, path, block_id, conflict='replace'):
-        path, exists = await self.handle_name_conflict(path, conflict=conflict)
-        assert not path.path.startswith('/')
+    async def _upload_at_once(self, stream, path):
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+        headers = {'Content-Length': str(stream.size), 'x-ms-blob-type': 'BlockBlob'}
 
+        resp = await self.make_signed_request(
+            'PUT',
+            functools.partial(self.generate_urls, path.path),
+            data=stream,
+            headers=headers,
+            skip_auto_headers={'CONTENT-TYPE'},
+            expects=(200, 201, 202, ),
+            throws=exceptions.UploadError,
+        )
+        await resp.release()
+
+    async def _put_block(self, stream, path, block_id):
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         query = {'comp': 'block', 'blockid': block_id}
         headers = {'Content-Length': str(stream.size)}
 
@@ -262,10 +290,7 @@ class AzureBlobStorageProvider(provider.BaseProvider):
         )
         await resp.release()
 
-    async def _put_block_list(self, path, block_id_list, conflict='replace'):
-        path, exists = await self.handle_name_conflict(path, conflict=conflict)
-        assert not path.path.startswith('/')
-
+    async def _put_block_list(self, path, block_id_list):
         xml = '<?xml version="1.0" encoding="utf-8"?><BlockList>' + \
               ''.join(map(lambda x: '<Uncommitted>%s</Uncommitted>' % x, block_id_list)) + \
               '</BlockList>'
