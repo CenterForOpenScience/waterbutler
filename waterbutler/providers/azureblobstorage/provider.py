@@ -1,7 +1,6 @@
 import base64
 import hashlib
 import asyncio
-
 import aiohttp
 import functools
 from urllib.parse import urlparse
@@ -216,7 +215,6 @@ class AzureBlobStorageProvider(provider.BaseProvider):
 
         :param waterbutler.core.streams.RequestWrapper stream: The stream to put to Azure Blob Storage
         :param str path: The full path of the key to upload to/into
-        :param int parallel_num: The number of parallel uploads
 
         :rtype: dict, bool
         """

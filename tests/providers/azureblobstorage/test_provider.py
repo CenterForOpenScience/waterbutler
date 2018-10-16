@@ -1,7 +1,6 @@
-import math
-
 import pytest
 
+import math
 import io
 import time
 import base64
@@ -433,7 +432,6 @@ class TestMetadata:
         block_id_prefix = 'hogefuga'
         block_id_list = [AzureBlobStorageProvider._format_block_id(block_id_prefix, i) for i in range(upload_times)]
         block_req_params_list = [{'comp': 'block', 'blockid': block_id} for block_id in block_id_list]
-        print(block_id_list)
         block_list_req_params = {'comp': 'blocklist'}
 
         path = WaterButlerPath('/large_foobah')
