@@ -1,7 +1,6 @@
+import base64
 import hashlib
 import asyncio
-import string
-from collections import deque
 
 import aiohttp
 import functools
@@ -226,7 +225,7 @@ class AzureBlobStorageProvider(provider.BaseProvider):
         assert not path.path.startswith('/')
 
         if block_id_prefix is None:
-            block_id_prefix = uuid.uuid4()
+            block_id_prefix = str(uuid.uuid4())
 
         # upload stream at once if the stream size is less than or equal to MAX_UPLOAD_ONCE_SIZE,
         # otherwise upload sub streams divided into MAX_UPLOAD_BLOCK_SIZE or less.
@@ -310,10 +309,12 @@ class AzureBlobStorageProvider(provider.BaseProvider):
 
     @staticmethod
     def _format_block_id(prefix, index):
-        # block_id = PREFIX + sequential number
+        # block_id = base64encode(PREFIX + sequential number)
         # The sequential number is represented by 5 digits of 0 filling
-        # because the maximum number of blocks is 50,000
-        return '%s_%05d'.format(prefix, index)
+        # because all block_id must have the same number of digits and
+        # the maximum number of blocks is 50,000.
+        s = '%s_%05d' % (prefix, index)
+        return base64.urlsafe_b64encode(s.encode('utf-8')).decode('utf-8')
 
     async def delete(self, path, confirm_delete=0, **kwargs):
         """Deletes the key at the specified path

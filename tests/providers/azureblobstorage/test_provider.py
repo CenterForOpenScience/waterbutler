@@ -1,5 +1,3 @@
-import random
-import string
 import math
 
 import pytest
@@ -23,7 +21,6 @@ from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFile
 from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFolderMetadata
 from waterbutler.providers.azureblobstorage.provider import (
     MAX_UPLOAD_BLOCK_SIZE,
-    MAX_UPLOAD_ONCE_SIZE,
 )
 
 
@@ -436,6 +433,7 @@ class TestMetadata:
         block_id_prefix = 'hogefuga'
         block_id_list = [AzureBlobStorageProvider._format_block_id(block_id_prefix, i) for i in range(upload_times)]
         block_req_params_list = [{'comp': 'block', 'blockid': block_id} for block_id in block_id_list]
+        print(block_id_list)
         block_list_req_params = {'comp': 'blocklist'}
 
         path = WaterButlerPath('/large_foobah')
@@ -454,7 +452,7 @@ class TestMetadata:
                 ],
             )
 
-        metadata, created = await provider.upload(large_file_stream, path, block_id_list=block_id_list)
+        metadata, created = await provider.upload(large_file_stream, path, block_id_prefix=block_id_prefix)
 
         assert metadata.kind == 'file'
         assert created
