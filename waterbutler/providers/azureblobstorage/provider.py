@@ -1,7 +1,6 @@
 import hashlib
 import asyncio
 import string
-import random
 from collections import deque
 
 import aiohttp
@@ -34,6 +33,7 @@ from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFile
 
 MAX_UPLOAD_BLOCK_SIZE = 4 * 1024 * 1024  # 4MB
 MAX_UPLOAD_ONCE_SIZE = 64 * 1024 * 1024  # 64MB
+UPLOAD_PARALLEL_NUM = 2  # must be more than 1
 
 
 class _Request(object):
@@ -212,7 +212,7 @@ class AzureBlobStorageProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp)
 
-    async def upload(self, stream, path, conflict='replace', parallel_num=2, **kwargs):
+    async def upload(self, stream, path, conflict='replace', block_id_prefix=None, **kwargs):
         """Uploads the given stream to Azure Blob Storage
 
         :param waterbutler.core.streams.RequestWrapper stream: The stream to put to Azure Blob Storage
@@ -222,39 +222,36 @@ class AzureBlobStorageProvider(provider.BaseProvider):
         :rtype: dict, bool
         """
 
-        assert(parallel_num > 0)
-
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         assert not path.path.startswith('/')
+
+        if block_id_prefix is None:
+            block_id_prefix = uuid.uuid4()
 
         # upload stream at once if the stream size is less than or equal to MAX_UPLOAD_ONCE_SIZE,
         # otherwise upload sub streams divided into MAX_UPLOAD_BLOCK_SIZE or less.
         if stream.size <= MAX_UPLOAD_ONCE_SIZE:
             await self._upload_at_once(stream, path)
         else:
-            block_id_queue = deque(kwargs.get('block_id_list', []))
-            uploaded_block_id_list = []
+            block_id_list = []
             lock = asyncio.Lock()
 
             async def sub_upload():
                 while True:
                     with await lock:
                         sub_stream = ByteStream(await stream.read(MAX_UPLOAD_BLOCK_SIZE))
-                        if len(uploaded_block_id_list) > 0 and sub_stream.size == 0:
+                        if sub_stream.size == 0:
                             return
 
-                        block_id = block_id_queue.popleft() \
-                            if len(block_id_queue) > 0 \
-                            else self._make_random_block_id()
-
-                        uploaded_block_id_list.append(block_id)
+                        block_id = self._format_block_id(block_id_prefix, len(block_id_list))
+                        block_id_list.append(block_id)
 
                     await self._put_block(sub_stream, path, block_id)
 
-            tasks = [sub_upload() for _ in range(parallel_num)]
+            tasks = [sub_upload() for _ in range(UPLOAD_PARALLEL_NUM)]
             await asyncio.wait(tasks)
 
-            await self._put_block_list(path, uploaded_block_id_list)
+            await self._put_block_list(path, block_id_list)
 
         return (await self.metadata(path, **kwargs)), not exists
 
@@ -311,9 +308,12 @@ class AzureBlobStorageProvider(provider.BaseProvider):
         )
         await resp.release()
 
-    def _make_random_block_id(self, k=32):
-        chars = string.ascii_letters + string.digits
-        return ''.join([random.choice(chars) for _ in range(k)])
+    @staticmethod
+    def _format_block_id(prefix, index):
+        # block_id = PREFIX + sequential number
+        # The sequential number is represented by 5 digits of 0 filling
+        # because the maximum number of blocks is 50,000
+        return '%s_%05d'.format(prefix, index)
 
     async def delete(self, path, confirm_delete=0, **kwargs):
         """Deletes the key at the specified path

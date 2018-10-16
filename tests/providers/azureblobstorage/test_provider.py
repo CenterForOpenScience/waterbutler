@@ -432,10 +432,9 @@ class TestMetadata:
     @pytest.mark.aiohttpretty
     async def test_upload_large(self, provider, large_file_content, large_file_stream, large_file_metadata, mock_time):
         # upload 4MB data 17 times and 3MB once, and request block_list
-        chars = string.ascii_letters + string.digits
-        assert(len(large_file_content) > MAX_UPLOAD_ONCE_SIZE)
         upload_times = math.floor(len(large_file_content) / MAX_UPLOAD_BLOCK_SIZE)
-        block_id_list = [''.join([random.choice(chars) for _ in range(32)]) for _ in range(upload_times)]
+        block_id_prefix = 'hogefuga'
+        block_id_list = [AzureBlobStorageProvider._format_block_id(block_id_prefix, i) for i in range(upload_times)]
         block_req_params_list = [{'comp': 'block', 'blockid': block_id} for block_id in block_id_list]
         block_list_req_params = {'comp': 'blocklist'}
 
