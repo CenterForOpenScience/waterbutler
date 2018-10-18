@@ -814,7 +814,6 @@ class TestCrossRegionMove:
 
         src_provider.download.assert_called_once_with(WaterButlerPath('/foo'))
         dst_provider._send_to_storage_provider.assert_called_once_with(file_stream,
-                                                                       WaterButlerPath('/'),
                                                                        rename=None,
                                                                        conflict='replace')
         src_provider.intra_move.assert_called_once_with(dst_provider, WaterButlerPath('/foo'),
@@ -919,7 +918,6 @@ class TestCrossRegionCopy:
 
         src_provider.download.assert_called_once_with(WaterButlerPath('/foo'))
         dst_provider._send_to_storage_provider.assert_called_once_with(file_stream,
-                                                                       WaterButlerPath('/'),
                                                                        rename=None,
                                                                        conflict='replace')
         src_provider.intra_copy.assert_called_once_with(dst_provider, WaterButlerPath('/foo'),

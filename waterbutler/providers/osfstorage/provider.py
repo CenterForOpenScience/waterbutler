@@ -236,7 +236,7 @@ class OSFStorageProvider(provider.BaseProvider):
         issuer.
         """
 
-        metadata = await self._send_to_storage_provider(stream, path, **kwargs)
+        metadata = await self._send_to_storage_provider(stream, **kwargs)
         metadata = metadata.serialized()
 
         data, created = await self._send_to_metadata_provider(stream, path, metadata, **kwargs)
@@ -385,8 +385,7 @@ class OSFStorageProvider(provider.BaseProvider):
             if getattr(download_stream, 'name', None):
                 dest_path.rename(download_stream.name)
 
-            await dest_provider._send_to_storage_provider(download_stream,  # type: ignore
-                                                          dest_path, **kwargs)
+            await dest_provider._send_to_storage_provider(download_stream, **kwargs)  # type: ignore
             meta_data, created = await self.intra_move(dest_provider, src_path, dest_path)
 
         return meta_data, created
@@ -451,8 +450,7 @@ class OSFStorageProvider(provider.BaseProvider):
             if getattr(download_stream, 'name', None):
                 dest_path.rename(download_stream.name)
 
-            await dest_provider._send_to_storage_provider(download_stream,  # type: ignore
-                                                          dest_path, **kwargs)
+            await dest_provider._send_to_storage_provider(download_stream, **kwargs)  # type: ignore
             meta_data, created = await self.intra_copy(dest_provider, src_path, dest_path)
 
         return meta_data, created
@@ -533,7 +531,7 @@ class OSFStorageProvider(provider.BaseProvider):
 
         return folder_meta, created
 
-    async def _send_to_storage_provider(self, stream, path, **kwargs):
+    async def _send_to_storage_provider(self, stream, **kwargs):
         """Send uploaded file data to the storage provider, where it will be stored w/o metadata
         in a content-addressable format.
 
