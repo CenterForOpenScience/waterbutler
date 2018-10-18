@@ -2,6 +2,7 @@ import io
 import os
 import json
 import time
+import hashlib
 from unittest import mock
 
 import pytest
@@ -191,6 +192,12 @@ def file_content():
 
 
 @pytest.fixture
+def file_digest():
+    """The sha256 of the `file_content` fixture."""
+    return 'e74ca13b4c0a61dcf7746ff71c1238e2cd1b5026838c8b3c5e147595aa627025'
+
+
+@pytest.fixture
 def file_like(file_content):
     return io.BytesIO(file_content)
 
@@ -198,6 +205,13 @@ def file_like(file_content):
 @pytest.fixture
 def file_stream(file_like):
     return streams.FileStreamReader(file_like)
+
+
+@pytest.fixture
+def file_stream_with_digest(file_stream):
+    """The same as `file_stream` but with a sha256 hassh writer added."""
+    file_stream.add_writer('sha256', streams.HashStreamWriter(hashlib.sha256))
+    return file_stream
 
 
 @pytest.fixture

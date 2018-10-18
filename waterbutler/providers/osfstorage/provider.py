@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import typing
+import asyncio
 import hashlib
 import logging
 
@@ -10,6 +11,7 @@ from waterbutler.core import signing
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
+from waterbutler import settings as wb_settings
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.metadata import BaseMetadata
 from waterbutler.core.utils import RequestHandlerContext
@@ -336,9 +338,16 @@ class OSFStorageProvider(provider.BaseProvider):
                    handle_naming: bool=True) -> typing.Tuple[BaseMetadata, bool]:
         """Override parent's move to support cross-region osfstorage moves while preserving guids
         and versions. Delegates to :meth:`.BaseProvider.move` when destination is not osfstorage.
-        If both providers are in the same region (i.e. `.can_intra_move` is true), then calls that.
-        Otherwise, will grab a download stream from the source region, send it to the destination
-        region, *then* execute an `.intra_move` to update the file metada in-place.
+        If source and destination providers are in different regions (i.e. `.can_intra_move` is
+        ``False``), this method recursively copies all file data from the source region to the
+        destination region.  Then, for both same-region and cross-region copies, it calls
+        `.intra_move`.  The OSF's ``intra_move`` endpoint will update the metadata entries for all
+        of the moved files and folders and assign them the correct region.
+
+        If the call to `.intra_move` fails, the OSF will rollback the update of the metadata
+        entries, but the copied data will remain on the new region.  Since the data is stored via
+        content-addressing, this will result in some unlinked data on the new region, but will not
+        be user-visible.
         """
 
         # when moving to non-osfstorage, default move is fine
@@ -347,7 +356,6 @@ class OSFStorageProvider(provider.BaseProvider):
                                       conflict=conflict, handle_naming=handle_naming)
 
         args = (dest_provider, src_path, dest_path)
-        kwargs = {'rename': rename, 'conflict': conflict}
 
         self.provider_metrics.add('move', {
             'got_handle_naming': handle_naming,
@@ -363,7 +371,6 @@ class OSFStorageProvider(provider.BaseProvider):
                 conflict=conflict,
             )
             args = (dest_provider, src_path, dest_path)
-            kwargs = {}
 
         # files and folders shouldn't overwrite themselves
         if (
@@ -372,23 +379,17 @@ class OSFStorageProvider(provider.BaseProvider):
         ):
             raise exceptions.OverwriteSelfError(src_path)
 
-        self.provider_metrics.add('move.can_intra_move', False)
-        if self.can_intra_move(dest_provider, src_path):
-            self.provider_metrics.add('move.can_intra_move', True)
-            return await self.intra_move(*args)
+        self.provider_metrics.add('move.can_intra_move', True)
+        if not self.can_intra_move(dest_provider, src_path):
+            self.provider_metrics.add('move.can_intra_move', False)
+            if src_path.is_dir:
+                await self._osfstorage_recursive_op(dest_provider, src_path)
+            else:
+                src_metadata = await self.metadata(src_path)
+                expected_hash = src_metadata['hashes']['sha256']
+                await self._copy_across_region(dest_provider, src_path, expected_hash)
 
-        if src_path.is_dir:
-            meta_data, created = await self._folder_file_op(self.move, *args, **kwargs)  # type: ignore
-            await self.delete(src_path)
-        else:
-            download_stream = await self.download(src_path)
-            if getattr(download_stream, 'name', None):
-                dest_path.rename(download_stream.name)
-
-            await dest_provider._send_to_storage_provider(download_stream, **kwargs)  # type: ignore
-            meta_data, created = await self.intra_move(dest_provider, src_path, dest_path)
-
-        return meta_data, created
+        return await self.intra_move(*args)
 
     async def copy(self,
                    dest_provider: provider.BaseProvider,
@@ -398,13 +399,17 @@ class OSFStorageProvider(provider.BaseProvider):
                    conflict: str='replace',
                    handle_naming: bool=True) -> typing.Tuple[BaseMetadata, bool]:
         """Override parent's copy to support cross-region osfstorage copies. Delegates to
-        :meth:`.BaseProvider.copy` when destination is not osfstorage. If both providers are in the
-        same region (i.e. `.can_intra_copy` is true), call `.intra_copy`. Otherwise, grab a
-        download stream from the source region, send it to the destination region, *then* execute
-        an `.intra_copy` to make new file metadata entries in the OSF.
+        :meth:`.BaseProvider.copy` when destination is not osfstorage.  If source and destination
+        providers are in different regions (i.e. `.can_intra_copy` is ``False``), this method
+        recursively copies all file data from the source region to the destination region.  Then,
+        for both same-region and cross-region copies, it calls `.intra_copy`.  The OSF's
+        ``intra_copy`` endpoint will create new metadata entries for all of the copied files and
+        folders and assign them the correct region.
 
-        This is needed because a same-region osfstorage copy will duplicate *all* the versions of
-        the file, but `.BaseProvider.copy` will only copy the most recent version.
+        If the call to `.intra_copy` fails, the OSF will rollback creation of the metadata entries,
+        but the copied data will remain on the new region.  Since the data is stored via
+        content-addressing, this will result in some unlinked data on the new region, but will not
+        be user-visible.
         """
 
         # when moving to non-osfstorage, default move is fine
@@ -413,7 +418,6 @@ class OSFStorageProvider(provider.BaseProvider):
                                       conflict=conflict, handle_naming=handle_naming)
 
         args = (dest_provider, src_path, dest_path)
-        kwargs = {'rename': rename, 'conflict': conflict}
 
         self.provider_metrics.add('copy', {
             'got_handle_naming': handle_naming,
@@ -429,7 +433,6 @@ class OSFStorageProvider(provider.BaseProvider):
                 conflict=conflict,
             )
             args = (dest_provider, src_path, dest_path)
-            kwargs = {}
 
         # files and folders shouldn't overwrite themselves
         if (
@@ -438,22 +441,17 @@ class OSFStorageProvider(provider.BaseProvider):
         ):
             raise exceptions.OverwriteSelfError(src_path)
 
-        self.provider_metrics.add('copy.can_intra_copy', False)
-        if self.can_intra_copy(dest_provider, src_path):
-            self.provider_metrics.add('copy.can_intra_copy', True)
-            return await self.intra_copy(*args)
+        self.provider_metrics.add('copy.can_intra_copy', True)
+        if not self.can_intra_copy(dest_provider, src_path):
+            self.provider_metrics.add('copy.can_intra_copy', False)
+            if src_path.is_dir:
+                await self._osfstorage_recursive_op(dest_provider, src_path)
+            else:
+                src_metadata = await self.metadata(src_path)
+                expected_hash = src_metadata['hashes']['sha256']
+                await self._copy_across_region(dest_provider, src_path, expected_hash)
 
-        if src_path.is_dir:
-            meta_data, created = await self._folder_file_op(self.copy, *args, **kwargs)  # type: ignore
-        else:
-            download_stream = await self.download(src_path)
-            if getattr(download_stream, 'name', None):
-                dest_path.rename(download_stream.name)
-
-            await dest_provider._send_to_storage_provider(download_stream, **kwargs)  # type: ignore
-            meta_data, created = await self.intra_copy(dest_provider, src_path, dest_path)
-
-        return meta_data, created
+        return await self.intra_copy(*args)
 
     # ========== private ==========
 
@@ -598,3 +596,77 @@ class OSFStorageProvider(provider.BaseProvider):
             data = await response.json()
 
         return data, created
+
+    async def _osfstorage_recursive_op(self, dest_provider, src_path, _depth=0):
+        """Recurse through a folder's contents and copy all file data from ``self``'s storage
+        region to ``dest_provider``'s.
+
+        The implementation is a simplified version of `BaseProvider._folder_file_op`.
+
+        :param dest_provider: an OSFStorage provider linked to another region
+        :param src_path: the WaterButlerPath of the file to be copied
+        :param int _depth: a debugging parameter that tracks recursion depth
+        """
+
+        assert src_path.is_dir, 'src_path must be a directory'
+
+        items = await self.metadata(src_path)  # type: ignore
+
+        lead = '  '
+        logger.debug('{}processing folder: {}, found {} children'.format(lead * _depth, src_path,
+                                                                         len(items)))
+
+        for i in range(0, len(items), wb_settings.OP_CONCURRENCY):  # type: ignore
+            futures = []
+            for item in items[i:i + wb_settings.OP_CONCURRENCY]:  # type: ignore
+                action_coroutine = None
+                if item.is_file:
+                    expected_hash = item.extra['hashes']['sha256']
+                    logger.debug('{}processing file: {} w/ '
+                                 'checksum {}:'.format(lead * (_depth + 1), item.materialized_path,
+                                                      expected_hash))
+                    action_coroutine = self._copy_across_region(
+                        dest_provider,
+                        (await self.revalidate_path(src_path, item.name, folder=item.is_folder)),
+                        expected_hash,
+                        _depth=_depth,
+                    )
+                else:
+                    action_coroutine = self._osfstorage_recursive_op(
+                        dest_provider,
+                        (await self.revalidate_path(src_path, item.name, folder=item.is_folder)),
+                        _depth=_depth + 1,
+                    )
+
+                futures.append(asyncio.ensure_future(action_coroutine))
+
+                if item.is_folder:
+                    await futures[-1]
+
+            if not futures:
+                continue
+
+            done, _ = await asyncio.wait(futures, return_when=asyncio.FIRST_EXCEPTION)
+
+    async def _copy_across_region(self, dest_provider, src_path, expected_hash, _depth=0):
+        """Copy file at ``src_path`` to the region fronted by ``dest_provider``.  ``expected_hash``
+        is the sha256 of the file, which we verify after copy.
+
+        :param dest_provider: an OSFStorage provider linked to another region
+        :param src_path: the WaterButlerPath of the file to be copied
+        :param str expected_hash: the sha256 of the file contents, used to verify data integrity
+        :param int _depth: a debugging parameter that tracks recursion depth
+        """
+
+        lead = '  '
+        logger.debug('{}...copying from {} to dest provder'.format(lead * (_depth + 1), src_path))
+        download_stream = await self.download(src_path)
+        await dest_provider._send_to_storage_provider(download_stream)
+
+        calculated_hash = download_stream.writers['sha256'].hexdigest
+        logger.debug('{}...copy for {} COMPLETE, w/ hash:{}'.format(lead * (_depth + 1), src_path,
+                                                                    calculated_hash))
+        if calculated_hash != expected_hash:
+            logger.error('checksum mismatch: expected:{} recd:{}'.format(expected_hash,
+                                                                         calculated_hash))
+            raise exceptions.UploadChecksumMismatchError()

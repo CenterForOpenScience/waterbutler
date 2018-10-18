@@ -19,7 +19,8 @@ from tests.providers.osfstorage.fixtures import (auth, credentials, settings,
                                                  settings_region_one, settings_region_two,
                                                  provider_one, provider_two,
                                                  provider_and_mock_one, provider_and_mock_two,
-                                                 file_stream, file_like, file_content,
+                                                 file_stream, file_like, file_content, file_digest,
+                                                 file_stream_with_digest,
                                                  file_lineage, file_metadata,
                                                  file_metadata_object, file_path,
                                                  folder_lineage, folder_metadata,
@@ -794,17 +795,22 @@ class TestUploads:
 class TestCrossRegionMove:
 
     @pytest.mark.asyncio
-    async def test_move_file(self, provider_one, provider_two, file_stream, upload_response):
+    async def test_move_file(self, provider_one, provider_two, file_stream_with_digest,
+                             file_digest, upload_response):
 
         # aliased for clarity
         src_provider, dst_provider = provider_one, provider_two
 
-        src_provider.download = utils.MockCoroutine(return_value=file_stream)
+        faux_metadata = {'hashes': {'sha256': file_digest}}
+        src_provider.metadata = utils.MockCoroutine(return_value=faux_metadata)
+        src_provider.download = utils.MockCoroutine(return_value=file_stream_with_digest)
         src_provider.intra_move = utils.MockCoroutine(return_value=(upload_response, True))
         dst_provider._send_to_storage_provider = utils.MockCoroutine()
 
         src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
         dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        _ = await file_stream_with_digest.read()
 
         metadata, created = await src_provider.move(dst_provider, src_path, dest_path,
                                                     handle_naming=False);
@@ -813,20 +819,18 @@ class TestCrossRegionMove:
         assert created is True
 
         src_provider.download.assert_called_once_with(WaterButlerPath('/foo'))
-        dst_provider._send_to_storage_provider.assert_called_once_with(file_stream,
-                                                                       rename=None,
-                                                                       conflict='replace')
+        dst_provider._send_to_storage_provider.assert_called_once_with(file_stream_with_digest)
         src_provider.intra_move.assert_called_once_with(dst_provider, WaterButlerPath('/foo'),
                                                         WaterButlerPath('/'))
 
     @pytest.mark.asyncio
-    async def test_move_folder(self, provider_one, provider_two):
+    async def test_move_folder(self, provider_one, provider_two, upload_response):
 
         # aliased for clarity
         src_provider, dst_provider = provider_one, provider_two
 
-        src_provider._folder_file_op = utils.MockCoroutine(return_value=(upload_response, True))
-        src_provider.delete = utils.MockCoroutine()
+        src_provider._osfstorage_recursive_op = utils.MockCoroutine()
+        src_provider.intra_move = utils.MockCoroutine(return_value=(upload_response, True))
 
         src_path = WaterButlerPath('/foo/', _ids=('Test', '56ab34'), folder=True)
         dest_path = WaterButlerPath('/', _ids=('Test',), folder=True)
@@ -837,13 +841,10 @@ class TestCrossRegionMove:
         assert metadata is not None
         assert created is True
 
-        src_provider._folder_file_op.assert_called_once_with(src_provider.move,
-                                                             dst_provider,
-                                                             WaterButlerPath('/foo/'),
-                                                             WaterButlerPath('/'),
-                                                             rename=None,
-                                                             conflict='replace')
-        src_provider.delete.assert_called_once_with(WaterButlerPath('/foo/'))
+        src_provider._osfstorage_recursive_op.assert_called_once_with(dst_provider,
+                                                                      WaterButlerPath('/foo/'))
+        src_provider.intra_move.assert_called_once_with(dst_provider, WaterButlerPath('/foo/'),
+                                                        WaterButlerPath('/'))
 
     @pytest.mark.asyncio
     async def test_move_cross_provider(self, monkeypatch, provider_one, provider_two):
@@ -898,17 +899,22 @@ class TestCrossRegionMove:
 class TestCrossRegionCopy:
 
     @pytest.mark.asyncio
-    async def test_copy_file(self, provider_one, provider_two, file_stream, upload_response):
+    async def test_copy_file(self, provider_one, provider_two, file_stream_with_digest,
+                             file_digest, upload_response):
 
         # aliased for clarity
         src_provider, dst_provider = provider_one, provider_two
 
-        src_provider.download = utils.MockCoroutine(return_value=file_stream)
+        faux_metadata = {'hashes': {'sha256': file_digest}}
+        src_provider.metadata = utils.MockCoroutine(return_value=faux_metadata)
+        src_provider.download = utils.MockCoroutine(return_value=file_stream_with_digest)
         src_provider.intra_copy = utils.MockCoroutine(return_value=(upload_response, True))
         dst_provider._send_to_storage_provider = utils.MockCoroutine()
 
         src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
         dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        _ = await file_stream_with_digest.read()
 
         metadata, created = await src_provider.copy(dst_provider, src_path, dest_path,
                                                     handle_naming=False);
@@ -917,19 +923,19 @@ class TestCrossRegionCopy:
         assert created is True
 
         src_provider.download.assert_called_once_with(WaterButlerPath('/foo'))
-        dst_provider._send_to_storage_provider.assert_called_once_with(file_stream,
-                                                                       rename=None,
-                                                                       conflict='replace')
+        dst_provider._send_to_storage_provider.assert_called_once_with(file_stream_with_digest)
         src_provider.intra_copy.assert_called_once_with(dst_provider, WaterButlerPath('/foo'),
                                                         WaterButlerPath('/'))
 
     @pytest.mark.asyncio
-    async def test_copy_folder(self, provider_one, provider_two):
+    async def test_copy_folder(self, provider_one, provider_two, upload_response):
 
         # aliased for clarity
         src_provider, dst_provider = provider_one, provider_two
 
-        src_provider._folder_file_op = utils.MockCoroutine(return_value=(upload_response, True))
+        src_provider._osfstorage_recursive_op = utils.MockCoroutine(return_value=(upload_response,
+                                                                                  True))
+        src_provider.intra_copy = utils.MockCoroutine(return_value=(upload_response, True))
 
         src_path = WaterButlerPath('/foo/', _ids=('Test', '56ab34'), folder=True)
         dest_path = WaterButlerPath('/', _ids=('Test',), folder=True)
@@ -940,12 +946,10 @@ class TestCrossRegionCopy:
         assert metadata is not None
         assert created is True
 
-        src_provider._folder_file_op.assert_called_once_with(src_provider.copy,
-                                                             dst_provider,
-                                                             WaterButlerPath('/foo/'),
-                                                             WaterButlerPath('/'),
-                                                             rename=None,
-                                                             conflict='replace')
+        src_provider._osfstorage_recursive_op.assert_called_once_with(dst_provider,
+                                                                      WaterButlerPath('/foo/'))
+        src_provider.intra_copy.assert_called_once_with(dst_provider, WaterButlerPath('/foo/'),
+                                                        WaterButlerPath('/'))
 
     @pytest.mark.asyncio
     async def test_copy_cross_provider(self, monkeypatch, provider_one, provider_two):
