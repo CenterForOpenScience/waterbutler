@@ -21,6 +21,7 @@ from tests.providers.osfstorage.fixtures import (auth, credentials, settings,
                                                  provider_and_mock_one, provider_and_mock_two,
                                                  file_stream, file_like, file_content, file_digest,
                                                  file_stream_with_digest,
+                                                 file_stream_metadata, file_stream_metadata_object,
                                                  file_lineage, file_metadata,
                                                  file_metadata_object, file_path,
                                                  folder_lineage, folder_metadata,
@@ -796,13 +797,12 @@ class TestCrossRegionMove:
 
     @pytest.mark.asyncio
     async def test_move_file(self, provider_one, provider_two, file_stream_with_digest,
-                             file_digest, upload_response):
+                             file_digest, upload_response, file_stream_metadata_object):
 
         # aliased for clarity
         src_provider, dst_provider = provider_one, provider_two
 
-        faux_metadata = {'hashes': {'sha256': file_digest}}
-        src_provider.metadata = utils.MockCoroutine(return_value=faux_metadata)
+        src_provider.metadata = utils.MockCoroutine(return_value=file_stream_metadata_object)
         src_provider.download = utils.MockCoroutine(return_value=file_stream_with_digest)
         src_provider.intra_move = utils.MockCoroutine(return_value=(upload_response, True))
         dst_provider._send_to_storage_provider = utils.MockCoroutine()
@@ -900,13 +900,12 @@ class TestCrossRegionCopy:
 
     @pytest.mark.asyncio
     async def test_copy_file(self, provider_one, provider_two, file_stream_with_digest,
-                             file_digest, upload_response):
+                             file_digest, upload_response, file_stream_metadata_object):
 
         # aliased for clarity
         src_provider, dst_provider = provider_one, provider_two
 
-        faux_metadata = {'hashes': {'sha256': file_digest}}
-        src_provider.metadata = utils.MockCoroutine(return_value=faux_metadata)
+        src_provider.metadata = utils.MockCoroutine(return_value=file_stream_metadata_object)
         src_provider.download = utils.MockCoroutine(return_value=file_stream_with_digest)
         src_provider.intra_copy = utils.MockCoroutine(return_value=(upload_response, True))
         dst_provider._send_to_storage_provider = utils.MockCoroutine()

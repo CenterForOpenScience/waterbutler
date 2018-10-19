@@ -386,7 +386,7 @@ class OSFStorageProvider(provider.BaseProvider):
                 await self._osfstorage_recursive_op(dest_provider, src_path)
             else:
                 src_metadata = await self.metadata(src_path)
-                expected_hash = src_metadata['hashes']['sha256']
+                expected_hash = src_metadata.extra['hashes']['sha256']
                 await self._copy_across_region(dest_provider, src_path, expected_hash)
 
         return await self.intra_move(*args)
@@ -448,7 +448,7 @@ class OSFStorageProvider(provider.BaseProvider):
                 await self._osfstorage_recursive_op(dest_provider, src_path)
             else:
                 src_metadata = await self.metadata(src_path)
-                expected_hash = src_metadata['hashes']['sha256']
+                expected_hash = src_metadata.extra['hashes']['sha256']
                 await self._copy_across_region(dest_provider, src_path, expected_hash)
 
         return await self.intra_copy(*args)

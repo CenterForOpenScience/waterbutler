@@ -159,6 +159,12 @@ def file_path(file_lineage):
 
 
 @pytest.fixture
+def file_stream_metadata():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+        return json.load(fp)['file_stream_metadata']
+
+
+@pytest.fixture
 def revisions_metadata():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
         return json.load(fp)['revisions_metadata']
@@ -184,6 +190,12 @@ def folder_metadata_object(folder_metadata):
 @pytest.fixture
 def revision_metadata_object(revisions_metadata):
     return OsfStorageRevisionMetadata(revisions_metadata['revisions'][0])
+
+
+@pytest.fixture
+def file_stream_metadata_object(file_stream_metadata):
+    path = WaterButlerPath('/' + file_stream_metadata['name'])
+    return OsfStorageFileMetadata(file_stream_metadata, path)
 
 
 @pytest.fixture

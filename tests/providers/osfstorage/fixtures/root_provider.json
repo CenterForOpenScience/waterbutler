@@ -178,5 +178,22 @@
     "settings": {
       "folder": "/code/website/osfstoragecache"
     }
+  },
+  "file_stream_metadata": {
+    "checkout": null,
+    "contentType": null,
+    "created": "2017-09-01T19:34:00.175741+00:00",
+    "downloads": 0,
+    "fullPath": "/sleepy.txt",
+    "id": "59a9b628b7d1c903ab5a8f52",
+    "kind": "file",
+    "md5": "eb3f7cc15ba7b6effb2186284185c5cf",
+    "modified": "2017-09-01T19:34:00.175741+00:00",
+    "name": "sleepy.txt",
+    "path": "/59a9b628b7d1c903ab5a8f52",
+    "sha256": "e74ca13b4c0a61dcf7746ff71c1238e2cd1b5026838c8b3c5e147595aa627025",
+    "size": 6,
+    "version": 1,
+    "latestVersionSeen": null
   }
 }
