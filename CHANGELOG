@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+0.42.2 (2018-10-24)
+===================
+- Feature: Relay MFR-identifying header to OSF when requesting auth on MFR's behalf.  This enables
+more accurate couting of file download and render requests.
+
 0.42.1 (2018-09-17)
 ===================
 - Fix: Fix file updates and overwrites on Dropbox by making sure to set the "overwrite" mode when
