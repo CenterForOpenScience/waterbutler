@@ -4,6 +4,7 @@ import asyncio
 import logging
 import functools
 import dateutil.parser
+from urllib import parse
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
@@ -114,6 +115,42 @@ def normalize_datetime(date_string):
     parsed_datetime = parsed_datetime.astimezone(tz=pytz.UTC)
     parsed_datetime = parsed_datetime.replace(microsecond=0)
     return parsed_datetime.isoformat()
+
+
+def encode_for_disposition(filename):
+    """Convert given filename into utf-8 octets, then percent encode them.
+
+    See RFC-5987, Section 3.2.1 for description of how to encode the ``value-chars`` portion of
+    ``ext-value``. WB will always use utf-8 encoding (see `make_disposition`), so that encoding
+    is hard-coded here.
+
+    :param str filename: a filename to encode
+    """
+    return parse.quote(filename.encode('utf-8'))
+
+
+def make_disposition(filename):
+    """Generate the "Content-Disposition" header.
+
+    Refer to https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition for how
+    to use the header correctly.  In the case where ARGUMENT ``filename`` exists, WB should use the
+    DIRECTIVE ``filename*`` which uses encoding defined in RFC 5987 (see the link below).  Do not
+    use the DIRECTIVE ``filename``.  This solves the issue of file names containing non-English and
+    special characters
+
+    Refer to https://tools.ietf.org/html/rfc5987 for the RFC 5978 mentioned above.  Please note that
+    it has been replaced by RFC 8187 (https://tools.ietf.org/html/rfc8187) recently in Sept. 2017.
+    As expected, there is nothing to worry about (see Appendix A in RFC 8187 for detailed changes).
+
+    :param str filename: the name of the file to be downloaded AS
+    :rtype: `str`
+    :return: the value of the "Content-Disposition" header with filename*
+    """
+    if not filename:
+        return 'attachment'
+    else:
+        encoded_filename = encode_for_disposition(filename)
+        return 'attachment; filename*=UTF-8\'\'{}'.format(encoded_filename)
 
 
 class ZipStreamGenerator:

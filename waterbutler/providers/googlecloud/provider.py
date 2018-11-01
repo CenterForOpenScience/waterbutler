@@ -10,6 +10,7 @@ from google.oauth2 import service_account
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
+from waterbutler.core.utils import make_disposition
 from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStreamReader
 from waterbutler.core.exceptions import (WaterButlerError, MetadataError, NotFoundError,
                                          CopyError, UploadError, DownloadError, DeleteError,
@@ -215,7 +216,7 @@ class GoogleCloudProvider(BaseProvider):
         :type path: :class:`.WaterButlerPath`
         :param bool accept_url: should return a direct time-limited download url from the provider
         :param tuple range: the Range HTTP request header
-        :param dict kwargs: ``displayName`` - the display name of the file on OSF and for download
+        :param dict kwargs: ``display_name`` - the display name of the file on OSF and for download
         :rtype: str or :class:`.streams.ResponseStreamReader`
         """
 
@@ -226,8 +227,8 @@ class GoogleCloudProvider(BaseProvider):
         obj_name = utils.get_obj_name(path, is_folder=False)
 
         if accept_url:
-            display_name = kwargs.get('displayName', path.name)
-            query = {'response-content-disposition': 'attachment; filename={}'.format(display_name)}
+            display_name = kwargs.get('display_name') or path.name
+            query = {'response-content-disposition': make_disposition(display_name)}
             # There is no need to delay URL building and signing
             signed_url = self._build_and_sign_url(req_method, obj_name, **query)  # type: ignore
             return signed_url

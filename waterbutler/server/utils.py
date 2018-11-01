@@ -25,10 +25,6 @@ HTTP_REASONS = {
 }
 
 
-def make_disposition(filename):
-    return 'attachment;filename="{}"'.format(filename.replace('"', '\\"'))
-
-
 def parse_request_range(range_header):
     """WB uses tornado's ``httputil._parse_request_range`` function to parse the Range HTTP header
     and return a tuple representing the range.  Tornado's version returns a tuple suitable for

@@ -85,3 +85,24 @@ class TestAsyncRetry:
         await asyncio.sleep(.1)
 
         assert mock_func.call_count == 18
+
+
+class TestContentDisposition:
+
+    @pytest.mark.parametrize("filename,expected", [
+        (None, 'attachment'),
+        ('foo.txt', "attachment; filename*=UTF-8''foo.txt"),
+        (' ¿.surprise', "attachment; filename*=UTF-8''%20%C2%BF.surprise"),
+    ])
+    def test_content_disposition(self, filename, expected):
+        disposition = utils.make_disposition(filename)
+        assert disposition == expected
+
+    @pytest.mark.parametrize("filename,expected", [
+        ('foo.txt', 'foo.txt'),
+        ('résumé.docx', 'r%C3%A9sum%C3%A9.docx'),
+        ('oh no/why+stop.txt', 'oh%20no/why%2Bstop.txt')
+    ])
+    def test_disposition_encoding(self, filename, expected):
+        encoded = utils.encode_for_disposition(filename)
+        assert encoded == expected
