@@ -2,6 +2,21 @@
 ChangeLog
 *********
 
+18.0.0 (2018-10-31)
+===================
+- UPDATE: WaterButler is now following the CalVer (https://calver.org/) versioning scheme to match
+the OSF.  All new versions will use the `YY.MINOR.MICRO` format.
+- Fix: Teach WaterButler to properly encode non-ascii file names for download requests.  WB was
+constructing Content-Disposition headers in many places throughout the codebase.  Some correctly
+encoded non-ascii characters as UTF-8, but many did not.  These have been consolidated into a
+single routine that can build explicitly-declared UTF-8 encoded Content-Disposition headers.
+- Fix: Allow users to set the name of a file when downloading directly from a provider.  Some
+providers (osfstorage, s3) support signed download urls, which permit the user to download directly
+from the provider without passing through WB.  WB was failing to relay the `displayName` query
+parameter to the upstream providers.  It now does so, which allows the user to override the default
+download file name.  Downloads that are proxied through WB already respect the parameter and are
+unchanged by this.
+
 0.42.2 (2018-10-24)
 ===================
 - Feature: Relay MFR-identifying header to OSF when requesting auth on MFR's behalf.  This enables
