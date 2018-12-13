@@ -2,6 +2,15 @@
 ChangeLog
 *********
 
+18.0.1 (2018-12-12)
+===================
+- Fix: Restore the `filename` parameter to WaterButler's Content-Disposition headers.  It had been
+removed in favor of `filename*`, which can correctly encode multibyte filenames.  This broke scripts
+that expected the `filename` version.  Since `filename` cannot support multibyte characters, those
+characters are converted to their nearest ascii equivalent or stripped if no equivalent exists.  WB
+now returns both forms of the parameter in the header.  Clients should prefer `filename*` for the
+most accurate representation of the filename.  (thanks, @jcohenadad!)
+
 18.0.0 (2018-10-31)
 ===================
 - UPDATE: WaterButler is now following the CalVer (https://calver.org/) versioning scheme to match
