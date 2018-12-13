@@ -90,9 +90,21 @@ class TestAsyncRetry:
 class TestContentDisposition:
 
     @pytest.mark.parametrize("filename,expected", [
+        ('meow.txt', 'meow.txt'),
+        ('résumé.txt', 'resume.txt'),
+        (' ¿.surprise', ' .surprise'),
+        ('a "file"', 'a \\"file\\"'),
+        ('yes\\no', 'yes\\\\no'),
+        ('ctrl\x09ch\x08ar', 'ctrl_ch_ar'),
+    ])
+    def test_strip_for_disposition(self, filename, expected):
+        disposition = utils.strip_for_disposition(filename)
+        assert disposition == expected
+
+    @pytest.mark.parametrize("filename,expected", [
         (None, 'attachment'),
-        ('foo.txt', "attachment; filename*=UTF-8''foo.txt"),
-        (' ¿.surprise', "attachment; filename*=UTF-8''%20%C2%BF.surprise"),
+        ('foo.txt', "attachment; filename=\"foo.txt\"; filename*=UTF-8''foo.txt"),
+        (' ¿.surprise', "attachment; filename=\" .surprise\"; filename*=UTF-8''%20%C2%BF.surprise"),
     ])
     def test_content_disposition(self, filename, expected):
         disposition = utils.make_disposition(filename)

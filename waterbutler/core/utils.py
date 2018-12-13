@@ -1,8 +1,10 @@
+import re
 import json
 import pytz
 import asyncio
 import logging
 import functools
+import unicodedata
 import dateutil.parser
 from urllib import parse
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
@@ -117,6 +119,23 @@ def normalize_datetime(date_string):
     return parsed_datetime.isoformat()
 
 
+def strip_for_disposition(filename):
+    """Convert given filename to a form useable by a non-extended parameter.
+
+    The permitted characters allowed in a non-extended parameter are defined in RFC-2616, Section
+    2.2.  This is a subset of the ascii character set. This function converts non-ascii characters
+    to their nearest ascii equivalent or strips them if there is no equivalent.  It then replaces
+    control characters with underscores and escapes blackslashes and double quotes.
+
+    :param str filename: a filename to encode
+    """
+
+    nfkd_form = unicodedata.normalize('NFKD', filename)
+    only_ascii = nfkd_form.encode('ASCII', 'ignore')
+    no_ctrl = re.sub(r'[\x00-\x1f]', '_', only_ascii.decode('ascii'))
+    return no_ctrl.replace('\\', '\\\\').replace('"', '\\"')
+
+
 def encode_for_disposition(filename):
     """Convert given filename into utf-8 octets, then percent encode them.
 
@@ -149,8 +168,10 @@ def make_disposition(filename):
     if not filename:
         return 'attachment'
     else:
+        stripped_filename = strip_for_disposition(filename)
         encoded_filename = encode_for_disposition(filename)
-        return 'attachment; filename*=UTF-8\'\'{}'.format(encoded_filename)
+        return 'attachment; filename="{}"; filename*=UTF-8\'\'{}'.format(stripped_filename,
+                                                                         encoded_filename)
 
 
 class ZipStreamGenerator:
