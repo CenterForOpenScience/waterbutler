@@ -22,7 +22,7 @@ install:
     - travis_retry invoke install --develop
 
 env:
-  - WATERBUTLER_CONFIG=./travis-config.json
+  - WATERBUTLER_CONFIG=./travis-config.json BOTO_CONFIG=/dev/null
 
 script:
   - invoke test
