@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+18.0.2 (2018-12-14)
+===================
+- Fix: Get CI running again by adding workaround for bad TravisCI/Boto interaction. See:
+https://github.com/travis-ci/travis-ci/issues/7940.
+
 18.0.1 (2018-12-12)
 ===================
 - Fix: Restore the `filename` parameter to WaterButler's Content-Disposition headers.  It had been
