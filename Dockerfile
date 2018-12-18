@@ -15,6 +15,7 @@ RUN apt-get update \
         libssl-dev \
         libffi-dev \
         python-dev \
+        gnupg2 \
     && apt-get clean \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
@@ -24,19 +25,18 @@ ENV GOSU_VERSION 1.4
 RUN apt-get update \
     && apt-get install -y \
         curl \
-        gnupg2 \
     && for key in \
       # GOSU
       B42F6819007F00F88E364FD4036A9C25BF357DD4 \
     ; do \
-      gpg --keyserver hkp://ipv4.pool.sks-keyservers.net:80 --recv-keys "$key" || \
-      gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "$key" || \
-      gpg --keyserver hkp://pgp.mit.edu:80 --recv-keys "$key" || \
-      gpg --keyserver hkp://keyserver.pgp.com:80 --recv-keys "$key" \
+      gpg2 --no-tty --keyserver hkp://ipv4.pool.sks-keyservers.net:80 --recv-keys "$key" || \
+      gpg2 --no-tty --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "$key" || \
+      gpg2 --no-tty --keyserver hkp://pgp.mit.edu:80 --recv-keys "$key" || \
+      gpg2 --no-tty --keyserver hkp://keyserver.pgp.com:80 --recv-keys "$key" \
     ; done \
     && curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture)" \
   	&& curl -o /usr/local/bin/gosu.asc -SL "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture).asc" \
-  	&& gpg --verify /usr/local/bin/gosu.asc \
+  	&& gpg2 --verify /usr/local/bin/gosu.asc \
   	&& rm /usr/local/bin/gosu.asc \
   	&& chmod +x /usr/local/bin/gosu \
     && apt-get clean \
