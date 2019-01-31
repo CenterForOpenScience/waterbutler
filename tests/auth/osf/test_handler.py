@@ -78,17 +78,29 @@ class TestOsfAuthHandler(ServerTestCase):
             await self.handler.get(resource, provider, self.request, action=action, auth_type=auth_type)
             if auth_type is AuthType.SOURCE:
                 self.handler.build_payload.assert_called_with({
-                    'nid': resource,
-                    'provider': provider,
+                    'nid': 'test',
+                    'provider': 'test',
                     'action': 'download',
                     'path': '',
                     'version': None,
+                    'metrics': {
+                        'referrer': None,
+                        'origin': None,
+                        'uri': settings.API_URL,
+                        'user_agent': None
+                    }
                 }, cookie=None, view_only=None)
             else:
                 self.handler.build_payload.assert_called_with({
-                    'nid': resource,
-                    'provider': provider,
+                    'nid': 'test',
+                    'provider': 'test',
                     'action': 'upload',
                     'path': '',
                     'version': None,
+                    'metrics': {
+                        'referrer': None,
+                        'origin': None,
+                        'uri': settings.API_URL,
+                        'user_agent': None
+                    }
                 }, cookie=None, view_only=None)
