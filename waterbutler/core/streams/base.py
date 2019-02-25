@@ -17,6 +17,20 @@ class BaseStream(asyncio.StreamReader, metaclass=abc.ABCMeta):
         self.readers = {}
         self.writers = {}
 
+    def __aiter__(self):
+        return self
+
+    # TODO: Add more note on `AsyncIterablePayload` and its `write()` method in aiohttp3
+    # TODO: Improve the BaseStream with `aiohttp.streams.AsyncStreamReaderMixin`
+    async def __anext__(self):
+        try:
+            chunk = await self.read()
+        except EOFError:
+            raise StopAsyncIteration
+        if chunk == b'':
+            raise StopAsyncIteration
+        return chunk
+
     @abc.abstractproperty
     def size(self):
         pass
