@@ -152,28 +152,39 @@ class BaseProvider(metaclass=abc.ABCMeta):
         }
 
     @throttle()
-    async def make_request(self, method: str, url: str, *args, **kwargs) -> aiohttp.client.ClientResponse:
-        """A wrapper around :func:`aiohttp.request`. Inserts default headers.
-
-        :param method: ( :class:`str` ) The HTTP method
-        :param url: ( :class:`str` ) The url to send the request to
-        :keyword range: An optional tuple (start, end) that is transformed into a Range header
-        :keyword expects: An optional tuple of HTTP status codes as integers raises an exception
-            if the returned status code is not in it.
-        :type expects: tuple of ints
-        :param throws: ( :class:`Exception` ) The exception to be raised from expects
-        :param \*args: ( :class:`tuple` )args passed to :func:`aiohttp.request`
-        :param \*\*kwargs:  ( :class:`dict` ) kwargs passed to :func:`aiohttp.request`
-        :rtype: :class:`aiohttp.ClientResponse`
-        :raises: :class:`.UnhandledProviderError` Raised if expects is defined
+    async def make_request_with_session(self, method, url, session,
+                                        allow_empty_session=False, *args, **kwargs):
         """
+        TODO: update description and params
+
+        :param method:
+        :param url:
+        :param session:
+        :param allow_empty_session:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+
+        method = method.upper()
+        # `make_request_with_session` must be called with a valid session
+        if not session:
+            # Note: `allow_empty_session=True` is called by the to-be-deprecated `.make_request()`
+            #       only. During the aiohttp3 upgrade, `.make_request()` remains alive to allow
+            #       yet-to-be-updated providers to pass through leaving session and connection open.
+            # TODO: should we remove this option after all provider has been successfully converted?
+            if allow_empty_session:
+                session = aiohttp.ClientSession()
+            else:
+                # TODO: create an new WB exception for this error!
+                raise exceptions.WaterButlerError('Empty Session')
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
         retry = _retry = kwargs.pop('retry', 2)
-        range = kwargs.pop('range', None)
         expects = kwargs.pop('expects', None)
         throws = kwargs.pop('throws', exceptions.UnhandledProviderError)
-        if range:
-            kwargs['headers']['Range'] = self._build_range_header(range)
+        byte_range = kwargs.pop('range', None)
+        if byte_range:
+            kwargs['headers']['Range'] = self._build_range_header(byte_range)
 
         while retry >= 0:
             # Don't overwrite the callable ``url`` so that signed URLs are refreshed for every retry
@@ -181,11 +192,29 @@ class BaseProvider(metaclass=abc.ABCMeta):
             try:
                 self.provider_metrics.incr('requests.count')
                 self.provider_metrics.append('requests.urls', non_callable_url)
-                response = await aiohttp.request(method, non_callable_url, *args, **kwargs)
+                # TODO: use a `dict` to select methods with either `lambda` or `functools.partial`
+                if method == 'GET':
+                    response = await session.get(non_callable_url, *args, **kwargs)
+                elif method == 'PUT':
+                    response = await session.put(non_callable_url, *args, **kwargs)
+                elif method == 'POST':
+                    response = await session.post(non_callable_url, *args, **kwargs)
+                elif method == 'HEAD':
+                    response = await session.head(non_callable_url, *args, **kwargs)
+                elif method == 'DELETE':
+                    response = await session.delete(non_callable_url, **kwargs)
+                elif method == 'PATCH':
+                    response = await session.patch(non_callable_url, *args, **kwargs)
+                elif method == 'OPTIONS':
+                    response = await session.options(non_callable_url, *args, **kwargs)
+                else:
+                    raise exceptions.WaterButlerError('Unsupported HTTP method ...')
                 self.provider_metrics.append('requests.verbose',
                                              ['OK', response.status, non_callable_url])
                 if expects and response.status not in expects:
-                    raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
+                    unexpected = await exceptions.exception_from_response(response,
+                                                                          error=throws, **kwargs)
+                    raise unexpected
                 return response
             except throws as e:
                 self.provider_metrics.append('requests.verbose', ['NO', e.code, non_callable_url])
@@ -193,6 +222,24 @@ class BaseProvider(metaclass=abc.ABCMeta):
                     raise
                 await asyncio.sleep((1 + _retry - retry) * 2)
                 retry -= 1
+
+    @throttle()
+    async def make_request(self, method: str, url: str, *args,
+                           **kwargs) -> aiohttp.client.ClientResponse:
+        """
+        The glorious legacy ``.make_request()`` has been updated to use the all new aiohttp3
+        compatible version: ``.make_request_with_session()``.  With an empty session and the
+        ``allow_empty_session=True`` option, WB creates a new session upon each request.  However,
+        the session and its connection will never be closed.  A warning is thrown to alert the
+        developers that this is for temporary backward compatibility and that the caller probably
+        needs to be updated.
+        """
+
+        logger.warning('To-be-deprecated method .make_request() is called.  Please be aware of'
+                       'unclosed connections and sessions.  Double check whether the caller should'
+                       'be updated to use .make_request_with_session.  Enjoy your async request!')
+        return await self.make_request_with_session(method, url, None,
+                                                    allow_empty_session=True, *args, **kwargs)
 
     def request(self, *args, **kwargs):
         return RequestHandlerContext(self.make_request(*args, **kwargs))
