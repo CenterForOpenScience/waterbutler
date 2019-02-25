@@ -1,11 +1,15 @@
 import time
+import uuid
 import base64
 import typing
+import asyncio
 import hashlib
 import logging
+import weakref
 import functools
 from http import HTTPStatus
 
+import aiohttp
 from google.oauth2 import service_account
 
 from waterbutler.core.path import WaterButlerPath
@@ -99,6 +103,46 @@ class GoogleCloudProvider(BaseProvider):
                 message='Invalid or mal-formed service account credentials: {}'.format(str(exc))
             )
 
+        # TODO: `.instance_id` is for debug only, should we remove it and its logs later?
+        self.instance_id = '{}-{}'.format(GoogleCloudProvider.NAME, uuid.uuid4())
+
+        # The `.loop_session_map` ensures that only one session is created for one event loop per
+        # provider instance.  On one hand, we can't just have one session for each provider instance
+        # since actions such as move and copy are run in background with a different loop. On the
+        # other hand, we can't have one session for each request since sessions are only closed when
+        # the provider instance is destroyed. There would be too many for WB to handle.
+        self.loop_session_map = weakref.WeakKeyDictionary()
+
+        # The `.session_list` keeps track of all the sessions created for the provider instance so
+        # that they can be properly closed upon instance destroy.
+        self.session_list = []
+
+        logger.debug('{}\tnew provider instance'.format(self.instance_id))
+
+    def __del__(self):
+        logger.debug('{}\tdestroying provider instance'.format(self.instance_id))
+        logger.debug('{}\tclosing connectors and detach sessions'.format(self.instance_id))
+        logger.debug('{}\tsession count = {}'.format(self.instance_id, len(self.session_list)))
+        for session in self.session_list:
+            session.connector.close()
+            session.detach()
+        logger.debug('{}\tdone'.format(self.instance_id))
+
+    async def make_request_with_session(self, method: str, url: str,
+                                        *args, **kwargs) -> aiohttp.ClientResponse:
+        """
+        The provider-level ``.make_request_with_session()`` decides whether to create a new session
+        or to reuse an existing one.  It then calls the core-level method of the same name with all
+        of its parameters plus the aforementioned session object.
+        """
+        loop = asyncio.get_event_loop()
+        session = self.loop_session_map.get(loop, None)
+        if not session:
+            session = aiohttp.ClientSession()
+            self.loop_session_map[loop] = session
+            self.session_list.append(session)
+        return await super().make_request_with_session(method, url, session, *args, **kwargs)
+
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
         return await self.validate_path(path)
 
@@ -173,7 +217,7 @@ class GoogleCloudProvider(BaseProvider):
         signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
         headers = {'Content-Length': str(stream.size)}
 
-        resp = await self.make_request(
+        resp = await self.make_request_with_session(
             req_method,
             signed_url,
             data=stream,
@@ -234,7 +278,7 @@ class GoogleCloudProvider(BaseProvider):
             return signed_url
 
         signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
-        resp = await self.make_request(
+        resp = await self.make_request_with_session(
             req_method,
             signed_url,
             range=range,
@@ -394,7 +438,7 @@ class GoogleCloudProvider(BaseProvider):
         obj_name = utils.get_obj_name(path, is_folder=is_folder)
         signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
 
-        resp = await self.make_request(
+        resp = await self.make_request_with_session(
             req_method,
             signed_url,
             expects=(HTTPStatus.OK,),
@@ -424,7 +468,7 @@ class GoogleCloudProvider(BaseProvider):
         obj_name = utils.get_obj_name(path, is_folder=False)
         signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
 
-        resp = await self.make_request(
+        resp = await self.make_request_with_session(
             req_method,
             signed_url,
             expects=(HTTPStatus.NO_CONTENT,),
@@ -479,7 +523,7 @@ class GoogleCloudProvider(BaseProvider):
             **{}
         )
 
-        resp = await self.make_request(
+        resp = await self.make_request_with_session(
             req_method,
             signed_url,
             headers=headers,
