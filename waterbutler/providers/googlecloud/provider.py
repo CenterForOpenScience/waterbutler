@@ -103,7 +103,6 @@ class GoogleCloudProvider(BaseProvider):
                 message='Invalid or mal-formed service account credentials: {}'.format(str(exc))
             )
 
-        # TODO: `.instance_id` is for debug only, should we remove it and its logs later?
         self.instance_id = '{}-{}'.format(GoogleCloudProvider.NAME, uuid.uuid4())
 
         # The `.loop_session_map` ensures that only one session is created for one event loop per
@@ -117,16 +116,32 @@ class GoogleCloudProvider(BaseProvider):
         # that they can be properly closed upon instance destroy.
         self.session_list = []
 
-        logger.debug('{}\tnew provider instance'.format(self.instance_id))
+        logger.info('{}\tnew provider instance'.format(self.instance_id))
 
     def __del__(self):
-        logger.debug('{}\tdestroying provider instance'.format(self.instance_id))
-        logger.debug('{}\tclosing connectors and detach sessions'.format(self.instance_id))
-        logger.debug('{}\tsession count = {}'.format(self.instance_id, len(self.session_list)))
+        """
+        Manually close all sessions created during the life of the provider instance.  Our code are
+        a slightly modified version of how ``aiohttp-3.5.4`` closes sessions and connectors.
+
+        1. sessions: https://github.com/aio-libs/aiohttp/blob/v3.5.4/aiohttp/client.py#L893
+        2. connectors: https://github.com/aio-libs/aiohttp/blob/v3.5.4/aiohttp/connector.py#L389
+            2.1 Update: https://github.com/aio-libs/aiohttp/pull/3417/files.
+
+        Our implementation tries to avoid accessing protected members unless we can't.  For example,
+        we use ``session.connector`` instead of ``session._connector``, and use ``session.detach()``
+        instead of calling ``session._connector = None``.  We have to ``session._connector_owner``
+        since it doesn't have an public property. We have to call ``connector._close()`` instead of
+        ``connector.close()`` since ``aiohttp`` decided to make ``.close()`` async recently. Here is
+        the PR: https://github.com/aio-libs/aiohttp/pull/3417/files.
+        """
+        logger.info('{}\tdestroying provider instance and '
+                    'closing {} session(s)'.format(self.instance_id, len(self.session_list)))
         for session in self.session_list:
-            session.connector.close()
-            session.detach()
-        logger.debug('{}\tdone'.format(self.instance_id))
+            if not session.closed:
+                if session.connector is not None and session._connector_owner:
+                    session.connector._close()
+                session.detach()
+        logger.info('{}\tdone'.format(self.instance_id))
 
     async def make_request_with_session(self, method: str, url: str,
                                         *args, **kwargs) -> aiohttp.ClientResponse:
