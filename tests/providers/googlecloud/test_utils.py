@@ -5,7 +5,7 @@ from urllib.parse import quote, unquote
 
 import furl
 import pytest
-from aiohttp import MultiDictProxy
+from multidict import MultiDictProxy
 
 from tests.providers.googlecloud.fixtures.files import (file_wb_path,
                                                         meta_file_raw,
