@@ -2,8 +2,12 @@ import os
 import json
 import uuid
 import typing
+import asyncio
 import hashlib
 import logging
+import weakref
+
+import aiohttp
 
 from waterbutler.core import utils
 from waterbutler.core import signing
@@ -45,6 +49,37 @@ class OSFStorageProvider(provider.BaseProvider):
         self.root_id = settings['rootId']
         self.BASE_URL = settings['baseUrl']
         self.provider_name = settings['storage'].get('provider')
+
+        # The `.loop_session_map` ensures that only one session is created for one event loop per
+        # provider instance.  On one hand, we can't just have one session for each provider instance
+        # since actions such as move and copy are run in background with a different loop. On the
+        # other hand, we can't have one session for each request since sessions are only closed when
+        # the provider instance is destroyed. There would be too many for WB to handle.
+        self.loop_session_map = weakref.WeakKeyDictionary()
+
+        # The `.session_list` keeps track of all the sessions created for the provider instance so
+        # that they can be properly closed upon instance destroy.
+        self.session_list = []
+
+    def __del__(self):
+        for session in self.session_list:
+            session.connector.close()
+            session.detach()
+
+    async def make_request_with_session(self, method: str, url: str,
+                                        *args, **kwargs) -> aiohttp.ClientResponse:
+        """
+        The provider-level ``.make_request_with_session()`` decides whether to create a new session
+        or to reuse an existing one.  It then calls the core-level method of the same name with all
+        of its parameters plus the aforementioned session object.
+        """
+        loop = asyncio.get_event_loop()
+        session = self.loop_session_map.get(loop, None)
+        if not session:
+            session = aiohttp.ClientSession()
+            self.loop_session_map[loop] = session
+            self.session_list.append(session)
+        return await super().make_request_with_session(method, url, session, *args, **kwargs)
 
     async def validate_v1_path(self, path, **kwargs):
         if path == '/':
@@ -177,7 +212,7 @@ class OSFStorageProvider(provider.BaseProvider):
 
     async def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
         url, data, params = self.build_signed_url(method, url, data=data, params=params, ttl=ttl, **kwargs)
-        return await self.make_request(method, url, data=data, params=params, **kwargs)
+        return await self.make_request_with_session(method, url, data=data, params=params, **kwargs)
 
     def signed_request(self, *args, **kwargs):
         return RequestHandlerContext(self.make_signed_request(*args, **kwargs))
