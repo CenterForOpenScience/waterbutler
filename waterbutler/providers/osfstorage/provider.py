@@ -50,21 +50,20 @@ class OSFStorageProvider(provider.BaseProvider):
         self.BASE_URL = settings['baseUrl']
         self.provider_name = settings['storage'].get('provider')
 
-        # The `.loop_session_map` ensures that only one session is created for one event loop per
-        # provider instance.  On one hand, we can't just have one session for each provider instance
-        # since actions such as move and copy are run in background with a different loop. On the
-        # other hand, we can't have one session for each request since sessions are only closed when
-        # the provider instance is destroyed. There would be too many for WB to handle.
+        self.instance_id = '{}-{}'.format(OSFStorageProvider.NAME, uuid.uuid4())
         self.loop_session_map = weakref.WeakKeyDictionary()
-
-        # The `.session_list` keeps track of all the sessions created for the provider instance so
-        # that they can be properly closed upon instance destroy.
         self.session_list = []
+        logger.info('{}\tnew provider instance'.format(self.instance_id))
 
     def __del__(self):
+        logger.info('{}\tdestroying provider instance and '
+                    'closing {} session(s)'.format(self.instance_id, len(self.session_list)))
         for session in self.session_list:
-            session.connector.close()
-            session.detach()
+            if not session.closed:
+                if session.connector is not None and session._connector_owner:
+                    session.connector._close()
+                session.detach()
+        logger.info('{}\tdone'.format(self.instance_id))
 
     async def make_request_with_session(self, method: str, url: str,
                                         *args, **kwargs) -> aiohttp.ClientResponse:
