@@ -16,7 +16,6 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.metadata import BaseMetadata
-from waterbutler.core.utils import RequestHandlerContext
 
 from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.metadata import OsfStorageFileMetadata
@@ -80,6 +79,17 @@ class OSFStorageProvider(provider.BaseProvider):
             self.session_list.append(session)
         return await super().make_request_with_session(method, url, session, *args, **kwargs)
 
+    async def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
+        url, data, params = self.build_signed_url(
+            method,
+            url,
+            data=data,
+            params=params,
+            ttl=ttl,
+            **kwargs
+        )
+        return await self.make_request_with_session(method, url, data=data, params=params, **kwargs)
+
     async def validate_v1_path(self, path, **kwargs):
         if path == '/':
             return WaterButlerPath('/', _ids=[self.root_id], folder=True)
@@ -113,16 +123,14 @@ class OSFStorageProvider(provider.BaseProvider):
         except ValueError:
             path, name = path, None
 
-        async with self.signed_request(
+        resp = await self.make_signed_request(
             'GET',
             self.build_url(path, 'lineage'),
             expects=(200, 404)
-        ) as resp:
-
-            if resp.status == 404:
-                return WaterButlerPath(path, _ids=(self.root_id, None), folder=path.endswith('/'))
-
-            data = await resp.json()
+        )
+        if resp.status == 404:
+            return WaterButlerPath(path, _ids=(self.root_id, None), folder=path.endswith('/'))
+        data = await resp.json()
 
         is_folder = data['data'][0]['kind'] == 'folder'
         names, ids = zip(*[(x['name'], x['id']) for x in reversed(data['data'])])
@@ -209,13 +217,6 @@ class OSFStorageProvider(provider.BaseProvider):
 
         return url, data, params
 
-    async def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
-        url, data, params = self.build_signed_url(method, url, data=data, params=params, ttl=ttl, **kwargs)
-        return await self.make_request_with_session(method, url, data=data, params=params, **kwargs)
-
-    def signed_request(self, *args, **kwargs):
-        return RequestHandlerContext(self.make_signed_request(*args, **kwargs))
-
     async def download(self, path, version=None, revision=None, mode=None, **kwargs):
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
@@ -236,14 +237,14 @@ class OSFStorageProvider(provider.BaseProvider):
             user_param = {'user': self.auth['id']}
 
         # osf storage metadata will return a virtual path within the provider
-        async with self.signed_request(
+        resp = await self.make_signed_request(
             'GET',
             self.build_url(path.identifier, 'download', version=version, mode=mode),
             expects=(200, ),
             params=user_param,
             throws=exceptions.DownloadError,
-        ) as resp:
-            data = await resp.json()
+        )
+        data = await resp.json()
 
         provider = self.make_provider(data['settings'])
         name = data['data'].pop('name')
@@ -335,18 +336,18 @@ class OSFStorageProvider(provider.BaseProvider):
 
         self.metrics.add('revisions', {'got_view_only': view_only is not None})
 
-        async with self.signed_request(
+        resp = await self.make_signed_request(
             'GET',
             self.build_url(path.identifier, 'revisions', view_only=view_only),
             expects=(200, )
-        ) as resp:
-            return [
-                OsfStorageRevisionMetadata(item)
-                for item in (await resp.json())['revisions']
-            ]
+        )
+        return [
+            OsfStorageRevisionMetadata(item)
+            for item in (await resp.json())['revisions']
+        ]
 
     async def create_folder(self, path, **kwargs):
-        async with self.signed_request(
+        resp = await self.make_signed_request(
             'POST',
             self.build_url(path.parent.identifier, 'children'),
             data=json.dumps({
@@ -356,11 +357,11 @@ class OSFStorageProvider(provider.BaseProvider):
             }),
             headers={'Content-Type': 'application/json'},
             expects=(201, )
-        ) as resp:
-            resp_json = await resp.json()
-            # save new folder's id into the WaterButlerPath object. logs will need it later.
-            path._parts[-1]._id = resp_json['data']['path'].strip('/')
-            return OsfStorageFolderMetadata(resp_json['data'], str(path))
+        )
+        resp_json = await resp.json()
+        # save new folder's id into the WaterButlerPath object. logs will need it later.
+        path._parts[-1]._id = resp_json['data']['path'].strip('/')
+        return OsfStorageFolderMetadata(resp_json['data'], str(path))
 
     async def move(self,
                    dest_provider: provider.BaseProvider,
@@ -495,20 +496,20 @@ class OSFStorageProvider(provider.BaseProvider):
     # ========== private ==========
 
     async def _item_metadata(self, path, revision=None):
-        async with self.signed_request(
+        resp = await self.make_signed_request(
             'GET',
             self.build_url(path.identifier, revision=revision),
             expects=(200, )
-        ) as resp:
-            return OsfStorageFileMetadata((await resp.json()), str(path))
+        )
+        return OsfStorageFileMetadata((await resp.json()), str(path))
 
     async def _children_metadata(self, path):
-        async with self.signed_request(
+        resp = await self.make_signed_request(
             'GET',
             self.build_url(path.identifier, 'children', user_id=self.auth.get('id')),
             expects=(200, )
-        ) as resp:
-            resp_json = await resp.json()
+        )
+        resp_json = await resp.json()
 
         ret = []
         for item in resp_json:
@@ -542,7 +543,7 @@ class OSFStorageProvider(provider.BaseProvider):
             created = False
             await dest_provider.delete(dest_path)
 
-        async with self.signed_request(
+        resp = await self.make_signed_request(
             'POST',
             self.build_url('hooks', action),
             data=json.dumps({
@@ -556,8 +557,8 @@ class OSFStorageProvider(provider.BaseProvider):
             }),
             headers={'Content-Type': 'application/json'},
             expects=(200, 201)
-        ) as resp:
-            data = await resp.json()
+        )
+        data = await resp.json()
 
         if data['kind'] == 'file':
             return OsfStorageFileMetadata(data, str(dest_path)), dest_path.identifier is None
@@ -608,7 +609,7 @@ class OSFStorageProvider(provider.BaseProvider):
         :return: metadata of the file and a bool indicating if the file was newly created
         """
 
-        async with self.signed_request(
+        resp = await self.make_signed_request(
             'POST',
             self.build_url(path.parent.identifier, 'children'),
             expects=(200, 201),
@@ -630,8 +631,8 @@ class OSFStorageProvider(provider.BaseProvider):
                 },
             }),
             headers={'Content-Type': 'application/json'},
-        ) as response:
-            created = response.status == 201
-            data = await response.json()
+        )
+        created = resp.status == 201
+        data = await resp.json()
 
         return data, created
