@@ -2,14 +2,11 @@ import time
 import uuid
 import base64
 import typing
-import asyncio
 import hashlib
 import logging
-import weakref
 import functools
 from http import HTTPStatus
 
-import aiohttp
 from google.oauth2 import service_account
 
 from waterbutler.core.path import WaterButlerPath
@@ -104,59 +101,14 @@ class GoogleCloudProvider(BaseProvider):
             )
 
         self.instance_id = '{}-{}'.format(GoogleCloudProvider.NAME, uuid.uuid4())
-
-        # The `.loop_session_map` ensures that only one session is created for one event loop per
-        # provider instance.  On one hand, we can't just have one session for each provider instance
-        # since actions such as move and copy are run in background with a different loop. On the
-        # other hand, we can't have one session for each request since sessions are only closed when
-        # the provider instance is destroyed. There would be too many for WB to handle.
-        self.loop_session_map = weakref.WeakKeyDictionary()
-
-        # The `.session_list` keeps track of all the sessions created for the provider instance so
-        # that they can be properly closed upon instance destroy.
-        self.session_list = []
-
         logger.info('{}\tnew provider instance'.format(self.instance_id))
 
+    # TODO: Remove this `__del__()` method before staging merge, @Fitz and @Longze
     def __del__(self):
-        """
-        Manually close all sessions created during the life of the provider instance.  Our code are
-        a slightly modified version of how ``aiohttp-3.5.4`` closes sessions and connectors.
-
-        1. sessions: https://github.com/aio-libs/aiohttp/blob/v3.5.4/aiohttp/client.py#L893
-        2. connectors: https://github.com/aio-libs/aiohttp/blob/v3.5.4/aiohttp/connector.py#L389
-            2.1 Update: https://github.com/aio-libs/aiohttp/pull/3417/files.
-
-        Our implementation tries to avoid accessing protected members unless we can't.  For example,
-        we use ``session.connector`` instead of ``session._connector``, and use ``session.detach()``
-        instead of calling ``session._connector = None``.  We have to ``session._connector_owner``
-        since it doesn't have an public property. We have to call ``connector._close()`` instead of
-        ``connector.close()`` since ``aiohttp`` decided to make ``.close()`` async recently. Here is
-        the PR: https://github.com/aio-libs/aiohttp/pull/3417/files.
-        """
         logger.info('{}\tdestroying provider instance and '
                     'closing {} session(s)'.format(self.instance_id, len(self.session_list)))
-        for session in self.session_list:
-            if not session.closed:
-                if session.connector is not None and session._connector_owner:
-                    session.connector._close()
-                session.detach()
+        super().__del__()
         logger.info('{}\tdone'.format(self.instance_id))
-
-    async def make_request_with_session(self, method: str, url: str,
-                                        *args, **kwargs) -> aiohttp.ClientResponse:
-        """
-        The provider-level ``.make_request_with_session()`` decides whether to create a new session
-        or to reuse an existing one.  It then calls the core-level method of the same name with all
-        of its parameters plus the aforementioned session object.
-        """
-        loop = asyncio.get_event_loop()
-        session = self.loop_session_map.get(loop, None)
-        if not session:
-            session = aiohttp.ClientSession()
-            self.loop_session_map[loop] = session
-            self.session_list.append(session)
-        return await super().make_request_with_session(method, url, session, *args, **kwargs)
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
         return await self.validate_path(path)
