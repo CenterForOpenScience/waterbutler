@@ -2,12 +2,8 @@ import os
 import json
 import uuid
 import typing
-import asyncio
 import hashlib
 import logging
-import weakref
-
-import aiohttp
 
 from waterbutler.core import utils
 from waterbutler.core import signing
@@ -50,34 +46,14 @@ class OSFStorageProvider(provider.BaseProvider):
         self.provider_name = settings['storage'].get('provider')
 
         self.instance_id = '{}-{}'.format(OSFStorageProvider.NAME, uuid.uuid4())
-        self.loop_session_map = weakref.WeakKeyDictionary()
-        self.session_list = []
         logger.info('{}\tnew provider instance'.format(self.instance_id))
 
+    # TODO: Remove this `__del__()` method before staging merge, @Fitz and @Longze
     def __del__(self):
         logger.info('{}\tdestroying provider instance and '
                     'closing {} session(s)'.format(self.instance_id, len(self.session_list)))
-        for session in self.session_list:
-            if not session.closed:
-                if session.connector is not None and session._connector_owner:
-                    session.connector._close()
-                session.detach()
+        super().__del__()
         logger.info('{}\tdone'.format(self.instance_id))
-
-    async def make_request_with_session(self, method: str, url: str,
-                                        *args, **kwargs) -> aiohttp.ClientResponse:
-        """
-        The provider-level ``.make_request_with_session()`` decides whether to create a new session
-        or to reuse an existing one.  It then calls the core-level method of the same name with all
-        of its parameters plus the aforementioned session object.
-        """
-        loop = asyncio.get_event_loop()
-        session = self.loop_session_map.get(loop, None)
-        if not session:
-            session = aiohttp.ClientSession()
-            self.loop_session_map[loop] = session
-            self.session_list.append(session)
-        return await super().make_request_with_session(method, url, session, *args, **kwargs)
 
     async def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
         url, data, params = self.build_signed_url(

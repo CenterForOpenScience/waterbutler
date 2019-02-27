@@ -104,6 +104,38 @@ class BaseProvider(metaclass=abc.ABCMeta):
         self.provider_metrics.add('auth', auth)
         self.metrics = self.provider_metrics.new_subrecord(self.NAME)
 
+        # The `.loop_session_map` ensures that only one session is created for one event loop per
+        # provider instance.  On one hand, we can't just have one session for each provider instance
+        # since actions such as move and copy are run in background probably with a different loop.
+        # On the other hand, we can't have one session for each request since sessions are only
+        # closed when the provider instance is destroyed. There would be too many for WB to handle.
+        self.loop_session_map = weakref.WeakKeyDictionary()
+        # The `.session_list` keeps track of all the sessions created for the provider instance so
+        # that they can be properly closed upon instance destroy.
+        self.session_list = []
+
+    def __del__(self):
+        """
+        Manually close all sessions created during the life of the provider instance.  Our code are
+        a slightly modified version of how ``aiohttp-3.5.4`` closes sessions and connectors.
+
+        1. sessions: https://github.com/aio-libs/aiohttp/blob/v3.5.4/aiohttp/client.py#L893
+        2. connectors: https://github.com/aio-libs/aiohttp/blob/v3.5.4/aiohttp/connector.py#L389
+            2.1 Update: https://github.com/aio-libs/aiohttp/pull/3417/files.
+
+        Our implementation tries to avoid accessing protected members unless we can't.  For example,
+        we use ``session.connector`` instead of ``session._connector``, and use ``session.detach()``
+        instead of calling ``session._connector = None``.  We have to ``session._connector_owner``
+        since it doesn't have an public property. We have to call ``connector._close()`` instead of
+        ``connector.close()`` since ``aiohttp`` decided to make ``.close()`` async recently. Here is
+        the PR: https://github.com/aio-libs/aiohttp/pull/3417/files.
+        """
+        for session in self.session_list:
+            if not session.closed:
+                if session.connector is not None and session._connector_owner:
+                    session.connector._close()
+                session.detach()
+
     @property
     @abc.abstractmethod
     def NAME(self) -> str:
@@ -151,33 +183,31 @@ class BaseProvider(metaclass=abc.ABCMeta):
             if value is not None
         }
 
+    def get_or_create_session(self):
+        """
+        TODO: update description and params
+
+        :return:
+        """
+        loop = asyncio.get_event_loop()
+        session = self.loop_session_map.get(loop, None)
+        if not session:
+            session = aiohttp.ClientSession()
+            self.loop_session_map[loop] = session
+            self.session_list.append(session)
+        return session
+
     @throttle()
-    async def make_request_with_session(self, method, url, session,
-                                        allow_empty_session=False, *args, **kwargs):
+    async def make_request_with_session(self, method, url, *args, **kwargs):
         """
         TODO: update description and params
 
         :param method:
         :param url:
-        :param session:
-        :param allow_empty_session:
         :param args:
         :param kwargs:
         :return:
         """
-
-        method = method.upper()
-        # `make_request_with_session` must be called with a valid session
-        if not session:
-            # Note: `allow_empty_session=True` is called by the to-be-deprecated `.make_request()`
-            #       only. During the aiohttp3 upgrade, `.make_request()` remains alive to allow
-            #       yet-to-be-updated providers to pass through leaving session and connection open.
-            # TODO: should we remove this option after all provider has been successfully converted?
-            if allow_empty_session:
-                session = aiohttp.ClientSession()
-            else:
-                # TODO: create an new WB exception for this error!
-                raise exceptions.WaterButlerError('Empty Session')
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
         retry = _retry = kwargs.pop('retry', 2)
         expects = kwargs.pop('expects', None)
@@ -186,6 +216,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if byte_range:
             kwargs['headers']['Range'] = self._build_range_header(byte_range)
 
+        method = method.upper()
+        session = self.get_or_create_session()
         while retry >= 0:
             # Don't overwrite the callable ``url`` so that signed URLs are refreshed for every retry
             non_callable_url = url() if callable(url) else url
@@ -227,19 +259,16 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def make_request(self, method: str, url: str, *args,
                            **kwargs) -> aiohttp.client.ClientResponse:
         """
-        The glorious legacy ``.make_request()`` has been updated to use the all new aiohttp3
-        compatible version: ``.make_request_with_session()``.  With an empty session and the
-        ``allow_empty_session=True`` option, WB creates a new session upon each request.  However,
-        the session and its connection will never be closed.  A warning is thrown to alert the
-        developers that this is for temporary backward compatibility and that the caller probably
-        needs to be updated.
-        """
+        TODO: update description and params
 
-        logger.warning('To-be-deprecated method .make_request() is called.  Please be aware of'
-                       'unclosed connections and sessions.  Double check whether the caller should'
-                       'be updated to use .make_request_with_session.  Enjoy your async request!')
-        return await self.make_request_with_session(method, url, None,
-                                                    allow_empty_session=True, *args, **kwargs)
+        :param method:
+        :param url:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        logger.warning('To-be-deprecated method .make_request() is called.')
+        return await self.make_request_with_session(method, url, *args, **kwargs)
 
     def request(self, *args, **kwargs):
         return RequestHandlerContext(self.make_request(*args, **kwargs))
