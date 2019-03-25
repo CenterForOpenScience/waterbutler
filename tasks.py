@@ -88,7 +88,22 @@ def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None)
     coverage = ' --cov-report term-missing --cov waterbutler' if not nocov else ''
     verbose = '-v' if verbose else ''
 
-    cmd = 'py.test{} tests{} {}'.format(coverage, path, verbose)
+    # TODO: update this ignore list when new providers are added
+    ignored_providers = '--ignore=tests/providers/bitbucket/ ' \
+                        '--ignore=tests/providers/box/ ' \
+                        '--ignore=tests/providers/cloudfiles/ ' \
+                        '--ignore=tests/providers/dataverse/ ' \
+                        '--ignore=tests/providers/dropbox/ ' \
+                        '--ignore=tests/providers/figshare/ ' \
+                        '--ignore=tests/providers/filesystem/ ' \
+                        '--ignore=tests/providers/github/ ' \
+                        '--ignore=tests/providers/gitlab/ ' \
+                        '--ignore=tests/providers/googledrive ' \
+                        '--ignore=tests/providers/onedrive ' \
+                        '--ignore=tests/providers/owncloud ' \
+                        '--ignore=tests/providers/s3'
+
+    cmd = 'py.test{} {} tests{} {}'.format(coverage, ignored_providers, path, verbose)
     ctx.run(cmd, pty=True)
 
 
