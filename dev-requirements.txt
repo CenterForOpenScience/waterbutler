@@ -1,6 +1,6 @@
 -r requirements.txt
 
-git+https://github.com/centerforopenscience/aiohttpretty.git@0.1.0#egg=aiohttpretty
+git+https://github.com/cslzchen/aiohttpretty.git@feature/aiohttp3
 colorlog==2.5.0
 flake8==3.0.4
 ipdb
