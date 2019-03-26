@@ -64,7 +64,7 @@ class OSFStorageProvider(provider.BaseProvider):
             ttl=ttl,
             **kwargs
         )
-        return await self.make_request_with_session(method, url, data=data, params=params, **kwargs)
+        return await self.make_request(method, url, data=data, params=params, **kwargs)
 
     async def validate_v1_path(self, path, **kwargs):
         if path == '/':
