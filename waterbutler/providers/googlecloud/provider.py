@@ -184,7 +184,7 @@ class GoogleCloudProvider(BaseProvider):
         signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
         headers = {'Content-Length': str(stream.size)}
 
-        resp = await self.make_request_with_session(
+        resp = await self.make_request(
             req_method,
             signed_url,
             data=stream,
@@ -245,7 +245,7 @@ class GoogleCloudProvider(BaseProvider):
             return signed_url
 
         signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
-        resp = await self.make_request_with_session(
+        resp = await self.make_request(
             req_method,
             signed_url,
             range=range,
@@ -405,7 +405,7 @@ class GoogleCloudProvider(BaseProvider):
         obj_name = utils.get_obj_name(path, is_folder=is_folder)
         signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
 
-        resp = await self.make_request_with_session(
+        resp = await self.make_request(
             req_method,
             signed_url,
             expects=(HTTPStatus.OK,),
@@ -435,7 +435,7 @@ class GoogleCloudProvider(BaseProvider):
         obj_name = utils.get_obj_name(path, is_folder=False)
         signed_url = functools.partial(self._build_and_sign_url, req_method, obj_name, **{})
 
-        resp = await self.make_request_with_session(
+        resp = await self.make_request(
             req_method,
             signed_url,
             expects=(HTTPStatus.NO_CONTENT,),
@@ -490,7 +490,7 @@ class GoogleCloudProvider(BaseProvider):
             **{}
         )
 
-        resp = await self.make_request_with_session(
+        resp = await self.make_request(
             req_method,
             signed_url,
             headers=headers,

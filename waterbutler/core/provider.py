@@ -185,9 +185,16 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     def get_or_create_session(self):
         """
-        TODO: update description and params
+        Obtain an existing session or create a new one for making requests.
 
-        :return:
+        Quirks:
+        Sessions must be carefully managed by WB.  On one hand, we can't just have one session for
+        each provider instance since actions such as move and copy are run in background probably
+        with a different loop.  On the other hand, we can't have one session for each request since
+        sessions are only closed when the provider instance is destroyed.
+
+        :return: the one session that belongs to the current event loop
+        :rtype: :class:`aiohttp.ClientSession`
         """
         loop = asyncio.get_event_loop()
         session = self.loop_session_map.get(loop, None)
@@ -198,16 +205,51 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return session
 
     @throttle()
-    async def make_request_with_session(self, method, url, *args, **kwargs):
+    async def make_request(self, method, url, *args, **kwargs):
         """
-        TODO: update description and params
+        A wrapper around 7 HTTP request methods in :class:`aiohttp.ClientSession`.  It replaces the
+        original ``make_request()`` method which was a wrapper around :func:`aiohttp.request`.  This
+        change is due to aiohttp triple-major-version upgrade from version 0.18 to 3.5.4 where the
+        main difference is context manager (CM).
 
-        :param method:
-        :param url:
-        :param args:
-        :param kwargs:
-        :return:
+        Core Quirk:
+
+        aiohttp3 explicitly provides two examples of making requests in the documentation.  Using
+        :func:`aiohttp.request` directly with CM and using :class:`aiohttp.ClientSession` and its
+        HTTP methods with CM.  Unfortunately, an unpleasant side-effect of CM is that sessions and
+        connections are closed outside CM.  This breaks WB's design where responses are passed
+        from one provider to another.
+
+        Not-so-smart Solution:
+
+        By taking a look at aiohttp3's source code, we discovered that request can be made without
+        CM though we are not sure why the documentation doesn't mention this option.  The only trick
+        here is to sessions must be carefully managed by WB.  Please take a look at the following
+        methods for detailed implementation.
+
+        ``__init__()``: session list and event loop map initialization
+        ``__del__()``: session and connection closing
+        ``get_or_create_session()``: get the current session or create a new one for making requests
+
+        :param method: The HTTP method
+        :type method: :class:`str`
+        :param url: The URL to send the request to
+        :type url: :class:`str` or a ``functools.partial`` object to build the URL when called
+        :param \*args: args passed to methods of :class:`aiohttp.ClientSession`
+        :param \*\*kwargs: kwargs passed to methods of :class:`aiohttp.ClientSession` except the
+            following ones that will be popped and used for other purposes
+            ``retry``: An optional integer with default value 2 that determines how further to retry
+                failed requests with the exponential backoff algorithm
+            ``expects``: An optional tuple of HTTP status codes as integers raises an exception if
+                the returned status code is not in it
+            ``throws``: The exception to be raised from expects
+            ``range``: An optional tuple (start, end) that is transformed into a Range header
+        :return: The HTTP response
+        :rtype: :class:`aiohttp.ClientResponse`
+        :raises: :class:`.UnhandledProviderError` Raised if expects is defined
+        :raises: :class:`.WaterButlerError` Raised if invalid HTTP method is provided
         """
+
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
         retry = _retry = kwargs.pop('retry', 2)
         expects = kwargs.pop('expects', None)
@@ -254,21 +296,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
                     raise
                 await asyncio.sleep((1 + _retry - retry) * 2)
                 retry -= 1
-
-    @throttle()
-    async def make_request(self, method: str, url: str, *args,
-                           **kwargs) -> aiohttp.client.ClientResponse:
-        """
-        TODO: update description and params
-
-        :param method:
-        :param url:
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        logger.warning('To-be-deprecated method .make_request() is called.')
-        return await self.make_request_with_session(method, url, *args, **kwargs)
 
     def request(self, *args, **kwargs):
         return RequestHandlerContext(self.make_request(*args, **kwargs))
