@@ -43,6 +43,7 @@ def make_app(debug):
         api_to_handlers(v1) +
         [(r'/status', handlers.StatusHandler)],
         debug=debug,
+        autoreload=False
     )
     app.sentry_client = AsyncSentryClient(settings.SENTRY_DSN, release=__version__)
     return app
