@@ -1,0 +1,492 @@
+{
+    "editable_gdoc": {
+        "metadata": {
+            "iconLink" : "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.google-apps.document",
+            "version" : "43684",
+            "createdDate" : "2017-02-24T18:36:58.044Z",
+            "selfLink" : "https://www.googleapis.com/drive/v2/files/1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ",
+            "lastModifyingUserName" : "Fitz Elliott",
+            "appDataCqontents" : false,
+            "explicitlyTrashed" : false,
+            "exportLinks" : {
+                "application/vnd.oasis.opendocument.text" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&exportFormat=odt",
+                "application/zip" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&exportFormat=zip",
+                "text/html" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&exportFormat=html",
+                "application/pdf" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&exportFormat=pdf",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&exportFormat=docx",
+                "text/plain" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&exportFormat=txt",
+                "application/rtf" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&exportFormat=rtf",
+                "application/epub+zip" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&exportFormat=epub"
+            },
+            "alternateLink" : "https://docs.google.com/a/cos.io/document/d/1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ/edit?usp=drivesdk",
+            "modifiedDate" : "2017-02-24T18:37:28.569Z",
+            "thumbnailLink" : "https://docs.google.com/a/cos.io/feeds/vt?gd=true&id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&v=1&s=AMedNnoAAAAAWRo2ctWxLS7eQmcAhSbHbBAhdQmkSbVa&sz=s220",
+            "id" : "1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ",
+            "spaces" : [
+                "drive"
+            ],
+            "mimeType" : "application/vnd.google-apps.document",
+            "userPermission" : {
+                "etag" : "\"_Iwf20PbJS7QPBy9REF76uRLkQo/Q8v9eUEXTjEPR7_OHywQXTXv8d0\"",
+                "selfLink" : "https://www.googleapis.com/drive/v2/files/1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ/permissions/me",
+                "role" : "owner",
+                "id" : "me",
+                "type" : "user",
+                "kind" : "drive#permission"
+            },
+            "title" : "editable_gdoc",
+            "capabilities" : {
+                "canEdit" : true,
+                "canCopy" : true
+            },
+            "lastModifyingUser" : {
+                "kind" : "drive#user",
+                "isAuthenticatedUser" : true,
+                "emailAddress" : "fitz@cos.io",
+                "displayName" : "Fitz Elliott",
+                "permissionId" : "17667957036718347700"
+            },
+            "kind" : "drive#file",
+            "editable" : true,
+            "shared" : false,
+            "copyable" : true,
+            "markedViewedByMeDate" : "1970-01-01T00:00:00.000Z",
+            "writersCanShare" : true,
+            "etag" : "\"_Iwf20PbJS7QPBy9REF76uRLkQo/MTQ4Nzk2MTQ0ODU2OQ\"",
+            "modifiedByMeDate" : "2017-02-24T18:37:28.569Z",
+            "labels" : {
+                "restricted" : false,
+                "hidden" : false,
+                "starred" : false,
+                "trashed" : false,
+                "viewed" : true
+            },
+            "owners" : [
+                {
+                    "emailAddress" : "fitz@cos.io",
+                    "displayName" : "Fitz Elliott",
+                    "permissionId" : "17667957036718347700",
+                    "isAuthenticatedUser" : true,
+                    "kind" : "drive#user"
+                }
+            ],
+            "parents" : [
+                {
+                    "selfLink" : "https://www.googleapis.com/drive/v2/files/1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ/parents/0B74RCNS4TbRVNGJwLWFacnlKdGM",
+                    "parentLink" : "https://www.googleapis.com/drive/v2/files/0B74RCNS4TbRVNGJwLWFacnlKdGM",
+                    "isRoot" : false,
+                    "id" : "0B74RCNS4TbRVNGJwLWFacnlKdGM",
+                    "kind" : "drive#parentReference"
+                }
+            ],
+            "quotaBytesUsed" : "0",
+            "lastViewedByMeDate" : "2017-02-24T18:37:28.569Z",
+            "embedLink" : "https://docs.google.com/a/cos.io/document/d/1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ/preview",
+            "ownerNames" : [
+                "Fitz Elliott"
+            ]
+        },
+        "revisions":  {
+            "items" : [
+                {
+                    "exportLinks" : {
+                        "application/rtf" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=rtf",
+                        "application/epub+zip" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=epub",
+                        "application/zip" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=zip",
+                        "application/pdf" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=pdf",
+                        "text/plain" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=txt",
+                        "application/vnd.oasis.opendocument.text" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=odt",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=docx",
+                        "text/html" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=html"
+                    },
+                    "selfLink" : "https://www.googleapis.com/drive/v2/files/1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ/revisions/1",
+                    "id" : "1",
+                    "kind" : "drive#revision",
+                    "etag" : "\"LUxk1DXE_0fd4yeJDIgpecr5uPA/lHudfDwfTEz0RxswkJ6vUFpP4z8\"",
+                    "modifiedDate" : "2017-02-24T18:36:58.041Z",
+                    "lastModifyingUser" : {
+                        "emailAddress" : "fitz@cos.io",
+                        "kind" : "drive#user",
+                        "permissionId" : "17667957036718347700",
+                        "isAuthenticatedUser" : true,
+                        "displayName" : "Fitz Elliott"
+                    },
+                    "lastModifyingUserName" : "Fitz Elliott",
+                    "mimeType" : "application/vnd.google-apps.document",
+                    "published" : false
+                },
+                {
+                    "exportLinks" : {
+                        "application/vnd.oasis.opendocument.text" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=11&exportFormat=odt",
+                        "text/html" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=11&exportFormat=html",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=11&exportFormat=docx",
+                        "application/pdf" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=11&exportFormat=pdf",
+                        "text/plain" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=11&exportFormat=txt",
+                        "application/zip" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=11&exportFormat=zip",
+                        "application/epub+zip" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=11&exportFormat=epub",
+                        "application/rtf" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=11&exportFormat=rtf"
+                    },
+                    "id" : "11",
+                    "selfLink" : "https://www.googleapis.com/drive/v2/files/1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ/revisions/11",
+                    "kind" : "drive#revision",
+                    "etag" : "\"LUxk1DXE_0fd4yeJDIgpecr5uPA/EYC91bmPetPKWKMdh9HrqjoYm7A\"",
+                    "modifiedDate" : "2017-02-24T18:37:28.552Z",
+                    "lastModifyingUser" : {
+                        "kind" : "drive#user",
+                        "emailAddress" : "fitz@cos.io",
+                        "displayName" : "Fitz Elliott",
+                        "isAuthenticatedUser" : true,
+                        "permissionId" : "17667957036718347700"
+                    },
+                    "lastModifyingUserName" : "Fitz Elliott",
+                    "published" : false,
+                    "mimeType" : "application/vnd.google-apps.document"
+                }
+            ],
+            "kind" : "drive#revisionList",
+            "etag" : "\"LUxk1DXE_0fd4yeJDIgpecr5uPA/U3foOOt7M1OyjEO9G9omVQ4w4G4\"",
+            "selfLink" : "https://www.googleapis.com/drive/v2/files/1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ/revisions"
+        },
+        "revision": {
+            "lastModifyingUser" : {
+                "displayName" : "Fitz Elliott",
+                "kind" : "drive#user",
+                "permissionId" : "17667957036718347700",
+                "isAuthenticatedUser" : true,
+                "emailAddress" : "fitz@cos.io"
+            },
+            "exportLinks" : {
+                "application/pdf" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=pdf",
+                "text/plain" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=txt",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=docx",
+                "application/epub+zip" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=epub",
+                "application/rtf" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=rtf",
+                "application/vnd.oasis.opendocument.text" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=odt",
+                "text/html" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=html",
+                "application/zip" : "https://docs.google.com/feeds/download/documents/export/Export?id=1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ&revision=1&exportFormat=zip"
+            },
+            "etag" : "\"LUxk1DXE_0fd4yeJDIgpecr5uPA/lHudfDwfTEz0RxswkJ6vUFpP4z8\"",
+            "mimeType" : "application/vnd.google-apps.document",
+            "selfLink" : "https://www.googleapis.com/drive/v2/files/1XeE-iK-SolhmYntE5gq9fVT_icHrJ2hTIEISZ6t4COQ/revisions/1",
+            "lastModifyingUserName" : "Fitz Elliott",
+            "kind" : "drive#revision",
+            "published" : false,
+            "modifiedDate" : "2017-02-24T18:36:58.041Z",
+            "id" : "1"
+        }
+    },
+    "viewable_gdoc": {
+        "metadata": {
+            "createdDate" : "2017-05-15T17:45:45.246Z",
+            "ownerNames" : [
+                "Fitz Elliott"
+            ],
+            "appDataContents" : false,
+            "alternateLink" : "https://docs.google.com/a/cos.io/document/d/1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8/edit?usp=drivesdk",
+            "mimeType" : "application/vnd.google-apps.document",
+            "explicitlyTrashed" : false,
+            "iconLink" : "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.google-apps.document",
+            "title" : "viewable_gdoc",
+            "sharingUser" : {
+                "isAuthenticatedUser" : false,
+                "emailAddress" : "fitz.elliott@gmail.com",
+                "kind" : "drive#user",
+                "permissionId" : "14130805958117813174",
+                "displayName" : "Fitz Elliott"
+            },
+            "labels" : {
+                "trashed" : false,
+                "hidden" : false,
+                "viewed" : true,
+                "restricted" : false,
+                "starred" : false
+            },
+            "userPermission" : {
+                "id" : "me",
+                "role" : "reader",
+                "kind" : "drive#permission",
+                "type" : "user",
+                "etag" : "\"_Iwf20PbJS7QPBy9REF76uRLkQo/sFn5tJwi_oV7gdwOzjpuBu5Ib28\"",
+                "selfLink" : "https://www.googleapis.com/drive/v2/files/1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8/permissions/me"
+            },
+            "exportLinks" : {
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "https://docs.google.com/feeds/download/documents/export/Export?id=1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8&exportFormat=docx",
+                "text/html" : "https://docs.google.com/feeds/download/documents/export/Export?id=1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8&exportFormat=html",
+                "application/pdf" : "https://docs.google.com/feeds/download/documents/export/Export?id=1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8&exportFormat=pdf",
+                "application/zip" : "https://docs.google.com/feeds/download/documents/export/Export?id=1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8&exportFormat=zip",
+                "application/vnd.oasis.opendocument.text" : "https://docs.google.com/feeds/download/documents/export/Export?id=1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8&exportFormat=odt",
+                "application/rtf" : "https://docs.google.com/feeds/download/documents/export/Export?id=1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8&exportFormat=rtf",
+                "application/epub+zip" : "https://docs.google.com/feeds/download/documents/export/Export?id=1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8&exportFormat=epub",
+                "text/plain" : "https://docs.google.com/feeds/download/documents/export/Export?id=1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8&exportFormat=txt"
+            },
+            "shared" : true,
+            "lastModifyingUser" : {
+                "isAuthenticatedUser" : false,
+                "emailAddress" : "fitz.elliott@gmail.com",
+                "kind" : "drive#user",
+                "permissionId" : "14130805958117813174",
+                "displayName" : "Fitz Elliott"
+            },
+            "etag" : "\"_Iwf20PbJS7QPBy9REF76uRLkQo/MTQ5NDg3MDM2NTYyOQ\"",
+            "selfLink" : "https://www.googleapis.com/drive/v2/files/1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8",
+            "spaces" : [
+                "drive"
+            ],
+            "parents" : [
+                {
+                    "parentLink" : "https://www.googleapis.com/drive/v2/files/0B74RCNS4TbRVNGJwLWFacnlKdGM",
+                    "kind" : "drive#parentReference",
+                    "id" : "0B74RCNS4TbRVNGJwLWFacnlKdGM",
+                    "isRoot" : false,
+                    "selfLink" : "https://www.googleapis.com/drive/v2/files/1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8/parents/0B74RCNS4TbRVNGJwLWFacnlKdGM"
+                }
+            ],
+            "writersCanShare" : true,
+            "copyable" : true,
+            "owners" : [
+                {
+                    "emailAddress" : "fitz.elliott@gmail.com",
+                    "kind" : "drive#user",
+                    "isAuthenticatedUser" : false,
+                    "displayName" : "Fitz Elliott",
+                    "permissionId" : "14130805958117813174"
+                }
+            ],
+            "modifiedDate" : "2017-05-15T17:46:05.629Z",
+            "lastModifyingUserName" : "Fitz Elliott",
+            "embedLink" : "https://docs.google.com/a/cos.io/document/d/1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8/preview",
+            "editable" : false,
+            "id" : "1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8",
+            "kind" : "drive#file",
+            "markedViewedByMeDate" : "1970-01-01T00:00:00.000Z",
+            "capabilities" : {
+                "canCopy" : true,
+                "canEdit" : false
+            },
+            "thumbnailLink" : "https://docs.google.com/a/cos.io/feeds/vt?gd=true&id=1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8&v=1&s=AMedNnoAAAAAWRo0v0XudaVK3uVkQeUG8-VYyFN49Zne&sz=s220",
+            "version" : "58109",
+            "lastViewedByMeDate" : "2017-05-15T17:50:17.249Z",
+            "sharedWithMeDate" : "2017-05-15T17:46:34.835Z",
+            "quotaBytesUsed" : "0"
+        },
+        "revisions_error": {
+            "error": {
+                "errors": [
+                    {
+                        "reason": "userAccess",
+                        "locationType": "header",
+                        "message": "The authenticated user does not have the required access to the file 1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8",
+                        "location": "Authorization",
+                        "domain": "global"
+                    }
+                ],
+                "message": "The authenticated user does not have the required access to the file 1k05-O-4a79X4ysubQSxHow6ZhgVVEE1oM-f3hXAWvj8",
+                "code": 403
+            }
+        }
+    },
+    "commentable_gdoc": {
+        "metadata": {}
+    },
+    "editable_jpeg": {
+        "metadata": {
+            "shared" : false,
+            "capabilities" : {
+                "canCopy" : true,
+                "canEdit" : true
+            },
+            "alternateLink" : "https://drive.google.com/a/cos.io/file/d/0B74RCNS4TbRVTGs4OTNock9ma0k/view?usp=drivesdk",
+            "lastModifyingUser" : {
+                "displayName" : "Fitz Elliott",
+                "permissionId" : "17667957036718347700",
+                "isAuthenticatedUser" : true,
+                "kind" : "drive#user",
+                "emailAddress" : "fitz@cos.io"
+            },
+            "fileExtension" : "jpeg",
+            "headRevisionId" : "0B74RCNS4TbRVTitFais4VzVmQlQ4S0docGlhelk5MXE3OFJnPQ",
+            "explicitlyTrashed" : false,
+            "fileSize" : "24",
+            "modifiedByMeDate" : "2017-05-15T20:01:21.364Z",
+            "iconLink" : "https://drive-thirdparty.googleusercontent.com/16/type/application/octet-stream",
+            "webContentLink" : "https://drive.google.com/a/cos.io/uc?id=0B74RCNS4TbRVTGs4OTNock9ma0k&export=download",
+            "userPermission" : {
+                "type" : "user",
+                "role" : "owner",
+                "id" : "me",
+                "etag" : "\"_Iwf20PbJS7QPBy9REF76uRLkQo/JhOaef_gJgidSRJMOjo1GIFUDpU\"",
+                "selfLink" : "https://www.googleapis.com/drive/v2/files/0B74RCNS4TbRVTGs4OTNock9ma0k/permissions/me",
+                "kind" : "drive#permission"
+            },
+            "lastModifyingUserName" : "Fitz Elliott",
+            "ownerNames" : [
+                "Fitz Elliott"
+            ],
+            "version" : "48259",
+            "writersCanShare" : true,
+            "lastViewedByMeDate" : "2017-05-15T20:00:30.278Z",
+            "copyable" : true,
+            "title" : "editable_jpeg.jpeg",
+            "embedLink" : "https://drive.google.com/a/cos.io/file/d/0B74RCNS4TbRVTGs4OTNock9ma0k/preview?usp=drivesdk",
+            "owners" : [
+                {
+                    "kind" : "drive#user",
+                    "emailAddress" : "fitz@cos.io",
+                    "isAuthenticatedUser" : true,
+                    "permissionId" : "17667957036718347700",
+                    "displayName" : "Fitz Elliott"
+                }
+            ],
+            "markedViewedByMeDate" : "1970-01-01T00:00:00.000Z",
+            "selfLink" : "https://www.googleapis.com/drive/v2/files/0B74RCNS4TbRVTGs4OTNock9ma0k",
+            "labels" : {
+                "starred" : false,
+                "hidden" : false,
+                "restricted" : false,
+                "trashed" : false,
+                "viewed" : true
+            },
+            "id" : "0B74RCNS4TbRVTGs4OTNock9ma0k",
+            "md5Checksum" : "b7705327bf8ca279454028343d45f3ce",
+            "parents" : [
+                {
+                    "selfLink" : "https://www.googleapis.com/drive/v2/files/0B74RCNS4TbRVTGs4OTNock9ma0k/parents/0B74RCNS4TbRVNGJwLWFacnlKdGM",
+                    "parentLink" : "https://www.googleapis.com/drive/v2/files/0B74RCNS4TbRVNGJwLWFacnlKdGM",
+                    "kind" : "drive#parentReference",
+                    "isRoot" : false,
+                    "id" : "0B74RCNS4TbRVNGJwLWFacnlKdGM"
+                }
+            ],
+            "spaces" : [
+                "drive"
+            ],
+            "kind" : "drive#file",
+            "downloadUrl" : "https://doc-0k-bs-docs.googleusercontent.com/docs/securesc/l7i1tlu42rp555c40740almu52k58sf3/8p50odb9i4jucb432pvfm7lfuug7tj21/1494878400000/17667957036718347700/17667957036718347700/0B74RCNS4TbRVTGs4OTNock9ma0k?h=02276134969107310156&e=download&gd=true",
+            "modifiedDate" : "2017-05-15T20:01:21.364Z",
+            "quotaBytesUsed" : "24",
+            "originalFilename" : "editable_jpeg.jpeg",
+            "editable" : true,
+            "mimeType" : "application/octet-stream",
+            "etag" : "\"_Iwf20PbJS7QPBy9REF76uRLkQo/MTQ5NDg3ODQ4MTM2NA\"",
+            "createdDate" : "2017-03-13T16:22:39.007Z",
+            "appDataContents" : false
+        },
+        "revision": {
+            "published" : false,
+            "etag" : "\"LUxk1DXE_0fd4yeJDIgpecr5uPA/178AcdJuH_nwqx-A-gtOqBTgFk8\"",
+            "kind" : "drive#revision",
+            "originalFilename" : "woof",
+            "lastModifyingUser" : {
+                "emailAddress" : "fitz@cos.io",
+                "isAuthenticatedUser" : true,
+                "displayName" : "Fitz Elliott",
+                "permissionId" : "17667957036718347700",
+                "kind" : "drive#user"
+            },
+            "id" : "0B74RCNS4TbRVTitFais4VzVmQlQ4S0docGlhelk5MXE3OFJnPQ",
+            "fileSize" : "24",
+            "modifiedDate" : "2017-05-15T20:00:30.278Z",
+            "mimeType" : "application/octet-stream",
+            "lastModifyingUserName" : "Fitz Elliott",
+            "md5Checksum" : "b7705327bf8ca279454028343d45f3ce",
+            "downloadUrl" : "https://doc-0k-bs-docs.googleusercontent.com/docs/securesc/l7i1tlu42rp555c40740almu52k58sf3/2o2i1vilnakajd9fsh4d3lq8d1ant01g/1495483200000/17667957036718347700/17667957036718347700/0B74RCNS4TbRVTGs4OTNock9ma0k?rid=0B74RCNS4TbRVTitFais4VzVmQlQ4S0docGlhelk5MXE3OFJnPQ&h=02276134969107310156&e=download&gd=true",
+            "pinned" : true,
+            "selfLink" : "https://www.googleapis.com/drive/v2/files/0B74RCNS4TbRVTGs4OTNock9ma0k/revisions/0B74RCNS4TbRVTitFais4VzVmQlQ4S0docGlhelk5MXE3OFJnPQ"
+        }
+    },
+    "viewable_jpeg": {
+        "metadata": {
+            "lastModifyingUser" : {
+                "isAuthenticatedUser" : false,
+                "displayName" : "Fitz Elliott",
+                "emailAddress" : "fitz.elliott@gmail.com",
+                "permissionId" : "14130805958117813174",
+                "kind" : "drive#user"
+            },
+            "labels" : {
+                "viewed" : true,
+                "hidden" : false,
+                "starred" : false,
+                "trashed" : false,
+                "restricted" : false
+            },
+            "alternateLink" : "https://drive.google.com/a/cos.io/file/d/0B5RhExds5_WHYnp6Um9fOGpwVVU/view?usp=drivesdk",
+            "version" : "58119",
+            "mimeType" : "text/plain",
+            "thumbnailLink" : "https://lh5.googleusercontent.com/w8fu-Im3cwup-k_B3lz5yVsxM6SSISeiVR0h6vochLOQiFKuixc_vvWRr46iCTkHXb-Bpg=s220",
+            "kind" : "drive#file",
+            "owners" : [
+                {
+                    "kind" : "drive#user",
+                    "permissionId" : "14130805958117813174",
+                    "emailAddress" : "fitz.elliott@gmail.com",
+                    "displayName" : "Fitz Elliott",
+                    "isAuthenticatedUser" : false
+                }
+            ],
+            "writersCanShare" : true,
+            "webContentLink" : "https://drive.google.com/a/cos.io/uc?id=0B5RhExds5_WHYnp6Um9fOGpwVVU&export=download",
+            "copyable" : true,
+            "spaces" : [
+                "drive"
+            ],
+            "sharedWithMeDate" : "2017-05-15T17:50:43.573Z",
+            "etag" : "\"_Iwf20PbJS7QPBy9REF76uRLkQo/MTQ5NDg3MDY0MzU3MQ\"",
+            "lastModifyingUserName" : "Fitz Elliott",
+            "createdDate" : "2017-05-15T17:50:23.253Z",
+            "headRevisionId" : "0B5RhExds5_WHdkJWc0dZS2pZVk1SOTd1bVlydktHbVBJSEd3PQ",
+            "iconLink" : "https://drive-thirdparty.googleusercontent.com/16/type/text/plain",
+            "lastViewedByMeDate" : "2017-05-15T17:50:53.135Z",
+            "markedViewedByMeDate" : "1970-01-01T00:00:00.000Z",
+            "id" : "0B5RhExds5_WHYnp6Um9fOGpwVVU",
+            "explicitlyTrashed" : false,
+            "downloadUrl" : "https://doc-00-78-docs.googleusercontent.com/docs/securesc/l7i1tlu42rp555c40740almu52k58sf3/sso0ksodpgkj6uka1v2of0ms11dtguv7/1494878400000/14130805958117813174/17667957036718347700/0B5RhExds5_WHYnp6Um9fOGpwVVU?h=02276134969107310156&e=download&gd=true",
+            "capabilities" : {
+                "canCopy" : true,
+                "canEdit" : false
+            },
+            "md5Checksum" : "8219a2180f96d8e85092a4fea17445d4",
+            "appDataContents" : false,
+            "quotaBytesUsed" : "0",
+            "fileSize" : "30",
+            "modifiedDate" : "2017-05-15T17:50:43.571Z",
+            "originalFilename" : "viewable_jpeg.jpeg",
+            "selfLink" : "https://www.googleapis.com/drive/v2/files/0B5RhExds5_WHYnp6Um9fOGpwVVU",
+            "userPermission" : {
+                "type" : "user",
+                "selfLink" : "https://www.googleapis.com/drive/v2/files/0B5RhExds5_WHYnp6Um9fOGpwVVU/permissions/me",
+                "role" : "reader",
+                "kind" : "drive#permission",
+                "id" : "me",
+                "etag" : "\"_Iwf20PbJS7QPBy9REF76uRLkQo/eimdML0wdpTxibfYHooVAmGWumk\""
+            },
+            "editable" : false,
+            "ownerNames" : [
+                "Fitz Elliott"
+            ],
+            "fileExtension" : "jpeg",
+            "shared" : true,
+            "sharingUser" : {
+                "permissionId" : "14130805958117813174",
+                "emailAddress" : "fitz.elliott@gmail.com",
+                "kind" : "drive#user",
+                "displayName" : "Fitz Elliott",
+                "isAuthenticatedUser" : false
+            },
+            "parents" : [
+                {
+                    "selfLink" : "https://www.googleapis.com/drive/v2/files/0B5RhExds5_WHYnp6Um9fOGpwVVU/parents/0B74RCNS4TbRVNGJwLWFacnlKdGM",
+                    "isRoot" : false,
+                    "kind" : "drive#parentReference",
+                    "parentLink" : "https://www.googleapis.com/drive/v2/files/0B74RCNS4TbRVNGJwLWFacnlKdGM",
+                    "id" : "0B74RCNS4TbRVNGJwLWFacnlKdGM"
+                }
+            ],
+            "embedLink" : "https://drive.google.com/a/cos.io/file/d/0B5RhExds5_WHYnp6Um9fOGpwVVU/preview?usp=drivesdk",
+            "title" : "viewable_jpeg.jpeg"
+        }
+    },
+    "commentable_jpeg": {
+        "metadata": {}
+    }
+}
