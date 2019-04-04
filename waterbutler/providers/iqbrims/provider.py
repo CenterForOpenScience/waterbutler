@@ -124,29 +124,9 @@ class IQBRIMSProvider(provider.BaseProvider):
         _id, name, mime = list(map(parts[-1].__getitem__, ('id', 'title', 'mimeType')))
         return base.child(name, _id=_id, folder='folder' in mime)
 
-    def can_duplicate_names(self) -> bool:
-        return True
-
     @property
     def default_headers(self) -> dict:
         return {'authorization': 'Bearer {}'.format(self.token)}
-
-    async def move(self,
-                   dest_provider: provider.BaseProvider,
-                   src_path: wb_path.WaterButlerPath,
-                   dest_path: wb_path.WaterButlerPath,
-                   rename: str=None,
-                   conflict: str='replace',
-                   handle_naming: bool=True):
-        raise exceptions.UnsupportedOperationError(None)
-
-    async def copy(self,
-                   dest_provider: provider.BaseProvider,
-                   src_path: wb_path.WaterButlerPath,
-                   dest_path: wb_path.WaterButlerPath,
-                   rename: str=None, conflict: str='replace',
-                   handle_naming: bool=True):
-        raise exceptions.UnsupportedOperationError(None)
 
     async def download(self,  # type: ignore
                        path: IQBRIMSPath,
@@ -192,15 +172,29 @@ class IQBRIMSProvider(provider.BaseProvider):
         stream.name = metadata.export_name  # type: ignore
         return stream
 
-    async def upload(self, stream, path: wb_path.WaterButlerPath, *args, **kwargs) \
-            -> typing.Tuple[IQBRIMSFileMetadata, bool]:
-        raise exceptions.UnsupportedOperationError(None)
+    def can_duplicate_names(self) -> bool:
+        return True
 
-    async def delete(self,  # type: ignore
-                     path: IQBRIMSPath,
-                     confirm_delete: int=0,
-                     **kwargs) -> None:
-        raise exceptions.UnsupportedOperationError(None)
+    def can_intra_move(self, other, path=None) -> bool:
+        return False
+
+    def can_intra_copy(self, other, path=None) -> bool:
+        return False
+
+    async def upload(self, *args, **kwargs):
+        raise exceptions.ReadOnlyProviderError(self.NAME)
+
+    async def create_folder(self, *args, **kwargs):
+        raise exceptions.ReadOnlyProviderError(self.NAME)
+
+    async def delete(self, *args, **kwargs):
+        raise exceptions.ReadOnlyProviderError(self.NAME)
+
+    async def move(self, *args, **kwargs):
+        raise exceptions.ReadOnlyProviderError(self.NAME)
+
+    async def copy(self, *args, **kwargs):
+        raise exceptions.ReadOnlyProviderError(self.NAME)
 
     def _build_query(self, folder_id: str, title: str=None) -> str:
         queries = [
@@ -265,12 +259,6 @@ class IQBRIMSProvider(provider.BaseProvider):
             'modifiedDate': metadata['modifiedDate'],  # type: ignore
             'id': metadata['etag'] + settings.DRIVE_IGNORE_VERSION,
         })]
-
-    async def create_folder(self,
-                            path: wb_path.WaterButlerPath,
-                            folder_precheck: bool=True,
-                            **kwargs) -> IQBRIMSFolderMetadata:
-        raise exceptions.UnsupportedOperationError(None)
 
     def path_from_metadata(self, parent_path, metadata):
         """ Unfortunately-named method, currently only used to get path name for zip archives. """

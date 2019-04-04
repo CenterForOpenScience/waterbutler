@@ -21,10 +21,7 @@ from waterbutler.providers.iqbrims.metadata import (IQBRIMSRevision,
                                                         IQBRIMSFolderMetadata,
                                                         IQBRIMSFileRevisionMetadata)
 
-from tests.providers.iqbrims.fixtures import(error_fixtures,
-                                                 sharing_fixtures,
-                                                 revision_fixtures,
-                                                 root_provider_fixtures)
+from tests.providers.iqbrims.fixtures import root_provider_fixtures
 
 
 @pytest.fixture
@@ -367,198 +364,6 @@ class TestValidatePath:
 
         result = await provider.revalidate_path(path, file_name, True)
         assert result.name in path.name
-
-
-class TestUpload:
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_upload_create(self, provider, file_stream, root_provider_fixtures):
-        upload_id = '7'
-        item = root_provider_fixtures['list_file']['items'][0]
-        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
-
-        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
-        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
-                                                       upload_id=upload_id)
-
-        aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
-        aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
-
-        result, created = await provider.upload(file_stream, path)
-
-        expected = IQBRIMSFileMetadata(item, path)
-
-        assert created is True
-        assert result == expected
-        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
-        assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_upload_doesnt_unquote(self, provider, file_stream, root_provider_fixtures):
-        upload_id = '7'
-        item = root_provider_fixtures['list_file']['items'][0]
-        path = IQBRIMSPath('/birdie%2F %20".jpg', _ids=(provider.folder['id'], None))
-
-        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
-        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
-                                                       upload_id=upload_id)
-
-        aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
-        aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
-
-        result, created = await provider.upload(file_stream, path)
-
-        expected = IQBRIMSFileMetadata(item, path)
-
-        assert created is True
-        assert result == expected
-        assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
-        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_upload_update(self, provider, file_stream, root_provider_fixtures):
-        upload_id = '7'
-        item = root_provider_fixtures['list_file']['items'][0]
-        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
-
-        start_upload_url = provider._build_upload_url('files', path.identifier,
-                                                      uploadType='resumable')
-        finish_upload_url = provider._build_upload_url('files', path.identifier,
-                                                       uploadType='resumable', upload_id=upload_id)
-
-        aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
-        aiohttpretty.register_uri('PUT', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
-        result, created = await provider.upload(file_stream, path)
-
-        assert aiohttpretty.has_call(method='PUT', uri=start_upload_url)
-        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
-        assert created is False
-        expected = IQBRIMSFileMetadata(item, path)
-        assert result == expected
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_upload_create_nested(self, provider, file_stream, root_provider_fixtures):
-        upload_id = '7'
-        item = root_provider_fixtures['list_file']['items'][0]
-        path = WaterButlerPath(
-            '/ed/sullivan/show.mp3',
-            _ids=[str(x) for x in range(3)]
-        )
-
-        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
-        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
-                                                       upload_id=upload_id)
-        aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
-        aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
-        result, created = await provider.upload(file_stream, path)
-
-        assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
-        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
-        assert created is True
-        expected = IQBRIMSFileMetadata(item, path)
-        assert result == expected
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_upload_checksum_mismatch(self, provider, file_stream, root_provider_fixtures):
-        upload_id = '7'
-        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
-
-        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
-        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
-                                                       upload_id=upload_id)
-
-        aiohttpretty.register_json_uri('PUT', finish_upload_url,
-                                       body=root_provider_fixtures['checksum_mismatch_metadata'])
-        aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
-
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
-            await provider.upload(file_stream, path)
-
-        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
-        assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
-
-
-class TestDelete:
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_delete(self, provider, root_provider_fixtures):
-        item = root_provider_fixtures['list_file']['items'][0]
-        path = WaterButlerPath('/birdie.jpg', _ids=(None, item['id']))
-        delete_url = provider.build_url('files', item['id'])
-        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
-        aiohttpretty.register_uri('PUT',
-                                  delete_url,
-                                  body=del_url_body,
-                                  status=200)
-
-        result = await provider.delete(path)
-
-        assert result is None
-        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_delete_folder(self, provider, root_provider_fixtures):
-        item = root_provider_fixtures['folder_metadata']
-        del_url = provider.build_url('files', item['id'])
-        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
-
-        path = WaterButlerPath('/foobar/', _ids=('doesntmatter', item['id']))
-
-        aiohttpretty.register_uri('PUT',
-                                  del_url,
-                                  body=del_url_body,
-                                  status=200)
-
-        result = await provider.delete(path)
-
-        assert aiohttpretty.has_call(method='PUT', uri=del_url)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_delete_not_existing(self, provider):
-        with pytest.raises(exceptions.NotFoundError):
-            await provider.delete(WaterButlerPath('/foobar/'))
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_delete_root_no_confirm(self, provider):
-        path = WaterButlerPath('/', _ids=('0'))
-
-        with pytest.raises(exceptions.DeleteError) as e:
-            await provider.delete(path)
-
-        assert e.value.message == 'confirm_delete=1 is required for deleting root provider folder'
-        assert e.value.code == 400
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_delete_root(self, provider, root_provider_fixtures):
-        item = root_provider_fixtures['delete_contents_metadata']['items'][0]
-        root_path = WaterButlerPath('/', _ids=('0'))
-
-        url = provider.build_url('files', q="'{}' in parents".format('0'), fields='items(id)')
-        aiohttpretty.register_json_uri('GET', url,
-                                       body=root_provider_fixtures['delete_contents_metadata'])
-
-        delete_url = provider.build_url('files', item['id'])
-        data = json.dumps({'labels': {'trashed': 'true'}}),
-        aiohttpretty.register_json_uri('PUT', delete_url, data=data, status=200)
-
-        await provider.delete(root_path, 1)
-
-        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
 
 
 class TestDownload:
@@ -1433,166 +1238,16 @@ class TestRevisions:
             await provider.revisions(WaterButlerPath('/birdie.jpg'))
 
 
-class TestCreateFolder:
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_already_exists(self, provider):
-        path = WaterButlerPath('/hugo/', _ids=('doesnt', 'matter'))
-
-        with pytest.raises(exceptions.FolderNamingConflict) as e:
-            await provider.create_folder(path)
-
-        assert e.value.code == 409
-        assert e.value.message == ('Cannot create folder "hugo", because a file or folder '
-                                   'already exists with that name')
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_returns_metadata(self, provider, root_provider_fixtures):
-        path = WaterButlerPath('/osf%20test/', _ids=(provider.folder['id'], None))
-
-        aiohttpretty.register_json_uri('POST', provider.build_url('files'),
-                                       body=root_provider_fixtures['folder_metadata'])
-
-        resp = await provider.create_folder(path)
-
-        assert resp.kind == 'folder'
-        assert resp.name == 'osf test'
-        assert resp.path == '/osf%20test/'
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_raises_non_404(self, provider):
-        path = WaterButlerPath('/hugo/kim/pins/', _ids=(provider.folder['id'],
-                                                        'something', 'something', None))
-
-        url = provider.build_url('files')
-        aiohttpretty.register_json_uri('POST', url, status=418)
-
-        with pytest.raises(exceptions.CreateFolderError) as e:
-            await provider.create_folder(path)
-
-        assert e.value.code == 418
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_must_be_folder(self, provider, monkeypatch):
-        with pytest.raises(exceptions.CreateFolderError) as e:
-            await provider.create_folder(WaterButlerPath('/carp.fish', _ids=('doesnt', 'matter')))
-
-
-class TestIntraFunctions:
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_move_file(self, provider, root_provider_fixtures):
-        item = root_provider_fixtures['docs_file_metadata']
-        src_path = WaterButlerPath('/unsure.txt', _ids=(provider.folder['id'], item['id']))
-        dest_path = WaterButlerPath('/really/unsure.txt', _ids=(provider.folder['id'],
-                                                                item['id'], item['id']))
-
-        url = provider.build_url('files', src_path.identifier)
-        data = json.dumps({
-            'parents': [{
-                'id': dest_path.parent.identifier
-            }],
-            'title': dest_path.name
-        }),
-        aiohttpretty.register_json_uri('PATCH', url, data=data, body=item)
-
-        delete_url = provider.build_url('files', item['id'])
-        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
-        aiohttpretty.register_uri('PUT', delete_url, body=del_url_body, status=200)
-
-        result, created = await provider.intra_move(provider, src_path, dest_path)
-        expected = IQBRIMSFileMetadata(item, dest_path)
-
-        assert result == expected
-        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_move_folder(self, provider, root_provider_fixtures):
-        item = root_provider_fixtures['folder_metadata']
-        src_path = WaterButlerPath('/unsure/', _ids=(provider.folder['id'], item['id']))
-        dest_path = WaterButlerPath('/really/unsure/', _ids=(provider.folder['id'],
-                                                             item['id'], item['id']))
-
-        url = provider.build_url('files', src_path.identifier)
-        data = json.dumps({
-            'parents': [{
-                'id': dest_path.parent.identifier
-            }],
-            'title': dest_path.name
-        }),
-        aiohttpretty.register_json_uri('PATCH', url, data=data, body=item)
-
-        delete_url = provider.build_url('files', item['id'])
-        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
-        aiohttpretty.register_uri('PUT', delete_url, body=del_url_body, status=200)
-
-        children_query = provider._build_query(dest_path.identifier)
-        children_url = provider.build_url('files', q=children_query, alt='json', maxResults=1000)
-        children_list = generate_list(3, **root_provider_fixtures['folder_metadata'])
-        aiohttpretty.register_json_uri('GET', children_url, body=children_list)
-
-        result, created = await provider.intra_move(provider, src_path, dest_path)
-        expected = IQBRIMSFolderMetadata(item, dest_path)
-        expected.children = [
-            provider._serialize_item(dest_path.child(item['title']), item)
-            for item in children_list['items']
-        ]
-
-        assert result == expected
-        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_intra_copy_file(self, provider, root_provider_fixtures):
-        item = root_provider_fixtures['docs_file_metadata']
-        src_path = WaterButlerPath('/unsure.txt', _ids=(provider.folder['id'], item['id']))
-        dest_path = WaterButlerPath('/really/unsure.txt', _ids=(provider.folder['id'],
-                                                                item['id'], item['id']))
-
-        url = provider.build_url('files', src_path.identifier, 'copy')
-        data = json.dumps({
-            'parents': [{
-                'id': dest_path.parent.identifier
-            }],
-            'title': dest_path.name
-        }),
-        aiohttpretty.register_json_uri('POST', url, data=data, body=item)
-
-        delete_url = provider.build_url('files', item['id'])
-        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
-        aiohttpretty.register_uri('PUT', delete_url, body=del_url_body, status=200)
-
-        result, created = await provider.intra_copy(provider, src_path, dest_path)
-        expected = IQBRIMSFileMetadata(item, dest_path)
-
-        assert result == expected
-        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
-
-
 class TestOperationsOrMisc:
 
     @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
     async def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names() is True
 
     @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
     async def test_shares_storage_root(self, provider, other_provider):
         assert provider.shares_storage_root(other_provider) is True
         assert provider.shares_storage_root(provider) is True
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_move(self, provider, other_provider):
-        assert provider.can_intra_move(other_provider) is False
-        assert provider.can_intra_move(provider) is True
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -1600,15 +1255,6 @@ class TestOperationsOrMisc:
         item = root_provider_fixtures['docs_file_metadata']
 
         assert provider._serialize_item(None, item, True) == item
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_copy(self, provider, other_provider, root_provider_fixtures):
-        item = root_provider_fixtures['list_file']['items'][0]
-        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
-
-        assert provider.can_intra_copy(other_provider, path) is False
-        assert provider.can_intra_copy(provider, path) is True
 
     def test_path_from_metadata(self, provider, root_provider_fixtures):
         item = root_provider_fixtures['docs_file_metadata']
@@ -1644,3 +1290,42 @@ class TestOperationsOrMisc:
 
         assert e.value.message == '{} not found'.format(str(path))
         assert e.value.code == 404
+
+
+class TestReadOnlyProvider:
+
+    @pytest.mark.asyncio
+    async def test_upload(self, provider):
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            await provider.upload('/foo-file.txt')
+        assert e.value.code == 501
+
+    @pytest.mark.asyncio
+    async def test_create_folder(self, provider):
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            await provider.create_folder('foo')
+        assert e.value.code == 501
+
+    @pytest.mark.asyncio
+    async def test_delete(self, provider):
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            await provider.delete()
+        assert e.value.code == 501
+
+    @pytest.mark.asyncio
+    async def test_move(self, provider):
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            await provider.move()
+        assert e.value.code == 501
+
+    @pytest.mark.asyncio
+    async def test_copy(self, provider):
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            await provider.copy()
+        assert e.value.code == 501
+
+    def test_can_intra_move(self, provider):
+        assert provider.can_intra_move(provider) is False
+
+    def test_can_intra_copy(self, provider):
+        assert provider.can_intra_copy(provider) is False
