@@ -30,7 +30,7 @@ def clean_query(query: str):
 
 class IQBRIMSPathPart(wb_path.WaterButlerPathPart):
     DECODE = parse.unquote
-    # TODO: mypy lacks a syntax to define kwargs for callables
+    # TODO: mypy lacks a syntax to define kwargs for callables (same todo with GoogleDrive provider)
     ENCODE = functools.partial(parse.quote, safe='')  # type: ignore
 
 
@@ -110,7 +110,7 @@ class IQBRIMSProvider(provider.BaseProvider):
                               base: wb_path.WaterButlerPath,
                               name: str,
                               folder: bool = None) -> wb_path.WaterButlerPath:
-        # TODO Redo the logic here folders names ending in /s
+        # TODO Redo the logic here folders names ending in /s (same todo with GoogleDrive provider)
         # Will probably break
         if '/' in name.lstrip('/') and '%' not in name:
             # DAZ and MnC may pass unquoted names which break
@@ -135,80 +135,22 @@ class IQBRIMSProvider(provider.BaseProvider):
     def default_headers(self) -> dict:
         return {'authorization': 'Bearer {}'.format(self.token)}
 
-    def can_intra_move(self,
-                       other: provider.BaseProvider,
-                       path=None) -> bool:
-        return self == other
+    async def move(self,
+                   dest_provider: provider.BaseProvider,
+                   src_path: wb_path.WaterButlerPath,
+                   dest_path: wb_path.WaterButlerPath,
+                   rename: str=None,
+                   conflict: str='replace',
+                   handle_naming: bool=True):
+        raise exceptions.UnsupportedOperationError(None)
 
-    def can_intra_copy(self,
-                       other: provider.BaseProvider,
-                       path=None) -> bool:
-        # gdrive doesn't support intra-copy on folders
-        return self == other and (path and path.is_file)
-
-    async def intra_move(self,  # type: ignore
-                         dest_provider: provider.BaseProvider,
-                         src_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) \
-                         -> typing.Tuple[BaseIQBRIMSMetadata, bool]:
-        self.metrics.add('intra_move.destination_exists', dest_path.identifier is not None)
-        if dest_path.identifier:
-            await dest_provider.delete(dest_path)
-
-        async with self.request(
-            'PATCH',
-            self.build_url('files', src_path.identifier),
-            headers={
-                'Content-Type': 'application/json'
-            },
-            data=json.dumps({
-                'parents': [{
-                    'id': dest_path.parent.identifier
-                }],
-                'title': dest_path.name
-            }),
-            expects=(200, ),
-            throws=exceptions.IntraMoveError,
-        ) as resp:
-            data = await resp.json()
-
-        created = dest_path.identifier is None
-        dest_path.parts[-1]._id = data['id']
-
-        if dest_path.is_dir:
-            metadata = IQBRIMSFolderMetadata(data, dest_path)
-            metadata._children = await self._folder_metadata(dest_path)
-            return metadata, created
-        else:
-            return IQBRIMSFileMetadata(data, dest_path), created  # type: ignore
-
-    async def intra_copy(self,
-                         dest_provider: provider.BaseProvider,
-                         src_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) \
-                         -> typing.Tuple[IQBRIMSFileMetadata, bool]:
-        self.metrics.add('intra_copy.destination_exists', dest_path.identifier is not None)
-        if dest_path.identifier:
-            await dest_provider.delete(dest_path)
-
-        async with self.request(
-            'POST',
-            self.build_url('files', src_path.identifier, 'copy'),
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps({
-                'parents': [{
-                    'id': dest_path.parent.identifier
-                }],
-                'title': dest_path.name
-            }),
-            expects=(200, ),
-            throws=exceptions.IntraMoveError,
-        ) as resp:
-            data = await resp.json()
-
-        # IQBRIMS doesn't support intra-copy for folders, so dest_path will always
-        # be a file.  See can_intra_copy() for type check.
-        return IQBRIMSFileMetadata(data, dest_path), dest_path.identifier is None
+    async def copy(self,
+                   dest_provider: provider.BaseProvider,
+                   src_path: wb_path.WaterButlerPath,
+                   dest_path: wb_path.WaterButlerPath,
+                   rename: str=None, conflict: str='replace',
+                   handle_naming: bool=True):
+        raise exceptions.UnsupportedOperationError(None)
 
     async def download(self,  # type: ignore
                        path: IQBRIMSPath,
@@ -249,72 +191,20 @@ class IQBRIMSProvider(provider.BaseProvider):
         # must buffer the entire file into memory
         stream = streams.StringStream(await download_resp.read())
         if download_resp.headers.get('Content-Type'):
-            # TODO: Add these properties to base class officially, instead of as one-off
+            # TODO: Add these properties to base class officially, instead of as one-off (same todo with GoogleDrive provider)
             stream.content_type = download_resp.headers['Content-Type']  # type: ignore
         stream.name = metadata.export_name  # type: ignore
         return stream
 
     async def upload(self, stream, path: wb_path.WaterButlerPath, *args, **kwargs) \
             -> typing.Tuple[IQBRIMSFileMetadata, bool]:
-        assert path.is_file
-
-        if path.identifier:
-            segments = [path.identifier]
-        else:
-            segments = []
-
-        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
-
-        upload_metadata = self._build_upload_metadata(path.parent.identifier, path.name)
-        upload_id = await self._start_resumable_upload(not path.identifier, segments, stream.size,
-                                                       upload_metadata)
-        data = await self._finish_resumable_upload(segments, stream, upload_id)
-
-        if data['md5Checksum'] != stream.writers['md5'].hexdigest:
-            raise exceptions.UploadChecksumMismatchError()
-
-        return IQBRIMSFileMetadata(data, path), path.identifier is None
+        raise exceptions.UnsupportedOperationError(None)
 
     async def delete(self,  # type: ignore
                      path: IQBRIMSPath,
                      confirm_delete: int=0,
                      **kwargs) -> None:
-        """Given a WaterButlerPath, delete that path
-        :param IQBRIMSPath: Path to be deleted
-        :param int confirm_delete: Must be 1 to confirm root folder delete
-        :rtype: None
-        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
-        :raises: :class:`waterbutler.core.exceptions.DeleteError`
-
-        Quirks:
-            If the WaterButlerPath given is for the provider root path, then
-            the contents of provider root path will be deleted. But not the
-            provider root itself.
-        """
-        if not path.identifier:
-            raise exceptions.NotFoundError(str(path))
-
-        self.metrics.add('delete.is_root_delete', path.is_root)
-        if path.is_root:
-            self.metrics.add('delete.root_delete_confirmed', confirm_delete == 1)
-            if confirm_delete == 1:
-                await self._delete_folder_contents(path)
-                return
-            else:
-                raise exceptions.DeleteError(
-                    'confirm_delete=1 is required for deleting root provider folder',
-                    code=400
-                )
-
-        async with self.request(
-            'PUT',
-            self.build_url('files', path.identifier),
-            data=json.dumps({'labels': {'trashed': 'true'}}),
-            headers={'Content-Type': 'application/json'},
-            expects=(200, ),
-            throws=exceptions.DeleteError,
-        ):
-            return
+        raise exceptions.UnsupportedOperationError(None)
 
     def _build_query(self, folder_id: str, title: str=None) -> str:
         queries = [
@@ -384,36 +274,11 @@ class IQBRIMSProvider(provider.BaseProvider):
                             path: wb_path.WaterButlerPath,
                             folder_precheck: bool=True,
                             **kwargs) -> IQBRIMSFolderMetadata:
-        IQBRIMSPath.validate_folder(path)
-
-        if folder_precheck:
-            if path.identifier:
-                raise exceptions.FolderNamingConflict(path.name)
-
-        async with self.request(
-            'POST',
-            self.build_url('files'),
-            headers={
-                'Content-Type': 'application/json',
-            },
-            data=json.dumps({
-                'title': path.name,
-                'parents': [{
-                    'id': path.parent.identifier
-                }],
-                'mimeType': self.FOLDER_MIME_TYPE,
-            }),
-            expects=(200, ),
-            throws=exceptions.CreateFolderError,
-        ) as resp:
-            return IQBRIMSFolderMetadata(await resp.json(), path)
+        raise exceptions.UnsupportedOperationError(None)
 
     def path_from_metadata(self, parent_path, metadata):
         """ Unfortunately-named method, currently only used to get path name for zip archives. """
         return parent_path.child(metadata.export_name, _id=metadata.id, folder=metadata.is_folder)
-
-    def _build_upload_url(self, *segments, **query):
-        return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
 
     def _serialize_item(self,
                         path: wb_path.WaterButlerPath,
@@ -424,47 +289,6 @@ class IQBRIMSProvider(provider.BaseProvider):
         if item['mimeType'] == self.FOLDER_MIME_TYPE:
             return IQBRIMSFolderMetadata(item, path)
         return IQBRIMSFileMetadata(item, path)
-
-    def _build_upload_metadata(self, folder_id: str, name: str) -> dict:
-        return {
-            'parents': [
-                {
-                    'kind': 'drive#parentReference',
-                    'id': folder_id,
-                },
-            ],
-            'title': name,
-        }
-
-    async def _start_resumable_upload(self,
-                                      created: bool,
-                                      segments: typing.Sequence[str],
-                                      size,
-                                      metadata: dict) -> str:
-        async with self.request(
-            'POST' if created else 'PUT',
-            self._build_upload_url('files', *segments, uploadType='resumable'),
-            headers={
-                'Content-Type': 'application/json',
-                'X-Upload-Content-Length': str(size),
-            },
-            data=json.dumps(metadata),
-            expects=(200, ),
-            throws=exceptions.UploadError,
-        ) as resp:
-            location = furl.furl(resp.headers['LOCATION'])
-        return location.args['upload_id']
-
-    async def _finish_resumable_upload(self, segments: typing.Sequence[str], stream, upload_id):
-        async with self.request(
-            'PUT',
-            self._build_upload_url('files', *segments, uploadType='resumable', upload_id=upload_id),
-            headers={'Content-Length': str(stream.size)},
-            data=stream,
-            expects=(200, ),
-            throws=exceptions.UploadError,
-        ) as resp:
-            return await resp.json()
 
     async def _resolve_path_to_ids(self, path, start_at=None):
         """Takes a path and traverses the file tree (ha!) beginning at ``start_at``, looking for
@@ -669,38 +493,3 @@ class IQBRIMSProvider(provider.BaseProvider):
                 data['version'] = data['etag'] + settings.DRIVE_IGNORE_VERSION
 
         return data if raw else IQBRIMSFileMetadata(data, path)
-
-    async def _delete_folder_contents(self, path: wb_path.WaterButlerPath) -> None:
-        """Given a WaterButlerPath, delete all contents of folder
-
-        :param WaterButlerPath path: Folder to be emptied
-        :rtype: None
-        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
-        :raises: :class:`waterbutler.core.exceptions.MetadataError`
-        :raises: :class:`waterbutler.core.exceptions.DeleteError`
-        """
-        file_id = path.identifier
-        if not file_id:
-            raise exceptions.NotFoundError(str(path))
-        resp = await self.make_request(
-            'GET',
-            self.build_url('files',
-                           q="'{}' in parents".format(file_id),
-                           fields='items(id)'),
-            expects=(200, ),
-            throws=exceptions.MetadataError)
-
-        try:
-            child_ids = (await resp.json())['items']
-        except (KeyError, IndexError):
-            raise exceptions.MetadataError('{} not found'.format(str(path)),
-                                           code=HTTPStatus.NOT_FOUND)
-
-        for child in child_ids:
-            await self.make_request(
-                'PUT',
-                self.build_url('files', child['id']),
-                data=json.dumps({'labels': {'trashed': 'true'}}),
-                headers={'Content-Type': 'application/json'},
-                expects=(200, ),
-                throws=exceptions.DeleteError)
