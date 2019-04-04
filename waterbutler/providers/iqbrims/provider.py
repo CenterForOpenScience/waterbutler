@@ -1,12 +1,8 @@
 import os
-import json
 import typing
-import hashlib
 import functools
 from urllib import parse
 from http import HTTPStatus
-
-import furl
 
 from waterbutler.core import streams
 from waterbutler.core import provider
