@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def sig_handler(sig, frame):
-    io_loop = tornado.ioloop.IOLoop.instance()
+    io_loop = asyncio.get_event_loop()
 
     def stop_loop():
         if len(asyncio.Task.all_tasks(io_loop)) == 0:
@@ -43,14 +43,13 @@ def make_app(debug):
         api_to_handlers(v1) +
         [(r'/status', handlers.StatusHandler)],
         debug=debug,
+        autoreload=False,
     )
     app.sentry_client = AsyncSentryClient(settings.SENTRY_DSN, release=__version__)
     return app
 
 
 def serve():
-    tornado.platform.asyncio.AsyncIOMainLoop().install()
-
     app = make_app(server_settings.DEBUG)
 
     ssl_options = None
