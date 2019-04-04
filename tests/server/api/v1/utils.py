@@ -3,7 +3,6 @@ import asyncio
 from unittest.mock import Mock
 
 from tornado import testing
-from tornado.platform.asyncio import AsyncIOMainLoop
 
 from waterbutler.server.app import make_app
 from waterbutler.server.api.v1.provider import ProviderHandler
@@ -30,9 +29,6 @@ class ServerTestCase(testing.AsyncHTTPTestCase):
 
     def get_app(self):
         return make_app(debug=False)
-
-    def get_new_ioloop(self):
-        return AsyncIOMainLoop()
 
 
 def mock_handler(http_request):
