@@ -1,5 +1,4 @@
 import time
-import uuid
 import base64
 import typing
 import hashlib
@@ -99,16 +98,6 @@ class GoogleCloudProvider(BaseProvider):
                 self.NAME,
                 message='Invalid or mal-formed service account credentials: {}'.format(str(exc))
             )
-
-        self.instance_id = '{}-{}'.format(GoogleCloudProvider.NAME, uuid.uuid4())
-        logger.info('{}\tnew provider instance'.format(self.instance_id))
-
-    # TODO: Remove this `__del__()` method before staging merge, @Fitz and @Longze
-    def __del__(self):
-        logger.info('{}\tdestroying provider instance and '
-                    'closing {} session(s)'.format(self.instance_id, len(self.session_list)))
-        super().__del__()
-        logger.info('{}\tdone'.format(self.instance_id))
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
         return await self.validate_path(path)
