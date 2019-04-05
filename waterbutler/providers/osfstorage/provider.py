@@ -45,16 +45,6 @@ class OSFStorageProvider(provider.BaseProvider):
         self.BASE_URL = settings['baseUrl']
         self.provider_name = settings['storage'].get('provider')
 
-        self.instance_id = '{}-{}'.format(OSFStorageProvider.NAME, uuid.uuid4())
-        logger.info('{}\tnew provider instance'.format(self.instance_id))
-
-    # TODO: Remove this `__del__()` method before staging merge, @Fitz and @Longze
-    def __del__(self):
-        logger.info('{}\tdestroying provider instance and '
-                    'closing {} session(s)'.format(self.instance_id, len(self.session_list)))
-        super().__del__()
-        logger.info('{}\tdone'.format(self.instance_id))
-
     async def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
         url, data, params = self.build_signed_url(
             method,
