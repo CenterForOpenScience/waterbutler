@@ -47,7 +47,7 @@ class TestServerFuzzing(ServerTestCase):
                     method='HEAD'
                 )
 
-            assert exc.value.code == client.INTERNAL_SERVER_ERROR
+            assert exc.value.code == client.SERVICE_UNAVAILABLE
 
     @testing.gen_test
     def test_movecopy_requires_contentlength(self):
