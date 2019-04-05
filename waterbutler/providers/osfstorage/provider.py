@@ -95,6 +95,7 @@ class OSFStorageProvider(provider.BaseProvider):
             expects=(200, 404)
         )
         if resp.status == 404:
+            await resp.release()
             return WaterButlerPath(path, _ids=(self.root_id, None), folder=path.endswith('/'))
         data = await resp.json()
 
