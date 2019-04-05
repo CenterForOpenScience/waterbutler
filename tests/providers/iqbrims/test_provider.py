@@ -21,7 +21,10 @@ from waterbutler.providers.iqbrims.metadata import (IQBRIMSRevision,
                                                         IQBRIMSFolderMetadata,
                                                         IQBRIMSFileRevisionMetadata)
 
-from tests.providers.iqbrims.fixtures import root_provider_fixtures
+from tests.providers.googledrive.fixtures import(error_fixtures,
+                                                 sharing_fixtures,
+                                                 revision_fixtures,
+                                                 root_provider_fixtures)
 
 
 @pytest.fixture
