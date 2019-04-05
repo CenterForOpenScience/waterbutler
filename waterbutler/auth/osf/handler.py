@@ -4,7 +4,7 @@ import datetime
 import jwe
 import jwt
 import aiohttp
-from aiohttp.client_exceptions import ContentTypeError
+from aiohttp.client_exceptions import ClientError, ContentTypeError
 
 from waterbutler.core import exceptions
 from waterbutler.auth.osf import settings
@@ -47,31 +47,34 @@ class OsfAuthHandler(BaseAuthHandler):
         return query_params
 
     async def make_request(self, params, headers, cookies):
-        # Note: with simple request whose response is handled right afterwards without "being passed
-        #       further along", use the context manager so WB doesn't need to handle the sessions.
-        async with aiohttp.request(
-            'get',
-            settings.API_URL,
-            params=params,
-            headers=headers,
-            cookies=cookies
-        ) as response:
-            if response.status != 200:
-                try:
-                    data = await response.json()
-                except (ValueError, ContentTypeError):
-                    data = await response.read()
-                raise exceptions.AuthError(data, code=response.status)
+        try:
+            # Note: with simple request whose response is handled right afterwards without "being passed
+            #       further along", use the context manager so WB doesn't need to handle the sessions.
+            async with aiohttp.request(
+                'get',
+                settings.API_URL,
+                params=params,
+                headers=headers,
+                cookies=cookies,
+            ) as response:
+                if response.status != 200:
+                    try:
+                        data = await response.json()
+                    except (ValueError, ContentTypeError):
+                        data = await response.read()
+                    raise exceptions.AuthError(data, code=response.status)
 
-            try:
-                raw = await response.json()
-                signed_jwt = jwe.decrypt(raw['payload'].encode(), JWE_KEY)
-                data = jwt.decode(signed_jwt, settings.JWT_SECRET,
-                                  algorithm=settings.JWT_ALGORITHM,
-                                  options={'require_exp': True})
-                return data['data']
-            except (jwt.InvalidTokenError, KeyError):
-                raise exceptions.AuthError(data, code=response.status)
+                try:
+                    raw = await response.json()
+                    signed_jwt = jwe.decrypt(raw['payload'].encode(), JWE_KEY)
+                    data = jwt.decode(signed_jwt, settings.JWT_SECRET,
+                                      algorithm=settings.JWT_ALGORITHM,
+                                      options={'require_exp': True})
+                    return data['data']
+                except (jwt.InvalidTokenError, KeyError):
+                    raise exceptions.AuthError(data, code=response.status)
+        except ClientError:
+            raise exceptions.AuthError('Unable to connect to auth sever', code=503)
 
     async def fetch(self, request, bundle):
         """Used for v0"""
