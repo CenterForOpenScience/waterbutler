@@ -107,6 +107,38 @@ class BaseProvider(metaclass=abc.ABCMeta):
         self.provider_metrics.add('auth', auth)
         self.metrics = self.provider_metrics.new_subrecord(self.NAME)
 
+        # The `.loop_session_map` ensures that only one session is created for one event loop per
+        # provider instance.  On one hand, we can't just have one session for each provider instance
+        # since actions such as move and copy are run in background probably with a different loop.
+        # On the other hand, we can't have one session for each request since sessions are only
+        # closed when the provider instance is destroyed. There would be too many for WB to handle.
+        self.loop_session_map = weakref.WeakKeyDictionary()
+        # The `.session_list` keeps track of all the sessions created for the provider instance so
+        # that they can be properly closed upon instance destroy.
+        self.session_list = []
+
+    def __del__(self):
+        """
+        Manually close all sessions created during the life of the provider instance.  Our code are
+        a slightly modified version of how ``aiohttp-3.5.4`` closes sessions and connectors.
+
+        1. sessions: https://github.com/aio-libs/aiohttp/blob/v3.5.4/aiohttp/client.py#L893
+        2. connectors: https://github.com/aio-libs/aiohttp/blob/v3.5.4/aiohttp/connector.py#L389
+            2.1 Update: https://github.com/aio-libs/aiohttp/pull/3417/files.
+
+        Our implementation tries to avoid accessing protected members unless we can't.  For example,
+        we use ``session.connector`` instead of ``session._connector``, and use ``session.detach()``
+        instead of calling ``session._connector = None``.  We have to ``session._connector_owner``
+        since it doesn't have an public property. We have to call ``connector._close()`` instead of
+        ``connector.close()`` since ``aiohttp`` decided to make ``.close()`` async recently. Here is
+        the PR: https://github.com/aio-libs/aiohttp/pull/3417/files.
+        """
+        for session in self.session_list:
+            if not session.closed:
+                if session.connector is not None and session._connector_owner:
+                    session.connector._close()
+                session.detach()
+
     @property
     @abc.abstractmethod
     def NAME(self) -> str:
@@ -154,39 +186,110 @@ class BaseProvider(metaclass=abc.ABCMeta):
             if value is not None
         }
 
-    @throttle()
-    async def make_request(self, method: str, url: str, *args, **kwargs) -> aiohttp.client.ClientResponse:
-        """A wrapper around :func:`aiohttp.request`. Inserts default headers.
+    def get_or_create_session(self):
+        """
+        Obtain an existing session or create a new one for making requests.
 
-        :param method: ( :class:`str` ) The HTTP method
-        :param url: ( :class:`str` ) The url to send the request to
-        :keyword range: An optional tuple (start, end) that is transformed into a Range header
-        :keyword expects: An optional tuple of HTTP status codes as integers raises an exception
-            if the returned status code is not in it.
-        :type expects: tuple of ints
-        :param throws: ( :class:`Exception` ) The exception to be raised from expects
-        :param \*args: ( :class:`tuple` )args passed to :func:`aiohttp.request`
-        :param \*\*kwargs:  ( :class:`dict` ) kwargs passed to :func:`aiohttp.request`
+        Quirks:
+        Sessions must be carefully managed by WB.  On one hand, we can't just have one session for
+        each provider instance since actions such as move and copy are run in background probably
+        with a different loop.  On the other hand, we can't have one session for each request since
+        sessions are only closed when the provider instance is destroyed.
+
+        :return: the one session that belongs to the current event loop
+        :rtype: :class:`aiohttp.ClientSession`
+        """
+        loop = asyncio.get_event_loop()
+        session = self.loop_session_map.get(loop, None)
+        if not session:
+            session = aiohttp.ClientSession()
+            self.loop_session_map[loop] = session
+            self.session_list.append(session)
+        return session
+
+    @throttle()
+    async def make_request(self, method, url, *args, **kwargs):
+        """
+        A wrapper around 7 HTTP request methods in :class:`aiohttp.ClientSession`.  It replaces the
+        original ``make_request()`` method which was a wrapper around :func:`aiohttp.request`.  This
+        change is due to aiohttp triple-major-version upgrade from version 0.18 to 3.5.4 where the
+        main difference is context manager (CM).
+
+        Core Quirk:
+
+        aiohttp3 explicitly provides two examples of making requests in the documentation.  Using
+        :func:`aiohttp.request` directly with CM and using :class:`aiohttp.ClientSession` and its
+        HTTP methods with CM.  Unfortunately, an unpleasant side-effect of CM is that sessions and
+        connections are closed outside CM.  This breaks WB's design where responses are passed
+        from one provider to another.
+
+        Not-so-smart Solution:
+
+        By taking a look at aiohttp3's source code, we discovered that request can be made without
+        CM though we are not sure why the documentation doesn't mention this option.  The only trick
+        here is to sessions must be carefully managed by WB.  Please take a look at the following
+        methods for detailed implementation.
+
+        ``__init__()``: session list and event loop map initialization
+        ``__del__()``: session and connection closing
+        ``get_or_create_session()``: get the current session or create a new one for making requests
+
+        :param method: The HTTP method
+        :type method: :class:`str`
+        :param url: The URL to send the request to
+        :type url: :class:`str` or a ``functools.partial`` object to build the URL when called
+        :param \*args: args passed to methods of :class:`aiohttp.ClientSession`
+        :param \*\*kwargs: kwargs passed to methods of :class:`aiohttp.ClientSession` except the
+            following ones that will be popped and used for other purposes
+            ``retry``: An optional integer with default value 2 that determines how further to retry
+                failed requests with the exponential backoff algorithm
+            ``expects``: An optional tuple of HTTP status codes as integers raises an exception if
+                the returned status code is not in it
+            ``throws``: The exception to be raised from expects
+            ``range``: An optional tuple (start, end) that is transformed into a Range header
+        :return: The HTTP response
         :rtype: :class:`aiohttp.ClientResponse`
         :raises: :class:`.UnhandledProviderError` Raised if expects is defined
+        :raises: :class:`.WaterButlerError` Raised if invalid HTTP method is provided
         """
+
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
         retry = _retry = kwargs.pop('retry', 2)
-        range = kwargs.pop('range', None)
         expects = kwargs.pop('expects', None)
         throws = kwargs.pop('throws', exceptions.UnhandledProviderError)
-        if range:
-            kwargs['headers']['Range'] = self._build_range_header(range)
+        byte_range = kwargs.pop('range', None)
+        if byte_range:
+            kwargs['headers']['Range'] = self._build_range_header(byte_range)
 
+        method = method.upper()
+        session = self.get_or_create_session()
         while retry >= 0:
             # Don't overwrite the callable ``url`` so that signed URLs are refreshed for every retry
             non_callable_url = url() if callable(url) else url
             try:
                 self.provider_metrics.incr('requests.count')
-                response = await aiohttp.request(method, non_callable_url, *args, **kwargs)
+                # TODO: use a `dict` to select methods with either `lambda` or `functools.partial`
+                if method == 'GET':
+                    response = await session.get(non_callable_url, *args, **kwargs)
+                elif method == 'PUT':
+                    response = await session.put(non_callable_url, *args, **kwargs)
+                elif method == 'POST':
+                    response = await session.post(non_callable_url, *args, **kwargs)
+                elif method == 'HEAD':
+                    response = await session.head(non_callable_url, *args, **kwargs)
+                elif method == 'DELETE':
+                    response = await session.delete(non_callable_url, **kwargs)
+                elif method == 'PATCH':
+                    response = await session.patch(non_callable_url, *args, **kwargs)
+                elif method == 'OPTIONS':
+                    response = await session.options(non_callable_url, *args, **kwargs)
+                else:
+                    raise exceptions.WaterButlerError('Unsupported HTTP method ...')
                 self.provider_metrics.incr('requests.tally.ok')
                 if expects and response.status not in expects:
-                    raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
+                    unexpected = await exceptions.exception_from_response(response,
+                                                                          error=throws, **kwargs)
+                    raise unexpected
                 return response
             except throws as e:
                 self.provider_metrics.incr('requests.tally.nok')

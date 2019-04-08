@@ -98,15 +98,26 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
 
 
 async def send_signed_request(method, url, payload):
+    """Calculates a signature for a payload, then sends a request to the given url with the payload
+    and signature.
+
+    This method will read the response into memory before returning, so **DO NOT** use it if the
+    response may be very large.  As of 2019-04-06, this function is only used by the callback logging
+    code in waterbutler.core.remote_logging.
+    """
+
     message, signature = signer.sign_payload(payload)
-    return (await aiohttp.request(
-        method, url,
-        data=json.dumps({
-            'payload': message.decode(),
-            'signature': signature,
-        }),
-        headers={'Content-Type': 'application/json'},
-    ))
+
+    async with aiohttp.request(
+            method,
+            url,
+            data=json.dumps({
+                'payload': message.decode(),
+                'signature': signature,
+            }),
+            headers={'Content-Type': 'application/json'}
+    ) as response:
+        return response.status, await response.read()
 
 
 def normalize_datetime(date_string):
