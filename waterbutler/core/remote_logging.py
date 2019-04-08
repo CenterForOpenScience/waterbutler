@@ -59,13 +59,12 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
                          settings.MFR_IDENTIFYING_HEADER in request['request']['headers'])
         log_payload['action_meta']['is_mfr_render'] = is_mfr_render
 
-    resp = await utils.send_signed_request('PUT', auth['callback_url'], log_payload)
-    resp_data = await resp.read()
+    resp_status, resp_data = await utils.send_signed_request('PUT', auth['callback_url'], log_payload)
 
-    if resp.status // 100 != 2:
+    if resp_status // 100 != 2:
         raise Exception(
             'Callback for {} request failed with {!r}, got {}'.format(
-                action, resp, resp_data.decode('utf-8')
+                action, resp_status, resp_data.decode('utf-8')
             )
         )
 
@@ -200,7 +199,7 @@ async def _send_to_keen(payload, collection, project_id, write_key, action, doma
                                                    settings.KEEN_API_VERSION,
                                                    project_id, collection)
 
-    async with await aiohttp.request('POST', url, headers=headers, data=serialized) as resp:
+    async with aiohttp.request('POST', url, headers=headers, data=serialized) as resp:
         if resp.status == 201:
             logger.info('Successfully logged {} to {} collection in {} Keen'.format(action, collection, domain))
         else:

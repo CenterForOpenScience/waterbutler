@@ -2,7 +2,8 @@ from http import client
 from unittest import mock
 
 import pytest
-import aiohttp
+
+from aiohttp import ClientError
 
 from tornado import gen
 from tornado import testing
@@ -17,7 +18,7 @@ class TestServerFuzzing(ServerTestCase):
     @testing.gen_test
     def test_head_no_auth_server(self):
         with mock.patch('waterbutler.auth.osf.handler.aiohttp.request') as mock_auth:
-            mock_auth.side_effect = aiohttp.errors.ClientError
+            mock_auth.side_effect = ClientError
 
             with pytest.raises(httpclient.HTTPError) as exc:
                 yield self.http_client.fetch(
