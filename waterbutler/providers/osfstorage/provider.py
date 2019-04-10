@@ -5,6 +5,7 @@ import typing
 import hashlib
 import logging
 
+from waterbutler import settings as wb_settings
 from waterbutler.core import utils
 from waterbutler.core import signing
 from waterbutler.core import streams
@@ -235,6 +236,12 @@ class OSFStorageProvider(provider.BaseProvider):
         Finally, WB constructs its metadata response and sends that back to the original request
         issuer.
         """
+        async with self.signed_request(
+            'GET',
+            '{}/api/v1/project/{}/creator_quota/'.format(wb_settings.OSF_URL, self.nid),
+            expects=(200, )
+        ) as resp:
+            resp_json = await resp.json()
 
         metadata = await self._send_to_storage_provider(stream, path, **kwargs)
         metadata = metadata.serialized()
