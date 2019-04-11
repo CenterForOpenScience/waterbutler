@@ -102,4 +102,9 @@ class CreateMixin:
         if created:
             self.set_status(201)
 
+        if isinstance(self.metadata, dict):
+            self.set_status(406)  # Not acceptable
+            self.write(self.metadata)
+            return
+
         self.write({'data': self.metadata.json_api_serialized(self.resource)})

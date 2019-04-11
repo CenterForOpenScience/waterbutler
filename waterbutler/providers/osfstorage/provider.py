@@ -241,7 +241,16 @@ class OSFStorageProvider(provider.BaseProvider):
             '{}/api/v1/project/{}/creator_quota/'.format(wb_settings.OSF_URL, self.nid),
             expects=(200, )
         ) as resp:
-            resp_json = await resp.json()
+            quota = await resp.json()
+            if quota['used'] + stream.size > quota['max']:
+                return {
+                    'error': 'not_enough_quota',
+                    'message': 'You do not have enough available quota.',
+                    'file': {
+                        'name': path.name,
+                        'size': stream.size
+                    }
+                }, False
 
         metadata = await self._send_to_storage_provider(stream, path, **kwargs)
         metadata = metadata.serialized()
