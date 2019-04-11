@@ -783,6 +783,29 @@ class TestUploads:
             fetch_metadata=False
         )
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_above_quota(self, monkeypatch, provider_and_mock_one, file_stream,
+                              upload_response, upload_path, mock_time):
+        self.patch_uuid(monkeypatch)
+
+        url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
+        aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
+
+        provider, inner_provider = provider_and_mock_one
+        inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())
+
+        url, _, params = provider.build_signed_url(
+            'GET', '{}/api/v1/project/foo/creator_quota/'.format(wb_settings.OSF_URL))
+        quota = {'max': 10000, 'used': 11000}
+        aiohttpretty.register_json_uri('GET', url, body=quota, params=params)
+
+        res, created = await provider.upload(file_stream, upload_path)
+
+        assert created is False
+        assert isinstance(res, dict)
+        assert res['error'] == 'not_enough_quota'
+
 
 class TestCrossRegionMove:
 
