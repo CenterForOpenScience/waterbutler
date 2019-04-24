@@ -1,5 +1,5 @@
 import logging
-from typing import Tuple
+from typing import List, Tuple
 
 from waterbutler.core import exceptions, provider, streams
 
@@ -256,7 +256,7 @@ class BitbucketProvider(provider.BaseProvider):
 
         return BitbucketFileMetadata(data[0], path, owner=self.owner, repo=self.repo)
 
-    async def _metadata_folder(self, folder: BitbucketPath, **kwargs) -> list:
+    async def _metadata_folder(self, folder: BitbucketPath, **kwargs) -> List:
 
         # Fetch metadata itself
         dir_meta = await self._fetch_path_metadata(folder)
@@ -264,21 +264,7 @@ class BitbucketProvider(provider.BaseProvider):
         dir_path = '/' if dir_meta['path'] == '' else dir_meta['path']
 
         # Fetch content list
-        dir_content = await self._fetch_dir_listing(folder)
-        page_index = dir_content['page']
-        page_len = dir_content['pagelen']
-        next_url = dir_content.get('next', None)
-        dir_list = dir_content['values']
-        while next_url:
-            if page_index > pd_settings.MAX_RESP_PAGE_NUMBER \
-                    or page_len * page_index > pd_settings.MAX_DIR_LIST_SIZE:
-                # TODO: Should we limit this? If so, by page number, by list size or both?
-                pass
-            more_content = await self._fetch_dir_listing_continued(next_url)
-            page_index = more_content['page']
-            page_len = more_content['pagelen']
-            next_url = more_content.get('next', None)
-            dir_list.extend(more_content['values'])
+        dir_list = await self._fetch_dir_listing(folder)
 
         # Set the commit hash
         if folder.commit_sha is None:
@@ -342,14 +328,13 @@ class BitbucketProvider(provider.BaseProvider):
         appending ``?format=meta`` to the endpoint.  However, this new feature no longer provides
         two WB-required attributes: revision and timestamp.
 
-        1) For the revision, we can still get it from the ``resp_dict['commit']['hash']``, whose
-           first 12 chars turn out to be the revision.  This is similar to how WB handles folder's
-           commit sha.
+        1) For the revision, we can still get it from the ``resp_dict['commit']['hash']``, of which
+           the first 12 chars turn out to be the revision.
         2) TODO: add notes for how to get timestamp
 
         API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
 
-        :param path: the file or folder whose metadata is requested
+        :param path: the file or folder of which the metadata is requested
         :return: the file metadata dict
         """
 
@@ -361,24 +346,48 @@ class BitbucketProvider(provider.BaseProvider):
         )
         return await resp.json()
 
-    async def _fetch_dir_listing(self, folder: BitbucketPath) -> dict:
-        """Get the first page which lists the folder's full or partial contents.
+    async def _fetch_dir_listing(self, folder: BitbucketPath) -> List:
+        """Get a list of the folder's full contents (upto the max limit setting if there is one).
 
         Bitbucket API 2.0 refactored the response structure for listing folder contents.
 
         1) The response is paginated.  If ``resp_dict`` contains the key ``next``, the contents are
-        partial.  The caller must use the URL provided by ``dict['next']`` to fetch the next page
-        after this method returns.
+           partial.  The caller must use the URL provided by ``dict['next']`` to fetch the next page
+           after this method returns.
 
         2) The response no longer provides two WB-required attributes: ``node`` (folder commit sha)
-        and ``path``.  For the folder commit sha, we can still get it from the first 12 chars of the
-        ``resp_dict['commit']['hash']``.  This is similar to how WB handles file's revision.
+           and ``path``.  For the folder commit sha, we can still get it from the first 12 chars of
+           the ``resp_dict['commit']['hash']``.
+
         TODO: add notes for ``path`` after more investigation
 
         API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
 
-        :param folder: the folder whose contents should be listed
-        :returns: a dict whose ``['values']`` contains a list of the folder's full/partial contents
+        :param folder: the folder of which the contents should be listed
+        :returns: a list of the folder's full contents
+        """
+        dir_content = await self._fetch_dir_listing_first_page(folder)
+        page_index = dir_content['page']
+        page_len = dir_content['pagelen']
+        next_url = dir_content.get('next', None)
+        dir_list = dir_content['values']
+        while next_url:
+            if page_index > pd_settings.MAX_RESP_PAGE_NUMBER \
+                    or page_len * page_index > pd_settings.MAX_DIR_LIST_SIZE:
+                # TODO: Should we limit this? If so, by page number, by list size or both?
+                pass
+            more_content = await self._fetch_dir_listing_next_page(next_url)
+            page_index = more_content['page']
+            page_len = more_content['pagelen']
+            next_url = more_content.get('next', None)
+            dir_list.extend(more_content['values'])
+        return dir_list
+
+    async def _fetch_dir_listing_first_page(self, folder: BitbucketPath) -> dict:
+        """Get the first page which lists the folder's full or partial contents.
+
+        :param folder: the folder of which the contents should be listed
+        :returns: a dict of which the ``['values']`` contains a list of the folder's contents
         """
         assert folder.is_dir  # don't use this method on files
 
@@ -390,17 +399,10 @@ class BitbucketProvider(provider.BaseProvider):
         )
         return await resp.json()
 
-    async def _fetch_dir_listing_continued(self, next_url: str) -> dict:
-        """Get the next page which lists more contents for the folder.
+    async def _fetch_dir_listing_next_page(self, next_url: str) -> dict:
+        """Get the next page for more contents for the folder.
 
-        As mentioned in ``_fetch_dir_listing()``, WB needs to continue fetching more pages if there
-        is any due to response pagination.  If ``resp_dict`` contains the key ``next``, the contents
-        are still partial.  The caller must continue to use the new URL provided by ``dict['next']``
-        to fetch another page after this method returns.
-
-        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
-
-        :param next_url: the URL to get the next page of the content list
+        :param next_url: the URL to get the next page of the folder's contents
         :return: a dict whose ``['values']`` contains a list of the folder's partial contents
         """
         resp = await self.make_request(
