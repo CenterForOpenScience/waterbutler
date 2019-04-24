@@ -230,6 +230,10 @@ class BitbucketProvider(provider.BaseProvider):
         segments = ('1.0', 'repositories', self.owner, self.repo) + segments
         return self.build_url(*segments, **query)
 
+    def _build_v2_repo_url(self, *segments, **query):
+        segments = ('2.0', 'repositories', self.owner, self.repo) + segments
+        return self.build_url(*segments, **query)
+
     async def _metadata_file(self, path: BitbucketPath, revision: str=None, **kwargs):
         """Fetch metadata for a single file
 
@@ -254,28 +258,63 @@ class BitbucketProvider(provider.BaseProvider):
 
     async def _metadata_folder(self, folder: BitbucketPath, **kwargs) -> list:
 
-        this_dir = await self._fetch_dir_listing(folder)
+        # Fetch metadata itself
+        dir_meta = await self._fetch_path_metadata(folder)
+        dir_commit_sha = dir_meta['commit']['hash']
+        dir_path = '/' if dir_meta['path'] == '' else dir_meta['path']
+
+        # Fetch content list
+        dir_content = await self._fetch_dir_listing(folder)
+        page_index = dir_content['page']
+        page_len = dir_content['pagelen']
+        next_url = dir_content.get('next', None)
+        dir_list = dir_content['values']
+        while next_url:
+            if page_index > pd_settings.MAX_RESP_PAGE_NUMBER \
+                    or page_len * page_index > pd_settings.MAX_DIR_LIST_SIZE:
+                # TODO: Should we limit this? If so, by page number, by list size or both?
+                pass
+            more_content = await self._fetch_dir_listing_continued(next_url)
+            page_index = more_content['page']
+            page_len = more_content['pagelen']
+            next_url = more_content.get('next', None)
+            dir_list.extend(more_content['values'])
+
+        # Set the commit hash
         if folder.commit_sha is None:
-            folder.set_commit_sha(this_dir['node'])
+            folder.set_commit_sha(dir_commit_sha[:12])
 
+        # Build the metadata to return
         ret = []
-        for name in this_dir['directories']:
-            ret.append(BitbucketFolderMetadata(
-                {'name': name},
-                folder.child(name, folder=True),
-                owner=self.owner,
-                repo=self.repo,
-            ))
-
-        for item in this_dir['files']:
-            name = self.bitbucket_path_to_name(item['path'], this_dir['path'])
-            # TODO: mypy doesn't like the mix of File & Folder Metadata objects
-            ret.append(BitbucketFileMetadata(  # type: ignore
-                item,
-                folder.child(name, folder=False),
-                owner=self.owner,
-                repo=self.repo,
-            ))
+        for value in dir_list:
+            if value['type'] == 'commit_file':
+                name = self.bitbucket_path_to_name(value['path'], dir_path)
+                # TODO: Find alternatives for timestamp
+                item = {
+                    'revision': value['commit']['hash'][:12],
+                    'size': value['size'],
+                    'path': value['path'],
+                    'timestamp': None,
+                    'utctimestamp': None
+                }
+                # TODO: mypy doesn't like the mix of File & Folder Metadata objects
+                ret.append(  # type: ignore
+                    BitbucketFileMetadata(
+                        item,
+                        folder.child(name, folder=False),
+                        owner=self.owner,
+                        repo=self.repo,
+                    )
+                )
+            if value['type'] == 'commit_directory':
+                ret.append(
+                    BitbucketFolderMetadata(
+                        {'name': value['path']},
+                        folder.child(value['path'], folder=True),
+                        owner=self.owner,
+                        repo=self.repo,
+                    )
+                )
 
         return ret
 
@@ -296,25 +335,78 @@ class BitbucketProvider(provider.BaseProvider):
         )
         return (await resp.json())['name']
 
+    async def _fetch_path_metadata(self, path: BitbucketPath) -> dict:
+        """Get the metadata for folder and file itself.
+
+        Bitbucket API 2.0 provides an easy way to fetch metadata for files and folders by simply
+        appending ``?format=meta`` to the endpoint.  However, this new feature no longer provides
+        two WB-required attributes: revision and timestamp.
+
+        1) For the revision, we can still get it from the ``resp_dict['commit']['hash']``, whose
+           first 12 chars turn out to be the revision.  This is similar to how WB handles folder's
+           commit sha.
+        2) TODO: add notes for how to get timestamp
+
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
+
+        :param path: the file or folder whose metadata is requested
+        :return: the file metadata dict
+        """
+
+        resp = await self.make_request(
+            'GET',
+            self._build_v2_repo_url('src', path.ref, *path.path_tuple()) + '/?format=meta',
+            expects=(200,),
+            throws=exceptions.ProviderError,
+        )
+        return await resp.json()
+
     async def _fetch_dir_listing(self, folder: BitbucketPath) -> dict:
-        """Get listing of contents within a BitbucketPath folder object.
+        """Get the first page which lists the folder's full or partial contents.
 
-        https://confluence.atlassian.com/bitbucket/src-resources-296095214.html#srcResources-GETalistofreposource
+        Bitbucket API 2.0 refactored the response structure for listing folder contents.
 
-        Note::
+        1) The response is paginated.  If ``resp_dict`` contains the key ``next``, the contents are
+        partial.  The caller must use the URL provided by ``dict['next']`` to fetch the next page
+        after this method returns.
 
-            Using this endpoint for a file will return the file contents.
+        2) The response no longer provides two WB-required attributes: ``node`` (folder commit sha)
+        and ``path``.  For the folder commit sha, we can still get it from the first 12 chars of the
+        ``resp_dict['commit']['hash']``.  This is similar to how WB handles file's revision.
+        TODO: add notes for ``path`` after more investigation
 
-        :param BitbucketPath folder: the folder whose contents should be listed
-        :rtype dict:
-        :returns: a directory listing of the contents of the folder
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
+
+        :param folder: the folder whose contents should be listed
+        :returns: a dict whose ``['values']`` contains a list of the folder's full/partial contents
         """
         assert folder.is_dir  # don't use this method on files
 
         resp = await self.make_request(
             'GET',
-            self._build_v1_repo_url('src', folder.ref, *folder.path_tuple()) + '/',
+            self._build_v2_repo_url('src', folder.ref, *folder.path_tuple()) + '/',
             expects=(200, ),
+            throws=exceptions.ProviderError,
+        )
+        return await resp.json()
+
+    async def _fetch_dir_listing_continued(self, next_url: str) -> dict:
+        """Get the next page which lists more contents for the folder.
+
+        As mentioned in ``_fetch_dir_listing()``, WB needs to continue fetching more pages if there
+        is any due to response pagination.  If ``resp_dict`` contains the key ``next``, the contents
+        are still partial.  The caller must continue to use the new URL provided by ``dict['next']``
+        to fetch another page after this method returns.
+
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
+
+        :param next_url: the URL to get the next page of the content list
+        :return: a dict whose ``['values']`` contains a list of the folder's partial contents
+        """
+        resp = await self.make_request(
+            'GET',
+            next_url,
+            expects=(200,),
             throws=exceptions.ProviderError,
         )
         return await resp.json()
