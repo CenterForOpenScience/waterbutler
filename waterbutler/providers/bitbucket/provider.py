@@ -86,22 +86,30 @@ class BitbucketProvider(provider.BaseProvider):
         for part in path_obj.parts:
             part._id = (commit_sha, branch_name)
 
-        self._parent_dir = await self._fetch_dir_listing(path_obj.parent)
+        # Cache parent directory listing (a WB API V1 feature)
+        # Note: Property ``_parent_dir`` has been re-structured for Bitbucket API 2.0.  Please refer
+        #       to ``_fetch_path_metadata()`` and ``_fetch_dir_listing()`` for detailed information.
+        self._parent_dir = {
+            'metadata': await self._fetch_path_metadata(path_obj.parent),
+            'contents': await self._fetch_dir_listing(path_obj.parent)
+        }
 
-        if path_obj.is_dir:
-            if path_obj.name not in self._parent_dir['directories']:
-                raise exceptions.NotFoundError(str(path))
-        else:
-            if path_obj.name not in [
-                    self.bitbucket_path_to_name(x['path'], self._parent_dir['path'])
-                    for x in self._parent_dir['files']
-            ]:
-                raise exceptions.NotFoundError(str(path))
+        # Tweak dir_commit_sha and dir_path for Bitbucket API 2.0
+        parent_dir_commit_sha = self._parent_dir['metadata']['commit']['hash'][:12]
+        parent_dir_path = '{}/'.format(self._parent_dir['metadata']['path'])
+
+        # Check file or folder existence
+        path_obj_type = 'commit_directory' if path_obj.is_dir else 'commit_file'
+        if path_obj.name not in [
+                self.bitbucket_path_to_name(x['path'], parent_dir_path)
+                for x in self._parent_dir['contents'] if x['type'] == path_obj_type
+        ]:
+            raise exceptions.NotFoundError(str(path))
 
         # _fetch_dir_listing will tell us the commit sha used to look up the listing
         # if not set in path_obj or if the lookup sha is shorter than the returned sha, update it
-        if not commit_sha or (len(commit_sha) < len(self._parent_dir['node'])):
-            path_obj.set_commit_sha(self._parent_dir['node'])
+        if not commit_sha or (len(commit_sha) < len(parent_dir_commit_sha)):
+            path_obj.set_commit_sha(parent_dir_commit_sha)
 
         return path_obj
 
