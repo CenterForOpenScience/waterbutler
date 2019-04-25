@@ -185,21 +185,31 @@ class BitbucketProvider(provider.BaseProvider):
                        range: Tuple[int, int]=None, **kwargs) -> streams.ResponseStreamReader:
         """Get the stream to the specified file on Bitbucket
 
-        :param path: The path to the file on Bitbucket
+        In BB API 2.0, the ``repo/username/repo_slug/src/node/path`` endpoint is used for download.
+
+        Please note that same endpoint has several different usages / behaviors depending on the
+        type of the path and the query params.
+
+        1) File download: type is file, no query param``format=meta``
+        2) File metadata: type is file, with ``format=meta`` as query param
+        3) Folder contents: type is folder, no query param``format=meta``
+        4) Folder metadata: type is folder, with ``format=meta`` as query param
+
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
+
+        :param path: the BitbucketPath object of the file to be downloaded
         :param range: the range header
         """
         metadata = await self.metadata(path)
-
         logger.debug('requested-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
-            self._build_v1_repo_url('raw', path.commit_sha, *path.path_tuple()),
+            self._build_v2_repo_url('src', path.commit_sha, *path.path_tuple()),
             range=range,
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
         logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
-
         return streams.ResponseStreamReader(resp, size=metadata.size)
 
     def can_duplicate_names(self):
