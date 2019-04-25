@@ -257,20 +257,38 @@ class BitbucketProvider(provider.BaseProvider):
         return BitbucketFileMetadata(data[0], path, owner=self.owner, repo=self.repo)
 
     async def _metadata_folder(self, folder: BitbucketPath, **kwargs) -> List:
+        """Get a list of the folder contents, each item of which is a BitbucketPath object.
+
+        :param folder: the folder of which the contents should be listed
+        :return: a list of BitbucketFileMetadata and BitbucketFolderMetadata objects
+        """
 
         # Fetch metadata itself
         dir_meta = await self._fetch_path_metadata(folder)
-        dir_commit_sha = dir_meta['commit']['hash']
-        dir_path = '/' if dir_meta['path'] == '' else dir_meta['path']
+        # Quirk: ``node`` attribute is no longer available for folder metadata in BB API 1.0.  The
+        #        value of ``node`` can still be extracted from the commit hash of which the first 12
+        #        chars turn out to be the one we need.
+        dir_commit_sha = dir_meta['commit']['hash'][:12]
+        # Quirk: the ``path`` attribute in folder metadata no longer has an ending slash in BB API
+        #        2.0.  To keep ``bitbucket_path_to_name()`` intact, the slash is added to the end.
+        dir_path = '{}/'.format(dir_meta['path'])
 
         # Fetch content list
         dir_list = await self._fetch_dir_listing(folder)
 
         # Set the commit hash
         if folder.commit_sha is None:
-            folder.set_commit_sha(dir_commit_sha[:12])
+            folder.set_commit_sha(dir_commit_sha)
 
         # Build the metadata to return
+        # Quirk: BB API 2.0 treats both files and folders the same way.
+        #        1) ``path`` for both is a full/absolute path.  ``bitbucket_path_to_name()`` must be
+        #           called to get the correct name.
+        #        2) Both share the same list and use the same dict/json structure. Use the ``type``
+        #           attribute to check if an item is a folder or not.
+        #        3) Similar to ``node`` for folders, ``revision`` is gone but can be replaced with
+        #           part of the commit hash.
+        #        4) TODO: add notes for timestamp replacement
         ret = []
         for value in dir_list:
             if value['type'] == 'commit_file':
@@ -293,10 +311,11 @@ class BitbucketProvider(provider.BaseProvider):
                     )
                 )
             if value['type'] == 'commit_directory':
+                name = self.bitbucket_path_to_name(value['path'], dir_path)
                 ret.append(
                     BitbucketFolderMetadata(
-                        {'name': value['path']},
-                        folder.child(value['path'], folder=True),
+                        {'name': name},
+                        folder.child(name, folder=True),
                         owner=self.owner,
                         repo=self.repo,
                     )
@@ -326,11 +345,13 @@ class BitbucketProvider(provider.BaseProvider):
 
         Bitbucket API 2.0 provides an easy way to fetch metadata for files and folders by simply
         appending ``?format=meta`` to the endpoint.  However, this new feature no longer provides
-        two WB-required attributes: revision and timestamp.
+        several required attributes correctly: ``node`` and ``path`` for folder, ``revision`` and
+        ``timestamp`` for file.
 
-        1) For the revision, we can still get it from the ``resp_dict['commit']['hash']``, of which
-           the first 12 chars turn out to be the revision.
-        2) TODO: add notes for how to get timestamp
+        1) The ``path`` attribute for folders no longer has an ending slash.
+        2) The ``node`` and ``revision`` attributes are gone.  Both of them can still be extracted
+           from the first 12 chars of the commit hash: ``resp_dict['commit']['hash'][:12]``.
+        3) TODO: add notes for how to get timestamp
 
         API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
 
@@ -355,11 +376,8 @@ class BitbucketProvider(provider.BaseProvider):
            partial.  The caller must use the URL provided by ``dict['next']`` to fetch the next page
            after this method returns.
 
-        2) The response no longer provides two WB-required attributes: ``node`` (folder commit sha)
-           and ``path``.  For the folder commit sha, we can still get it from the first 12 chars of
-           the ``resp_dict['commit']['hash']``.
-
-        TODO: add notes for ``path`` after more investigation
+        2) The response no longer provides the metadata about the folder itself.  In order to obtain
+           the ``node`` and ``path`` attributes, please use  ``_fetch_path_metadata()`` instead.
 
         API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
 
