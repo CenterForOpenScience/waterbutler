@@ -234,27 +234,22 @@ class BitbucketProvider(provider.BaseProvider):
         segments = ('2.0', 'repositories', self.owner, self.repo) + segments
         return self.build_url(*segments, **query)
 
-    async def _metadata_file(self, path: BitbucketPath, revision: str=None, **kwargs):
-        """Fetch metadata for a single file
+    async def _metadata_file(self, path: BitbucketPath, **kwargs):
+        """Fetch the metadata for a single file
 
-        :param BitbucketPath path: the path whose metadata should be retrieved
-        :param str revision:
-        :rtype BitbucketFileMetadata:
-        :return: BitbucketFileMetadata object
+        :param path: the BitbucketPath object of the file of which the metadata should be retrieved
+        :return: a BitbucketFileMetadata object
         """
-
-        parent = path.parent
-        if self._parent_dir is None or self._parent_dir['path'] != str(parent):
-            parent_dir = await self._fetch_dir_listing(parent)
-        else:
-            parent_dir = self._parent_dir
-
-        data = [
-            x for x in parent_dir['files']
-            if path.name == self.bitbucket_path_to_name(x['path'], parent_dir['path'])
-        ]
-
-        return BitbucketFileMetadata(data[0], path, owner=self.owner, repo=self.repo)
+        file_meta = await self._fetch_path_metadata(path)
+        # TODO: Find alternatives for timestamp
+        data = {
+            'revision': file_meta['commit']['hash'][:12],
+            'size': file_meta['size'],
+            'path': file_meta['path'],
+            'timestamp': None,
+            'utctimestamp': None
+        }
+        return BitbucketFileMetadata(data, path, owner=self.owner, repo=self.repo)
 
     async def _metadata_folder(self, folder: BitbucketPath, **kwargs) -> List:
         """Get a list of the folder contents, each item of which is a BitbucketPath object.
