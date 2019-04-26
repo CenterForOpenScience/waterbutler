@@ -1,5 +1,5 @@
 import logging
-from typing import List, Tuple
+from typing import Tuple
 
 from waterbutler.core import exceptions, provider, streams
 
@@ -269,7 +269,7 @@ class BitbucketProvider(provider.BaseProvider):
         }
         return BitbucketFileMetadata(data, path, owner=self.owner, repo=self.repo)
 
-    async def _metadata_folder(self, folder: BitbucketPath, **kwargs) -> List:
+    async def _metadata_folder(self, folder: BitbucketPath, **kwargs) -> list:
         """Get a list of the folder contents, each item of which is a BitbucketPath object.
 
         :param folder: the folder of which the contents should be listed
@@ -300,39 +300,42 @@ class BitbucketProvider(provider.BaseProvider):
         #        2) Both share the same list and use the same dict/json structure. Use the ``type``
         #           attribute to check if an item is a folder or not.
         #        3) Similar to ``node`` for folders, ``revision`` is gone but can be replaced with
-        #           part of the commit hash.
-        #        4) TODO: add notes for timestamp replacement
+        #           part of the commit hash.  However, it is a little tricky for files.  In order to
+        #           obtain the correct hash value, WB needs to find the last commit by using the
+        #           file history URL.  See ``_fetch_last_commit()`` for more info.
+        #        4) ``timestamp`` and ``utctimestamp`` are gone as well but they can be extracted
+        #           from the metadata of the last commit.  After obtaining the file history list as
+        #           mentioned in 3), WB needs to make an extra request to fetch this metadata with
+        #           the commit URL.  See ``_fetch_commit_date()`` for more info.
         ret = []
         for value in dir_list:
             if value['type'] == 'commit_file':
                 name = self.bitbucket_path_to_name(value['path'], dir_path)
-                # TODO: Find alternatives for timestamp
+                file_history_url = value['links']['history']['href']
+                # TODO: use a map to reduce duplicated requests for the same commit
+                commit_hash, commit_date = await self._fetch_last_commit(file_history_url)
+                # TODO: find out why timestamp doesn't show up on the files page
                 item = {
-                    'revision': value['commit']['hash'][:12],
+                    'revision': commit_hash[:12],
                     'size': value['size'],
                     'path': value['path'],
-                    'timestamp': None,
-                    'utctimestamp': None
+                    'utctimestamp': commit_date,
+                    'timestamp': commit_date
                 }
-                # TODO: mypy doesn't like the mix of File & Folder Metadata objects
-                ret.append(  # type: ignore
-                    BitbucketFileMetadata(
-                        item,
-                        folder.child(name, folder=False),
-                        owner=self.owner,
-                        repo=self.repo,
-                    )
-                )
+                ret.append(BitbucketFileMetadata(  # type: ignore
+                    item,
+                    folder.child(name, folder=False),
+                    owner=self.owner,
+                    repo=self.repo,
+                ))
             if value['type'] == 'commit_directory':
                 name = self.bitbucket_path_to_name(value['path'], dir_path)
-                ret.append(
-                    BitbucketFolderMetadata(
-                        {'name': name},
-                        folder.child(name, folder=True),
-                        owner=self.owner,
-                        repo=self.repo,
-                    )
-                )
+                ret.append(BitbucketFolderMetadata(  # type: ignore
+                    {'name': name},
+                    folder.child(name, folder=True),
+                    owner=self.owner,
+                    repo=self.repo,
+                ))
 
         return ret
 
@@ -362,9 +365,12 @@ class BitbucketProvider(provider.BaseProvider):
         ``timestamp`` for file.
 
         1) The ``path`` attribute for folders no longer has an ending slash.
-        2) The ``node`` and ``revision`` attributes are gone.  Both of them can still be extracted
-           from the first 12 chars of the commit hash: ``resp_dict['commit']['hash'][:12]``.
-        3) TODO: add notes for how to get timestamp
+        2) The ``node`` and ``revision`` attributes are gone.  ``node`` can be extracted from the
+           first 12 chars of the commit hash: ``resp_dict['commit']['hash'][:12]``.  ``revision``
+           is obtained alternatively using the commit history when building the folder contents to
+           avoid an extra file metadata call in ``_metadata_folder()``.
+        3) ``timestamp`` and ``utctimestamp`` are gone.  A new attribute ``date`` can be extracted
+           from the metadata of the last commit.
 
         API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
 
@@ -380,7 +386,7 @@ class BitbucketProvider(provider.BaseProvider):
         )
         return await resp.json()
 
-    async def _fetch_dir_listing(self, folder: BitbucketPath) -> List:
+    async def _fetch_dir_listing(self, folder: BitbucketPath) -> list:
         """Get a list of the folder's full contents (upto the max limit setting if there is one).
 
         Bitbucket API 2.0 refactored the response structure for listing folder contents.
@@ -443,3 +449,36 @@ class BitbucketProvider(provider.BaseProvider):
             throws=exceptions.ProviderError,
         )
         return await resp.json()
+
+    async def _fetch_last_commit(self, file_history_url: str) -> Tuple:
+        """Get the last commit hash and date.
+
+        :param file_history_url: the dedicated file history url for the file
+        :return: a tuple of the last commit hash and date
+        """
+        resp = await self.make_request(
+            'GET',
+            file_history_url,
+            expects=(200,),
+            throws=exceptions.ProviderError,
+        )
+        resp_dict = await resp.json()
+        last_commit_hash = resp_dict['values'][0]['commit']['hash']
+        last_commit_url = resp_dict['values'][0]['commit']['links']['self']['href']
+        last_commit_date = await self._fetch_commit_date(last_commit_url)
+        return last_commit_hash, last_commit_date
+
+    async def _fetch_commit_date(self, commit_url: str) -> dict:
+        """Get the date when the commit is made.
+
+        :param commit_url: the dedicated metadata URL for the commit
+        :return: a UTC timestamp string which looks like "2019-04-25T11:58:30+00:00"
+        """
+        resp = await self.make_request(
+            'GET',
+            commit_url,
+            expects=(200,),
+            throws=exceptions.ProviderError,
+        )
+        resp_dict = await resp.json()
+        return resp_dict['date']
