@@ -265,10 +265,6 @@ class BitbucketProvider(provider.BaseProvider):
             raise exceptions.ReadOnlyProviderError(self.NAME)
         return await super().copy(dest_provider, *args, **kwargs)
 
-    def _build_v1_repo_url(self, *segments, **query):
-        segments = ('1.0', 'repositories', self.owner, self.repo) + segments
-        return self.build_url(*segments, **query)
-
     def _build_v2_repo_url(self, *segments, **query):
         segments = ('2.0', 'repositories', self.owner, self.repo) + segments
         return self.build_url(*segments, **query)
