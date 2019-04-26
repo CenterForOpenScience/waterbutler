@@ -162,32 +162,36 @@ class BitbucketProvider(provider.BaseProvider):
         canonical history for a file.  The revisions returned will be those of the file starting
         with the reference supplied to or inferred by validate_v1_path().
 
-        https://confluence.atlassian.com/bitbucket/repository-resource-1-0-296095202.html#repositoryResource1.0-GETsthehistoryofafileinachangeset
-
+        https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/filehistory/%7Bnode%7D/%7Bpath%7D
         """
         resp = await self.make_request(
             'GET',
-            self._build_v1_repo_url('filehistory', path.ref, path.path),
+            self._build_v2_repo_url('filehistory', path.ref, path.path),
             expects=(200, ),
             throws=exceptions.RevisionsError
         )
-        revisions = await resp.json()
-
+        revisions = (await resp.json())['values']
         valid_revisions = []
+        # Quirk: BB API 2.0 no longer returns the history before a file was deleted.
         for revision in revisions:
-            file_was_removed = False
-            for file_status in revision['files']:
-                if file_status['type'] == 'removed' and file_status['file'] == path.full_path.lstrip('/'):
-                    file_was_removed = True
-                    # break  #  don't save this one, move to next revision
-
-            if not file_was_removed:
-                valid_revisions.append(revision)
-
-        return [
-            BitbucketRevisionMetadata(item)
-            for item in valid_revisions
-        ]
+            # This check may not be necessary since all are of 'commit_file' during development.
+            if revision['type'] != 'commit_file':
+                continue
+            commit_url = revision['commit']['links']['self']['href']
+            # Quirk: BB API 2.0 no longer provides the branch information for a commit.
+            commit_meta = await self._fetch_commit_meta(commit_url)
+            data = {
+                'revision': revision['commit']['hash'][:12],
+                'size': revision['size'],
+                'path': revision['path'],
+                'raw_node': revision['commit']['hash'],
+                'raw_author': commit_meta['author']['raw'],
+                'branch': None,
+                'timestamp': commit_meta['date'],
+                'utctimestamp': commit_meta['date']
+            }
+            valid_revisions.append(data)
+        return [BitbucketRevisionMetadata(item) for item in valid_revisions]
 
     async def download(self, path: BitbucketPath,  # type: ignore
                        range: Tuple[int, int]=None, **kwargs) -> streams.ResponseStreamReader:
