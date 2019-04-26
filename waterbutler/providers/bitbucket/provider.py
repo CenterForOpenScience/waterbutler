@@ -280,13 +280,12 @@ class BitbucketProvider(provider.BaseProvider):
         :return: a BitbucketFileMetadata object
         """
         file_meta = await self._fetch_path_metadata(path)
-        # TODO: Find alternatives for timestamp
         data = {
             'revision': file_meta['commit']['hash'][:12],
             'size': file_meta['size'],
             'path': file_meta['path'],
-            'timestamp': None,
-            'utctimestamp': None
+            'timestamp': file_meta['commit']['date'],
+            'utctimestamp': file_meta['commit']['date']
         }
         return BitbucketFileMetadata(data, path, owner=self.owner, repo=self.repo)
 
@@ -333,7 +332,7 @@ class BitbucketProvider(provider.BaseProvider):
                 name = self.bitbucket_path_to_name(value['path'], dir_path)
                 file_history_url = value['links']['history']['href']
                 commit_hash, commit_date = await self._fetch_last_commit(file_history_url)
-                # TODO: find out why timestamp doesn't show up on the files page
+                # TODO: existing issue - find out why timestamp doesn't show up on the files page
                 item = {
                     'revision': commit_hash[:12],
                     'size': value['size'],
@@ -398,10 +397,14 @@ class BitbucketProvider(provider.BaseProvider):
         :param path: the file or folder of which the metadata is requested
         :return: the file metadata dict
         """
-
+        query_params = {
+            'format': 'meta',
+            'fields': 'commit.hash,commit.date,path,size'
+        }
+        path_meta_url = self._build_v2_repo_url('src', path.ref, *path.path_tuple())
         resp = await self.make_request(
             'GET',
-            self._build_v2_repo_url('src', path.ref, *path.path_tuple()) + '/?format=meta',
+            path_meta_url + '/?{}'.format(urlencode(query_params)),
             expects=(200,),
             throws=exceptions.ProviderError,
         )
