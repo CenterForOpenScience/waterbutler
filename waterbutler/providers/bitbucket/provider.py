@@ -1,5 +1,6 @@
 import logging
 from typing import Tuple
+from urllib.parse import urlencode
 
 from waterbutler.core import exceptions, provider, streams
 
@@ -314,25 +315,23 @@ class BitbucketProvider(provider.BaseProvider):
             folder.set_commit_sha(dir_commit_sha)
 
         # Build the metadata to return
-        # Quirk: BB API 2.0 treats both files and folders the same way.
-        #        1) ``path`` for both is a full/absolute path.  ``bitbucket_path_to_name()`` must be
-        #           called to get the correct name.
-        #        2) Both share the same list and use the same dict/json structure. Use the ``type``
-        #           attribute to check if an item is a folder or not.
-        #        3) Similar to ``node`` for folders, ``revision`` is gone but can be replaced with
-        #           part of the commit hash.  However, it is a little tricky for files.  In order to
-        #           obtain the correct hash value, WB needs to find the last commit by using the
-        #           file history URL.  See ``_fetch_last_commit()`` for more info.
-        #        4) ``timestamp`` and ``utctimestamp`` are gone as well but they can be extracted
-        #           from the metadata of the last commit.  After obtaining the file history list as
-        #           mentioned in 3), WB needs to make an extra request to fetch this metadata with
-        #           the commit URL.  See ``_fetch_commit_meta()`` for more info.
+        # Quirks:
+        # 1) BB API 2.0 treats both files and folders the same way.``path`` for both is a full or
+        #    absolute path.  ``bitbucket_path_to_name()`` must be called to get the correct name.
+        # 2) both share the same list and use the same dict/json structure. Use the ``type``
+        #    attribute to check if an item is a folder or not.
+        # 3) Similar to ``node`` for folders, ``revision`` is gone but can be replaced with part of
+        #    the commit hash.  However, it is a little bit tricky for files.  The commit for each
+        #    file returned by the endpoint (for listing folder contents) is just the latest branch
+        #    commit.  In order to obtain the correct commit where each file was last changed, WB
+        #    needs to fetch the last commit metadata by using the file history URL.  In addition,
+        #    ``timestamp`` and ``utctimestamp`` are gone but the alternative ``date`` attribute can
+        #    be obtained from the last commit metadata.  See ``_fetch_last_commit()`` for more info.
         ret = []
         for value in dir_list:
             if value['type'] == 'commit_file':
                 name = self.bitbucket_path_to_name(value['path'], dir_path)
                 file_history_url = value['links']['history']['href']
-                # TODO: use a map to reduce duplicated requests for the same commit
                 commit_hash, commit_date = await self._fetch_last_commit(file_history_url)
                 # TODO: find out why timestamp doesn't show up on the files page
                 item = {
@@ -478,28 +477,12 @@ class BitbucketProvider(provider.BaseProvider):
         :param file_history_url: the dedicated file history url for the file
         :return: a tuple of the last commit hash and date
         """
+        query_params = {'fields': 'values.commit.hash,values.commit.date'}
         resp = await self.make_request(
             'GET',
-            file_history_url,
+            file_history_url + '?{}'.format(urlencode(query_params)),
             expects=(200,),
             throws=exceptions.ProviderError,
         )
         resp_dict = await resp.json()
-        last_commit_hash = resp_dict['values'][0]['commit']['hash']
-        last_commit_url = resp_dict['values'][0]['commit']['links']['self']['href']
-        last_commit_date = (await self._fetch_commit_meta(last_commit_url))['date']
-        return last_commit_hash, last_commit_date
-
-    async def _fetch_commit_meta(self, commit_url: str) -> dict:
-        """Get the metadata about the commit.
-
-        :param commit_url: the dedicated metadata URL for the commit
-        :return: the metadata dict
-        """
-        resp = await self.make_request(
-            'GET',
-            commit_url,
-            expects=(200,),
-            throws=exceptions.ProviderError,
-        )
-        return await resp.json()
+        return resp_dict['values'][0]['commit']['hash'], resp_dict['values'][0]['commit']['date']
