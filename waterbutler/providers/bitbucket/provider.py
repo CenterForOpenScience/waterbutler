@@ -340,21 +340,23 @@ class BitbucketProvider(provider.BaseProvider):
         return ret
 
     async def _fetch_default_branch(self) -> str:
-        """Get the name of the default branch ("main branch" in bitbucket parlance) of the
-        attached repository.
+        """Get the name of the default branch of the attached repository.
 
-        https://confluence.atlassian.com/bitbucket/repository-resource-1-0-296095202.html#repositoryResource1.0-GETtherepository%27smainbranch
+        In Bitbucket, the default branch is called "main branch".  With BB API 2.0, the dedicated
+        endpoint for fetching the main branch is gone.  Fortunately, this piece of information is
+        still available where ``mainbranch`` is now a field from the repository endpoint.
 
-        :rtype str:
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D
+
         :return: the name of the attached repo's default branch.
         """
         resp = await self.make_request(
             'GET',
-            self._build_v1_repo_url('main-branch'),
-            expects=(200, ),
+            self._build_v2_repo_url(),
+            expects=(200,),
             throws=exceptions.ProviderError
         )
-        return (await resp.json())['name']
+        return (await resp.json())['mainbranch']['name']
 
     async def _fetch_path_metadata(self, path: BitbucketPath) -> dict:
         """Get the metadata for folder and file itself.
