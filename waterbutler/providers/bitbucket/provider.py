@@ -306,7 +306,7 @@ class BitbucketProvider(provider.BaseProvider):
         #        4) ``timestamp`` and ``utctimestamp`` are gone as well but they can be extracted
         #           from the metadata of the last commit.  After obtaining the file history list as
         #           mentioned in 3), WB needs to make an extra request to fetch this metadata with
-        #           the commit URL.  See ``_fetch_commit_date()`` for more info.
+        #           the commit URL.  See ``_fetch_commit_meta()`` for more info.
         ret = []
         for value in dir_list:
             if value['type'] == 'commit_file':
@@ -467,14 +467,14 @@ class BitbucketProvider(provider.BaseProvider):
         resp_dict = await resp.json()
         last_commit_hash = resp_dict['values'][0]['commit']['hash']
         last_commit_url = resp_dict['values'][0]['commit']['links']['self']['href']
-        last_commit_date = await self._fetch_commit_date(last_commit_url)
+        last_commit_date = (await self._fetch_commit_meta(last_commit_url))['date']
         return last_commit_hash, last_commit_date
 
-    async def _fetch_commit_date(self, commit_url: str) -> dict:
-        """Get the date when the commit is made.
+    async def _fetch_commit_meta(self, commit_url: str) -> dict:
+        """Get the metadata about the commit.
 
         :param commit_url: the dedicated metadata URL for the commit
-        :return: a UTC timestamp string which looks like "2019-04-25T11:58:30+00:00"
+        :return: the metadata dict
         """
         resp = await self.make_request(
             'GET',
@@ -482,5 +482,4 @@ class BitbucketProvider(provider.BaseProvider):
             expects=(200,),
             throws=exceptions.ProviderError,
         )
-        resp_dict = await resp.json()
-        return resp_dict['date']
+        return await resp.json()
