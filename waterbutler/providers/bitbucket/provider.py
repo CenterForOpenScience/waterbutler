@@ -162,33 +162,49 @@ class BitbucketProvider(provider.BaseProvider):
         canonical history for a file.  The revisions returned will be those of the file starting
         with the reference supplied to or inferred by validate_v1_path().
 
-        https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/filehistory/%7Bnode%7D/%7Bpath%7D
+        Quirks and Tricks about BB API 2.0, compared to 1.0
+
+        1) It no longer returns the history before a file was deleted.
+        2) It no longer provides the branch information for a commit.
+        3) ``revision`` is a substring (first 12 chars) of the commit hash
+        4) ``raw_node`` is the commit hash
+        5) There is only one timestamp ``date``: "2019-04-25T11:58:24+00:00"
+        6) The response is paginated with a default page size of 50 items.  The first page is large
+           enough comparing to the fact that BB API 1.0 only returns the latest 10 items.
+           TODO: fully handle pagination for revisions
+        7) The default response does not contain detailed commit metadata including author and date.
+           Instead of making an extra request to fetch the commit metadata, use the ``fields`` query
+           parameter.  For example, if the attribute is accessed with ``.['key1']['key2']['key3']``
+           in the commit metadata, simply use ``values.commit.key1.key2.key3``.
+
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/filehistory/%7Bnode%7D/%7Bpath%7D
         """
+        query_params = {
+            'fields': 'values.commit.hash,values.commit.date,values.commit.author.raw,'
+                      'values.size,values.path,values.type'
+        }
         resp = await self.make_request(
             'GET',
-            self._build_v2_repo_url('filehistory', path.ref, path.path),
+            self._build_v2_repo_url('filehistory', path.ref, path.path, **query_params),
             expects=(200, ),
             throws=exceptions.RevisionsError
         )
         revisions = (await resp.json())['values']
         valid_revisions = []
-        # Quirk: BB API 2.0 no longer returns the history before a file was deleted.
+
         for revision in revisions:
-            # This check may not be necessary since all are of 'commit_file' during development.
+            # This check may not be necessary.  It seems that every item is of type 'commit_file'.
             if revision['type'] != 'commit_file':
                 continue
-            commit_url = revision['commit']['links']['self']['href']
-            # Quirk: BB API 2.0 no longer provides the branch information for a commit.
-            commit_meta = await self._fetch_commit_meta(commit_url)
             data = {
                 'revision': revision['commit']['hash'][:12],
                 'size': revision['size'],
                 'path': revision['path'],
                 'raw_node': revision['commit']['hash'],
-                'raw_author': commit_meta['author']['raw'],
+                'raw_author': revision['commit']['author']['raw'],
                 'branch': None,
-                'timestamp': commit_meta['date'],
-                'utctimestamp': commit_meta['date']
+                'timestamp': revision['commit']['date'],
+                'utctimestamp': revision['commit']['date']
             }
             valid_revisions.append(data)
         return [BitbucketRevisionMetadata(item) for item in valid_revisions]
