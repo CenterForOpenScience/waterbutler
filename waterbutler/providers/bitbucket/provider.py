@@ -400,7 +400,7 @@ class BitbucketProvider(provider.BaseProvider):
         path_meta_url = self._build_v2_repo_url('src', path.ref, *path.path_tuple())
         resp = await self.make_request(
             'GET',
-            path_meta_url + '/?{}'.format(urlencode(query_params)),
+            '{}/?{}'.format(path_meta_url, urlencode(query_params)),
             expects=(200,),
             throws=exceptions.ProviderError,
         )
@@ -447,10 +447,9 @@ class BitbucketProvider(provider.BaseProvider):
         :returns: a dict of which the ``['values']`` contains a list of the folder's contents
         """
         assert folder.is_dir  # don't use this method on files
-
         resp = await self.make_request(
             'GET',
-            self._build_v2_repo_url('src', folder.ref, *folder.path_tuple()) + '/',
+            '{}/'.format(self._build_v2_repo_url('src', folder.ref, *folder.path_tuple())),
             expects=(200, ),
             throws=exceptions.ProviderError,
         )
@@ -479,7 +478,7 @@ class BitbucketProvider(provider.BaseProvider):
         query_params = {'fields': 'values.commit.hash,values.commit.date'}
         resp = await self.make_request(
             'GET',
-            file_history_url + '?{}'.format(urlencode(query_params)),
+            '{}?{}'.format(file_history_url, urlencode(query_params)),
             expects=(200,),
             throws=exceptions.ProviderError,
         )
