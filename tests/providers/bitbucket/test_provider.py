@@ -14,7 +14,8 @@ from waterbutler.providers.bitbucket.metadata import (BitbucketFileMetadata,
                                                       BitbucketRevisionMetadata, )
 
 from tests.utils import MockCoroutine
-from .provider_fixtures import (path_metadata_file, path_metadata_folder,
+from .provider_fixtures import (repo_metadata,
+                                path_metadata_file, path_metadata_folder,
                                 folder_contents_page_1, folder_contents_page_2,
                                 file_history_revisions, file_history_last_commit, )
 from .metadata_fixtures import owner, repo, file_metadata, folder_metadata, revision_metadata
@@ -166,6 +167,19 @@ def provider(auth, credentials, settings):
 #
 #         wb_path_v0 = await provider.validate_path(path, branch='main-branch')
 #         assert wb_path_v1 == wb_path_v0
+
+
+class TestRepo:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_get_default_branch(self, provider, repo_metadata):
+        repo_metadata = json.loads(repo_metadata)
+        repo_url = '{}/?{}'.format(provider._build_v2_repo_url(),
+                                   urlencode({'fields': 'mainbranch.name'}))
+        aiohttpretty.register_json_uri('GET', repo_url, body=repo_metadata)
+        result = await provider._fetch_default_branch()
+        assert result == repo_metadata['mainbranch']['name']
 
 
 class TestRevisions:

@@ -366,7 +366,7 @@ class BitbucketProvider(provider.BaseProvider):
         """
         resp = await self.make_request(
             'GET',
-            self._build_v2_repo_url(),
+            '{}/?{}'.format(self._build_v2_repo_url(), urlencode({'fields': 'mainbranch.name'})),
             expects=(200,),
             throws=exceptions.ProviderError
         )
