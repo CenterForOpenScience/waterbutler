@@ -1,0 +1,89 @@
+{
+    "scm": "git",
+    "website": "",
+    "has_wiki": false,
+    "name": "WaterButler-Public",
+    "links": {
+        "watchers": {
+            "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/watchers"
+        },
+        "branches": {
+            "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/refs/branches"
+        },
+        "tags": {
+            "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/refs/tags"
+        },
+        "commits": {
+            "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/commits"
+        },
+        "clone": [
+            {
+                "href": "https://bitbucket.org/cslzchen/waterbutler-public.git",
+                "name": "https"
+            },
+            {
+                "href": "git@bitbucket.org:cslzchen/waterbutler-public.git",
+                "name": "ssh"
+            }
+        ],
+        "self": {
+            "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public"
+        },
+        "source": {
+            "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src"
+        },
+        "html": {
+            "href": "https://bitbucket.org/cslzchen/waterbutler-public"
+        },
+        "avatar": {
+            "href": "https://bytebucket.org/ravatar/%7B507d6601-f96b-4e8a-80ac-e77e686bd434%7D?ts=default"
+        },
+        "hooks": {
+            "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/hooks"
+        },
+        "forks": {
+            "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/forks"
+        },
+        "downloads": {
+            "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/downloads"
+        },
+        "pullrequests": {
+            "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/pullrequests"
+        }
+    },
+    "fork_policy": "allow_forks",
+    "uuid": "{507d6601-f96b-4e8a-80ac-e77e686bd434}",
+    "language": "",
+    "created_on": "2019-04-05T15:14:35.071903+00:00",
+    "mainbranch": {
+        "type": "branch",
+        "name": "develop"
+    },
+    "full_name": "cslzchen/waterbutler-public",
+    "has_issues": false,
+    "owner": {
+        "username": "cslzchen",
+        "display_name": "Longze Chen",
+        "uuid": "{ca55c995-8bc3-4c47-b5e2-10e5798f5217}",
+        "links": {
+            "self": {
+                "href": "https://api.bitbucket.org/2.0/users/cslzchen"
+            },
+            "html": {
+                "href": "https://bitbucket.org/cslzchen/"
+            },
+            "avatar": {
+                "href": "https://bitbucket.org/account/cslzchen/avatar/"
+            }
+        },
+        "nickname": "cslzchen",
+        "type": "user",
+        "account_id": "5ca76e64e623ae19ec550793"
+    },
+    "updated_on": "2019-04-26T15:13:34.001704+00:00",
+    "size": 13104835,
+    "type": "repository",
+    "slug": "waterbutler-public",
+    "is_private": false,
+    "description": ""
+}
