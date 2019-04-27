@@ -1,0 +1,184 @@
+{
+    "folder_parent": [
+        {
+            "links": {
+                "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/"
+                },
+                "meta": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/?format=meta"
+                }
+            },
+            "type": "commit_directory",
+            "commit": {
+                "links": {
+                    "self": {
+                        "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/commit/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    },
+                    "html": {
+                        "href": "https://bitbucket.org/cslzchen/waterbutler-public/commits/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    }
+                },
+                "hash": "dd8c7b642e3240a494414ac93c7fbc119ebe1179",
+                "type": "commit"
+            },
+            "path": "folder2-lvl1/folder1-lvl2/folder1-lvl3"
+        },
+        {
+            "links": {
+                "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/cas-generic-login-success.png"
+                },
+                "history": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/filehistory/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/cas-generic-login-success.png"
+                },
+                "meta": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/cas-generic-login-success.png?format=meta"
+                }
+            },
+            "commit": {
+                "links": {
+                    "self": {
+                        "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/commit/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    },
+                    "html": {
+                        "href": "https://bitbucket.org/cslzchen/waterbutler-public/commits/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    }
+                },
+                "hash": "dd8c7b642e3240a494414ac93c7fbc119ebe1179",
+                "type": "commit"
+            },
+            "type": "commit_file",
+            "attributes": [
+                "binary"
+            ],
+            "size": 83473,
+            "mimetype": "image/png",
+            "path": "folder2-lvl1/folder1-lvl2/cas-generic-login-success.png"
+        },
+        {
+            "links": {
+                "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/cas-generic-logout-success.png"
+                },
+                "history": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/filehistory/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/cas-generic-logout-success.png"
+                },
+                "meta": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/cas-generic-logout-success.png?format=meta"
+                }
+            },
+            "commit": {
+                "links": {
+                    "self": {
+                        "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/commit/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    },
+                    "html": {
+                        "href": "https://bitbucket.org/cslzchen/waterbutler-public/commits/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    }
+                },
+                "hash": "dd8c7b642e3240a494414ac93c7fbc119ebe1179",
+                "type": "commit"
+            },
+            "type": "commit_file",
+            "attributes": [
+                "binary"
+            ],
+            "size": 81911,
+            "mimetype": "image/png",
+            "path": "folder2-lvl1/folder1-lvl2/cas-generic-logout-success.png"
+        }
+    ],
+    "file_parent": [
+        {
+            "links": {
+                "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0001.20bytes.txt"
+                },
+                "history": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/filehistory/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0001.20bytes.txt"
+                },
+                "meta": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0001.20bytes.txt?format=meta"
+                }
+            },
+            "commit": {
+                "links": {
+                    "self": {
+                        "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/commit/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    },
+                    "html": {
+                        "href": "https://bitbucket.org/cslzchen/waterbutler-public/commits/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    }
+                },
+                "hash": "dd8c7b642e3240a494414ac93c7fbc119ebe1179",
+                "type": "commit"
+            },
+            "type": "commit_file",
+            "attributes": [],
+            "size": 20,
+            "mimetype": "text/plain",
+            "path": "folder2-lvl1/folder1-lvl2/folder1-lvl3/file0001.20bytes.txt"
+        },
+        {
+            "links": {
+                "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0002.20bytes.txt"
+                },
+                "history": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/filehistory/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0002.20bytes.txt"
+                },
+                "meta": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0002.20bytes.txt?format=meta"
+                }
+            },
+            "commit": {
+                "links": {
+                    "self": {
+                        "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/commit/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    },
+                    "html": {
+                        "href": "https://bitbucket.org/cslzchen/waterbutler-public/commits/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    }
+                },
+                "hash": "dd8c7b642e3240a494414ac93c7fbc119ebe1179",
+                "type": "commit"
+            },
+            "type": "commit_file",
+            "attributes": [],
+            "size": 20,
+            "mimetype": "text/plain",
+            "path": "folder2-lvl1/folder1-lvl2/folder1-lvl3/file0002.20bytes.txt"
+        },
+        {
+            "links": {
+                "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0003.20bytes.txt"
+                },
+                "history": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/filehistory/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0003.20bytes.txt"
+                },
+                "meta": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0003.20bytes.txt?format=meta"
+                }
+            },
+            "commit": {
+                "links": {
+                    "self": {
+                        "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/commit/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    },
+                    "html": {
+                        "href": "https://bitbucket.org/cslzchen/waterbutler-public/commits/dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+                    }
+                },
+                "hash": "dd8c7b642e3240a494414ac93c7fbc119ebe1179",
+                "type": "commit"
+            },
+            "type": "commit_file",
+            "attributes": [],
+            "size": 20,
+            "mimetype": "text/plain",
+            "path": "folder2-lvl1/folder1-lvl2/folder1-lvl3/file0003.20bytes.txt"
+        }
+    ]
+}

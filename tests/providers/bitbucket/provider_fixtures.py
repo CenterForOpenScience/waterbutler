@@ -51,11 +51,8 @@ def folder_contents_page_2():
         return file_pointer.read()
 
 
-@pytest.fixture
-def owner():
-    return 'cslzchen'
-
-
-@pytest.fixture
-def repo():
-    return 'develop'
+@pytest.fixture()
+def folder_full_contents_list():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/folder_full_contents_list.json'),
+              'r') as file_pointer:
+        return file_pointer.read()

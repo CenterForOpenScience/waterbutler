@@ -8,20 +8,18 @@ from waterbutler.core import exceptions
 
 from waterbutler.providers.bitbucket import BitbucketProvider
 from waterbutler.providers.bitbucket.provider import BitbucketPath
-from waterbutler.providers.bitbucket import settings as bitbucket_settings
-from waterbutler.providers.bitbucket.metadata import (BitbucketFileMetadata,
-                                                      BitbucketFolderMetadata,
-                                                      BitbucketRevisionMetadata, )
+from waterbutler.providers.bitbucket.metadata import BitbucketFileMetadata
 
 from tests.utils import MockCoroutine
-from .provider_fixtures import (repo_metadata,
+from .provider_fixtures import (repo_metadata, folder_full_contents_list,
                                 path_metadata_file, path_metadata_folder,
                                 folder_contents_page_1, folder_contents_page_2,
                                 file_history_revisions, file_history_last_commit, )
 from .metadata_fixtures import owner, repo, file_metadata, folder_metadata, revision_metadata
 
-COMMIT_SHA = 'abc123def456'
+COMMIT_SHA = 'abc123def456abc123def456'
 BRANCH = 'develop'
+
 
 @pytest.fixture
 def auth():
@@ -50,123 +48,132 @@ def provider(auth, credentials, settings):
     return provider
 
 
-# class TestValidatePath:
-#
-#     @pytest.mark.asyncio
-#     @pytest.mark.aiohttpretty
-#     async def test_validate_v1_path_root(self, provider):
-#         test_fixtures = fixtures.validate_path
-#
-#         default_branch_body = test_fixtures['default_branch']
-#         default_branch_url = provider._build_v1_repo_url('main-branch')
-#         aiohttpretty.register_json_uri('GET', default_branch_url, body=default_branch_body)
-#
-#         try:
-#             wb_path_v1 = await provider.validate_v1_path('/')
-#         except Exception as exc:
-#             pytest.fail(str(exc))
-#
-#         wb_path_v0 = await provider.validate_path('/')
-#
-#         assert wb_path_v1 == wb_path_v0
-#         assert wb_path_v1.branch_name == default_branch_body['name']
-#         assert wb_path_v1.commit_sha == None
-#
-#     @pytest.mark.asyncio
-#     @pytest.mark.aiohttpretty
-#     @pytest.mark.parametrize('path,kind', [
-#         ('/foo-file.txt', 'file'),
-#         ('/foo-dir/',     'folder'),
-#     ])
-#     async def test_validate_v1_path(self, provider, path, kind):
-#         test_fixtures = fixtures.validate_path
-#
-#         default_branch_body = test_fixtures['default_branch']
-#         default_branch = default_branch_body['name']
-#         default_branch_url = provider._build_v1_repo_url('main-branch')
-#         aiohttpretty.register_json_uri('GET', default_branch_url, body=default_branch_body)
-#
-#         dir_listing_body =  test_fixtures['root_dir_listing']
-#         dir_listing_url = provider._build_v1_repo_url('src', default_branch)  + '/'
-#         aiohttpretty.register_json_uri('GET', dir_listing_url, body=dir_listing_body)
-#
-#         try:
-#             wb_path_v1 = await provider.validate_v1_path(path)
-#         except Exception as exc:
-#             pytest.fail(str(exc))
-#
-#         wb_path_v0 = await provider.validate_path(path)
-#
-#         assert wb_path_v1 == wb_path_v0
-#         assert wb_path_v1.branch_name == default_branch
-#         # TODO: assert commitSha
-#
-#         bad_path = path.rstrip('/') if kind == 'folder' else path + '/'
-#         with pytest.raises(exceptions.NotFoundError) as exc:
-#             await provider.validate_v1_path(bad_path)
-#
-#     @pytest.mark.asyncio
-#     @pytest.mark.aiohttpretty
-#     @pytest.mark.parametrize('arg_name,arg_val,attr_name', [
-#         ('commitSha', 'a1b2c3d4',     'commit_sha', ),
-#         ('branch',    'other-branch', 'branch_name'),
-#         ('revision',  'bleep-blorp',  'branch_name'),
-#         ('revision',  '345def023ab29', 'commit_sha'),
-#     ])
-#     async def test_validate_v1_path_commit_sha(self, provider, arg_name, arg_val, attr_name):
-#         test_fixtures = fixtures.validate_path
-#
-#         dir_listing_body =  test_fixtures['root_dir_listing']
-#         base_commit = dir_listing_body['node']
-#         dir_listing_url = provider._build_v1_repo_url('src', arg_val)  + '/'
-#         aiohttpretty.register_json_uri('GET', dir_listing_url, body=dir_listing_body)
-#
-#         path = '/foo-file.txt'
-#         kwargs = {arg_name: arg_val}
-#         try:
-#             wb_path_v1 = await provider.validate_v1_path(path, **kwargs)
-#         except Exception as exc:
-#             pytest.fail(str(exc))
-#
-#         ref_val = arg_val
-#         if attr_name == 'commit_sha' and len(arg_val) < len(base_commit):
-#             arg_val = base_commit
-#             ref_val = base_commit
-#
-#         if attr_name != 'commit_sha':
-#             ref_val = base_commit
-#
-#         commit_sha = ref_val
-#         branch_name = None if attr_name == 'commit_sha' else arg_val
-#
-#         assert getattr(wb_path_v1, attr_name) == arg_val
-#         assert wb_path_v1.ref == ref_val
-#         assert wb_path_v1.extra == {
-#             'commitSha': commit_sha,
-#             'branchName': branch_name,
-#         }
-#
-#         wb_path_v0 = await provider.validate_path(path, **kwargs)
-#         assert wb_path_v1 == wb_path_v0
-#
-#     @pytest.mark.asyncio
-#     @pytest.mark.aiohttpretty
-#     async def test_validate_v1_path_subfolder(self, provider):
-#         test_fixtures = fixtures.validate_path
-#
-#         dir_listing_body =  test_fixtures['subfolder_dir_listing']
-#         base_commit = dir_listing_body['node']
-#         dir_listing_url = provider._build_v1_repo_url('src', 'main-branch', 'subfolder')  + '/'
-#         aiohttpretty.register_json_uri('GET', dir_listing_url, body=dir_listing_body)
-#
-#         path = '/subfolder/.gitkeep'
-#         try:
-#             wb_path_v1 = await provider.validate_v1_path(path, branch='main-branch')
-#         except Exception as exc:
-#             pytest.fail(str(exc))
-#
-#         wb_path_v0 = await provider.validate_path(path, branch='main-branch')
-#         assert wb_path_v1 == wb_path_v0
+class TestValidatePath:
+
+    @pytest.mark.asyncio
+    async def test_validate_v1_path_root(self, provider, repo_metadata):
+        # Mock ``_fetch_default_branch()`` instead of using ``aiohttpretty``
+        repo_metadata = json.loads(repo_metadata)
+        provider._fetch_default_branch = MockCoroutine(
+            return_value=repo_metadata['mainbranch']['name'])
+
+        try:
+            wb_path_v1 = await provider.validate_v1_path('/')
+        except Exception as exc:
+            return pytest.fail(str(exc))
+        wb_path_v0 = await provider.validate_path('/')
+        assert wb_path_v1 == wb_path_v0
+        assert wb_path_v1.branch_name == repo_metadata['mainbranch']['name']
+        assert wb_path_v1.commit_sha is None
+
+    @pytest.mark.asyncio
+    async def test_validate_v1_path_file(self, provider, repo_metadata,
+                                         path_metadata_folder, folder_full_contents_list):
+        file_path = '/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0001.20bytes.txt'
+
+        # Mock ``_fetch_default_branch()`` instead of using ``aiohttpretty``
+        repo_metadata = json.loads(repo_metadata)
+        provider._fetch_default_branch = MockCoroutine(
+            return_value=repo_metadata['mainbranch']['name'])
+        # Mock ``_fetch_path_metadata()`` instead of using ``aiohttpretty``
+        parent_folder_metadata = json.loads(path_metadata_folder)['non_root_lvl3']
+        provider._fetch_path_metadata = MockCoroutine(return_value=parent_folder_metadata)
+        # Mock ``_fetch_dir_listing()`` instead of using ``aiohttpretty``
+        parent_dir_listing = json.loads(folder_full_contents_list)['file_parent']
+        provider._fetch_dir_listing = MockCoroutine(return_value=parent_dir_listing)
+
+        try:
+            wb_path_v1 = await provider.validate_v1_path(file_path)
+        except Exception as exc:
+            return pytest.fail(str(exc))
+        wb_path_v0 = await provider.validate_path(file_path)
+
+        assert wb_path_v1 == wb_path_v0
+        assert wb_path_v1.branch_name == repo_metadata['mainbranch']['name']
+        assert wb_path_v1.commit_sha == parent_folder_metadata['commit']['hash'][:12]
+
+        bad_path = '{}/'.format(file_path)
+        with pytest.raises(exceptions.NotFoundError):
+            await provider.validate_v1_path(bad_path)
+
+    @pytest.mark.asyncio
+    async def test_validate_v1_path_folder(self, provider, repo_metadata,
+                                           path_metadata_folder, folder_full_contents_list):
+        folder_path = '/folder2-lvl1/folder1-lvl2/folder1-lvl3/'
+
+        repo_metadata = json.loads(repo_metadata)
+        provider._fetch_default_branch = MockCoroutine(
+            return_value=repo_metadata['mainbranch']['name'])
+        parent_folder_metadata = json.loads(path_metadata_folder)['non_root_lvl2']
+        provider._fetch_path_metadata = MockCoroutine(return_value=parent_folder_metadata)
+        parent_dir_listing = json.loads(folder_full_contents_list)['folder_parent']
+        provider._fetch_dir_listing = MockCoroutine(return_value=parent_dir_listing)
+
+        try:
+            wb_path_v1 = await provider.validate_v1_path(folder_path)
+        except Exception as exc:
+            return pytest.fail(str(exc))
+        wb_path_v0 = await provider.validate_path(folder_path)
+        assert wb_path_v1 == wb_path_v0
+        assert wb_path_v1.branch_name == repo_metadata['mainbranch']['name']
+        assert wb_path_v1.commit_sha == parent_folder_metadata['commit']['hash'][:12]
+
+        bad_path = folder_path.rstrip('/')
+        with pytest.raises(exceptions.NotFoundError):
+            await provider.validate_v1_path(bad_path)
+
+    @pytest.mark.asyncio
+    async def test_validate_v1_commit_sha(self, provider, repo_metadata,
+                                           path_metadata_folder, folder_full_contents_list):
+        file_path = '/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0001.20bytes.txt'
+
+        repo_metadata = json.loads(repo_metadata)
+        provider._fetch_default_branch = MockCoroutine(
+            return_value=repo_metadata['mainbranch']['name'])
+        parent_folder_metadata = json.loads(path_metadata_folder)['non_root_lvl3']
+        provider._fetch_path_metadata = MockCoroutine(return_value=parent_folder_metadata)
+        parent_dir_listing = json.loads(folder_full_contents_list)['file_parent']
+        provider._fetch_dir_listing = MockCoroutine(return_value=parent_dir_listing)
+
+        try:
+            wb_path_v1 = await provider.validate_v1_path(file_path, commitSha=COMMIT_SHA)
+        except Exception as exc:
+            return pytest.fail(str(exc))
+        wb_path_v0 = await provider.validate_path(file_path, commitSha=COMMIT_SHA)
+        assert wb_path_v1 == wb_path_v0
+        assert wb_path_v1.branch_name is None
+        assert wb_path_v1.commit_sha == COMMIT_SHA
+        assert wb_path_v1.ref == wb_path_v1.commit_sha
+
+        try:
+            wb_path_v1 = await provider.validate_v1_path(file_path, branch='other-branch')
+        except Exception as exc:
+            return pytest.fail(str(exc))
+        wb_path_v0 = await provider.validate_path(file_path, branch='other-branch')
+        assert wb_path_v1 == wb_path_v0
+        assert wb_path_v1.branch_name == 'other-branch'
+        assert wb_path_v1.commit_sha == parent_folder_metadata['commit']['hash'][:12]
+        assert wb_path_v1.ref == wb_path_v1.commit_sha
+
+        try:
+            wb_path_v1 = await provider.validate_v1_path(file_path, revision='abc123def456')
+        except Exception as exc:
+            return pytest.fail(str(exc))
+        wb_path_v0 = await provider.validate_path(file_path, revision='abc123def456')
+        assert wb_path_v1 == wb_path_v0
+        assert wb_path_v1.branch_name is None
+        assert wb_path_v1.commit_sha == 'abc123def456'
+        assert wb_path_v1.ref == wb_path_v1.commit_sha
+
+        try:
+            wb_path_v1 = await provider.validate_v1_path(file_path, revision='revision-abc123')
+        except Exception as exc:
+            return pytest.fail(str(exc))
+        wb_path_v0 = await provider.validate_path(file_path, revision='revision-abc123')
+        assert wb_path_v1 == wb_path_v0
+        assert wb_path_v1.branch_name == 'revision-abc123'
+        assert wb_path_v1.commit_sha == parent_folder_metadata['commit']['hash'][:12]
+        assert wb_path_v1.ref == wb_path_v1.commit_sha
 
 
 class TestRepo:
