@@ -423,51 +423,27 @@ class BitbucketProvider(provider.BaseProvider):
         :param folder: the folder of which the contents should be listed
         :returns: a list of the folder's full contents
         """
-        dir_content = await self._fetch_dir_listing_first_page(folder)
-        page_index = dir_content['page']
-        page_len = dir_content['pagelen']
-        next_url = dir_content.get('next', None)
-        dir_list = dir_content['values']
+        query_params = {
+            'pagelen': '100',
+            'fields': 'values.path,values.size,values.type,pagelen,page,next',
+        }
+
+        next_url = '{}/?{}'.format(self._build_v2_repo_url('src', folder.ref, *folder.path_tuple()),
+                                   urlencode(query_params))
+        dir_list = []
         while next_url:
-            if page_index > pd_settings.MAX_RESP_PAGE_NUMBER \
-                    or page_len * page_index > pd_settings.MAX_DIR_LIST_SIZE:
-                # TODO: Should we limit this? If so, by page number, by list size or both?
-                pass
-            more_content = await self._fetch_dir_listing_next_page(next_url)
-            page_index = more_content['page']
-            page_len = more_content['pagelen']
-            next_url = more_content.get('next', None)
-            dir_list.extend(more_content['values'])
+            resp = await self.make_request(
+                'GET',
+                next_url,
+                expects=(200,),
+                throws=exceptions.ProviderError,
+            )
+            content = await resp.json()
+            page_index = content['page']
+            page_len = content['pagelen']
+            next_url = content.get('next', None)
+            dir_list.extend(content['values'])
         return dir_list
-
-    async def _fetch_dir_listing_first_page(self, folder: BitbucketPath) -> dict:
-        """Get the first page which lists the folder's full or partial contents.
-
-        :param folder: the folder of which the contents should be listed
-        :returns: a dict of which the ``['values']`` contains a list of the folder's contents
-        """
-        assert folder.is_dir  # don't use this method on files
-        resp = await self.make_request(
-            'GET',
-            '{}/'.format(self._build_v2_repo_url('src', folder.ref, *folder.path_tuple())),
-            expects=(200, ),
-            throws=exceptions.ProviderError,
-        )
-        return await resp.json()
-
-    async def _fetch_dir_listing_next_page(self, next_url: str) -> dict:
-        """Get the next page for more contents for the folder.
-
-        :param next_url: the URL to get the next page of the folder's contents
-        :return: a dict whose ``['values']`` contains a list of the folder's partial contents
-        """
-        resp = await self.make_request(
-            'GET',
-            next_url,
-            expects=(200,),
-            throws=exceptions.ProviderError,
-        )
-        return await resp.json()
 
     async def _fetch_last_commit(self, file_history_url: str) -> Tuple:
         """Get the last commit hash and date.
