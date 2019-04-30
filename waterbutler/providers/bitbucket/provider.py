@@ -326,15 +326,10 @@ class BitbucketProvider(provider.BaseProvider):
         for value in dir_list:
             if value['type'] == 'commit_file':
                 name = self.bitbucket_path_to_name(value['path'], dir_path)
-                file_history_url = value['links']['history']['href']
-                commit_hash, commit_date = await self._fetch_last_commit(file_history_url)
                 # TODO: existing issue - find out why timestamp doesn't show up on the files page
                 item = {
-                    'revision': commit_hash[:12],
                     'size': value['size'],
                     'path': value['path'],
-                    'utctimestamp': commit_date,
-                    'timestamp': commit_date
                 }
                 ret.append(BitbucketFileMetadata(  # type: ignore
                     item,
@@ -444,19 +439,3 @@ class BitbucketProvider(provider.BaseProvider):
             next_url = content.get('next', None)
             dir_list.extend(content['values'])
         return dir_list
-
-    async def _fetch_last_commit(self, file_history_url: str) -> Tuple:
-        """Get the last commit hash and date.
-
-        :param file_history_url: the dedicated file history url for the file
-        :return: a tuple of the last commit hash and date
-        """
-        query_params = {'fields': 'values.commit.hash,values.commit.date'}
-        resp = await self.make_request(
-            'GET',
-            '{}?{}'.format(file_history_url, urlencode(query_params)),
-            expects=(200,),
-            throws=exceptions.ProviderError,
-        )
-        resp_dict = await resp.json()
-        return resp_dict['values'][0]['commit']['hash'], resp_dict['values'][0]['commit']['date']
