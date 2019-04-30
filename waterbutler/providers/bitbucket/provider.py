@@ -180,17 +180,7 @@ class BitbucketProvider(provider.BaseProvider):
 
         API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/filehistory/%7Bnode%7D/%7Bpath%7D
         """
-        query_params = {
-            'fields': 'values.commit.hash,values.commit.date,values.commit.author.raw,'
-                      'values.size,values.path,values.type'
-        }
-        resp = await self.make_request(
-            'GET',
-            self._build_v2_repo_url('filehistory', path.ref, path.path, **query_params),
-            expects=(200, ),
-            throws=exceptions.RevisionsError
-        )
-        revisions = (await resp.json())['values']
+        revisions = await self._fetch_commit_history_by_path(path)
         valid_revisions = []
 
         for revision in revisions:
@@ -276,12 +266,15 @@ class BitbucketProvider(provider.BaseProvider):
         :return: a BitbucketFileMetadata object
         """
         file_meta = await self._fetch_path_metadata(path)
+        commit_history = await self._fetch_commit_history_by_url(
+            file_meta['links']['history']['href']
+        )
         data = {
-            'revision': file_meta['commit']['hash'][:12],
             'size': file_meta['size'],
             'path': file_meta['path'],
-            'timestamp': file_meta['commit']['date'],
-            'utctimestamp': file_meta['commit']['date']
+            'revision': commit_history[0]['commit']['hash'][:12],
+            'timestamp': commit_history[0]['commit']['date'],
+            'created_utc': commit_history[-1]['commit']['date'],
         }
         return BitbucketFileMetadata(data, path, owner=self.owner, repo=self.repo)
 
@@ -390,7 +383,7 @@ class BitbucketProvider(provider.BaseProvider):
         """
         query_params = {
             'format': 'meta',
-            'fields': 'commit.hash,commit.date,path,size'
+            'fields': 'commit.hash,commit.date,path,size,links.history.href'
         }
         path_meta_url = self._build_v2_repo_url('src', path.ref, *path.path_tuple())
         resp = await self.make_request(
@@ -420,7 +413,7 @@ class BitbucketProvider(provider.BaseProvider):
         """
         query_params = {
             'pagelen': '100',
-            'fields': 'values.path,values.size,values.type,pagelen,page,next',
+            'fields': 'values.path,values.size,values.type,next',
         }
 
         next_url = '{}/?{}'.format(self._build_v2_repo_url('src', folder.ref, *folder.path_tuple()),
@@ -434,8 +427,38 @@ class BitbucketProvider(provider.BaseProvider):
                 throws=exceptions.ProviderError,
             )
             content = await resp.json()
-            page_index = content['page']
-            page_len = content['pagelen']
             next_url = content.get('next', None)
             dir_list.extend(content['values'])
         return dir_list
+
+    async def _fetch_commit_history_by_path(self, path: BitbucketPath) -> list:
+        return await self._fetch_commit_history_by_url(
+            self._build_v2_repo_url('filehistory', path.ref, path.path)
+        )
+
+    async def _fetch_commit_history_by_url(self, history_url: str) -> list:
+        """Get the entire commit history for a file given the history endpoint url.
+
+        :param history_url: the dedicated file history url for the file
+        :return: a list of commit metadata objects from newest to oldest
+        """
+        query_params = {
+            'pagelen': '100',
+            'fields': ('values.commit.hash,values.commit.date,values.commit.author.raw,'
+                       'values.size,values.path,values.type,next'),
+        }
+
+        next_url = '{}/?{}'.format(history_url, urlencode(query_params))
+        commit_history = []
+        while next_url:
+            resp = await self.make_request(
+                'GET',
+                next_url,
+                expects=(200,),
+                throws=exceptions.ProviderError,
+            )
+            content = await resp.json()
+            next_url = content.get('next', None)
+            commit_history.extend(content['values'])
+
+        return commit_history

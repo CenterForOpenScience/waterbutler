@@ -87,7 +87,7 @@ class BitbucketFileMetadata(BaseBitbucketMetadata, metadata.BaseFileMetadata):
 
     @property
     def created_utc(self):
-        return None
+        return self.raw.get('created_utc', None)
 
     @property
     def content_type(self):
