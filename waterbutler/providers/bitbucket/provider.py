@@ -448,7 +448,7 @@ class BitbucketProvider(provider.BaseProvider):
                        'values.size,values.path,values.type,next'),
         }
 
-        next_url = '{}/?{}'.format(history_url, urlencode(query_params))
+        next_url = '{}?{}'.format(history_url, urlencode(query_params))
         commit_history = []
         while next_url:
             resp = await self.make_request(
