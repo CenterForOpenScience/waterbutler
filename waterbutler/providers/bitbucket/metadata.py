@@ -83,7 +83,7 @@ class BitbucketFileMetadata(BaseBitbucketMetadata, metadata.BaseFileMetadata):
 
     @property
     def modified(self):
-        return self.raw['timestamp']
+        return self.raw.get('timestamp', None)
 
     @property
     def created_utc(self):
@@ -106,7 +106,7 @@ class BitbucketFileMetadata(BaseBitbucketMetadata, metadata.BaseFileMetadata):
 
     @property
     def last_commit_sha(self):
-        return self.raw['revision']
+        return self.raw.get('revision', None)
 
     @property
     def web_view(self):
