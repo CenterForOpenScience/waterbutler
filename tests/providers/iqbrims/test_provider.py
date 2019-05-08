@@ -369,6 +369,125 @@ class TestValidatePath:
         assert result.name in path.name
 
 
+class TestUpload:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_create(self, provider, file_stream, root_provider_fixtures):
+        upload_id = '7'
+        item = root_provider_fixtures['list_file']['items'][0]
+        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
+
+        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                       upload_id=upload_id)
+
+        aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+
+        result, created = await provider.upload(file_stream, path)
+
+        expected = IQBRIMSFileMetadata(item, path)
+
+        assert created is True
+        assert result == expected
+        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
+        assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_doesnt_unquote(self, provider, file_stream, root_provider_fixtures):
+        upload_id = '7'
+        item = root_provider_fixtures['list_file']['items'][0]
+        path = IQBRIMSPath('/birdie%2F %20".jpg', _ids=(provider.folder['id'], None))
+
+        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                       upload_id=upload_id)
+
+        aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+
+        result, created = await provider.upload(file_stream, path)
+
+        expected = IQBRIMSFileMetadata(item, path)
+
+        assert created is True
+        assert result == expected
+        assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
+        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_update(self, provider, file_stream, root_provider_fixtures):
+        upload_id = '7'
+        item = root_provider_fixtures['list_file']['items'][0]
+        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], item['id']))
+
+        start_upload_url = provider._build_upload_url('files', path.identifier,
+                                                      uploadType='resumable')
+        finish_upload_url = provider._build_upload_url('files', path.identifier,
+                                                       uploadType='resumable', upload_id=upload_id)
+
+        aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
+        aiohttpretty.register_uri('PUT', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+        result, created = await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='PUT', uri=start_upload_url)
+        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
+        assert created is False
+        expected = IQBRIMSFileMetadata(item, path)
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_create_nested(self, provider, file_stream, root_provider_fixtures):
+        upload_id = '7'
+        item = root_provider_fixtures['list_file']['items'][0]
+        path = WaterButlerPath(
+            '/ed/sullivan/show.mp3',
+            _ids=[str(x) for x in range(3)]
+        )
+
+        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                       upload_id=upload_id)
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+        aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
+        result, created = await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
+        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
+        assert created is True
+        expected = IQBRIMSFileMetadata(item, path)
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_checksum_mismatch(self, provider, file_stream, root_provider_fixtures):
+        upload_id = '7'
+        path = WaterButlerPath('/birdie.jpg', _ids=(provider.folder['id'], None))
+
+        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                       upload_id=upload_id)
+
+        aiohttpretty.register_json_uri('PUT', finish_upload_url,
+                                       body=root_provider_fixtures['checksum_mismatch_metadata'])
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+
+        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+            await provider.upload(file_stream, path)
+
+        assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
+        assert aiohttpretty.has_call(method='POST', uri=start_upload_url)
+
+
 class TestDownload:
     """Google Docs (incl. Google Sheets, Google Slides, etc.) require extra API calls and use a
     different branch for downloading/exporting files than non-GDoc files.  For brevity's sake
@@ -1296,12 +1415,6 @@ class TestOperationsOrMisc:
 
 
 class TestReadOnlyProvider:
-
-    @pytest.mark.asyncio
-    async def test_upload(self, provider):
-        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
-            await provider.upload('/foo-file.txt')
-        assert e.value.code == 501
 
     @pytest.mark.asyncio
     async def test_create_folder(self, provider):

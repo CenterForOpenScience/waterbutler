@@ -1,13 +1,18 @@
 import os
+import json
+import hashlib
 import typing
 import functools
 from urllib import parse
 from http import HTTPStatus
 
+import furl
+
 from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core import path as wb_path
+from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.iqbrims import settings
 from waterbutler.providers.iqbrims import utils as drive_utils
@@ -172,6 +177,74 @@ class IQBRIMSProvider(provider.BaseProvider):
         stream.name = metadata.export_name  # type: ignore
         return stream
 
+    async def upload(self,
+                     stream,
+                     path: WaterButlerPath,
+                     *args,
+                     **kwargs) -> typing.Tuple[IQBRIMSFileMetadata, bool]:
+        assert path.is_file
+
+        if path.identifier:
+            segments = [path.identifier]
+        else:
+            segments = []
+
+        stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+
+        upload_metadata = self._build_upload_metadata(path.parent.identifier, path.name)
+        upload_id = await self._start_resumable_upload(not path.identifier, segments, stream.size,
+                                                       upload_metadata)
+        data = await self._finish_resumable_upload(segments, stream, upload_id)
+
+        if data['md5Checksum'] != stream.writers['md5'].hexdigest:
+            raise exceptions.UploadChecksumMismatchError()
+
+        return IQBRIMSFileMetadata(data, path), path.identifier is None
+
+    def _build_upload_url(self, *segments, **query):
+        return provider.build_url(settings.BASE_UPLOAD_URL, *segments, **query)
+
+    def _build_upload_metadata(self, folder_id: str, name: str) -> dict:
+        return {
+            'parents': [
+                {
+                    'kind': 'drive#parentReference',
+                    'id': folder_id,
+                },
+            ],
+            'title': name,
+        }
+
+    async def _start_resumable_upload(self,
+                                      created: bool,
+                                      segments: typing.Sequence[str],
+                                      size,
+                                      metadata: dict) -> str:
+        async with self.request(
+                'POST' if created else 'PUT',
+                self._build_upload_url('files', *segments, uploadType='resumable'),
+                headers={
+                    'Content-Type': 'application/json',
+                    'X-Upload-Content-Length': str(size),
+                },
+                data=json.dumps(metadata),
+                expects=(200, ),
+                throws=exceptions.UploadError,
+        ) as resp:
+            location = furl.furl(resp.headers['LOCATION'])
+        return location.args['upload_id']
+
+    async def _finish_resumable_upload(self, segments: typing.Sequence[str], stream, upload_id):
+        async with self.request(
+                'PUT',
+                self._build_upload_url('files', *segments, uploadType='resumable', upload_id=upload_id),
+                headers={'Content-Length': str(stream.size)},
+                data=stream,
+                expects=(200, ),
+                throws=exceptions.UploadError,
+        ) as resp:
+            return await resp.json()
+
     def can_duplicate_names(self) -> bool:
         return True
 
@@ -180,9 +253,6 @@ class IQBRIMSProvider(provider.BaseProvider):
 
     def can_intra_copy(self, other, path=None) -> bool:
         return False
-
-    async def upload(self, *args, **kwargs):
-        raise exceptions.ReadOnlyProviderError(self.NAME)
 
     async def create_folder(self, *args, **kwargs):
         raise exceptions.ReadOnlyProviderError(self.NAME)
