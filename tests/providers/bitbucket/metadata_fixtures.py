@@ -8,7 +8,7 @@ def owner():
 
 @pytest.fixture
 def repo():
-    return 'develop'
+    return 'waterbutler-public'
 
 
 @pytest.fixture

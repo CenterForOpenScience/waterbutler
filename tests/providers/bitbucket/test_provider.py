@@ -39,7 +39,7 @@ def credentials():
 def settings():
     return {
         'owner': 'cslzchen',
-        'repo': 'develop',
+        'repo': 'waterbutler-public',
     }
 
 
