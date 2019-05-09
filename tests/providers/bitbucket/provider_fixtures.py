@@ -10,8 +10,15 @@ def repo_metadata():
 
 
 @pytest.fixture()
-def file_history_revisions():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_history_revisions.json'),
+def file_history_page_1():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_history_page_1.json'),
+              'r') as file_pointer:
+        return file_pointer.read()
+
+
+@pytest.fixture()
+def file_history_page_2():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_history_page_2.json'),
               'r') as file_pointer:
         return file_pointer.read()
 

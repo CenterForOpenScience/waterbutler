@@ -13,8 +13,9 @@ from waterbutler.providers.bitbucket.metadata import BitbucketFileMetadata
 from tests.utils import MockCoroutine
 from .provider_fixtures import (repo_metadata, folder_full_contents_list,
                                 path_metadata_file, path_metadata_folder,
+                                file_history_page_1, file_history_page_2,
                                 folder_contents_page_1, folder_contents_page_2,
-                                file_history_revisions, file_history_last_commit, )
+                                file_history_last_commit, )
 from .metadata_fixtures import owner, repo, file_metadata, folder_metadata, revision_metadata
 
 COMMIT_SHA = 'abc123def456abc123def456'
@@ -45,6 +46,7 @@ def settings():
 @pytest.fixture
 def provider(auth, credentials, settings):
     provider = BitbucketProvider(auth, credentials, settings)
+    provider.RESP_PAGE_LEN = 10
     return provider
 
 
@@ -193,18 +195,24 @@ class TestRevisions:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_get_revisions(self, provider, file_history_revisions):
+    async def test_get_revisions(self, provider, file_history_page_1, file_history_page_2):
         path = BitbucketPath('/file0001.20bytes.txt',
                              _ids=[(COMMIT_SHA, 'develop'), (COMMIT_SHA, 'develop')])
 
-        file_history_revisions = json.loads(file_history_revisions)
+        file_history_page_1 = json.loads(file_history_page_1)
         query_params = {
+            'pagelen': provider.RESP_PAGE_LEN,
             'fields': 'values.commit.hash,values.commit.date,values.commit.author.raw,'
-                      'values.size,values.path,values.type'
+                      'values.size,values.path,values.type,next'
         }
-        revisions_url = provider._build_v2_repo_url('filehistory', COMMIT_SHA,
-                                                    'file0001.20bytes.txt', **query_params)
-        aiohttpretty.register_json_uri('GET', revisions_url, body=file_history_revisions)
+        file_history_first_url = provider._build_v2_repo_url('filehistory', COMMIT_SHA,
+                                                             'file0001.20bytes.txt', **query_params)
+        aiohttpretty.register_json_uri('GET', file_history_first_url, body=file_history_page_1)
+
+        file_history_page_2 = json.loads(file_history_page_2)
+        file_history_next_url = file_history_page_1['next']
+        aiohttpretty.register_json_uri('GET', file_history_next_url, body=file_history_page_2)
+
         result = await provider.revisions(path)
 
         assert len(result) == 14
