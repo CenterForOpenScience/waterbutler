@@ -34,7 +34,7 @@ class TestBitbucketMetadata:
         assert metadata.kind == 'file'
         assert metadata.modified == '2019-04-26T15:13:12+00:00'
         assert metadata.modified_utc == '2019-04-26T15:13:12+00:00'
-        assert metadata.created_utc is None
+        assert metadata.created_utc == '2019-04-25T06:18:21+00:00'
         assert metadata.content_type is None
         assert metadata.size == 20
         assert metadata.size_as_int == 20

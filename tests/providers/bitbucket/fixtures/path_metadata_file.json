@@ -5,6 +5,11 @@
             "hash": "dd8c7b642e3240a494414ac93c7fbc119ebe1179"
         },
         "size": 20,
+        "links": {
+            "history": {
+                "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/filehistory/dd8c7b642e3240a494414ac93c7fbc119ebe1179/file0001.20bytes.txt"
+            }
+        },
         "path": "file0001.20bytes.txt"
     },
     "non_root": {
@@ -13,6 +18,11 @@
             "hash": "dd8c7b642e3240a494414ac93c7fbc119ebe1179"
         },
         "size": 20,
+        "links": {
+            "history": {
+                "href": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/filehistory/dd8c7b642e3240a494414ac93c7fbc119ebe1179/folder2-lvl1/folder1-lvl2/folder1-lvl3/file0002.20bytes.txt"
+            }
+        },
         "path": "folder2-lvl1/folder1-lvl2/folder1-lvl3/file0002.20bytes.txt"
     }
 }

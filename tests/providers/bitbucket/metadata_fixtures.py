@@ -17,7 +17,7 @@ def file_metadata():
         'size': 20,
         'path': 'folder2-lvl1/folder1-lvl2/folder1-lvl3/file0002.20bytes.txt',
         'timestamp': '2019-04-26T15:13:12+00:00',
-        'utctimestamp': '2019-04-26T15:13:12+00:00',
+        'created_utc': '2019-04-25T06:18:21+00:00',
         'revision': 'dd8c7b642e32'
     }
 

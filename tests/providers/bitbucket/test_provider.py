@@ -14,9 +14,8 @@ from tests.utils import MockCoroutine
 from .provider_fixtures import (repo_metadata, folder_full_contents_list,
                                 path_metadata_file, path_metadata_folder,
                                 file_history_page_1, file_history_page_2,
-                                folder_contents_page_1, folder_contents_page_2,
-                                file_history_last_commit, )
-from .metadata_fixtures import owner, repo, file_metadata, folder_metadata, revision_metadata
+                                folder_contents_page_1, folder_contents_page_2, )
+from .metadata_fixtures import owner, repo, file_metadata, folder_metadata
 
 COMMIT_SHA = 'abc123def456abc123def456'
 BRANCH = 'develop'
@@ -227,47 +226,66 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_get_metadata_for_file(self, provider, path_metadata_file):
-        name = 'file0002.20bytes.txt'
-        subdir = 'folder2-lvl1/folder1-lvl2/folder1-lvl3'
-        full_path = '/{}/{}'.format(subdir, name)
-        path = BitbucketPath(full_path, _ids=[(COMMIT_SHA, BRANCH) for _ in full_path.split('/')])
+    async def test_get_metadata_for_file(self, provider, path_metadata_file,
+                                         file_history_page_1, file_history_page_2):
+        path = BitbucketPath('/file0001.20bytes.txt',
+                             _ids=[(COMMIT_SHA, 'develop'), (COMMIT_SHA, 'develop')])
 
-        file_metadata = json.loads(path_metadata_file)['non_root']
-        query_params = {'format': 'meta', 'fields': 'commit.hash,commit.date,path,size'}
+        file_metadata = json.loads(path_metadata_file)['root']
+        query_params = {
+            'format': 'meta',
+            'fields': 'commit.hash,commit.date,path,size,links.history.href'
+        }
         path_meta_url = '{}/?{}'.format(
             provider._build_v2_repo_url('src', path.ref, *path.path_tuple()),
             urlencode(query_params)
         )
         aiohttpretty.register_json_uri('GET', path_meta_url, body=file_metadata)
+
+        file_history_page_1 = json.loads(file_history_page_1)
+        query_params = {
+            'pagelen': provider.RESP_PAGE_LEN,
+            'fields': 'values.commit.hash,values.commit.date,values.commit.author.raw,'
+                      'values.size,values.path,values.type,next'
+        }
+        file_history_first_url = '{}?{}'.format(file_metadata['links']['history']['href'],
+                                                 urlencode(query_params))
+        aiohttpretty.register_json_uri('GET', file_history_first_url, body=file_history_page_1)
+
+        file_history_page_2 = json.loads(file_history_page_2)
+        file_history_next_url = file_history_page_1['next']
+        aiohttpretty.register_json_uri('GET', file_history_next_url, body=file_history_page_2)
+
         metadata = await provider.metadata(path)
 
         assert metadata is not None
-        assert metadata.name == name
-        assert metadata.path == full_path
+        assert metadata.name == 'file0001.20bytes.txt'
+        assert metadata.path == '/file0001.20bytes.txt'
         assert metadata.kind == 'file'
-        assert metadata.modified == '2019-04-26T15:13:12+00:00'
-        assert metadata.modified_utc == '2019-04-26T15:13:12+00:00'
-        assert metadata.created_utc is None
+        assert metadata.modified == '2019-04-25T11:58:30+00:00'
+        assert metadata.modified_utc == '2019-04-25T11:58:30+00:00'
+        assert metadata.created_utc == '2019-04-24T12:18:21+00:00'
         assert metadata.content_type is None
         assert metadata.size == 20
         assert metadata.size_as_int == 20
-        assert metadata.etag == '{}::{}'.format(full_path, COMMIT_SHA)
+        assert metadata.etag == '{}::{}'.format('/file0001.20bytes.txt', COMMIT_SHA)
         assert metadata.provider == 'bitbucket'
-        assert metadata.last_commit_sha == 'dd8c7b642e32'
+        assert metadata.last_commit_sha == 'ad0412ab6f8e'
         assert metadata.commit_sha == COMMIT_SHA
         assert metadata.branch_name == BRANCH
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_get_metadata_for_folder(self, provider, path_metadata_folder,
-                                           folder_contents_page_1, folder_contents_page_2,
-                                           file_history_last_commit):
+                                           folder_contents_page_1, folder_contents_page_2, ):
 
         path = BitbucketPath('/', _ids=[(None, 'develop')], folder=True)
 
         folder_metadata = json.loads(path_metadata_folder)['root']
-        query_params = {'format': 'meta', 'fields': 'commit.hash,commit.date,path,size'}
+        query_params = {
+            'format': 'meta',
+            'fields': 'commit.hash,commit.date,path,size,links.history.href'
+        }
         path_meta_url = '{}/?{}'.format(
             provider._build_v2_repo_url('src', path.ref, *path.path_tuple()),
             urlencode(query_params)
@@ -275,40 +293,20 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', path_meta_url, body=folder_metadata)
 
         dir_contents_first_page = json.loads(folder_contents_page_1)
-        dir_list_first_url = '{}/'.format(provider._build_v2_repo_url('src', path.ref,
-                                                                      *path.path_tuple()))
+        query_params = {
+            'pagelen': provider.RESP_PAGE_LEN,
+            'fields': 'values.path,values.size,values.type,next',
+        }
+        dir_list_base_url = provider._build_v2_repo_url('src', path.ref, *path.path_tuple())
+        dir_list_first_url = '{}/?{}'.format(dir_list_base_url, urlencode(query_params))
         aiohttpretty.register_json_uri('GET', dir_list_first_url, body=dir_contents_first_page)
 
         dir_contents_next_page = json.loads(folder_contents_page_2)
         dir_list_next_url = dir_contents_first_page['next']
         aiohttpretty.register_json_uri('GET', dir_list_next_url, body=dir_contents_next_page)
 
-        # It is not worthwhile to create fixtures for each file and to register every file history
-        # url.  Simply mock ``_fetch_last_commit()`` with the same return value.  The method itself
-        # is tested in its own test case: ``test_file_history_last_commit()``.
-        last_commit = json.loads(file_history_last_commit)['values'][0]['commit']
-        provider._fetch_last_commit = MockCoroutine(return_value=(last_commit['hash'],
-                                                                  last_commit['date']))
-
         result = await provider.metadata(path)
         assert len(result) == 15
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_file_history_last_commit(self, provider, folder_contents_page_1,
-                                            file_history_last_commit):
-
-        dir_contents_first_page = json.loads(folder_contents_page_1)
-        file_history_url_to_call = dir_contents_first_page['values'][5]['links']['history']['href']
-        query_params = {'fields': 'values.commit.hash,values.commit.date'}
-        file_history_url_to_register = '{}?{}'.format(file_history_url_to_call,
-                                                      urlencode(query_params))
-        file_history_commit_list = json.loads(file_history_last_commit)
-        aiohttpretty.register_json_uri('GET', file_history_url_to_register,
-                                       body=file_history_commit_list)
-        commit_hash, commit_date = await provider._fetch_last_commit(file_history_url_to_call)
-        assert commit_hash == file_history_commit_list['values'][0]['commit']['hash']
-        assert commit_date == file_history_commit_list['values'][0]['commit']['date']
 
 
 class TestDownload:

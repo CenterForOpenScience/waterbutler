@@ -24,13 +24,6 @@ def file_history_page_2():
 
 
 @pytest.fixture()
-def file_history_last_commit():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_history_last_commit.json'),
-              'r') as file_pointer:
-        return file_pointer.read()
-
-
-@pytest.fixture()
 def path_metadata_folder():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/path_metadata_folder.json'),
               'r') as file_pointer:
