@@ -36,6 +36,7 @@ class BitbucketProvider(provider.BaseProvider):
     NAME = 'bitbucket'
     BASE_URL = pd_settings.BASE_URL
     VIEW_URL = pd_settings.VIEW_URL
+    RESP_PAGE_LEN = pd_settings.RESP_PAGE_LEN
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -412,7 +413,7 @@ class BitbucketProvider(provider.BaseProvider):
         :returns: a list of the folder's full contents
         """
         query_params = {
-            'pagelen': '100',
+            'pagelen': self.RESP_PAGE_LEN,
             'fields': 'values.path,values.size,values.type,next',
         }
 
@@ -443,7 +444,7 @@ class BitbucketProvider(provider.BaseProvider):
         :return: a list of commit metadata objects from newest to oldest
         """
         query_params = {
-            'pagelen': '100',
+            'pagelen': self.RESP_PAGE_LEN,
             'fields': ('values.commit.hash,values.commit.date,values.commit.author.raw,'
                        'values.size,values.path,values.type,next'),
         }
