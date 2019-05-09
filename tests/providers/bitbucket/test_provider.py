@@ -313,26 +313,21 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_file_download(self, provider, path_metadata_file):
+    async def test_file_download(self, provider, file_metadata):
 
-        name = 'file0002.20bytes.txt'
-        subdir = 'folder2-lvl1/folder1-lvl2/folder1-lvl3'
-        full_path = '/{}/{}'.format(subdir, name)
-        path = BitbucketPath(full_path, _ids=[(COMMIT_SHA, BRANCH) for _ in full_path.split('/')])
+        full_path = '/folder2-lvl1/folder1-lvl2/folder1-lvl3/ile0002.20bytes.txt'
+        bb_path = BitbucketPath(full_path, _ids=[(COMMIT_SHA, BRANCH) for _ in full_path.split('/')])
+        bb_file_metadata = BitbucketFileMetadata(file_metadata, bb_path, owner=owner, repo=repo)
 
-        file_metadata = json.loads(path_metadata_file)['non_root']
-        query_params = {'format': 'meta', 'fields': 'commit.hash,commit.date,path,size'}
-        path_meta_url = '{}/?{}'.format(
-            provider._build_v2_repo_url('src', path.ref, *path.path_tuple()),
-            urlencode(query_params)
-        )
-        aiohttpretty.register_json_uri('GET', path_meta_url, body=file_metadata)
+        # Use mock coroutine instead of aiohttpretty here since file metadata has already been
+        # covered in another test. See ``TestMetadata::test_get_metadata_for_file()``.
+        provider.metadata = MockCoroutine(return_value=bb_file_metadata)
 
         file_data = b'file0002.20bytes.txt'
-        download_url = provider._build_v2_repo_url('src', path.ref, *path.path_tuple())
+        download_url = provider._build_v2_repo_url('src', bb_path.ref, *bb_path.path_tuple())
         aiohttpretty.register_uri('GET', download_url, body=file_data)
 
-        result = await provider.download(path)
+        result = await provider.download(bb_path)
         content = await result.response.read()
         assert content == file_data
 
