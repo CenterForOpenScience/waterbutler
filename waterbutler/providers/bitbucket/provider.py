@@ -108,7 +108,7 @@ class BitbucketProvider(provider.BaseProvider):
         ]:
             raise exceptions.NotFoundError(str(path))
 
-        # _fetch_dir_listing will tell us the commit sha used to look up the listing
+        # _fetch_dir_listing() will tell us the commit sha used to look up the listing
         # if not set in path_obj or if the lookup sha is shorter than the returned sha, update it
         if not commit_sha or (len(commit_sha) < len(parent_dir_commit_sha)):
             path_obj.set_commit_sha(parent_dir_commit_sha)
@@ -171,13 +171,10 @@ class BitbucketProvider(provider.BaseProvider):
         3) ``revision`` is a substring (first 12 chars) of the commit hash
         4) ``raw_node`` is the commit hash
         5) There is only one timestamp ``date``: "2019-04-25T11:58:24+00:00"
-        6) The response is paginated with a default page size of 50 items.  The first page is large
-           enough comparing to the fact that BB API 1.0 only returns the latest 10 items.
-           TODO: fully handle pagination for revisions
-        7) The default response does not contain detailed commit metadata including author and date.
-           Instead of making an extra request to fetch the commit metadata, use the ``fields`` query
-           parameter.  For example, if the attribute is accessed with ``.['key1']['key2']['key3']``
-           in the commit metadata, simply use ``values.commit.key1.key2.key3``.
+        6) The response is paginated with a default page size of 50 items, which can be changed by
+           setting the ``pagelen`` query param.
+        7) The default response does not contain detailed commit metadata such as author and date.
+           Use ``values.commit.author`` and ``values.commit.date`` in the ``fields`` query param.
 
         API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/filehistory/%7Bnode%7D/%7Bpath%7D
         """
@@ -263,6 +260,11 @@ class BitbucketProvider(provider.BaseProvider):
     async def _metadata_file(self, path: BitbucketPath, **kwargs):
         """Fetch the metadata for a single file
 
+        Quirks: BB API 2.0 no longer returns file details such as the time when the file is created
+                and when the file is last modified.  WB must make an extra request to fetch the file
+                history which is a list of commits.  The ``data`` field of the first and and last
+                items are used respectively to set time created and time last modified.
+
         :param path: the BitbucketPath object of the file of which the metadata should be retrieved
         :return: a BitbucketFileMetadata object
         """
@@ -289,11 +291,11 @@ class BitbucketProvider(provider.BaseProvider):
         # Fetch metadata itself
         dir_meta = await self._fetch_path_metadata(folder)
         # Quirk: ``node`` attribute is no longer available for folder metadata in BB API 1.0.  The
-        #        value of ``node`` can still be extracted from the commit hash of which the first 12
-        #        chars turn out to be the one we need.
+        #        value of ``node`` can still be obtained from the commit hash of which the first 12
+        #        chars turn out to be the value we need.
         dir_commit_sha = dir_meta['commit']['hash'][:12]
-        # Quirk: the ``path`` attribute in folder metadata no longer has an ending slash in BB API
-        #        2.0.  To keep ``bitbucket_path_to_name()`` intact, the slash is added to the end.
+        # Quirk: the ``path`` attribute in folder metadata no longer has an trailing slash in BB API
+        #        2.0.  To keep ``bitbucket_path_to_name()`` intact, a trailing slash is added.
         dir_path = '{}/'.format(dir_meta['path'])
 
         # Fetch content list
@@ -307,15 +309,15 @@ class BitbucketProvider(provider.BaseProvider):
         # Quirks:
         # 1) BB API 2.0 treats both files and folders the same way.``path`` for both is a full or
         #    absolute path.  ``bitbucket_path_to_name()`` must be called to get the correct name.
-        # 2) both share the same list and use the same dict/json structure. Use the ``type``
-        #    attribute to check if an item is a folder or not.
-        # 3) Similar to ``node`` for folders, ``revision`` is gone but can be replaced with part of
-        #    the commit hash.  However, it is a little bit tricky for files.  The commit for each
-        #    file returned by the endpoint (for listing folder contents) is just the latest branch
-        #    commit.  In order to obtain the correct commit where each file was last changed, WB
-        #    needs to fetch the last commit metadata by using the file history URL.  In addition,
-        #    ``timestamp`` and ``utctimestamp`` are gone but the alternative ``date`` attribute can
-        #    be obtained from the last commit metadata.  See ``_fetch_last_commit()`` for more info.
+        # 2) Both files and folders share the same list and use the same dict/json structure. Use
+        #    the ``type`` field to check whether a path is a folder or not.
+        # 3) ``revision`` for files is gone but can be replaced with part of the commit hash.
+        #    However, it is tricky for files.  The ``commit`` field of each file item in the
+        #    returned content list is the latest branch commit.  In order to obtain the correct
+        #    time when the file was last modified, WB needs to fetch the file history.  This adds
+        #    lots of requests and significantly hits performance due to folder listing being called
+        #    very frequently.  The decision is to remove them.
+        # 4) Similar to ``revision``, ``timestamp``, and ``created_utc`` are removed.
         ret = []
         for value in dir_list:
             if value['type'] == 'commit_file':
@@ -365,17 +367,16 @@ class BitbucketProvider(provider.BaseProvider):
         """Get the metadata for folder and file itself.
 
         Bitbucket API 2.0 provides an easy way to fetch metadata for files and folders by simply
-        appending ``?format=meta`` to the endpoint.  However, this new feature no longer provides
-        several required attributes correctly: ``node`` and ``path`` for folder, ``revision`` and
-        ``timestamp`` for file.
+        appending ``?format=meta`` to the path endpoint.  However, this new feature no longer
+        returns several WB required attributes out of the box: ``node`` and ``path`` for folder,
+        ``revision``, ``timestamp`` and ``created_utc`` for file.
 
-        1) The ``path`` attribute for folders no longer has an ending slash.
-        2) The ``node`` and ``revision`` attributes are gone.  ``node`` can be extracted from the
-           first 12 chars of the commit hash: ``resp_dict['commit']['hash'][:12]``.  ``revision``
-           is obtained alternatively using the commit history when building the folder contents to
-           avoid an extra file metadata call in ``_metadata_folder()``.
-        3) ``timestamp`` and ``utctimestamp`` are gone.  A new attribute ``date`` can be extracted
-           from the metadata of the last commit.
+        1) The ``path`` for folders no longer has an ending slash.
+        2) The ``node`` for folders and ``revision`` for files are gone.  They have always been the
+           first 12 chars of the commit hash in both 1.0 and 2.0.
+        3) ``timestamp`` and ``created_utc`` for files are gone and must be obtained using the file
+           history endpoint indicated by ``links.history.href``. See ``_metadata_file()`` and
+           ``_fetch_commit_history_by_url()`` for details.
 
         API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
 
