@@ -83,10 +83,18 @@ class S3CompatProvider(provider.BaseProvider):
         """
         super().__init__(auth, credentials, settings)
 
-        self.connection = S3CompatConnection(credentials['access_key'],
-                                             credentials['secret_key'],
-                                             calling_format=OrdinaryCallingFormat(),
-                                             host=credentials['host'])
+        host = credentials['host']
+        if host.endswith(':80'):
+            self.connection = S3CompatConnection(credentials['access_key'],
+                                                 credentials['secret_key'],
+                                                 calling_format=OrdinaryCallingFormat(),
+                                                 host=host.split(':')[0],
+                                                 is_secure=False)
+        else:
+            self.connection = S3CompatConnection(credentials['access_key'],
+                                                 credentials['secret_key'],
+                                                 calling_format=OrdinaryCallingFormat(),
+                                                 host=host)
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
 
