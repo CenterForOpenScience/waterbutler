@@ -231,24 +231,3 @@ class TestUploadFile:
         handler.write.assert_called_once_with({
             'data': mock_file_metadata.json_api_serialized('3rqws')
         })
-
-    @pytest.mark.asyncio
-    async def test_not_enough_quota(self, handler):
-        handler.resource = '3rqws'
-        metadata = {
-            'error': 'not_enough_quota',
-            'message': 'You do not have enough available quota.',
-            'file': {
-                'name': 'myfile.big',
-                'size': 9999999
-            }
-        }
-        handler.uploader.set_result((metadata, False))
-        handler.set_status = mock.Mock()
-
-        await handler.upload_file()
-
-        assert handler.wsock.close.called
-        assert handler.writer.close.called
-        handler.set_status.assert_called_once_with(406)
-        handler.write.assert_called_once_with(metadata)
