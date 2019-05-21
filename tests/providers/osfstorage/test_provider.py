@@ -990,3 +990,23 @@ class TestCrossRegionCopy:
         src_provider.can_intra_copy.assert_called_once_with(dst_provider, src_path)
         src_provider.intra_copy.assert_called_once_with(dst_provider, src_path, dest_path)
         src_provider.download.assert_not_called()
+
+
+class TestQuota:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_get_quota(self, provider_and_mock_one):
+
+        provider, inner_provider = provider_and_mock_one
+        inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())
+
+        url, _, params = provider.build_signed_url(
+            'GET', '{}/api/v1/project/foo/creator_quota/'.format(wb_settings.OSF_URL))
+        quota = {'max': 10000, 'used': 5000}
+        aiohttpretty.register_json_uri('GET', url, body=quota, params=params)
+
+        quota = await provider.get_quota()
+
+        assert quota['max'] == 10000
+        assert quota['used'] == 5000
