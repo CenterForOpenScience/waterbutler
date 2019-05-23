@@ -2,6 +2,7 @@ import os
 import hashlib
 import functools
 from urllib import parse
+import re
 
 import xmltodict
 
@@ -83,10 +84,18 @@ class S3CompatProvider(provider.BaseProvider):
         """
         super().__init__(auth, credentials, settings)
 
+        host = credentials['host']
+        port = 443
+        m = re.match(r'^(.+)\:([0-9]+)$', host)
+        if m is not None:
+            host = m.group(1)
+            port = int(m.group(2))
         self.connection = S3CompatConnection(credentials['access_key'],
                                              credentials['secret_key'],
                                              calling_format=OrdinaryCallingFormat(),
-                                             host=credentials['host'])
+                                             host=host,
+                                             port=port,
+                                             is_secure=port == 443)
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
 
