@@ -363,13 +363,34 @@ class BitbucketProvider(provider.BaseProvider):
         )
         return (await resp.json())['mainbranch']['name']
 
+    async def _fetch_branch_commit_sha(self, branch_name: str) -> str:
+        """Fetch the commit sha (a.k.a node) for a branch.
+
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/refs/branches/%7Bname%7D
+
+        :param branch_name: the name of the branch
+        :return: the commit sha of the branch
+        """
+
+        query_params = {'fields': 'target.hash'}
+        branch_url = '{}?{}'.format(self._build_v2_repo_url('refs', 'branches', branch_name),
+                                    urlencode(query_params))
+        resp = await self.make_request(
+            'GET',
+            branch_url,
+            expects=(200,),
+            throws=exceptions.ProviderError,
+        )
+        return (await resp.json())['target']['hash']
+
     async def _fetch_path_metadata(self, path: BitbucketPath) -> dict:
         """Get the metadata for folder and file itself.
 
         Bitbucket API 2.0 provides an easy way to fetch metadata for files and folders by simply
-        appending ``?format=meta`` to the path endpoint.  However, this new feature no longer
-        returns several WB required attributes out of the box: ``node`` and ``path`` for folder,
-        ``revision``, ``timestamp`` and ``created_utc`` for file.
+        appending ``?format=meta`` to the path endpoint.
+
+        Quirk 1: This new feature no longer returns several WB required attributes out of the box:
+        ``node`` and ``path`` for folder, ``revision``, ``timestamp`` and ``created_utc`` for file.
 
         1) The ``path`` for folders no longer has an ending slash.
         2) The ``node`` for folders and ``revision`` for files are gone.  They have always been the
@@ -377,6 +398,18 @@ class BitbucketProvider(provider.BaseProvider):
         3) ``timestamp`` and ``created_utc`` for files are gone and must be obtained using the file
            history endpoint indicated by ``links.history.href``. See ``_metadata_file()`` and
            ``_fetch_commit_history_by_url()`` for details.
+
+        Quirk 2:
+
+        This PATH endpoint ``/2.0/repositories/{username}/{repo_slug}/src/{node}/{path}`` returns
+        HTTP 404 if the ``node`` segment is a branch of which the name contains a slash.  This is
+        a either a limitation or a bug on several BB API 2.0 endpoints.  It has nothing to do with
+        encoding.  More specifically, neither encoding / with %2F nor enclosing ``node`` with curly
+        braces %7B%7D works.  Here is the closest reference to the issue we can find as of May 2019:
+        https://bitbucket.org/site/master/issues/9969/get-commit-revision-api-does-not-accept.  The
+        fix is simple, just make an extra request to fetch the commit sha of the branch.  See
+        ``_fetch_branch_commit_sha()`` for details.  In addition, this will happen on all branches,
+        no matter if the name contains a slash or not.
 
         API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
 
@@ -387,6 +420,8 @@ class BitbucketProvider(provider.BaseProvider):
             'format': 'meta',
             'fields': 'commit.hash,commit.date,path,size,links.history.href'
         }
+        if not path.commit_sha:
+            path.set_commit_sha(await self._fetch_branch_commit_sha(path.branch_name))
         path_meta_url = self._build_v2_repo_url('src', path.ref, *path.path_tuple())
         resp = await self.make_request(
             'GET',
@@ -417,7 +452,8 @@ class BitbucketProvider(provider.BaseProvider):
             'pagelen': self.RESP_PAGE_LEN,
             'fields': 'values.path,values.size,values.type,next',
         }
-
+        if not folder.commit_sha:
+            folder.set_commit_sha(await self._fetch_branch_commit_sha(folder.branch_name))
         next_url = '{}/?{}'.format(self._build_v2_repo_url('src', folder.ref, *folder.path_tuple()),
                                    urlencode(query_params))
         dir_list = []
@@ -434,6 +470,8 @@ class BitbucketProvider(provider.BaseProvider):
         return dir_list
 
     async def _fetch_commit_history_by_path(self, path: BitbucketPath) -> list:
+        if not path.commit_sha:
+            path.set_commit_sha(await self._fetch_branch_commit_sha(path.branch_name))
         return await self._fetch_commit_history_by_url(
             self._build_v2_repo_url('filehistory', path.ref, path.path)
         )
