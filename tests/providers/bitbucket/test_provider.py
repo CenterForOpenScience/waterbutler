@@ -11,10 +11,9 @@ from waterbutler.providers.bitbucket.provider import BitbucketPath
 from waterbutler.providers.bitbucket.metadata import BitbucketFileMetadata
 
 from tests.utils import MockCoroutine
-from .provider_fixtures import (repo_metadata, folder_full_contents_list,
-                                path_metadata_file, path_metadata_folder,
-                                file_history_page_1, file_history_page_2,
-                                folder_contents_page_1, folder_contents_page_2, )
+from .provider_fixtures import (repo_metadata, folder_contents_page_1, folder_contents_page_2,
+                                branch_metadata, path_metadata_file, folder_full_contents_list,
+                                path_metadata_folder, file_history_page_1, file_history_page_2, )
 from .metadata_fixtures import owner, repo, file_metadata, folder_metadata
 
 COMMIT_SHA = 'abc123def456abc123def456'
@@ -231,13 +230,15 @@ class TestMetadata:
         path = BitbucketPath('/file0001.20bytes.txt',
                              _ids=[(COMMIT_SHA, 'develop'), (COMMIT_SHA, 'develop')])
 
+        provider._fetch_branch_commit_sha = MockCoroutine(return_value=COMMIT_SHA)
+
         file_metadata = json.loads(path_metadata_file)['root']
         query_params = {
             'format': 'meta',
             'fields': 'commit.hash,commit.date,path,size,links.history.href'
         }
         path_meta_url = '{}/?{}'.format(
-            provider._build_v2_repo_url('src', path.ref, *path.path_tuple()),
+            provider._build_v2_repo_url('src', COMMIT_SHA, *path.path_tuple()),
             urlencode(query_params)
         )
         aiohttpretty.register_json_uri('GET', path_meta_url, body=file_metadata)
@@ -258,6 +259,7 @@ class TestMetadata:
 
         metadata = await provider.metadata(path)
 
+        assert not provider._fetch_branch_commit_sha.called
         assert metadata is not None
         assert metadata.name == 'file0001.20bytes.txt'
         assert metadata.path == '/file0001.20bytes.txt'
@@ -281,13 +283,15 @@ class TestMetadata:
 
         path = BitbucketPath('/', _ids=[(None, 'develop')], folder=True)
 
+        provider._fetch_branch_commit_sha = MockCoroutine(return_value=COMMIT_SHA)
+
         folder_metadata = json.loads(path_metadata_folder)['root']
         query_params = {
             'format': 'meta',
             'fields': 'commit.hash,commit.date,path,size,links.history.href'
         }
         path_meta_url = '{}/?{}'.format(
-            provider._build_v2_repo_url('src', path.ref, *path.path_tuple()),
+            provider._build_v2_repo_url('src', COMMIT_SHA, *path.path_tuple()),
             urlencode(query_params)
         )
         aiohttpretty.register_json_uri('GET', path_meta_url, body=folder_metadata)
@@ -297,7 +301,7 @@ class TestMetadata:
             'pagelen': provider.RESP_PAGE_LEN,
             'fields': 'values.path,values.size,values.type,next',
         }
-        dir_list_base_url = provider._build_v2_repo_url('src', path.ref, *path.path_tuple())
+        dir_list_base_url = provider._build_v2_repo_url('src', COMMIT_SHA, *path.path_tuple())
         dir_list_first_url = '{}/?{}'.format(dir_list_base_url, urlencode(query_params))
         aiohttpretty.register_json_uri('GET', dir_list_first_url, body=dir_contents_first_page)
 
@@ -306,7 +310,71 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', dir_list_next_url, body=dir_contents_next_page)
 
         result = await provider.metadata(path)
+        assert provider._fetch_branch_commit_sha.called
         assert len(result) == 15
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_get_path_metadata_without_commit_sha(self, provider, path_metadata_file):
+
+        path = BitbucketPath('/file0001.20bytes.txt',
+                             _ids=[(None, 'develop'), (None, 'develop')])
+
+        provider._fetch_branch_commit_sha = MockCoroutine(return_value=COMMIT_SHA)
+
+        file_metadata = json.loads(path_metadata_file)['root']
+        query_params = {
+            'format': 'meta',
+            'fields': 'commit.hash,commit.date,path,size,links.history.href'
+        }
+        path_meta_url = '{}/?{}'.format(
+            provider._build_v2_repo_url('src', COMMIT_SHA, *path.path_tuple()),
+            urlencode(query_params)
+        )
+        aiohttpretty.register_json_uri('GET', path_meta_url, body=file_metadata)
+
+        await provider._fetch_path_metadata(path)
+        assert provider._fetch_branch_commit_sha.called
+        assert path.commit_sha == COMMIT_SHA
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_get_path_metadata_with_commit_sha(self, provider, branch_metadata,
+                                                        path_metadata_file):
+        path = BitbucketPath('/file0001.20bytes.txt',
+                             _ids=[(COMMIT_SHA, 'develop'), (COMMIT_SHA, 'develop')])
+
+        assert path.commit_sha == COMMIT_SHA
+        provider._fetch_branch_commit_sha = MockCoroutine(return_value=COMMIT_SHA)
+
+        file_metadata = json.loads(path_metadata_file)['root']
+        query_params = {
+            'format': 'meta',
+            'fields': 'commit.hash,commit.date,path,size,links.history.href'
+        }
+        path_meta_url = '{}/?{}'.format(
+            provider._build_v2_repo_url('src', COMMIT_SHA, *path.path_tuple()),
+            urlencode(query_params)
+        )
+        aiohttpretty.register_json_uri('GET', path_meta_url, body=file_metadata)
+
+        result = await provider._fetch_path_metadata(path)
+        assert not provider._fetch_branch_commit_sha.called
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_get_branch_commit_sha(self, provider, branch_metadata):
+
+        branch_metadata = json.loads(branch_metadata)
+        query_params = {'fields': 'target.hash'}
+        branch_url = '{}?{}'.format(
+            provider._build_v2_repo_url('refs', 'branches', BRANCH),
+            urlencode(query_params)
+        )
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+
+        commit_sha = await provider._fetch_branch_commit_sha(BRANCH)
+        assert commit_sha == branch_metadata['target']['hash']
 
 
 class TestDownload:
