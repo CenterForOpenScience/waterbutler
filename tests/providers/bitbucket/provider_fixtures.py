@@ -38,6 +38,13 @@ def path_metadata_file():
 
 
 @pytest.fixture()
+def branch_metadata():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/branch_metadata.json'),
+              'r') as file_pointer:
+        return file_pointer.read()
+
+
+@pytest.fixture()
 def folder_contents_page_1():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/folder_contents_page_1.json'),
               'r') as file_pointer:
