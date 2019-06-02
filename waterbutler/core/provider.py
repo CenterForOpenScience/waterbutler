@@ -112,10 +112,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         # since actions such as move and copy are run in background probably with a different loop.
         # On the other hand, we can't have one session for each request since sessions are only
         # closed when the provider instance is destroyed. There would be too many for WB to handle.
-        self.loop_session_map = weakref.WeakKeyDictionary()
+        self.loop_session_map = weakref.WeakKeyDictionary()  # type: weakref.WeakKeyDictionary
         # The `.session_list` keeps track of all the sessions created for the provider instance so
         # that they can be properly closed upon instance destroy.
-        self.session_list = []
+        self.session_list = []  # type: typing.List[aiohttp.ClientSession]
 
     def __del__(self):
         """
