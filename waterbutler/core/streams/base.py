@@ -1,6 +1,8 @@
 import abc
 import asyncio
 
+from waterbutler.server.settings import CHUNK_SIZE
+
 
 class BaseStream(asyncio.StreamReader, metaclass=abc.ABCMeta):
     """A wrapper class around an existing stream that supports teeing to multiple reader and writer
@@ -24,7 +26,7 @@ class BaseStream(asyncio.StreamReader, metaclass=abc.ABCMeta):
     # TODO: Improve the BaseStream with `aiohttp.streams.AsyncStreamReaderMixin`
     async def __anext__(self):
         try:
-            chunk = await self.read()
+            chunk = await self.read(CHUNK_SIZE)
         except EOFError:
             raise StopAsyncIteration
         if chunk == b'':
@@ -83,6 +85,20 @@ class MultiStream(asyncio.StreamReader):
         self._streams = []
 
         self.add_streams(*streams)
+
+    def __aiter__(self):
+        return self
+
+    # TODO: Add more note on `AsyncIterablePayload` and its `write()` method in aiohttp3
+    # TODO: Improve the BaseStream with `aiohttp.streams.AsyncStreamReaderMixin`
+    async def __anext__(self):
+        try:
+            chunk = await self.read(CHUNK_SIZE)
+        except EOFError:
+            raise StopAsyncIteration
+        if chunk == b'':
+            raise StopAsyncIteration
+        return chunk
 
     @property
     def size(self):
@@ -144,6 +160,20 @@ class CutoffStream(asyncio.StreamReader):
         self._cutoff = cutoff
         self._thus_far = 0
         self._size = min(cutoff, stream.size)
+
+    def __aiter__(self):
+        return self
+
+    # TODO: Add more note on `AsyncIterablePayload` and its `write()` method in aiohttp3
+    # TODO: Improve the BaseStream with `aiohttp.streams.AsyncStreamReaderMixin`
+    async def __anext__(self):
+        try:
+            chunk = await self.read(CHUNK_SIZE)
+        except EOFError:
+            raise StopAsyncIteration
+        if chunk == b'':
+            raise StopAsyncIteration
+        return chunk
 
     @property
     def size(self):
