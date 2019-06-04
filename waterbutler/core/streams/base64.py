@@ -1,6 +1,8 @@
 import base64
 import asyncio
 
+from waterbutler.server.settings import CHUNK_SIZE
+
 
 class Base64EncodeStream(asyncio.StreamReader):
 
@@ -20,6 +22,20 @@ class Base64EncodeStream(asyncio.StreamReader):
             self._size = Base64EncodeStream.calculate_encoded_size(stream.size)
 
         super().__init__(**kwargs)
+
+    def __aiter__(self):
+        return self
+
+    # TODO: Add more note on `AsyncIterablePayload` and its `write()` method in aiohttp3
+    # TODO: Improve the BaseStream with `aiohttp.streams.AsyncStreamReaderMixin`
+    async def __anext__(self):
+        try:
+            chunk = await self.read(CHUNK_SIZE)
+        except EOFError:
+            raise StopAsyncIteration
+        if chunk == b'':
+            raise StopAsyncIteration
+        return chunk
 
     @property
     def size(self):
