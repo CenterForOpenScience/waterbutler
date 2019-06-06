@@ -269,7 +269,9 @@ class GoogleDriveProvider(provider.BaseProvider):
         if data['md5Checksum'] != stream.writers['md5'].hexdigest:
             raise exceptions.UploadChecksumMismatchError()
 
-        return GoogleDriveFileMetadata(data, path), path.identifier is None
+        created = path.identifier is None
+        path._parts[-1]._id = data.get('id')
+        return GoogleDriveFileMetadata(data, path), created
 
     async def delete(self,  # type: ignore
                      path: GoogleDrivePath,
