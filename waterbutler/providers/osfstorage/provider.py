@@ -115,6 +115,18 @@ class OSFStorageProvider(provider.BaseProvider):
         except StopIteration:
             return base.child(path, folder=folder)
 
+    async def get_quota(self):
+        """Get the quota information
+
+        If the creator of the project doesn't have enough quota, we invalidate the upload request.
+        """
+        async with self.signed_request(
+            'GET',
+            '{}/api/v1/project/{}/creator_quota/'.format(wb_settings.OSF_URL, self.nid),
+            expects=(200, )
+        ) as resp:
+            return await resp.json()
+
     def make_provider(self, settings):
         """Requests on different files may need to use different providers,
         instances, e.g. when different files lives in different containers
@@ -236,22 +248,6 @@ class OSFStorageProvider(provider.BaseProvider):
         Finally, WB constructs its metadata response and sends that back to the original request
         issuer.
         """
-        async with self.signed_request(
-            'GET',
-            '{}/api/v1/project/{}/creator_quota/'.format(wb_settings.OSF_URL, self.nid),
-            expects=(200, )
-        ) as resp:
-            quota = await resp.json()
-            if quota['used'] + stream.size > quota['max']:
-                return {
-                    'error': 'not_enough_quota',
-                    'message': 'You do not have enough available quota.',
-                    'file': {
-                        'name': path.name,
-                        'size': stream.size
-                    }
-                }, False
-
         metadata = await self._send_to_storage_provider(stream, path, **kwargs)
         metadata = metadata.serialized()
 
