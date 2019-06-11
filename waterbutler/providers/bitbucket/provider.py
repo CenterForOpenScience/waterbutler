@@ -456,7 +456,7 @@ class BitbucketProvider(provider.BaseProvider):
             folder.set_commit_sha(await self._fetch_branch_commit_sha(folder.branch_name))
         next_url = '{}/?{}'.format(self._build_v2_repo_url('src', folder.ref, *folder.path_tuple()),
                                    urlencode(query_params))
-        dir_list = []
+        dir_list = []  # type: ignore
         while next_url:
             resp = await self.make_request(
                 'GET',
@@ -489,7 +489,7 @@ class BitbucketProvider(provider.BaseProvider):
         }
 
         next_url = '{}?{}'.format(history_url, urlencode(query_params))
-        commit_history = []
+        commit_history = []  # type: ignore
         while next_url:
             resp = await self.make_request(
                 'GET',
