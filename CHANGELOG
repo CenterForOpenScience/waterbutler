@@ -2,6 +2,13 @@
 ChangeLog
 *********
 
+19.0.0 (2019-06-11)
+===================
+- Fix: Bitbucket has retired their v1 API.  Update the WaterButler provider to use v2 instead.
+- Code: Update WaterButler Dockerfile to explicitly use gnupg v2.  The default gpg binary on Debian
+jessie is v1, but Debian stretch changes this to v2.  Adjust for small differences in how they are
+called.
+
 18.0.3 (2019-01-31)
 ===================
 - Fix: Send metadata about request to the OSF auth endpoint to help OSF distinguish file views from
