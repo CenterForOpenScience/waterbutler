@@ -1,5 +1,6 @@
 import logging
 from typing import Tuple
+from urllib.parse import urlencode
 
 from waterbutler.core import exceptions, provider, streams
 
@@ -35,6 +36,7 @@ class BitbucketProvider(provider.BaseProvider):
     NAME = 'bitbucket'
     BASE_URL = pd_settings.BASE_URL
     VIEW_URL = pd_settings.VIEW_URL
+    RESP_PAGE_LEN = pd_settings.RESP_PAGE_LEN
 
     def __init__(self, auth, credentials, settings):
         super().__init__(auth, credentials, settings)
@@ -86,22 +88,30 @@ class BitbucketProvider(provider.BaseProvider):
         for part in path_obj.parts:
             part._id = (commit_sha, branch_name)
 
-        self._parent_dir = await self._fetch_dir_listing(path_obj.parent)
+        # Cache parent directory listing (a WB API V1 feature)
+        # Note: Property ``_parent_dir`` has been re-structured for Bitbucket API 2.0.  Please refer
+        #       to ``_fetch_path_metadata()`` and ``_fetch_dir_listing()`` for detailed information.
+        self._parent_dir = {
+            'metadata': await self._fetch_path_metadata(path_obj.parent),
+            'contents': await self._fetch_dir_listing(path_obj.parent)
+        }
 
-        if path_obj.is_dir:
-            if path_obj.name not in self._parent_dir['directories']:
-                raise exceptions.NotFoundError(str(path))
-        else:
-            if path_obj.name not in [
-                    self.bitbucket_path_to_name(x['path'], self._parent_dir['path'])
-                    for x in self._parent_dir['files']
-            ]:
-                raise exceptions.NotFoundError(str(path))
+        # Tweak dir_commit_sha and dir_path for Bitbucket API 2.0
+        parent_dir_commit_sha = self._parent_dir['metadata']['commit']['hash'][:12]
+        parent_dir_path = '{}/'.format(self._parent_dir['metadata']['path'])
 
-        # _fetch_dir_listing will tell us the commit sha used to look up the listing
+        # Check file or folder existence
+        path_obj_type = 'commit_directory' if path_obj.is_dir else 'commit_file'
+        if path_obj.name not in [
+                self.bitbucket_path_to_name(x['path'], parent_dir_path)
+                for x in self._parent_dir['contents'] if x['type'] == path_obj_type
+        ]:
+            raise exceptions.NotFoundError(str(path))
+
+        # _fetch_dir_listing() will tell us the commit sha used to look up the listing
         # if not set in path_obj or if the lookup sha is shorter than the returned sha, update it
-        if not commit_sha or (len(commit_sha) < len(self._parent_dir['node'])):
-            path_obj.set_commit_sha(self._parent_dir['node'])
+        if not commit_sha or (len(commit_sha) < len(parent_dir_commit_sha)):
+            path_obj.set_commit_sha(parent_dir_commit_sha)
 
         return path_obj
 
@@ -154,52 +164,69 @@ class BitbucketProvider(provider.BaseProvider):
         canonical history for a file.  The revisions returned will be those of the file starting
         with the reference supplied to or inferred by validate_v1_path().
 
-        https://confluence.atlassian.com/bitbucket/repository-resource-1-0-296095202.html#repositoryResource1.0-GETsthehistoryofafileinachangeset
+        Quirks and Tricks about BB API 2.0, compared to 1.0
 
+        1) It no longer returns the history before a file was deleted.
+        2) It no longer provides the branch information for a commit.
+        3) ``revision`` is a substring (first 12 chars) of the commit hash
+        4) ``raw_node`` is the commit hash
+        5) There is only one timestamp ``date``: "2019-04-25T11:58:24+00:00"
+        6) The response is paginated with a default page size of 50 items, which can be changed by
+           setting the ``pagelen`` query param.
+        7) The default response does not contain detailed commit metadata such as author and date.
+           Use ``values.commit.author`` and ``values.commit.date`` in the ``fields`` query param.
+
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/filehistory/%7Bnode%7D/%7Bpath%7D
         """
-        resp = await self.make_request(
-            'GET',
-            self._build_v1_repo_url('filehistory', path.ref, path.path),
-            expects=(200, ),
-            throws=exceptions.RevisionsError
-        )
-        revisions = await resp.json()
-
+        revisions = await self._fetch_commit_history_by_path(path)
         valid_revisions = []
+
         for revision in revisions:
-            file_was_removed = False
-            for file_status in revision['files']:
-                if file_status['type'] == 'removed' and file_status['file'] == path.full_path.lstrip('/'):
-                    file_was_removed = True
-                    # break  #  don't save this one, move to next revision
-
-            if not file_was_removed:
-                valid_revisions.append(revision)
-
-        return [
-            BitbucketRevisionMetadata(item)
-            for item in valid_revisions
-        ]
+            # This check may not be necessary.  It seems that every item is of type 'commit_file'.
+            if revision['type'] != 'commit_file':
+                continue
+            data = {
+                'revision': revision['commit']['hash'][:12],
+                'size': revision['size'],
+                'path': revision['path'],
+                'raw_node': revision['commit']['hash'],
+                'raw_author': revision['commit']['author']['raw'],
+                'branch': None,
+                'timestamp': revision['commit']['date'],
+                'utctimestamp': revision['commit']['date']
+            }
+            valid_revisions.append(data)
+        return [BitbucketRevisionMetadata(item) for item in valid_revisions]
 
     async def download(self, path: BitbucketPath,  # type: ignore
                        range: Tuple[int, int]=None, **kwargs) -> streams.ResponseStreamReader:
         """Get the stream to the specified file on Bitbucket
 
-        :param path: The path to the file on Bitbucket
+        In BB API 2.0, the ``repo/username/repo_slug/src/node/path`` endpoint is used for download.
+
+        Please note that same endpoint has several different usages / behaviors depending on the
+        type of the path and the query params.
+
+        1) File download: type is file, no query param``format=meta``
+        2) File metadata: type is file, with ``format=meta`` as query param
+        3) Folder contents: type is folder, no query param``format=meta``
+        4) Folder metadata: type is folder, with ``format=meta`` as query param
+
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
+
+        :param path: the BitbucketPath object of the file to be downloaded
         :param range: the range header
         """
         metadata = await self.metadata(path)
-
         logger.debug('requested-range:: {}'.format(range))
         resp = await self.make_request(
             'GET',
-            self._build_v1_repo_url('raw', path.commit_sha, *path.path_tuple()),
+            self._build_v2_repo_url('src', path.commit_sha, *path.path_tuple()),
             range=range,
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
         logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
-
         return streams.ResponseStreamReader(resp, size=metadata.size)
 
     def can_duplicate_names(self):
@@ -226,95 +253,252 @@ class BitbucketProvider(provider.BaseProvider):
             raise exceptions.ReadOnlyProviderError(self.NAME)
         return await super().copy(dest_provider, *args, **kwargs)
 
-    def _build_v1_repo_url(self, *segments, **query):
-        segments = ('1.0', 'repositories', self.owner, self.repo) + segments
+    def _build_v2_repo_url(self, *segments, **query):
+        segments = ('2.0', 'repositories', self.owner, self.repo) + segments
         return self.build_url(*segments, **query)
 
-    async def _metadata_file(self, path: BitbucketPath, revision: str=None, **kwargs):
-        """Fetch metadata for a single file
+    async def _metadata_file(self, path: BitbucketPath, **kwargs):
+        """Fetch the metadata for a single file
 
-        :param BitbucketPath path: the path whose metadata should be retrieved
-        :param str revision:
-        :rtype BitbucketFileMetadata:
-        :return: BitbucketFileMetadata object
+        Quirks: BB API 2.0 no longer returns file details such as the time when the file is created
+                and when the file is last modified.  WB must make an extra request to fetch the file
+                history which is a list of commits.  The ``data`` field of the first and and last
+                items are used respectively to set time created and time last modified.
+
+        :param path: the BitbucketPath object of the file of which the metadata should be retrieved
+        :return: a BitbucketFileMetadata object
         """
-
-        parent = path.parent
-        if self._parent_dir is None or self._parent_dir['path'] != str(parent):
-            parent_dir = await self._fetch_dir_listing(parent)
-        else:
-            parent_dir = self._parent_dir
-
-        data = [
-            x for x in parent_dir['files']
-            if path.name == self.bitbucket_path_to_name(x['path'], parent_dir['path'])
-        ]
-
-        return BitbucketFileMetadata(data[0], path, owner=self.owner, repo=self.repo)
+        file_meta = await self._fetch_path_metadata(path)
+        commit_history = await self._fetch_commit_history_by_url(
+            file_meta['links']['history']['href']
+        )
+        data = {
+            'size': file_meta['size'],
+            'path': file_meta['path'],
+            'revision': commit_history[0]['commit']['hash'][:12],
+            'timestamp': commit_history[0]['commit']['date'],
+            'created_utc': commit_history[-1]['commit']['date'],
+        }
+        return BitbucketFileMetadata(data, path, owner=self.owner, repo=self.repo)
 
     async def _metadata_folder(self, folder: BitbucketPath, **kwargs) -> list:
+        """Get a list of the folder contents, each item of which is a BitbucketPath object.
 
-        this_dir = await self._fetch_dir_listing(folder)
+        :param folder: the folder of which the contents should be listed
+        :return: a list of BitbucketFileMetadata and BitbucketFolderMetadata objects
+        """
+
+        # Fetch metadata itself
+        dir_meta = await self._fetch_path_metadata(folder)
+        # Quirk: ``node`` attribute is no longer available for folder metadata in BB API 1.0.  The
+        #        value of ``node`` can still be obtained from the commit hash of which the first 12
+        #        chars turn out to be the value we need.
+        dir_commit_sha = dir_meta['commit']['hash'][:12]
+        # Quirk: the ``path`` attribute in folder metadata no longer has an trailing slash in BB API
+        #        2.0.  To keep ``bitbucket_path_to_name()`` intact, a trailing slash is added.
+        dir_path = '{}/'.format(dir_meta['path'])
+
+        # Fetch content list
+        dir_list = await self._fetch_dir_listing(folder)
+
+        # Set the commit hash
         if folder.commit_sha is None:
-            folder.set_commit_sha(this_dir['node'])
+            folder.set_commit_sha(dir_commit_sha)
 
+        # Build the metadata to return
+        # Quirks:
+        # 1) BB API 2.0 treats both files and folders the same way.``path`` for both is a full or
+        #    absolute path.  ``bitbucket_path_to_name()`` must be called to get the correct name.
+        # 2) Both files and folders share the same list and use the same dict/json structure. Use
+        #    the ``type`` field to check whether a path is a folder or not.
+        # 3) ``revision`` for files is gone but can be replaced with part of the commit hash.
+        #    However, it is tricky for files.  The ``commit`` field of each file item in the
+        #    returned content list is the latest branch commit.  In order to obtain the correct
+        #    time when the file was last modified, WB needs to fetch the file history.  This adds
+        #    lots of requests and significantly hits performance due to folder listing being called
+        #    very frequently.  The decision is to remove them.
+        # 4) Similar to ``revision``, ``timestamp``, and ``created_utc`` are removed.
         ret = []
-        for name in this_dir['directories']:
-            ret.append(BitbucketFolderMetadata(
-                {'name': name},
-                folder.child(name, folder=True),
-                owner=self.owner,
-                repo=self.repo,
-            ))
-
-        for item in this_dir['files']:
-            name = self.bitbucket_path_to_name(item['path'], this_dir['path'])
-            # TODO: mypy doesn't like the mix of File & Folder Metadata objects
-            ret.append(BitbucketFileMetadata(  # type: ignore
-                item,
-                folder.child(name, folder=False),
-                owner=self.owner,
-                repo=self.repo,
-            ))
+        for value in dir_list:
+            if value['type'] == 'commit_file':
+                name = self.bitbucket_path_to_name(value['path'], dir_path)
+                # TODO: existing issue - find out why timestamp doesn't show up on the files page
+                item = {
+                    'size': value['size'],
+                    'path': value['path'],
+                }
+                ret.append(BitbucketFileMetadata(  # type: ignore
+                    item,
+                    folder.child(name, folder=False),
+                    owner=self.owner,
+                    repo=self.repo,
+                ))
+            if value['type'] == 'commit_directory':
+                name = self.bitbucket_path_to_name(value['path'], dir_path)
+                ret.append(BitbucketFolderMetadata(  # type: ignore
+                    {'name': name},
+                    folder.child(name, folder=True),
+                    owner=self.owner,
+                    repo=self.repo,
+                ))
 
         return ret
 
     async def _fetch_default_branch(self) -> str:
-        """Get the name of the default branch ("main branch" in bitbucket parlance) of the
-        attached repository.
+        """Get the name of the default branch of the attached repository.
 
-        https://confluence.atlassian.com/bitbucket/repository-resource-1-0-296095202.html#repositoryResource1.0-GETtherepository%27smainbranch
+        In Bitbucket, the default branch is called "main branch".  With BB API 2.0, the dedicated
+        endpoint for fetching the main branch is gone.  Fortunately, this piece of information is
+        still available where ``mainbranch`` is now a field from the repository endpoint.
 
-        :rtype str:
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D
+
         :return: the name of the attached repo's default branch.
         """
         resp = await self.make_request(
             'GET',
-            self._build_v1_repo_url('main-branch'),
-            expects=(200, ),
+            '{}/?{}'.format(self._build_v2_repo_url(), urlencode({'fields': 'mainbranch.name'})),
+            expects=(200,),
             throws=exceptions.ProviderError
         )
-        return (await resp.json())['name']
+        return (await resp.json())['mainbranch']['name']
 
-    async def _fetch_dir_listing(self, folder: BitbucketPath) -> dict:
-        """Get listing of contents within a BitbucketPath folder object.
+    async def _fetch_branch_commit_sha(self, branch_name: str) -> str:
+        """Fetch the commit sha (a.k.a node) for a branch.
 
-        https://confluence.atlassian.com/bitbucket/src-resources-296095214.html#srcResources-GETalistofreposource
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/refs/branches/%7Bname%7D
 
-        Note::
-
-            Using this endpoint for a file will return the file contents.
-
-        :param BitbucketPath folder: the folder whose contents should be listed
-        :rtype dict:
-        :returns: a directory listing of the contents of the folder
+        :param branch_name: the name of the branch
+        :return: the commit sha of the branch
         """
-        assert folder.is_dir  # don't use this method on files
 
+        query_params = {'fields': 'target.hash'}
+        branch_url = '{}?{}'.format(self._build_v2_repo_url('refs', 'branches', branch_name),
+                                    urlencode(query_params))
         resp = await self.make_request(
             'GET',
-            self._build_v1_repo_url('src', folder.ref, *folder.path_tuple()) + '/',
-            expects=(200, ),
+            branch_url,
+            expects=(200,),
+            throws=exceptions.ProviderError,
+        )
+        return (await resp.json())['target']['hash']
+
+    async def _fetch_path_metadata(self, path: BitbucketPath) -> dict:
+        """Get the metadata for folder and file itself.
+
+        Bitbucket API 2.0 provides an easy way to fetch metadata for files and folders by simply
+        appending ``?format=meta`` to the path endpoint.
+
+        Quirk 1: This new feature no longer returns several WB required attributes out of the box:
+        ``node`` and ``path`` for folder, ``revision``, ``timestamp`` and ``created_utc`` for file.
+
+        1) The ``path`` for folders no longer has an ending slash.
+        2) The ``node`` for folders and ``revision`` for files are gone.  They have always been the
+           first 12 chars of the commit hash in both 1.0 and 2.0.
+        3) ``timestamp`` and ``created_utc`` for files are gone and must be obtained using the file
+           history endpoint indicated by ``links.history.href``. See ``_metadata_file()`` and
+           ``_fetch_commit_history_by_url()`` for details.
+
+        Quirk 2:
+
+        This PATH endpoint ``/2.0/repositories/{username}/{repo_slug}/src/{node}/{path}`` returns
+        HTTP 404 if the ``node`` segment is a branch of which the name contains a slash.  This is
+        a either a limitation or a bug on several BB API 2.0 endpoints.  It has nothing to do with
+        encoding.  More specifically, neither encoding / with %2F nor enclosing ``node`` with curly
+        braces %7B%7D works.  Here is the closest reference to the issue we can find as of May 2019:
+        https://bitbucket.org/site/master/issues/9969/get-commit-revision-api-does-not-accept.  The
+        fix is simple, just make an extra request to fetch the commit sha of the branch.  See
+        ``_fetch_branch_commit_sha()`` for details.  In addition, this will happen on all branches,
+        no matter if the name contains a slash or not.
+
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
+
+        :param path: the file or folder of which the metadata is requested
+        :return: the file metadata dict
+        """
+        query_params = {
+            'format': 'meta',
+            'fields': 'commit.hash,commit.date,path,size,links.history.href'
+        }
+        if not path.commit_sha:
+            path.set_commit_sha(await self._fetch_branch_commit_sha(path.branch_name))
+        path_meta_url = self._build_v2_repo_url('src', path.ref, *path.path_tuple())
+        resp = await self.make_request(
+            'GET',
+            '{}/?{}'.format(path_meta_url, urlencode(query_params)),
+            expects=(200,),
             throws=exceptions.ProviderError,
         )
         return await resp.json()
+
+    async def _fetch_dir_listing(self, folder: BitbucketPath) -> list:
+        """Get a list of the folder's full contents (upto the max limit setting if there is one).
+
+        Bitbucket API 2.0 refactored the response structure for listing folder contents.
+
+        1) The response is paginated.  If ``resp_dict`` contains the key ``next``, the contents are
+           partial.  The caller must use the URL provided by ``dict['next']`` to fetch the next page
+           after this method returns.
+
+        2) The response no longer provides the metadata about the folder itself.  In order to obtain
+           the ``node`` and ``path`` attributes, please use  ``_fetch_path_metadata()`` instead.
+
+        API Doc: https://developer.atlassian.com/bitbucket/api/2/reference/resource/repositories/%7Busername%7D/%7Brepo_slug%7D/src/%7Bnode%7D/%7Bpath%7D
+
+        :param folder: the folder of which the contents should be listed
+        :returns: a list of the folder's full contents
+        """
+        query_params = {
+            'pagelen': self.RESP_PAGE_LEN,
+            'fields': 'values.path,values.size,values.type,next',
+        }
+        if not folder.commit_sha:
+            folder.set_commit_sha(await self._fetch_branch_commit_sha(folder.branch_name))
+        next_url = '{}/?{}'.format(self._build_v2_repo_url('src', folder.ref, *folder.path_tuple()),
+                                   urlencode(query_params))
+        dir_list = []  # type: ignore
+        while next_url:
+            resp = await self.make_request(
+                'GET',
+                next_url,
+                expects=(200,),
+                throws=exceptions.ProviderError,
+            )
+            content = await resp.json()
+            next_url = content.get('next', None)
+            dir_list.extend(content['values'])
+        return dir_list
+
+    async def _fetch_commit_history_by_path(self, path: BitbucketPath) -> list:
+        if not path.commit_sha:
+            path.set_commit_sha(await self._fetch_branch_commit_sha(path.branch_name))
+        return await self._fetch_commit_history_by_url(
+            self._build_v2_repo_url('filehistory', path.ref, path.path)
+        )
+
+    async def _fetch_commit_history_by_url(self, history_url: str) -> list:
+        """Get the entire commit history for a file given the history endpoint url.
+
+        :param history_url: the dedicated file history url for the file
+        :return: a list of commit metadata objects from newest to oldest
+        """
+        query_params = {
+            'pagelen': self.RESP_PAGE_LEN,
+            'fields': ('values.commit.hash,values.commit.date,values.commit.author.raw,'
+                       'values.size,values.path,values.type,next'),
+        }
+
+        next_url = '{}?{}'.format(history_url, urlencode(query_params))
+        commit_history = []  # type: ignore
+        while next_url:
+            resp = await self.make_request(
+                'GET',
+                next_url,
+                expects=(200,),
+                throws=exceptions.ProviderError,
+            )
+            content = await resp.json()
+            next_url = content.get('next', None)
+            commit_history.extend(content['values'])
+
+        return commit_history
