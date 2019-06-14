@@ -104,3 +104,60 @@ class TestOsfAuthHandler(ServerTestCase):
                         'user_agent': None
                     }
                 }, cookie=None, view_only=None)
+
+
+class TestActionMapping:
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('method, action, auth_type, headers, query_args, expected', [
+        ['post', 'copy',   AuthType.SOURCE,      None, None, 'download'],
+        ['post', 'copy',   AuthType.DESTINATION, None, None, 'upload'],
+        ['post', 'move',   AuthType.SOURCE,      None, None, 'upload'],  # TODO: really?
+        ['post', 'move',   AuthType.DESTINATION, None, None, 'upload'],
+        ['post', 'rename', AuthType.SOURCE,      None, None, 'upload'],  # TODO: really?
+        ['post', 'rename', AuthType.DESTINATION, None, None, 'upload'],
+
+        ['head', None, None, {settings.MFR_ACTION_HEADER: 'render'}, None, 'render'],
+        ['head', None, None, {settings.MFR_ACTION_HEADER: 'export'}, None, 'export'],
+
+        ['get',    None, None, None, None,             'download'],
+        ['put',    None, None, None, None,             'upload'],
+        ['delete', None, None, None, None,             'delete'],
+        ['get',    None, None, None, {'meta': 1},      'metadata'],
+        ['get',    None, None, None, {'revisions': 1}, 'revisions'],
+    ])
+    async def test_action_type(self, method, action, auth_type, headers, query_args, expected):
+
+        handler = OsfAuthHandler()
+
+        request = mock.Mock()
+        request.method = method
+        request.headers = headers if headers is not None else {}
+        request.query_arguments = query_args if query_args is not None else {}
+        request.cookies = {}
+
+        kwargs = {}
+        if action is not None:
+            kwargs['action'] = action
+        if auth_type is not None:
+            kwargs['auth_type'] = auth_type
+
+        handler.build_payload = mock.Mock()
+        handler.make_request = utils.MockCoroutine(
+            return_value={'auth': {}, 'callback_url': 'dummy'}
+        )
+
+        await handler.get('test', 'test', request, **kwargs)
+
+        handler.build_payload.asssert_called_once()
+        args, _ = handler.build_payload.call_args
+        assert args[0]['action'] == expected
+
+    @pytest.mark.asyncio
+    async def test_unhandled_mfr_action(self):
+        handler = OsfAuthHandler()
+        request = mock.Mock()
+        request.method = 'head'
+        request.headers = {settings.MFR_ACTION_HEADER: 'bad-action'}
+        with pytest.raises(UnsupportedActionError):
+            await handler.get('test', 'test', request)
