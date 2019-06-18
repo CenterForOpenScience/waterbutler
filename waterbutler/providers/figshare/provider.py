@@ -77,13 +77,13 @@ class FigshareProvider:
     """
 
     def __new__(cls, auth, credentials, settings):
+
         if settings['container_type'] == 'project':
             return FigshareProjectProvider(
-                auth, credentials,
-                dict(settings, container_id=settings['container_id'])
+                auth, credentials, dict(settings, container_id=settings['container_id'])
             )
 
-        if settings['container_type'] in ('article', 'fileset'):
+        if settings['container_type'] in pd_settings.ARTICLE_CONTAINER_TYPES:
             return FigshareArticleProvider(
                 auth, credentials, dict(settings, container_id=settings['container_id'])
             )
@@ -94,19 +94,23 @@ class FigshareProvider:
 
 
 class BaseFigshareProvider(provider.BaseProvider):
+
     NAME = 'figshare'
     BASE_URL = pd_settings.BASE_URL
     VIEW_URL = pd_settings.VIEW_URL
     DOWNLOAD_URL = pd_settings.DOWNLOAD_URL
     VALID_CONTAINER_TYPES = pd_settings.VALID_CONTAINER_TYPES
+    ARTICLE_CONTAINER_TYPES = pd_settings.ARTICLE_CONTAINER_TYPES
 
     def __init__(self, auth, credentials, settings):
+
         super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
         self.container_type = self.settings['container_type']
         if self.container_type not in self.VALID_CONTAINER_TYPES:
             raise exceptions.ProviderError('{} is not a valid container type.'.format(self.container_type))
-        if self.container_type == 'fileset':
+        # Normalize all article container types to "article"
+        if self.container_type in self.ARTICLE_CONTAINER_TYPES:
             self.container_type = 'article'
         self.container_id = self.settings['container_id']
         self.metrics.add('container', {
@@ -613,7 +617,9 @@ class FigshareProjectProvider(BaseFigshareProvider):
                 code=400,
             )
 
-        article_data = json.dumps({'title': article_name, 'defined_type': 'fileset'})
+        # Quirks: use Dataset (3) as the article type during figshare folder creation instead of the
+        #         deprecated Fileset (4).  Internally figshare converts Fileset to Dataset anyway.
+        article_data = json.dumps({'title': article_name, 'defined_type': 'dataset'})
         article_id = await self._create_article(article_data)
         get_article_response = await self.make_request(
             'GET',
