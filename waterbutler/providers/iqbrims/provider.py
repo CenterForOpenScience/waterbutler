@@ -85,6 +85,7 @@ class IQBRIMSProvider(provider.BaseProvider):
         super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
+        self.permissions = self.settings['permissions']
 
     async def validate_v1_path(self, path: str, **kwargs) -> IQBRIMSPath:
         if path == '/':
@@ -183,6 +184,9 @@ class IQBRIMSProvider(provider.BaseProvider):
                      *args,
                      **kwargs) -> typing.Tuple[IQBRIMSFileMetadata, bool]:
         assert path.is_file
+
+        if path.parts[-2].value in self.permissions and 'WRITABLE' not in self.permissions[path.parts[-2].value]:
+            raise exceptions.ReadOnlyProviderError(self.NAME)
 
         if path.identifier:
             segments = [path.identifier]
@@ -470,6 +474,7 @@ class IQBRIMSProvider(provider.BaseProvider):
                 full_resp.extend([
                     self._serialize_item(path.child(item['title']), item, raw=raw)
                     for item in resp_json['items']
+                    if item['title'] not in self.permissions or 'VISIBLE' in self.permissions[item['title']]
                 ])
                 built_url = resp_json.get('nextLink', None)
         return full_resp
