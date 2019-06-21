@@ -85,7 +85,7 @@ class IQBRIMSProvider(provider.BaseProvider):
         super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
-        self.permissions = self.settings['permissions']
+        self.permissions = self.settings['permissions'] if 'permissions' in self.settings else {}
 
     async def validate_v1_path(self, path: str, **kwargs) -> IQBRIMSPath:
         if path == '/':
