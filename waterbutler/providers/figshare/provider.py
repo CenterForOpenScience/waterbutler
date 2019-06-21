@@ -135,11 +135,22 @@ class BaseFigshareProvider(provider.BaseProvider):
         :param dict \*\*query: A dictionary that will be turned into query parameters ``?foo=bar``
         :rtype: str
 
-        Subclassed to include handling of ``is_public`` argument. ``collection`` containers may
-        contain public articles which are accessed through an URN with a different prefix.
+        Overrides its parent's ``build_url()`` by building a URL that points to the public access
+        API of an article or its files if the ``is_public`` argument is set.  This is a special
+        design for figshare collections which may contain public articles that don't belong to the
+        current figshare-OSF OAuth user.
+
+        Quirk: Due to the facts that 1) the public URL Waterbulter builds no longer works due to
+               figshare-side changes and that 2) the collections stuff is still WIP, we decide to
+               ignore the ``is_public`` argument for now and always build private API URLs.
+
+        TODO [SVCS-996]: fix the public API and set public only when the container is a collection
+        TODO [SVCS-996]: set the public flag only when the container is a collection
         """
-        if not is_public:
-            segments = ('account', (*segments))
+        if is_public:
+            logger.debug('figshare provider is yet to build the public API URL correctly. '
+                         'Switch back to use the private one instead')
+        segments = ('account', (*segments))
         return (super().build_url(*segments, **query))
 
     async def make_request(self, method, url, *args, **kwargs):
