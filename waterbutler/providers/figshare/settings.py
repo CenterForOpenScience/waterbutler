@@ -12,7 +12,6 @@ VALID_CONTAINER_TYPES = ['project', 'collection', 'article', 'dataset', 'fileset
 ARTICLE_CONTAINER_TYPES = ['article', 'dataset', 'fileset']
 FOLDER_TYPES = [3, 4]  # figshare ID for Dataset (3) and Fileset (4, deprecated)
 
-PRIVATE_IDENTIFIER = 'https://api.figshare.com/v2/account/'
 ARTICLE_TYPE_IDENTIFIER = 'https://api.figshare.com/v2/account/articles/'
 
 # During initial testing this was set to 2 because file was not instantly ready after receiving HTTP 201
