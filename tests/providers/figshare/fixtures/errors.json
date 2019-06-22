@@ -13,6 +13,8 @@
         "size": 7
     },
     "file_article_metadata_missing_download_url": {
+        "url_public_html": "url_public_html_fake",
+        "url_private_html": "url_private_html_fake",
         "group_resource_id": null,
         "embargo_date": null,
         "citation": "Baxter, Thomas (): file_article. figshare.\n \n Retrieved: 19 20, Oct 19, 2016 (GMT)",
