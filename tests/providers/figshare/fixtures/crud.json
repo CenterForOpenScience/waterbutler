@@ -9,6 +9,8 @@
         "location": "https://api.figshare.com/v2/account/projects/13423/articles/4040019"
     },
     "upload_article_metadata": {
+        "url_public_html": "url_public_html_fake",
+        "url_private_html": "url_private_html_fake",
         "group_resource_id": null,
         "embargo_date": null,
         "citation": "Baxter, Thomas (): barricade.gif. figshare.\n \n Retrieved: 19 20, Oct 19, 2016 (GMT)",
@@ -78,6 +80,8 @@
         "is_metadata_record": false
     },
     "upload_folder_article_metadata": {
+        "url_public_html": "url_public_html_fake",
+        "url_private_html": "url_private_html_fake",
         "group_resource_id": null,
         "embargo_date": null,
         "citation": "Baxter, Thomas (): barricade.gif. figshare.\n \n Retrieved: 19 20, Oct 19, 2016 (GMT)",
@@ -93,7 +97,7 @@
         "figshare_url": "https://figshare.com/articles/_/4040019",
         "embargo_type": null,
         "title": "barricade.gif",
-        "defined_type": 4,
+        "defined_type": 3,
         "is_embargoed": false,
         "version": 0,
         "resource_doi": null,
@@ -147,6 +151,8 @@
         "is_metadata_record": false
     },
     "checksum_mismatch_article_metadata": {
+        "url_public_html": "url_public_html_fake",
+        "url_private_html": "url_private_html_fake",
         "group_resource_id": null,
         "embargo_date": null,
         "citation": "Baxter, Thomas (): barricade.gif. figshare.\n \n Retrieved: 19 20, Oct 19, 2016 (GMT)",
@@ -212,6 +218,8 @@
         "is_metadata_record": false
     },
     "checksum_mismatch_folder_article_metadata": {
+        "url_public_html": "url_public_html_fake",
+        "url_private_html": "url_private_html_fake",
         "group_resource_id": null,
         "embargo_date": null,
         "citation": "Baxter, Thomas (): barricade.gif. figshare.\n \n Retrieved: 19 20, Oct 19, 2016 (GMT)",
@@ -225,7 +233,7 @@
         "figshare_url": "https://figshare.com/articles/_/4040019",
         "embargo_type": null,
         "title": "barricade.gif",
-        "defined_type": 4,
+        "defined_type": 3,
         "is_embargoed": false,
         "version": 0,
         "resource_doi": null,
