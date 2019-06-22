@@ -1,0 +1,16 @@
+{
+    "private": {
+        "status": "available",
+        "is_link_only": false,
+        "name": "FigurePrivate01.png",
+        "viewer_type": "image",
+        "preview_state": "preview_available",
+        "download_url": "https://ndownloader.figshare.com/files/15562817",
+        "supplied_md5": "cae3869aa4b144a3aa5cffe979359836",
+        "computed_md5": "cae3869aa4b144a3aa5cffe979359836",
+        "upload_token": "105ca509-759b-491b-af48-fa5589cd7b49",
+        "upload_url": "",
+        "id": 15562817,
+        "size": 89281
+    }
+}

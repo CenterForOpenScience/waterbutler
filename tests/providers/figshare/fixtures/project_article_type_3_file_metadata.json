@@ -1,0 +1,16 @@
+{
+    "private": {
+        "status": "available",
+        "is_link_only": false,
+        "name": "Dataset03Private.txt",
+        "viewer_type": "txt",
+        "preview_state": "preview_available",
+        "download_url": "https://ndownloader.figshare.com/files/15461879",
+        "supplied_md5": "68c3a15be1ddc27893c17eaab61f2d3d",
+        "computed_md5": "68c3a15be1ddc27893c17eaab61f2d3d",
+        "upload_token": "79a06e48-87ec-4583-8faf-68fe83bf408c",
+        "upload_url": "",
+        "id": 15461879,
+        "size": 20
+    }
+}
