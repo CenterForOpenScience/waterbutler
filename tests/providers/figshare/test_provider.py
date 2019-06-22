@@ -9,11 +9,16 @@ from waterbutler.core import exceptions
 from waterbutler.providers.figshare import metadata
 from waterbutler.providers.figshare import provider
 from waterbutler.providers.figshare.path import FigsharePath
-from waterbutler.providers.figshare.settings import PRIVATE_IDENTIFIER, MAX_PAGE_SIZE
+from waterbutler.providers.figshare.settings import MAX_PAGE_SIZE
 
 from tests.providers.figshare.fixtures import (crud_fixtures,
                                                error_fixtures,
-                                               root_provider_fixtures)
+                                               project_list_articles,
+                                               root_provider_fixtures,
+                                               project_article_type_1_metadata,
+                                               project_article_type_3_metadata,
+                                               project_article_type_1_file_metadata,
+                                               project_article_type_3_file_metadata)
 
 
 @pytest.fixture
@@ -42,6 +47,14 @@ def project_settings():
 
 
 @pytest.fixture
+def project_settings_2():
+    return {
+        'container_type': 'project',
+        'container_id': '64916',
+    }
+
+
+@pytest.fixture
 def article_settings():
     return {
         'container_type': 'article',
@@ -52,6 +65,11 @@ def article_settings():
 @pytest.fixture
 def project_provider(auth, credentials, project_settings):
     return provider.FigshareProvider(auth, credentials, project_settings)
+
+
+@pytest.fixture
+def project_provider_2(auth, credentials, project_settings_2):
+    return provider.FigshareProvider(auth, credentials, project_settings_2)
 
 
 @pytest.fixture
@@ -317,204 +335,261 @@ class TestProjectMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_contents(self, project_provider, root_provider_fixtures):
+    async def test_project_contents(self,
+                                    project_provider_2,
+                                    project_list_articles,
+                                    project_article_type_1_metadata,
+                                    project_article_type_3_metadata):
+        """Test content listings for a project root.
+        """
 
-        project_articles = root_provider_fixtures['list_project_articles']
+        root_parts = project_provider_2.root_path_parts
 
-        root_parts = project_provider.root_path_parts
-        list_articles_url = project_provider.build_url(False, *root_parts, 'articles')
-        file_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
-                                                       str(project_articles[0]['id']))
-        folder_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
-                                                         str(project_articles[1]['id']))
-
-        aiohttpretty.register_json_uri('GET', list_articles_url, body=project_articles,
+        # Register the requests that retrieve the article list of a project.
+        list_articles_url = project_provider_2.build_url(False, *root_parts, 'articles')
+        aiohttpretty.register_json_uri('GET', list_articles_url,
+                                       body=project_list_articles['page1'],
                                        params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
-        aiohttpretty.register_json_uri('GET', list_articles_url, body=[],
+        aiohttpretty.register_json_uri('GET', list_articles_url,
+                                       body=project_list_articles['page2'],
                                        params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
-        aiohttpretty.register_json_uri('GET', file_metadata_url,
-                                       body=root_provider_fixtures['file_article_metadata'])
-        aiohttpretty.register_json_uri('GET', folder_metadata_url,
-                                       body=root_provider_fixtures['folder_article_metadata'])
+        aiohttpretty.register_json_uri('GET', list_articles_url,
+                                       body=[],
+                                       params={'page': '3', 'page_size': str(MAX_PAGE_SIZE)})
 
+        # Register the requests that retrieve the metadata for each item in the article list.
+        article_id_1 = str(project_list_articles['page1'][0]['id'])
+        article_url_1 = project_provider_2.build_url(False, *root_parts, 'articles', article_id_1)
+        article_meta_1 = project_article_type_1_metadata['private']
+        aiohttpretty.register_json_uri('GET', article_url_1, body=article_meta_1)
+
+        article_id_2 = str(project_list_articles['page1'][1]['id'])
+        article_url_2 = project_provider_2.build_url(False, *root_parts, 'articles', article_id_2)
+        article_meta_2 = project_article_type_1_metadata['public']
+        aiohttpretty.register_json_uri('GET', article_url_2, body=article_meta_2)
+
+        article_id_3 = str(project_list_articles['page2'][0]['id'])
+        article_url_3 = project_provider_2.build_url(False, *root_parts, 'articles', article_id_3)
+        article_meta_3 = project_article_type_3_metadata['private']
+        aiohttpretty.register_json_uri('GET', article_url_3, body=article_meta_3)
+
+        article_id_4 = str(project_list_articles['page2'][1]['id'])
+        article_url_4 = project_provider_2.build_url(False, *root_parts, 'articles', article_id_4)
+        article_meta_4 = project_article_type_3_metadata['public']
+        aiohttpretty.register_json_uri('GET', article_url_4, body=article_meta_4)
+
+        # The ``metadata()`` call to test
         path = FigsharePath('/', _ids=(''), folder=True)
-        result = await project_provider.metadata(path)
+        metadata_list = (await project_provider_2.metadata(path)).sort(key=lambda x: x.path)
 
         assert aiohttpretty.has_call(method='GET', uri=list_articles_url,
                                      params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
-        assert aiohttpretty.has_call(method='GET', uri=file_metadata_url)
-        assert aiohttpretty.has_call(method='GET', uri=folder_metadata_url)
+        assert aiohttpretty.has_call(method='GET', uri=list_articles_url,
+                                     params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
+        assert aiohttpretty.has_call(method='GET', uri=list_articles_url,
+                                     params={'page': '3', 'page_size': str(MAX_PAGE_SIZE)})
+        assert aiohttpretty.has_call(method='GET', uri=article_url_1)
+        assert aiohttpretty.has_call(method='GET', uri=article_url_2)
+        assert aiohttpretty.has_call(method='GET', uri=article_url_3)
+        assert aiohttpretty.has_call(method='GET', uri=article_url_4)
 
-        assert result == [
-            metadata.FigshareFileMetadata(root_provider_fixtures['file_article_metadata'],
-            root_provider_fixtures['file_article_metadata']['files'][0]),
-            metadata.FigshareFolderMetadata(root_provider_fixtures['folder_article_metadata'])
-        ]
+        expected = ([
+            metadata.FigshareFileMetadata(
+                project_article_type_1_metadata['public'],
+                raw_file=project_article_type_1_metadata['public']['files'][0]
+            ),
+            metadata.FigshareFileMetadata(
+                project_article_type_1_metadata['private'],
+                raw_file=project_article_type_1_metadata['private']['files'][0]
+            ),
+            metadata.FigshareFolderMetadata(project_article_type_3_metadata['public']),
+            metadata.FigshareFolderMetadata(project_article_type_3_metadata['private'])
+        ]).sort(key=lambda x: x.path)
+        assert metadata_list == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_metadata_invalid_path(self, project_provider):
-        path = FigsharePath('/testfolder/test/test/text.txt',
-                            _ids=('1', '2', '3', '4', '5'), folder=True, is_public=False)
+    async def test_project_metadata_invalid_figshare_path(self, project_provider_2):
+        """Test that figshare path can at most have three levels (including root itself).
+        """
+        path = FigsharePath('/folder_lvl_1/folder_lvl_2/file_lvl_3.txt',
+                            _ids=('1', '2', '3', '4', ), folder=False, is_public=False)
         with pytest.raises(exceptions.NotFoundError) as e:
-            await project_provider.metadata(path)
-
+            await project_provider_2.metadata(path)
         assert e.value.code == 404
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_metadata_bad_response(self, project_provider):
-        path = FigsharePath('/testfolder/test/', _ids=('1', '2', '3'), folder=True, is_public=False)
-        url = project_provider.build_url(path.is_public, *project_provider.root_path_parts,
-                                         'articles', path.parts[1].identifier)
-
-        aiohttpretty.register_json_uri('GET', url, status=404)
+    async def test_project_metadata_bad_article_response(self, project_provider_2):
+        """Test handling 404 response for figshare article request.
+        """
+        root_parts = project_provider_2.root_path_parts
+        path = FigsharePath('/article_name/file_name',
+                            _ids=('1', '2', '3'), folder=False, is_public=False)
+        article_url = project_provider_2.build_url(path.is_public, *root_parts,
+                                                 'articles', path.parts[1].identifier)
+        aiohttpretty.register_json_uri('GET', article_url, status=404)
 
         with pytest.raises(exceptions.NotFoundError) as e:
-            await project_provider.metadata(path)
+            await project_provider_2.metadata(path)
 
+        assert aiohttpretty.has_call(method='GET', uri=article_url)
         assert e.value.code == 404
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_file_article_contents(self, project_provider, root_provider_fixtures):
+    async def test_project_folder_article_file(self,
+                                               project_provider_2,
+                                               project_article_type_1_metadata,
+                                               project_article_type_1_file_metadata):
+        """Test metadata for a file that belongs to an article of file type.
+        """
+        root_parts = project_provider_2.root_path_parts
 
-        article_metadata = root_provider_fixtures['file_article_metadata']
-        file_metadata = root_provider_fixtures['file_metadata']
+        article_meta_json = project_article_type_1_metadata['private']
+        file_meta_json = project_article_type_1_file_metadata['private']
+        article_id = str(article_meta_json['id'])
+        article_name = article_meta_json['title']
+        file_id = str(file_meta_json['id'])
+        file_name = file_meta_json['name']
 
-        root_parts = project_provider.root_path_parts
-        article_id = str(article_metadata['id'])
-        article_name = article_metadata['title']
-        file_id = str(file_metadata['id'])
-        file_name = file_metadata['name']
-
-        file_article_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
-                                                               article_id)
-
-        aiohttpretty.register_json_uri('GET', file_article_metadata_url, body=article_metadata)
+        article_meta_url = project_provider_2.build_url(False, *root_parts, 'articles', article_id)
+        aiohttpretty.register_json_uri('GET', article_meta_url, body=article_meta_json)
 
         path = FigsharePath('/{}/{}'.format(article_name, file_name),
                             _ids=('', article_id, file_id), folder=False, is_public=False)
-        result = await project_provider.metadata(path)
+        result = await project_provider_2.metadata(path)
+        expected = metadata.FigshareFileMetadata(article_meta_json, file_meta_json)
 
-        assert aiohttpretty.has_call(method='GET', uri=file_article_metadata_url)
-
-        expected = metadata.FigshareFileMetadata(article_metadata, file_metadata)
+        assert aiohttpretty.has_call(method='GET', uri=article_meta_url)
         assert result == expected
-
         assert str(result.id) == file_id
         assert result.name == file_name
         assert result.path == '/{}/{}'.format(article_id, file_id)
         assert result.materialized_path == '/{}/{}'.format(article_name, file_name)
         assert str(result.article_id) == article_id
         assert result.article_name == article_name
-        assert result.size == file_metadata['size']
-        assert result.is_public == (PRIVATE_IDENTIFIER not in article_metadata['url'])
+        assert result.size == file_meta_json['size']
+        assert result.is_public == (article_meta_json['published_date'] is not None)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_folder_article_contents_error(self, project_provider,
-                                                        root_provider_fixtures):
-        item = root_provider_fixtures['folder_article_metadata']
-        item['files'] = []
-        root_parts = project_provider.root_path_parts
-        article_id = str(item['id'])
-        article_name = item['title']
-        file_id = str(root_provider_fixtures['folder_file_metadata']['id'])
-        file_name = root_provider_fixtures['folder_file_metadata']['name']
+    async def test_project_folder_article_file_not_found(self,
+                                                         project_provider_2,
+                                                         project_article_type_3_metadata,
+                                                         project_article_type_3_file_metadata):
+        """Test the error case where the file is not found in the article's file list.
+        """
+        root_parts = project_provider_2.root_path_parts
 
-        folder_article_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
-                                                                 article_id)
-        aiohttpretty.register_json_uri('GET', folder_article_metadata_url, body=item)
+        article_meta_json = project_article_type_3_metadata['private']
+        article_meta_json['files'] = []
+        article_id = str(article_meta_json['id'])
+        article_name = article_meta_json['title']
+        file_id = str(project_article_type_3_file_metadata['private']['id'])
+        file_name = project_article_type_3_file_metadata['private']['name']
+
+        article_meta_url = project_provider_2.build_url(False, *root_parts, 'articles', article_id)
+        aiohttpretty.register_json_uri('GET', article_meta_url, body=article_meta_json)
 
         path = FigsharePath('/{}/{}'.format(article_name, file_name),
                             _ids=('', article_id, file_id), folder=False, is_public=False)
-
         with pytest.raises(exceptions.NotFoundError) as e:
-            await project_provider.metadata(path)
+            await project_provider_2.metadata(path)
 
-        assert aiohttpretty.has_call(method='GET', uri=folder_article_metadata_url)
+        assert aiohttpretty.has_call(method='GET', uri=article_meta_url)
+        assert e.value.code == 404
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_folder_article_type_error(self, project_provider,
-                                                    root_provider_fixtures):
-        item = root_provider_fixtures['folder_article_metadata']
-        item['defined_type'] = 5
+    async def test_project_folder_article_type_error(self,
+                                                     project_provider,
+                                                     project_article_type_3_metadata):
+        """Test the error case where the folder article is of a wrong type.
+        """
         root_parts = project_provider.root_path_parts
-        article_id = str(item['id'])
-        article_name = item['title']
 
-        folder_article_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
-                                                                 article_id)
-        aiohttpretty.register_json_uri('GET', folder_article_metadata_url, body=item)
+        article_meta_json = project_article_type_3_metadata['private']
+        article_meta_json['defined_type'] = 15
+        article_id = str(article_meta_json['id'])
+        article_name = article_meta_json['title']
 
-        path = FigsharePath('/{}'.format(article_name), _ids=('', article_id), folder=True,
-                            is_public=False)
+        article_meta_url = project_provider.build_url(False, *root_parts, 'articles', article_id)
+        aiohttpretty.register_json_uri('GET', article_meta_url, body=article_meta_json)
 
+        path = FigsharePath('/{}'.format(article_name),
+                            _ids=('', article_id), folder=True, is_public=False)
         with pytest.raises(exceptions.NotFoundError) as e:
             await project_provider.metadata(path)
 
-        assert aiohttpretty.has_call(method='GET', uri=folder_article_metadata_url)
+        assert aiohttpretty.has_call(method='GET', uri=article_meta_url)
+        assert e.value.code == 404
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_folder_article_contents_file(self, project_provider,
-                                                        root_provider_fixtures):
-        item = root_provider_fixtures['folder_article_metadata']
-        root_parts = project_provider.root_path_parts
-        article_id = str(item['id'])
-        article_name = item['title']
+    async def test_project_folder_article_contents(self,
+                                                   project_provider_2,
+                                                   project_article_type_3_metadata):
+        """Test content listing for an article of folder type.
+        """
+        root_parts = project_provider_2.root_path_parts
 
-        folder_article_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
-                                                                 article_id)
-        aiohttpretty.register_json_uri('GET', folder_article_metadata_url, body=item)
+        article_meta_json = project_article_type_3_metadata['private']
+        article_id = str(article_meta_json['id'])
+        article_name = article_meta_json['title']
+
+        article_meta_url = project_provider_2.build_url(False, *root_parts, 'articles', article_id)
+        aiohttpretty.register_json_uri('GET', article_meta_url, body=article_meta_json)
 
         path = FigsharePath('/{}'.format(article_name), _ids=('', article_id), folder=True,
                             is_public=False)
+        result = (await project_provider_2.metadata(path)).sort(key=lambda x: x.path)
+        expected = ([
+            metadata.FigshareFileMetadata(article_meta_json,
+                                          raw_file=article_meta_json['files'][0]),
+            metadata.FigshareFileMetadata(article_meta_json,
+                                          raw_file=article_meta_json['files'][1])
+        ]).sort(key=lambda x: x.path)
 
-        result = await project_provider.metadata(path)
-        expected = [metadata.FigshareFileMetadata(item, raw_file=item['files'][0])]
+        assert aiohttpretty.has_call(method='GET', uri=article_meta_url)
         assert result == expected
-        assert aiohttpretty.has_call(method='GET', uri=folder_article_metadata_url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_project_folder_article_contents(self, project_provider, root_provider_fixtures):
+    async def test_project_folder_article_file(self,
+                                               project_provider_2,
+                                               project_article_type_3_metadata,
+                                               project_article_type_3_file_metadata):
+        """Test metadata for a file that belongs to an article of folder type.
+        """
+        root_parts = project_provider_2.root_path_parts
 
-        article_metadata = root_provider_fixtures['folder_article_metadata']
-        file_metadata = root_provider_fixtures['folder_file_metadata']
+        article_meta_json = project_article_type_3_metadata['private']
+        file_meta_json = project_article_type_3_file_metadata['private']
+        article_id = str(article_meta_json['id'])
+        article_name = article_meta_json['title']
+        file_id = str(file_meta_json['id'])
+        file_name = file_meta_json['name']
 
-        root_parts = project_provider.root_path_parts
-        article_id = str(article_metadata['id'])
-        article_name = article_metadata['title']
-        file_id = str(file_metadata['id'])
-        file_name = file_metadata['name']
-
-        folder_article_metadata_url = project_provider.build_url(False, *root_parts, 'articles',
-                                                                 article_id)
-
-        aiohttpretty.register_json_uri('GET', folder_article_metadata_url, body=article_metadata)
+        article_meta_url = project_provider_2.build_url(False, *root_parts, 'articles', article_id)
+        aiohttpretty.register_json_uri('GET', article_meta_url, body=article_meta_json)
 
         path = FigsharePath('/{}/{}'.format(article_name, file_name),
                             _ids=('', article_id, file_id), folder=False, is_public=False)
+        result = await project_provider_2.metadata(path)
 
-        result = await project_provider.metadata(path)
-
-        assert aiohttpretty.has_call(method='GET', uri=folder_article_metadata_url)
-
-        expected = metadata.FigshareFileMetadata(article_metadata, file_metadata)
+        assert aiohttpretty.has_call(method='GET', uri=article_meta_url)
+        expected = metadata.FigshareFileMetadata(article_meta_json, file_meta_json)
         assert result == expected
-
         assert str(result.id) == file_id
         assert result.name == file_name
         assert result.path == '/{}/{}'.format(article_id, file_id)
         assert result.materialized_path == '/{}/{}'.format(article_name, file_name)
         assert str(result.article_id) == article_id
         assert result.article_name == article_name
-        assert result.size == file_metadata['size']
-        assert result.is_public == (PRIVATE_IDENTIFIER not in article_metadata['url'])
-        assert result.extra['hashes']['md5'] == '03dee7cf60f17a8453ccd2f51cbbbd86'
+        assert result.size == file_meta_json['size']
+        assert result.is_public == (article_meta_json['published_date'] is not None)
+        assert result.extra['hashes']['md5'] == '68c3a15be1ddc27893c17eaab61f2d3d'
 
 
 class TestArticleMetadata:
@@ -553,7 +628,7 @@ class TestArticleMetadata:
         assert result.materialized_path == '/{}/{}'.format(article_name, file_name)
         assert result.article_name == article_name
         assert result.size == file_metadata['size']
-        assert result.is_public == (PRIVATE_IDENTIFIER not in article_metadata['url'])
+        assert result.is_public is False
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
