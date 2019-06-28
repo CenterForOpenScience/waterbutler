@@ -331,6 +331,177 @@ class TestArticleV1ValidatePath:
         assert result == expected
 
 
+class TestProjectV0ValidatePath:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v0_path_folder_article(self, project_provider, root_provider_fixtures):
+        item = root_provider_fixtures['folder_article_metadata']
+        file_id = str(item['id'])
+        path = '/{}/'.format(file_id)
+        article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
+                                                      'articles')
+        article_segments = (*project_provider.root_path_parts, 'articles', str(item['id']))
+        article_url = project_provider.build_url(False, *article_segments)
+
+        aiohttpretty.register_json_uri('GET', article_list_url,
+                                       body=root_provider_fixtures['list_project_articles'],
+                                       params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
+        aiohttpretty.register_json_uri('GET', article_list_url, body=[],
+                                       params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
+        aiohttpretty.register_json_uri('GET', article_url, body=item)
+
+        result = await project_provider.validate_path(path)
+        expected = FigsharePath('/{}/'.format(item['title']),
+                                _ids=(project_provider.container_id, file_id),
+                                folder=True,
+                                is_public=False)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v0_path_folder_article_bad_path(self, project_provider,
+                                                            root_provider_fixtures):
+        item = root_provider_fixtures['folder_article_metadata']
+        bad_article_id = '000000000'
+        path = '/{}'.format(bad_article_id)
+
+        article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
+                                                      'articles')
+        article_segments = (*project_provider.root_path_parts, 'articles', bad_article_id)
+        article_url = project_provider.build_url(False, *article_segments)
+
+        aiohttpretty.register_json_uri('GET', article_list_url,
+                                       body=root_provider_fixtures['list_project_articles'],
+                                       params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
+        aiohttpretty.register_json_uri('GET', article_list_url, body=[],
+                                       params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
+        aiohttpretty.register_json_uri('GET', article_url, status=404)
+
+        result = await project_provider.validate_path(path)
+        expected = FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
+        assert result == expected
+        assert aiohttpretty.has_call(method='GET', uri=article_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_project_validate_v0_path_root(self, project_provider):
+        path = '/'
+
+        result = await project_provider.validate_path(path)
+        expected = FigsharePath(path, _ids=('', ), folder=True, is_public=False)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_article_validate_v0_path_invalid_path(self, article_provider):
+        with pytest.raises(exceptions.InvalidPathError) as e:
+            await article_provider.validate_path('/this/is/an/invalid/path')
+
+        assert e.value.code == 400
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v0_path_invalid_path(self, project_provider):
+        path = 'whatever'
+
+        with pytest.raises(exceptions.InvalidPathError) as e:
+            await project_provider.validate_path(path)
+
+        assert e.value.code == 400
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v0_path_file_article(self, project_provider, root_provider_fixtures):
+        file_item = root_provider_fixtures['file_metadata']
+        item = root_provider_fixtures['file_article_metadata']
+        file_id = str(item['files'][0]['id'])
+        article_id = str(item['id'])
+        path = '/{}/{}'.format(article_id, file_id)
+        article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
+                                                      'articles')
+        article_segments = (*project_provider.root_path_parts, 'articles', str(item['id']))
+        article_url = project_provider.build_url(False, *article_segments, 'files', file_id)
+
+        aiohttpretty.register_json_uri('GET', article_list_url,
+                                       body=root_provider_fixtures['list_project_articles'],
+                                       params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
+
+        aiohttpretty.register_json_uri('GET', article_list_url, body=[],
+                                       params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
+
+        aiohttpretty.register_json_uri('GET', article_url, body=file_item)
+
+        result = await project_provider.validate_path(path)
+        expected = FigsharePath('/{}/{}'.format(item['title'], file_item['name']),
+                                _ids=(project_provider.container_id, file_id),
+                                folder=False, is_public=False)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_validate_v0_path_file_article_public(self, project_provider,
+                                                        root_provider_fixtures):
+        file_item = root_provider_fixtures['file_metadata_public']
+        item = root_provider_fixtures['file_article_metadata']
+        file_id = str(file_item['id'])
+        article_id = str(item['id'])
+        path = '/{}/{}'.format(article_id, file_id)
+        article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
+                                                      'articles')
+        article_segments = (*project_provider.root_path_parts, 'articles', str(item['id']))
+        article_url = project_provider.build_url(True, *article_segments, 'files', file_id)
+
+        aiohttpretty.register_json_uri('GET', article_list_url,
+                                       body=root_provider_fixtures['public_list_project_articles'],
+                                       params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
+
+        aiohttpretty.register_json_uri('GET', article_list_url, body=[],
+                                       params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
+
+        aiohttpretty.register_json_uri('GET', article_url, body=file_item)
+
+        result = await project_provider.validate_path(path)
+        expected = FigsharePath('/{}/{}'.format(item['title'], file_item['name']),
+                                _ids=(project_provider.container_id, file_id),
+                                folder=False, is_public=False)
+
+        assert result == expected
+
+
+class TestArticleV0ValidatePath:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_article_validate_v0_path_root(self, article_provider):
+        path = '/'
+
+        result = await article_provider.validate_path(path)
+        expected = FigsharePath(path, _ids=('', ), folder=True, is_public=False)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_article_validate_v0_path(self, article_provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']
+        file_id = item['id']
+        path = '/' + str(file_id)
+        url = article_provider.build_url(False, *article_provider.root_path_parts, 'files',
+                                         str(file_id))
+
+        aiohttpretty.register_json_uri('GET', url, body=item)
+
+        result = await article_provider.validate_path(path)
+        expected = FigsharePath('/' + item['name'], _ids=('', file_id), folder=False,
+                                is_public=False)
+
+        assert result == expected
+
+
 class TestProjectMetadata:
 
     @pytest.mark.asyncio
@@ -666,20 +837,9 @@ class TestProjectCRUD:
     async def test_project_upload(self, file_stream, project_provider,
                                 root_provider_fixtures, crud_fixtures):
         file_name = 'barricade.gif'
-
-        root_parts = project_provider.root_path_parts
-        list_articles_url = project_provider.build_url(False, *root_parts, 'articles')
-        validate_article_url = project_provider.build_url(False, *root_parts, 'articles', file_name)
-
-        aiohttpretty.register_json_uri('GET', list_articles_url,
-                                       body=root_provider_fixtures['list_project_articles'],
-                                       params={'page': '1', 'page_size': str(MAX_PAGE_SIZE)})
-        aiohttpretty.register_json_uri('GET', list_articles_url, body=[],
-                                       params={'page': '2', 'page_size': str(MAX_PAGE_SIZE)})
-        aiohttpretty.register_uri('GET', validate_article_url, status=404)
-        path = await project_provider.validate_path('/' + file_name)
         path = FigsharePath('/' + file_name, _ids=('', ''), folder=False, is_public=False)
 
+        root_parts = project_provider.root_path_parts
         article_id = str(crud_fixtures['upload_article_metadata']['id'])
         file_metadata = root_provider_fixtures['get_file_metadata']
         create_article_url = project_provider.build_url(False, *root_parts, 'articles')

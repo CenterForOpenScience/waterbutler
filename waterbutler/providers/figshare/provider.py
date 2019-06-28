@@ -389,6 +389,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                 article_name = article['title']
                 is_public = article['published_date'] is not None
                 break
+        # Raise error earlier instead of on 404.  Please note that this is different than V0.
         if not article_name:
             raise exceptions.NotFoundError('Path {} with article ID {} not found in the project\'s '
                                            'article list'.format(path, article_id))
@@ -460,9 +461,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                 article_name = article['title']
                 is_public = article['published_date'] is not None
                 break
-        if not article_name:
-            raise exceptions.NotFoundError('Path {} with article ID {} not found in the project\'s '
-                                           'article list'.format(path, article_id))
+
         article_segments = (*self.root_path_parts, 'articles', article_id)
 
         if file_id:
