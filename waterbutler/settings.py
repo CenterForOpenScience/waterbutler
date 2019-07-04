@@ -178,4 +178,4 @@ keen_public_config = keen_config.child('PUBLIC')
 KEEN_PUBLIC_PROJECT_ID = keen_public_config.get_nullable('PROJECT_ID', None)
 KEEN_PUBLIC_WRITE_KEY = keen_public_config.get_nullable('WRITE_KEY', None)
 
-OSF_URL = os.environ.get('OSF_URL', 'http://192.168.168.167:5000')
+OSF_URL = config.get('OSF_URL', 'http://192.168.168.167:5000')
