@@ -268,7 +268,7 @@ Issuing a download request with a query parameter named ``direct`` indicates tha
 * **Interactions**: None
 * **Notes**:
 
-  * Only supported by/relevant to OwnCloud, osfstorage (Cloudfiles), and S3.`
+  * Only supported by/relevant to osfstorage (GoogleCloud or Rackspace Cloudfiles backend) and S3.
 
 
 displayName
@@ -279,9 +279,7 @@ When downloading a file, sets the name to download it as.  Replaces the original
 * **Type**: string
 * **Expected on**: ``GET`` download requests for files
 * **Interactions**: None
-* **Notes**:
-
-  * Currently only supported by S3.
+* **Notes**: None
 
 
 mode

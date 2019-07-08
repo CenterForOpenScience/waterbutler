@@ -295,7 +295,8 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_download(self, provider, mock_time):
         path = WaterButlerPath('/muhtriangle')
-        response_headers = {'response-content-disposition': 'attachment'}
+        response_headers = {'response-content-disposition':
+                            'attachment; filename="muhtriangle"; filename*=UTF-8\'\'muhtriangle'}
         url = provider.bucket.new_key(path.path).generate_url(100,
                                                               response_headers=response_headers)
         aiohttpretty.register_uri('GET', url, body=b'delicious', auto_length=True)
@@ -309,7 +310,8 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_download_range(self, provider, mock_time):
         path = WaterButlerPath('/muhtriangle')
-        response_headers = {'response-content-disposition': 'attachment'}
+        response_headers = {'response-content-disposition':
+                            'attachment; filename="muhtriangle"; filename*=UTF-8\'\'muhtriangle'}
         url = provider.bucket.new_key(path.path).generate_url(100,
                                                               response_headers=response_headers)
         aiohttpretty.register_uri('GET', url, body=b'de', auto_length=True, status=206)
@@ -324,10 +326,12 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_download_version(self, provider, mock_time):
         path = WaterButlerPath('/muhtriangle')
+        response_headers = {'response-content-disposition':
+                            'attachment; filename="muhtriangle"; filename*=UTF-8\'\'muhtriangle'}
         url = provider.bucket.new_key(path.path).generate_url(
             100,
             query_parameters={'versionId': 'someversion'},
-            response_headers={'response-content-disposition': 'attachment'},
+            response_headers=response_headers,
         )
         aiohttpretty.register_uri('GET', url, body=b'delicious', auto_length=True)
 
@@ -338,14 +342,24 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_display_name(self, provider, mock_time):
+    @pytest.mark.parametrize("display_name_arg,expected_name", [
+        ('meow.txt', 'meow.txt'),
+        ('',         'muhtriangle'),
+        (None,       'muhtriangle'),
+    ])
+    async def test_download_with_display_name(self, provider, mock_time, display_name_arg,
+                                              expected_name):
         path = WaterButlerPath('/muhtriangle')
-        response_headers = {'response-content-disposition': "attachment; filename*=UTF-8''tuna"}
+        response_headers = {
+            'response-content-disposition': ('attachment; filename="{}"; '
+                                             'filename*=UTF-8\'\'{}').format(expected_name,
+                                                                             expected_name)
+        }
         url = provider.bucket.new_key(path.path).generate_url(100,
                                                               response_headers=response_headers)
         aiohttpretty.register_uri('GET', url, body=b'delicious', auto_length=True)
 
-        result = await provider.download(path, displayName='tuna')
+        result = await provider.download(path, display_name=display_name_arg)
         content = await result.read()
 
         assert content == b'delicious'
@@ -354,7 +368,8 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_download_not_found(self, provider, mock_time):
         path = WaterButlerPath('/muhtriangle')
-        response_headers = {'response-content-disposition': 'attachment'}
+        response_headers = {'response-content-disposition':
+                            'attachment; filename="muhtriangle"; filename*=UTF-8\'\'muhtriangle'}
         url = provider.bucket.new_key(path.path).generate_url(100,
                                                               response_headers=response_headers)
         aiohttpretty.register_uri('GET', url, status=404)
@@ -985,7 +1000,8 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_accepts_url(self, provider, mock_time):
         path = WaterButlerPath('/my-image')
-        response_headers = {'response-content-disposition': 'attachment'}
+        response_headers = {'response-content-disposition':
+                            'attachment; filename="my-image"; filename*=UTF-8\'\'my-image'}
         url = provider.bucket.new_key(path.path).generate_url(100,
                                                               'GET',
                                                               response_headers=response_headers)

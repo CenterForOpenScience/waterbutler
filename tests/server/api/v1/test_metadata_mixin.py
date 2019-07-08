@@ -81,6 +81,7 @@ class TestMetadataMixin:
     @pytest.mark.asyncio
     async def test_download_file_headers(self, handler, mock_stream):
 
+        mock_stream.name = 'peanut-butter.docx'
         handler.provider.download = MockCoroutine(return_value=mock_stream)
         handler.path = WaterButlerPath('/test_file')
 
@@ -88,8 +89,45 @@ class TestMetadataMixin:
 
         assert handler._headers['Content-Length'] == bytes(str(mock_stream.size), 'latin-1')
         assert handler._headers['Content-Type'] == bytes(mock_stream.content_type, 'latin-1')
-        assert handler._headers['Content-Disposition'] == bytes('attachment;filename="{}"'.format(
-            handler.path.name), 'latin-1')
+        disposition = b'attachment; filename="peanut-butter.docx"; filename*=UTF-8\'\'peanut-butter.docx'
+        assert handler._headers['Content-Disposition'] == disposition
+
+        handler.write_stream.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_download_file_headers_no_stream_name(self, handler, mock_stream):
+
+        handler.provider.download = MockCoroutine(return_value=mock_stream)
+        handler.path = WaterButlerPath('/test_file')
+
+        await handler.download_file()
+
+        assert handler._headers['Content-Length'] == bytes(str(mock_stream.size), 'latin-1')
+        assert handler._headers['Content-Type'] == bytes(mock_stream.content_type, 'latin-1')
+        disposition = b'attachment; filename="test_file"; filename*=UTF-8\'\'test_file'
+        assert handler._headers['Content-Disposition'] == disposition
+
+        handler.write_stream.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("given_arg,expected_name,filtered_name", [
+        (['résumé.doc'], b'r%C3%A9sum%C3%A9.doc', b'resume.doc'),
+        ([''],           b'test_file',            b'test_file'),
+        ([],             b'test_file',            b'test_file'),
+    ])
+    async def test_download_file_with_display_name(self, handler, mock_stream, given_arg,
+                                                   expected_name, filtered_name):
+
+        handler.provider.download = MockCoroutine(return_value=mock_stream)
+        handler.path = WaterButlerPath('/test_file')
+        handler.request.query_arguments['displayName'] = given_arg
+
+        await handler.download_file()
+
+        assert handler._headers['Content-Length'] == bytes(str(mock_stream.size), 'latin-1')
+        assert handler._headers['Content-Type'] == bytes(mock_stream.content_type, 'latin-1')
+        disposition = b'attachment; filename="' + filtered_name + b'"; filename*=UTF-8\'\'' + expected_name
+        assert handler._headers['Content-Disposition'] == disposition
 
         handler.write_stream.assert_awaited_once()
 
@@ -174,7 +212,21 @@ class TestMetadataMixin:
         await handler.download_folder_as_zip()
 
         assert handler._headers['Content-Type'] == bytes('application/zip', 'latin-1')
-        expected = bytes('attachment;filename="{}"'.format(handler.path.name + '.zip'), 'latin-1')
+        expected = b'attachment; filename="test_file.zip"; filename*=UTF-8\'\'test_file.zip'
+        assert handler._headers['Content-Disposition'] == expected
+
+        handler.write_stream.assert_called_once_with(mock_stream)
+
+    @pytest.mark.asyncio
+    async def test_download_folder_as_zip_root(self, handler, mock_stream):
+
+        handler.provider.zip = MockCoroutine(return_value=mock_stream)
+        handler.path = WaterButlerPath('/')
+
+        await handler.download_folder_as_zip()
+
+        assert handler._headers['Content-Type'] == bytes('application/zip', 'latin-1')
+        expected = b'attachment; filename="MockProvider-archive.zip"; filename*=UTF-8\'\'MockProvider-archive.zip'
         assert handler._headers['Content-Disposition'] == expected
 
         handler.write_stream.assert_called_once_with(mock_stream)

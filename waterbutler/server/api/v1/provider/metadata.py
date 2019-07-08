@@ -8,6 +8,7 @@ from dateutil.parser import parse as datetime_parser
 
 from waterbutler.server import utils
 from waterbutler.core import mime_types
+from waterbutler.core.utils import make_disposition
 from waterbutler.core.streams import ResponseStreamReader
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ class MetadataMixin:
             range=request_range,
             accept_url='direct' not in self.request.query_arguments,
             mode=self.get_query_argument('mode', default=None),
+            display_name=self.get_query_argument('displayName', default=None),
         )
 
         if isinstance(stream, str):
@@ -88,8 +90,12 @@ class MetadataMixin:
 
         # Build `Content-Disposition` header from `displayName` override,
         # headers of provider response, or file path, whichever is truthy first
-        name = self.get_query_argument('displayName', default=None) or getattr(stream, 'name', None) or self.path.name
-        self.set_header('Content-Disposition', utils.make_disposition(name))
+        name = (
+            self.get_query_argument('displayName', default=None) or
+            getattr(stream, 'name', None) or
+            self.path.name
+        )
+        self.set_header('Content-Disposition', make_disposition(name))
 
         _, ext = os.path.splitext(name)
         # If the file extention is in mime_types
@@ -123,10 +129,7 @@ class MetadataMixin:
     async def download_folder_as_zip(self):
         zipfile_name = self.path.name or '{}-archive'.format(self.provider.NAME)
         self.set_header('Content-Type', 'application/zip')
-        self.set_header(
-            'Content-Disposition',
-            utils.make_disposition(zipfile_name + '.zip')
-        )
+        self.set_header('Content-Disposition', make_disposition(zipfile_name + '.zip'))
 
         result = await self.provider.zip(self.path)
 

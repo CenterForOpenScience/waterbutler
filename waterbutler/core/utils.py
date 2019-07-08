@@ -1,9 +1,12 @@
+import re
 import json
 import pytz
 import asyncio
 import logging
 import functools
+import unicodedata
 import dateutil.parser
+from urllib import parse
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
@@ -114,6 +117,61 @@ def normalize_datetime(date_string):
     parsed_datetime = parsed_datetime.astimezone(tz=pytz.UTC)
     parsed_datetime = parsed_datetime.replace(microsecond=0)
     return parsed_datetime.isoformat()
+
+
+def strip_for_disposition(filename):
+    """Convert given filename to a form useable by a non-extended parameter.
+
+    The permitted characters allowed in a non-extended parameter are defined in RFC-2616, Section
+    2.2.  This is a subset of the ascii character set. This function converts non-ascii characters
+    to their nearest ascii equivalent or strips them if there is no equivalent.  It then replaces
+    control characters with underscores and escapes blackslashes and double quotes.
+
+    :param str filename: a filename to encode
+    """
+
+    nfkd_form = unicodedata.normalize('NFKD', filename)
+    only_ascii = nfkd_form.encode('ASCII', 'ignore')
+    no_ctrl = re.sub(r'[\x00-\x1f]', '_', only_ascii.decode('ascii'))
+    return no_ctrl.replace('\\', '\\\\').replace('"', '\\"')
+
+
+def encode_for_disposition(filename):
+    """Convert given filename into utf-8 octets, then percent encode them.
+
+    See RFC-5987, Section 3.2.1 for description of how to encode the ``value-chars`` portion of
+    ``ext-value``. WB will always use utf-8 encoding (see `make_disposition`), so that encoding
+    is hard-coded here.
+
+    :param str filename: a filename to encode
+    """
+    return parse.quote(filename.encode('utf-8'))
+
+
+def make_disposition(filename):
+    """Generate the "Content-Disposition" header.
+
+    Refer to https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition for how
+    to use the header correctly.  In the case where ARGUMENT ``filename`` exists, WB should use the
+    DIRECTIVE ``filename*`` which uses encoding defined in RFC 5987 (see the link below).  Do not
+    use the DIRECTIVE ``filename``.  This solves the issue of file names containing non-English and
+    special characters
+
+    Refer to https://tools.ietf.org/html/rfc5987 for the RFC 5978 mentioned above.  Please note that
+    it has been replaced by RFC 8187 (https://tools.ietf.org/html/rfc8187) recently in Sept. 2017.
+    As expected, there is nothing to worry about (see Appendix A in RFC 8187 for detailed changes).
+
+    :param str filename: the name of the file to be downloaded AS
+    :rtype: `str`
+    :return: the value of the "Content-Disposition" header with filename*
+    """
+    if not filename:
+        return 'attachment'
+    else:
+        stripped_filename = strip_for_disposition(filename)
+        encoded_filename = encode_for_disposition(filename)
+        return 'attachment; filename="{}"; filename*=UTF-8\'\'{}'.format(stripped_filename,
+                                                                         encoded_filename)
 
 
 class ZipStreamGenerator:

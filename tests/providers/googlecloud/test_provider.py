@@ -213,12 +213,37 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_file_with_accept_url(self, mock_time, mock_provider, file_wb_path,
-                                                 file_name):
+    async def test_download_file_with_accept_url(self, mock_time, mock_provider, file_wb_path):
         file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
-        query = {'response-content-disposition': 'attachment; filename={}'.format(file_name)}
+        query = {
+            'response-content-disposition': ('attachment; filename="text-file-1.txt"; '
+                                             'filename*=UTF-8\'\'text-file-1.txt')
+        }
         signed_url = mock_provider._build_and_sign_url('GET', file_obj_name, **query)
-        return_url = await mock_provider.download(file_wb_path, accept_url=True, display_name=file_name)
+        return_url = await mock_provider.download(file_wb_path, accept_url=True)
+
+        assert not aiohttpretty.has_call(method='GET', uri=signed_url)
+        assert isinstance(return_url, str)
+        assert signed_url == return_url
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize("display_name_arg,expected_name", [
+        ('meow.txt', 'meow.txt'),
+        ('',         'text-file-1.txt'),
+        (None,       'text-file-1.txt'),
+    ])
+    async def test_download_file_with_display_name(self, mock_time, mock_provider, file_wb_path,
+                                                   display_name_arg, expected_name):
+        file_obj_name = utils.get_obj_name(file_wb_path, is_folder=False)
+        query = {
+            'response-content-disposition': ('attachment; filename="{}"; '
+                                             'filename*=UTF-8\'\'{}').format(expected_name,
+                                                                             expected_name)
+        }
+        signed_url = mock_provider._build_and_sign_url('GET', file_obj_name, **query)
+        return_url = await mock_provider.download(file_wb_path, accept_url=True,
+                                                  display_name=display_name_arg)
 
         assert not aiohttpretty.has_call(method='GET', uri=signed_url)
         assert isinstance(return_url, str)

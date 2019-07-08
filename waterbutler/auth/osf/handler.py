@@ -144,6 +144,12 @@ class OsfAuthHandler(BaseAuthHandler):
                 'action': osf_action,
                 'path': path,
                 'version': version,
+                'metrics': {
+                    'referrer': request.headers.get('Referer'),
+                    'user_agent': request.headers.get('User-Agent'),
+                    'origin': request.headers.get('Origin'),
+                    'uri': request.uri,
+                }
             }, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)

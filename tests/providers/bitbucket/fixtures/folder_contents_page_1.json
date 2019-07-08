@@ -1,0 +1,52 @@
+{
+    "values": [
+        {
+            "path": "folder1-lvl1",
+            "type": "commit_directory"
+        },
+        {
+            "path": "folder2-lvl1",
+            "type": "commit_directory"
+        },
+        {
+            "path": "folder3-lvl1",
+            "type": "commit_directory"
+        },
+        {
+            "path": ".gitignore",
+            "type": "commit_file",
+            "size": 1380
+        },
+        {
+            "path": "README.md",
+            "type": "commit_file",
+            "size": 565
+        },
+        {
+            "path": "file0001.20bytes.txt",
+            "type": "commit_file",
+            "size": 20
+        },
+        {
+            "path": "file0002.20bytes.txt",
+            "type": "commit_file",
+            "size": 21
+        },
+        {
+            "path": "file0003.20bytes.txt",
+            "type": "commit_file",
+            "size": 20
+        },
+        {
+            "path": "file0004.20bytes.txt",
+            "type": "commit_file",
+            "size": 20
+        },
+        {
+            "path": "file0005.20bytes.txt",
+            "type": "commit_file",
+            "size": 20
+        }
+    ],
+    "next": "https://api.bitbucket.org/2.0/repositories/cslzchen/waterbutler-public/src/develop/?page=8xhdfields=values.size%2Cvalues.path%2Cvalues.type%2Cnext&pagelen=10"
+}

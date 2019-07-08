@@ -1,0 +1,23 @@
+{
+    "root": {
+        "path": "",
+        "commit": {
+            "date": "2019-04-26T15:13:12+00:00",
+            "hash": "dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+        }
+    },
+    "non_root_lvl3": {
+        "path": "folder2-lvl1/folder1-lvl2/folder1-lvl3",
+        "commit": {
+            "date": "2019-04-26T15:13:12+00:00",
+            "hash": "dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+        }
+    },
+    "non_root_lvl2": {
+        "path": "folder2-lvl1/folder1-lvl2",
+        "commit": {
+            "date": "2019-04-26T15:13:12+00:00",
+            "hash": "dd8c7b642e3240a494414ac93c7fbc119ebe1179"
+        }
+    }
+}

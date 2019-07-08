@@ -364,6 +364,31 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize("display_name_arg,expected_name", [
+        ('meow.txt', 'meow.txt'),
+        ('',         'lets-go-crazy'),
+        (None,       'lets-go-crazy'),
+    ])
+    async def test_download_file_with_display_name(self, connected_provider, display_name_arg,
+                                                   expected_name):
+        body = b'dearly-beloved'
+        path = WaterButlerPath('/lets-go-crazy')
+
+        url = connected_provider.sign_url(path)
+        parsed_url = furl.furl(url)
+        parsed_url.args['filename'] = expected_name
+
+        result = await connected_provider.download(path, accept_url=True,
+                                                   display_name=display_name_arg)
+
+        assert result == parsed_url.url
+        aiohttpretty.register_uri('GET', url, body=body)
+        response = await aiohttp.request('GET', url)
+        content = await response.read()
+        assert content == body
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_download_not_found(self, connected_provider):
         path = WaterButlerPath('/lets-go-crazy')
         url = connected_provider.sign_url(path)

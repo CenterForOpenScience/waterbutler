@@ -2,6 +2,47 @@
 ChangeLog
 *********
 
+19.0.0 (2019-06-11)
+===================
+- Fix: Bitbucket has retired their v1 API.  Update the WaterButler provider to use v2 instead.
+- Code: Update WaterButler Dockerfile to explicitly use gnupg v2.  The default gpg binary on Debian
+jessie is v1, but Debian stretch changes this to v2.  Adjust for small differences in how they are
+called.
+
+18.0.3 (2019-01-31)
+===================
+- Fix: Send metadata about request to the OSF auth endpoint to help OSF distinguish file views from
+downloads.  (thanks, @Johnetordoff!)
+
+18.0.2 (2018-12-14)
+===================
+- Fix: Get CI running again by adding workaround for bad TravisCI/Boto interaction. See:
+https://github.com/travis-ci/travis-ci/issues/7940.
+
+18.0.1 (2018-12-12)
+===================
+- Fix: Restore the `filename` parameter to WaterButler's Content-Disposition headers.  It had been
+removed in favor of `filename*`, which can correctly encode multibyte filenames.  This broke scripts
+that expected the `filename` version.  Since `filename` cannot support multibyte characters, those
+characters are converted to their nearest ascii equivalent or stripped if no equivalent exists.  WB
+now returns both forms of the parameter in the header.  Clients should prefer `filename*` for the
+most accurate representation of the filename.  (thanks, @jcohenadad!)
+
+18.0.0 (2018-10-31)
+===================
+- UPDATE: WaterButler is now following the CalVer (https://calver.org/) versioning scheme to match
+the OSF.  All new versions will use the `YY.MINOR.MICRO` format.
+- Fix: Teach WaterButler to properly encode non-ascii file names for download requests.  WB was
+constructing Content-Disposition headers in many places throughout the codebase.  Some correctly
+encoded non-ascii characters as UTF-8, but many did not.  These have been consolidated into a
+single routine that can build explicitly-declared UTF-8 encoded Content-Disposition headers.
+- Fix: Allow users to set the name of a file when downloading directly from a provider.  Some
+providers (osfstorage, s3) support signed download urls, which permit the user to download directly
+from the provider without passing through WB.  WB was failing to relay the `displayName` query
+parameter to the upstream providers.  It now does so, which allows the user to override the default
+download file name.  Downloads that are proxied through WB already respect the parameter and are
+unchanged by this.
+
 0.42.2 (2018-10-24)
 ===================
 - Feature: Relay MFR-identifying header to OSF when requesting auth on MFR's behalf.  This enables

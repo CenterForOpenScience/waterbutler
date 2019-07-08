@@ -90,7 +90,7 @@ class TestDownload:
         expected_path = WaterButlerPath('/' + download_response['data']['path'])
         expected_display_name = download_response['data']['name']
         inner_provider.download.assert_called_once_with(path=expected_path,
-                                                        displayName=expected_display_name)
+                                                        display_name=expected_display_name)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -113,7 +113,7 @@ class TestDownload:
         expected_path = WaterButlerPath('/' + download_response['data']['path'])
         expected_display_name = download_response['data']['name']
         inner_provider.download.assert_called_once_with(path=expected_path,
-                                                        displayName=expected_display_name)
+                                                        display_name=expected_display_name)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -127,6 +127,35 @@ class TestDownload:
 
         with pytest.raises(exceptions.NotFoundError):
             await provider_one.download(file_path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize("display_name_arg,expected_name", [
+        ('meow.txt', 'meow.txt'),
+        ('',         'doc.rst'),
+        (None,       'doc.rst'),
+    ])
+    async def test_download_with_display_name(self, provider_and_mock_one, download_response,
+                                              download_path, mock_time, display_name_arg,
+                                              expected_name):
+
+        provider, inner_provider = provider_and_mock_one
+
+        uri, params = build_signed_url_with_auth(provider, 'GET', download_path.identifier,
+                                                 'download', version=None, mode=None)
+
+        aiohttpretty.register_json_uri('GET', uri,  body=download_response, params=params)
+
+        await provider.download(download_path, display_name=display_name_arg)
+
+        assert provider.make_provider.called
+        assert inner_provider.download.called
+
+        assert aiohttpretty.has_call(method='GET', uri=uri, params=params)
+        provider.make_provider.assert_called_once_with(download_response['settings'])
+        expected_path = WaterButlerPath('/' + download_response['data']['path'])
+        inner_provider.download.assert_called_once_with(path=expected_path,
+                                                        display_name=expected_name)
 
 
 class TestDelete:

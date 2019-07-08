@@ -10,6 +10,7 @@ import tornado.platform.asyncio
 from waterbutler.core import mime_types
 from waterbutler.server import utils
 from waterbutler.server.api.v0 import core
+from waterbutler.core.utils import make_disposition
 from waterbutler.core.streams import RequestStreamReader
 
 TRUTH_MAP = {
@@ -88,7 +89,7 @@ class CRUDHandler(core.BaseProviderHandler):
         # Build `Content-Disposition` header from `displayName` override,
         # headers of provider response, or file path, whichever is truthy first
         name = self.arguments.get('displayName') or getattr(result, 'name', None) or self.path.name
-        self.set_header('Content-Disposition', utils.make_disposition(name))
+        self.set_header('Content-Disposition', make_disposition(name))
 
         _, ext = os.path.splitext(name)
         # If the file extention is in mime_types

@@ -14,6 +14,7 @@ from boto.s3.connection import S3Connection, OrdinaryCallingFormat
 
 from waterbutler.providers.s3 import settings
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.utils import make_disposition
 from waterbutler.core import streams, provider, exceptions
 from waterbutler.providers.s3.metadata import (S3Revision,
                                                S3FileMetadata,
@@ -156,10 +157,10 @@ class S3Provider(provider.BaseProvider):
         else:
             query_parameters = {'versionId': revision}
 
-        if kwargs.get('displayName'):
-            response_headers = {'response-content-disposition': 'attachment; filename*=UTF-8\'\'{}'.format(parse.quote(kwargs['displayName']))}
-        else:
-            response_headers = {'response-content-disposition': 'attachment'}
+        display_name = kwargs.get('display_name') or path.name
+        response_headers = {
+            'response-content-disposition': make_disposition(display_name)
+        }
 
         url = functools.partial(
             self.bucket.new_key(path.path).generate_url,

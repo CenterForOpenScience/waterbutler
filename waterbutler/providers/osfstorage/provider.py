@@ -216,7 +216,7 @@ class OSFStorageProvider(provider.BaseProvider):
         download_kwargs = {}
         download_kwargs.update(kwargs)
         download_kwargs.update(data['data'])
-        download_kwargs['displayName'] = kwargs.get('displayName', name)
+        download_kwargs['display_name'] = kwargs.get('display_name') or name
         return await provider.download(**download_kwargs)
 
     async def upload(self, stream, path, **kwargs):

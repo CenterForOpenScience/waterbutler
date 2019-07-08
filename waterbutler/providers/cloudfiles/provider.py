@@ -90,7 +90,7 @@ class CloudFilesProvider(provider.BaseProvider):
         self.metrics.add('download.accept_url', accept_url)
         if accept_url:
             parsed_url = furl.furl(self.sign_url(path, endpoint=self.public_endpoint))
-            parsed_url.args['filename'] = kwargs.get('displayName') or path.name
+            parsed_url.args['filename'] = kwargs.get('display_name') or path.name
             return parsed_url.url
 
         resp = await self.make_request(
