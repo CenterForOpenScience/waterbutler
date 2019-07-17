@@ -76,7 +76,7 @@ class FigshareProvider:
     API docs: https://docs.figshare.com/
     """
 
-    def __new__(cls, auth, credentials, settings):
+    def __new__(cls, auth: dict, credentials: dict, settings: dict) -> None:
         if settings['container_type'] == 'project':
             return FigshareProjectProvider(
                 auth, credentials,
@@ -100,7 +100,7 @@ class BaseFigshareProvider(provider.BaseProvider):
     DOWNLOAD_URL = pd_settings.DOWNLOAD_URL
     VALID_CONTAINER_TYPES = pd_settings.VALID_CONTAINER_TYPES
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth: dict, credentials: dict, settings: dict) -> None:
         super().__init__(auth, credentials, settings)
         self.token = self.credentials['token']
         self.container_type = self.settings['container_type']
@@ -170,8 +170,13 @@ class BaseFigshareProvider(provider.BaseProvider):
         """
         return path.rstrip('/').split('/')
 
-    async def download(self, path: FigsharePath,  # type: ignore
-                       range: Tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
+    async def download(
+            self,
+            path: FigsharePath,  # type: ignore
+            revision: str=None,
+            range: Tuple[int, int]=None,
+            **kwargs
+    ) -> streams.ResponseStreamReader:
         """Download the file identified by ``path`` from this project.
 
         :param FigsharePath path: FigsharePath to file you want to download
@@ -209,7 +214,11 @@ class BaseFigshareProvider(provider.BaseProvider):
 
         return streams.ResponseStreamReader(resp)
 
-    def path_from_metadata(self, parent_path, metadata):
+    def path_from_metadata(
+            self,
+            parent_path: WaterButlerPath,
+            metadata: BaseMetadata
+    ) -> WaterButlerPath:
         """Build FigsharePath for child entity given child's metadata and parent's path object.
 
         :param FigsharePath parent_path: path obj for child's parent
@@ -218,12 +227,12 @@ class BaseFigshareProvider(provider.BaseProvider):
         return parent_path.child(metadata.name, _id=str(metadata.id),
                                  folder=(metadata.kind == 'folder'))
 
-    async def revisions(self, path, **kwargs):
+    async def revisions(self, path: WaterButlerPath, **kwargs) -> BaseMetadata:
         # Public articles have revisions, but projects, collections, and private articles do not.
         # For now, return a single Revision labeled "latest".
         return [FigshareFileRevisionMetadata()]
 
-    async def _upload_file(self, article_id, name, stream):
+    async def _upload_file(self, article_id: str, name: str, stream: BaseStream) -> str:
         """Uploads a file to Figshare and returns the file id.
 
         :param str article_id: the id of the parent article
@@ -252,7 +261,7 @@ class BaseFigshareProvider(provider.BaseProvider):
 
         return file_id
 
-    async def _make_file_placeholder(self, article_id, name, size):
+    async def _make_file_placeholder(self, article_id: str, name: str, size: int) -> str:
         """Create a placeholder for a file to be uploaded later.  Takes the id of the parent
         article, a name for the file, and the size.  Returns the id set aside for the file.
 
@@ -270,7 +279,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         file_json = await file_resp.json()
         return file_json['location'].rsplit('/', 1)[1]
 
-    async def _get_file_upload_url(self, article_id, file_id):
+    async def _get_file_upload_url(self, article_id: str, file_id: str) -> Tuple[str, List]:
         """Request an upload url and partitioning spec from Figshare.
         See: https://docs.figshare.com/api/file_uploader/
 
@@ -297,7 +306,12 @@ class BaseFigshareProvider(provider.BaseProvider):
         parts_json = await parts_resp.json()
         return upload_url, parts_json['parts']  # str, list
 
-    async def _upload_file_parts(self, stream, upload_url, parts):
+    async def _upload_file_parts(
+            self,
+            stream: BaseStream,
+            upload_url: str,
+            parts: List[]
+    ) -> None:
         """Takes a stream, the upload url, and a list of parts to upload, and send the chunks
         dictated by ``parts`` to figshare.
         See: https://docs.figshare.com/api/file_uploader/
@@ -321,7 +335,7 @@ class BaseFigshareProvider(provider.BaseProvider):
             )
             await upload_response.release()
 
-    async def _mark_upload_complete(self, article_id, file_id):
+    async def _mark_upload_complete(self, article_id: str, file_id: str) -> None:
         """Signal to Figshare that all of the parts of the file have been uploaded successfully.
         See: https://docs.figshare.com/api/file_uploader/
 
@@ -341,7 +355,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path: WaterButlerPath, **kwargs) -> FigsharePath:
         """Take a string path from the url and attempt to map it to an entity within this project.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
         Otherwise throws a 404 Not Found. Will also assert that the entity type inferred from the
@@ -403,7 +417,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         raise exceptions.NotFoundError('This article is not configured as a folder defined_type. '
                                        '{} not found.'.format(path))
 
-    async def validate_path(self, path, **kwargs):
+    async def validate_path(self, path: WaterButlerPath, **kwargs) -> FigsharePath:
         """Take a string path from the url and attempt to map it to an entity within this project.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
         Otherwise returns a FigsharePath with empty identifiers.
@@ -483,7 +497,12 @@ class FigshareProjectProvider(BaseFigshareProvider):
         # Return for v0 folder creation
         return FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
 
-    async def revalidate_path(self, parent_path, child_name, folder):
+    async def revalidate_path(
+        self,
+        parent_path: WaterButlerPath,
+        child_name: str,
+        folder: bool
+    ) -> FigsharePath:
         """Look for file or folder named ``child_name`` under ``parent_path``. If it finds a match,
         it returns a FigsharePath object with the appropriate ids set.  Otherwise, it returns a
         FigsharePath where the ids are set to ``None``.
@@ -543,7 +562,12 @@ class FigshareProjectProvider(BaseFigshareProvider):
         return parent_path.child(child_name, _id=child_id, folder=folder,
                                  parent_is_folder=parent_is_folder)
 
-    async def upload(self, stream, path, conflict='replace', **kwargs):
+    async def upload(
+        self,
+        stream: BaseStream,
+        path: WaterButlerPath,
+        conflict: str='replace', **kwargs
+    ) -> dict:
         """Upload a file to provider root or to an article whose defined_type is
         configured to represent a folder.
 
@@ -597,7 +621,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         return metadata, True
 
-    async def create_folder(self, path, **kwargs):
+    async def create_folder(self, path: WaterButlerPath, **kwargs) -> FigsherFolderMetadata:
         """Create a folder at ``path``. Returns a `FigshareFolderMetadata` object if successful.
 
         :param FigsharePath path: FigsharePath representing the folder to create
@@ -625,7 +649,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         return FigshareFolderMetadata(article_json)
 
-    async def delete(self, path, confirm_delete=0, **kwargs):
+    async def delete(self, path: WaterButlerPath, confirm_delete: int=0, **kwargs) -> None:
         """Delete the entity at ``path``.
 
         :param FigsharePath path: Path to be deleted
@@ -675,7 +699,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         )
         await delete_article_response.release()
 
-    async def metadata(self, path, **kwargs):
+    async def metadata(self, path: WaterButlerPath, **kwargs):
         """Return metadata for entity identified by ``path`` under the parent project.
 
         :param FigsharePath path: entity whose metadata will be returned
@@ -720,7 +744,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         else:
             raise exceptions.NotFoundError('{} is not a valid path.'.format(path))
 
-    async def _get_article_metadata(self, article_id, is_public: bool):
+    async def _get_article_metadata(self, article_id: str, is_public: bool) -> FigshareMetadata:
         """Return Figshare*Metadata object for given article_id. Returns a FolderMetadata object
         for filesets, a FileMetadat object for other article types, and ``None`` if the article
         is not a fileset and has no files attached.
@@ -778,7 +802,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         return all_articles
 
-    async def _create_article(self, data):
+    async def _create_article(self, data: dict) -> str:
         """Create an article placeholder with the properties given in ``data``.  Returns the id of
         the new article. See https://docs.figshare.com/api/articles/#create-a-new-article for
         valid properties.
@@ -801,10 +825,16 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
 class FigshareArticleProvider(BaseFigshareProvider):
 
-    def __init__(self, auth, credentials, settings, child=False):
+    def __init__(
+        self,
+        auth: dict,
+        credentials: dict,
+        settings: dict,
+        child: bool=False
+    ) -> None:
         super().__init__(auth, credentials, settings)
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path: WaterButlerPath, **kwargs) -> FigsharePath:
         """Take a string path from the url and attempt to map it to an entity within this article.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
         Otherwise throws a 404 Not Found. Will also assert that the entity type inferred from the
@@ -831,7 +861,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
         return FigsharePath('/' + file_json['name'], _ids=('', file_id), folder=False,
                             is_public=False)
 
-    async def validate_path(self, path, **kwargs):
+    async def validate_path(self, path: str, **kwargs) -> FigsharePath:
         """Take a string path from the url and attempt to map it to an entity within this article.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
         Otherwise returns a FigsharePath with empty identifiers.
@@ -869,7 +899,12 @@ class FigshareArticleProvider(BaseFigshareProvider):
         await resp.release()
         return FigsharePath('/' + file_id, _ids=('', ''), folder=False, is_public=False)
 
-    async def revalidate_path(self, parent_path, child_name, folder: bool=False):
+    async def revalidate_path(
+        self,
+        parent_path: FigsharePath,
+        child_name: str,
+        folder: bool=False
+    ) -> WaterButlerPath:
         """Attempt to get child's id and return FigsharePath of child.
 
         ``revalidate_path`` is used to check for the existance of a child_name/folder
@@ -913,7 +948,13 @@ class FigshareArticleProvider(BaseFigshareProvider):
         return parent_path.child(child_name, _id=child_id, folder=folder,
                                  parent_is_folder=parent_is_folder)
 
-    async def upload(self, stream, path, conflict='replace', **kwargs):
+    async def upload(
+        self,
+        stream: StreamReader,
+        path: FigsharePath,
+        conflict: str='replace',
+        **kwargs
+    ) -> Tuple[WaterButlerMetadata, bool]:
         """Upload a file to provider root or to an article whose defined_type is
         configured to represent a folder.
 
@@ -943,10 +984,15 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
         return metadata, True
 
-    async def create_folder(self, path, **kwargs):
+    async def create_folder(self, path: WaterButlerPath, **kwargs):
         raise exceptions.CreateFolderError('Cannot create folders within articles.', code=400)
 
-    async def delete(self, path, confirm_delete=0, **kwargs):
+    async def delete(
+        self,
+        path: FigsharePath,
+        confirm_delete: int=0,
+        **kwargs
+    ) -> None:
         """Delete the file at ``path``. If ``path`` is ``/`` and ``confirm_delete`` is ``1``, then
         delete all of the files within the article, but not the article itself.
 
@@ -971,7 +1017,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
         await self._delete_file(path.parts[-1]._id)
 
-    async def metadata(self, path, **kwargs):
+    async def metadata(self, path: FigsharePath, **kwargs) -> FigshareMetadata:
         """Return metadata for entity identified by ``path``. May be the containing article or
         a file in a fileset article.
 
@@ -992,17 +1038,18 @@ class FigshareArticleProvider(BaseFigshareProvider):
         # Invalid path, e.g. /422313/67709/1234
         raise exceptions.NotFoundError(str(path))
 
-    async def _delete_container_contents(self):
+    async def _delete_container_contents(self) -> None:
         """Delete files within the containing article."""
         article = await self._get_article()
         for file in article['files']:
             await self._delete_file(str(file['id']))
 
-    async def _get_article(self, is_owned=True):
+    async def _get_article(self, is_owned: bool=True) -> dict:
         """Get the metadata for the container article. If the article is a public article not owned
         by the credentialed user, the request must be sent to a different endpoint.
 
         :param bool is_owned: Is this article owned by the credentialed user? Default: ``True``
+        :rtype dict:
         """
         resp = await self.make_request(
             'GET',
@@ -1011,11 +1058,12 @@ class FigshareArticleProvider(BaseFigshareProvider):
         )
         return await resp.json()
 
-    async def _delete_file(self, file_id):
+    async def _delete_file(self, file_id: str) -> None:
         """Delete a file from the root article. Docs:
         https://docs.figshare.com/api/articles/#delete-file-from-article
 
         :param str file: the id of the file to delete
+        :rtype None:
         """
         resp = await self.make_request(
             'DELETE',
