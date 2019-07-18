@@ -1445,3 +1445,151 @@ class TestReadOnlyProvider:
 
     def test_can_intra_copy(self, provider):
         assert provider.can_intra_copy(provider) is False
+
+
+class TestPermissionProvider:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_folder_with_full_permission(self, provider, file_stream, root_provider_fixtures):
+        dir = u'スキャン結果'
+        upload_id = '7'
+        item = root_provider_fixtures['list_file']['items'][0]
+        path = WaterButlerPath('/{0}/birdie.jpg'.format(dir), _ids=(provider.folder['id'], None))
+
+        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                       upload_id=upload_id)
+
+        aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+
+        provider.permissions[dir] = ['WRITABLE', 'VISIBLE']
+
+        _, created = await provider.upload(file_stream, path)
+        assert created is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_folder_with_not_visible_permission(self, provider, file_stream,
+                                                             root_provider_fixtures):
+        dir = u'スキャン結果'
+        upload_id = '7'
+        item = root_provider_fixtures['list_file']['items'][0]
+        path = WaterButlerPath('/{0}/birdie.jpg'.format(dir), _ids=(provider.folder['id'], None))
+
+        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                                  upload_id=upload_id)
+
+        aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+
+        provider.permissions[dir] = ['WRITABLE']
+
+        _, created = await provider.upload(file_stream, path)
+        assert created is True
+
+    @pytest.mark.asyncio
+    async def test_create_folder_with_not_writable_permission(self, provider, file_stream):
+        dir = u'スキャン結果'
+        path = WaterButlerPath('/{0}/birdie.jpg'.format(dir), _ids=(provider.folder['id'], None))
+
+        provider.permissions[dir] = ['VISIBLE']
+
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            await provider.upload(file_stream, path)
+        assert e.value.code == 501
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_folder_with_not_writable_other_dir_permission(self, provider, file_stream,
+                                                                        root_provider_fixtures):
+        dir = u'スキャン結果'
+        other_dir = u'生データ'
+        upload_id = '7'
+        item = root_provider_fixtures['list_file']['items'][0]
+        path = WaterButlerPath('/{0}/birdie.jpg'.format(dir), _ids=(provider.folder['id'], None))
+
+        start_upload_url = provider._build_upload_url('files', uploadType='resumable')
+        finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
+                                                                  upload_id=upload_id)
+
+        aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
+        aiohttpretty.register_uri('POST', start_upload_url,
+                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+
+        provider.permissions[dir] = ['WRITABLE']
+        provider.permissions[other_dir] = ['VISIBLE']
+
+        _, created = await provider.upload(file_stream, path)
+        assert created is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_folder_metadata_with_full_permission(self, provider, root_provider_fixtures):
+        path = await provider.validate_path('/')
+        query = provider._build_query(provider.folder['id'])
+        list_file_url = provider.build_url('files', q=query, alt='json', maxResults=1000)
+        aiohttpretty.register_json_uri('GET', list_file_url,
+                                       body=root_provider_fixtures['list_file'])
+        item = root_provider_fixtures['list_file']['items'][0]
+
+        provider.permissions[item['title']] = ['WRITABLE', 'VISIBLE']
+
+        result = await provider.metadata(path)
+
+        expected = IQBRIMSFileMetadata(item, path.child(item['title']))
+        assert result == [expected]
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_folder_metadata_with_not_visible_permission(self, provider, root_provider_fixtures):
+        path = await provider.validate_path('/')
+        query = provider._build_query(provider.folder['id'])
+        list_file_url = provider.build_url('files', q=query, alt='json', maxResults=1000)
+        aiohttpretty.register_json_uri('GET', list_file_url,
+                                       body=root_provider_fixtures['list_file'])
+        item = root_provider_fixtures['list_file']['items'][0]
+
+        provider.permissions[item['title']] = ['WRITABLE']
+
+        result = await provider.metadata(path)
+        assert result == []
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_folder_metadata_with_not_writable_permission(self, provider, root_provider_fixtures):
+        path = await provider.validate_path('/')
+        query = provider._build_query(provider.folder['id'])
+        list_file_url = provider.build_url('files', q=query, alt='json', maxResults=1000)
+        aiohttpretty.register_json_uri('GET', list_file_url,
+                                       body=root_provider_fixtures['list_file'])
+        item = root_provider_fixtures['list_file']['items'][0]
+
+        provider.permissions[item['title']] = ['VISIBLE']
+
+        result = await provider.metadata(path)
+
+        expected = IQBRIMSFileMetadata(item, path.child(item['title']))
+        assert result == [expected]
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_folder_metadata_with_not_visible_other_permission(self, provider, root_provider_fixtures):
+        path = await provider.validate_path('/')
+        query = provider._build_query(provider.folder['id'])
+        list_file_url = provider.build_url('files', q=query, alt='json', maxResults=1000)
+        aiohttpretty.register_json_uri('GET', list_file_url,
+                                       body=root_provider_fixtures['list_file'])
+        item = root_provider_fixtures['list_file']['items'][0]
+
+        provider.permissions[item['title']] = ['VISIBLE']
+        provider.permissions[item['title'] + '_other'] = []
+
+        result = await provider.metadata(path)
+
+        expected = IQBRIMSFileMetadata(item, path.child(item['title']))
+        assert result == [expected]
