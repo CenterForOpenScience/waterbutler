@@ -584,19 +584,27 @@ class BoxProvider(provider.BaseProvider):
         API Docs: https://developer.box.com/reference#create-session-new-file
         """
 
+        # During chunked upload session creation, WB should EITHER provide the ``path.identifier``
+        # (file ID) in the URL if the file already exists OR provide the ``path.parent.identifier``
+        # (parent folder ID) in the data payload.  In addition, providing both will get a 400 with
+        # error "multiple_destinations".  Moreover, providing the parent folder ID when the file
+        # exists will get a 409 with error "item_name_in_use".  Finally, chunked upload never asks
+        # user to confirm file conflicts and just overwrites.
+        data = {}
         if path.identifier is not None:
             segments = ['files', path.identifier, 'upload_sessions']
         else:
             segments = ['files', 'upload_sessions']
+            data['folder_id'] = path.parent.identifier
+        data.update({
+            'file_size': stream.size,
+            'file_name': path.name,
+        })
 
         async with self.request(
             'POST',
             self._build_upload_url(*segments),
-            data=json.dumps({
-                'folder_id': self.folder,
-                'file_size': stream.size,
-                'file_name': path.name
-            }),
+            data=json.dumps(data),
             headers={'Content-Type': 'application/json'},
             expects=(201, ),
             throws=exceptions.UploadError,
