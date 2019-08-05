@@ -299,6 +299,39 @@ def build_folder_params(path):
     return {'prefix': path.path, 'delimiter': '/'}
 
 
+class TestProviderConstruction:
+
+    def test_https(self, auth, credentials, settings):
+        provider = S3CompatProvider(auth, {'host': 'securehost',
+                                           'access_key': 'a',
+                                           'secret_key': 's'}, settings)
+        assert provider.connection.is_secure
+        assert provider.connection.host == 'securehost'
+        assert provider.connection.port == 443
+
+        provider = S3CompatProvider(auth, {'host': 'securehost:443',
+                                           'access_key': 'a',
+                                           'secret_key': 's'}, settings)
+        assert provider.connection.is_secure
+        assert provider.connection.host == 'securehost'
+        assert provider.connection.port == 443
+
+    def test_http(self, auth, credentials, settings):
+        provider = S3CompatProvider(auth, {'host': 'normalhost:80',
+                                           'access_key': 'a',
+                                           'secret_key': 's'}, settings)
+        assert not provider.connection.is_secure
+        assert provider.connection.host == 'normalhost'
+        assert provider.connection.port == 80
+
+        provider = S3CompatProvider(auth, {'host': 'normalhost:8080',
+                                           'access_key': 'a',
+                                           'secret_key': 's'}, settings)
+        assert not provider.connection.is_secure
+        assert provider.connection.host == 'normalhost'
+        assert provider.connection.port == 8080
+
+
 class TestValidatePath:
 
     @pytest.mark.asyncio
