@@ -5,6 +5,7 @@ import typing
 import hashlib
 import logging
 
+from waterbutler import settings as wb_settings
 from waterbutler.core import utils
 from waterbutler.core import signing
 from waterbutler.core import streams
@@ -113,6 +114,18 @@ class OSFStorageProvider(provider.BaseProvider):
             return base.child(data.name, _id=data.path.strip('/'), folder=folder)
         except StopIteration:
             return base.child(path, folder=folder)
+
+    async def get_quota(self):
+        """Get the quota information
+
+        If the creator of the project doesn't have enough quota, we invalidate the upload request.
+        """
+        async with self.signed_request(
+            'GET',
+            '{}/api/v1/project/{}/creator_quota/'.format(wb_settings.OSF_URL, self.nid),
+            expects=(200, )
+        ) as resp:
+            return await resp.json()
 
     def make_provider(self, settings):
         """Requests on different files may need to use different providers,
@@ -235,7 +248,6 @@ class OSFStorageProvider(provider.BaseProvider):
         Finally, WB constructs its metadata response and sends that back to the original request
         issuer.
         """
-
         metadata = await self._send_to_storage_provider(stream, path, **kwargs)
         metadata = metadata.serialized()
 

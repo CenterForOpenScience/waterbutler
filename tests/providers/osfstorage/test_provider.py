@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 import aiohttpretty
 
+from waterbutler import settings as wb_settings
 from waterbutler.core import metadata
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
@@ -672,6 +673,11 @@ class TestUploads:
         provider, inner_provider = provider_and_mock_one
         inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())
 
+        url, _, params = provider.build_signed_url(
+            'GET', '{}/api/v1/project/foo/creator_quota/'.format(wb_settings.OSF_URL))
+        quota = {'max': 10000, 'used': 0}
+        aiohttpretty.register_json_uri('GET', url, body=quota, params=params)
+
         res, created = await provider.upload(file_stream, upload_path)
 
         assert created is True
@@ -694,6 +700,11 @@ class TestUploads:
                                    upload_path, upload_response, mock_time):
         self.patch_uuid(monkeypatch)
         provider, inner_provider = provider_and_mock_one
+
+        url, _, params = provider.build_signed_url(
+            'GET', '{}/api/v1/project/foo/creator_quota/'.format(wb_settings.OSF_URL))
+        quota = {'max': 10000, 'used': 0}
+        aiohttpretty.register_json_uri('GET', url, body=quota, params=params)
 
         url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
 
@@ -729,6 +740,11 @@ class TestUploads:
         self.patch_uuid(monkeypatch)
         provider, inner_provider = provider_and_mock_one
 
+        url, _, params = provider.build_signed_url(
+            'GET', '{}/api/v1/project/foo/creator_quota/'.format(wb_settings.OSF_URL))
+        quota = {'max': 10000, 'used': 0}
+        aiohttpretty.register_json_uri('GET', url, body=quota, params=params)
+
         url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
 
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=500)
@@ -743,6 +759,12 @@ class TestUploads:
                                 upload_response, mock_time):
         self.patch_uuid(monkeypatch)
         provider, inner_provider = provider_and_mock_one
+
+        url, _, params = provider.build_signed_url(
+            'GET', '{}/api/v1/project/foo/creator_quota/'.format(wb_settings.OSF_URL))
+        quota = {'max': 10000, 'used': 0}
+        aiohttpretty.register_json_uri('GET', url, body=quota, params=params)
+
         path = WaterButlerPath('/{}'.format(upload_response['data']['name']),
                                _ids=('Test', upload_response['data']['id']))
         url = 'https://waterbutler.io/{}/children/'.format(path.parent.identifier)
@@ -968,3 +990,23 @@ class TestCrossRegionCopy:
         src_provider.can_intra_copy.assert_called_once_with(dst_provider, src_path)
         src_provider.intra_copy.assert_called_once_with(dst_provider, src_path, dest_path)
         src_provider.download.assert_not_called()
+
+
+class TestQuota:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_get_quota(self, provider_and_mock_one):
+
+        provider, inner_provider = provider_and_mock_one
+        inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())
+
+        url, _, params = provider.build_signed_url(
+            'GET', '{}/api/v1/project/foo/creator_quota/'.format(wb_settings.OSF_URL))
+        quota = {'max': 10000, 'used': 5000}
+        aiohttpretty.register_json_uri('GET', url, body=quota, params=params)
+
+        quota = await provider.get_quota()
+
+        assert quota['max'] == 10000
+        assert quota['used'] == 5000

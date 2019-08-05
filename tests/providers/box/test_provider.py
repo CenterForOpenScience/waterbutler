@@ -610,7 +610,7 @@ class TestMetadata:
     async def test_must_not_be_none(self, provider):
         path = WaterButlerPath('/Goats', _ids=(provider.folder, None))
 
-        with pytest.raises(exceptions.NotFoundError) as e:
+        with pytest.raises(exceptions.MetadataError) as e:
             await provider.metadata(path)
 
         assert e.value.code == 404
@@ -745,7 +745,7 @@ class TestMetadata:
     async def test_metadata_missing(self, provider):
         path = WaterButlerPath('/Something', _ids=(provider.folder, None))
 
-        with pytest.raises(exceptions.NotFoundError) as exc:
+        with pytest.raises(exceptions.MetadataError) as exc:
             await provider.metadata(path)
 
         assert exc.value.code == HTTPStatus.NOT_FOUND

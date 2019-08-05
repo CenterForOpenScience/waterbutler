@@ -91,6 +91,13 @@ class UnsupportedActionError(WaterButlerError):
                          code=HTTPStatus.BAD_REQUEST, is_user_error=True)
 
 
+class NotEnoughQuotaError(WaterButlerError):
+    """The user does not have enough quota to upload a file
+    """
+    def __init__(self, message, code=HTTPStatus.NOT_ACCEPTABLE):
+        super().__init__(message, code=code)
+
+
 class PluginError(WaterButlerError):
     """WaterButler-related errors raised from a plugin, such as an auth handler or provider, should
     inherit from `PluginError`.

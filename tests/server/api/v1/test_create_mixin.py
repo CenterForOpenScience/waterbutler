@@ -24,6 +24,39 @@ class TestValidatePut:
         handler.get_query_argument.assert_called_once_with('name', default=None)
 
     @pytest.mark.asyncio
+    async def test_postvalidate_quota_ok(self, handler):
+        handler.path = WaterButlerPath('/file')
+        handler.kind = 'file'
+        handler.get_query_argument = mock.Mock(return_value=None)
+        handler.provider.NAME = 'osfstorage'
+        handler.provider.get_quota = MockCoroutine(return_value={'used': 0, 'max': 10000})
+        handler.request.headers = {'Content-Length': 5000}
+
+        await handler.postvalidate_put()
+
+        assert handler.target_path == handler.path
+        handler.get_query_argument.assert_called_once_with('name', default=None)
+        handler.provider.get_quota.assert_called_once_with()
+
+    @pytest.mark.asyncio
+    async def test_postvalidate_quota_denied(self, handler):
+        handler.path = WaterButlerPath('/file')
+        handler.kind = 'file'
+        handler.get_query_argument = mock.Mock(return_value=None)
+        handler.provider.NAME = 'osfstorage'
+        handler.provider.get_quota = MockCoroutine(return_value={'used': 8000, 'max': 10000})
+        handler.request.headers = {'Content-Length': 5000}
+
+        with pytest.raises(exceptions.NotEnoughQuotaError) as exc:
+            await handler.postvalidate_put()
+
+        assert exc.value.message == 'You do not have enough available quota.'
+
+        assert handler.target_path == handler.path
+        handler.get_query_argument.assert_called_once_with('name', default=None)
+        handler.provider.get_quota.assert_called_once_with()
+
+    @pytest.mark.asyncio
     async def test_postvalidate_put_folder(self, handler):
         handler.path = WaterButlerPath('/Folder1/')
         handler.kind = 'folder'
@@ -231,4 +264,3 @@ class TestUploadFile:
         handler.write.assert_called_once_with({
             'data': mock_file_metadata.json_api_serialized('3rqws')
         })
-
