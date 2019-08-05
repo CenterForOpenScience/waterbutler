@@ -395,51 +395,114 @@ class TestUpload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_create_upload_session_new_file(self, provider, root_provider_fixtures,
-                                                  file_stream):
-        """Check that the chunked upload session creation makes a request to the correct url when
-        creating a new file.
+    async def test_create_upload_session_new_file(self, provider, file_stream):
+        """Check that the chunked upload session creation is sending the proper data payload to
+        the appropriate URL when creating a new file in the root of the project.
         """
 
         path = WaterButlerPath('/newfile', _ids=(provider.folder, None))
         session_url = provider._build_upload_url('files', 'upload_sessions')
 
-        create_session_metadata = root_provider_fixtures['create_session_metadata']
         aiohttpretty.register_json_uri(
             'POST',
             session_url,
             status=201,
-            body=create_session_metadata
+            body={'dummy': 'data'},
         )
 
-        session_data = await provider._create_chunked_upload_session(path, file_stream)
-
-        assert root_provider_fixtures['create_session_metadata'] == session_data
-        assert aiohttpretty.has_call(method='POST', uri=session_url)
+        await provider._create_chunked_upload_session(path, file_stream)
+        assert aiohttpretty.has_call(
+            method='POST',
+            uri=session_url,
+            data=json.dumps({
+                'folder_id': provider.folder,
+                'file_name': 'newfile',
+                'file_size': 38,
+            }, sort_keys=True),
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_create_upload_session_existing_file(self, provider, root_provider_fixtures,
-                                                       file_stream):
-        """Check that the chunked upload session creation makes a request to the correct url when
-        updating an existing file.
+    async def test_create_upload_session_new_file_nonroot(self, provider, file_stream):
+        """Check that the chunked upload session creation is sending the proper data payload to
+        the appropriate URL when creating a new file in a subdirectory.
+        """
+
+        subfolder_id = '444444444'
+        path = WaterButlerPath('/subdir/newfile', _ids=(provider.folder, subfolder_id, None))
+        session_url = provider._build_upload_url('files', 'upload_sessions')
+
+        aiohttpretty.register_json_uri(
+            'POST',
+            session_url,
+            status=201,
+            body={'dummy': 'data'},
+        )
+
+        await provider._create_chunked_upload_session(path, file_stream)
+        assert aiohttpretty.has_call(
+            method='POST',
+            uri=session_url,
+            data=json.dumps({
+                'folder_id': subfolder_id,
+                'file_name': 'newfile',
+                'file_size': 38,
+            }, sort_keys=True),
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_upload_session_existing_file(self, provider, file_stream):
+        """Check that the chunked upload session creation is sending the proper data payload to
+        the appropriate URL when updating an existing file in the root of the project.
         """
 
         path = WaterButlerPath('/newfile', _ids=(provider.folder, '2345'))
 
         session_url = 'https://upload.box.com/api/2.0/files/2345/upload_sessions'
-        create_session_metadata = root_provider_fixtures['create_session_metadata']
         aiohttpretty.register_json_uri(
             'POST',
             session_url,
             status=201,
-            body=create_session_metadata
+            body={'dummy': 'data'},
         )
 
-        session_data = await provider._create_chunked_upload_session(path, file_stream)
+        await provider._create_chunked_upload_session(path, file_stream)
+        assert aiohttpretty.has_call(
+            method='POST',
+            uri=session_url,
+            data=json.dumps({
+                'file_name': 'newfile',
+                'file_size': 38,
+            }, sort_keys=True),
+        )
 
-        assert root_provider_fixtures['create_session_metadata'] == session_data
-        assert aiohttpretty.has_call(method='POST', uri=session_url)
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_upload_session_existing_file_nonroot(self, provider, file_stream):
+        """Check that the chunked upload session creation is sending the proper data payload to
+        the appropriate URL when updating an existing file in a subdirectory.
+        """
+
+        path = WaterButlerPath('/subdir/newfile', _ids=(provider.folder, '44444444', '2345'))
+
+        session_url = 'https://upload.box.com/api/2.0/files/2345/upload_sessions'
+        aiohttpretty.register_json_uri(
+            'POST',
+            session_url,
+            status=201,
+            body={'dummy': 'data'},
+        )
+
+        await provider._create_chunked_upload_session(path, file_stream)
+        assert aiohttpretty.has_call(
+            method='POST',
+            uri=session_url,
+            data=json.dumps({
+                'file_name': 'newfile',
+                'file_size': 38,
+            }, sort_keys=True),
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

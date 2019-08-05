@@ -604,7 +604,7 @@ class BoxProvider(provider.BaseProvider):
         async with self.request(
             'POST',
             self._build_upload_url(*segments),
-            data=json.dumps(data),
+            data=json.dumps(data, sort_keys=True),
             headers={'Content-Type': 'application/json'},
             expects=(201, ),
             throws=exceptions.UploadError,
