@@ -30,3 +30,6 @@ HMAC_SECRET = config.get('HMAC_SECRET')
 if not settings.DEBUG:
     assert HMAC_SECRET, 'HMAC_SECRET must be specified when not in debug mode'
 HMAC_SECRET = (HMAC_SECRET or 'changeme').encode('utf-8')
+
+REDIS_DOMAIN = config.get('WB_REDIS_DOMAIN', '192.168.168.167')
+REDIS_PORT = config.get('WB_REDIS_PORT', '6379')

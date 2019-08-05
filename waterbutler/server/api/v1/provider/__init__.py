@@ -12,10 +12,12 @@ from waterbutler.server.api.v1 import core
 from waterbutler.core import remote_logging
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.log_payload import LogPayload
+from waterbutler.core.exceptions import TooManyRequests
 from waterbutler.core.streams import RequestStreamReader
 from waterbutler.server.api.v1.provider.create import CreateMixin
 from waterbutler.server.api.v1.provider.metadata import MetadataMixin
 from waterbutler.server.api.v1.provider.movecopy import MoveCopyMixin
+from waterbutler.server.api.v1.provider.ratelimiting import RateLimitingMixin
 
 logger = logging.getLogger(__name__)
 auth_handler = AuthHandler(settings.AUTH_HANDLERS)
@@ -30,13 +32,20 @@ def list_or_value(value):
     return [item.decode('utf-8') for item in value]
 
 
+# TODO: the order should be reverted though it doesn't have any functional effect for this class.
 @tornado.web.stream_request_body
-class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixin):
+class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixin, RateLimitingMixin):
     PRE_VALIDATORS = {'put': 'prevalidate_put', 'post': 'prevalidate_post'}
     POST_VALIDATORS = {'put': 'postvalidate_put'}
     PATTERN = r'/resources/(?P<resource>(?:\w|\d)+)/providers/(?P<provider>(?:\w|\d)+)(?P<path>/.*/?)'
 
     async def prepare(self, *args, **kwargs):
+
+        logger.info('>>> preparing request ...')
+        if self.rate_limit():
+            raise TooManyRequests(message="Requests are rate-limited until next reset time.")
+        logger.info('>>> rate limiting check passed ...')
+
         method = self.request.method.lower()
 
         # TODO Find a nicer way to handle this

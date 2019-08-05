@@ -53,6 +53,20 @@ class WaterButlerError(Exception):
         return '{}, {}'.format(self.code, self.message)
 
 
+class TooManyRequests(WaterButlerError):
+    """Indicates the user has sent too many requests in a given amount of time ("rate limiting").
+
+    TODO 1: Return a Retry-After header telling the user how long to wait before making a new one
+    TODO 2: Return customized Waterbutler headers with more rate-limiting details
+            * X-Waterbutler-RateLimiting-Window
+            * X-Waterbutler-RateLimiting-Limit
+            * X-Waterbutler-RateLimiting-Remaining
+            * X-Waterbutler-RateLimiting-Reset
+    """
+    def __init__(self, message, code=HTTPStatus.TOO_MANY_REQUESTS):
+        super().__init__(message, code=code)
+
+
 class InvalidParameters(WaterButlerError):
     """Errors regarding incorrect data being sent to a method should raise either this
     Exception or a subclass thereof.  Defaults status code to 400, Bad Request.

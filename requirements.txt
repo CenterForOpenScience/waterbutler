@@ -12,6 +12,7 @@ pyjwt==1.4.0
 python-dateutil==2.5.3
 pytz==2017.2
 raven==5.27.0
+redis==3.3.4
 setuptools==37.0.0
 stevedore==1.2.0
 tornado==4.3
