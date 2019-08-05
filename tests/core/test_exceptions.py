@@ -38,6 +38,8 @@ class TestExceptionSerialization:
         exceptions.UninitializedRepositoryError,
         exceptions.UnexportableFileTypeError,
         exceptions.InvalidProviderConfigError,
+        exceptions.WaterButlerRedisError,
+        exceptions.TooManyRequests,
     ])
     def test_tolerate_dumb_signature(self, exception_class):
         """In order for WaterButlerError-inheriting exception classes to survive
