@@ -342,7 +342,7 @@ class BoxProvider(provider.BaseProvider):
                        path: WaterButlerPath, raw: bool=False, folder=False, revision=None,
                        **kwargs) -> Union[dict, BoxFileMetadata, List[BoxFolderMetadata]]:
         if path.identifier is None:
-            raise exceptions.NotFoundError(str(path))
+            raise exceptions.MetadataError('{} not found'.format(str(path)), code=404)
 
         if path.is_file:
             return await self._get_file_meta(path, revision=revision, raw=raw)

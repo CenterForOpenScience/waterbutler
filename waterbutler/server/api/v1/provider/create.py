@@ -88,6 +88,13 @@ class CreateMixin:
                 )
             self.target_path = self.path
 
+        # verify quota if it is osfstorage
+        if self.provider.NAME == 'osfstorage':
+            file_size = int(self.request.headers.get('Content-Length'))
+            quota = await self.provider.get_quota()
+            if quota['used'] + file_size > quota['max']:
+                raise exceptions.NotEnoughQuotaError('You do not have enough available quota.')
+
     async def create_folder(self):
         self.metadata = await self.provider.create_folder(self.target_path)
         self.set_status(201)
