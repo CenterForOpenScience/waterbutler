@@ -2,6 +2,13 @@
 ChangeLog
 *********
 
+19.0.1 (2019-08-07)
+===================
+- Fix: Fix bug in the Box provider that was causing files uploaded to subdirectories to end up in
+the project root instead.  This would NOT cause an accidental overwrite; if a file with the same
+name was already present in the project root, Box would throw a 409 Conflict error and refuse to
+proceed.
+
 19.0.0 (2019-06-11)
 ===================
 - Fix: Bitbucket has retired their v1 API.  Update the WaterButler provider to use v2 instead.
