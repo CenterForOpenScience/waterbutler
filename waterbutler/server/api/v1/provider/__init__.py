@@ -42,8 +42,9 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     async def prepare(self, *args, **kwargs):
 
         logger.info('>>> preparing request ...')
-        if self.rate_limit():
-            raise TooManyRequests(message="Requests are rate-limited until next reset time.")
+        limit_hit, data = self.rate_limit()
+        if limit_hit:
+            raise TooManyRequests(data=data)
         logger.info('>>> rate limiting check passed ...')
 
         method = self.request.method.lower()

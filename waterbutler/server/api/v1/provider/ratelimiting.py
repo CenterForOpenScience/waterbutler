@@ -26,7 +26,7 @@ class RateLimitingMixin:
         limit_check, redis_key = self.get_auth_naive()
         logger.info('>>> RATE LIMITING >>> check={} key={}'.format(limit_check, redis_key))
         if not limit_check:
-            return False
+            return False, None
 
         # TODO: no need to check existence by calling the get since incr works on null keys
         counter = self.redis_conn.get(redis_key)
@@ -35,15 +35,17 @@ class RateLimitingMixin:
             self.redis_conn.expire(redis_key, self.WINDOW_SIZE)
             logger.info('>>> RATE LIMITING >>> NEW >>> key={} '
                         'counter={} url={}'.format(redis_key, counter, self.request.full_url()))
-            return False
+            return False, None
         counter = self.redis_conn.incr(redis_key)
         if counter > self.WINDOW_LIMIT:
+            retry_after = self.redis_conn.ttl(redis_key)
             logger.info('>>> RATE LIMITING >>> FAIL >>> key={} '
                         'counter={} url={}'.format(redis_key, counter, self.request.full_url()))
-            return True
+            data = {'retry_after': int(retry_after), }
+            return True, data
         logger.info('>>> RATE LIMITING >>> PASS >>> '
                     'key={} counter={} url={}'.format(redis_key, counter, self.request.full_url()))
-        return False
+        return False, None
 
     def get_auth_naive(self):
         """ Get the obfuscated authentication / authorization credentials from the request.  Return

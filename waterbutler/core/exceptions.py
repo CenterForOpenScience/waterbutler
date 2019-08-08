@@ -1,7 +1,6 @@
 import json
 from http import HTTPStatus
 
-
 DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request to {response.url}'
 
 
@@ -56,15 +55,19 @@ class WaterButlerError(Exception):
 class TooManyRequests(WaterButlerError):
     """Indicates the user has sent too many requests in a given amount of time ("rate limiting").
 
-    TODO 1: Return a Retry-After header telling the user how long to wait before making a new one
-    TODO 2: Return customized Waterbutler headers with more rate-limiting details
-            * X-Waterbutler-RateLimiting-Window
-            * X-Waterbutler-RateLimiting-Limit
-            * X-Waterbutler-RateLimiting-Remaining
-            * X-Waterbutler-RateLimiting-Reset
+    TODO - Optional:    Return a few customized Waterbutler headers with rate-limiting details:
+                        * X-Waterbutler-RateLimiting-Window
+                        * X-Waterbutler-RateLimiting-Limit
+                        * X-Waterbutler-RateLimiting-Remaining
+                        * X-Waterbutler-RateLimiting-Reset
     """
-    def __init__(self, message, code=HTTPStatus.TOO_MANY_REQUESTS):
-        super().__init__(message, code=code)
+    def __init__(self, data):
+
+        message = {
+            'error': 'API rate-limiting active due to too many requests',
+            'headers': {'Retry-After': data['retry_after'], },
+        }
+        super().__init__(message, code=HTTPStatus.TOO_MANY_REQUESTS, is_user_error=True)
 
 
 class InvalidParameters(WaterButlerError):
