@@ -301,10 +301,10 @@ class GitHubProvider(provider.BaseProvider):
         else:
             return (await self._metadata_file(path, **kwargs))
 
-    async def revisions(self, path, sha=None, **kwargs):
+    async def revisions(self, path, **kwargs):
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=sha or path.file_sha),
+            self.build_repo_url('commits', path=path.path, sha=path.branch_ref),
             expects=(200, ),
             throws=exceptions.RevisionsError
         )
