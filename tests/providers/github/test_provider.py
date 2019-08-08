@@ -976,8 +976,7 @@ class TestMetadata:
             '/file.txt', _ids=[("master", metadata[0]['sha']), ('master', metadata[0]['sha'])]
         )
 
-        url = provider.build_repo_url('commits', path=path.path, sha=path.file_sha)
-
+        url = provider.build_repo_url('commits', path=path.path, sha='master')
         aiohttpretty.register_json_uri('GET', url, body=metadata)
 
         result = await provider.revisions(path)
