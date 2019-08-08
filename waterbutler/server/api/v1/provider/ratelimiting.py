@@ -1,4 +1,5 @@
 import redis
+import hashlib
 import logging
 
 from waterbutler.server import settings
@@ -75,23 +76,23 @@ class RateLimitingMixin:
         #       username-password auth and strictly rate-limit requests with no auth.
         if bearer_token:
             logger.info('>>> RATE LIMITING >>> AUTH:TOKEN >>> {}'.format(bearer_token))
-            return self._obfuscate_creds(bearer_token)
+            return 'TOKEN__{}'.format(self._obfuscate_creds(bearer_token))
         if basic_creds:
             logger.info('>>> RATE LIMITING >>> AUTH:BASIC >>> {}'.format(basic_creds))
-            return self._obfuscate_creds(basic_creds)
+            return 'BASIC__{}'.format(self._obfuscate_creds(basic_creds))
         # SECURITY WARNING: Must check cookie last since it can only be allowed when used alone!
         if osf_cookie:
             logger.info('>>> RATE LIMITING >>> AUTH:COOKIE >>> {}'.format(osf_cookie))
-            return self._obfuscate_creds(osf_cookie)
-        return remote_ip
+            return 'COOKIE_{}'.format(self._obfuscate_creds(osf_cookie))
+        logger.info('>>> RATE LIMITING >>> AUTH:NONE >>> {}'.format(remote_ip))
+        return 'NOAUTH_{}'.format(self._obfuscate_creds(remote_ip))
 
     @staticmethod
     def _obfuscate_creds(creds):
         """Obfuscate authentication/authorization credentials: cookie, access token and password.
 
-        It is not recommended to use the plain OSF cookie or the OAuth bearer token as key in redis.
-        It is evil to use the base64-encoded username and password as key since it is reversible.
+        It is not recommended to store the plain OSF cookie or the OAuth bearer token as key and it
+        is evil to store the base64-encoded username and password as key since it is reversible.
         """
 
-        # TODO: add obfuscation that doesn't break redis key
-        return creds
+        return hashlib.sha256(creds.encode('utf-8')).hexdigest().upper()
