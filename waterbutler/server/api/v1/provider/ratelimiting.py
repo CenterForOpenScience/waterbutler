@@ -1,21 +1,21 @@
 import redis
 import logging
 
-from waterbutler.server.settings import REDIS_DOMAIN, REDIS_PORT
+from waterbutler.server import settings
 
 logger = logging.getLogger(__name__)
 
 
 class RateLimitingMixin:
+    """ Rate-limiting WB API with Redis using the "Fixed Window" algorithm.
+    """
 
     def __init__(self):
 
-        # TODO: use settings instead
-        self.algorithm = 1  # use an integer to identify each algorithm
-        self.algorithm_name = 'fixed_window'  # use a simple algorithm for now
-        self.window_size = 3600  # 1 hour in seconds
-        self.window_limit = 3600  # allow a max of 3600 requests per hour
-        self.redis_conn = redis.Redis(host=REDIS_DOMAIN, port=REDIS_PORT)
+        # TODO: set different parameters for different types of auth
+        self.WINDOW_SIZE = settings.RATE_LIMITING_FIXED_WINDOW_SIZE
+        self.WINDOW_LIMIT = settings.RATE_LIMITING_FIXED_WINDOW_LIMIT
+        self.redis_conn = redis.Redis(host=settings.REDIS_DOMAIN, port=settings.REDIS_PORT)
 
     def rate_limit(self):
         """ Check with the WB Redis server on whether to rate-limit a request.  Return True if the
@@ -29,12 +29,12 @@ class RateLimitingMixin:
         counter = self.redis_conn.get(redis_key)
         if not counter:
             counter = self.redis_conn.incr(redis_key)
-            self.redis_conn.expire(redis_key, self.window_size)
+            self.redis_conn.expire(redis_key, self.WINDOW_SIZE)
             logger.info('>>> RATE LIMITING >>> NEW >>> key={} '
                         'counter={} url={}'.format(redis_key, counter, self.request.full_url()))
             return False
         counter = self.redis_conn.incr(redis_key)
-        if counter > self.window_limit:
+        if counter > self.WINDOW_LIMIT:
             logger.info('>>> RATE LIMITING >>> FAIL >>> key={} '
                         'counter={} url={}'.format(redis_key, counter, self.request.full_url()))
             return True
