@@ -1592,6 +1592,7 @@ class TestUtilities:
             'version': '7fd1a60b01f91b314f59955a4e4d4e80d8edf11d',
             'sha': 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391',
             'revision': 'bc1087ebfe8354a684bf9f8b75517784143dde86',
+            'branch': '71a892a5cd479bc73ae750b121c0d47a33028e66',
         }
 
         ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
@@ -1614,6 +1615,11 @@ class TestUtilities:
         assert ref == params['revision']
 
         del params['revision']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['branch']
+
+        del params['branch']
         ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
         assert ref_type == 'branch_name'
         assert ref == provider.default_branch
@@ -1660,8 +1666,14 @@ class TestUtilities:
         params = {
             'ref': 'quack',
             'version': 'ca39bcbf849231525ce9e775935fcb18ed477b5a',
+            'branch': 'tooth',
         }
 
         ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
         assert ref_type == 'commit_sha'
         assert ref == params['version']
+
+        del params['version']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['branch']

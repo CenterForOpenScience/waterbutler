@@ -1030,9 +1030,9 @@ class GitHubProvider(provider.BaseProvider):
             if possible_values[param] == '':
                 possible_values[param] = None
 
-        # look for commit SHA likes
+        # look for commit SHA likes ('branch' is least likely to be a sha)
         inferred_ref, ref_from = None, None
-        for param in possible_params:
+        for param in possible_params + ['branch']:
             v = possible_values[param]
             if v is not None and self._looks_like_sha(v):
                 inferred_ref = v
@@ -1042,7 +1042,7 @@ class GitHubProvider(provider.BaseProvider):
         if inferred_ref is not None:
             return inferred_ref, 'commit_sha', ref_from  # found a SHA!
 
-        # look for branch names
+        # look for branch names ('branch' is most likely to be a branchname)
         for param in ['branch'] + possible_params:
             v = possible_values[param]
             if v is not None:
