@@ -1075,7 +1075,10 @@ class GitHubProvider(provider.BaseProvider):
         return inferred_ref, 'branch_name', ref_from
 
     def _looks_like_sha(self, ref):
-        """Returns `True` if ``ref`` could be a valid SHA (i.e. is a valid hex number).
+        """Returns `True` if ``ref`` could be a valid SHA (i.e. is a valid hex number).  If ``True``
+        also checks to make sure ``ref`` is a valid number of characters, as GH doesn't like
+        abbreviated refs.  Currently only check for 40 characters (length of a sha1-name), but a
+        future git release will add support for 64-character sha256-names.
 
         :param str ref: the string to test
         :rtype: `bool`
@@ -1086,4 +1089,5 @@ class GitHubProvider(provider.BaseProvider):
         except (TypeError, ValueError):
             return False
 
-        return True
+        # 'in' instead of '==' b/c git shas will be changing in future git release.
+        return len(ref) in pd_settings.GITHUB_SHA_LENGTHS
