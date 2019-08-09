@@ -1714,3 +1714,13 @@ class TestUtilities:
             provider._interpret_query_parameters(**kwargs)
 
         assert exc.value.code == client.BAD_REQUEST
+
+    @pytest.mark.parametrize('ref,expected', [
+        ('ca39bcbf849231525ce9e775935fcb18ed477b5a', True),
+        ('ca39bcbf849231525ce9e775935fcb18ed477b5', False),  # one character short
+        ('bad', False),  # valid SHA, too short, must be branch
+        ('meow', False),  # not valid base 16, must be branch name
+        ('ca39bcbf849231525ce9e775935fcb18ed477b5x', False),  # 'x' not valid base16
+    ])
+    def test__looks_like_sha(self, provider, ref, expected):
+        assert provider._looks_like_sha(ref) == expected
