@@ -1,5 +1,6 @@
 import hashlib
 import logging
+from datetime import datetime, timedelta
 
 from redis import Redis
 from redis.exceptions import RedisError
@@ -43,7 +44,11 @@ class RateLimitingMixin:
                 raise WaterbutlerRedisError('TTL {}'.format(redis_key))
             logger.info('>>> RATE LIMITING >>> FAIL >>> key={} '
                         'counter={} url={}'.format(redis_key, counter, self.request.full_url()))
-            data = {'retry_after': int(retry_after), }
+            data = {
+                'retry_after': int(retry_after),
+                'remaining': 0,
+                'reset': str(datetime.now() + timedelta(seconds=int(retry_after))),
+            }
             return True, data
         elif counter == 1:
             # The key does not exist and `.incr()` returns 1 by default.
