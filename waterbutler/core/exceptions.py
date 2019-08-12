@@ -1,6 +1,7 @@
 import json
 from http import HTTPStatus
 
+
 DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request to {response.url}'
 
 
@@ -68,6 +69,17 @@ class TooManyRequests(WaterButlerError):
             'headers': {'Retry-After': data['retry_after'], },
         }
         super().__init__(message, code=HTTPStatus.TOO_MANY_REQUESTS, is_user_error=True)
+
+
+class WaterbutlerRedisError(WaterButlerError):
+    """Indicates the Redis server has returned an error. Returns HTTP 503 Service Unavailable.
+    """
+    def __init__(self, redis_command):
+
+        message = {
+            'error': 'The Redis server failed when processing command {}'.format(redis_command),
+        }
+        super().__init__(message, code=HTTPStatus.SERVICE_UNAVAILABLE, is_user_error=False)
 
 
 class InvalidParameters(WaterButlerError):
