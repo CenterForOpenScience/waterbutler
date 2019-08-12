@@ -1,6 +1,7 @@
-import redis
 import hashlib
 import logging
+
+from redis import Redis
 
 from waterbutler.server import settings
 
@@ -16,7 +17,7 @@ class RateLimitingMixin:
         # TODO: set different parameters for different types of auth
         self.WINDOW_SIZE = settings.RATE_LIMITING_FIXED_WINDOW_SIZE
         self.WINDOW_LIMIT = settings.RATE_LIMITING_FIXED_WINDOW_LIMIT
-        self.redis_conn = redis.Redis(host=settings.REDIS_DOMAIN, port=settings.REDIS_PORT)
+        self.redis_conn = Redis(host=settings.REDIS_DOMAIN, port=settings.REDIS_PORT)
 
     def rate_limit(self):
         """ Check with the WB Redis server on whether to rate-limit a request.  Return True if the
@@ -28,23 +29,23 @@ class RateLimitingMixin:
         if not limit_check:
             return False, None
 
-        # TODO: no need to check existence by calling the get since incr works on null keys
-        counter = self.redis_conn.get(redis_key)
-        if not counter:
-            counter = self.redis_conn.incr(redis_key)
-            self.redis_conn.expire(redis_key, self.WINDOW_SIZE)
-            logger.info('>>> RATE LIMITING >>> NEW >>> key={} '
-                        'counter={} url={}'.format(redis_key, counter, self.request.full_url()))
-            return False, None
         counter = self.redis_conn.incr(redis_key)
         if counter > self.WINDOW_LIMIT:
+            # The key exists and the limit has been reached.
             retry_after = self.redis_conn.ttl(redis_key)
             logger.info('>>> RATE LIMITING >>> FAIL >>> key={} '
                         'counter={} url={}'.format(redis_key, counter, self.request.full_url()))
             data = {'retry_after': int(retry_after), }
             return True, data
-        logger.info('>>> RATE LIMITING >>> PASS >>> '
-                    'key={} counter={} url={}'.format(redis_key, counter, self.request.full_url()))
+        elif counter == 1:
+            # The key does not exist and `.incr()` returns 1 by default.
+            self.redis_conn.expire(redis_key, self.WINDOW_SIZE)
+            logger.info('>>> RATE LIMITING >>> NEW >>> key={} '
+                        'counter={} url={}'.format(redis_key, counter, self.request.full_url()))
+        else:
+            # The key exists and the limit has not been reached.
+            logger.info('>>> RATE LIMITING >>> PASS >>> key={} '
+                        'counter={} url={}'.format(redis_key, counter, self.request.full_url()))
         return False, None
 
     def get_auth_naive(self):
