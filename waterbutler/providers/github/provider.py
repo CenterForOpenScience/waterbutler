@@ -1021,18 +1021,20 @@ class GitHubProvider(provider.BaseProvider):
         query during validation.  The latter is used for analytics.
         """
 
-        possible_params = ['ref', 'version', 'sha', 'revision']
+        all_possible_params = ['ref', 'version', 'sha', 'revision', 'branch']
 
         # empty string values should be made None
         possible_values = {}
-        for param in possible_params + ['branch']:
+        for param in all_possible_params:
             possible_values[param] = kwargs.get(param, '')
             if possible_values[param] == '':
                 possible_values[param] = None
 
-        # look for commit SHA likes ('branch' is least likely to be a sha)
         inferred_ref, ref_from = None, None
-        for param in possible_params + ['branch']:
+
+        # look for commit SHA likes ('branch' is least likely to be a sha)
+        sha_priority_order = ['ref', 'version', 'sha', 'revision', 'branch']
+        for param in sha_priority_order:
             v = possible_values[param]
             if v is not None and self._looks_like_sha(v):
                 inferred_ref = v
@@ -1043,7 +1045,8 @@ class GitHubProvider(provider.BaseProvider):
             return inferred_ref, 'commit_sha', ref_from  # found a SHA!
 
         # look for branch names ('branch' is most likely to be a branchname)
-        for param in ['branch'] + possible_params:
+        branch_priority_order = ['branch', 'ref', 'version', 'sha', 'revision']
+        for param in branch_priority_order:
             v = possible_values[param]
             if v is not None:
                 inferred_ref = v
