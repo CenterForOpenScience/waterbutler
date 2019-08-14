@@ -86,8 +86,6 @@ class GitHubProvider(provider.BaseProvider):
             self.default_branch = self._repo['default_branch']
 
         ref, ref_type, ref_from = self._interpret_query_parameters(**kwargs)
-        if isinstance(ref, list):
-            raise exceptions.InvalidParameters('Only one ref or branch may be given.')
         self.metrics.add('branch_ref_from', ref_from)
         self.metrics.add('ref_type', ref_type)
 
@@ -122,8 +120,6 @@ class GitHubProvider(provider.BaseProvider):
             self.default_branch = self._repo['default_branch']
 
         ref, ref_type, ref_from = self._interpret_query_parameters(**kwargs)
-        if isinstance(ref, list):
-            raise exceptions.InvalidParameters('Only one ref or branch may be given.')
         self.metrics.add('branch_ref_from', ref_from)
         self.metrics.add('ref_type', ref_type)
 
@@ -983,7 +979,7 @@ class GitHubProvider(provider.BaseProvider):
 
         return new_head
 
-    def _interpret_query_parameters(self, **kwargs):
+    def _interpret_query_parameters(self, **kwargs) -> Tuple[str, str, str]:
         """This one hurts.
 
         Over the life of WB, the github provider has accepted the following parameters to identify
@@ -1013,8 +1009,12 @@ class GitHubProvider(provider.BaseProvider):
           ``ref``, ``version``, ``sha``, ``revision``. ``branch`` is used by fangorn and so far
           appears to always be a branch name.  The others follow the same priority for commit SHAs.
 
-        * If none of the query parameters are present or contain a valid commit SHA/branch name, WB
-          will fall back to the default branch for the repo.
+        * If multiple values are passed for one param, that param will be ignored and the check will
+          move on to the next params.  If the only params found have multiple values, an error will
+          be thrown to warn the user not to do this.
+
+        * If none of the query parameters are present, WB will fall back to the default branch for
+          the repo.
 
         This method also returns the type of ref it found (``commit_sha`` or ``branch``) and a
         string identifying the source of ref.  The former is used to avoid making a branch-specific
@@ -1031,11 +1031,17 @@ class GitHubProvider(provider.BaseProvider):
                 possible_values[param] = None
 
         inferred_ref, ref_from = None, None
+        multiple_args_seen = False
 
         # look for commit SHA likes ('branch' is least likely to be a sha)
         sha_priority_order = ['ref', 'version', 'sha', 'revision', 'branch']
         for param in sha_priority_order:
             v = possible_values[param]
+
+            if isinstance(v, list):
+                multiple_args_seen = True
+                continue
+
             if v is not None and self._looks_like_sha(v):
                 inferred_ref = v
                 ref_from = 'query_{}'.format(param)
@@ -1048,12 +1054,21 @@ class GitHubProvider(provider.BaseProvider):
         branch_priority_order = ['branch', 'ref', 'version', 'sha', 'revision']
         for param in branch_priority_order:
             v = possible_values[param]
+
+            if isinstance(v, list):
+                multiple_args_seen = True
+                continue
+
             if v is not None:
                 inferred_ref = v
                 ref_from = 'query_{}'.format(param)
                 break
 
         if inferred_ref is None:
+            if multiple_args_seen:
+                raise exceptions.InvalidParameters('Multiple values provided for parameter '
+                                                   '"{}". Only one ref or branch may be '
+                                                   'given.'.format(ref_from))
             inferred_ref = self.default_branch
             ref_from = 'default_branch'
 
