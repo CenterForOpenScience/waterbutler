@@ -1677,3 +1677,40 @@ class TestUtilities:
         ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
         assert ref_type == 'branch_name'
         assert ref == params['branch']
+
+    @pytest.mark.parametrize('kwargs,expected', [
+        (
+            {'ref': ['foo', 'bar'], 'sha': 'ca39bcbf849231525ce9e775935fcb18ed477b5a'},
+            ('ca39bcbf849231525ce9e775935fcb18ed477b5a', 'commit_sha', 'query_sha'),
+        ),
+        (
+            {'sha': ['foo', 'bar'], 'ref': 'ca39bcbf849231525ce9e775935fcb18ed477b5a'},
+            ('ca39bcbf849231525ce9e775935fcb18ed477b5a', 'commit_sha', 'query_ref'),
+        ),
+        (
+            {'ref': ['foo', 'bar'], 'branch': 'ca39bcbf849231525ce9e775935fcb18ed477b5a'},
+            ('ca39bcbf849231525ce9e775935fcb18ed477b5a', 'commit_sha', 'query_branch'),
+        ),
+        (
+            {'ref': ['foo', 'bar'], 'branch': 'master'},
+            ('master', 'branch_name', 'query_branch'),
+        ),
+        (
+            {'branch': ['foo', 'bar'], 'revision': 'master'},
+            ('master', 'branch_name', 'query_revision'),
+        ),
+    ])
+    def test__interpret_query_parameters_multival(self, provider, kwargs, expected):
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**kwargs)
+        assert (ref, ref_type, ref_from) == expected
+
+    @pytest.mark.parametrize('kwargs', [
+        {'ref': ['foo', 'bar']},
+        {'ref': ['foo', 'bar'], 'branch': ['moo', 'quack']},
+        {'branch': ['moo', 'quack']},
+    ])
+    def test__interpret_query_parameters_multival_error(self, provider, kwargs):
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            provider._interpret_query_parameters(**kwargs)
+
+        assert exc.value.code == client.BAD_REQUEST
