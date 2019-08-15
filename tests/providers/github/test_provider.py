@@ -121,29 +121,30 @@ class TestValidatePath:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_validate_v1_path_file(self, provider, provider_fixtures):
-        branch_url = provider.build_repo_url('branches', provider.default_branch)
-        tree_url = provider.build_repo_url(
-            'git', 'trees',
-            provider_fixtures['branch_metadata']['commit']['commit']['tree']['sha'],
-            recursive=1
-        )
 
-        aiohttpretty.register_json_uri('GET', branch_url, body=provider_fixtures['branch_metadata'])
-        aiohttpretty.register_json_uri(
-            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
-        )
+        branch_name = provider.default_branch
+        branch_metadata = provider_fixtures['branch_metadata']
+        tree_sha = branch_metadata['commit']['commit']['tree']['sha']
 
-        blob_path = 'file.txt'
+        branch_url = provider.build_repo_url('branches', branch_name)
+        tree_url = provider.build_repo_url('git', 'trees', tree_sha, recursive=1)
 
-        result = await provider.validate_v1_path('/' + blob_path)
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+        aiohttpretty.register_json_uri('GET', tree_url,
+                                       body=provider_fixtures['repo_tree_metadata_root'])
+
+        blob_name = 'file.txt'
+        blob_path = '/{}'.format(blob_name)
+
+        result = await provider.validate_v1_path(blob_path)
+        expected = GitHubPath(blob_path, _ids=[(branch_name, ''), (branch_name, '')])
+        assert result == expected
+        assert result.identifier[0] == expected.identifier[0]
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + blob_path + '/')
-
-        expected = GitHubPath('/' + blob_path, _ids=[(provider.default_branch, '')])
+            await provider.validate_v1_path('/{}/'.format(blob_path))
 
         assert exc.value.code == client.NOT_FOUND
-        assert result == expected
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -161,35 +162,31 @@ class TestValidatePath:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_validate_v1_path_folder(self, provider, provider_fixtures):
-        branch_url = provider.build_repo_url('branches', provider.default_branch)
-        tree_url = provider.build_repo_url(
-            'git', 'trees',
-            provider_fixtures['branch_metadata']['commit']['commit']['tree']['sha'],
-            recursive=1
-        )
 
-        aiohttpretty.register_json_uri(
-            'GET', branch_url, body=provider_fixtures['branch_metadata']
-        )
-        aiohttpretty.register_json_uri(
-            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
-        )
+        branch_name = provider.default_branch
+        branch_metadata = provider_fixtures['branch_metadata']
+        tree_sha = branch_metadata['commit']['commit']['tree']['sha']
 
-        tree_path = 'level1'
+        branch_url = provider.build_repo_url('branches', branch_name)
+        tree_url = provider.build_repo_url('git', 'trees', tree_sha, recursive=1)
 
-        expected = GitHubPath(
-            '/' + tree_path + '/', _ids=[(provider.default_branch, ''),
-            (provider.default_branch, None)]
-        )
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+        aiohttpretty.register_json_uri('GET', tree_url,
+                                       body=provider_fixtures['repo_tree_metadata_root'])
 
-        result = await provider.validate_v1_path('/' + tree_path + '/')
+        tree_name = 'level1'
+        tree_path = '/{}/'.format(tree_name)
+        result = await provider.validate_v1_path(tree_path)
+        expected = GitHubPath(tree_path, _ids=[(branch_name, ''), (branch_name, None)])
 
-        with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + tree_path)
-
-        assert exc.value.code == client.NOT_FOUND
         assert result == expected
         assert result.extra == expected.extra
+        assert result.identifier[0] == expected.identifier[0]
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.validate_v1_path('/{}'.format(tree_name))
+
+        assert exc.value.code == client.NOT_FOUND
 
     @pytest.mark.asyncio
     async def test_reject_multiargs(self, provider):
@@ -979,8 +976,7 @@ class TestMetadata:
             '/file.txt', _ids=[("master", metadata[0]['sha']), ('master', metadata[0]['sha'])]
         )
 
-        url = provider.build_repo_url('commits', path=path.path, sha=path.file_sha)
-
+        url = provider.build_repo_url('commits', path=path.path, sha='master')
         aiohttpretty.register_json_uri('GET', url, body=metadata)
 
         result = await provider.revisions(path)
@@ -1529,3 +1525,201 @@ class TestUtilities:
 
         assert len(pruned_tree) == 3  # alpha.txt, gamma.txt, epsilon.txt
         assert len([x for x in pruned_tree if x['type'] == 'tree']) == 0
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize('param', [
+        ('branch'),
+        ('ref'),
+        ('version'),
+        ('sha'),
+        ('revision')
+    ])
+    async def test__interpret_query_parameters_branch(self, provider, provider_fixtures, param):
+
+        branch_name = 'develop'
+        branch_metadata = provider_fixtures['branch_metadata']
+        tree_sha = branch_metadata['commit']['commit']['tree']['sha']
+
+        branch_url = provider.build_repo_url('branches', branch_name)
+        tree_url = provider.build_repo_url('git', 'trees', tree_sha, recursive=1)
+
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+        aiohttpretty.register_json_uri('GET', tree_url,
+                                       body=provider_fixtures['repo_tree_metadata_root'])
+
+        blob_path = '/file.txt'
+        params = {param: branch_name}
+        result = await provider.validate_v1_path(blob_path, **params)
+        expected = GitHubPath(blob_path, _ids=[(branch_name, ''), (branch_name, '')])
+
+        assert result == expected
+        assert result.identifier[0] == expected.identifier[0]
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize('param', [
+        ('ref'),
+        ('version'),
+        ('sha'),
+        ('revision')
+    ])
+    async def test__interpret_query_parameters_sha(self, provider, provider_fixtures, param):
+
+        commit_sha = '6dcb09b5b57875f334f61aebed695e2e4193db5e'
+        commit_url = provider.build_repo_url('git', 'commits', commit_sha)
+
+        tree_sha = '394164986adbe26c0c7605c6fe627e4fe3b13aa6'
+        tree_url = provider.build_repo_url('git', 'trees', tree_sha, recursive=1)
+
+        aiohttpretty.register_json_uri('GET', commit_url,
+                                       body=provider_fixtures['commit_metadata'])
+        aiohttpretty.register_json_uri('GET', tree_url,
+                                       body=provider_fixtures['repo_tree_metadata_root'])
+
+        blob_path = '/file.txt'
+        params = {param: commit_sha}
+        result = await provider.validate_v1_path(blob_path, **params)
+        expected = GitHubPath(blob_path, _ids=[(commit_sha, ''), (commit_sha, '')])
+
+        assert result == expected
+        assert result.identifier[0] == expected.identifier[0]
+
+    def test__interpret_query_parameters_sha_priorities(self, provider):
+        params = {
+            'ref': 'b4eecafa9be2f2006ce1b709d6857b07069b4608',
+            'version': '7fd1a60b01f91b314f59955a4e4d4e80d8edf11d',
+            'sha': 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391',
+            'revision': 'bc1087ebfe8354a684bf9f8b75517784143dde86',
+            'branch': '71a892a5cd479bc73ae750b121c0d47a33028e66',
+        }
+
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['ref']
+
+        del params['ref']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['version']
+
+        del params['version']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['sha']
+
+        del params['sha']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['revision']
+
+        del params['revision']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['branch']
+
+        del params['branch']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == provider.default_branch
+
+    def test__interpret_query_parameters_branch_priorities(self, provider):
+        params = {
+            'branch': 'grr',
+            'ref': 'quack',
+            'version': 'woof',
+            'sha': 'moo',
+            'revision': 'meow',
+        }
+
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['branch']
+
+        del params['branch']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['ref']
+
+        del params['ref']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['version']
+
+        del params['version']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['sha']
+
+        del params['sha']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['revision']
+
+        del params['revision']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == provider.default_branch
+
+    def test__interpret_query_parameters_sha_vs_branch_priority(self, provider):
+        params = {
+            'ref': 'quack',
+            'version': 'ca39bcbf849231525ce9e775935fcb18ed477b5a',
+            'branch': 'tooth',
+        }
+
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['version']
+
+        del params['version']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['branch']
+
+    @pytest.mark.parametrize('kwargs,expected', [
+        (
+            {'ref': ['foo', 'bar'], 'sha': 'ca39bcbf849231525ce9e775935fcb18ed477b5a'},
+            ('ca39bcbf849231525ce9e775935fcb18ed477b5a', 'commit_sha', 'query_sha'),
+        ),
+        (
+            {'sha': ['foo', 'bar'], 'ref': 'ca39bcbf849231525ce9e775935fcb18ed477b5a'},
+            ('ca39bcbf849231525ce9e775935fcb18ed477b5a', 'commit_sha', 'query_ref'),
+        ),
+        (
+            {'ref': ['foo', 'bar'], 'branch': 'ca39bcbf849231525ce9e775935fcb18ed477b5a'},
+            ('ca39bcbf849231525ce9e775935fcb18ed477b5a', 'commit_sha', 'query_branch'),
+        ),
+        (
+            {'ref': ['foo', 'bar'], 'branch': 'master'},
+            ('master', 'branch_name', 'query_branch'),
+        ),
+        (
+            {'branch': ['foo', 'bar'], 'revision': 'master'},
+            ('master', 'branch_name', 'query_revision'),
+        ),
+    ])
+    def test__interpret_query_parameters_multival(self, provider, kwargs, expected):
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**kwargs)
+        assert (ref, ref_type, ref_from) == expected
+
+    @pytest.mark.parametrize('kwargs', [
+        {'ref': ['foo', 'bar']},
+        {'ref': ['foo', 'bar'], 'branch': ['moo', 'quack']},
+        {'branch': ['moo', 'quack']},
+    ])
+    def test__interpret_query_parameters_multival_error(self, provider, kwargs):
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            provider._interpret_query_parameters(**kwargs)
+
+        assert exc.value.code == client.BAD_REQUEST
+
+    @pytest.mark.parametrize('ref,expected', [
+        ('ca39bcbf849231525ce9e775935fcb18ed477b5a', True),
+        ('ca39bcbf849231525ce9e775935fcb18ed477b5', False),  # one character short
+        ('bad', False),  # valid SHA, too short, must be branch
+        ('meow', False),  # not valid base 16, must be branch name
+        ('ca39bcbf849231525ce9e775935fcb18ed477b5x', False),  # 'x' not valid base16
+    ])
+    def test__looks_like_sha(self, provider, ref, expected):
+        assert provider._looks_like_sha(ref) == expected
