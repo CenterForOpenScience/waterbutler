@@ -286,7 +286,6 @@ class TestCRUD:
 
         url = provider.build_repo_url('git', 'blobs', file_sha)
         tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
-        latest_sha_url = provider.build_repo_url('git', 'refs', 'heads', path.identifier[0])
         commit_url = provider.build_repo_url(
             'commits', path=path.path.lstrip('/'), sha=path.identifier[0]
         )
@@ -677,10 +676,7 @@ class TestCRUD:
             'git', 'trees',
             crud_fixtures['deleted_branch_metadata']['commit']['commit']['tree']['sha'])
         )
-
         create_tree_url = provider.build_repo_url('git', 'trees')
-        commit_url = provider.build_repo_url('git', 'commits')
-        patch_url = provider.build_repo_url('git', 'refs', 'heads', path.branch_ref)
 
         aiohttpretty.register_json_uri(
             'GET', branch_url, body=crud_fixtures['deleted_branch_metadata']
@@ -974,8 +970,6 @@ class TestMetadata:
         )
         url = furl.furl(provider.build_repo_url('contents', '/test/'))
         url.args.update({'ref': path.branch_ref})
-
-        message = 'This repository is empty.'
 
         aiohttpretty.register_json_uri('GET', url, body={})
 
@@ -1678,7 +1672,7 @@ class TestUtilities:
             GitHubPath('/beta/gam/', _ids=_ids)
         )
 
-        assert missing_file_tree == provider_fixtures['nested_tree_metadata']['tree']
+        assert missing_folder_tree == provider_fixtures['nested_tree_metadata']['tree']
 
     def test__reparent_blobs(self, provider, provider_fixtures):
         _ids = [('master', '')]
