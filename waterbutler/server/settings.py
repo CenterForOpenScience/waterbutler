@@ -33,6 +33,7 @@ HMAC_SECRET = (HMAC_SECRET or 'changeme').encode('utf-8')
 
 
 # Configs for WB API Rate-limiting with Redis
+ENABLE_RATE_LIMITING = config.get('ENABLE_RATE_LIMITING', False)
 REDIS_DOMAIN = config.get('WB_REDIS_DOMAIN', '192.168.168.167')
 REDIS_PORT = config.get('WB_REDIS_PORT', '6379')
 RATE_LIMITING_FIXED_WINDOW_SIZE = int(config.get('RATE_LIMITING_FIXED_WINDOW_SIZE', 3600))

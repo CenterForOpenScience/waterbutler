@@ -14,6 +14,7 @@ from waterbutler.server.auth import AuthHandler
 from waterbutler.core.log_payload import LogPayload
 from waterbutler.core.exceptions import TooManyRequests
 from waterbutler.core.streams import RequestStreamReader
+from waterbutler.server.settings import ENABLE_RATE_LIMITING
 from waterbutler.server.api.v1.provider.create import CreateMixin
 from waterbutler.server.api.v1.provider.metadata import MetadataMixin
 from waterbutler.server.api.v1.provider.movecopy import MoveCopyMixin
@@ -41,11 +42,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
 
     async def prepare(self, *args, **kwargs):
 
-        logger.info('>>> preparing request ...')
-        limit_hit, data = self.rate_limit()
-        if limit_hit:
-            raise TooManyRequests(data=data)
-        logger.info('>>> rate limiting check passed ...')
+        if ENABLE_RATE_LIMITING:
+            logger.info('>>> preparing request ...')
+            limit_hit, data = self.rate_limit()
+            if limit_hit:
+                raise TooManyRequests(data=data)
+            logger.info('>>> rate limiting check passed ...')
 
         method = self.request.method.lower()
 
