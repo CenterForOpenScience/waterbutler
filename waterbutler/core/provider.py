@@ -180,15 +180,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
             non_callable_url = url() if callable(url) else url
             try:
                 self.provider_metrics.incr('requests.count')
-                self.provider_metrics.append('requests.urls', non_callable_url)
                 response = await aiohttp.request(method, non_callable_url, *args, **kwargs)
-                self.provider_metrics.append('requests.verbose',
-                                             ['OK', response.status, non_callable_url])
+                self.provider_metrics.incr('requests.tally.ok')
                 if expects and response.status not in expects:
                     raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
                 return response
             except throws as e:
-                self.provider_metrics.append('requests.verbose', ['NO', e.code, non_callable_url])
+                self.provider_metrics.incr('requests.tally.nok')
                 if retry <= 0 or e.code not in self._retry_on:
                     raise
                 await asyncio.sleep((1 + _retry - retry) * 2)
