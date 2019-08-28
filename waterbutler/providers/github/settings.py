@@ -34,8 +34,6 @@ GITHUB_SHA_LENGTHS = [int(x) for x in config.get('GITHUB_SHA_LENGTHS', '40').spl
 RL_TOKEN_ADD_DELAY = int(config.get('RL_TOKEN_ADD_DELAY', 1))
 # The maximum number of available tokens (requests) allowed
 RL_MAX_AVAILABLE_TOKENS = float(config.get('RL_MAX_AVAILABLE_TOKENS', 10.0))
-# The minimum interval in seconds between each request rate update.
-RL_REQ_RATE_UPDATE_INTERVAL = int(config.get('RL_REQ_RATE_UPDATE_INTERVAL', 10))
 # The percentage of remaining requests to be reserved.
 RL_RESERVE_RATIO = float(config.get('RL_RESERVE_RATIO', 0.2))
 # The base number of requests to be reserved.
