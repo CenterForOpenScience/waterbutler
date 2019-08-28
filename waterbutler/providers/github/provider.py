@@ -90,9 +90,6 @@ class GitHubProvider(provider.BaseProvider):
         # instance starts with a full bag (`.RL_MAX_AVAILABLE_TOKENS`) of tokens.
         self.rl_available_tokens = self.RL_MAX_AVAILABLE_TOKENS
 
-        # `.rl_tokens_updated` denotes the time when `.rl_available_tokens` is last updated.
-        self.rl_tokens_updated = time.time()
-
         # `.rl_remaining` denotes the number of requests left before reset, which is the value from
         # GitHub API response header "X-RateLimiting-Remaining".
         self.rl_remaining = 0
@@ -1185,17 +1182,18 @@ class GitHubProvider(provider.BaseProvider):
         and its default is 1 second.
         """
 
-        # Keep waiting and making attempts to add new tokens if there is no one available.
-        while self.rl_available_tokens <= 1:
+        # If no full tokens are available, wait and add fractional tokens based on current rate.
+        while self.rl_available_tokens < 1:
             self._rl_add_more_tokens()
             await asyncio.sleep(self.RL_TOKEN_ADD_DELAY)
 
-        # Consume one token for the upcoming usage.
+        # Consume one token for the upcoming request.
         self.rl_available_tokens -= 1
 
-    def _rl_add_more_tokens(self) -> bool:
-        """Add more tokens according to the time since last update and the current request rate.
-        Return ``True`` if new tokens are successfully added. Return ``False`` otherwise.
+    def _rl_add_more_tokens(self) -> None:
+        """Add a number of tokens equivalent to the approximate time since this was last called and
+        the current request rate.  Can add fractional tokens.  Caps the number of available tokens
+        at `self.RL_MAX_AVAILABLE_TOKENS`.
         """
 
         now = time.time()
@@ -1205,25 +1203,14 @@ class GitHubProvider(provider.BaseProvider):
         if self.rl_req_rate_updated == 0 or time_since_last_rate > self.RL_REQ_RATE_UPDATE_INTERVAL:
             self._rl_update_req_rate()
 
-        # Calculate the amount of new tokens to be added, which is the product of current request
-        # rate and the number of seconds since the last time when `.rl_available_tokens` is updated.
-        time_since_token_update = now - self.rl_tokens_updated
-        new_tokens_to_add = time_since_token_update * self.rl_req_rate
-
-        # Given that `time_since_token_update` is always greater than `.TOKEN_UPDATE_DELAY`, which
-        # is 1 seconds with default settings, it is possible that no new token can be issued if
-        # `.rl_req_rate` is low enough. Return back to the enclosing `while` loop which will make
-        # another attempt in a short time to add more tokens.
-        if new_tokens_to_add <= 1:
-            return False
-
-        # Update `.rl_available_tokens`, which should never go beyond `.RL_MAX_AVAILABLE_TOKENS`.
+        # Add a number of tokens equal to: seconds since we last added tokens (which is
+        # approximately RL_TOKEN_ADD_DELAY) times the rate at which we should add tokens
+        # (self.rl_req_rate).  Update self.rl_available_tokens, which should never go
+        # beyond .RL_MAX_AVAILABLE_TOKENS.
         self.rl_available_tokens = min(
-            self.rl_available_tokens + new_tokens_to_add,
+            self.rl_available_tokens + (self.RL_TOKEN_ADD_DELAY * self.rl_req_rate),
             self.RL_MAX_AVAILABLE_TOKENS
         )
-        self.rl_tokens_updated = now
-        return True
 
     def _rl_update_req_rate(self) -> None:
         """Calculate the rate at which WB should make requests.  Instead of maximizing the rate with

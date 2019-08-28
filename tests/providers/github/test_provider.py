@@ -1405,20 +1405,18 @@ class TestRateLimit:
 
         assert mock_provider.rl_req_rate == 0.6
         assert mock_provider.rl_req_rate_updated == 100
-        assert mock_provider.rl_available_tokens == 6.0
-        assert mock_provider.rl_tokens_updated == 100
+        assert mock_provider.rl_available_tokens == 0.6 * mock_provider.RL_TOKEN_ADD_DELAY
 
     # Test `_rl_add_more_tokens()` when new tokens exceeds maximum tokens
     def test_add_new_rate_limit_tokens_max_tokens_enforced(self, mock_time, rate_limit_provider):
 
         mock_provider = rate_limit_provider
-        mock_provider.rl_tokens_updated = 50
+        mock_provider.rl_available_tokens = 11
         mock_provider._rl_add_more_tokens()
 
         assert mock_provider.rl_req_rate == 0.6
         assert mock_provider.rl_req_rate_updated == 100
         assert mock_provider.rl_available_tokens == 10
-        assert mock_provider.rl_tokens_updated == 100
 
     # Test `_rl_add_more_tokens()` when it is not yet time to update `.rl_req_rate`
     def test_add_new_rate_limit_tokens_not_time_yet(self, mock_time, rate_limit_provider):
@@ -1438,10 +1436,10 @@ class TestRateLimit:
 
         await mock_provider._rl_check_available_tokens()
 
-        assert mock_provider.rl_available_tokens == 5
+        assert mock_provider.rl_available_tokens < 1
+        assert mock_provider.rl_available_tokens > 0
         assert mock_provider.rl_req_rate == 0.6
         assert mock_provider.rl_req_rate_updated == 100
-        assert mock_provider.rl_tokens_updated == 100
 
     # Test that celery requests update the `rl_remaining` and `rl_reset` with resp headers
     @pytest.mark.asyncio
