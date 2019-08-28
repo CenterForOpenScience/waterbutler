@@ -64,7 +64,6 @@ class GitHubProvider(provider.BaseProvider):
     # Load settings for GitHub rate limiting
     RL_TOKEN_ADD_DELAY = pd_settings.RL_TOKEN_ADD_DELAY
     RL_MAX_AVAILABLE_TOKENS = pd_settings.RL_MAX_AVAILABLE_TOKENS
-    RL_REQ_RATE_UPDATE_INTERVAL = pd_settings.RL_REQ_RATE_UPDATE_INTERVAL
     RL_RESERVE_RATIO = pd_settings.RL_RESERVE_RATIO
     RL_RESERVE_BASE = pd_settings.RL_RESERVE_BASE
     RL_MIN_REQ_RATE = pd_settings.RL_MIN_REQ_RATE
@@ -82,9 +81,6 @@ class GitHubProvider(provider.BaseProvider):
         # `.rl_req_rate` denotes the number of requests allowed per second. It will be updated if
         # it is the initial run (value is 0) or if `.RL_REQ_RATE_UPDATE_INTERVAL` has elapsed.
         self.rl_req_rate = 0
-
-        # `.rl_req_rate_updated` denotes the last time `.rl_req_rate` was updated.
-        self.rl_req_rate_updated = 0
 
         # `.rl_available_tokens` determines if a request should wait or proceed. Each provider
         # instance starts with a full bag (`.RL_MAX_AVAILABLE_TOKENS`) of tokens.
@@ -1196,12 +1192,7 @@ class GitHubProvider(provider.BaseProvider):
         at `self.RL_MAX_AVAILABLE_TOKENS`.
         """
 
-        now = time.time()
-
-        # Update `.rl_req_rate` if initial run or if `.RL_REQ_RATE_UPDATE_INTERVAL` has passed.
-        time_since_last_rate = now - self.rl_req_rate_updated
-        if self.rl_req_rate_updated == 0 or time_since_last_rate > self.RL_REQ_RATE_UPDATE_INTERVAL:
-            self._rl_update_req_rate()
+        self._rl_update_req_rate()
 
         # Add a number of tokens equal to: seconds since we last added tokens (which is
         # approximately RL_TOKEN_ADD_DELAY) times the rate at which we should add tokens
@@ -1253,5 +1244,3 @@ class GitHubProvider(provider.BaseProvider):
             # requests (i.e. another copy/move) are being made at the same time, this reference
             # request rate keeps increasing slightly.
             self.rl_req_rate = (self.rl_remaining - rl_reserved) / (self.rl_reset - now)
-
-        self.rl_req_rate_updated = now
