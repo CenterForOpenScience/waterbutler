@@ -46,7 +46,7 @@ setup(
             # 'cloudfiles = waterbutler.providers.cloudfiles:CloudFilesProvider',
             # 'dropbox = waterbutler.providers.dropbox:DropboxProvider',
             # 'figshare = waterbutler.providers.figshare:FigshareProvider',
-            # 'filesystem = waterbutler.providers.filesystem:FileSystemProvider',
+            'filesystem = waterbutler.providers.filesystem:FileSystemProvider',
             # 'github = waterbutler.providers.github:GitHubProvider',
             # 'gitlab = waterbutler.providers.gitlab:GitLabProvider',
             'bitbucket = waterbutler.providers.bitbucket:BitbucketProvider',
