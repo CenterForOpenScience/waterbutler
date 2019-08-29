@@ -73,28 +73,28 @@ class DropboxProvider(provider.BaseProvider):
                               expects: typing.Tuple=(200, 409,),
                               *args,
                               **kwargs) -> dict:
-        """Convenience wrapper around ``BaseProvider.request`` for simple Dropbox API calls. Sets
-        the method to ``POST``, jsonifies the ``body`` param, and provides default error handling
-        for Dropbox's standard 409 error response structure.
+        """Convenience wrapper around ``BaseProvider.make_request`` for simple Dropbox API calls.
+        Sets the method to ``POST``, jsonifies the ``body`` param, and provides default error
+        handling for Dropbox's standard 409 error response structure.
 
         :param str url: the url of the endpoint to POST to
         :param dict body: the data to send in the request body, will be jsonified
         :param tuple expects: expected error codes, defaults to 200 (success) and 409 (error)
-        :param tuple \*args: passed through to BaseProvider.request()
-        :param dict \*\*kwargs: passed through to BaseProvider.request()
+        :param tuple \*args: passed through to BaseProvider.make_request()
+        :param dict \*\*kwargs: passed through to BaseProvider.make_request()
         """
-        async with self.request(
+        resp = await self.make_request(
             'POST',
             url,
             data=json.dumps(body),
             expects=expects,
             *args,
             **kwargs,
-        ) as resp:
-            data = await resp.json()
-            if resp.status == 409:
-                self.dropbox_conflict_error_handler(data, body.get('path', ''))
-            return data
+        )
+        data = await resp.json()
+        if resp.status == 409:
+            self.dropbox_conflict_error_handler(data, body.get('path', ''))
+        return data
 
     def dropbox_conflict_error_handler(self, data: dict, error_path: str='') -> None:
         """Takes a standard Dropbox error response and an optional path and tries to throw a
