@@ -77,6 +77,13 @@ class DropboxProvider(provider.BaseProvider):
         Sets the method to ``POST``, jsonifies the ``body`` param, and provides default error
         handling for Dropbox's standard 409 error response structure.
 
+        Note: This ``.dropbox_request()`` doesn't fit all requests. For example, download doesn't
+              expect a JSON response.  In addition, this wrapper shouldn't be applied to requests
+              that clearly don't have the 409 problem even if they have a JSON response.
+
+        TODO: review all ``.dropbox_request()`` and ``.make_request()`` usages in the provider and
+              make sure each uses either one properly.  Make changes if necessary.
+
         :param str url: the url of the endpoint to POST to
         :param dict body: the data to send in the request body, will be jsonified
         :param tuple expects: expected error codes, defaults to 200 (success) and 409 (error)
