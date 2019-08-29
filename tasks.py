@@ -89,8 +89,7 @@ def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None)
     verbose = '-v' if verbose else ''
 
     # TODO: update this ignore list when new providers are added
-    ignored_providers = '--ignore=tests/providers/bitbucket/ ' \
-                        '--ignore=tests/providers/cloudfiles/ ' \
+    ignored_providers = '--ignore=tests/providers/cloudfiles/ ' \
                         '--ignore=tests/providers/dataverse/ ' \
                         '--ignore=tests/providers/dropbox/ ' \
                         '--ignore=tests/providers/figshare/ ' \
