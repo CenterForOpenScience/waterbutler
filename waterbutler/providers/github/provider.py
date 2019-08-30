@@ -57,7 +57,40 @@ class GitHubProvider(provider.BaseProvider):
 
     * GitHub doesn't respect Range header on downloads
 
+    .. _rate-limiting:
+
+    **Rate limiting**
+
+    GitHub enforces rate-limits to avoid being overwhelmed with requests.  This limit is currently
+    5,000 requests per hour per authenticated user.  Under normal usage patterns, the only WB
+    actions likely to encounter this are large recursive move/copy actions.  For these actions, WB
+    reserves the right to run the operation in a background task if it cannot complete them within a
+    given timeframe.  The GitHub provider will add artifical delays between requests to try to
+    ensure that a long-running request does not exhaust the rate-limits.
+
+    .. _requests-and-tokens:
+
+    *Requests and tokens*
+
+    This provider uses the concept of requests and tokens to help determine how fast to issue
+    requests.  Requests are discrete and correspond to the number of requests allowed by GitHub
+    within a given time period.  Tokens are an artificial concept but are approximately equivalent
+    to requests.  IOW, one token equals one request.  The difference is that the number of tokens
+    is permitted to be fractional.  Every *n* seconds, the provider will add tokens to the pool.
+    Once the number of tokens exceeds one, a single request may be made.  One token is subtracted,
+    and the provider may continue to accumulate fractional tokens.
+
+    *Reserves*
+
+    GitHub sets rate-limits based off the authenticated user making the request.  Since a user may
+    have multiple operations happening at one time (for example, two simultaneous registrations),
+    the provider attempts to *reserve* a portion of requests for other processes to use.  When the
+    number of requests remaining before the limit resets is less than the reserve, the provider
+    sets the allowed requests rate to a minimum value.  This minimum value will cause some requests
+    to wait a long time before being issued, but will hopefully allow long-running processes to
+    complete successfully.
     """
+
     NAME = 'github'
     BASE_URL = pd_settings.BASE_URL
     VIEW_URL = pd_settings.VIEW_URL
