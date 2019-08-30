@@ -203,7 +203,8 @@ class GitHubProvider(provider.BaseProvider):
         """Build a path from a parent path and a metadata object.  Will correctly set the _id
         Used for building zip archives."""
         file_sha = metadata.extra.get('fileSha', None)
-        return parent_path.child(metadata.name, _id=(metadata.ref, file_sha), folder=metadata.is_folder, )
+        return parent_path.child(metadata.name, _id=(metadata.ref, file_sha),
+                                 folder=metadata.is_folder, )
 
     def can_duplicate_names(self):
         return False
@@ -314,7 +315,8 @@ class GitHubProvider(provider.BaseProvider):
             'tree': tree['sha'],
             'parents': [latest_sha],
             'committer': self.committer,
-            'message': message or (pd_settings.UPDATE_FILE_MESSAGE if exists else pd_settings.UPLOAD_FILE_MESSAGE),
+            'message': message or (pd_settings.UPDATE_FILE_MESSAGE
+                                   if exists else pd_settings.UPLOAD_FILE_MESSAGE),
         })
 
         # Doesn't return anything useful
@@ -405,14 +407,18 @@ class GitHubProvider(provider.BaseProvider):
         data = await resp.json()
 
         if resp.status in (422, 409):
-            if resp.status == 409 or data.get('message') == 'Invalid request.\n\n"sha" wasn\'t supplied.':
+            if (
+                    resp.status == 409 or
+                    data.get('message') == 'Invalid request.\n\n"sha" wasn\'t supplied.'
+            ):
                 raise exceptions.FolderNamingConflict(path.name)
             raise exceptions.CreateFolderError(data, code=resp.status)
 
         data['content']['name'] = path.name
         data['content']['path'] = data['content']['path'].replace('.gitkeep', '')
 
-        return GitHubFolderContentMetadata(data['content'], commit=data['commit'], ref=path.branch_ref)
+        return GitHubFolderContentMetadata(data['content'], commit=data['commit'],
+                                           ref=path.branch_ref)
 
     async def _delete_file(self, path, message=None, **kwargs):
         if path.file_sha:
@@ -836,8 +842,8 @@ class GitHubProvider(provider.BaseProvider):
             if dest_path.is_dir:
                 src_tree['tree'] = self._remove_path_from_tree(src_tree['tree'], dest_path)
 
-            # if this is a copy, duplicate and append our source blobs. The originals will be updated
-            # with the new destination path.
+            # if this is a copy, duplicate and append our source blobs. The originals will be
+            # updated with the new destination path.
             if is_copy:
                 src_tree['tree'].extend(copy.deepcopy(blobs))
 
@@ -1017,7 +1023,7 @@ class GitHubProvider(provider.BaseProvider):
         line.  Returns the new commit.
 
         :param list old_tree: A list of blobs representing the new file tree.
-        :param dict old_head: The commit object will be the parent of the new commit. Must have 'sha' key.
+        :param dict old_head: The commit that's the parent of the new commit. Must have 'sha' key.
         :param str commit_msg: The commit message for the new commit.
         :param str branch_ref: The branch that will be advanced to the new commit.
         :returns dict new_head: The commit object returned by GitHub.
