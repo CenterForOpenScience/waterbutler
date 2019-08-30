@@ -10,9 +10,8 @@ from http import HTTPStatus
 import furl
 from aiohttp.client import ClientResponse
 
-from waterbutler.core import streams, provider, exceptions
-
 from waterbutler.providers.github.path import GitHubPath
+from waterbutler.core import streams, provider, exceptions
 from waterbutler.providers.github import settings as pd_settings
 from waterbutler.providers.github.metadata import (GitHubRevision,
                                                    GitHubFileTreeMetadata,
@@ -99,76 +98,6 @@ class GitHubProvider(provider.BaseProvider):
         # API response header "X-RateLimiting-Reset".
         self.rl_reset = 0
 
-    async def _rl_check_available_tokens(self) -> None:
-
-        # Keep making attempt to add new tokens if there is no one available.
-        while self.rl_available_tokens <= 1:
-            await asyncio.sleep(self.RL_TOKEN_ADD_DELAY)
-            is_updated = self._rl_add_more_tokens()
-            # Add another intentional delay if no new tokens are added
-            if not is_updated:
-                await asyncio.sleep(self.RL_TOKEN_ADD_DELAY)
-
-        # Decrease by one for the upcoming usage.
-        self.rl_available_tokens -= 1
-
-    def _rl_add_more_tokens(self) -> bool:
-
-        now = time.time()
-
-        # Update `.rl_req_rate` if initial run or if `.RL_REQ_RATE_UPDATE_INTERVAL` has passed.
-        time_since_last_rate = now - self.rl_req_rate_updated
-        if self.rl_req_rate_updated == 0 or time_since_last_rate > self.RL_REQ_RATE_UPDATE_INTERVAL:
-            self._rl_update_req_rate()
-
-        # Calculate the amount of new tokens to be added, which is the product of current request
-        # rate and the number of seconds since the last time when `.rl_available_tokens` is updated.
-        time_since_token_update = now - self.rl_tokens_updated
-        new_tokens_to_add = time_since_token_update * self.rl_req_rate
-
-        # Given that `time_since_token_update` is always greater than `.TOKEN_UPDATE_DELAY`, which
-        # is 1 seconds with default settings, it is possible that no new token can be issued if
-        # `.rl_req_rate` is low enough. Return back to the enclosing `while` loop which will make
-        # another attempt to add more tokens.
-        if new_tokens_to_add <= 1:
-            return False
-
-        # Update `.rl_available_tokens`, which should never go beyond `.RL_MAX_AVAILABLE_TOKENS`.
-        self.rl_available_tokens = min(
-            self.rl_available_tokens + new_tokens_to_add,
-            self.RL_MAX_AVAILABLE_TOKENS
-        )
-        self.rl_tokens_updated = now
-        return True
-
-    def _rl_update_req_rate(self) -> None:
-
-        # GitHub's rate limiting is per authenticated user. It is entirely probable that users are
-        # making additional requests that counts against the quota when the copy/move is in process.
-        #
-        # Reserve 10% of the total remaining request number plus 10 extra ones. This RESERVATION is
-        # critical for preventing the current provider instance from running out of tokens when
-        # additional calls are made for the same user on OSF.
-        #
-        # However, if users try to copy/register multiple GitHub repos at the same time, WB may
-        # still reach the cap and the actions will fail.
-        #
-        # In practice, when rate limit is active, it usually starts at just over 1 call per second
-        # and gradually increases to around 2. At the very end of the reset period, it can gets a
-        # little larger than 2.
-        rl_reserved = self.rl_remaining // 10 + 10
-        now = time.time()
-        sec_till_reset = self.rl_reset - now
-
-        # It is possible that `rl_reserved` is less than `.rl_remaining`. Let y denote `rl_reserved`
-        # and x denote `.rl_remaining`, from `y = x/10 + 10 > x` we have `x < 100/9`.
-        if rl_reserved > self.rl_remaining:
-            # TODO: Why 0.01 instead of 0.1 or 0.05? I will test it during 1st round of CR.
-            self.rl_req_rate = 0.01
-        else:
-            self.rl_req_rate = (self.rl_remaining - rl_reserved) / sec_till_reset
-        self.rl_req_rate_updated = now
-
     async def make_request(self, method: str, url: str, *args, **kwargs) -> ClientResponse:
         """Wrap the parent `make_request()` to handle GH rate limiting.  Only requests handled by
         WB Celery are affected.
@@ -203,18 +132,6 @@ class GitHubProvider(provider.BaseProvider):
         if resp.status == HTTPStatus.FORBIDDEN:
             await self._rl_is_over_limit(resp, **kwargs)
         return resp
-
-    async def _rl_is_over_limit(self, resp: ClientResponse, **kwargs) -> None:
-
-        await resp.release()
-
-        if int(resp.headers['X-RateLimit-Remaining']) == 0:
-            rate_limit_reset = int(resp.headers['X-RateLimit-Reset'])
-            raise GitHubRateLimitExceededError(rate_limit_reset)
-        else:
-            throws = kwargs.get('throws', exceptions.UnhandledProviderError)
-            exc_to_raise = await exceptions.exception_from_response(resp, error=throws, **kwargs)
-            raise exc_to_raise
 
     async def validate_v1_path(self, path, **kwargs):
         """Validate the path part of the request url, asserting that the path exists, and
@@ -1241,3 +1158,102 @@ class GitHubProvider(provider.BaseProvider):
 
         # 'in' instead of '==' b/c git shas will be changing in future git release.
         return len(ref) in pd_settings.GITHUB_SHA_LENGTHS
+
+    async def _rl_is_over_limit(self, resp: ClientResponse, **kwargs) -> None:
+        """Check if an HTTP 403 response is caused by rate limiting or not. If so, throw a special
+        ``GitHubRateLimitExceededError`` with rate limiting information. Otherwise, re-throw the
+        original error in the response or an ``UnhandledProviderError`` if there is none.
+        """
+
+        await resp.release()
+
+        if int(resp.headers['X-RateLimit-Remaining']) == 0:
+            rate_limit_reset = int(resp.headers['X-RateLimit-Reset'])
+            raise GitHubRateLimitExceededError(rate_limit_reset)
+        else:
+            throws = kwargs.get('throws', exceptions.UnhandledProviderError)
+            exc_to_raise = await exceptions.exception_from_response(resp, error=throws, **kwargs)
+            raise exc_to_raise
+
+    async def _rl_check_available_tokens(self) -> None:
+        """Checks if there are any available tokens.  If so, consume one and return.  Otherwise,
+        continue to make attempts to add new tokens.  Each failed attempt must wait for a short
+        period of time before making another one.  The wait time is defined by `.RL_TOKEN_ADD_DELAY`
+        and its default is 1 second.
+        """
+
+        # Keep waiting and making attempts to add new tokens if there is no one available.
+        while self.rl_available_tokens <= 1:
+            self._rl_add_more_tokens()
+            await asyncio.sleep(self.RL_TOKEN_ADD_DELAY)
+
+        # Consume one token for the upcoming usage.
+        self.rl_available_tokens -= 1
+
+    def _rl_add_more_tokens(self) -> bool:
+        """Add more tokens according to the time since last update and the current request rate.
+        Return ``True`` if new tokens are successfully added. Return ``False`` otherwise.
+        """
+
+        now = time.time()
+
+        # Update `.rl_req_rate` if initial run or if `.RL_REQ_RATE_UPDATE_INTERVAL` has passed.
+        time_since_last_rate = now - self.rl_req_rate_updated
+        if self.rl_req_rate_updated == 0 or time_since_last_rate > self.RL_REQ_RATE_UPDATE_INTERVAL:
+            self._rl_update_req_rate()
+
+        # Calculate the amount of new tokens to be added, which is the product of current request
+        # rate and the number of seconds since the last time when `.rl_available_tokens` is updated.
+        time_since_token_update = now - self.rl_tokens_updated
+        new_tokens_to_add = time_since_token_update * self.rl_req_rate
+
+        # Given that `time_since_token_update` is always greater than `.TOKEN_UPDATE_DELAY`, which
+        # is 1 seconds with default settings, it is possible that no new token can be issued if
+        # `.rl_req_rate` is low enough. Return back to the enclosing `while` loop which will make
+        # another attempt in a short time to add more tokens.
+        if new_tokens_to_add <= 1:
+            return False
+
+        # Update `.rl_available_tokens`, which should never go beyond `.RL_MAX_AVAILABLE_TOKENS`.
+        self.rl_available_tokens = min(
+            self.rl_available_tokens + new_tokens_to_add,
+            self.RL_MAX_AVAILABLE_TOKENS
+        )
+        self.rl_tokens_updated = now
+        return True
+
+    def _rl_update_req_rate(self) -> None:
+        """Calculate the rate at which WB should make requests.  Instead of maximizing the rate with
+        ``$remaining  / $time_to_reset``, WB sets a lower one by reserving "20% of the total
+        number of remaining requests plus 10 extra ones". This ensures that WB won't run out of
+        tokens when there are a REASONABLE amount of additional requests made for the same user
+        during the move/copy process.
+
+        TODO: should the "10% + 10 extra", and the "1 request per 100 seconds" be configurable?
+        """
+
+        # GitHub's rate limiting is per authenticated user. It is entirely probable that users are
+        # making additional requests that counts against the quota when the copy/move is in process.
+        #
+        # Reserve 10% of the total number of remaining requests plus 10 extra ones. This RESERVATION
+        # is critical for preventing the current provider instance from running out of tokens when
+        # additional calls are made for the same user on OSF.
+        #
+        # However, if users try to copy/register multiple GitHub repos at the same time, WB may
+        # still reach the cap and the actions will fail.
+        #
+        # In practice, when rate limit is active, it usually starts at just over 1 call per second
+        # and gradually increases to around 2. At the very end of the reset period, it can gets a
+        # little larger than 2.
+        rl_reserved = self.rl_remaining // 10 + 10
+        now = time.time()
+        sec_till_reset = self.rl_reset - now
+
+        # It is possible that `rl_reserved` is less than `.rl_remaining`. Let y denote `rl_reserved`
+        # and x denote `.rl_remaining`, from `y = x/10 + 10 > x` we have `x < 100/9`.
+        if rl_reserved > self.rl_remaining:
+            # TODO: Why 0.01 instead of 0.1 or 0.05? I will test it during 1st round of CR.
+            self.rl_req_rate = 0.01
+        else:
+            self.rl_req_rate = (self.rl_remaining - rl_reserved) / sec_till_reset
+        self.rl_req_rate_updated = now
