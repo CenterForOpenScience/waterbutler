@@ -1228,15 +1228,8 @@ class GitHubProvider(provider.BaseProvider):
         # OSF. In addition, this should support at least 3 concurrent large move/copy actions.
         #
         rl_reserved = self.rl_remaining * self.RL_RESERVE_RATIO + self.RL_RESERVE_BASE
+
         now = time.time()
-
-        if self.rl_reset < now:
-            # When GH reset the limit and start a new hour window, WB does not know instantly since
-            # self.rl_reset is only updated when a response is received for a new request. However,
-            # when reaching the limit and the reset time, the request rate is about one request per
-            # second, which is quite long to wait. Add one hour when WB detects the time has passed.
-            self.rl_reset = now + 3600
-
         if rl_reserved > self.rl_remaining:
             # With the default setting, the number of reserved requests is greater or equal to the
             # number of remaining requests when the latter is 125 or less. Set the reference request
