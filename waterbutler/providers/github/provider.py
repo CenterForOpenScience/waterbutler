@@ -1,6 +1,7 @@
 import copy
 import json
 import time
+import uuid
 import asyncio
 import hashlib
 import logging
@@ -78,6 +79,10 @@ class GitHubProvider(provider.BaseProvider):
         self.repo = self.settings['repo']
         self.metrics.add('repo', {'repo': self.repo, 'owner': self.owner})
 
+        # debugging parameters
+        self._my_id = uuid.uuid4()
+        self._request_count = 0
+
         # `.rl_available_tokens` determines if a request should wait or proceed. Each provider
         # instance starts with a full bag (`.RL_MAX_AVAILABLE_TOKENS`) of tokens.
         self.rl_available_tokens = self.RL_MAX_AVAILABLE_TOKENS
@@ -106,6 +111,12 @@ class GitHubProvider(provider.BaseProvider):
         to before continue.  The tokens are replenished based several factors including: time since
         last update, number of requests remaining, time until limit is reset, etc.
         """
+
+        self._request_count += 1
+
+        logger.debug('P({}):{}: '.format(self._my_id, self._request_count))
+        logger.debug('P({}):{}:make_request: begin!'.format(self._my_id, self._request_count))
+
         # Only update `expects` when it exists in the original request
         expects = kwargs.get('expects', None)
         if expects:
@@ -113,10 +124,25 @@ class GitHubProvider(provider.BaseProvider):
 
         # If not a celery task, default to regular behavior (but inform about rate limits)
         if not getattr(self, 'task_id', None):
+            logger.debug('P({}):{}:make_request: NOT a celery task, bypassing '
+                         'limits'.format(self._my_id, self._request_count))
             resp = await super().make_request(method, url, **kwargs)
             if resp.status == HTTPStatus.FORBIDDEN:
                 await self._rl_is_over_limit(resp, **kwargs)
+
+            logger.debug('P({}):{}:make_request: done successfully!'.format(self._my_id,
+                                                                            self._request_count))
             return resp
+
+        logger.debug('P({}):{}:make_request: IS a celery task, start token '
+                     'verification'.format(self._my_id, self._request_count))
+        logger.debug('P({}):{}:make_request: init state: tokens({}) '
+                     'remaining({}) reserved({}) reset({})'.format(self._my_id,
+                                                                   self._request_count,
+                                                                   self.rl_available_tokens,
+                                                                   self.rl_remaining,
+                                                                   self.rl_reserved,
+                                                                   self.rl_reset))
 
         await self._rl_check_available_tokens()
         resp = await super().make_request(method, url, *args, **kwargs)
@@ -133,10 +159,21 @@ class GitHubProvider(provider.BaseProvider):
         #
         self.rl_reserved = self.rl_remaining * self.RL_RESERVE_RATIO + self.RL_RESERVE_BASE
 
+        logger.debug('P({}):{}:make_request: final state: tokens({}) '
+                     'remaining({}) reserved({}) reset({})'.format(self._my_id,
+                                                                   self._request_count,
+                                                                   self.rl_available_tokens,
+                                                                   self.rl_remaining,
+                                                                   self.rl_reserved,
+                                                                   self.rl_reset))
+
         # Raise error if rate limit cap is hit even after WB's balancing effort. This can happen if
         # users try to copy/register multiple repos with many files/folders at the same time.
         if resp.status == HTTPStatus.FORBIDDEN:
             await self._rl_is_over_limit(resp, **kwargs)
+
+        logger.debug('P({}):{}:make_request: done successfully!'.format(self._my_id,
+                                                                        self._request_count))
         return resp
 
     async def validate_v1_path(self, path, **kwargs):
@@ -1181,10 +1218,15 @@ class GitHubProvider(provider.BaseProvider):
 
         if int(resp.headers['X-RateLimit-Remaining']) == 0:
             rate_limit_reset = int(resp.headers['X-RateLimit-Reset'])
+            logger.debug('P({}):{}:_rl_is_over_limit: ran out of requests, will reset '
+                         'at {}'.format(self._my_id, self._request_count, rate_limit_reset))
+
             raise GitHubRateLimitExceededError(rate_limit_reset)
         else:
             throws = kwargs.get('throws', exceptions.UnhandledProviderError)
             exc_to_raise = await exceptions.exception_from_response(resp, error=throws, **kwargs)
+            logger.debug('P({}):{}:_rl_is_over_limit: got a non-rate-limit error. '
+                         'Bailing out.'.format(self._my_id, self._request_count))
             raise exc_to_raise
 
     async def _rl_check_available_tokens(self) -> None:
@@ -1193,11 +1235,16 @@ class GitHubProvider(provider.BaseProvider):
         of time between each add request.  The wait time is defined by `.RL_TOKEN_ADD_DELAY`
         and its default is 1 second.
         """
+        logger.debug('P({}):{}:token_check: starting with {} '
+                     'tokens'.format(self._my_id, self._request_count, self.rl_available_tokens))
 
         # If no full tokens are available, wait and add fractional tokens based on current rate.
         while self.rl_available_tokens < 1:
             self._rl_add_more_tokens()
             await asyncio.sleep(self.RL_TOKEN_ADD_DELAY)
+
+        logger.debug('P({}):{}:token_check: consuming token'.format(self._my_id,
+                                                                    self._request_count))
 
         # Consume one token for the upcoming request.
         self.rl_available_tokens -= 1
@@ -1232,6 +1279,10 @@ class GitHubProvider(provider.BaseProvider):
             # requests (i.e. another copy/move) are being made at the same time, this reference
             # request rate keeps increasing slightly.
             rl_req_rate = (self.rl_remaining - self.rl_reserved) / (self.rl_reset - time.time())
+
+        logger.debug('P({}):{}:adding_tokens: current_tokens:({}) '
+                     'request_rate:({})'.format(self._my_id, self._request_count,
+                                                self.rl_available_tokens, rl_req_rate))
 
         # Add a number of tokens equal to: seconds since we last added tokens (which is
         # approximately RL_TOKEN_ADD_DELAY) times the rate at which we should add tokens
