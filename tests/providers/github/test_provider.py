@@ -102,7 +102,6 @@ def other_provider(other_auth, other_credentials, other_settings, provider_fixtu
 def rate_limit_provider(provider):
 
     provider.task_id = 9876543210
-    provider.rl_req_rate = 1
     provider.rl_remaining = 500
     provider.rl_reset = 600
     provider.rl_available_tokens = 0
@@ -1377,52 +1376,59 @@ class TestCreateFolder:
 
 class TestRateLimit:
 
-    # Test `_rl_update_req_rate()` with normal parameters
-    def test_update_rate_limit(self, mock_time, rate_limit_provider):
-
+    def test_add_tokens_min_rate(self, mock_time, rate_limit_provider):
         mock_provider = rate_limit_provider
-        mock_provider._rl_update_req_rate()
-        assert mock_provider.rl_req_rate == 0.6
-
-    # Test `_rl_update_req_rate()` when `.rl_remaining` is less then `rl_reserve`
-    def test_update_rate_limit_under_reserve_limit(self, mock_time, rate_limit_provider):
-
-        mock_provider = rate_limit_provider
-        mock_provider.rl_remaining = 100
-        mock_provider._rl_update_req_rate()
-
-        assert mock_provider.rl_req_rate == 0.01
-
-    # Test `_rl_add_more_tokens()` with normal parameters
-    def test_add_new_rate_limit_tokens(self, mock_time, rate_limit_provider):
-
-        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 600
         mock_provider._rl_add_more_tokens()
+        assert mock_provider.rl_available_tokens == 0.01
 
-        assert mock_provider.rl_req_rate == 0.6
-        assert mock_provider.rl_available_tokens == 0.6 * mock_provider.RL_TOKEN_ADD_DELAY
-
-    # Test `_rl_add_more_tokens()` when new tokens exceeds maximum tokens
-    def test_add_new_rate_limit_tokens_max_tokens_enforced(self, mock_time, rate_limit_provider):
-
+    def test_add_tokens_min_rate_max_tokens(self, mock_time, rate_limit_provider):
         mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 600
+        mock_provider.rl_available_tokens = 9.99
+        mock_provider._rl_add_more_tokens()
+        assert mock_provider.rl_available_tokens == 10.0
+
+    def test_add_tokens_variable_rate(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
+        mock_provider._rl_add_more_tokens()  # (500 - 200) / (600 - 100) = 0.6
+        assert mock_provider.rl_available_tokens == 0.6
+
+    def test_add_tokens_variable_rate_max_tokens(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
         mock_provider.rl_available_tokens = 11
         mock_provider._rl_add_more_tokens()
-
-        assert mock_provider.rl_req_rate == 0.6
         assert mock_provider.rl_available_tokens == 10
 
-    # Test `_rl_check_available_tokens()` with normal parameters
+        assert mock_provider.rl_available_tokens == 10
+
     @pytest.mark.asyncio
-    async def test_wait_for_token(self, mock_time, rate_limit_provider):
+    async def test_wait_for_tokens(self, mock_time, rate_limit_provider):
+        """No whole tokens remaining. Call _rl_add_more_tokens until fixed."""
 
         mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
+        orig_add_more_tokens = mock_provider._rl_add_more_tokens
+        mock_provider._rl_add_more_tokens = mock.Mock(side_effect=orig_add_more_tokens)
+        await mock_provider._rl_check_available_tokens()  # rate should be 0.6, two iterations and done
 
+        assert mock_provider.rl_available_tokens < 0.205
+        assert mock_provider.rl_available_tokens > 0.195
+        assert mock_provider._rl_add_more_tokens.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_dont_wait_for_tokens(self, mock_time, rate_limit_provider):
+        """Plenty of tokens available, no need to add more"""
+
+        mock_provider = rate_limit_provider
+        mock_provider.rl_available_tokens = 3.0
+        mock_provider._rl_add_more_tokens = mock.Mock()
         await mock_provider._rl_check_available_tokens()
 
-        assert mock_provider.rl_available_tokens < 1
-        assert mock_provider.rl_available_tokens > 0
-        assert mock_provider.rl_req_rate == 0.6
+        assert mock_provider.rl_available_tokens == 2.0
+        mock_provider._rl_add_more_tokens.assert_not_called()
 
     # Test that celery requests update the `rl_remaining` and `rl_reset` with resp headers
     @pytest.mark.asyncio
