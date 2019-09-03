@@ -1311,7 +1311,8 @@ class GitHubProvider(provider.BaseProvider):
             # remaining requests and the time between now and next limit reset. If no other major
             # requests (i.e. another copy/move) are being made at the same time, this reference
             # request rate keeps increasing slightly.
-            rl_req_rate = (self.rl_remaining - self.rl_reserved) / (self.rl_reset - time.time())
+            seconds_until_reset = max((self.rl_reset - time.time()), 1)
+            rl_req_rate = (self.rl_remaining - self.rl_reserved) / seconds_until_reset
 
         logger.debug('P({}):{}:adding_tokens: current_tokens:({}) '
                      'request_rate:({})'.format(self._my_id, self._request_count,

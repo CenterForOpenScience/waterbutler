@@ -1402,6 +1402,11 @@ class TestRateLimit:
         mock_provider._rl_add_more_tokens()
         assert mock_provider.rl_available_tokens == 10
 
+    def test_add_tokens_reset_smaller_than_now(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
+        mock_provider.rl_reset = 50
+        mock_provider._rl_add_more_tokens()
         assert mock_provider.rl_available_tokens == 10
 
     @pytest.mark.asyncio
