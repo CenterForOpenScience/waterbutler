@@ -22,6 +22,7 @@ from waterbutler.providers.github.metadata import (GitHubRevision,
 from waterbutler.providers.github.exceptions import (GitHubUnsupportedRepoError,
                                                      GitHubRateLimitExceededError, )
 
+from tests import utils
 from tests.providers.github.fixtures import crud_fixtures, revision_fixtures, provider_fixtures
 
 
@@ -1484,10 +1485,10 @@ class TestRateLimit:
         assert mock_provider.rl_remaining == 500
         assert mock_provider.rl_reset == 600
 
-    # Test that celery requests throw limit exceeded error
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_make_request_celery_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Verify error-handling behavior for celery-based rate-limited errors."""
 
         mock_provider = rate_limit_provider
 
@@ -1513,10 +1514,39 @@ class TestRateLimit:
         assert exc.value.code == HTTPStatus.SERVICE_UNAVAILABLE
         assert '1970-01-01T01:34:38+00:00.' in exc.value.message
 
-    # Test that non-celery requests throw limit exceeded error
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_celery_not_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Verify error-handling behavior for celery-based not-rate-limited errors. E.g.
+        permissions-based errors."""
+
+        mock_provider = rate_limit_provider
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.FORBIDDEN,
+            headers={
+                'X-RateLimit-Remaining': 231,
+                'X-RateLimit-Reset': 5678,
+            },
+            body={'message': 'this is a fake error'}
+        )
+
+        with pytest.raises(exceptions.MetadataError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(HTTPStatus.OK,),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.FORBIDDEN
+
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_make_request_not_celery_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Test that non-celery requests throw rate limit exceeded error"""
 
         mock_provider = rate_limit_provider
         del mock_provider.task_id
@@ -1542,6 +1572,65 @@ class TestRateLimit:
 
         assert exc.value.code == HTTPStatus.SERVICE_UNAVAILABLE
         assert '1970-01-01T01:34:38+00:00.' in exc.value.message
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_celery_not_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Test that non-celery requests re-throw non-limit exceeded errors"""
+
+        mock_provider = rate_limit_provider
+        del mock_provider.task_id
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.FORBIDDEN,
+            headers={
+                'X-RateLimit-Remaining': 123,
+                'X-RateLimit-Reset': 5678,
+            },
+            body={'message': 'API rate limit exceeded'}
+        )
+
+        with pytest.raises(exceptions.MetadataError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.FORBIDDEN
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_forbidden_error(self, mock_time, rate_limit_provider):
+        """make_request should rethrow non-FORBIDDEN errors w/o any additional error-handling"""
+
+        mock_provider = rate_limit_provider
+        mock_provider._rl_is_over_limit = utils.MockCoroutine()
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.SERVICE_UNAVAILABLE,
+            headers={
+                'X-RateLimit-Remaining': 231,
+                'X-RateLimit-Reset': 5678,
+            },
+            body={'message': 'this is a fake error'}
+        )
+
+        with pytest.raises(exceptions.MetadataError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(HTTPStatus.OK,),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.SERVICE_UNAVAILABLE
+        mock_provider._rl_is_over_limit.assert_not_called()
 
 
 class TestOperations:
