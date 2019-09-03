@@ -160,8 +160,10 @@ class GitHubProvider(provider.BaseProvider):
             logger.debug('P({}):{}:make_request: NOT a celery task, bypassing '
                          'limits'.format(self._my_id, self._request_count))
             resp = await super().make_request(method, url, **kwargs)
+
             if resp.status == HTTPStatus.FORBIDDEN:
-                await self._rl_is_over_limit(resp, **kwargs)
+                await resp.release()
+                raise await self._rl_handle_forbidden_error(resp, **kwargs)
 
             logger.debug('P({}):{}:make_request: done successfully!'.format(self._my_id,
                                                                             self._request_count))
@@ -203,7 +205,8 @@ class GitHubProvider(provider.BaseProvider):
         # Raise error if rate limit cap is hit even after WB's balancing effort. This can happen if
         # users try to copy/register multiple repos with many files/folders at the same time.
         if resp.status == HTTPStatus.FORBIDDEN:
-            await self._rl_is_over_limit(resp, **kwargs)
+            await resp.release()
+            raise await self._rl_handle_forbidden_error(resp, **kwargs)
 
         logger.debug('P({}):{}:make_request: done successfully!'.format(self._my_id,
                                                                         self._request_count))
@@ -1241,26 +1244,25 @@ class GitHubProvider(provider.BaseProvider):
         # 'in' instead of '==' b/c git shas will be changing in future git release.
         return len(ref) in pd_settings.GITHUB_SHA_LENGTHS
 
-    async def _rl_is_over_limit(self, resp: ClientResponse, **kwargs) -> None:
+    async def _rl_handle_forbidden_error(self, resp: ClientResponse, **kwargs) -> Exception:
         """Check if an HTTP 403 response is caused by rate limiting or not. If so, throw a special
         ``GitHubRateLimitExceededError`` with rate limiting information. Otherwise, re-throw the
         original error in the response or an ``UnhandledProviderError`` if there is none.
         """
 
-        await resp.release()
-
+        exc = None
         if int(resp.headers['X-RateLimit-Remaining']) == 0:
             rate_limit_reset = int(resp.headers['X-RateLimit-Reset'])
-            logger.debug('P({}):{}:_rl_is_over_limit: ran out of requests, will reset '
+            exc = GitHubRateLimitExceededError(rate_limit_reset)
+            logger.debug('P({}):{}:_rl_handle_forbidden_error: ran out of requests, will reset '
                          'at {}'.format(self._my_id, self._request_count, rate_limit_reset))
-
-            raise GitHubRateLimitExceededError(rate_limit_reset)
         else:
             throws = kwargs.get('throws', exceptions.UnhandledProviderError)
-            exc_to_raise = await exceptions.exception_from_response(resp, error=throws, **kwargs)
-            logger.debug('P({}):{}:_rl_is_over_limit: got a non-rate-limit error. '
+            exc = await exceptions.exception_from_response(resp, error=throws, **kwargs)
+            logger.debug('P({}):{}:_rl_handle_forbidden_error: got a non-rate-limit error. '
                          'Bailing out.'.format(self._my_id, self._request_count))
-            raise exc_to_raise
+
+        return exc
 
     async def _rl_check_available_tokens(self) -> None:
         """Checks if there are any available tokens.  If so, consume one and return.  Otherwise,

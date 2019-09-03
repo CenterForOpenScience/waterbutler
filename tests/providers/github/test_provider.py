@@ -1608,7 +1608,7 @@ class TestRateLimit:
         """make_request should rethrow non-FORBIDDEN errors w/o any additional error-handling"""
 
         mock_provider = rate_limit_provider
-        mock_provider._rl_is_over_limit = utils.MockCoroutine()
+        mock_provider._rl_handle_forbidden_error = utils.MockCoroutine()
 
         aiohttpretty.register_json_uri(
             'GET',
@@ -1630,7 +1630,7 @@ class TestRateLimit:
             )
 
         assert exc.value.code == HTTPStatus.SERVICE_UNAVAILABLE
-        mock_provider._rl_is_over_limit.assert_not_called()
+        mock_provider._rl_handle_forbidden_error.assert_not_called()
 
 
 class TestOperations:
