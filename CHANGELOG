@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+19.1.0 (2019-09-04)
+===================
+- Fix: Correctly annotate HEAD requests as metadata requests and revision requests as revision
+requests in the auth payload sent to the OSF.  These were being incorrectly marked as download
+requests, causing spurious download counts on OSF files.
+
 19.0.1 (2019-08-07)
 ===================
 - Fix: Fix bug in the Box provider that was causing files uploaded to subdirectories to end up in
