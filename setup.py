@@ -49,7 +49,7 @@ setup(
             # 'filesystem = waterbutler.providers.filesystem:FileSystemProvider',
             # 'github = waterbutler.providers.github:GitHubProvider',
             # 'gitlab = waterbutler.providers.gitlab:GitLabProvider',
-            # 'bitbucket = waterbutler.providers.bitbucket:BitbucketProvider',
+            'bitbucket = waterbutler.providers.bitbucket:BitbucketProvider',
             'osfstorage = waterbutler.providers.osfstorage:OSFStorageProvider',
             # 'owncloud = waterbutler.providers.owncloud:OwnCloudProvider',
             # 's3 = waterbutler.providers.s3:S3Provider',
