@@ -93,7 +93,6 @@ def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None)
                         '--ignore=tests/providers/dataverse/ ' \
                         '--ignore=tests/providers/dropbox/ ' \
                         '--ignore=tests/providers/figshare/ ' \
-                        '--ignore=tests/providers/filesystem/ ' \
                         '--ignore=tests/providers/github/ ' \
                         '--ignore=tests/providers/gitlab/ ' \
                         '--ignore=tests/providers/googledrive ' \
