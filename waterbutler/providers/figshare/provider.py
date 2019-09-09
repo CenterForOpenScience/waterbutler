@@ -100,8 +100,8 @@ class BaseFigshareProvider(provider.BaseProvider):
     DOWNLOAD_URL = pd_settings.DOWNLOAD_URL
     VALID_CONTAINER_TYPES = pd_settings.VALID_CONTAINER_TYPES
 
-    def __init__(self, auth, credentials, settings):
-        super().__init__(auth, credentials, settings)
+    def __init__(self, auth, credentials, settings, **kwargs):
+        super().__init__(auth, credentials, settings, **kwargs)
         self.token = self.credentials['token']
         self.container_type = self.settings['container_type']
         if self.container_type not in self.VALID_CONTAINER_TYPES:
@@ -801,8 +801,8 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
 class FigshareArticleProvider(BaseFigshareProvider):
 
-    def __init__(self, auth, credentials, settings, child=False):
-        super().__init__(auth, credentials, settings)
+    def __init__(self, auth, credentials, settings, child=False, **kwargs):
+        super().__init__(auth, credentials, settings, **kwargs)
 
     async def validate_v1_path(self, path, **kwargs):
         """Take a string path from the url and attempt to map it to an entity within this article.

@@ -102,7 +102,7 @@ def other_provider(other_auth, other_credentials, other_settings, provider_fixtu
 @pytest.fixture
 def rate_limit_provider(provider):
 
-    provider.task_id = 9876543210
+    provider.is_celery_task = True
     provider.rl_remaining = 500
     provider.rl_reset = 600
     provider.rl_available_tokens = 0
@@ -1465,7 +1465,7 @@ class TestRateLimit:
     async def test_make_request_not_celery(self, mock_time, rate_limit_provider):
 
         mock_provider = rate_limit_provider
-        del mock_provider.task_id
+        mock_provider.is_celery_task = False
 
         aiohttpretty.register_json_uri(
             'GET',
@@ -1549,7 +1549,7 @@ class TestRateLimit:
         """Test that non-celery requests throw rate limit exceeded error"""
 
         mock_provider = rate_limit_provider
-        del mock_provider.task_id
+        mock_provider.is_celery_task = False
 
         aiohttpretty.register_json_uri(
             'GET',
@@ -1579,7 +1579,7 @@ class TestRateLimit:
         """Test that non-celery requests re-throw non-limit exceeded errors"""
 
         mock_provider = rate_limit_provider
-        del mock_provider.task_id
+        mock_provider.is_celery_task = False
 
         aiohttpretty.register_json_uri(
             'GET',

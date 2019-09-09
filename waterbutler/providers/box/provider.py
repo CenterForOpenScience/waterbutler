@@ -33,7 +33,7 @@ class BoxProvider(provider.BaseProvider):
     TEMP_CHUNK_SIZE = pd_settings.TEMP_CHUNK_SIZE  # 32KiB default
     UPLOAD_COMMIT_RETRIES = pd_settings.UPLOAD_COMMIT_RETRIES
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, **kwargs):
         """Initialize a `BoxProvider` instance
         Credentials::
 
@@ -44,7 +44,7 @@ class BoxProvider(provider.BaseProvider):
             * ``folder``: id of the folder to use as root.  Box account root is always 0.
 
         """
-        super().__init__(auth, credentials, settings)
+        super().__init__(auth, credentials, settings, **kwargs)
         self.token = self.credentials['token']  # type: str
         self.folder = self.settings['folder']  # type: str
 
