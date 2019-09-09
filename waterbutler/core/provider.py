@@ -207,43 +207,45 @@ class BaseProvider(metaclass=abc.ABCMeta):
     @throttle()
     async def make_request(self, method, url, *args, **kwargs):
         """
-        A wrapper around 7 HTTP request methods in :class:`aiohttp.ClientSession`.  It replaces the
-        original ``make_request()`` method which was a wrapper around :func:`aiohttp.request`.  This
-        change is due to aiohttp triple-major-version upgrade from version 0.18 to 3.5.4 where the
-        main difference is context manager (CM).
+        A wrapper around seven HTTP request methods in :class:`aiohttp.ClientSession`.  It replaces
+        the original ``.make_request()`` method which was a wrapper around :func:`aiohttp.request`.
+        This change is due to aiohttp triple-major-version upgrade from version 0.18 to 3.5.4 where
+        the main difference is the context manager (CM).
 
         Core Quirk:
 
-        aiohttp3 explicitly provides two examples of making requests in the documentation.  Using
-        :func:`aiohttp.request` directly with CM and using :class:`aiohttp.ClientSession` and its
-        HTTP methods with CM.  Unfortunately, an unpleasant side-effect of CM is that sessions and
-        connections are closed outside CM.  This breaks WB's design where responses are passed
+        ``aiohttp3`` has explicitly provided two examples of making requests in the documentation.
+        Using :func:`aiohttp.request` directly with CM and using :class:`aiohttp.ClientSession` and
+        its HTTP methods with CM.  Unfortunately, an unpleasant side-effect of CM is that sessions
+        and connections are closed outside CM.  This breaks WB's design where responses are passed
         from one provider to another.
 
         Not-so-smart Solution:
 
-        By taking a look at aiohttp3's source code, we discovered that request can be made without
-        CM though we are not sure why the documentation doesn't mention this option.  The only trick
-        here is to sessions must be carefully managed by WB.  Please take a look at the following
-        methods for detailed implementation.
+        By taking a look at the source code of ``aiohttp3``, it is discovered that requests can be
+        made without CM although we are not sure why the documentation does not mention it at all.
+        The trick / hack of this non-CM approach is that sessions must be carefully managed by WB.
+        Please take a look at the following methods for detailed implementation.
 
-        ``__init__()``: session list and event loop map initialization
-        ``__del__()``: session and connection closing
-        ``get_or_create_session()``: get the current session or create a new one for making requests
+        :func:`__init__()`: session list and event loop map initialization
+        :func:`__del__()`: session and connection closing
+        :func:`get_or_create_session()`: either get the current session or create a new one if not
+        found when making a request
 
-        :param method: The HTTP method
-        :type method: :class:`str`
-        :param url: The URL to send the request to
-        :type url: :class:`str` or a ``functools.partial`` object to build the URL when called
+        :param method: ( :class:`str` ) The HTTP method
+        :param url: The URL or URL-to-be to send the request to
+        :type url: :class:`str` for the built URL or a :class:`functools.partial` object that will
+            be build when it is called
         :param \*args: args passed to methods of :class:`aiohttp.ClientSession`
         :param \*\*kwargs: kwargs passed to methods of :class:`aiohttp.ClientSession` except the
-            following ones that will be popped and used for other purposes
-            ``retry``: An optional integer with default value 2 that determines how further to retry
-                failed requests with the exponential backoff algorithm
-            ``expects``: An optional tuple of HTTP status codes as integers raises an exception if
-                the returned status code is not in it
-            ``throws``: The exception to be raised from expects
-            ``range``: An optional tuple (start, end) that is transformed into a Range header
+            following ones that will be popped and used for Waterbutler specific purposes
+        :keyword range: ( :class:`tuple` ) An optional tuple (start, end) that is transformed into
+            a Range header
+        :keyword expects: ( :class:`tuple` ) An optional tuple of HTTP status codes as integers
+            raises an exception if the returned status code is not in it
+        :keyword retry: ( :class:`int` ) An optional integer with default value 2 that determines
+            how further to retry failed requests with the exponential back-off algorithm
+        :keyword throws: ( :class:`Exception` ) The exception to be raised from expects
         :return: The HTTP response
         :rtype: :class:`aiohttp.ClientResponse`
         :raises: :class:`.UnhandledProviderError` Raised if expects is defined
