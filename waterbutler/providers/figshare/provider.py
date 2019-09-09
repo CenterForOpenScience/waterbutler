@@ -801,7 +801,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
 class FigshareArticleProvider(BaseFigshareProvider):
 
-    def __init__(self, auth, credentials, settings, child=False, **kwargs):
+    def __init__(self, auth, credentials, settings, **kwargs):
         super().__init__(auth, credentials, settings, **kwargs)
 
     async def validate_v1_path(self, path, **kwargs):
