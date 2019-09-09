@@ -39,8 +39,8 @@ class OSFStorageProvider(provider.BaseProvider):
 
     NAME = 'osfstorage'
 
-    def __init__(self, auth, credentials, settings):
-        super().__init__(auth, credentials, settings)
+    def __init__(self, auth, credentials, settings, **kwargs):
+        super().__init__(auth, credentials, settings, **kwargs)
         self.nid = settings['nid']
         self.root_id = settings['rootId']
         self.BASE_URL = settings['baseUrl']
@@ -128,6 +128,7 @@ class OSFStorageProvider(provider.BaseProvider):
                 self.auth,
                 self.credentials['storage'],
                 self.settings['storage'],
+                is_celery_task=self.is_celery_task,
             )
         return self._inner_provider
 

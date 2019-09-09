@@ -16,14 +16,10 @@ async def move(src_bundle, dest_bundle, request=None, start_time=None, **kwargs)
     start_time = start_time or time.time()
 
     src_path = src_bundle.pop('path')
-    src_provider = utils.make_provider(**src_bundle.pop('provider'))
-    dest_path = dest_bundle.pop('path')
-    dest_provider = utils.make_provider(**dest_bundle.pop('provider'))
+    src_provider = utils.make_provider(**src_bundle.pop('provider'), is_celery_task=True)
 
-    # TODO: should we add `task_id` explicitly as a property for core provider?
-    # Save celery task ID. Used to identify provider object running in celery
-    src_provider.task_id = move.request.id
-    dest_provider.task_id = move.request.id
+    dest_path = dest_bundle.pop('path')
+    dest_provider = utils.make_provider(**dest_bundle.pop('provider'), is_celery_task=True)
 
     logger.info('Starting moving {!r}, {!r} to {!r}, {!r}'
                 .format(src_path, src_provider, dest_path, dest_provider))

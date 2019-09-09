@@ -61,8 +61,8 @@ class DropboxProvider(provider.BaseProvider):
     CONTIGUOUS_UPLOAD_SIZE_LIMIT = pd_settings.CONTIGUOUS_UPLOAD_SIZE_LIMIT
     CHUNK_SIZE = pd_settings.CHUNK_SIZE
 
-    def __init__(self, auth, credentials, settings):
-        super().__init__(auth, credentials, settings)
+    def __init__(self, auth, credentials, settings, **kwargs):
+        super().__init__(auth, credentials, settings, **kwargs)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
         self.metrics.add('folder_is_root', self.folder == '/')

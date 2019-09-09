@@ -87,18 +87,21 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def __init__(self, auth: dict,
                  credentials: dict,
                  settings: dict,
-                 retry_on: typing.Set[int]={408, 502, 503, 504}) -> None:
+                 retry_on: typing.Set[int]={408, 502, 503, 504},
+                 is_celery_task: bool=False) -> None:
         """
         :param auth: ( :class:`dict` ) Information about the user this provider will act on the behalf of
         :param credentials: ( :class:`dict` ) The credentials used to authenticate with the provider,
             ofter an OAuth 2 token
         :param settings: ( :class:`dict` ) Configuration settings for this provider,
             often folder or repo
+        :param is_celery_task: ( :class:`bool` ) Was this provider built inside a celery task?
         """
         self._retry_on = retry_on
         self.auth = auth
         self.credentials = credentials
         self.settings = settings
+        self.is_celery_task = is_celery_task
 
         self.provider_metrics = MetricsRecord('provider')
         self.provider_metrics.add('auth', auth)

@@ -102,9 +102,9 @@ class GitHubProvider(provider.BaseProvider):
     RL_RESERVE_BASE = pd_settings.RL_RESERVE_BASE
     RL_MIN_REQ_RATE = pd_settings.RL_MIN_REQ_RATE
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, **kwargs):
 
-        super().__init__(auth, credentials, settings)
+        super().__init__(auth, credentials, settings, **kwargs)
         self.name = self.auth.get('name', None)
         self.email = self.auth.get('email', None)
         self.token = self.credentials['token']
@@ -156,7 +156,7 @@ class GitHubProvider(provider.BaseProvider):
             kwargs.update({'expects': expects + (int(HTTPStatus.FORBIDDEN), )})
 
         # If not a celery task, default to regular behavior (but inform about rate limits)
-        if not getattr(self, 'task_id', None):
+        if not self.is_celery_task:
             logger.debug('P({}):{}:make_request: NOT a celery task, bypassing '
                          'limits'.format(self._my_id, self._request_count))
             resp = await super().make_request(method, url, **kwargs)
