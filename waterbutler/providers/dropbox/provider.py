@@ -240,6 +240,19 @@ class DropboxProvider(provider.BaseProvider):
                        revision: str=None,
                        range: typing.Tuple[int, int]=None,
                        **kwargs) -> streams.ResponseStreamReader:
+        """
+        Dropbox V2 API Files Download
+        https://www.dropbox.com/developers/documentation/http/documentation#files-download
+
+        Request and Response Format: Content-download endpoints
+        https://www.dropbox.com/developers/documentation/http/documentation#formats
+
+        According to Dropbox's API docs for files download and content-download endpoints, the file
+        content is contained in the response body and the result (metadata about the file) appears
+        as JSON in the "Dropbox-API-Result" response header.  As far as the WB Dropbox provider is
+        concerned, the header contains the size (in bytes) of the file that ``ResponseStreamReader``
+        needs if the "Content-Length" header is not provided.
+        """
         path_arg = {"path": ("rev:" + revision if revision else path.full_path)}
         resp = await self.make_request(
             'POST',
