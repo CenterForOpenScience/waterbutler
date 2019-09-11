@@ -1,0 +1,98 @@
+{
+    "page1": [
+        {
+            "defined_type_name": "figure",
+            "handle": "",
+            "url_private_html": "https://figshare.com/account/articles/8263730",
+            "timeline": {
+                "revision": "2019-06-13T13:56:05",
+                "firstOnline": "2019-06-12T14:47:31",
+                "posted": "2019-06-13T13:56:05"
+            },
+            "created_date": "2019-06-12T14:41:44Z",
+            "url_private_api": "https://api.figshare.com/v2/account/articles/8263730",
+            "url_public_api": "https://api.figshare.com/v2/articles/8263730",
+            "id": 8263730,
+            "modified_date": "2019-06-13T13:56:05Z",
+            "doi": "10.6084/m9.figshare.8263730",
+            "thumb": "https://s3-eu-west-1.amazonaws.com/pfigshare-u-previews/15461024/thumb.png",
+            "title": "Figure",
+            "url": "https://api.figshare.com/v2/account/projects/64916/articles/8263730",
+            "defined_type": 1,
+            "resource_title": null,
+            "url_public_html": "https://figshare.com/articles/Figure01_png/8263730",
+            "resource_doi": null,
+            "published_date": "2019-06-13T13:56:05Z",
+            "group_id": null
+        },
+        {
+            "defined_type_name": "figure",
+            "handle": "",
+            "url_private_html": "https://figshare.com/account/articles/8305859",
+            "timeline": {},
+            "created_date": "2019-06-21T06:23:08Z",
+            "url_private_api": "https://api.figshare.com/v2/account/articles/8305859",
+            "url_public_api": "https://api.figshare.com/v2/articles/8305859",
+            "id": 8305859,
+            "modified_date": "2019-06-21T06:24:39Z",
+            "doi": "",
+            "thumb": "https://ndownloader.figshare.com/files/15562817/preview/15562817/thumb.png",
+            "title": "FigurePrivate",
+            "url": "https://api.figshare.com/v2/account/projects/64916/articles/8305859",
+            "defined_type": 1,
+            "resource_title": null,
+            "url_public_html": "https://figshare.com/articles/_/8305859",
+            "resource_doi": null,
+            "published_date": null,
+            "group_id": null
+        }
+    ],
+    "page2": [
+        {
+            "defined_type_name": "dataset",
+            "handle": "",
+            "url_private_html": "https://figshare.com/account/articles/8263811",
+            "timeline": {
+                "revision": "2019-06-18T14:45:32",
+                "firstOnline": "2019-06-12T14:53:26",
+                "posted": "2019-06-18T14:45:32"
+            },
+            "created_date": "2019-06-12T14:51:31Z",
+            "url_private_api": "https://api.figshare.com/v2/account/articles/8263811",
+            "url_public_api": "https://api.figshare.com/v2/articles/8263811",
+            "id": 8263811,
+            "modified_date": "2019-06-18T14:45:32Z",
+            "doi": "10.6084/m9.figshare.8263811",
+            "thumb": "",
+            "title": "Dataset",
+            "url": "https://api.figshare.com/v2/account/projects/64916/articles/8263811",
+            "defined_type": 3,
+            "resource_title": null,
+            "url_public_html": "https://figshare.com/articles/Dataset01_txt/8263811",
+            "resource_doi": null,
+            "published_date": "2019-06-18T14:45:32Z",
+            "group_id": null
+        },
+        {
+            "defined_type_name": "dataset",
+            "handle": "",
+            "url_private_html": "https://figshare.com/account/articles/8269766",
+            "timeline": {},
+            "created_date": "2019-06-13T15:58:25Z",
+            "url_private_api": "https://api.figshare.com/v2/account/articles/8269766",
+            "url_public_api": "https://api.figshare.com/v2/articles/8269766",
+            "id": 8269766,
+            "modified_date": "2019-06-13T16:00:12Z",
+            "doi": "",
+            "thumb": "",
+            "title": "DatasetPrivate",
+            "url": "https://api.figshare.com/v2/account/projects/64916/articles/8269766",
+            "defined_type": 3,
+            "resource_title": null,
+            "url_public_html": "https://figshare.com/articles/_/8269766",
+            "resource_doi": null,
+            "published_date": null,
+            "group_id": null
+        }
+    ]
+}
