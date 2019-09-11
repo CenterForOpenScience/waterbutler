@@ -28,7 +28,7 @@ class DataverseProvider(provider.BaseProvider):
 
     NAME = 'dataverse'
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, **kwargs):
         """
         :param dict auth: Not used
         :param dict credentials: Contains `token`
@@ -38,7 +38,7 @@ class DataverseProvider(provider.BaseProvider):
             - 'dataverse.harvard.edu': Dataverse Production Server **(NO TEST DATA)**
             - Other
         """
-        super().__init__(auth, credentials, settings)
+        super().__init__(auth, credentials, settings, **kwargs)
         self.BASE_URL = 'https://{0}'.format(self.settings['host'])
 
         self.token = self.credentials['token']

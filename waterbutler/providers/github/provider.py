@@ -1,21 +1,26 @@
 import copy
 import json
+import time
+import uuid
+import asyncio
 import hashlib
 import logging
 from typing import Tuple
+from http import HTTPStatus
 
 import furl
-
-from waterbutler.core import exceptions, provider, streams
+from aiohttp.client import ClientResponse
 
 from waterbutler.providers.github.path import GitHubPath
+from waterbutler.core import streams, provider, exceptions
 from waterbutler.providers.github import settings as pd_settings
-from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
 from waterbutler.providers.github.metadata import (GitHubRevision,
-                                                   GitHubFileContentMetadata,
-                                                   GitHubFolderContentMetadata,
                                                    GitHubFileTreeMetadata,
-                                                   GitHubFolderTreeMetadata, )
+                                                   GitHubFolderTreeMetadata,
+                                                   GitHubFileContentMetadata,
+                                                   GitHubFolderContentMetadata, )
+from waterbutler.providers.github.exceptions import (GitHubUnsupportedRepoError,
+                                                     GitHubRateLimitExceededError, )
 
 logger = logging.getLogger(__name__)
 
@@ -52,19 +57,160 @@ class GitHubProvider(provider.BaseProvider):
 
     * GitHub doesn't respect Range header on downloads
 
+    .. _rate-limiting:
+
+    **Rate limiting**
+
+    GitHub enforces rate-limits to avoid being overwhelmed with requests.  This limit is currently
+    5,000 requests per hour per authenticated user.  Under normal usage patterns, the only WB
+    actions likely to encounter this are large recursive move/copy actions.  For these actions, WB
+    reserves the right to run the operation in a background task if it cannot complete them within a
+    given timeframe.  The GitHub provider will add artifical delays between requests to try to
+    ensure that a long-running request does not exhaust the rate-limits.
+
+    .. _requests-and-tokens:
+
+    *Requests and tokens*
+
+    This provider uses the concept of requests and tokens to help determine how fast to issue
+    requests.  Requests are discrete and correspond to the number of requests allowed by GitHub
+    within a given time period.  Tokens are an artificial concept but are approximately equivalent
+    to requests.  IOW, one token equals one request.  The difference is that the number of tokens
+    is permitted to be fractional.  Every *n* seconds, the provider will add tokens to the pool.
+    Once the number of tokens exceeds one, a single request may be made.  One token is subtracted,
+    and the provider may continue to accumulate fractional tokens.
+
+    *Reserves*
+
+    GitHub sets rate-limits based off the authenticated user making the request.  Since a user may
+    have multiple operations happening at one time (for example, two simultaneous registrations),
+    the provider attempts to *reserve* a portion of requests for other processes to use.  When the
+    number of requests remaining before the limit resets is less than the reserve, the provider
+    sets the allowed requests rate to a minimum value.  This minimum value will cause some requests
+    to wait a long time before being issued, but will hopefully allow long-running processes to
+    complete successfully.
     """
+
     NAME = 'github'
     BASE_URL = pd_settings.BASE_URL
     VIEW_URL = pd_settings.VIEW_URL
 
-    def __init__(self, auth, credentials, settings):
-        super().__init__(auth, credentials, settings)
+    # Load settings for GitHub rate limiting
+    RL_TOKEN_ADD_DELAY = pd_settings.RL_TOKEN_ADD_DELAY
+    RL_MAX_AVAILABLE_TOKENS = pd_settings.RL_MAX_AVAILABLE_TOKENS
+    RL_RESERVE_RATIO = pd_settings.RL_RESERVE_RATIO
+    RL_RESERVE_BASE = pd_settings.RL_RESERVE_BASE
+    RL_MIN_REQ_RATE = pd_settings.RL_MIN_REQ_RATE
+
+    def __init__(self, auth, credentials, settings, **kwargs):
+
+        super().__init__(auth, credentials, settings, **kwargs)
         self.name = self.auth.get('name', None)
         self.email = self.auth.get('email', None)
         self.token = self.credentials['token']
         self.owner = self.settings['owner']
         self.repo = self.settings['repo']
         self.metrics.add('repo', {'repo': self.repo, 'owner': self.owner})
+
+        # debugging parameters
+        self._my_id = uuid.uuid4()
+        self._request_count = 0
+
+        # `.rl_available_tokens` determines if a request should wait or proceed. Each provider
+        # instance starts with a full bag (`.RL_MAX_AVAILABLE_TOKENS`) of tokens.
+        self.rl_available_tokens = self.RL_MAX_AVAILABLE_TOKENS
+
+        # `.rl_remaining` denotes the number of requests left before reset, which is the value from
+        # GitHub API response header "X-RateLimiting-Remaining".
+        self.rl_remaining = 0
+
+        # Reserve a portion of the total number of remaining requests. Calculated after receiving
+        # response from GH
+        self.rl_reserved = 0
+
+        # `.rl_reset` denotes the time when the limit will be reset, which is the value from GitHub
+        # API response header "X-RateLimiting-Reset".
+        self.rl_reset = 0
+
+    async def make_request(self, method: str, url: str, *args, **kwargs) -> ClientResponse:
+        """Wrap the parent `make_request()` to handle GH rate limiting.  Only requests handled by
+        WB Celery are affected.
+
+        1. For both Celery and non-Celery requests: intercept HTTP 403 Forbidden response.  Throw a
+        dedicated ``GitHubRateLimitExceededError`` if it is caused by rate-limiting. Re-throw other
+        403s as they are.
+
+        2. Only for Celery requests: each request must wait until there are enough available tokens
+        to before continue.  The tokens are replenished based several factors including: time since
+        last update, number of requests remaining, time until limit is reset, etc.
+        """
+
+        self._request_count += 1
+
+        logger.debug('P({}):{}: '.format(self._my_id, self._request_count))
+        logger.debug('P({}):{}:make_request: begin!'.format(self._my_id, self._request_count))
+
+        # Only update `expects` when it exists in the original request
+        expects = kwargs.get('expects', None)
+        if expects:
+            kwargs.update({'expects': expects + (int(HTTPStatus.FORBIDDEN), )})
+
+        # If not a celery task, default to regular behavior (but inform about rate limits)
+        if not self.is_celery_task:
+            logger.debug('P({}):{}:make_request: NOT a celery task, bypassing '
+                         'limits'.format(self._my_id, self._request_count))
+            resp = await super().make_request(method, url, **kwargs)
+
+            if resp.status == HTTPStatus.FORBIDDEN:
+                await resp.release()
+                raise await self._rl_handle_forbidden_error(resp, **kwargs)
+
+            logger.debug('P({}):{}:make_request: done successfully!'.format(self._my_id,
+                                                                            self._request_count))
+            return resp
+
+        logger.debug('P({}):{}:make_request: IS a celery task, start token '
+                     'verification'.format(self._my_id, self._request_count))
+        logger.debug('P({}):{}:make_request: init state: tokens({}) '
+                     'remaining({}) reserved({}) reset({})'.format(self._my_id,
+                                                                   self._request_count,
+                                                                   self.rl_available_tokens,
+                                                                   self.rl_remaining,
+                                                                   self.rl_reserved,
+                                                                   self.rl_reset))
+
+        await self._rl_check_available_tokens()
+        resp = await super().make_request(method, url, *args, **kwargs)
+        self.rl_remaining = int(resp.headers['X-RateLimit-Remaining'])
+        self.rl_reset = int(resp.headers['X-RateLimit-Reset'])
+
+        # GitHub's rate limiting is per authenticated user. It is entirely probable that users are
+        # making additional requests that count against the quota when the copy/move is in process.
+        #
+        # Reserve a portion (20% by default) of the total number of remaining requests plus a base
+        # number (100 by default). This reservation is critical for preventing the current provider
+        # instance from running out of tokens when additional calls are made for the same user on
+        # OSF. In addition, this should support at least 3 concurrent large move/copy actions.
+        #
+        self.rl_reserved = self.rl_remaining * self.RL_RESERVE_RATIO + self.RL_RESERVE_BASE
+
+        logger.debug('P({}):{}:make_request: final state: tokens({}) '
+                     'remaining({}) reserved({}) reset({})'.format(self._my_id,
+                                                                   self._request_count,
+                                                                   self.rl_available_tokens,
+                                                                   self.rl_remaining,
+                                                                   self.rl_reserved,
+                                                                   self.rl_reset))
+
+        # Raise error if rate limit cap is hit even after WB's balancing effort. This can happen if
+        # users try to copy/register multiple repos with many files/folders at the same time.
+        if resp.status == HTTPStatus.FORBIDDEN:
+            await resp.release()
+            raise await self._rl_handle_forbidden_error(resp, **kwargs)
+
+        logger.debug('P({}):{}:make_request: done successfully!'.format(self._my_id,
+                                                                        self._request_count))
+        return resp
 
     async def validate_v1_path(self, path, **kwargs):
         """Validate the path part of the request url, asserting that the path exists, and
@@ -140,7 +286,8 @@ class GitHubProvider(provider.BaseProvider):
         """Build a path from a parent path and a metadata object.  Will correctly set the _id
         Used for building zip archives."""
         file_sha = metadata.extra.get('fileSha', None)
-        return parent_path.child(metadata.name, _id=(metadata.ref, file_sha), folder=metadata.is_folder, )
+        return parent_path.child(metadata.name, _id=(metadata.ref, file_sha),
+                                 folder=metadata.is_folder, )
 
     def can_duplicate_names(self):
         return False
@@ -251,7 +398,8 @@ class GitHubProvider(provider.BaseProvider):
             'tree': tree['sha'],
             'parents': [latest_sha],
             'committer': self.committer,
-            'message': message or (pd_settings.UPDATE_FILE_MESSAGE if exists else pd_settings.UPLOAD_FILE_MESSAGE),
+            'message': message or (pd_settings.UPDATE_FILE_MESSAGE
+                                   if exists else pd_settings.UPLOAD_FILE_MESSAGE),
         })
 
         # Doesn't return anything useful
@@ -342,14 +490,18 @@ class GitHubProvider(provider.BaseProvider):
         data = await resp.json()
 
         if resp.status in (422, 409):
-            if resp.status == 409 or data.get('message') == 'Invalid request.\n\n"sha" wasn\'t supplied.':
+            if (
+                    resp.status == 409 or
+                    data.get('message') == 'Invalid request.\n\n"sha" wasn\'t supplied.'
+            ):
                 raise exceptions.FolderNamingConflict(path.name)
             raise exceptions.CreateFolderError(data, code=resp.status)
 
         data['content']['name'] = path.name
         data['content']['path'] = data['content']['path'].replace('.gitkeep', '')
 
-        return GitHubFolderContentMetadata(data['content'], commit=data['commit'], ref=path.branch_ref)
+        return GitHubFolderContentMetadata(data['content'], commit=data['commit'],
+                                           ref=path.branch_ref)
 
     async def _delete_file(self, path, message=None, **kwargs):
         if path.file_sha:
@@ -773,8 +925,8 @@ class GitHubProvider(provider.BaseProvider):
             if dest_path.is_dir:
                 src_tree['tree'] = self._remove_path_from_tree(src_tree['tree'], dest_path)
 
-            # if this is a copy, duplicate and append our source blobs. The originals will be updated
-            # with the new destination path.
+            # if this is a copy, duplicate and append our source blobs. The originals will be
+            # updated with the new destination path.
             if is_copy:
                 src_tree['tree'].extend(copy.deepcopy(blobs))
 
@@ -954,7 +1106,7 @@ class GitHubProvider(provider.BaseProvider):
         line.  Returns the new commit.
 
         :param list old_tree: A list of blobs representing the new file tree.
-        :param dict old_head: The commit object will be the parent of the new commit. Must have 'sha' key.
+        :param dict old_head: The commit that's the parent of the new commit. Must have 'sha' key.
         :param str commit_msg: The commit message for the new commit.
         :param str branch_ref: The branch that will be advanced to the new commit.
         :returns dict new_head: The commit object returned by GitHub.
@@ -1091,3 +1243,88 @@ class GitHubProvider(provider.BaseProvider):
 
         # 'in' instead of '==' b/c git shas will be changing in future git release.
         return len(ref) in pd_settings.GITHUB_SHA_LENGTHS
+
+    async def _rl_handle_forbidden_error(self, resp: ClientResponse, **kwargs) -> Exception:
+        """Check if an HTTP 403 response is caused by rate limiting or not. If so, throw a special
+        ``GitHubRateLimitExceededError`` with rate limiting information. Otherwise, re-throw the
+        original error in the response or an ``UnhandledProviderError`` if there is none.
+        """
+
+        exc = None
+        if int(resp.headers['X-RateLimit-Remaining']) == 0:
+            rate_limit_reset = int(resp.headers['X-RateLimit-Reset'])
+            exc = GitHubRateLimitExceededError(rate_limit_reset)
+            logger.debug('P({}):{}:_rl_handle_forbidden_error: ran out of requests, will reset '
+                         'at {}'.format(self._my_id, self._request_count, rate_limit_reset))
+        else:
+            throws = kwargs.get('throws', exceptions.UnhandledProviderError)
+            exc = await exceptions.exception_from_response(resp, error=throws, **kwargs)
+            logger.debug('P({}):{}:_rl_handle_forbidden_error: got a non-rate-limit error. '
+                         'Bailing out.'.format(self._my_id, self._request_count))
+
+        return exc
+
+    async def _rl_check_available_tokens(self) -> None:
+        """Checks if there are any available tokens.  If so, consume one and return.  Otherwise,
+        continue to add new tokens until an entire token is available.  Waits for a short period
+        of time between each add request.  The wait time is defined by `.RL_TOKEN_ADD_DELAY`
+        and its default is 1 second.
+        """
+        logger.debug('P({}):{}:token_check: starting with {} '
+                     'tokens'.format(self._my_id, self._request_count, self.rl_available_tokens))
+
+        # If no full tokens are available, wait and add fractional tokens based on current rate.
+        while self.rl_available_tokens < 1:
+            self._rl_add_more_tokens()
+            await asyncio.sleep(self.RL_TOKEN_ADD_DELAY)
+
+        logger.debug('P({}):{}:token_check: consuming token'.format(self._my_id,
+                                                                    self._request_count))
+
+        # Consume one token for the upcoming request.
+        self.rl_available_tokens -= 1
+
+    def _rl_add_more_tokens(self) -> None:
+        """Add a number of tokens equivalent to the approximate time since this was last called and
+        the current request rate.  Can add fractional tokens.  Caps the number of available tokens
+        at `self.RL_MAX_AVAILABLE_TOKENS`.
+
+        Calculate the rate at which WB should make requests.  Instead of maximizing the rate with
+        ``$remaining  / $time_to_reset``, WB sets a lower one by reserving "20% of the total
+        number of remaining requests plus 10 extra ones".  We want to make sure that some requests
+        are set aside for regular user interactions (e.g. reloading the page on the OSF). We also
+        want to handle the case where the user has initiated multiple move/copies from a
+        WB-connected GitHub repo.  Both of these parameters are tweakable via the GH provider
+        settings.py file.
+        """
+
+        # `rl_req_rate` denotes the number of requests allowed per second.
+        rl_req_rate = None
+
+        if self.rl_remaining < self.rl_reserved:
+            # With the default setting, the number of reserved requests is greater or equal to the
+            # number of remaining requests when the latter is 125 or less. Set the reference request
+            # rate to the minimum value (0.01 by default) which allows only 36 requests in a hour.
+            # Given that 4 > 125 / 36 > 3, at least 3 concurrent move/copy actions are supported
+            # even in the worst case scenario.
+            rl_req_rate = self.RL_MIN_REQ_RATE
+        else:
+            # Otherwise, calculate the reference request rate according to the adjusted number of
+            # remaining requests and the time between now and next limit reset. If no other major
+            # requests (i.e. another copy/move) are being made at the same time, this reference
+            # request rate keeps increasing slightly.
+            seconds_until_reset = max((self.rl_reset - time.time()), 1)
+            rl_req_rate = (self.rl_remaining - self.rl_reserved) / seconds_until_reset
+
+        logger.debug('P({}):{}:adding_tokens: current_tokens:({}) '
+                     'request_rate:({})'.format(self._my_id, self._request_count,
+                                                self.rl_available_tokens, rl_req_rate))
+
+        # Add a number of tokens equal to: seconds since we last added tokens (which is
+        # approximately RL_TOKEN_ADD_DELAY) times the rate at which we should add tokens
+        # (rl_req_rate).  Update self.rl_available_tokens, which should never go
+        # beyond .RL_MAX_AVAILABLE_TOKENS.
+        self.rl_available_tokens = min(
+            self.rl_available_tokens + (self.RL_TOKEN_ADD_DELAY * rl_req_rate),
+            self.RL_MAX_AVAILABLE_TOKENS
+        )

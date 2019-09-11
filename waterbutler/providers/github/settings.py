@@ -26,3 +26,17 @@ DELETE_FOLDER_MESSAGE = config.get('DELETE_FOLDER_MESSAGE', 'Folder deleted on b
 #   GITHUB_PROVIDER_GITHUB_SHA_LENGTHS=40 64
 #
 GITHUB_SHA_LENGTHS = [int(x) for x in config.get('GITHUB_SHA_LENGTHS', '40').split(' ')]
+
+
+# Config For GitHub Rate Limiting
+#
+# The time in seconds to wait before making another attempt to add more tokens
+RL_TOKEN_ADD_DELAY = int(config.get('RL_TOKEN_ADD_DELAY', 1))
+# The maximum number of available tokens (requests) allowed
+RL_MAX_AVAILABLE_TOKENS = float(config.get('RL_MAX_AVAILABLE_TOKENS', 10.0))
+# The percentage of remaining requests to be reserved.
+RL_RESERVE_RATIO = float(config.get('RL_RESERVE_RATIO', 0.2))
+# The base number of requests to be reserved.
+RL_RESERVE_BASE = int(config.get('RL_RESERVE_BASE', 100))
+# The minimum request rate allowed.  Applies when the provider is near the reserve base.
+RL_MIN_REQ_RATE = float(config.get('RL_MIN_REQ_RATE', 0.01))

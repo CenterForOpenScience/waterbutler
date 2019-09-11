@@ -45,6 +45,7 @@ def make_provider(name: str, auth: dict, credentials: dict, settings: dict, **kw
             name=name,
             invoke_on_load=True,
             invoke_args=(auth, credentials, settings),
+            invoke_kwds=kwargs,
         )
     except RuntimeError:
         raise exceptions.ProviderNotFound(name)

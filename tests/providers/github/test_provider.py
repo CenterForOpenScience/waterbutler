@@ -2,31 +2,28 @@ import io
 import os
 import copy
 import json
-import base64
+import time
 import hashlib
-from http import client
+from unittest import mock
+from http import HTTPStatus
 
 import furl
 import pytest
 import aiohttpretty
 
-from waterbutler.core import streams
-from waterbutler.core import exceptions
-
+from waterbutler.core import streams, exceptions
 from waterbutler.providers.github import GitHubProvider
 from waterbutler.providers.github.path import GitHubPath
 from waterbutler.providers.github.metadata import (GitHubRevision,
                                                    GitHubFileTreeMetadata,
                                                    GitHubFolderTreeMetadata,
                                                    GitHubFileContentMetadata,
-                                                   GitHubFolderContentMetadata)
-from waterbutler.providers.github import settings as github_settings
-from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
+                                                   GitHubFolderContentMetadata, )
+from waterbutler.providers.github.exceptions import (GitHubUnsupportedRepoError,
+                                                     GitHubRateLimitExceededError, )
 
-
-from tests.providers.github.fixtures import (crud_fixtures,
-                                             revision_fixtures,
-                                             provider_fixtures)
+from tests import utils
+from tests.providers.github.fixtures import crud_fixtures, revision_fixtures, provider_fixtures
 
 
 @pytest.fixture
@@ -102,6 +99,25 @@ def other_provider(other_auth, other_credentials, other_settings, provider_fixtu
     return provider
 
 
+@pytest.fixture
+def rate_limit_provider(provider):
+
+    provider.is_celery_task = True
+    provider.rl_remaining = 500
+    provider.rl_reset = 600
+    provider.rl_available_tokens = 0
+    provider.rl_tokens_updated = 90
+
+    return provider
+
+
+@pytest.fixture
+def mock_time(monkeypatch):
+
+    mock_time = mock.Mock(return_value=100)
+    monkeypatch.setattr(time, 'time', mock_time)
+
+
 class TestHelpers:
 
     def test_build_repo_url(self, provider, settings):
@@ -144,7 +160,7 @@ class TestValidatePath:
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/{}/'.format(blob_path))
 
-        assert exc.value.code == client.NOT_FOUND
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -186,7 +202,7 @@ class TestValidatePath:
         with pytest.raises(exceptions.NotFoundError) as exc:
             await provider.validate_v1_path('/{}'.format(tree_name))
 
-        assert exc.value.code == client.NOT_FOUND
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     async def test_reject_multiargs(self, provider):
@@ -194,12 +210,12 @@ class TestValidatePath:
         with pytest.raises(exceptions.InvalidParameters) as exc:
             await provider.validate_v1_path('/foo', ref=['bar', 'baz'])
 
-        assert exc.value.code == client.BAD_REQUEST
+        assert exc.value.code == HTTPStatus.BAD_REQUEST
 
         with pytest.raises(exceptions.InvalidParameters) as exc:
             await provider.validate_path('/foo', ref=['bar', 'baz'])
 
-        assert exc.value.code == client.BAD_REQUEST
+        assert exc.value.code == HTTPStatus.BAD_REQUEST
 
     @pytest.mark.asyncio
     async def test_validate_path(self, provider):
@@ -269,7 +285,6 @@ class TestCRUD:
 
         url = provider.build_repo_url('git', 'blobs', file_sha)
         tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
-        latest_sha_url = provider.build_repo_url('git', 'refs', 'heads', path.identifier[0])
         commit_url = provider.build_repo_url(
             'commits', path=path.path.lstrip('/'), sha=path.identifier[0]
         )
@@ -660,10 +675,7 @@ class TestCRUD:
             'git', 'trees',
             crud_fixtures['deleted_branch_metadata']['commit']['commit']['tree']['sha'])
         )
-
         create_tree_url = provider.build_repo_url('git', 'trees')
-        commit_url = provider.build_repo_url('git', 'commits')
-        patch_url = provider.build_repo_url('git', 'refs', 'heads', path.branch_ref)
 
         aiohttpretty.register_json_uri(
             'GET', branch_url, body=crud_fixtures['deleted_branch_metadata']
@@ -957,8 +969,6 @@ class TestMetadata:
         )
         url = furl.furl(provider.build_repo_url('contents', '/test/'))
         url.args.update({'ref': path.branch_ref})
-
-        message = 'This repository is empty.'
 
         aiohttpretty.register_json_uri('GET', url, body={})
 
@@ -1365,6 +1375,264 @@ class TestCreateFolder:
         assert metadata.path == '/i/like/trains/'
 
 
+class TestRateLimit:
+
+    def test_add_tokens_min_rate(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 600
+        mock_provider._rl_add_more_tokens()
+        assert mock_provider.rl_available_tokens == 0.01
+
+    def test_add_tokens_min_rate_max_tokens(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 600
+        mock_provider.rl_available_tokens = 9.99
+        mock_provider._rl_add_more_tokens()
+        assert mock_provider.rl_available_tokens == 10.0
+
+    def test_add_tokens_variable_rate(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
+        mock_provider._rl_add_more_tokens()  # (500 - 200) / (600 - 100) = 0.6
+        assert mock_provider.rl_available_tokens == 0.6
+
+    def test_add_tokens_variable_rate_max_tokens(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
+        mock_provider.rl_available_tokens = 11
+        mock_provider._rl_add_more_tokens()
+        assert mock_provider.rl_available_tokens == 10
+
+    def test_add_tokens_reset_smaller_than_now(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
+        mock_provider.rl_reset = 50
+        mock_provider._rl_add_more_tokens()
+        assert mock_provider.rl_available_tokens == 10
+
+    @pytest.mark.asyncio
+    async def test_wait_for_tokens(self, mock_time, rate_limit_provider):
+        """No whole tokens remaining. Call _rl_add_more_tokens until fixed."""
+
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
+        orig_add_more_tokens = mock_provider._rl_add_more_tokens
+        mock_provider._rl_add_more_tokens = mock.Mock(side_effect=orig_add_more_tokens)
+        await mock_provider._rl_check_available_tokens()  # rate should be 0.6, two iterations and done
+
+        assert mock_provider.rl_available_tokens < 0.205
+        assert mock_provider.rl_available_tokens > 0.195
+        assert mock_provider._rl_add_more_tokens.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_dont_wait_for_tokens(self, mock_time, rate_limit_provider):
+        """Plenty of tokens available, no need to add more"""
+
+        mock_provider = rate_limit_provider
+        mock_provider.rl_available_tokens = 3.0
+        mock_provider._rl_add_more_tokens = mock.Mock()
+        await mock_provider._rl_check_available_tokens()
+
+        assert mock_provider.rl_available_tokens == 2.0
+        mock_provider._rl_add_more_tokens.assert_not_called()
+
+    # Test that celery requests update the `rl_remaining` and `rl_reset` with resp headers
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_celery(self, mock_time, rate_limit_provider):
+
+        mock_provider = rate_limit_provider
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.OK,
+            headers={
+                'X-RateLimit-Remaining': 1234,
+                'X-RateLimit-Reset': 5678
+            })
+        await mock_provider.make_request(
+            'GET',
+            'wb-test-github.cos.io',
+            expects=(HTTPStatus.OK, ),
+            throws=exceptions.MetadataError,
+        )
+        assert mock_provider.rl_remaining == 1234
+        assert mock_provider.rl_reset == 5678
+
+    # Test that non-celery ones don't update the `rl_remaining` and `rl_reset` with resp headers
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_celery(self, mock_time, rate_limit_provider):
+
+        mock_provider = rate_limit_provider
+        mock_provider.is_celery_task = False
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.OK,
+            headers={
+                'X-RateLimit-Remaining': 1234,
+                'X-RateLimit-Reset': 5678
+            })
+        await mock_provider.make_request(
+            'GET',
+            'wb-test-github.cos.io',
+            expects=(HTTPStatus.OK,),
+            throws=exceptions.MetadataError,
+        )
+
+        assert mock_provider.rl_remaining == 500
+        assert mock_provider.rl_reset == 600
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_celery_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Verify error-handling behavior for celery-based rate-limited errors."""
+
+        mock_provider = rate_limit_provider
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.FORBIDDEN,
+            headers={
+                'X-RateLimit-Remaining': 0,
+                'X-RateLimit-Reset': 5678,
+            },
+            body={'message': 'API rate limit exceeded'}
+        )
+
+        with pytest.raises(GitHubRateLimitExceededError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(HTTPStatus.OK,),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.SERVICE_UNAVAILABLE
+        assert '1970-01-01T01:34:38+00:00.' in exc.value.message
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_celery_not_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Verify error-handling behavior for celery-based not-rate-limited errors. E.g.
+        permissions-based errors."""
+
+        mock_provider = rate_limit_provider
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.FORBIDDEN,
+            headers={
+                'X-RateLimit-Remaining': 231,
+                'X-RateLimit-Reset': 5678,
+            },
+            body={'message': 'this is a fake error'}
+        )
+
+        with pytest.raises(exceptions.MetadataError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(HTTPStatus.OK,),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.FORBIDDEN
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_celery_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Test that non-celery requests throw rate limit exceeded error"""
+
+        mock_provider = rate_limit_provider
+        mock_provider.is_celery_task = False
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.FORBIDDEN,
+            headers={
+                'X-RateLimit-Remaining': 0,
+                'X-RateLimit-Reset': 5678,
+            },
+            body={'message': 'API rate limit exceeded'}
+        )
+
+        with pytest.raises(GitHubRateLimitExceededError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.SERVICE_UNAVAILABLE
+        assert '1970-01-01T01:34:38+00:00.' in exc.value.message
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_celery_not_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Test that non-celery requests re-throw non-limit exceeded errors"""
+
+        mock_provider = rate_limit_provider
+        mock_provider.is_celery_task = False
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.FORBIDDEN,
+            headers={
+                'X-RateLimit-Remaining': 123,
+                'X-RateLimit-Reset': 5678,
+            },
+            body={'message': 'API rate limit exceeded'}
+        )
+
+        with pytest.raises(exceptions.MetadataError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.FORBIDDEN
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_forbidden_error(self, mock_time, rate_limit_provider):
+        """make_request should rethrow non-FORBIDDEN errors w/o any additional error-handling"""
+
+        mock_provider = rate_limit_provider
+        mock_provider._rl_handle_forbidden_error = utils.MockCoroutine()
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.SERVICE_UNAVAILABLE,
+            headers={
+                'X-RateLimit-Remaining': 231,
+                'X-RateLimit-Reset': 5678,
+            },
+            body={'message': 'this is a fake error'}
+        )
+
+        with pytest.raises(exceptions.MetadataError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(HTTPStatus.OK,),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.SERVICE_UNAVAILABLE
+        mock_provider._rl_handle_forbidden_error.assert_not_called()
+
+
 class TestOperations:
 
     def test_can_duplicate_names(self, provider):
@@ -1485,7 +1753,7 @@ class TestUtilities:
             GitHubPath('/beta/gam/', _ids=_ids)
         )
 
-        assert missing_file_tree == provider_fixtures['nested_tree_metadata']['tree']
+        assert missing_folder_tree == provider_fixtures['nested_tree_metadata']['tree']
 
     def test__reparent_blobs(self, provider, provider_fixtures):
         _ids = [('master', '')]
@@ -1712,7 +1980,7 @@ class TestUtilities:
         with pytest.raises(exceptions.InvalidParameters) as exc:
             provider._interpret_query_parameters(**kwargs)
 
-        assert exc.value.code == client.BAD_REQUEST
+        assert exc.value.code == HTTPStatus.BAD_REQUEST
 
     @pytest.mark.parametrize('ref,expected', [
         ('ca39bcbf849231525ce9e775935fcb18ed477b5a', True),
