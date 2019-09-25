@@ -65,21 +65,23 @@ class TooManyRequests(WaterButlerError):
                         * X-Waterbutler-RateLimiting-Reset
     """
     def __init__(self, data):
-
-        message = {
-            'error': 'API rate-limiting active due to too many requests',
-            'headers': {
-                'Retry-After': data['retry_after'],
-                'X-Waterbutler-RateLimiting-Window': settings.RATE_LIMITING_FIXED_WINDOW_SIZE,
-                'X-Waterbutler-RateLimiting-Limit': settings.RATE_LIMITING_FIXED_WINDOW_LIMIT,
-                'X-Waterbutler-RateLimiting-Remaining': data['remaining'],
-                'X-Waterbutler-RateLimiting-Reset': data['reset'],
-            },
-        }
+        if type(data) != dict:
+            message = 'This is a thing: {}'.format(data)
+        else:
+            message = {
+                'error': 'API rate-limiting active due to too many requests',
+                'headers': {
+                    'Retry-After': data['retry_after'],
+                    'X-Waterbutler-RateLimiting-Window': settings.RATE_LIMITING_FIXED_WINDOW_SIZE,
+                    'X-Waterbutler-RateLimiting-Limit': settings.RATE_LIMITING_FIXED_WINDOW_LIMIT,
+                    'X-Waterbutler-RateLimiting-Remaining': data['remaining'],
+                    'X-Waterbutler-RateLimiting-Reset': data['reset'],
+                },
+            }
         super().__init__(message, code=HTTPStatus.TOO_MANY_REQUESTS, is_user_error=True)
 
 
-class WaterbutlerRedisError(WaterButlerError):
+class WaterButlerRedisError(WaterButlerError):
     """Indicates the Redis server has returned an error. Returns HTTP 503 Service Unavailable.
     """
     def __init__(self, redis_command):

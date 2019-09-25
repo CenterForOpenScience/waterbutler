@@ -24,6 +24,11 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler, 
         exception_kwargs, finish_args = {}, []
         if issubclass(etype, exceptions.WaterButlerError):
             self.set_status(int(exc.code))
+
+            # If the exception has a `data` property then we need to handle that with care
+            # Th expectation is that we need to return a structured response.  For now, assume that
+            # involves setting the response headers to the value of the `headers` attribute of the
+            # `data`, while also serializing the entire `data` data structure.
             if exc.data:
                 self.set_header('Content-Type', 'application/json')
                 headers = exc.data.get('headers', None)

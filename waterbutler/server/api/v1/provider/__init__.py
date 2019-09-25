@@ -113,7 +113,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     def get_sentry_data_from_request(self):
         payload = super(ProviderHandler, self).get_sentry_data_from_request()
         tags = payload.setdefault('tags', {})
-        tags['resource.id'] = self.resource
+        tags['resource.id'] = getattr(self, 'resource', None)
         tags['src_provider'] = self.path_kwargs['provider']
         return payload
 
