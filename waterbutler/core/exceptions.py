@@ -1,6 +1,8 @@
 import json
 from http import HTTPStatus
 
+from waterbutler.server import settings
+
 
 DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request to {response.url}'
 
@@ -51,6 +53,43 @@ class WaterButlerError(Exception):
 
     def __str__(self):
         return '{}, {}'.format(self.code, self.message)
+
+
+class TooManyRequests(WaterButlerError):
+    """Indicates the user has sent too many requests in a given amount of time ("rate limiting").
+
+    TODO - Optional:    Return a few customized Waterbutler headers with rate-limiting details:
+                        * X-Waterbutler-RateLimiting-Window
+                        * X-Waterbutler-RateLimiting-Limit
+                        * X-Waterbutler-RateLimiting-Remaining
+                        * X-Waterbutler-RateLimiting-Reset
+    """
+    def __init__(self, data):
+        if type(data) != dict:
+            message = 'This is a thing: {}'.format(data)
+        else:
+            message = {
+                'error': 'API rate-limiting active due to too many requests',
+                'headers': {
+                    'Retry-After': data['retry_after'],
+                    'X-Waterbutler-RateLimiting-Window': settings.RATE_LIMITING_FIXED_WINDOW_SIZE,
+                    'X-Waterbutler-RateLimiting-Limit': settings.RATE_LIMITING_FIXED_WINDOW_LIMIT,
+                    'X-Waterbutler-RateLimiting-Remaining': data['remaining'],
+                    'X-Waterbutler-RateLimiting-Reset': data['reset'],
+                },
+            }
+        super().__init__(message, code=HTTPStatus.TOO_MANY_REQUESTS, is_user_error=True)
+
+
+class WaterButlerRedisError(WaterButlerError):
+    """Indicates the Redis server has returned an error. Returns HTTP 503 Service Unavailable.
+    """
+    def __init__(self, redis_command):
+
+        message = {
+            'error': 'The Redis server failed when processing command {}'.format(redis_command),
+        }
+        super().__init__(message, code=HTTPStatus.SERVICE_UNAVAILABLE, is_user_error=False)
 
 
 class InvalidParameters(WaterButlerError):
