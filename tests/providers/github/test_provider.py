@@ -336,7 +336,7 @@ class TestCRUD:
         url = provider.build_repo_url('git', 'blobs', file_sha)
         tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
         commit_url = provider.build_repo_url(
-            'commits', path=path.path.lstrip('/'), sha='Just a test'
+            'commits', path=path.path.lstrip('/'), sha='other_branch'
         )
 
         aiohttpretty.register_uri('GET', url, body=b'delicious')

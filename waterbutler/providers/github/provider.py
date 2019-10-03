@@ -325,15 +325,14 @@ class GitHubProvider(provider.BaseProvider):
         return (await self._do_intra_move_or_copy(src_path, dest_path, False))
 
     async def download(self, path: GitHubPath, range: Tuple[int, int]=None,  # type: ignore
-                       revision=None, **kwargs) -> streams.ResponseStreamReader:
+                       **kwargs) -> streams.ResponseStreamReader:
         """Get the stream to the specified file on github
         :param GitHubPath path: The path to the file on github
         :param range: The range header
-        :param revision:
         :param dict kwargs: Additional kwargs are ignored
         """
 
-        data = await self.metadata(path, revision=revision)
+        data = await self.metadata(path)
         file_sha = path.file_sha or data.extra['fileSha']
 
         logger.debug('requested-range:: {}'.format(range))
@@ -838,10 +837,10 @@ class GitHubProvider(provider.BaseProvider):
 
         return ret
 
-    async def _metadata_file(self, path, revision=None, **kwargs):
+    async def _metadata_file(self, path, **kwargs):
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=revision or path.branch_ref),
+            self.build_repo_url('commits', path=path.path, sha=path.branch_ref),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
