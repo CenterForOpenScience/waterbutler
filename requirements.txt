@@ -7,6 +7,7 @@ google-auth==1.4.1
 humanfriendly==1.31
 invoke==0.13.0
 multidict==4.5.2
+newrelic==5.2.0.127
 oauthlib==0.7.2
 pyjwe==1.0.0
 pyjwt==1.4.0
@@ -15,7 +16,7 @@ pytz==2017.2
 raven==5.27.0
 setuptools==37.0.0
 stevedore==1.2.0
-tornado==5.1.1
+tornado==6.0.3
 xmltodict==0.9.0
 
 # Issue: certifi-2015.9.6.1 and 2015.9.6.2 fail verification (https://github.com/certifi/python-certifi/issues/26)
