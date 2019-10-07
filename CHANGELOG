@@ -2,6 +2,26 @@
 ChangeLog
 *********
 
+19.2.0 (2019-10-07)
+===================
+- Feature: Support rate-limiting in large move/copies for GitHub.  GitHub limits the number of
+per-user API requests to 5,000 per hour.  To avoid running afoul of these limits, slow down the
+rate of requests made by WB as we start to approach the rate-limiting threshold.  Reserve a
+configurable number of requests for regular requests.  If the request limit is exhausted by an
+external request, WB will throw a `GitHubRateLimitExceededError` error.
+- Fix: Consistently handle revision-identifying query parameters in the GitHub provider.  Over its
+lifetime the GH provider has supported "ref", "sha", "revision", "version", and (sometimes)
+"branch" as valid revision-identifying parameters.  With this change, all of those params are
+handled in a single method and in a defined fashion.  Revisions may be commit SHAs or branch
+names.  A revision is assumed to be a commit SHA if it is a valid 40-digit base-16 number.
+Otherwise it is assumed to be a branch name.  See method documentation for how multiple conflicting
+parameters are handled.
+- Fix: Update figshare provider to report the correct url for publicly-viewable files.
+- Fix: Update figshare provider to support "dataset" articles as folders.  figshare has many
+article types.  Previously, only the "fileset" article type represented a folder in the figshare WB
+provider. figshare now automatically updates "fileset"s to "dataset"s.  Promote "dataset"s to be the
+default folder-analagous article type.
+
 19.1.0 (2019-09-04)
 ===================
 - Fix: Correctly annotate HEAD requests as metadata requests and revision requests as revision
