@@ -1,21 +1,26 @@
 import copy
 import json
+import time
+import uuid
+import asyncio
 import hashlib
 import logging
 from typing import Tuple
+from http import HTTPStatus
 
 import furl
-
-from waterbutler.core import exceptions, provider, streams
+from aiohttp.client import ClientResponse
 
 from waterbutler.providers.github.path import GitHubPath
+from waterbutler.core import streams, provider, exceptions
 from waterbutler.providers.github import settings as pd_settings
-from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
 from waterbutler.providers.github.metadata import (GitHubRevision,
-                                                   GitHubFileContentMetadata,
-                                                   GitHubFolderContentMetadata,
                                                    GitHubFileTreeMetadata,
-                                                   GitHubFolderTreeMetadata, )
+                                                   GitHubFolderTreeMetadata,
+                                                   GitHubFileContentMetadata,
+                                                   GitHubFolderContentMetadata, )
+from waterbutler.providers.github.exceptions import (GitHubUnsupportedRepoError,
+                                                     GitHubRateLimitExceededError, )
 
 logger = logging.getLogger(__name__)
 
@@ -52,13 +57,54 @@ class GitHubProvider(provider.BaseProvider):
 
     * GitHub doesn't respect Range header on downloads
 
+    .. _rate-limiting:
+
+    **Rate limiting**
+
+    GitHub enforces rate-limits to avoid being overwhelmed with requests.  This limit is currently
+    5,000 requests per hour per authenticated user.  Under normal usage patterns, the only WB
+    actions likely to encounter this are large recursive move/copy actions.  For these actions, WB
+    reserves the right to run the operation in a background task if it cannot complete them within a
+    given timeframe.  The GitHub provider will add artifical delays between requests to try to
+    ensure that a long-running request does not exhaust the rate-limits.
+
+    .. _requests-and-tokens:
+
+    *Requests and tokens*
+
+    This provider uses the concept of requests and tokens to help determine how fast to issue
+    requests.  Requests are discrete and correspond to the number of requests allowed by GitHub
+    within a given time period.  Tokens are an artificial concept but are approximately equivalent
+    to requests.  IOW, one token equals one request.  The difference is that the number of tokens
+    is permitted to be fractional.  Every *n* seconds, the provider will add tokens to the pool.
+    Once the number of tokens exceeds one, a single request may be made.  One token is subtracted,
+    and the provider may continue to accumulate fractional tokens.
+
+    *Reserves*
+
+    GitHub sets rate-limits based off the authenticated user making the request.  Since a user may
+    have multiple operations happening at one time (for example, two simultaneous registrations),
+    the provider attempts to *reserve* a portion of requests for other processes to use.  When the
+    number of requests remaining before the limit resets is less than the reserve, the provider
+    sets the allowed requests rate to a minimum value.  This minimum value will cause some requests
+    to wait a long time before being issued, but will hopefully allow long-running processes to
+    complete successfully.
     """
+
     NAME = 'github'
     BASE_URL = pd_settings.BASE_URL
     VIEW_URL = pd_settings.VIEW_URL
 
-    def __init__(self, auth, credentials, settings):
-        super().__init__(auth, credentials, settings)
+    # Load settings for GitHub rate limiting
+    RL_TOKEN_ADD_DELAY = pd_settings.RL_TOKEN_ADD_DELAY
+    RL_MAX_AVAILABLE_TOKENS = pd_settings.RL_MAX_AVAILABLE_TOKENS
+    RL_RESERVE_RATIO = pd_settings.RL_RESERVE_RATIO
+    RL_RESERVE_BASE = pd_settings.RL_RESERVE_BASE
+    RL_MIN_REQ_RATE = pd_settings.RL_MIN_REQ_RATE
+
+    def __init__(self, auth, credentials, settings, **kwargs):
+
+        super().__init__(auth, credentials, settings, **kwargs)
         self.name = self.auth.get('name', None)
         self.email = self.auth.get('email', None)
         self.token = self.credentials['token']
@@ -66,71 +112,172 @@ class GitHubProvider(provider.BaseProvider):
         self.repo = self.settings['repo']
         self.metrics.add('repo', {'repo': self.repo, 'owner': self.owner})
 
+        # debugging parameters
+        self._my_id = uuid.uuid4()
+        self._request_count = 0
+
+        # `.rl_available_tokens` determines if a request should wait or proceed. Each provider
+        # instance starts with a full bag (`.RL_MAX_AVAILABLE_TOKENS`) of tokens.
+        self.rl_available_tokens = self.RL_MAX_AVAILABLE_TOKENS
+
+        # `.rl_remaining` denotes the number of requests left before reset, which is the value from
+        # GitHub API response header "X-RateLimiting-Remaining".
+        self.rl_remaining = 0
+
+        # Reserve a portion of the total number of remaining requests. Calculated after receiving
+        # response from GH
+        self.rl_reserved = 0
+
+        # `.rl_reset` denotes the time when the limit will be reset, which is the value from GitHub
+        # API response header "X-RateLimiting-Reset".
+        self.rl_reset = 0
+
+    async def make_request(self, method: str, url: str, *args, **kwargs) -> ClientResponse:
+        """Wrap the parent `make_request()` to handle GH rate limiting.  Only requests handled by
+        WB Celery are affected.
+
+        1. For both Celery and non-Celery requests: intercept HTTP 403 Forbidden response.  Throw a
+        dedicated ``GitHubRateLimitExceededError`` if it is caused by rate-limiting. Re-throw other
+        403s as they are.
+
+        2. Only for Celery requests: each request must wait until there are enough available tokens
+        to before continue.  The tokens are replenished based several factors including: time since
+        last update, number of requests remaining, time until limit is reset, etc.
+        """
+
+        self._request_count += 1
+
+        logger.debug('P({}):{}: '.format(self._my_id, self._request_count))
+        logger.debug('P({}):{}:make_request: begin!'.format(self._my_id, self._request_count))
+
+        # Only update `expects` when it exists in the original request
+        expects = kwargs.get('expects', None)
+        if expects:
+            kwargs.update({'expects': expects + (int(HTTPStatus.FORBIDDEN), )})
+
+        # If not a celery task, default to regular behavior (but inform about rate limits)
+        if not self.is_celery_task:
+            logger.debug('P({}):{}:make_request: NOT a celery task, bypassing '
+                         'limits'.format(self._my_id, self._request_count))
+            resp = await super().make_request(method, url, **kwargs)
+
+            if resp.status == HTTPStatus.FORBIDDEN:
+                await resp.release()
+                raise await self._rl_handle_forbidden_error(resp, **kwargs)
+
+            logger.debug('P({}):{}:make_request: done successfully!'.format(self._my_id,
+                                                                            self._request_count))
+            return resp
+
+        logger.debug('P({}):{}:make_request: IS a celery task, start token '
+                     'verification'.format(self._my_id, self._request_count))
+        logger.debug('P({}):{}:make_request: init state: tokens({}) '
+                     'remaining({}) reserved({}) reset({})'.format(self._my_id,
+                                                                   self._request_count,
+                                                                   self.rl_available_tokens,
+                                                                   self.rl_remaining,
+                                                                   self.rl_reserved,
+                                                                   self.rl_reset))
+
+        await self._rl_check_available_tokens()
+        resp = await super().make_request(method, url, *args, **kwargs)
+        self.rl_remaining = int(resp.headers['X-RateLimit-Remaining'])
+        self.rl_reset = int(resp.headers['X-RateLimit-Reset'])
+
+        # GitHub's rate limiting is per authenticated user. It is entirely probable that users are
+        # making additional requests that count against the quota when the copy/move is in process.
+        #
+        # Reserve a portion (20% by default) of the total number of remaining requests plus a base
+        # number (100 by default). This reservation is critical for preventing the current provider
+        # instance from running out of tokens when additional calls are made for the same user on
+        # OSF. In addition, this should support at least 3 concurrent large move/copy actions.
+        #
+        self.rl_reserved = self.rl_remaining * self.RL_RESERVE_RATIO + self.RL_RESERVE_BASE
+
+        logger.debug('P({}):{}:make_request: final state: tokens({}) '
+                     'remaining({}) reserved({}) reset({})'.format(self._my_id,
+                                                                   self._request_count,
+                                                                   self.rl_available_tokens,
+                                                                   self.rl_remaining,
+                                                                   self.rl_reserved,
+                                                                   self.rl_reset))
+
+        # Raise error if rate limit cap is hit even after WB's balancing effort. This can happen if
+        # users try to copy/register multiple repos with many files/folders at the same time.
+        if resp.status == HTTPStatus.FORBIDDEN:
+            await resp.release()
+            raise await self._rl_handle_forbidden_error(resp, **kwargs)
+
+        logger.debug('P({}):{}:make_request: done successfully!'.format(self._my_id,
+                                                                        self._request_count))
+        return resp
+
     async def validate_v1_path(self, path, **kwargs):
+        """Validate the path part of the request url, asserting that the path exists, and
+        determining the branch or commit implied by the request.
+
+        **Identifying a branch or commit.**  Unfortunately, we've used a lot of different query
+        parameters over the life of WB to specify the target ref.  We've also been inconsistent
+        about whether each query parameter represents a branch name or a commit sha.  We don't want
+        to break any parameters that are still being used in the wild.  See the documentation for
+        the `_interpret_query_parameters` method for a full explanation of the supported parameters.
+
+        Additional supported kwargs:
+
+        * ``fileSha``: a blob SHA, used to identify a particular version of a file.
+
+        """
         if not getattr(self, '_repo', None):
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
-        branch_ref, ref_from = None, None
-        if kwargs.get('ref'):
-            branch_ref = kwargs.get('ref')
-            ref_from = 'query_ref'
-        elif kwargs.get('branch'):
-            branch_ref = kwargs.get('branch')
-            ref_from = 'query_branch'
-        else:
-            branch_ref = self.default_branch
-            ref_from = 'default_branch'
-        if isinstance(branch_ref, list):
-            raise exceptions.InvalidParameters('Only one ref or branch may be given.')
+        ref, ref_type, ref_from = self._interpret_query_parameters(**kwargs)
         self.metrics.add('branch_ref_from', ref_from)
+        self.metrics.add('ref_type', ref_type)
 
         if path == '/':
-            return GitHubPath(path, _ids=[(branch_ref, '')])
+            return GitHubPath(path, _ids=[(ref, '')])
 
-        branch_data = await self._fetch_branch(branch_ref)
+        tree_sha = None
+        if ref_type == 'branch_name':
+            branch_data = await self._fetch_branch(ref)
+            tree_sha = branch_data['commit']['commit']['tree']['sha']
+        else:
+            commit_data = await self._fetch_commit(ref)
+            tree_sha = commit_data['tree']['sha']
 
         # throws Not Found if path not in tree
-        await self._search_tree_for_path(path, branch_data['commit']['commit']['tree']['sha'])
+        await self._search_tree_for_path(path, tree_sha)
 
-        path = GitHubPath(path)
-        for part in path.parts:
-            part._id = (branch_ref, None)
+        gh_path = GitHubPath(path)
+        for part in gh_path.parts:
+            part._id = (ref, None)
 
         # TODO Validate that filesha is a valid sha
-        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
+        gh_path.parts[-1]._id = (ref, kwargs.get('fileSha'))
         self.metrics.add('file_sha_given', True if kwargs.get('fileSha') else False)
 
-        return path
+        return gh_path
 
     async def validate_path(self, path, **kwargs):
+        """See ``validate_v1_path`` docstring for details on supported query parameters."""
         if not getattr(self, '_repo', None):
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
-        path = GitHubPath(path)
-        branch_ref, ref_from = None, None
-        if kwargs.get('ref'):
-            branch_ref = kwargs.get('ref')
-            ref_from = 'query_ref'
-        elif kwargs.get('branch'):
-            branch_ref = kwargs.get('branch')
-            ref_from = 'query_branch'
-        else:
-            branch_ref = self.default_branch
-            ref_from = 'default_branch'
-        if isinstance(branch_ref, list):
-            raise exceptions.InvalidParameters('Only one ref or branch may be given.')
+        ref, ref_type, ref_from = self._interpret_query_parameters(**kwargs)
         self.metrics.add('branch_ref_from', ref_from)
+        self.metrics.add('ref_type', ref_type)
 
-        for part in path.parts:
-            part._id = (branch_ref, None)
+        gh_path = GitHubPath(path)
+        for part in gh_path.parts:
+            part._id = (ref, None)
 
         # TODO Validate that filesha is a valid sha
-        path.parts[-1]._id = (branch_ref, kwargs.get('fileSha'))
+        gh_path.parts[-1]._id = (ref, kwargs.get('fileSha'))
         self.metrics.add('file_sha_given', True if kwargs.get('fileSha') else False)
 
-        return path
+        return gh_path
 
     async def revalidate_path(self, base, path, folder=False):
         return base.child(path, _id=((base.branch_ref, None)), folder=folder)
@@ -139,7 +286,8 @@ class GitHubProvider(provider.BaseProvider):
         """Build a path from a parent path and a metadata object.  Will correctly set the _id
         Used for building zip archives."""
         file_sha = metadata.extra.get('fileSha', None)
-        return parent_path.child(metadata.name, _id=(metadata.ref, file_sha), folder=metadata.is_folder, )
+        return parent_path.child(metadata.name, _id=(metadata.ref, file_sha),
+                                 folder=metadata.is_folder, )
 
     def can_duplicate_names(self):
         return False
@@ -177,15 +325,14 @@ class GitHubProvider(provider.BaseProvider):
         return (await self._do_intra_move_or_copy(src_path, dest_path, False))
 
     async def download(self, path: GitHubPath, range: Tuple[int, int]=None,  # type: ignore
-                       revision=None, **kwargs) -> streams.ResponseStreamReader:
+                       **kwargs) -> streams.ResponseStreamReader:
         """Get the stream to the specified file on github
         :param GitHubPath path: The path to the file on github
         :param range: The range header
-        :param revision:
         :param dict kwargs: Additional kwargs are ignored
         """
 
-        data = await self.metadata(path, revision=revision)
+        data = await self.metadata(path)
         file_sha = path.file_sha or data.extra['fileSha']
 
         logger.debug('requested-range:: {}'.format(range))
@@ -250,7 +397,8 @@ class GitHubProvider(provider.BaseProvider):
             'tree': tree['sha'],
             'parents': [latest_sha],
             'committer': self.committer,
-            'message': message or (pd_settings.UPDATE_FILE_MESSAGE if exists else pd_settings.UPLOAD_FILE_MESSAGE),
+            'message': message or (pd_settings.UPDATE_FILE_MESSAGE
+                                   if exists else pd_settings.UPLOAD_FILE_MESSAGE),
         })
 
         # Doesn't return anything useful
@@ -300,10 +448,10 @@ class GitHubProvider(provider.BaseProvider):
         else:
             return (await self._metadata_file(path, **kwargs))
 
-    async def revisions(self, path, sha=None, **kwargs):
+    async def revisions(self, path, **kwargs):
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=sha or path.file_sha),
+            self.build_repo_url('commits', path=path.path, sha=path.branch_ref),
             expects=(200, ),
             throws=exceptions.RevisionsError
         )
@@ -341,14 +489,18 @@ class GitHubProvider(provider.BaseProvider):
         data = await resp.json()
 
         if resp.status in (422, 409):
-            if resp.status == 409 or data.get('message') == 'Invalid request.\n\n"sha" wasn\'t supplied.':
+            if (
+                    resp.status == 409 or
+                    data.get('message') == 'Invalid request.\n\n"sha" wasn\'t supplied.'
+            ):
                 raise exceptions.FolderNamingConflict(path.name)
             raise exceptions.CreateFolderError(data, code=resp.status)
 
         data['content']['name'] = path.name
         data['content']['path'] = data['content']['path'].replace('.gitkeep', '')
 
-        return GitHubFolderContentMetadata(data['content'], commit=data['commit'], ref=path.branch_ref)
+        return GitHubFolderContentMetadata(data['content'], commit=data['commit'],
+                                           ref=path.branch_ref)
 
     async def _delete_file(self, path, message=None, **kwargs):
         if path.file_sha:
@@ -518,18 +670,23 @@ class GitHubProvider(provider.BaseProvider):
         )
 
     async def _fetch_branch(self, branch):
-        resp = await self.make_request(
-            'GET',
-            self.build_repo_url('branches', branch)
-        )
+        """Fetch a branch by name
 
+        API docs: https://developer.github.com/v3/repos/branches/#get-branch
+        """
+
+        resp = await self.make_request('GET', self.build_repo_url('branches', branch))
         if resp.status == 404:
             await resp.release()
             raise exceptions.NotFoundError('. No such branch \'{}\''.format(branch))
 
-        return (await resp.json())
+        return await resp.json()
 
     async def _fetch_contents(self, path, ref=None):
+        """Get the metadata and base64-encoded contents for a file.
+
+        API docs: https://developer.github.com/v3/repos/contents/#get-contents
+        """
         url = furl.furl(self.build_repo_url('contents', path.path))
         if ref:
             url.args.update({'ref': ref})
@@ -539,16 +696,33 @@ class GitHubProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError
         )
-        return (await resp.json())
+        return await resp.json()
 
     async def _fetch_repo(self):
+        """Get metadata about the repo.
+
+        API docs: https://developer.github.com/v3/repos/#get
+        """
         resp = await self.make_request(
             'GET',
             self.build_repo_url(),
             expects=(200, ),
             throws=exceptions.MetadataError
         )
-        return (await resp.json())
+        return await resp.json()
+
+    async def _fetch_commit(self, commit_sha):
+        """Get metadata about a specific commit.
+
+        API docs: https://developer.github.com/v3/commits/#get
+        """
+        resp = await self.make_request(
+            'GET',
+            self.build_repo_url('git', 'commits', commit_sha),
+            expects=(200, ),
+            throws=exceptions.MetadataError
+        )
+        return await resp.json()
 
     async def _fetch_tree(self, sha, recursive=False):
         url = furl.furl(self.build_repo_url('git', 'trees', sha))
@@ -663,10 +837,10 @@ class GitHubProvider(provider.BaseProvider):
 
         return ret
 
-    async def _metadata_file(self, path, revision=None, **kwargs):
+    async def _metadata_file(self, path, **kwargs):
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('commits', path=path.path, sha=revision or path.branch_ref),
+            self.build_repo_url('commits', path=path.path, sha=path.branch_ref),
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
@@ -750,8 +924,8 @@ class GitHubProvider(provider.BaseProvider):
             if dest_path.is_dir:
                 src_tree['tree'] = self._remove_path_from_tree(src_tree['tree'], dest_path)
 
-            # if this is a copy, duplicate and append our source blobs. The originals will be updated
-            # with the new destination path.
+            # if this is a copy, duplicate and append our source blobs. The originals will be
+            # updated with the new destination path.
             if is_copy:
                 src_tree['tree'].extend(copy.deepcopy(blobs))
 
@@ -931,7 +1105,7 @@ class GitHubProvider(provider.BaseProvider):
         line.  Returns the new commit.
 
         :param list old_tree: A list of blobs representing the new file tree.
-        :param dict old_head: The commit object will be the parent of the new commit. Must have 'sha' key.
+        :param dict old_head: The commit that's the parent of the new commit. Must have 'sha' key.
         :param str commit_msg: The commit message for the new commit.
         :param str branch_ref: The branch that will be advanced to the new commit.
         :returns dict new_head: The commit object returned by GitHub.
@@ -955,3 +1129,201 @@ class GitHubProvider(provider.BaseProvider):
         await self._update_ref(new_head['sha'], ref=branch_ref)
 
         return new_head
+
+    def _interpret_query_parameters(self, **kwargs) -> Tuple[str, str, str]:
+        """This one hurts.
+
+        Over the life of WB, the github provider has accepted the following parameters to identify
+        the ref (commit or branch) that the path entity is to be found on: ``ref``, ``branch``,
+        ``version``, ``sha``, ``revision``.  Worse, sometimes the values are commit SHAs and other
+        times are branch names.  Worserer (sic), some queries contain two or three of these
+        parameters at the same time.
+
+        WB strives to maintain backcompat, so the following method tries to divine the user
+        intention as much as possible, using the following heuristics:
+
+        * If both a commit SHA and branch name are provided, the commit SHA should be used, since
+          it is more specific.
+
+        * Each parameter will be checked.  If present and not equal to the empty string, it will be
+          run through the `_looks_like_sha` method to decide whether it is a SHA or branch name.
+
+        * The order in which the query parameters are tested differs for commit SHAs and branches.
+          The order for commit SHAs from highest precedence to lowest precedence is: ``ref``,
+          ``version``, ``sha``, ``revision``.  ``ref`` is returned in the action links for file and
+          folder metadata, and so takes precendence.  ``version`` is the most common parameter, used
+          heavily in the OSF.  ``sha`` occurs occasionally, but despite the name can be either a
+          commit SHA or branch name. ``revision`` does not appear to be in regular use anymore, but
+          has cropped up in development in old metadata entries.
+
+        * The order for branch names from highest priority to lowest priority is: ``branch``,
+          ``ref``, ``version``, ``sha``, ``revision``. ``branch`` is used by fangorn and so far
+          appears to always be a branch name.  The others follow the same priority for commit SHAs.
+
+        * If multiple values are passed for one param, that param will be ignored and the check will
+          move on to the next params.  If the only params found have multiple values, an error will
+          be thrown to warn the user not to do this.
+
+        * If none of the query parameters are present, WB will fall back to the default branch for
+          the repo.
+
+        This method also returns the type of ref it found (``commit_sha`` or ``branch``) and a
+        string identifying the source of ref.  The former is used to avoid making a branch-specific
+        query during validation.  The latter is used for analytics.
+        """
+
+        all_possible_params = ['ref', 'version', 'sha', 'revision', 'branch']
+
+        # empty string values should be made None
+        possible_values = {}
+        for param in all_possible_params:
+            possible_values[param] = kwargs.get(param, '')
+            if possible_values[param] == '':
+                possible_values[param] = None
+
+        inferred_ref, ref_from = None, None
+        multiple_args_seen = False
+
+        # look for commit SHA likes ('branch' is least likely to be a sha)
+        sha_priority_order = ['ref', 'version', 'sha', 'revision', 'branch']
+        for param in sha_priority_order:
+            v = possible_values[param]
+
+            if isinstance(v, list):
+                multiple_args_seen = True
+                continue
+
+            if v is not None and self._looks_like_sha(v):
+                inferred_ref = v
+                ref_from = 'query_{}'.format(param)
+                break
+
+        if inferred_ref is not None:
+            return inferred_ref, 'commit_sha', ref_from  # found a SHA!
+
+        # look for branch names ('branch' is most likely to be a branchname)
+        branch_priority_order = ['branch', 'ref', 'version', 'sha', 'revision']
+        for param in branch_priority_order:
+            v = possible_values[param]
+
+            if isinstance(v, list):
+                multiple_args_seen = True
+                continue
+
+            if v is not None:
+                inferred_ref = v
+                ref_from = 'query_{}'.format(param)
+                break
+
+        if inferred_ref is None:
+            if multiple_args_seen:
+                raise exceptions.InvalidParameters('Multiple values provided for parameter '
+                                                   '"{}". Only one ref or branch may be '
+                                                   'given.'.format(ref_from))
+            inferred_ref = self.default_branch
+            ref_from = 'default_branch'
+
+        return inferred_ref, 'branch_name', ref_from
+
+    def _looks_like_sha(self, ref):
+        """Returns `True` if ``ref`` could be a valid SHA (i.e. is a valid hex number).  If ``True``
+        also checks to make sure ``ref`` is a valid number of characters, as GH doesn't like
+        abbreviated refs.  Currently only check for 40 characters (length of a sha1-name), but a
+        future git release will add support for 64-character sha256-names.
+
+        :param str ref: the string to test
+        :rtype: `bool`
+        :returns: whether ``ref`` could be a valid SHA
+        """
+        try:
+            int(ref, 16)  # is revision valid hex?
+        except (TypeError, ValueError):
+            return False
+
+        # 'in' instead of '==' b/c git shas will be changing in future git release.
+        return len(ref) in pd_settings.GITHUB_SHA_LENGTHS
+
+    async def _rl_handle_forbidden_error(self, resp: ClientResponse, **kwargs) -> Exception:
+        """Check if an HTTP 403 response is caused by rate limiting or not. If so, throw a special
+        ``GitHubRateLimitExceededError`` with rate limiting information. Otherwise, re-throw the
+        original error in the response or an ``UnhandledProviderError`` if there is none.
+        """
+
+        exc = None
+        if int(resp.headers['X-RateLimit-Remaining']) == 0:
+            rate_limit_reset = int(resp.headers['X-RateLimit-Reset'])
+            exc = GitHubRateLimitExceededError(rate_limit_reset)
+            logger.debug('P({}):{}:_rl_handle_forbidden_error: ran out of requests, will reset '
+                         'at {}'.format(self._my_id, self._request_count, rate_limit_reset))
+        else:
+            throws = kwargs.get('throws', exceptions.UnhandledProviderError)
+            exc = await exceptions.exception_from_response(resp, error=throws, **kwargs)
+            logger.debug('P({}):{}:_rl_handle_forbidden_error: got a non-rate-limit error. '
+                         'Bailing out.'.format(self._my_id, self._request_count))
+
+        return exc
+
+    async def _rl_check_available_tokens(self) -> None:
+        """Checks if there are any available tokens.  If so, consume one and return.  Otherwise,
+        continue to add new tokens until an entire token is available.  Waits for a short period
+        of time between each add request.  The wait time is defined by `.RL_TOKEN_ADD_DELAY`
+        and its default is 1 second.
+        """
+        logger.debug('P({}):{}:token_check: starting with {} '
+                     'tokens'.format(self._my_id, self._request_count, self.rl_available_tokens))
+
+        # If no full tokens are available, wait and add fractional tokens based on current rate.
+        while self.rl_available_tokens < 1:
+            self._rl_add_more_tokens()
+            await asyncio.sleep(self.RL_TOKEN_ADD_DELAY)
+
+        logger.debug('P({}):{}:token_check: consuming token'.format(self._my_id,
+                                                                    self._request_count))
+
+        # Consume one token for the upcoming request.
+        self.rl_available_tokens -= 1
+
+    def _rl_add_more_tokens(self) -> None:
+        """Add a number of tokens equivalent to the approximate time since this was last called and
+        the current request rate.  Can add fractional tokens.  Caps the number of available tokens
+        at `self.RL_MAX_AVAILABLE_TOKENS`.
+
+        Calculate the rate at which WB should make requests.  Instead of maximizing the rate with
+        ``$remaining  / $time_to_reset``, WB sets a lower one by reserving "20% of the total
+        number of remaining requests plus 10 extra ones".  We want to make sure that some requests
+        are set aside for regular user interactions (e.g. reloading the page on the OSF). We also
+        want to handle the case where the user has initiated multiple move/copies from a
+        WB-connected GitHub repo.  Both of these parameters are tweakable via the GH provider
+        settings.py file.
+        """
+
+        # `rl_req_rate` denotes the number of requests allowed per second.
+        rl_req_rate = None
+
+        if self.rl_remaining < self.rl_reserved:
+            # With the default setting, the number of reserved requests is greater or equal to the
+            # number of remaining requests when the latter is 125 or less. Set the reference request
+            # rate to the minimum value (0.01 by default) which allows only 36 requests in a hour.
+            # Given that 4 > 125 / 36 > 3, at least 3 concurrent move/copy actions are supported
+            # even in the worst case scenario.
+            rl_req_rate = self.RL_MIN_REQ_RATE
+        else:
+            # Otherwise, calculate the reference request rate according to the adjusted number of
+            # remaining requests and the time between now and next limit reset. If no other major
+            # requests (i.e. another copy/move) are being made at the same time, this reference
+            # request rate keeps increasing slightly.
+            seconds_until_reset = max((self.rl_reset - time.time()), 1)
+            rl_req_rate = (self.rl_remaining - self.rl_reserved) / seconds_until_reset
+
+        logger.debug('P({}):{}:adding_tokens: current_tokens:({}) '
+                     'request_rate:({})'.format(self._my_id, self._request_count,
+                                                self.rl_available_tokens, rl_req_rate))
+
+        # Add a number of tokens equal to: seconds since we last added tokens (which is
+        # approximately RL_TOKEN_ADD_DELAY) times the rate at which we should add tokens
+        # (rl_req_rate).  Update self.rl_available_tokens, which should never go
+        # beyond .RL_MAX_AVAILABLE_TOKENS.
+        self.rl_available_tokens = min(
+            self.rl_available_tokens + (self.RL_TOKEN_ADD_DELAY * rl_req_rate),
+            self.RL_MAX_AVAILABLE_TOKENS
+        )

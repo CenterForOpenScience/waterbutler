@@ -51,7 +51,7 @@ class GoogleCloudProvider(BaseProvider):
     # EXPIRATION for Signed Request/URL for XML API
     SIGNATURE_EXPIRATION = pd_settings.SIGNATURE_EXPIRATION
 
-    def __init__(self, auth: dict, credentials: dict, settings: dict) -> None:
+    def __init__(self, auth: dict, credentials: dict, settings: dict, **kwargs) -> None:
         """Initialize a provider instance with the given parameters.
 
         :param dict auth: the auth dictionary
@@ -76,7 +76,7 @@ class GoogleCloudProvider(BaseProvider):
         #
         #     WATERBUTLER_RESOURCE = 'bucket'
 
-        super().__init__(auth, credentials, settings)
+        super().__init__(auth, credentials, settings, **kwargs)
 
         self.bucket = settings.get('bucket')
         if not self.bucket:

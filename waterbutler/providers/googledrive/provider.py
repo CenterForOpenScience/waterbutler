@@ -78,8 +78,8 @@ class GoogleDriveProvider(provider.BaseProvider):
     # 'reader' and 'commenter' are not authorized to access the revisions list
     ROLES_ALLOWING_REVISIONS = ['owner', 'organizer', 'writer']
 
-    def __init__(self, auth: dict, credentials: dict, settings: dict) -> None:
-        super().__init__(auth, credentials, settings)
+    def __init__(self, auth: dict, credentials: dict, settings: dict, **kwargs) -> None:
+        super().__init__(auth, credentials, settings, **kwargs)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
 
