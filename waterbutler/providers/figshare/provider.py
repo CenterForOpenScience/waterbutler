@@ -77,13 +77,13 @@ class FigshareProvider:
     """
 
     def __new__(cls, auth, credentials, settings):
+
         if settings['container_type'] == 'project':
             return FigshareProjectProvider(
-                auth, credentials,
-                dict(settings, container_id=settings['container_id'])
+                auth, credentials, dict(settings, container_id=settings['container_id'])
             )
 
-        if settings['container_type'] in ('article', 'fileset'):
+        if settings['container_type'] in pd_settings.ARTICLE_CONTAINER_TYPES:
             return FigshareArticleProvider(
                 auth, credentials, dict(settings, container_id=settings['container_id'])
             )
@@ -94,19 +94,22 @@ class FigshareProvider:
 
 
 class BaseFigshareProvider(provider.BaseProvider):
+
     NAME = 'figshare'
     BASE_URL = pd_settings.BASE_URL
     VIEW_URL = pd_settings.VIEW_URL
     DOWNLOAD_URL = pd_settings.DOWNLOAD_URL
     VALID_CONTAINER_TYPES = pd_settings.VALID_CONTAINER_TYPES
+    ARTICLE_CONTAINER_TYPES = pd_settings.ARTICLE_CONTAINER_TYPES
 
-    def __init__(self, auth, credentials, settings):
-        super().__init__(auth, credentials, settings)
+    def __init__(self, auth, credentials, settings, **kwargs):
+        super().__init__(auth, credentials, settings, **kwargs)
         self.token = self.credentials['token']
         self.container_type = self.settings['container_type']
         if self.container_type not in self.VALID_CONTAINER_TYPES:
             raise exceptions.ProviderError('{} is not a valid container type.'.format(self.container_type))
-        if self.container_type == 'fileset':
+        # Normalize all article container types to "article"
+        if self.container_type in self.ARTICLE_CONTAINER_TYPES:
             self.container_type = 'article'
         self.container_id = self.settings['container_id']
         self.metrics.add('container', {
@@ -132,11 +135,22 @@ class BaseFigshareProvider(provider.BaseProvider):
         :param dict \*\*query: A dictionary that will be turned into query parameters ``?foo=bar``
         :rtype: str
 
-        Subclassed to include handling of ``is_public`` argument. ``collection`` containers may
-        contain public articles which are accessed through an URN with a different prefix.
+        Overrides its parent's ``build_url()`` by building a URL that points to the public access
+        API of an article or its files if the ``is_public`` argument is set.  This is a special
+        design for figshare collections which may contain public articles that don't belong to the
+        current figshare-OSF OAuth user.
+
+        Quirk: Due to the facts that 1) the public URL Waterbulter builds no longer works due to
+               figshare-side changes and that 2) the collections stuff is still WIP, we decide to
+               ignore the ``is_public`` argument for now and always build private API URLs.
+
+        TODO [SVCS-996]: fix the public API and set public only when the container is a collection
+        TODO [SVCS-996]: set the public flag only when the container is a collection
         """
-        if not is_public:
-            segments = ('account', (*segments))
+        if is_public:
+            logger.debug('figshare provider is yet to build the public API URL correctly. '
+                         'Switch back to use the private one instead')
+        segments = ('account', (*segments))
         return (super().build_url(*segments, **query))
 
     async def make_request(self, method, url, *args, **kwargs):
@@ -341,7 +355,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    async def validate_v1_path(self, path, **kwargs):
+    async def validate_v1_path(self, path: str, **kwargs) -> FigsharePath:
         """Take a string path from the url and attempt to map it to an entity within this project.
         If the entity is found, returns a FigsharePath object with the entity identifiers included.
         Otherwise throws a 404 Not Found. Will also assert that the entity type inferred from the
@@ -350,28 +364,37 @@ class FigshareProjectProvider(BaseFigshareProvider):
         :param str path: entity path from the v1 API
         :rtype FigsharePath:
         """
+
         if path == '/':
+            # Root path should always be private api-wise since project and collection itself must
+            # be owned by the fighsare-OSF OAuth user.
             return FigsharePath('/', _ids=('', ), folder=True, is_public=False)
 
+        # Step 0: Preprocess the string path.
         path_parts = self._path_split(path)
         if len(path_parts) not in (2, 3):
             raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
         article_id = path_parts[1]
         file_id = path_parts[2] if len(path_parts) == 3 else None
 
+        # Step 1: Get a list of all articles in the project.
         articles = await self._get_all_articles()
 
-        # TODO: need better way to get public/private
-        # This call's return value is currently busted at figshare for collections. Figshare always
-        # returns private-looking urls.
+        # Step 2: Find the article; set `article_name`, `is_public`; and prepare `article_segments`.
         is_public = False
-        for item in articles:
-            if '/articles/' + article_id in item['url']:
-                article_name = item['title']
-                if pd_settings.PRIVATE_IDENTIFIER not in item['url']:
-                    is_public = True
-
+        article_name = None
+        for article in articles:
+            if '/articles/' + article_id in article['url']:
+                article_name = article['title']
+                is_public = article['published_date'] is not None
+                break
+        # Raise error earlier instead of on 404.  Please note that this is different than V0.
+        if not article_name:
+            raise exceptions.NotFoundError('Path {} with article ID {} not found in the project\'s '
+                                           'article list'.format(path, article_id))
         article_segments = (*self.root_path_parts, 'articles', article_id)
+
+        # Step 3.1: if the path is a file
         if file_id:
             file_response = await self.make_request(
                 'GET',
@@ -388,6 +411,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                                 folder=False,
                                 is_public=is_public)
 
+        # Step 3.2: if the path is a folder
         article_response = await self.make_request(
             'GET',
             self.build_url(is_public, *article_segments),
@@ -396,10 +420,10 @@ class FigshareProjectProvider(BaseFigshareProvider):
         article_json = await article_response.json()
         if article_json['defined_type'] in pd_settings.FOLDER_TYPES:
             if not path[-1] == '/':
-                raise exceptions.NotFoundError('Folder paths must end with "/".  {} not found.'.format(path))
+                raise exceptions.NotFoundError('Folder paths must end with "/". '
+                                               '{} not found.'.format(path))
             return FigsharePath('/' + article_name + '/', _ids=(self.container_id, article_id),
                                 folder=True, is_public=is_public)
-
         raise exceptions.NotFoundError('This article is not configured as a folder defined_type. '
                                        '{} not found.'.format(path))
 
@@ -429,17 +453,16 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         articles = await self._get_all_articles()
 
-        # TODO: need better way to get public/private
-        # This call's return value is currently busted at figshare for collections. Figshare always
-        # returns private-looking urls.
         is_public = False
-        for item in articles:
-            if '/articles/' + article_id in item['url']:
-                article_name = item['title']
-                if pd_settings.PRIVATE_IDENTIFIER not in item['url']:
-                    is_public = True
+        article_name = None
+        for article in articles:
+            if '/articles/' + article_id in article['url']:
+                article_name = article['title']
+                is_public = article['published_date'] is not None
+                break
 
         article_segments = (*self.root_path_parts, 'articles', article_id)
+
         if file_id:
             file_response = await self.make_request(
                 'GET',
@@ -613,7 +636,9 @@ class FigshareProjectProvider(BaseFigshareProvider):
                 code=400,
             )
 
-        article_data = json.dumps({'title': article_name, 'defined_type': 'fileset'})
+        # Quirks: use Dataset (3) as the article type during figshare folder creation instead of the
+        #         deprecated Fileset (4).  Internally figshare converts Fileset to Dataset anyway.
+        article_data = json.dumps({'title': article_name, 'defined_type': 'dataset'})
         article_id = await self._create_article(article_data)
         get_article_response = await self.make_request(
             'GET',
@@ -682,6 +707,9 @@ class FigshareProjectProvider(BaseFigshareProvider):
         :rtype: FigshareFileMetadata obj or list of Metadata objs
         """
         if path.is_root:
+            # TODO: fix this similar to `validate_path_v1()`
+            # NOTE: this won't work for figshare collections since calling `_get_article_metadata()`
+            #       on items not owned by the OSF/auth user will fail with 403.
             path.is_public = False
             contents = await asyncio.gather(*[
                 # TODO: collections may need to use each['url'] for correct URN
@@ -801,8 +829,8 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
 class FigshareArticleProvider(BaseFigshareProvider):
 
-    def __init__(self, auth, credentials, settings, child=False):
-        super().__init__(auth, credentials, settings)
+    def __init__(self, auth, credentials, settings, **kwargs):
+        super().__init__(auth, credentials, settings, **kwargs)
 
     async def validate_v1_path(self, path, **kwargs):
         """Take a string path from the url and attempt to map it to an entity within this article.

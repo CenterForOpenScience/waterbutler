@@ -37,8 +37,8 @@ class OwnCloudProvider(provider.BaseProvider):
     """
     NAME = 'owncloud'
 
-    def __init__(self, auth, credentials, settings):
-        super().__init__(auth, credentials, settings)
+    def __init__(self, auth, credentials, settings, **kwargs):
+        super().__init__(auth, credentials, settings, **kwargs)
 
         self.folder = settings['folder']
         if not self.folder.endswith('/'):

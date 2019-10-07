@@ -1,0 +1,220 @@
+{
+    "private": {
+        "group_resource_id": null,
+        "embargo_date": null,
+        "defined_type_name": "dataset",
+        "citation": "Chen, Longze (2019): DatasetPrivate. figshare. Dataset.",
+        "url_private_api": "https://api.figshare.com/v2/account/articles/8269766",
+        "embargo_reason": "",
+        "references": [],
+        "funding_list": [],
+        "url_public_api": "https://api.figshare.com/v2/articles/8269766",
+        "id": 8269766,
+        "custom_fields": [],
+        "size": 40,
+        "metadata_reason": "",
+        "funding": null,
+        "figshare_url": "https://figshare.com/articles/_/8269766",
+        "embargo_type": "file",
+        "title": "DatasetPrivate",
+        "defined_type": 3,
+        "is_embargoed": false,
+        "version": 0,
+        "resource_doi": null,
+        "confidential_reason": "",
+        "files": [
+            {
+                "status": "available",
+                "is_link_only": false,
+                "name": "Dataset03Private.txt",
+                "viewer_type": "txt",
+                "preview_state": "preview_available",
+                "download_url": "https://ndownloader.figshare.com/files/15461879",
+                "supplied_md5": "68c3a15be1ddc27893c17eaab61f2d3d",
+                "computed_md5": "68c3a15be1ddc27893c17eaab61f2d3d",
+                "upload_token": "79a06e48-87ec-4583-8faf-68fe83bf408c",
+                "upload_url": "",
+                "id": 15461879,
+                "size": 20
+            },
+            {
+                "status": "available",
+                "is_link_only": false,
+                "name": "Dataset04Private.txt",
+                "viewer_type": "txt",
+                "preview_state": "preview_available",
+                "download_url": "https://ndownloader.figshare.com/files/15461876",
+                "supplied_md5": "90569bfdc7b68ffe6e06f444a05bb77a",
+                "computed_md5": "90569bfdc7b68ffe6e06f444a05bb77a",
+                "upload_token": "34285cee-faa9-4a8f-84ba-ac1b85688426",
+                "upload_url": "",
+                "id": 15461876,
+                "size": 20
+            }
+        ],
+        "handle": "",
+        "description": "DatasetPrivate",
+        "tags": [],
+        "timeline": {},
+        "url_private_html": "https://figshare.com/account/articles/8269766",
+        "created_date": "2019-06-13T15:58:25Z",
+        "is_active": true,
+        "authors": [
+            {
+                "url_name": "Longze_Chen",
+                "is_active": true,
+                "id": 4449739,
+                "full_name": "Longze Chen",
+                "orcid_id": ""
+            }
+        ],
+        "is_public": false,
+        "categories": [],
+        "thumb": "",
+        "status": "draft",
+        "is_confidential": false,
+        "doi": "",
+        "license": {
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "name": "CC BY 4.0",
+            "value": 1
+        },
+        "has_linked_file": false,
+        "url": "https://api.figshare.com/v2/account/projects/64916/articles/8269766",
+        "resource_title": null,
+        "url_public_html": "https://figshare.com/articles/_/8269766",
+        "published_date": null,
+        "group_id": null,
+        "is_metadata_record": false,
+        "modified_date": "2019-06-13T16:00:12Z"
+    },
+    "public": {
+        "group_resource_id": null,
+        "embargo_date": null,
+        "defined_type_name": "dataset",
+        "citation": "Chen, Longze (2019): Dataset. figshare. Dataset.",
+        "url_private_api": "https://api.figshare.com/v2/account/articles/8263811",
+        "embargo_reason": "",
+        "references": [],
+        "funding_list": [],
+        "url_public_api": "https://api.figshare.com/v2/articles/8263811",
+        "id": 8263811,
+        "custom_fields": [],
+        "size": 80,
+        "metadata_reason": "",
+        "funding": null,
+        "figshare_url": "https://figshare.com/articles/Dataset01_txt/8263811",
+        "embargo_type": "file",
+        "title": "Dataset",
+        "defined_type": 3,
+        "is_embargoed": false,
+        "version": 3,
+        "resource_doi": null,
+        "confidential_reason": "",
+        "files": [
+            {
+                "status": "available",
+                "is_link_only": false,
+                "name": "Dataset02.txt",
+                "viewer_type": "txt",
+                "preview_state": "preview_available",
+                "download_url": "https://ndownloader.figshare.com/files/15460985",
+                "supplied_md5": "a9b178098c990ebd37833eb3a555bbef",
+                "computed_md5": "a9b178098c990ebd37833eb3a555bbef",
+                "upload_token": "1d08c67f-e8ac-490f-843c-a72481d92847",
+                "upload_url": "",
+                "id": 15460985,
+                "size": 20
+            },
+            {
+                "status": "available",
+                "is_link_only": false,
+                "name": "Dataset01.txt",
+                "viewer_type": "txt",
+                "preview_state": "preview_available",
+                "download_url": "https://ndownloader.figshare.com/files/15460988",
+                "supplied_md5": "63af72b6287856019456d183842a543c",
+                "computed_md5": "63af72b6287856019456d183842a543c",
+                "upload_token": "38814a5d-b625-450a-a7c1-06701a36f537",
+                "upload_url": "",
+                "id": 15460988,
+                "size": 20
+            },
+            {
+                "status": "available",
+                "is_link_only": false,
+                "name": "Dataset04.txt",
+                "viewer_type": "txt",
+                "preview_state": "preview_available",
+                "download_url": "https://ndownloader.figshare.com/files/15525491",
+                "supplied_md5": "d4ffc4d71ddb2027f1f44c5305d5a006",
+                "computed_md5": "d4ffc4d71ddb2027f1f44c5305d5a006",
+                "upload_token": "4f94aab4-0cea-4dd9-ba4e-6c0daa0217a4",
+                "upload_url": "",
+                "id": 15525491,
+                "size": 20
+            },
+            {
+                "status": "available",
+                "is_link_only": false,
+                "name": "Dataset03.txt",
+                "viewer_type": "txt",
+                "preview_state": "preview_available",
+                "download_url": "https://ndownloader.figshare.com/files/15525488",
+                "supplied_md5": "b0abfd2a4d171b38de3e63d3036d9e8c",
+                "computed_md5": "b0abfd2a4d171b38de3e63d3036d9e8c",
+                "upload_token": "b50cc7ec-27d1-4993-9b87-a2152a6d361a",
+                "upload_url": "",
+                "id": 15525488,
+                "size": 20
+            }
+        ],
+        "handle": "",
+        "description": "Dataset",
+        "tags": [
+            "Software Development And Testing"
+        ],
+        "timeline": {
+            "revision": "2019-06-18T14:45:32",
+            "firstOnline": "2019-06-12T14:53:26",
+            "posted": "2019-06-18T14:45:32"
+        },
+        "url_private_html": "https://figshare.com/account/articles/8263811",
+        "created_date": "2019-06-12T14:51:31Z",
+        "is_active": true,
+        "authors": [
+            {
+                "url_name": "Longze_Chen",
+                "is_active": true,
+                "id": 4449739,
+                "full_name": "Longze Chen",
+                "orcid_id": ""
+            }
+        ],
+        "is_public": true,
+        "categories": [
+            {
+                "parent_id": 5,
+                "id": 23,
+                "title": "Software Engineering"
+            }
+        ],
+        "thumb": "",
+        "status": "public",
+        "is_confidential": false,
+        "doi": "10.6084/m9.figshare.8263811",
+        "license": {
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "name": "CC BY 4.0",
+            "value": 1
+        },
+        "has_linked_file": false,
+        "url": "https://api.figshare.com/v2/account/projects/64916/articles/8263811",
+        "resource_title": null,
+        "url_public_html": "https://figshare.com/articles/Dataset01_txt/8263811",
+        "published_date": "2019-06-18T14:45:32Z",
+        "group_id": null,
+        "is_metadata_record": false,
+        "modified_date": "2019-06-18T14:45:32Z"
+    }
+}

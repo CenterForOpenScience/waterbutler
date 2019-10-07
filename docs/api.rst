@@ -332,3 +332,35 @@ OSF-specific parameter used to identify special "view-only" links that are used 
 * **Type**: string
 * **Expected on**: ``GET`` requests for files or folders
 * **Notes**: Only used internally for the Open Science Framework.
+
+
+GitHub Provider Params
+++++++++++++++++++++++
+
+Query parameters specific to the GitHub provider.
+
+
+*commit / branch identification*
+********************************
+
+Not a single parameter, but rather a class of parameters.  WaterButler has used many different parameters to identify the branch or commit a particular file should be found under.  These parameters can be either a commit SHA or a branch name.  These parameters are ``ref``, ``version``, ``branch``, ``sha``, ``revision``.  All will continue to be supported to maintain back-compatibility, but ``ref`` (for SHAs or branch names) and ``branch`` (branch names only) are preferred.
+
+If both a SHA and a branch name are provided in different parameters, the SHA will take precedence.  If multiple parameters are given with different SHAs, then the order of precedence will be: ``ref``, ``version``, ``sha``, ``revision``, ``branch``.  If multiple parameters are given with different branches, the order of precedence is: ``branch``, ``ref``, ``version``, ``sha``, ``revision``.
+
+* **Type**: str
+* **Expected on**: Any GitHub provider request
+* **Interactions**: None
+
+
+fileSha
+*******
+
+Identifies a specific revision of a file via its SHA.
+
+.. warning::
+
+   **PLEASE DON'T USE THIS!**  This was a mistake and should have never been added.  It will hopefully be removed or at the very least demoted in a future version.  File SHAs only identify the contents of a file.  They provide no information about the file name, path, commit, branch, etc.
+
+* **Type**: str
+* **Expected on**: Any GitHub provider request
+* **Interactions**: The ``fileSha`` is always assumed to be a file revision that is an ancestor of the imputed   commit or branch ref.  Providing a ``fileSha`` for a file version that was committed after the imputed ref will result in a 404.
