@@ -16,32 +16,10 @@ RUN apt-get update \
         libffi-dev \
         python-dev \
         gnupg2 \
+        # grab gosu for easy step-down from root
+        gosu \
     && apt-get clean \
     && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
-
-# grab gosu for easy step-down from root
-ENV GOSU_VERSION 1.4
-RUN apt-get update \
-    && apt-get install -y \
-        curl \
-    && for key in \
-      # GOSU
-      B42F6819007F00F88E364FD4036A9C25BF357DD4 \
-    ; do \
-      gpg2 --no-tty --keyserver hkp://ipv4.pool.sks-keyservers.net:80 --recv-keys "$key" || \
-      gpg2 --no-tty --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "$key" || \
-      gpg2 --no-tty --keyserver hkp://pgp.mit.edu:80 --recv-keys "$key" || \
-      gpg2 --no-tty --keyserver hkp://keyserver.pgp.com:80 --recv-keys "$key" \
-    ; done \
-    && curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture)" \
-  	&& curl -o /usr/local/bin/gosu.asc -SL "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture).asc" \
-  	&& gpg2 --verify /usr/local/bin/gosu.asc \
-  	&& rm /usr/local/bin/gosu.asc \
-  	&& chmod +x /usr/local/bin/gosu \
-    && apt-get clean \
-    && apt-get autoremove -y \
-        curl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /code
