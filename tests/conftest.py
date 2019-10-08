@@ -17,13 +17,11 @@ def pytest_configure(config):
 
 
 def pytest_runtest_setup(item):
-    marker = item.get_marker('aiohttpretty')
-    if marker is not None:
+    if 'aiohttpretty' in item.keywords:
         aiohttpretty.clear()
         aiohttpretty.activate()
 
 
 def pytest_runtest_teardown(item, nextitem):
-    marker = item.get_marker('aiohttpretty')
-    if marker is not None:
+    if 'aiohttpretty' in item.keywords:
         aiohttpretty.deactivate()
