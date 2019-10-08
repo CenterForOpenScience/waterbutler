@@ -59,7 +59,7 @@ def as_task(func):
 
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
-        return asyncio.async(func(*args, **kwargs))
+        return asyncio.ensure_future(func(*args, **kwargs))
 
     return wrapped
 
