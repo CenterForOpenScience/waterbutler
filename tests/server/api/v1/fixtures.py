@@ -9,7 +9,6 @@ from tornado.httputil import HTTPServerRequest
 from tornado.http1connection import HTTP1ConnectionParameters
 
 import waterbutler
-from waterbutler.server.app import make_app
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.tasks.exceptions import WaitTimeOutError
 from waterbutler.server.api.v1.provider import ProviderHandler
