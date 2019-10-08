@@ -6,12 +6,10 @@ from tests.utils import MockCoroutine
 from waterbutler.core.streams.http import ResponseStreamReader
 
 
-@pytest.fixture
 def mock_content():
     return type('mock_content', (object,), {'read': MockCoroutine(return_value=b'data')})
 
 
-@pytest.fixture
 def mock_content_eof():
     return type('mock_content_eof', (object,), {'read': MockCoroutine(return_value=None)})
 
