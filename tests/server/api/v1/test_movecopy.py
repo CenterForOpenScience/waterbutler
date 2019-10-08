@@ -19,6 +19,16 @@ class TestMoveOrCopy:
         assert handler.build_args() == move_copy_args
 
     @pytest.mark.asyncio
+    async def test_move_or_copy_invalid_json(self, http_request):
+        handler = mock_handler(http_request)
+        handler.body = b'<XML4LYFE/>'
+
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            await handler.move_or_copy()
+
+        assert exc.value.message == 'Invalid json body'
+
+    @pytest.mark.asyncio
     async def test_move_or_copy_invalid_action(self, http_request):
         handler = mock_handler(http_request)
         handler._json = {'action': 'invalid'}
