@@ -1,8 +1,6 @@
 import os
 import asyncio
 
-import agent
-
 from waterbutler.core.streams.base import BaseStream
 
 
@@ -27,8 +25,7 @@ class FileStreamReader(BaseStream):
         self.file_pointer.close()
         self.feed_eof()
 
-    @agent.async_generator
-    def chunk_reader(self):
+    async def chunk_reader(self):
         self.file_pointer.seek(0)
         while True:
             chunk = self.file_pointer.read(self.read_size)
@@ -80,8 +77,7 @@ class PartialFileStreamReader(FileStreamReader):
     def content_range(self):
         return 'bytes {}-{}/{}'.format(self.start, self.end, self.total_size)
 
-    @agent.async_generator
-    def chunk_reader(self):
+    async def chunk_reader(self):
         self.file_pointer.seek(self.start)
         while True:
             chunk = self.file_pointer.read(self.read_size)
