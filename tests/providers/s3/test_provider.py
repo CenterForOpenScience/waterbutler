@@ -458,7 +458,7 @@ class TestCRUD:
 
         await provider.upload(file_stream, path)
 
-        assert provider._chunked_upload.called_with(file_stream, path)
+        provider._chunked_upload.assert_called_with(file_stream, path)
 
         # Fixtures are shared between tests. Need to revert the settings back.
         provider.CONTIGUOUS_UPLOAD_SIZE_LIMIT = pd_settings.CONTIGUOUS_UPLOAD_SIZE_LIMIT
@@ -477,7 +477,7 @@ class TestCRUD:
 
         await provider.upload(file_stream, path)
 
-        assert provider._contiguous_upload.called_with(file_stream, path)
+        provider._contiguous_upload.assert_called_with(file_stream, path)
 
         provider.CONTIGUOUS_UPLOAD_SIZE_LIMIT = pd_settings.CONTIGUOUS_UPLOAD_SIZE_LIMIT
         provider.CHUNK_SIZE = pd_settings.CHUNK_SIZE
@@ -1277,7 +1277,7 @@ class TestOperations:
         metadata, exists = await provider.intra_copy(provider, source_path, dest_path)
 
 
-        assert provider._check_region.called
+        provider._check_region.assert_called()
 
         assert metadata.kind == 'file'
         assert not exists

@@ -1,6 +1,7 @@
 import os
 import pickle
 import asyncio
+import logging
 import functools
 
 from celery.backends.base import DisabledBackend
@@ -8,6 +9,8 @@ from celery.backends.base import DisabledBackend
 from waterbutler.tasks import app
 from waterbutler.tasks import settings
 from waterbutler.tasks import exceptions
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_event_loop():
@@ -79,9 +82,11 @@ def adhoc_file_backend(func, was_bound=False, basepath=None):
 
 
 def celery_task(func, *args, **kwargs):
-    """A wrapper around Celery.task.
-    When the wrapped method is called it will be called using
-    Celery's Task.delay function and run in a background thread
+    """A wrapper around Celery.task. When the wrapped method is called it will be called using
+    Celery's Task.delay function and run in a background thread.
+
+    If the celery backend is disabled, the task will be wrapped in a function that will write the
+    result to disk using the pickle serialization protocol.
     """
     task_func = __coroutine_unwrapper(func)
 
@@ -91,6 +96,8 @@ def celery_task(func, *args, **kwargs):
             was_bound=kwargs.pop('bind', False)
         )
         kwargs['bind'] = True
+
+    logger.debug('celery_task: task_func:({})'.format(task_func))
 
     task = app.task(task_func, **kwargs)
     task.adelay = backgroundify(task.delay)

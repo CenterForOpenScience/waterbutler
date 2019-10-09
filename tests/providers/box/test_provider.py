@@ -61,7 +61,7 @@ def file_content():
 
 @pytest.fixture
 def file_sha_b64():
-    return 'KrIc0sRT6ELxGc/oX3hZvabgltE='
+    return '2jmj7l5rSw0yVb/vlWAYkK/YBwk='
 
 
 @pytest.fixture
@@ -342,7 +342,7 @@ class TestUpload:
         path = WaterButlerPath('/foobah/', _ids=('0', '1'))
         await provider.upload(file_stream, path)
 
-        assert provider._contiguous_upload.called_with(file_stream, path)
+        provider._contiguous_upload.assert_called_with(path, file_stream)
         assert not provider._chunked_upload.called
 
         provider.NONCHUNKED_UPLOAD_LIMIT = NONCHUNKED_UPLOAD_LIMIT
@@ -361,7 +361,7 @@ class TestUpload:
         path = WaterButlerPath('/foobah/', _ids=('0', '1'))
         await provider.upload(file_stream, path)
 
-        assert provider._chunked_upload.called_with(file_stream, path)
+        provider._chunked_upload.assert_called_with(path, file_stream)
         assert not provider._contiguous_upload.called
 
         provider.NONCHUNKED_UPLOAD_LIMIT = NONCHUNKED_UPLOAD_LIMIT
@@ -387,9 +387,9 @@ class TestUpload:
         path = WaterButlerPath('/foobah/', _ids=('0', '1'))
         await provider._chunked_upload(path, file_stream)
 
-        assert provider._create_chunked_upload_session.called_with(path, file_stream)
-        assert provider._upload_parts.called_with(file_stream, session_metadata)
-        assert provider._complete_chunked_upload_session.called_with(session_metadata,
+        provider._create_chunked_upload_session.assert_called_with(path, file_stream)
+        provider._upload_parts.assert_called_with(file_stream, session_metadata)
+        provider._complete_chunked_upload_session.assert_called_with(session_metadata,
                                                                      parts_manifest,
                                                                      file_sha_b64)
 

@@ -1,24 +1,19 @@
 import sys
 import time
-import copy as cp
 import asyncio
 import hashlib
-from unittest import mock
+import copy as cp
 
 import celery
 import pytest
 
 from waterbutler import tasks  # noqa
-from waterbutler.core import remote_logging
-from waterbutler.core import utils as core_utils
-from waterbutler.core.path import WaterButlerPath
 
 import tests.utils as test_utils
 
+
 # Hack to get the module, not the function
 copy = sys.modules['waterbutler.tasks.copy']
-
-FAKE_TIME = 1454684930.0
 
 
 @pytest.fixture(autouse=True)
@@ -26,30 +21,7 @@ def patch_backend(monkeypatch):
     monkeypatch.setattr(copy.core.app, 'backend', None)
 
 
-@pytest.fixture(autouse=True)
-def callback(monkeypatch):
-    mock_request = test_utils.MockCoroutine(return_value=(200, b'meowmeowmeow'))
-    monkeypatch.setattr(copy.utils, 'send_signed_request', mock_request)
-    return mock_request
-
-
 @pytest.fixture
-def mock_time(monkeypatch):
-    mock_time = mock.Mock(return_value=FAKE_TIME)
-    monkeypatch.setattr(time, 'time', mock_time)
-
-
-@pytest.fixture
-def src_path():
-    return WaterButlerPath('/user/bin/python')
-
-
-@pytest.fixture
-def dest_path():
-    return WaterButlerPath('/usr/bin/golang')
-
-
-@pytest.fixture(scope='function')
 def src_provider():
     p = test_utils.MockProvider()
     p.copy.return_value = (test_utils.MockFileMetadata(), True)
@@ -57,7 +29,7 @@ def src_provider():
     return p
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def dest_provider():
     p = test_utils.MockProvider()
     p.copy.return_value = (test_utils.MockFileMetadata(), True)
@@ -65,7 +37,7 @@ def dest_provider():
     return p
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def providers(monkeypatch, src_provider, dest_provider):
     def make_provider(name=None, **kwargs):
         if name == 'src':
@@ -77,151 +49,105 @@ def providers(monkeypatch, src_provider, dest_provider):
     return src_provider, dest_provider
 
 
-@pytest.fixture(autouse=True)
-def log_to_keen(monkeypatch):
-    mock_log_to_keen = test_utils.MockCoroutine()
-    monkeypatch.setattr(remote_logging, 'log_to_keen', mock_log_to_keen)
-    return mock_log_to_keen
+def test_copy_calls_copy(providers, bundles, callback):
+    src, dest = providers
+    src_bundle, dest_bundle = bundles
 
+    copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle))
 
-@pytest.fixture
-def src_bundle(src_path):
-    return {
-        'nid': 'mst3k',
-        'path': src_path,
-        'provider': {
-            'name': 'src',
-            'auth': {
-                'callback_url': '',
-            },
-            'settings': {},
-            'credentials': {},
-        }
-    }
+    assert src.copy.called
+    src.copy.assert_called_once_with(dest, src_bundle['path'], dest_bundle['path'])
 
+def test_is_task():
+    assert callable(copy.copy)
+    assert isinstance(copy.copy, celery.Task)
+    assert not asyncio.iscoroutine(copy.copy)
+    assert asyncio.iscoroutinefunction(copy.copy.adelay)
 
-@pytest.fixture
-def dest_bundle(dest_path):
-    return {
-        'nid': 'fbi4u',
-        'path': dest_path,
-        'provider': {
-            'name': 'dest',
-            'auth': {
-                'callback_url': '',
-            },
-            'settings': {},
-            'credentials': {},
-        }
-    }
+def test_imputes_exceptions(providers, bundles, callback):
+    src, dest = providers
+    src_bundle, dest_bundle = bundles
 
+    src.copy.side_effect = Exception('This is a string')
 
-@pytest.fixture
-def bundles(src_bundle, dest_bundle):
-    return src_bundle, dest_bundle
-
-
-class TestCopyTask:
-
-    def test_copy_calls_copy(self, event_loop, providers, bundles):
-        src, dest = providers
-        src_bundle, dest_bundle = bundles
-
+    with pytest.raises(Exception):
         copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle))
 
-        assert src.copy.called
-        src.copy.assert_called_once_with(dest, src_bundle['path'], dest_bundle['path'])
+    (method, url, data), _ = callback.call_args_list[0]
 
-    def test_is_task(self):
-        assert callable(copy.copy)
-        assert isinstance(copy.copy, celery.Task)
-        assert not asyncio.iscoroutine(copy.copy)
-        assert asyncio.iscoroutinefunction(copy.copy.adelay)
+    assert src.copy.called
+    src.copy.assert_called_once_with(dest, src_bundle['path'], dest_bundle['path'])
 
-    def test_imputes_exceptions(self, event_loop, providers, bundles, callback):
-        src, dest = providers
-        src_bundle, dest_bundle = bundles
+    assert url == 'dest_callback'
+    assert method == 'PUT'
+    assert data['errors'] == ["Exception('This is a string',)"]
 
-        src.copy.side_effect = Exception('This is a string')
+def test_return_values(providers, bundles, callback, src_path, dest_path, mock_time, FAKE_TIME):
+    src, dest = providers
+    src_bundle, dest_bundle = bundles
 
-        with pytest.raises(Exception):
-            copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle))
+    metadata = test_utils.MockFileMetadata()
+    src.copy.return_value = (metadata, False)
 
-        (method, url, data), _ = callback.call_args_list[0]
+    ret1, ret2 = copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle))
 
-        assert src.copy.called
-        src.copy.assert_called_once_with(dest, src_bundle['path'], dest_bundle['path'])
+    assert (ret1, ret2) == (metadata, False)
 
-        assert url == 'dest_callback'
-        assert method == 'PUT'
-        assert data['errors'] == ["Exception('This is a string',)"]
+    (method, url, data), _ = callback.call_args_list[0]
+    assert method == 'PUT'
+    assert url == 'dest_callback'
+    assert data['action'] == 'copy'
+    assert data['auth'] == {'callback_url': 'dest_callback'}
+    assert data['email'] == False
+    assert data['errors'] == []
+    assert data['time'] == FAKE_TIME + 60
 
-    def test_return_values(self, event_loop, providers, bundles, callback, src_path, dest_path, mock_time):
-        src, dest = providers
-        src_bundle, dest_bundle = bundles
+    assert data['source'] == {
+        'nid': 'mst3k',
+        'resource': 'mst3k',
+        'path': '/' + src_path.raw_path,
+        'name': src_path.name,
+        'materialized': str(src_path),
+        'provider': src.NAME,
+        'kind': 'file',
+        'extra': {},
+    }
 
-        metadata = test_utils.MockFileMetadata()
-        src.copy.return_value = (metadata, False)
+    assert data['destination'] == {
+        'nid': 'fbi4u',
+        'resource': 'fbi4u',
+        'path': metadata.path,
+        'name': metadata.name,
+        'materialized': metadata.path,
+        'provider': dest.NAME,
+        'kind': 'file',
+        'contentType': metadata.content_type,
+        'etag': hashlib.sha256(
+            '{}::{}'.format(metadata.provider, metadata.etag)
+            .encode('utf-8')
+        ).hexdigest(),
+        'extra': metadata.extra,
+        'modified': metadata.modified,
+        'modified_utc': metadata.modified_utc,
+        'created_utc': metadata.created_utc,
+        'size': metadata.size,
+        'sizeInt': metadata.size_as_int,
+    }
 
-        ret1, ret2 = copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle))
+def test_starttime_override(providers, bundles, callback, mock_time, FAKE_TIME):
+    src, dest = providers
+    src_bundle, dest_bundle = bundles
 
-        assert (ret1, ret2) == (metadata, False)
+    stamp = FAKE_TIME
+    copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle), start_time=stamp-100)
+    copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle), start_time=stamp+100)
 
-        (method, url, data), _ = callback.call_args_list[0]
-        assert method == 'PUT'
-        assert url == 'dest_callback'
-        assert data['action'] == 'copy'
-        assert data['auth'] == {'callback_url': 'dest_callback'}
-        assert data['email'] == False
-        assert data['errors'] == []
-        assert data['time'] == FAKE_TIME + 60
+    (_, _, data), _ = callback.call_args_list[0]
 
-        assert data['source'] == {
-            'nid': 'mst3k',
-            'resource': 'mst3k',
-            'path': '/' + src_path.raw_path,
-            'name': src_path.name,
-            'materialized': str(src_path),
-            'provider': src.NAME,
-            'kind': 'file',
-            'extra': {},
-        }
+    assert data['email'] is True
+    assert data['time'] == 60 + stamp
 
-        assert data['destination'] == {
-            'nid': 'fbi4u',
-            'resource': 'fbi4u',
-            'path': metadata.path,
-            'name': metadata.name,
-            'materialized': metadata.path,
-            'provider': dest.NAME,
-            'kind': 'file',
-            'contentType': metadata.content_type,
-            'etag': hashlib.sha256(
-                '{}::{}'.format(metadata.provider, metadata.etag)
-                .encode('utf-8')
-            ).hexdigest(),
-            'extra': metadata.extra,
-            'modified': metadata.modified,
-            'modified_utc': metadata.modified_utc,
-            'created_utc': metadata.created_utc,
-            'size': metadata.size,
-            'sizeInt': metadata.size_as_int,
-        }
+    (_, _, data), _ = callback.call_args_list[1]
 
-    def test_starttime_override(self, event_loop, providers, bundles, callback, mock_time):
-        src, dest = providers
-        src_bundle, dest_bundle = bundles
-
-        stamp = FAKE_TIME
-        copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle), start_time=stamp-100)
-        copy.copy(cp.deepcopy(src_bundle), cp.deepcopy(dest_bundle), start_time=stamp+100)
-
-        (_, _, data), _ = callback.call_args_list[0]
-
-        assert data['email'] is True
-        assert data['time'] == 60 + stamp
-
-        (_, _, data), _ = callback.call_args_list[1]
-
-        assert data['email'] is False
-        assert data['time'] == 60 + stamp
+    assert data['email'] is False
+    assert data['time'] == 60 + stamp
