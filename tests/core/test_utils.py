@@ -49,7 +49,7 @@ class TestAsyncRetry:
 
         assert mock_func.call_count == 9
 
-    async def test_docstring_survives(self):
+    def test_docstring_survives(self):
         async def mytest():
             '''This is a docstring'''
             pass

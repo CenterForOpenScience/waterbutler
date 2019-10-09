@@ -43,7 +43,7 @@ class TestBase64Stream:
 
             assert left_overs == b''
 
-    async def test_size(self):
+    def test_size(self):
         data = b'the ode to carp'
         expected = base64.b64encode(data)
         stream = streams.Base64EncodeStream(streams.StringStream(data))
