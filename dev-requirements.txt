@@ -2,12 +2,12 @@
 
 git+https://github.com/CenterForOpenScience/aiohttpretty.git@develop
 colorlog==2.5.0
-flake8==3.0.4
+flake8==3.5.0
 ipdb==0.12.2
 ipython==7.8.0
 mypy==0.580
 pydevd==0.0.6
-pyflakes==2.1.1
+pyflakes==1.6.0
 pytest==5.2.1
 pytest-asyncio==0.10.0
 pytest-cov==2.8.1
