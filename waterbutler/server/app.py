@@ -6,7 +6,9 @@ from functools import partial
 
 import tornado.web
 import tornado.platform.asyncio
-from raven.contrib.tornado import AsyncSentryClient
+
+import sentry_sdk
+from sentry_sdk.integrations.tornado import TornadoIntegration
 
 from waterbutler import settings
 from waterbutler.server.api import v0
@@ -38,6 +40,12 @@ def api_to_handlers(api):
 
 
 def make_app(debug):
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        release=__version__,
+        integrations=[TornadoIntegration()],
+    )
+
     app = tornado.web.Application(
         api_to_handlers(v0) +
         api_to_handlers(v1) +
@@ -45,7 +53,6 @@ def make_app(debug):
         debug=debug,
         autoreload=False,
     )
-    app.sentry_client = AsyncSentryClient(settings.SENTRY_DSN, release=__version__)
     return app
 
 

@@ -11,19 +11,15 @@ class TestBaseHandler:
 
         handler = mock_handler(http_request)
         handler.finish = mock.Mock()
-        handler.captureException = mock.Mock()
         handler.write_error(500, mock_exc_info)
         handler.finish.assert_called_with({'message': 'OK', 'code': 500})
-        handler.captureException.assert_called_with(mock_exc_info)
 
     def test_write_error_202(self, http_request, mock_exc_info_202):
 
         handler = mock_handler(http_request)
         handler.finish = mock.Mock()
-        handler.captureException = mock.Mock()
         handler.write_error(500, mock_exc_info_202)
         handler.finish.assert_called_with()
-        handler.captureException.assert_called_with(mock_exc_info_202, data={'level': 'info'})
 
     @mock.patch('tornado.web.app_log.error')
     def test_log_exception_uncaught(self, mocked_error, http_request, mock_exc_info):

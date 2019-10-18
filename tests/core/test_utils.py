@@ -11,7 +11,7 @@ class TestAsyncRetry:
     @pytest.mark.asyncio
     async def test_returns_success(self):
         mock_func = mock.Mock(return_value='Foo')
-        retryable = utils.async_retry(5, 0, raven=None)(mock_func)
+        retryable = utils.async_retry(5, 0)(mock_func)
         x = await retryable()
         assert x == 'Foo'
         assert mock_func.call_count == 1
@@ -19,7 +19,7 @@ class TestAsyncRetry:
     @pytest.mark.asyncio
     async def test_retries_until(self):
         mock_func = mock.Mock(side_effect=[Exception(), 'Foo'])
-        retryable = utils.async_retry(5, 0, raven=None)(mock_func)
+        retryable = utils.async_retry(5, 0)(mock_func)
 
         x = await retryable()
 
@@ -29,7 +29,7 @@ class TestAsyncRetry:
     @pytest.mark.asyncio
     async def test_retries_then_raises(self):
         mock_func = mock.Mock(side_effect=Exception('Foo'))
-        retryable = utils.async_retry(5, 0, raven=None)(mock_func)
+        retryable = utils.async_retry(5, 0)(mock_func)
 
         with pytest.raises(Exception) as e:
             coro = await retryable()
@@ -41,7 +41,7 @@ class TestAsyncRetry:
     @pytest.mark.asyncio
     async def test_retries_by_its_self(self):
         mock_func = mock.Mock(side_effect=Exception())
-        retryable = utils.async_retry(8, 0, raven=None)(mock_func)
+        retryable = utils.async_retry(8, 0)(mock_func)
 
         retryable()
 
@@ -54,7 +54,7 @@ class TestAsyncRetry:
             '''This is a docstring'''
             pass
 
-        retryable = utils.async_retry(8, 0, raven=None)(mytest)
+        retryable = utils.async_retry(8, 0)(mytest)
 
         assert retryable.__doc__ == '''This is a docstring'''
 
@@ -66,7 +66,7 @@ class TestAsyncRetry:
             assert kwargs == {'test': 'Foo', 'baz': 'bam'}
             return True
 
-        retryable = utils.async_retry(8, 0, raven=None)(mytest)
+        retryable = utils.async_retry(8, 0)(mytest)
         merk = mock.Mock(side_effect=[Exception(''), 5])
 
         fut = retryable(merk, 'test', 'Foo', test='Foo', baz='bam')
@@ -77,7 +77,7 @@ class TestAsyncRetry:
     @pytest.mark.asyncio
     async def test_all_retry(self):
         mock_func = mock.Mock(side_effect=Exception())
-        retryable = utils.async_retry(8, 0, raven=None)(mock_func)
+        retryable = utils.async_retry(8, 0)(mock_func)
 
         retryable()
         retryable()
