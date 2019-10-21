@@ -20,12 +20,65 @@ logger = logging.getLogger(__name__)
 class DataverseProvider(provider.BaseProvider):
     """Provider for Dataverse
 
-    API Docs: http://guides.dataverse.org/en/4.5/api/
+    Implementation is based on API v4.5 Docs: http://guides.dataverse.org/en/4.5/api/. The latest
+    API version is v4.16 as of Oct. 2019. API v4.16 Docs: http://guides.dataverse.org/en/4.16/api/.
+    In addition, here is the latest Docs link: http://guides.dataverse.org/en/latest/api/.
 
-    Quirks:
+    About Dataverse API Sets
 
-    * Dataverse doesn't respect Range header on downloads
+    Dataverse provides several sets of APIs and surprisingly WB touches three different sets for
+    different actions. Each set behave differently in various aspects; thus it is recommended to
+    treat them separately. For example as mentioned below, auth options are different. Please refer
+    to the API Docs for details.
 
+    * UPLOAD and DELETE: Dataverse SWORD API
+
+      * v4.5 API Docs: http://guides.dataverse.org/en/4.5/api/sword.html
+      * v4.16 API Docs: http://guides.dataverse.org/en/4.16/api/sword.html
+
+    * DOWNLOAD: Dataverse Data Access API
+
+      * v4.5 API Docs: http://guides.dataverse.org/en/4.5/api/dataaccess.html
+      * v4.16 API Docs: http://guides.dataverse.org/en/4.16/api/dataaccess.html
+
+    * METADATA: Dataverse Native API
+
+      * v4.5 API Docs: http://guides.dataverse.org/en/4.5/api/native-api.html
+      * v4.16 API Docs: http://guides.dataverse.org/en/4.16/api/native-api.html
+
+    About Dataverse API Tokens and Authentication
+
+    * Before v4.7, both Data Access API and Native API use 1) session auth (not eligible for 3rd-
+      party applications such as WB) and 2) API key based auth which is what WB uses now. However,
+      the latter option can only be use as a query param "key=", which isn't safe at all. Starting
+      v4.7, a new and more secure approach is available to 3rd-parties which uses a dedicated auth
+      header "X-Dataverse-key" whose value should be set as the API key.
+
+    * In comparision, Dataverse SWORD API only supports basic auth. To make it more interesting,
+      it seems that this "support" was created specifically for using the API key as if it were
+      username and password. The trick here is that the API key must be provided as the username
+      and the password must be set to empty.
+
+    * TODO: update DOWNLOAD and METADATA to use header auth instead of query param auth.
+
+    About Dataverse DOWNLOAD
+
+    * Dataverse doesn't respect Range header on downloads (as of v4.16, Oct. 2019)
+
+    About Basic Auth
+
+    * ``aiohttp-v0.18`` shows a deprecation warning that the ``auth`` parameter should be of type
+      ``aiohttp.helpersBasicAuth`` when building the client request object. This is why we could
+      pass a tuple ``auth=(self.token, )`` when calling ``self.make_request()``. See:
+      https://github.com/aio-libs/aiohttp/blob/v0.18.4/aiohttp/client_reqrep.py#L249-L252
+
+    * However, in ``aiohttp-v3.5`` (more specifically starting v0.22), the request initialization
+      will throw an error if the ``auth`` parameter is not of type ``aiohttp.helpersBasicAuth``.
+      Thus, must use the basic auth object ``auth=BasicAuth(self.token)`` instead. See:
+      https://github.com/aio-libs/aiohttp/blob/3.5/aiohttp/client_reqrep.py#L468-L469
+
+    * For more info about ``aiohttp.helpersBasicAuth`` as of version 3.5, see:
+      https://github.com/aio-libs/aiohttp/blob/3.5/aiohttp/helpers.py#L116-L176
     """
 
     NAME = 'dataverse'
@@ -132,6 +185,7 @@ class DataverseProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         logger.debug('request-range:: {}'.format(range))
+        # TODO: use the auth header "X-Dataverse-key" instead of query param (1/2)
         resp = await self.make_request(
             'GET',
             self.build_url(pd_settings.DOWN_BASE_URL, path.identifier, key=self.token),
@@ -265,6 +319,7 @@ class DataverseProvider(provider.BaseProvider):
         if not version:
             return (await self._get_all_data())
 
+        # TODO: use the auth header "X-Dataverse-key" instead of query param (2/2)
         url = self.build_url(
             pd_settings.JSON_BASE_URL.format(self._id, version),
             key=self.token,
