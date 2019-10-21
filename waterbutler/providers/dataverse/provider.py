@@ -4,6 +4,8 @@ import tempfile
 from typing import Tuple
 from http import HTTPStatus
 
+from aiohttp.helpers import BasicAuth
+
 from waterbutler.core.utils import AsyncIterator
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core import exceptions, provider, streams
@@ -176,7 +178,7 @@ class DataverseProvider(provider.BaseProvider):
             'POST',
             self.build_url(pd_settings.EDIT_MEDIA_BASE_URL, 'study', self.doi),
             headers=dv_headers,
-            auth=(self.token, ),
+            auth=BasicAuth(self.token),
             data=file_stream,
             expects=(201, ),
             throws=exceptions.UploadError
@@ -204,7 +206,7 @@ class DataverseProvider(provider.BaseProvider):
         resp = await self.make_request(
             'DELETE',
             self.build_url(pd_settings.EDIT_MEDIA_BASE_URL, 'file', path.identifier),
-            auth=(self.token, ),
+            auth=BasicAuth(self.token),
             expects=(204, ),
             throws=exceptions.DeleteError,
         )
