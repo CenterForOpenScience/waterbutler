@@ -1,7 +1,18 @@
 import uuid
 import asyncio
+from asyncio import Future
+from asyncio.streams import _DEFAULT_LIMIT
+
+
+from tornado import gen, ioloop
 
 from waterbutler.core.streams.base import BaseStream, MultiStream, StringStream
+
+import logging
+logger = logging.getLogger(__name__)
+
+
+print(_DEFAULT_LIMIT)
 
 
 class FormDataStream(MultiStream):
@@ -173,26 +184,81 @@ class ResponseStreamReader(BaseStream):
         return chunk
 
 
+class WritePendingError():
+    pass
+
+
 class RequestStreamReader(BaseStream):
 
-    def __init__(self, request, inner):
+    def __init__(self, request, max_buffer_size=_DEFAULT_LIMIT):
         super().__init__()
-        self.inner = inner
         self.request = request
+        self.max_buffer_size = max_buffer_size
+        self.pending_feed = None
 
     @property
     def size(self):
         return int(self.request.headers.get('Content-Length'))
 
-    def at_eof(self):
-        return self.inner.at_eof()
+    def feed_data(self, chunk, timeout=None):
+        assert not self._eof, 'feed_data after feed_eof'
+        # Trying to write to the stream from several coroutines doesn't seem
+        # like a great idea, so limit it to one event loop, one coroutine.
+        if self.pending_feed is not None:
+            # Make sure the pending future is complete.
+            future, chunk = self.pending_feed
+            if not future.done():
+                raise WritePendingError('Another coroutine is alreading waiting to write to this stream.')
+            self.pending_feed = None
 
-    async def _read(self, size):
-        if self.inner.at_eof():
-            return b''
-        if size < 0:
-            return (await self.inner.read(size))
-        try:
-            return (await self.inner.readexactly(size))
-        except asyncio.IncompleteReadError as e:
-            return e.partial
+        if not chunk:
+            # Nothing to add to the stream.
+            return
+
+        future = Future()
+
+        if len(self._buffer) > self.max_buffer_size:
+            # The buffer is full, and no more can be written to it until some
+            # of it has been consumed. We will always be able to write
+            # something to the buffer, because we don't check it for overflow.
+            # (Default limit still remains)
+            assert self.pending_feed is None
+            self.pending_feed = (future, chunk)
+
+            future.add_done_callback(lambda _: self.clear_pending_feed())
+
+            if timeout:
+                # Let a caller specify a maximum amount of time to wait.
+                def on_timeout():
+                    if not future.done():
+                        future.set_exception(gen.TimeoutError())
+                io_loop = ioloop.IOLoop.current()
+                timeout_handle = io_loop.add_timeout(timeout, on_timeout)
+                future.add_done_callback(lambda _: io_loop.remove_timeout(timeout_handle))
+
+        else:
+            # Sets the result of the Future.
+            self.feed_nowait(future, chunk)
+
+        # Give the future back for it to get awaited somewhere.
+        return future
+
+    def clear_pending_feed(self):
+        self.pending_feed = None
+
+    def feed_nowait(self, future, chunk):
+        # We can put the chunk on the buffer.
+        self._buffer.extend(chunk)
+        future.set_result(None)
+        self.clear_pending_feed()
+
+        # Let a waiting read know there's data.
+        self._wakeup_waiter()
+
+    async def _read(self, n=-1):
+        data = await asyncio.StreamReader.read(self, n)
+        if self.pending_feed is not None and len(self._buffer) <= self.max_buffer_size:
+            future, chunk = self.pending_feed
+            if not future.done():
+                self.feed_nowait(future, chunk)
+        return data

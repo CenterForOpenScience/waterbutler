@@ -6,7 +6,12 @@ import pytest
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.server.api.v1.provider import ProviderHandler, list_or_value
 
-from tests.utils import MockCoroutine, MockStream, MockWriter, MockProvider
+from tests.utils import (
+    MockCoroutine,
+    MockProvider,
+    MockRequestStream,
+    MockStream
+)
 from tests.server.api.v1.fixtures import (http_request, handler, patch_auth_handler, handler_auth,
                                           patch_make_provider_core)
 
@@ -130,13 +135,12 @@ class TestProviderHandler:
     @pytest.mark.asyncio
     async def test_data_received_stream(self, handler):
         handler.path = WaterButlerPath('/folder/')
-        handler.stream = MockStream()
-        handler.writer = MockWriter()
+        handler.stream = MockRequestStream(handler.request)
 
         await handler.data_received(b'1234567890')
 
         assert handler.bytes_uploaded == 10
-        handler.writer.write.assert_called_once_with(b'1234567890')
+        assert handler.stream._buffer == b'1234567890'
 
 
 class TestProviderHandlerFinish:
