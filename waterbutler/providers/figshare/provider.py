@@ -128,7 +128,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         }
 
     def build_url(self, is_public: bool, *segments, **query) -> str:  # type: ignore
-        """A nice wrapper around furl, builds urls based on self.BASE_URL
+        r"""A nice wrapper around furl, builds urls based on self.BASE_URL
 
         :param bool is_public: ``True`` if addressing public resource
         :param tuple \*segments: A tuple of strings joined into ``/foo/bar/``
@@ -154,7 +154,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         return (super().build_url(*segments, **query))
 
     async def make_request(self, method, url, *args, **kwargs):
-        """JSONifies ``data`` kwarg, if present and a ``dict``.
+        r"""JSONifies ``data`` kwarg, if present and a ``dict``.
 
         :param str method: HTTP method
         :param str url: URL
@@ -567,7 +567,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                                  parent_is_folder=parent_is_folder)
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
-        """Upload a file to provider root or to an article whose defined_type is
+        r"""Upload a file to provider root or to an article whose defined_type is
         configured to represent a folder.
 
         :param asyncio.StreamReader stream: stream to upload
@@ -898,7 +898,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
         return FigsharePath('/' + file_id, _ids=('', ''), folder=False, is_public=False)
 
     async def revalidate_path(self, parent_path, child_name, folder: bool=False):
-        """Attempt to get child's id and return FigsharePath of child.
+        r"""Attempt to get child's id and return FigsharePath of child.
 
         ``revalidate_path`` is used to check for the existance of a child_name/folder
         within the parent. Returning a FigsharePath of child. Child will have _id
@@ -942,7 +942,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
                                  parent_is_folder=parent_is_folder)
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
-        """Upload a file to provider root or to an article whose defined_type is
+        r"""Upload a file to provider root or to an article whose defined_type is
         configured to represent a folder.
 
         :param asyncio.StreamReader stream: stream to upload

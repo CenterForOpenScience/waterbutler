@@ -73,7 +73,7 @@ class DropboxProvider(provider.BaseProvider):
                               expects: typing.Tuple=(200, 409,),
                               *args,
                               **kwargs) -> dict:
-        """Convenience wrapper around ``BaseProvider.make_request`` for simple Dropbox API calls.
+        r"""Convenience wrapper around ``BaseProvider.make_request`` for simple Dropbox API calls.
         Sets the method to ``POST``, jsonifies the ``body`` param, and provides default error
         handling for Dropbox's standard 409 error response structure.
 

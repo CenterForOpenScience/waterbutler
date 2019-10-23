@@ -80,7 +80,7 @@ class CloudFilesProvider(provider.BaseProvider):
 
     @ensure_connection
     async def download(self, path, accept_url=False, range=None, **kwargs):
-        """Returns a ResponseStreamReader (Stream) for the specified path
+        r"""Returns a ResponseStreamReader (Stream) for the specified path
         :param str path: Path to the object you want to download
         :param dict \*\*kwargs: Additional arguments that are ignored
         :rtype str:

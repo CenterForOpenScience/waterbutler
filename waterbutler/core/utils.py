@@ -30,7 +30,7 @@ if sentry_dsn:
 
 
 def make_provider(name: str, auth: dict, credentials: dict, settings: dict, **kwargs):
-    """Returns an instance of :class:`waterbutler.core.provider.BaseProvider`
+    r"""Returns an instance of :class:`waterbutler.core.provider.BaseProvider`
 
     :param str name: The name of the provider to instantiate. (s3, box, etc)
     :param dict auth:

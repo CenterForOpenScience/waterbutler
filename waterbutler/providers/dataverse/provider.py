@@ -168,7 +168,7 @@ class DataverseProvider(provider.BaseProvider):
 
     async def download(self, path: WaterButlerPath, revision: str=None,  # type: ignore
                        range: Tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
-        """Returns a ResponseWrapper (Stream) for the specified path
+        r"""Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from Dataverse is not 200
 
         :param WaterButlerPath path: Path to the file you want to download

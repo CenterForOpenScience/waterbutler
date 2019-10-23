@@ -263,7 +263,7 @@ class InvalidProviderConfigError(ProviderError):
 
 
 async def exception_from_response(resp, error=UnhandledProviderError, **kwargs):
-    """Build and return, not raise, an exception from a response object.
+    r"""Build and return, not raise, an exception from a response object.
 
     Quirks:
 
