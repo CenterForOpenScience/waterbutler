@@ -10,6 +10,7 @@ from urllib import parse
 
 import furl
 import aiohttp
+from aiohttp.client import _RequestContextManager
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
@@ -285,6 +286,14 @@ class BaseProvider(metaclass=abc.ABCMeta):
                     response = await session.patch(non_callable_url, *args, **kwargs)
                 elif method == 'OPTIONS':
                     response = await session.options(non_callable_url, *args, **kwargs)
+                elif method in wb_settings.WEBDAV_METHODS:
+                    # `aiohttp.ClientSession` only has functions available for native HTTP methods.
+                    # For WebDAV (a protocol that extends HTTP) ones, WB lets the `ClientSession`
+                    # instance call `_request()` directly and then wraps the return object with
+                    # `aiohttp.client._RequestContextManager`.
+                    response = await _RequestContextManager(
+                        session._request(method, url, *args, **kwargs)
+                    )
                 else:
                     raise exceptions.WaterButlerError('Unsupported HTTP method ...')
                 self.provider_metrics.incr('requests.tally.ok')
