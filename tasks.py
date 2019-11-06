@@ -95,7 +95,6 @@ def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None)
                         '--ignore=tests/providers/gitlab/ ' \
                         '--ignore=tests/providers/googledrive ' \
                         '--ignore=tests/providers/onedrive ' \
-                        '--ignore=tests/providers/owncloud ' \
                         '--ignore=tests/providers/s3'
 
     cmd = 'py.test{} {} tests{} {}'.format(coverage, ignored_providers, path, verbose)
