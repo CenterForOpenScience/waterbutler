@@ -653,14 +653,15 @@ class S3Provider(provider.BaseProvider):
             if (await self.exists(path)):
                 raise exceptions.FolderNamingConflict(path.name)
 
-        async with self.request(
+        await self.make_request(
             'PUT',
             functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
             skip_auto_headers={'CONTENT-TYPE'},
             expects=(200, 201, ),
             throws=exceptions.CreateFolderError
-        ):
-            return S3FolderMetadata({'Prefix': path.path})
+        )
+
+        return S3FolderMetadata({'Prefix': path.path})
 
     async def _metadata_file(self, path, revision=None):
         await self._check_region()
