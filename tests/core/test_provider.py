@@ -277,6 +277,15 @@ class TestCopy:
         )
 
     @pytest.mark.asyncio
+    async def test_copy_will_self_overwrite(self, provider1):
+        src_path = await provider1.validate_path('/source/path')
+        dest_path = await provider1.validate_path('/destination/')
+        provider1.will_self_overwrite = utils.MockCoroutine()
+
+        with pytest.raises(exceptions.OverwriteSelfError):
+            await provider1.copy(provider1, src_path, dest_path)
+
+    @pytest.mark.asyncio
     async def test_checks_can_intra_copy(self, provider1):
         provider1.can_intra_copy = mock.Mock(return_value=False)
         src_path = await provider1.validate_path('/source/path')
@@ -392,6 +401,15 @@ class TestMove:
             rename='Baz',
             conflict='replace',
         )
+
+    @pytest.mark.asyncio
+    async def test_move_will_self_overwrite(self, provider1):
+        src_path = await provider1.validate_path('/source/path')
+        dest_path = await provider1.validate_path('/destination/')
+        provider1.will_self_overwrite = utils.MockCoroutine()
+
+        with pytest.raises(exceptions.OverwriteSelfError):
+            await provider1.move(provider1, src_path, dest_path)
 
     @pytest.mark.asyncio
     async def test_checks_can_intra_move(self, provider1):

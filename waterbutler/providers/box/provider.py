@@ -190,6 +190,9 @@ class BoxProvider(provider.BaseProvider):
         Add a comparison of credentials to avoid this."""
         return super().shares_storage_root(other) and self.credentials == other.credentials
 
+    def will_self_overwrite(self, dest_provider, src_path, dest_path):
+        return self.NAME == dest_provider.NAME and src_path.identifier == dest_path.identifier
+
     def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
         return self == other
 

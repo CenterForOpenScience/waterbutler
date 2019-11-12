@@ -789,8 +789,8 @@ class TestIntraMoveCopy:
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
                     'body': json.dumps(
-                                error_fixtures['rename_conflict_folder_metadata']
-                            ).encode('utf-8'),
+                        error_fixtures['rename_conflict_folder_metadata']
+                    ).encode('utf-8'),
                     'status': HTTPStatus.CONFLICT
                 },
                 {
@@ -941,7 +941,9 @@ class TestIntraMoveCopy:
                 {
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
-                    'body': json.dumps(error_fixtures['rename_conflict_file_metadata']).encode('utf-8'),
+                    'body': json.dumps(
+                        error_fixtures['rename_conflict_file_metadata']
+                    ).encode('utf-8'),
                     'status': HTTPStatus.CONFLICT
                 },
                 {
@@ -995,7 +997,9 @@ class TestIntraMoveCopy:
                 {
                     'headers': {'Content-Type': 'application/json'},
                     'data': data,
-                    'body': json.dumps(error_fixtures['rename_conflict_folder_metadata']).encode('utf-8'),
+                    'body': json.dumps(
+                        error_fixtures['rename_conflict_folder_metadata']
+                    ).encode('utf-8'),
                     'status': HTTPStatus.CONFLICT
                 },
                 {
@@ -1032,6 +1036,15 @@ class TestIntraMoveCopy:
 
 
 class TestOperations:
+
+    def test_will_self_overwrite(self, provider, other_provider):
+        src_path = WaterButlerPath('/50 shades of nope.txt',
+                                   _ids=(provider.folder, '12231'))
+        dest_path = WaterButlerPath('/50 shades of nope2223.txt',
+                                    _ids=(provider.folder, '2342sdfsd'))
+
+        assert provider.will_self_overwrite(other_provider, src_path, dest_path) is False
+        assert provider.will_self_overwrite(other_provider, src_path, src_path) is True
 
     def test_can_intra_copy(self, provider):
         assert provider.can_intra_copy(provider)

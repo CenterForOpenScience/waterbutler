@@ -266,6 +266,9 @@ class OwnCloudProvider(provider.BaseProvider):
     def can_duplicate_names(self):
         return True
 
+    def will_self_overwrite(self, dest_provider, src_path, dest_path):
+        return self.NAME == dest_provider.NAME and src_path.identifier == dest_path.identifier
+
     def can_intra_copy(self, dest_provider, path=None):
         return self == dest_provider
 

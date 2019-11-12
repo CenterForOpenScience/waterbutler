@@ -198,12 +198,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def request(self, *args, **kwargs):
         return RequestHandlerContext(self.make_request(*args, **kwargs))
 
-    async def move(self,
-                   dest_provider: 'BaseProvider',
-                   src_path: wb_path.WaterButlerPath,
-                   dest_path: wb_path.WaterButlerPath,
-                   rename: str=None,
-                   conflict: str='replace',
+    async def move(self, dest_provider: 'BaseProvider', src_path: wb_path.WaterButlerPath,
+                   dest_path: wb_path.WaterButlerPath, rename: str=None, conflict: str='replace',
                    handle_naming: bool=True) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
         """Moves a file or folder from the current provider to the specified one
         Performs a copy and then a delete.
@@ -225,6 +221,18 @@ class BaseProvider(metaclass=abc.ABCMeta):
             'got_rename': rename is not None,
         })
 
+        # This does not mean that the `dest_path` is a folder, at this point it could just be the
+        # parent of the actual destination file/folder, or have a blank name.  Use `not .is_file`
+        # in the if statement for less confusion.
+        if not dest_path.is_file:
+            temp_path = await self.revalidate_path(
+                dest_path,
+                rename or src_path.name,
+                folder=src_path.is_dir
+            )
+            if self.will_self_overwrite(dest_provider, src_path, temp_path):
+                raise exceptions.OverwriteSelfError(src_path)
+
         if handle_naming:
             dest_path = await dest_provider.handle_naming(
                 src_path,
@@ -237,8 +245,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         # files and folders shouldn't overwrite themselves
         if (
-            self.shares_storage_root(dest_provider) and
-            src_path.materialized_path == dest_path.materialized_path
+                self.shares_storage_root(dest_provider) and
+                src_path.materialized_path == dest_path.materialized_path
         ):
             raise exceptions.OverwriteSelfError(src_path)
 
@@ -256,13 +264,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         return meta_data, created
 
-    async def copy(self,
-                   dest_provider: 'BaseProvider',
-                   src_path: wb_path.WaterButlerPath,
-                   dest_path: wb_path.WaterButlerPath,
-                   rename: str=None, conflict: str='replace',
-                   handle_naming: bool=True) \
-            -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+    async def copy(self, dest_provider: 'BaseProvider', src_path: wb_path.WaterButlerPath,
+                   dest_path: wb_path.WaterButlerPath, rename: str=None, conflict: str='replace',
+                   handle_naming: bool=True) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
 
@@ -271,6 +276,19 @@ class BaseProvider(metaclass=abc.ABCMeta):
             'conflict': conflict,
             'got_rename': rename is not None,
         })
+
+        # This does not mean that the `dest_path` is a folder, at this point it could just be the
+        # parent of the actual destination file/folder, or have a blank name.  Use `not .is_file`
+        # in the if statement for less confusion.
+        if not dest_path.is_file:
+            temp_path = await self.revalidate_path(
+                dest_path,
+                rename or src_path.name,
+                folder=src_path.is_dir
+            )
+            if self.will_self_overwrite(dest_provider, src_path, temp_path):
+                raise exceptions.OverwriteSelfError(src_path)
+
         if handle_naming:
             dest_path = await dest_provider.handle_naming(
                 src_path,
@@ -375,7 +393,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
                             dest_path: wb_path.WaterButlerPath,
                             rename: str=None,
                             conflict: str='replace') -> wb_path.WaterButlerPath:
-        """Given a :class:`.WaterButlerPath` and the desired name, handle any potential naming issues.
+        """Given a :class:`.WaterButlerPath` and the desired name, handle any potential naming
+        issues.
 
         i.e.:
 
@@ -389,19 +408,23 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
 
         :param src_path: ( :class:`.WaterButlerPath` ) The object that is being copied
-        :param dest_path: ( :class:`.WaterButlerPath` ) The path that is being copied to or into
+        :param dest_path: ( :class:`.WaterButlerPath` ) The path that is being copied TO or INTO
         :param rename: ( :class:`str` ) The desired name of the resulting path, may be incremented
         :param conflict: ( :class:`str` ) The conflict resolution strategy, ``replace`` or ``keep``
 
         :rtype: :class:`.WaterButlerPath`
         """
+
+        # Can't copy a directory to a file
         if src_path.is_dir and dest_path.is_file:
-            # Cant copy a directory to a file
             raise ValueError('Destination must be a directory if the source is')
 
         if not dest_path.is_file:
-            # Directories always are going to be copied into
-            # cp /folder1/ /folder2/ -> /folder1/folder2/
+            # At this point, `dest_path` must be the parent or root folder into which we want to
+            # move/copy the source.  The file/folder is always going to be copied into the parent.
+            # For example:
+            #   cp /file.txt /folder/   ->  /folder/file.txt
+            #   cp /folder1/ /folder2/  ->  /folder1/folder2/
             dest_path = await self.revalidate_path(
                 dest_path,
                 rename or src_path.name,
@@ -409,8 +432,24 @@ class BaseProvider(metaclass=abc.ABCMeta):
             )
 
         dest_path, _ = await self.handle_name_conflict(dest_path, conflict=conflict)
-
         return dest_path
+
+    def will_self_overwrite(self,
+                            dest_provider: 'BaseProvider',
+                            src_path: wb_path.WaterButlerPath,
+                            dest_path: wb_path.WaterButlerPath) -> bool:
+        """Return wether a move or copy operation will result in a self-overwrite.
+
+        .. note::
+            Defaults to False
+            Overridden by providers that need to run this check
+
+        :param dest_provider: ( :class:`.BaseProvider` ) The provider to check against
+        :param  src_path: ( :class:`.WaterButlerPath` ) The move/copy source path
+        :param  dest_path: ( :class:`.WaterButlerPath` ) The move/copy destination path
+        :rtype: :class:`bool`
+        """
+        return False
 
     def can_intra_copy(self,
                        other: 'BaseProvider',

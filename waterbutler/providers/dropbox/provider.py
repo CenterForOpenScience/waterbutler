@@ -554,6 +554,9 @@ class DropboxProvider(provider.BaseProvider):
         )
         return DropboxFolderMetadata(data['metadata'], self.folder)
 
+    def will_self_overwrite(self, dest_provider, src_path, dest_path):
+        return self.NAME == dest_provider.NAME and dest_path.full_path == src_path.full_path
+
     def can_intra_copy(self, dest_provider: provider.BaseProvider,
                        path: WaterButlerPath=None) -> bool:
         return type(self) == type(dest_provider)
