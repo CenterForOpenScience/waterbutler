@@ -91,11 +91,11 @@ def folder_empty_metadata():
 @pytest.fixture
 def file_header_metadata():
     return {
-        'CONTENT-LENGTH': 9001,
-        'LAST-MODIFIED': 'SomeTime',
-        'CONTENT-TYPE': 'binary/octet-stream',
-        'ETAG': '"fba9dede5f27731c9771645a39863328"',
-        'X-AMZ-SERVER-SIDE-ENCRYPTION': 'AES256'
+        'Content-Length': '9001',
+        'Last-Modified': 'SomeTime',
+        'Content-Type': 'binary/octet-stream',
+        'Etag': '"fba9dede5f27731c9771645a39863328"',
+        'x-amz-server-side-encryption': 'AES256'
     }
 
 
