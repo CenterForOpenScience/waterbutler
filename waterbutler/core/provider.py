@@ -10,6 +10,7 @@ from urllib import parse
 
 import furl
 import aiohttp
+from aiohttp.client import _RequestContextManager
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
@@ -186,25 +187,36 @@ class BaseProvider(metaclass=abc.ABCMeta):
             if value is not None
         }
 
-    def get_or_create_session(self):
+    def get_or_create_session(self, connector=None):
         """
         Obtain an existing session or create a new one for making requests.
 
         Quirks:
+
         Sessions must be carefully managed by WB.  On one hand, we can't just have one session for
         each provider instance since actions such as move and copy are run in background probably
         with a different loop.  On the other hand, we can't have one session for each request since
         sessions are only closed when the provider instance is destroyed.
 
+        For providers that use a customized connector such as owncloud, the new session is created
+        with the given connector; while an existing session simply ignores (and closes) the new
+        connector.  Given that the session is per event loop and instance, the existing session if
+        found must already have a connector with qualified customizations.
+
+        :param connector: a customized connector
         :return: the one session that belongs to the current event loop
         :rtype: :class:`aiohttp.ClientSession`
         """
         loop = asyncio.get_event_loop()
         session = self.loop_session_map.get(loop, None)
         if not session:
-            session = aiohttp.ClientSession()
+            session = aiohttp.ClientSession(connector=connector)
             self.loop_session_map[loop] = session
             self.session_list.append(session)
+        elif connector:
+            # Ignore and close the kwarg connector if an existing session exists.
+            connector._close()
+
         return session
 
     @throttle()
@@ -262,9 +274,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         byte_range = kwargs.pop('range', None)
         if byte_range:
             kwargs['headers']['Range'] = self._build_range_header(byte_range)
+        connector = kwargs.pop('connector', None)
+        session = self.get_or_create_session(connector=connector)
 
         method = method.upper()
-        session = self.get_or_create_session()
         while retry >= 0:
             # Don't overwrite the callable ``url`` so that signed URLs are refreshed for every retry
             non_callable_url = url() if callable(url) else url
@@ -285,6 +298,14 @@ class BaseProvider(metaclass=abc.ABCMeta):
                     response = await session.patch(non_callable_url, *args, **kwargs)
                 elif method == 'OPTIONS':
                     response = await session.options(non_callable_url, *args, **kwargs)
+                elif method in wb_settings.WEBDAV_METHODS:
+                    # `aiohttp.ClientSession` only has functions available for native HTTP methods.
+                    # For WebDAV (a protocol that extends HTTP) ones, WB lets the `ClientSession`
+                    # instance call `_request()` directly and then wraps the return object with
+                    # `aiohttp.client._RequestContextManager`.
+                    response = await _RequestContextManager(
+                        session._request(method, url, *args, **kwargs)
+                    )
                 else:
                     raise exceptions.WaterButlerError('Unsupported HTTP method ...')
                 self.provider_metrics.incr('requests.tally.ok')
