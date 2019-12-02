@@ -1447,8 +1447,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.OK,
             headers={
-                'X-RateLimit-Remaining': 1234,
-                'X-RateLimit-Reset': 5678
+                'X-RateLimit-Remaining': '1234',
+                'X-RateLimit-Reset': '5678'
             })
         await mock_provider.make_request(
             'GET',
@@ -1472,8 +1472,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.OK,
             headers={
-                'X-RateLimit-Remaining': 1234,
-                'X-RateLimit-Reset': 5678
+                'X-RateLimit-Remaining': '1234',
+                'X-RateLimit-Reset': '5678'
             })
         await mock_provider.make_request(
             'GET',
@@ -1497,8 +1497,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.FORBIDDEN,
             headers={
-                'X-RateLimit-Remaining': 0,
-                'X-RateLimit-Reset': 5678,
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': '5678',
             },
             body={'message': 'API rate limit exceeded'}
         )
@@ -1527,8 +1527,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.FORBIDDEN,
             headers={
-                'X-RateLimit-Remaining': 231,
-                'X-RateLimit-Reset': 5678,
+                'X-RateLimit-Remaining': '231',
+                'X-RateLimit-Reset': '5678',
             },
             body={'message': 'this is a fake error'}
         )
@@ -1556,8 +1556,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.FORBIDDEN,
             headers={
-                'X-RateLimit-Remaining': 0,
-                'X-RateLimit-Reset': 5678,
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': '5678',
             },
             body={'message': 'API rate limit exceeded'}
         )
@@ -1586,8 +1586,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.FORBIDDEN,
             headers={
-                'X-RateLimit-Remaining': 123,
-                'X-RateLimit-Reset': 5678,
+                'X-RateLimit-Remaining': '123',
+                'X-RateLimit-Reset': '5678',
             },
             body={'message': 'API rate limit exceeded'}
         )
@@ -1615,8 +1615,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.SERVICE_UNAVAILABLE,
             headers={
-                'X-RateLimit-Remaining': 231,
-                'X-RateLimit-Reset': 5678,
+                'X-RateLimit-Remaining': '231',
+                'X-RateLimit-Reset': '5678',
             },
             body={'message': 'this is a fake error'}
         )
