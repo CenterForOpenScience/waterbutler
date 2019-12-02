@@ -91,7 +91,6 @@ def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None)
     # TODO: update this ignore list when new providers are added
     ignored_providers = '--ignore=tests/providers/cloudfiles/ ' \
                         '--ignore=tests/providers/figshare/ ' \
-                        '--ignore=tests/providers/github/ ' \
                         '--ignore=tests/providers/gitlab/ ' \
                         '--ignore=tests/providers/googledrive ' \
                         '--ignore=tests/providers/onedrive '
