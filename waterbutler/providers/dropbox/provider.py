@@ -191,8 +191,8 @@ class DropboxProvider(provider.BaseProvider):
             return resp, False
 
         if data['.tag'] == 'file':
-            return DropboxFileMetadata(data, dest_folder), True
-        folder = DropboxFolderMetadata(data, dest_folder)
+            return DropboxFileMetadata(data, dest_folder, self.NAME), True
+        folder = DropboxFolderMetadata(data, dest_folder, self.NAME)
         folder.children = [item for item in await dest_provider.metadata(dest_path)]  # type: ignore
         return folder, True
 
@@ -223,8 +223,8 @@ class DropboxProvider(provider.BaseProvider):
 
         dest_folder = dest_provider.folder
         if data['.tag'] == 'file':
-            return DropboxFileMetadata(data, dest_folder), True
-        folder = DropboxFolderMetadata(data, dest_folder)
+            return DropboxFileMetadata(data, dest_folder, self.NAME), True
+        folder = DropboxFolderMetadata(data, dest_folder, self.NAME)
         folder.children = [item for item in await dest_provider.metadata(dest_path)]  # type: ignore
         return folder, True
 
@@ -266,7 +266,7 @@ class DropboxProvider(provider.BaseProvider):
         else:
             data = await self._contiguous_upload(stream, path, conflict=conflict)
 
-        return DropboxFileMetadata(data, self.folder), not exists
+        return DropboxFileMetadata(data, self.folder, self.NAME), not exists
 
     async def _contiguous_upload(self,
                                  stream: streams.BaseStream,
@@ -496,9 +496,9 @@ class DropboxProvider(provider.BaseProvider):
                 data = await self.dropbox_request(url, body, throws=core_exceptions.MetadataError)
                 for entry in data['entries']:
                     if entry['.tag'] == 'folder':
-                        ret.append(DropboxFolderMetadata(entry, self.folder))
+                        ret.append(DropboxFolderMetadata(entry, self.folder, self.NAME))
                     else:
-                        ret.append(DropboxFileMetadata(entry, self.folder))
+                        ret.append(DropboxFileMetadata(entry, self.folder, self.NAME))
                 if not data['has_more']:
                     has_more = False
                 else:
@@ -522,7 +522,7 @@ class DropboxProvider(provider.BaseProvider):
                 code=HTTPStatus.NOT_FOUND,
             )
 
-        return DropboxFileMetadata(data, self.folder)
+        return DropboxFileMetadata(data, self.folder, self.NAME)
 
     async def revisions(self, path: WaterButlerPath, **kwargs) -> typing.List[DropboxRevision]:
         # Dropbox v2 API limits the number of revisions returned to a maximum
@@ -552,7 +552,7 @@ class DropboxProvider(provider.BaseProvider):
             {'path': path.full_path.rstrip('/')},
             throws=core_exceptions.CreateFolderError,
         )
-        return DropboxFolderMetadata(data['metadata'], self.folder)
+        return DropboxFolderMetadata(data['metadata'], self.folder, self.NAME)
 
     def can_intra_copy(self, dest_provider: provider.BaseProvider,
                        path: WaterButlerPath=None) -> bool:

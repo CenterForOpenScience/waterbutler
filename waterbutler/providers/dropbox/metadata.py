@@ -5,13 +5,14 @@ from waterbutler.core import metadata
 
 class BaseDropboxMetadata(metadata.BaseMetadata):
 
-    def __init__(self, raw, folder):
+    def __init__(self, raw, folder, provider):
         super().__init__(raw)
         self._folder = folder
+        self._provider = provider
 
     @property
     def provider(self):
-        return 'dropbox'
+        return self._provider
 
     def build_path(self, path):
         # TODO write a test for this
@@ -67,7 +68,7 @@ class DropboxFileMetadata(BaseDropboxMetadata, metadata.BaseFileMetadata):
             'revisionId': self.raw['rev'],
             'id': self.raw['id'],
             'hashes': {
-                'dropbox': self.raw['content_hash'],
+                self.provider: self.raw['content_hash'],
             },
         }
 
