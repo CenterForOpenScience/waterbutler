@@ -756,13 +756,26 @@ class TestCRUD:
         )
 
         create_tree_url = provider.build_repo_url('git', 'trees')
-        aiohttpretty.register_json_uri('POST', create_tree_url, **{
-            "responses": [
-                {'body': json.dumps(
-                    crud_fixtures['deleted_subfolder_tree_data_1']).encode('utf-8'), 'status': 201},
-                {'body': json.dumps(
-                    crud_fixtures['deleted_subfolder_tree_data_2']).encode('utf-8'), 'status': 201},
-            ]})
+        crud_fixtures_1 = crud_fixtures['deleted_subfolder_tree_data_1']
+        crud_fixtures_2 = crud_fixtures['deleted_subfolder_tree_data_2']
+        aiohttpretty.register_json_uri(
+            'POST',
+            create_tree_url,
+            **{
+                "responses": [
+                    {
+                        'body': json.dumps(crud_fixtures_1).encode('utf-8'),
+                        'status': 201,
+                        'headers': {'Content-Type': 'application/json'}
+                    },
+                    {
+                        'body': json.dumps(crud_fixtures_2).encode('utf-8'),
+                        'status': 201,
+                        'headers': {'Content-Type': 'application/json'}
+                    },
+                ]
+            }
+        )
 
         commit_url = provider.build_repo_url('git', 'commits')
         aiohttpretty.register_json_uri(
