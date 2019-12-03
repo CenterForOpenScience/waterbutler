@@ -758,7 +758,7 @@ class TestCRUD:
         create_tree_url = provider.build_repo_url('git', 'trees')
         crud_fixtures_1 = crud_fixtures['deleted_subfolder_tree_data_1']
         crud_fixtures_2 = crud_fixtures['deleted_subfolder_tree_data_2']
-        aiohttpretty.register_json_uri(
+        aiohttpretty.register_uri(
             'POST',
             create_tree_url,
             **{
