@@ -191,9 +191,9 @@ def _build_title_search_query(provider, entity_name, is_folder=True):
         )
 
 
-def generate_list(child_id, **kwargs):
+def generate_list(child_id, root_provider_fixtures, **kwargs):
     item = {}
-    item.update(root_provider_fixtures()['list_file']['items'][0])
+    item.update(root_provider_fixtures['list_file']['items'][0])
     item.update(kwargs)
     item['id'] = str(child_id)
     return {'items': [item]}
@@ -1022,13 +1022,13 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file_nested(self, provider):
+    async def test_metadata_file_nested(self, provider, root_provider_fixtures):
         path = GoogleDrivePath(
             '/hugo/kim/pins',
             _ids=[str(x) for x in range(4)]
         )
 
-        item = generate_list(3)['items'][0]
+        item = generate_list(3, root_provider_fixtures)['items'][0]
         url = provider.build_url('files', path.identifier)
 
         aiohttpretty.register_json_uri('GET', url, body=item)
@@ -1058,13 +1058,13 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_folder_nested(self, provider):
+    async def test_metadata_folder_nested(self, provider, root_provider_fixtures):
         path = GoogleDrivePath(
             '/hugo/kim/pins/',
             _ids=[str(x) for x in range(4)]
         )
 
-        body = generate_list(3)
+        body = generate_list(3, root_provider_fixtures)
         item = body['items'][0]
 
         query = provider._build_query(path.identifier)
@@ -1089,7 +1089,7 @@ class TestMetadata:
             _ids=[str(x) for x in range(4)]
         )
 
-        body = generate_list(3, **root_provider_fixtures['folder_metadata'])
+        body = generate_list(3, root_provider_fixtures, **root_provider_fixtures['folder_metadata'])
         item = body['items'][0]
 
         query = provider._build_query(path.identifier)
@@ -1562,7 +1562,8 @@ class TestIntraFunctions:
 
         children_query = provider._build_query(dest_path.identifier)
         children_url = provider.build_url('files', q=children_query, alt='json', maxResults=1000)
-        children_list = generate_list(3, **root_provider_fixtures['folder_metadata'])
+        children_list = generate_list(3, root_provider_fixtures,
+                                      **root_provider_fixtures['folder_metadata'])
         aiohttpretty.register_json_uri('GET', children_url, body=children_list)
 
         result, created = await provider.intra_move(provider, src_path, dest_path)

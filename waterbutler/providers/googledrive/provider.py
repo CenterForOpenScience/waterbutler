@@ -148,7 +148,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
 
-        async with self.request(
+        resp = await self.make_request(
             'PATCH',
             self.build_url('files', src_path.identifier),
             headers={
@@ -162,8 +162,8 @@ class GoogleDriveProvider(provider.BaseProvider):
             }),
             expects=(200, ),
             throws=exceptions.IntraMoveError,
-        ) as resp:
-            data = await resp.json()
+        )
+        data = await resp.json()
 
         created = dest_path.identifier is None
         dest_path.parts[-1]._id = data['id']
@@ -183,7 +183,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
 
-        async with self.request(
+        resp = await self.make_request(
             'POST',
             self.build_url('files', src_path.identifier, 'copy'),
             headers={'Content-Type': 'application/json'},
@@ -195,8 +195,8 @@ class GoogleDriveProvider(provider.BaseProvider):
             }),
             expects=(200, ),
             throws=exceptions.IntraMoveError,
-        ) as resp:
-            data = await resp.json()
+        )
+        data = await resp.json()
 
         # GoogleDrive doesn't support intra-copy for folders, so dest_path will always
         # be a file.  See can_intra_copy() for type check.
@@ -302,15 +302,15 @@ class GoogleDriveProvider(provider.BaseProvider):
                     code=400
                 )
 
-        async with self.request(
+        await self.make_request(
             'PUT',
             self.build_url('files', path.identifier),
             data=json.dumps({'labels': {'trashed': 'true'}}),
             headers={'Content-Type': 'application/json'},
             expects=(200, ),
             throws=exceptions.DeleteError,
-        ):
-            return
+        )
+        return
 
     def _build_query(self, folder_id: str, title: str=None) -> str:
         queries = [
@@ -356,14 +356,14 @@ class GoogleDriveProvider(provider.BaseProvider):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
-        async with self.request(
+        resp = await self.make_request(
             'GET',
             self.build_url('files', path.identifier, 'revisions'),
             expects=(200, 403, ),
             throws=exceptions.RevisionsError,
-        ) as resp:
-            data = await resp.json()
-            has_revisions = resp.status == 200
+        )
+        data = await resp.json()
+        has_revisions = resp.status == 200
 
         if has_revisions and data['items']:
             return [
@@ -389,7 +389,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             if path.identifier:
                 raise exceptions.FolderNamingConflict(path.name)
 
-        async with self.request(
+        resp = await self.make_request(
             'POST',
             self.build_url('files'),
             headers={
@@ -404,8 +404,8 @@ class GoogleDriveProvider(provider.BaseProvider):
             }),
             expects=(200, ),
             throws=exceptions.CreateFolderError,
-        ) as resp:
-            return GoogleDriveFolderMetadata(await resp.json(), path)
+        )
+        return GoogleDriveFolderMetadata(await resp.json(), path)
 
     def path_from_metadata(self, parent_path, metadata):
         """ Unfortunately-named method, currently only used to get path name for zip archives. """
@@ -440,7 +440,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                                       segments: Sequence[str],
                                       size,
                                       metadata: dict) -> str:
-        async with self.request(
+        resp = await self.make_request(
             'POST' if created else 'PUT',
             self._build_upload_url('files', *segments, uploadType='resumable'),
             headers={
@@ -450,20 +450,20 @@ class GoogleDriveProvider(provider.BaseProvider):
             data=json.dumps(metadata),
             expects=(200, ),
             throws=exceptions.UploadError,
-        ) as resp:
-            location = furl.furl(resp.headers['LOCATION'])
+        )
+        location = furl.furl(resp.headers['LOCATION'])
         return location.args['upload_id']
 
     async def _finish_resumable_upload(self, segments: Sequence[str], stream, upload_id):
-        async with self.request(
+        resp = await self.make_request(
             'PUT',
             self._build_upload_url('files', *segments, uploadType='resumable', upload_id=upload_id),
             headers={'Content-Length': str(stream.size)},
             data=stream,
             expects=(200, ),
             throws=exceptions.UploadError,
-        ) as resp:
-            return await resp.json()
+        )
+        return await resp.json()
 
     async def _resolve_path_to_ids(self, path, start_at=None):
         """Takes a path and traverses the file tree (ha!) beginning at ``start_at``, looking for
@@ -505,13 +505,13 @@ class GoogleDriveProvider(provider.BaseProvider):
                             '=' if part_is_folder else '!=',
                             self.FOLDER_MIME_TYPE
                         )
-            async with self.request(
+            resp = await self.make_request(
                 'GET',
                 self.build_url('files', item_id, 'children', q=query, fields='items(id)'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
-            ) as resp:
-                data = await resp.json()
+            )
+            data = await resp.json()
 
             try:
                 item_id = data['items'][0]['id']
@@ -526,13 +526,13 @@ class GoogleDriveProvider(provider.BaseProvider):
                     'mimeType': 'folder' if part_is_folder else '',
                 }]
 
-            async with self.request(
+            resp = await self.make_request(
                 'GET',
                 self.build_url('files', item_id, fields='id,title,mimeType'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
-            ) as resp:
-                ret.append(await resp.json())
+            )
+            ret.append(await resp.json())
         return ret
 
     async def _handle_docs_versioning(self, path: GoogleDrivePath, item: dict, raw: bool=True):
@@ -555,14 +555,14 @@ class GoogleDriveProvider(provider.BaseProvider):
         :rtype: dict
         :return: a metadata for the googledoc or the raw response object from the GDrive API
         """
-        async with self.request(
+        resp = await self.make_request(
             'GET',
             self.build_url('files', item['id'], 'revisions'),
             expects=(200, ),
             throws=exceptions.RevisionsError,
-        ) as resp:
-            revisions_data = await resp.json()
-            has_revisions = revisions_data['items'] is not None
+        )
+        revisions_data = await resp.json()
+        has_revisions = revisions_data['items'] is not None
 
         # Revisions are not available for some sharing configurations. If revisions list is empty,
         # use the etag of the file plus a sentinel string as a dummy revision ID.
@@ -582,18 +582,18 @@ class GoogleDriveProvider(provider.BaseProvider):
         built_url = self.build_url('files', q=query, alt='json', maxResults=1000)
         full_resp = []
         while built_url:
-            async with self.request(
+            resp = await self.make_request(
                 'GET',
                 built_url,
                 expects=(200, ),
                 throws=exceptions.MetadataError,
-            ) as resp:
-                resp_json = await resp.json()
-                full_resp.extend([
-                    self._serialize_item(path.child(item['title']), item, raw=raw)
-                    for item in resp_json['items']
-                ])
-                built_url = resp_json.get('nextLink', None)
+            )
+            resp_json = await resp.json()
+            full_resp.extend([
+                self._serialize_item(path.child(item['title']), item, raw=raw)
+                for item in resp_json['items']
+            ])
+            built_url = resp_json.get('nextLink', None)
         return full_resp
 
     async def _file_metadata(self,
@@ -641,15 +641,15 @@ class GoogleDriveProvider(provider.BaseProvider):
         else:
             url = self.build_url('files', path.identifier)
 
-        async with self.request(
+        resp = await self.make_request(
             'GET', url,
             expects=(200, 403, 404, ),
             throws=exceptions.MetadataError,
-        ) as resp:
-            try:
-                data = await resp.json()
-            except Exception:  # some 404s return a string instead of json
-                data = await resp.read()
+        )
+        try:
+            data = await resp.json()
+        except Exception:  # some 404s return a string instead of json
+            data = await resp.read()
 
         if resp.status != 200:
             raise exceptions.NotFoundError(path)
