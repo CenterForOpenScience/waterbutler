@@ -76,7 +76,6 @@ def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None)
     ignored_providers = '--ignore=tests/providers/cloudfiles/ ' \
                         '--ignore=tests/providers/figshare/ ' \
                         '--ignore=tests/providers/gitlab/ ' \
-                        '--ignore=tests/providers/googledrive ' \
                         '--ignore=tests/providers/onedrive '
 
     cmd = 'py.test{} {} tests{} {}'.format(coverage, ignored_providers, path, verbose)
