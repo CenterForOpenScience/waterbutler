@@ -136,13 +136,3 @@ class TestServerFuzzingMocks(ServerTestCase):
             )
 
         assert exc.value.code == client.NOT_IMPLEMENTED
-
-    @testing.gen_test
-    def test_handles_invalid_json(self):
-        with pytest.raises(httpclient.HTTPError) as exc:
-            yield self.http_client.fetch(
-                self.get_url('/resources/jernk/providers/jaaaaank/'),
-                method='POST', body='<XML4LYFE/>'
-            )
-        assert exc.value.code == client.BAD_REQUEST
-        # Make sure the message returned is correct

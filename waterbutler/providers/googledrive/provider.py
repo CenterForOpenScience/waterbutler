@@ -648,7 +648,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         ) as resp:
             try:
                 data = await resp.json()
-            except:  # some 404s return a string instead of json
+            except Exception:  # some 404s return a string instead of json
                 data = await resp.read()
 
         if resp.status != 200:

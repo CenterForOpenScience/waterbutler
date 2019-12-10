@@ -57,7 +57,7 @@ def file_stream_file(file_raw):
 
 class TestProviderInit:
 
-    async def test_provider_init(self, mock_provider):
+    def test_provider_init(self, mock_provider, mock_settings, mock_creds):
 
         assert mock_provider is not None
         assert mock_provider.NAME == 'googlecloud'

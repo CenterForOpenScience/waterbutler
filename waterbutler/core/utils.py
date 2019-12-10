@@ -10,7 +10,7 @@ from urllib import parse
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
-from raven import Client
+import sentry_sdk
 from stevedore import driver
 
 from waterbutler.settings import config
@@ -18,18 +18,19 @@ from waterbutler.core import exceptions
 from waterbutler.server import settings as server_settings
 from waterbutler.core.signing import Signer
 from waterbutler.core.streams import EmptyStream
-
+from waterbutler.version import __version__
 
 logger = logging.getLogger(__name__)
 
 signer = Signer(server_settings.HMAC_SECRET, server_settings.HMAC_ALGORITHM)
 
 sentry_dsn = config.get_nullable('SENTRY_DSN', None)
-client = Client(sentry_dsn) if sentry_dsn else None
+if sentry_dsn:
+    sentry_sdk.init(sentry_dsn, release=__version__)
 
 
 def make_provider(name: str, auth: dict, credentials: dict, settings: dict, **kwargs):
-    """Returns an instance of :class:`waterbutler.core.provider.BaseProvider`
+    r"""Returns an instance of :class:`waterbutler.core.provider.BaseProvider`
 
     :param str name: The name of the provider to instantiate. (s3, box, etc)
     :param dict auth:
@@ -59,12 +60,12 @@ def as_task(func):
 
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
-        return asyncio.async(func(*args, **kwargs))
+        return asyncio.ensure_future(func(*args, **kwargs))
 
     return wrapped
 
 
-def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
+def async_retry(retries=5, backoff=1, exceptions=(Exception, )):
 
     def _async_retry(func):
 
@@ -76,16 +77,18 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
             except exceptions as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
-                    logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting {4} seconds before retrying'.format(func, e, __retries, retries, wait_time))
+                    logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting '
+                                   '{4} seconds before retrying'.format(func, e, __retries,
+                                                                        retries, wait_time))
                     await asyncio.sleep(wait_time)
                     return await wrapped(*args, __retries=__retries + 1, **kwargs)
                 else:
                     # Logs before all things
                     logger.error('Task {0} failed with exception {1}'.format(func, e))
 
-                    if raven:
-                        # Only log if a raven client exists
-                        client.captureException()
+                    with sentry_sdk.configure_scope() as scope:
+                        scope.set_tag('debug', False)
+                    sentry_sdk.capture_exception(e)
 
                     # If anything happens to be listening
                     raise e

@@ -6,6 +6,8 @@ from http import HTTPStatus
 
 import tornado.gen
 
+import sentry_sdk
+
 from waterbutler.core import utils
 from waterbutler.server import settings
 from waterbutler.server.api.v1 import core
@@ -58,6 +60,10 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
 
+        with sentry_sdk.configure_scope() as scope:
+            scope.set_tag('resource.id', self.resource)
+            scope.set_tag('src_provider', self.path_kwargs['provider'])
+
         # pre-validator methods perform validations that can be performed before ensuring that the
         # path given by the url is valid.  An example would be making sure that a particular query
         # parameter matches and allowed value.  We do this because validating the path requires
@@ -97,13 +103,6 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         if self.path.is_dir:  # Metadata on the folder itself TODO
             return self.set_status(int(HTTPStatus.NOT_IMPLEMENTED))
         return (await self.header_file_metadata())
-
-    def get_sentry_data_from_request(self):
-        payload = super(ProviderHandler, self).get_sentry_data_from_request()
-        tags = payload.setdefault('tags', {})
-        tags['resource.id'] = self.resource
-        tags['src_provider'] = self.path_kwargs['provider']
-        return payload
 
     async def get(self, **_):
         """Download a file

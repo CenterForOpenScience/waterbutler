@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class OneDriveProvider(provider.BaseProvider):
-    """Provider for the Microsoft OneDrive cloud storage service.
+    r"""Provider for the Microsoft OneDrive cloud storage service.
 
     This provider is currently **read-only** and does not contain write support.
 
@@ -82,7 +82,7 @@ class OneDriveProvider(provider.BaseProvider):
     # ========== methods ==========
 
     async def validate_v1_path(self, path: str, **kwargs) -> OneDrivePath:
-        """validate that ``path`` exists and matches the implicit semantics.
+        r"""validate that ``path`` exists and matches the implicit semantics.
 
         See `provider.BaseProvider.validate_v1_path` for more.
 
@@ -295,7 +295,7 @@ class OneDriveProvider(provider.BaseProvider):
                        revision: str=None,
                        range: typing.Tuple[int, int]=None,
                        **kwargs) -> streams.ResponseStreamReader:
-        """Download the file identified by ``path``.  If ``revision`` is not ``None``, get
+        r"""Download the file identified by ``path``.  If ``revision`` is not ``None``, get
         the file at the version identified by ``revision``.
 
         API docs: https://dev.onedrive.com/items/download.htm

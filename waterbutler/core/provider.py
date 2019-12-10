@@ -163,10 +163,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         }
 
     def build_url(self, *segments, **query) -> str:
-        """A nice wrapper around furl, builds urls based on self.BASE_URL
+        r"""A nice wrapper around furl, builds urls based on self.BASE_URL
 
         :param \*segments: ( :class:`tuple` ) A tuple of strings joined into /foo/bar/..
-        :param \*\*query: ( :class:`dict` ) A dictionary that will be turned into query parameters ?foo=bar
+        :param \*\*query: ( :class:`dict` ) A dictionary that will be turned into query parameters
         :rtype: :class:`str`
         """
         return build_url(self.BASE_URL, *segments, **query)
@@ -221,7 +221,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @throttle()
     async def make_request(self, method, url, *args, **kwargs):
-        """
+        r"""
         A wrapper around seven HTTP request methods in :class:`aiohttp.ClientSession`.  It replaces
         the original ``.make_request()`` method which was a wrapper around :func:`aiohttp.request`.
         This change is due to aiohttp triple-major-version upgrade from version 0.18 to 3.5.4 where
@@ -667,7 +667,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         :param  base: ( :class:`.WaterButlerPath` ) The base folder to look under
         :param path: ( :class:`str`) the path of a child of `base`, relative to `base`
-        :param folder: ( :class:`bool` )whether the returned WaterButlerPath should represent a folder
+        :param folder: ( :class:`bool` ) whether the returned WaterButlerPath should be a folder
         :rtype: :class:`.WaterButlerPath`
         """
         return base.child(path, folder=folder)
@@ -702,8 +702,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def download(self, src_path: wb_path.WaterButlerPath, **kwargs) -> streams.ResponseStreamReader:
-        """Download a file from this provider.
+    async def download(self, src_path: wb_path.WaterButlerPath, **kwargs) \
+              -> streams.ResponseStreamReader:
+        r"""Download a file from this provider.
 
         :param src_path: ( :class:`.WaterButlerPath` ) Path to the file to be downloaded
         :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
@@ -713,9 +714,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def upload(self, stream: streams.BaseStream, path: wb_path.WaterButlerPath, *args, **kwargs) \
-            -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
-        """Uploads the given stream to the provider.  Returns the metadata for the newly created
+    async def upload(self, stream: streams.BaseStream, path: wb_path.WaterButlerPath, *args,
+                     **kwargs) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
+        r"""Uploads the given stream to the provider.  Returns the metadata for the newly created
         file and a boolean indicating whether the file is completely new (``True``) or overwrote
         a previously-existing file (``False``)
 
@@ -729,7 +730,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def delete(self, src_path: wb_path.WaterButlerPath, **kwargs) -> None:
-        """
+        r"""
         :param src_path: ( :class:`.WaterButlerPath` ) Path to be deleted
         :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
         :rtype: :class:`None`
@@ -740,13 +741,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     async def metadata(self, path: wb_path.WaterButlerPath, **kwargs) \
             -> typing.Union[wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
-        """Get metadata about the specified resource from this provider. Will be a :class:`list`
+        r"""Get metadata about the specified resource from this provider. Will be a :class:`list`
         if the resource is a directory otherwise an instance of
         :class:`.BaseFileMetadata`
 
         .. note::
-            Mypy doesn't seem to do very well with functions that can return more than one type of thing.
-            See: https://github.com/python/mypy/issues/1693
+            Mypy doesn't seem to do very well with functions that can return more than one type of
+            thing. See: https://github.com/python/mypy/issues/1693
 
         :param path: ( :class:`.WaterButlerPath` ) The path to a file or folder
         :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
@@ -769,7 +770,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         acted on. For v1, this must *always exist*.  If it does not, ``validate_v1_path`` should
         return a 404.  Creating a new file in v1 is done by making a PUT request against the parent
         folder and specifying the file name as a query parameter.  If a user attempts to create a
-        file by PUTting to its inferred path, validate_v1_path should reject this request with a 404.
+        file by PUTting to its inferred path, validate_v1_path should reject this request with a
+        404.
 
         :param path: ( :class:`str` ) user-supplied path to validate
         :rtype: :class:`.WaterButlerPath`

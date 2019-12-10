@@ -164,7 +164,7 @@ class GitLabProvider(provider.BaseProvider):
 
     async def revisions(self,  # type: ignore
                         path: GitLabPath, **kwargs) -> typing.List[GitLabRevision]:
-        """Get the revision history for the file at ``path``.  Returns a list of `GitLabRevision`
+        r"""Get the revision history for the file at ``path``.  Returns a list of `GitLabRevision`
         objects representing each version of the file where the file was modified.
 
         API docs: https://docs.gitlab.com/ce/api/commits.html#list-repository-commits
@@ -198,7 +198,7 @@ class GitLabProvider(provider.BaseProvider):
 
     async def download(self,  # type: ignore
                        path: GitLabPath, range: typing.Tuple[int, int]=None, **kwargs):
-        """Return a stream to the specified file on GitLab.
+        r"""Return a stream to the specified file on GitLab.
 
         There is an endpoint for downloading the raw file directly, but we cannot use it because
         GitLab requires periods in the file path to be encoded.  Python and aiohttp make this
@@ -288,7 +288,7 @@ class GitLabProvider(provider.BaseProvider):
         return await super().copy(dest_provider, *args, **kwargs)
 
     def _build_repo_url(self, *segments, **query):
-        """Build the repository url with the params, returning the complete repository url.
+        r"""Build the repository url with the params, returning the complete repository url.
 
         :param list \*segments: a list of child paths
         :param dict \*\*query: query parameters to append to the url

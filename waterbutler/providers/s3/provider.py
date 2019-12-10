@@ -138,7 +138,7 @@ class S3Provider(provider.BaseProvider):
         return (await dest_provider.metadata(dest_path)), not exists
 
     async def download(self, path, accept_url=False, revision=None, range=None, **kwargs):
-        """Returns a ResponseWrapper (Stream) for the specified path
+        r"""Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from S3 is not 200
 
         :param str path: Path to the key you want to download

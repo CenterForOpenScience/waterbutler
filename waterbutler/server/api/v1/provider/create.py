@@ -29,7 +29,7 @@ class CreateMixin:
                 # Payload Too Large
                 raise exceptions.InvalidParameters('Folder creation requests may not have a body', code=413)
         except ValueError:
-                raise exceptions.InvalidParameters('Invalid Content-Length')
+            raise exceptions.InvalidParameters('Invalid Content-Length')
 
     async def postvalidate_put(self):
         """Postvalidation for creation requests. Runs BEFORE the body of a request is accepted, but

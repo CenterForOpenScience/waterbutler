@@ -35,14 +35,17 @@ class TestValidatePut:
         handler.kind = 'folder'
         handler.get_query_argument = mock.Mock(return_value='child!')
         handler.provider.exists = MockCoroutine(return_value=False)
-        handler.provider.can_duplicate_names = MockCoroutine(return_value=False)
+        handler.provider.can_duplicate_names = mock.Mock(return_value=False)
 
         await handler.postvalidate_put()
 
         assert handler.target_path == WaterButlerPath('/Folder1/child!/')
         handler.get_query_argument.assert_called_once_with('name', default=None)
-        handler.provider.exists.assert_called_once_with(
-            WaterButlerPath('/Folder1/child!', prepend=None))
+
+        handler.provider.exists.assert_has_calls([
+            mock.call(WaterButlerPath('/Folder1/child!', prepend=None)),
+            mock.call(WaterButlerPath('/Folder1/child!', prepend=None))
+        ])
 
     @pytest.mark.asyncio
     async def test_postvalidate_put_folder_naming_conflict(self, http_request):
