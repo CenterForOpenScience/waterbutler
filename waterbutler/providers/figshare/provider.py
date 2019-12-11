@@ -5,8 +5,6 @@ import logging
 from typing import Tuple
 from http import HTTPStatus
 
-import aiohttp
-
 from waterbutler.core.streams import CutoffStream
 from waterbutler.core import exceptions, provider, streams
 
@@ -216,10 +214,10 @@ class BaseFigshareProvider(provider.BaseProvider):
         if resp.status in (302, 301):
             await resp.release()
             if range:
-                resp = await aiohttp.request('GET', resp.headers['location'],
-                                             headers={'Range': self._build_range_header(range)})
+                range_header = {'Range': self._build_range_header(range)}
+                resp = await super().make_request('GET', resp.headers['location'], headers=range_header)
             else:
-                resp = await aiohttp.request('GET', resp.headers['location'])
+                resp = await super().make_request('GET', resp.headers['location'])
 
         return streams.ResponseStreamReader(resp)
 
