@@ -211,13 +211,20 @@ class BaseFigshareProvider(provider.BaseProvider):
             await resp.release()
             raise exceptions.DownloadError('Download not available', code=resp.status)
 
+        # When a file has been published, the figshare download request returns a redirection URL
+        # which downloads the file directly from its backend storage (currently Amazon S3). The new
+        # request does not need any auth at all. More importantly, the default figshare auth header
+        # breaks the download since S3 API does not understand figshare API. Thus, the provider
+        # must use `no_auth_header=True` to inform `super().make_request()` to drop the header.
         if resp.status in (302, 301):
             await resp.release()
             if range:
                 range_header = {'Range': self._build_range_header(range)}
-                resp = await super().make_request('GET', resp.headers['location'], headers=range_header)
+                resp = await super().make_request('GET', resp.headers['location'],
+                                                  headers=range_header, no_auth_header=True)
             else:
-                resp = await super().make_request('GET', resp.headers['location'])
+                resp = await super().make_request('GET', resp.headers['location'],
+                                                  no_auth_header=True)
 
         return streams.ResponseStreamReader(resp)
 
