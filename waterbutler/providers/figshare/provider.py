@@ -193,6 +193,14 @@ class BaseFigshareProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         file_metadata = await self.metadata(path)
+        # The file download response for files (currently private ones only) does not provide the
+        # Content-Length header, of which the value are used to build the response stream and to
+        # set the stream size. This is not a problem for file download itself but it breaks move /
+        # copy from the figshare provider since the following upload-to-dest step fails on `None`
+        # stream size. Thus, save the file size here in advance and provide it later when building
+        # the response stream. `ResponseStreamReader` is smart enough to select the Content-Length
+        # header if provided.
+        file_size = file_metadata.size  # type: ignore
         download_url = file_metadata.extra['downloadUrl']  # type: ignore
         if download_url is None:
             raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)
@@ -226,7 +234,7 @@ class BaseFigshareProvider(provider.BaseProvider):
                 resp = await super().make_request('GET', resp.headers['location'],
                                                   no_auth_header=True)
 
-        return streams.ResponseStreamReader(resp)
+        return streams.ResponseStreamReader(resp, size=file_size)
 
     def path_from_metadata(self, parent_path, metadata):
         """Build FigsharePath for child entity given child's metadata and parent's path object.
