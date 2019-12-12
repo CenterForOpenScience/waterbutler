@@ -74,16 +74,16 @@ class FigshareProvider:
     API docs: https://docs.figshare.com/
     """
 
-    def __new__(cls, auth, credentials, settings):
+    def __new__(cls, auth, credentials, settings, **kwargs):
 
         if settings['container_type'] == 'project':
             return FigshareProjectProvider(
-                auth, credentials, dict(settings, container_id=settings['container_id'])
+                auth, credentials, dict(settings, container_id=settings['container_id']), **kwargs
             )
 
         if settings['container_type'] in pd_settings.ARTICLE_CONTAINER_TYPES:
             return FigshareArticleProvider(
-                auth, credentials, dict(settings, container_id=settings['container_id'])
+                auth, credentials, dict(settings, container_id=settings['container_id']), **kwargs
             )
 
         raise exceptions.ProviderError(
