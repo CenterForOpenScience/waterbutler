@@ -18,7 +18,9 @@ from waterbutler.providers.dropbox.settings import CHUNK_SIZE, CONTIGUOUS_UPLOAD
 from tests.utils import MockCoroutine
 from tests.providers.dropbox.fixtures import (auth,
                                               settings,
+                                              settings_root,
                                               provider,
+                                              provider_root,
                                               file_like,
                                               credentials,
                                               file_stream,
@@ -38,8 +40,8 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    @pytest.mark.parametrize('settings', [{'folder': '/'}])
-    async def test_validate_v1_path_file(self, provider, provider_fixtures):
+    async def test_validate_v1_path_file(self, provider_root, provider_fixtures):
+        provider = provider_root
         file_path = '/Photos/Getting_Started.pdf'
         data = {"path": file_path}
         metadata_url = provider.build_url('files', 'get_metadata')
@@ -67,8 +69,8 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    @pytest.mark.parametrize('settings', [{'folder': '/'}])
-    async def test_validate_v1_path_folder(self, provider, provider_fixtures):
+    async def test_validate_v1_path_folder(self, provider_root, provider_fixtures):
+        provider = provider_root
         folder_path = '/Photos'
         data = {"path": folder_path}
         metadata_url = provider.build_url('files', 'get_metadata')
@@ -163,16 +165,24 @@ class TestCRUD:
         result = await provider.download(path, range=(0, 1))
         assert result.partial
         content = await result.response.read()
-
+        expected_headers = {
+            'Authorization': 'Bearer wrote harry potter',
+            'Range': 'bytes=0-1',
+            'Dropbox-API-Arg': '{"path": "/Photos/triangles.txt"}',
+            'Content-Type': ''
+        }
+        if provider.NAME == 'dropboxbusiness':
+            expected_headers.update({
+                'Dropbox-API-Select-Admin': provider.admin_dbmid,
+                'Dropbox-API-Path-Root': json.dumps({
+                    '.tag': 'namespace_id',
+                    'namespace_id': provider.team_folder_id,
+                })
+            })
         assert content == b'be'
         assert aiohttpretty.has_call(
             method='POST', uri=url,
-            headers={
-                'Authorization': 'Bearer wrote harry potter',
-                'Range': 'bytes=0-1',
-                'Dropbox-API-Arg': '{"path": "/Photos/triangles.txt"}',
-                'Content-Type': ''
-            }
+            headers=expected_headers
         )
 
     @pytest.mark.asyncio
@@ -198,7 +208,7 @@ class TestCRUD:
         )
 
         metadata, created = await provider.upload(file_stream, path)
-        expected = DropboxFileMetadata(provider_fixtures['file_metadata'], provider.folder)
+        expected = DropboxFileMetadata(provider_fixtures['file_metadata'], provider.folder, provider.NAME)
 
         assert created is True
         assert metadata == expected
@@ -445,7 +455,7 @@ class TestMetadata:
         result = await provider.metadata(path, revision)
         expected = DropboxFileMetadata(
             revision_fixtures['single_file_revision_metadata'],
-            provider.folder
+            provider.folder, provider.NAME
         )
 
         assert result == expected
@@ -562,7 +572,7 @@ class TestMetadata:
             'revisionId': '2ba1017a0c1e',
             'id': 'id:8y8sAJlrhuAAAAAAAAAAAQ',
             'hashes': {
-                'dropbox': 'meow'
+                provider.NAME: 'meow'
             },
         }
 
@@ -755,7 +765,7 @@ class TestIntraMoveCopy:
         expected = (
             DropboxFileMetadata(
                 provider_fixtures['intra_move_copy_file_metadata_v2']['metadata'],
-                provider.folder
+                provider.folder, provider.NAME
             ),
             True
         )
@@ -807,7 +817,7 @@ class TestIntraMoveCopy:
         expected = (
             DropboxFileMetadata(
                 provider_fixtures['intra_move_copy_file_metadata_v2']['metadata'],
-                provider.folder
+                provider.folder, provider.NAME
             ),
             False
         )
@@ -844,7 +854,7 @@ class TestIntraMoveCopy:
         expected = (
             DropboxFileMetadata(
                 provider_fixtures['intra_copy_other_provider_file_metadata']['metadata'],
-                provider.folder
+                provider.folder, provider.NAME
             ),
             True
         )
@@ -882,10 +892,10 @@ class TestIntraMoveCopy:
         result = await provider.intra_copy(provider, src_path, dest_path)
         expected = DropboxFolderMetadata(
             provider_fixtures['intra_move_copy_folder_metadata_v2']['metadata'],
-            provider.folder
+            provider.folder, provider.NAME
         )
         expected.children = [
-            DropboxFileMetadata(item, provider.folder)
+            DropboxFileMetadata(item, provider.folder, provider.NAME)
             for item in provider_fixtures['folder_children']['entries']
         ]
 
@@ -913,7 +923,7 @@ class TestIntraMoveCopy:
         expected = (
             DropboxFileMetadata(
                 provider_fixtures['intra_move_copy_file_metadata_v2']['metadata'],
-                provider.folder
+                provider.folder, provider.NAME
             ),
             True
         )
@@ -957,7 +967,7 @@ class TestIntraMoveCopy:
         expected = (
             DropboxFileMetadata(
                 provider_fixtures['intra_move_copy_file_metadata_v2']['metadata'],
-                provider.folder
+                provider.folder, provider.NAME
             ),
             False
         )
@@ -1010,10 +1020,10 @@ class TestIntraMoveCopy:
         result = await provider.intra_move(provider, src_path, dest_path)
         expected = DropboxFolderMetadata(
             provider_fixtures['intra_move_copy_folder_metadata_v2']['metadata'],
-            provider.folder
+            provider.folder, provider.NAME
         )
         expected.children = [
-            DropboxFileMetadata(item, provider.folder)
+            DropboxFileMetadata(item, provider.folder, provider.NAME)
             for item in provider_fixtures['folder_children']['entries']
         ]
 

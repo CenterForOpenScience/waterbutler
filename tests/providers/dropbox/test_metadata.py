@@ -4,13 +4,13 @@ from waterbutler.providers.dropbox.metadata import (DropboxFileMetadata,
                                                     DropboxFolderMetadata,
                                                     DropboxRevision)
 
-from tests.providers.dropbox.fixtures import provider_fixtures, revision_fixtures
+from tests.providers.dropbox.fixtures import provider_fixtures, revision_fixtures, auth, credentials, settings, provider
 
 
 class TestDropboxMetadata:
 
-    def test_file_metadata(self, provider_fixtures):
-        data = DropboxFileMetadata(provider_fixtures['file_metadata'], '/Photos')
+    def test_file_metadata(self, provider_fixtures, provider):
+        data = DropboxFileMetadata(provider_fixtures['file_metadata'], '/Photos', provider.NAME)
 
         assert data.name == 'Getting_Started.pdf'
         assert data.path == '/Getting_Started.pdf'
@@ -23,22 +23,26 @@ class TestDropboxMetadata:
         assert data.content_type is None
         assert data.etag == '2ba1017a0c1e'
         assert data.extra == {
-            'hashes': {'dropbox': 'meow'},
+            'hashes': {provider.NAME: 'meow'},
             'id': 'id:8y8sAJlrhuAAAAAAAAAAAQ',
             'revisionId': '2ba1017a0c1e'
         }
+        if provider.NAME == 'dropbox':
+            etag = '98872cd97c368927d590ce829141d99ddc9f970b70a8bf61cb45bfb48d9675fd'
+        elif provider.NAME == 'dropboxbusiness':
+            etag = 'c2e86e72c9c914d14160f21083accdd368603ad17b78cbf972fc0f1862f2faef'
         assert data.serialized() == {
             'extra': {
                 'revisionId': '2ba1017a0c1e',
                 'id': 'id:8y8sAJlrhuAAAAAAAAAAAQ',
-                'hashes': {'dropbox': 'meow'}
+                'hashes': {provider.NAME: 'meow'}
             },
             'kind': 'file',
             'name': 'Getting_Started.pdf',
             'path': '/Getting_Started.pdf',
-            'provider': 'dropbox',
+            'provider': provider.NAME,
             'materialized': '/Getting_Started.pdf',
-            'etag': '98872cd97c368927d590ce829141d99ddc9f970b70a8bf61cb45bfb48d9675fd',
+            'etag': etag,
             'contentType': None,
             'modified': '2016-06-13T19:08:17Z',
             'modified_utc': '2016-06-13T19:08:17+00:00',
@@ -48,10 +52,10 @@ class TestDropboxMetadata:
         }
         assert data.kind == 'file'
         assert data.materialized_path == '/Getting_Started.pdf'
-        assert data.provider == 'dropbox'
+        assert data.provider == provider.NAME
         assert data.is_file is True
 
-        link_url = 'http://localhost:7777/v1/resources/jverwz/providers/dropbox/Getting_Started.pdf'
+        link_url = 'http://localhost:7777/v1/resources/jverwz/providers/{}/Getting_Started.pdf'.format(provider.NAME)
         assert data._entity_url('jverwz') == link_url
         assert data._json_api_links('jverwz') == {
             'delete': link_url,
@@ -60,20 +64,20 @@ class TestDropboxMetadata:
             'move': link_url,
         }
         assert data.json_api_serialized('jverwz') == {
-            'id': 'dropbox/Getting_Started.pdf',
+            'id': '{}/Getting_Started.pdf'.format(provider.NAME),
             'type': 'files',
             'attributes': {
                 'extra': {
                     'revisionId': '2ba1017a0c1e',
                     'id': 'id:8y8sAJlrhuAAAAAAAAAAAQ',
-                    'hashes': {'dropbox': 'meow'}
+                    'hashes': {provider.NAME: 'meow'}
                 },
                 'kind': 'file',
                 'name': 'Getting_Started.pdf',
                 'path': '/Getting_Started.pdf',
-                'provider': 'dropbox',
+                'provider': provider.NAME,
                 'materialized': '/Getting_Started.pdf',
-                'etag': '98872cd97c368927d590ce829141d99ddc9f970b70a8bf61cb45bfb48d9675fd',
+                'etag': etag,
                 'contentType': None,
                 'modified': '2016-06-13T19:08:17Z',
                 'modified_utc': '2016-06-13T19:08:17+00:00',
@@ -90,34 +94,38 @@ class TestDropboxMetadata:
             }
         }
 
-    def test_folder_metadata(self, provider_fixtures):
-        data = DropboxFolderMetadata(provider_fixtures['folder_metadata'], '/Photos')
+    def test_folder_metadata(self, provider_fixtures, provider):
+        data = DropboxFolderMetadata(provider_fixtures['folder_metadata'], '/Photos', provider.NAME)
 
         assert data.name == 'newfolder'
         assert data.path == '/newfolder/'
         assert data.etag is None
+        if provider.NAME == 'dropbox':
+            etag = 'bbd6cc654c4a3ca1124b69fccb392ec9754e18e9094effb525192509f8e1b901'
+        elif provider.NAME == 'dropboxbusiness':
+            etag = '318a141cd96ee02a7a35456935b0034871b116c19b1ff9b2d9e9f4b740706a08'
         assert data.serialized() == {
             'extra': {},
             'kind': 'folder',
             'name': 'newfolder',
             'path': '/newfolder/',
-            'provider': 'dropbox',
+            'provider': provider.NAME,
             'materialized': '/newfolder/',
-            'etag': 'bbd6cc654c4a3ca1124b69fccb392ec9754e18e9094effb525192509f8e1b901'
+            'etag': etag
         }
 
-        link_url = 'http://localhost:7777/v1/resources/mucuew/providers/dropbox/newfolder/'
+        link_url = 'http://localhost:7777/v1/resources/mucuew/providers/{}/newfolder/'.format(provider.NAME)
         assert data.json_api_serialized('mucuew') == {
-            'id': 'dropbox/newfolder/',
+            'id': '{}/newfolder/'.format(provider.NAME),
             'type': 'files',
             'attributes': {
                 'extra': {},
                 'kind': 'folder',
                 'name': 'newfolder',
                 'path': '/newfolder/',
-                'provider': 'dropbox',
+                'provider': provider.NAME,
                 'materialized': '/newfolder/',
-                'etag': 'bbd6cc654c4a3ca1124b69fccb392ec9754e18e9094effb525192509f8e1b901',
+                'etag': etag,
                 'resource': 'mucuew',
                 'size': None,
                 'sizeInt': None,
@@ -139,7 +147,7 @@ class TestDropboxMetadata:
         assert data._entity_url('mucuew') == link_url
         assert data.is_folder is True
         assert data.is_file is False
-        assert data.provider == 'dropbox'
+        assert data.provider == provider.NAME
         assert data.materialized_path == '/newfolder/'
         assert data.extra == {}
 
