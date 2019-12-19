@@ -73,8 +73,7 @@ def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None)
     verbose = '-v' if verbose else ''
 
     # TODO: update this ignore list when new providers are added
-    ignored_providers = '--ignore=tests/providers/cloudfiles/ ' \
-                        '--ignore=tests/providers/gitlab/ '
+    ignored_providers = '--ignore=tests/providers/cloudfiles/'
 
     cmd = 'py.test{} {} tests{} {}'.format(coverage, ignored_providers, path, verbose)
     ctx.run(cmd, pty=True)
