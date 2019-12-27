@@ -56,7 +56,7 @@ setup(
             'dataverse = waterbutler.providers.dataverse:DataverseProvider',
             'box = waterbutler.providers.box:BoxProvider',
             'googledrive = waterbutler.providers.googledrive:GoogleDriveProvider',
-            # 'onedrive = waterbutler.providers.onedrive:OneDriveProvider',
+            'onedrive = waterbutler.providers.onedrive:OneDriveProvider',
             'googlecloud = waterbutler.providers.googlecloud:GoogleCloudProvider',
         ],
     },
