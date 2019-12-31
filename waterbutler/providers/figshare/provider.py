@@ -628,7 +628,10 @@ class FigshareProjectProvider(BaseFigshareProvider):
                             folder=False,
                             is_public=False)
         metadata = await self.metadata(path, **kwargs)
-        if stream.writers['md5'].hexdigest != metadata.extra['hashes']['md5']:
+        if (
+            (not metadata.extra['hashingInProgress']) and
+            stream.writers['md5'].hexdigest != metadata.extra['hashes']['md5']
+        ):
             raise exceptions.UploadChecksumMismatchError()
 
         return metadata, True
@@ -979,7 +982,10 @@ class FigshareArticleProvider(BaseFigshareProvider):
         # Build new file path and return metadata
         path = FigsharePath('/' + file_id, _ids=('', file_id), folder=False, is_public=False)
         metadata = await self.metadata(path, **kwargs)
-        if stream.writers['md5'].hexdigest != metadata.extra['hashes']['md5']:
+        if (
+            (not metadata.extra['hashingInProgress']) and
+            stream.writers['md5'].hexdigest != metadata.extra['hashes']['md5']
+        ):
             raise exceptions.UploadChecksumMismatchError()
 
         return metadata, True
