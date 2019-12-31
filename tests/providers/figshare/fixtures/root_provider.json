@@ -80,8 +80,12 @@
     ],
     "file_article_metadata": {
         "url_public_html": "url_public_html_fake",
+        "url_public_api" : "https://api.figshare.com/v2/articles/11422158",
         "url_private_html": "url_private_html_fake",
+        "url_private_api" : "https://api.figshare.com/v2/account/articles/11422158",
+        "group_id" : null,
         "group_resource_id": null,
+        "handle" : "",
         "embargo_date": null,
         "citation": "Baxter, Thomas (): file_article. figshare.\n \n Retrieved: 19 20, Oct 19, 2016 (GMT)",
         "embargo_reason": "",
@@ -93,10 +97,12 @@
         "size": 0,
         "metadata_reason": "",
         "funding": "",
+        "funding_list" : [],
         "figshare_url": "https://figshare.com/articles/_/4037952",
         "embargo_type": null,
         "title": "file_article",
         "defined_type": 1,
+        "defined_type_name": "",
         "is_embargoed": false,
         "version": 0,
         "resource_doi": null,
@@ -120,8 +126,9 @@
         "description": "",
         "tags": [
         ],
+        "thumb" : "",
+        "timeline" : {},
         "created_date": "2016-10-18T12:55:44Z",
-        "is_active": true,
         "authors": [
             {
                 "url_name": "_",

@@ -239,9 +239,21 @@ class BaseFigshareProvider(provider.BaseProvider):
     def path_from_metadata(self, parent_path, metadata):
         """Build FigsharePath for child entity given child's metadata and parent's path object.
 
+        **HOWEVER** if ``parent_path`` represents a project root and ``metadata`` represents a
+        non-dataset article (a file from WB's perspective), then `path_from_metadata` needs to
+        skip the intermediate article container and return a path that points directly to the file.
+
         :param FigsharePath parent_path: path obj for child's parent
         :param metadata: Figshare*Metadata object for child
         """
+
+        if parent_path.is_root and metadata.kind != 'folder':
+            intermediate_path = parent_path.child(metadata.article_name,
+                                                  _id=str(metadata.extra['articleId']),
+                                                  folder=True)
+            return intermediate_path.child(metadata.name, _id=str(metadata.extra['fileId']),
+                                           folder=(metadata.kind == 'folder'))
+
         return parent_path.child(metadata.name, _id=str(metadata.id),
                                  folder=(metadata.kind == 'folder'))
 
