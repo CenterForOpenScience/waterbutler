@@ -491,10 +491,8 @@ class TestDownload:
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 3))
 
         url = ('http://base.url/api/v4/projects/123/repository/files'
-               '/folder1%2Ffile.py?ref=a1b2c3d4')
-        aiohttpretty.register_json_uri('GET', url, body={
-            'content': 'aGVsbG8='
-        })
+               '/folder1%2Ffile.py/raw?ref=a1b2c3d4')
+        aiohttpretty.register_uri('GET', url, body=b'hello')
 
         result = await provider.download(gl_path, branch='master')
         assert await result.read() == b'hello'
@@ -506,43 +504,12 @@ class TestDownload:
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 3))
 
         url = ('http://base.url/api/v4/projects/123/repository/files'
-               '/folder1%2Ffile.py?ref=a1b2c3d4')
-        aiohttpretty.register_json_uri('GET', url, body={'content': 'aGVsbG8='})
+               '/folder1%2Ffile.py/raw?ref=a1b2c3d4')
+        aiohttpretty.register_uri('GET', url, body=b'he', status=206)
 
         result = await provider.download(gl_path, branch='master', range=(0, 1))
         assert result.partial
-        assert await result.read() == b'he'  # body content after base64 decoding and slice
-        assert aiohttpretty.has_call(method='GET', uri=url,
-                                     headers={'Range': 'bytes=0-1', 'PRIVATE-TOKEN': 'naps'})
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_download_file_ruby_response(self, provider, weird_ruby_response):
-        """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
-        path = '/folder1/folder2/file'
-        gl_path = GitLabPath(path, _ids=([(None, 'my-branch')] * 4))
-
-        url = ('http://base.url/api/v4/projects/123/repository/files/'
-               'folder1%2Ffolder2%2Ffile?ref=my-branch')
-        aiohttpretty.register_uri('GET', url, body=weird_ruby_response)
-
-        result = await provider.download(gl_path)
-        assert await result.read() == b'rolf\n'
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_download_file_ruby_response_range(self, provider, weird_ruby_response):
-        """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
-        path = '/folder1/folder2/file'
-        gl_path = GitLabPath(path, _ids=([(None, 'my-branch')] * 4))
-
-        url = ('http://base.url/api/v4/projects/123/repository/files/'
-               'folder1%2Ffolder2%2Ffile?ref=my-branch')
-        aiohttpretty.register_uri('GET', url, body=weird_ruby_response)
-
-        result = await provider.download(gl_path, range=(0, 1))
-        assert result.partial
-        assert await result.read() == b'ro'
+        assert await result.read() == b'he'
         assert aiohttpretty.has_call(method='GET', uri=url,
                                      headers={'Range': 'bytes=0-1', 'PRIVATE-TOKEN': 'naps'})
 
