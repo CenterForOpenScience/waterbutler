@@ -22,6 +22,7 @@ def simple_tree():
             }
         ]
 
+
 @pytest.fixture
 def gitlab_example_sub_project_tree():
     return [
@@ -40,6 +41,7 @@ def gitlab_example_sub_project_tree():
                 "mode": "040000"
             }
         ]
+
 
 @pytest.fixture
 def subfolder_tree():
@@ -95,6 +97,7 @@ def subfolder_tree():
             }
         ]
 
+
 @pytest.fixture
 def simple_file_metadata():
     return {
@@ -104,6 +107,7 @@ def simple_file_metadata():
         'file_path': '/folder1/folder2/file',
         'size': 123
     }
+
 
 @pytest.fixture
 def revisions_for_file():
@@ -158,6 +162,7 @@ def revisions_for_file():
         }
     ]
 
+
 @pytest.fixture
 def weird_ruby_response():
     """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
@@ -167,6 +172,9 @@ def weird_ruby_response():
             ':commit_id=>"8c7b653eab7191dde3aff9e33ddf309c3d1f440f", '
             ':last_commit_id=>"8c7b653eab7191dde3aff9e33ddf309c3d1f440f"}')
 
+
 # fixtures for testing file revision metadata
-with open(os.path.join(os.path.dirname(__file__), 'fixtures/default-branch.json'), 'r') as fp:
-    default_branches = json.load(fp)
+@pytest.fixture()
+def default_branches():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/default-branch.json'), 'r') as fp:
+        return json.load(fp)
