@@ -93,15 +93,14 @@ def file_stream(file_like):
 
 
 class TestPolymorphism:
-    # These should not be passing but are
 
-    async def test_project_provider(self, project_settings, project_provider):
+    def test_project_provider(self, project_settings, project_provider):
         assert isinstance(project_provider, provider.FigshareProjectProvider)
-        assert project_provider.project_id == project_settings['container_id']
+        assert project_provider.container_id == project_settings['container_id']
 
-    async def test_article_provider(self, article_settings, article_provider):
+    def test_article_provider(self, article_settings, article_provider):
         assert isinstance(article_provider, provider.FigshareArticleProvider)
-        assert article_provider.article_id == article_settings['container_id']
+        assert article_provider.container_id == article_settings['container_id']
 
 
 class TestProjectV1ValidatePath:
