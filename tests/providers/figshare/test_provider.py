@@ -93,15 +93,14 @@ def file_stream(file_like):
 
 
 class TestPolymorphism:
-    # These should not be passing but are
 
-    async def test_project_provider(self, project_settings, project_provider):
+    def test_project_provider(self, project_settings, project_provider):
         assert isinstance(project_provider, provider.FigshareProjectProvider)
-        assert project_provider.project_id == project_settings['container_id']
+        assert project_provider.container_id == project_settings['container_id']
 
-    async def test_article_provider(self, article_settings, article_provider):
+    def test_article_provider(self, article_settings, article_provider):
         assert isinstance(article_provider, provider.FigshareArticleProvider)
-        assert article_provider.article_id == article_settings['container_id']
+        assert article_provider.container_id == article_settings['container_id']
 
 
 class TestProjectV1ValidatePath:
@@ -1652,14 +1651,24 @@ class TestRevalidatePath:
 
 class TestMisc:
 
-    def test_path_from_metadata(self, project_provider, root_provider_fixtures):
+    def test_path_from_metadata_file(self, project_provider, root_provider_fixtures):
         file_article_metadata = root_provider_fixtures['file_article_metadata']
         fig_metadata = metadata.FigshareFileMetadata(file_article_metadata)
 
         path = FigsharePath('/', _ids=(''), folder=True)
-        item = file_article_metadata['files'][0]
 
-        expected = FigsharePath('/' + item['name'], _ids=('', item['id']), folder=False)
+        expected = FigsharePath('/file_article/file', _ids=('', '4037952', '6530715'), folder=False)
+
+        result = project_provider.path_from_metadata(path, fig_metadata)
+        assert result == expected
+
+    def test_path_from_metadata_folder(self, project_provider, root_provider_fixtures):
+        folder_article_metadata = root_provider_fixtures['folder_article_metadata']
+        fig_metadata = metadata.FigshareFolderMetadata(folder_article_metadata)
+
+        path = FigsharePath('/', _ids=(''), folder=True)
+
+        expected = FigsharePath('/folder_article/', _ids=('', '4040019'), folder=True)
 
         result = project_provider.path_from_metadata(path, fig_metadata)
         assert result == expected

@@ -254,6 +254,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param \*args: args passed to methods of :class:`aiohttp.ClientSession`
         :param \*\*kwargs: kwargs passed to methods of :class:`aiohttp.ClientSession` except the
             following ones that will be popped and used for Waterbutler specific purposes
+        :keyword no_auth_header: ( :class:`bool` ) An optional boolean flag that determines whether
+            to drop the default authorization header provided by the provider
         :keyword range: ( :class:`tuple` ) An optional tuple (start, end) that is transformed into
             a Range header
         :keyword expects: ( :class:`tuple` ) An optional tuple of HTTP status codes as integers
@@ -268,6 +270,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
 
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
+        no_auth_header = kwargs.pop('no_auth_header', False)
+        if no_auth_header:
+            kwargs['headers'].pop('Authorization')
         retry = _retry = kwargs.pop('retry', 2)
         expects = kwargs.pop('expects', None)
         throws = kwargs.pop('throws', exceptions.UnhandledProviderError)

@@ -40,6 +40,7 @@ class TestFigshareFileMetadata:
             'downloadUrl': 'https://ndownloader.figshare.com/files/15562817',
             'canDelete': True,
             'webView': 'https://figshare.com/account/articles/8305859',
+            'hashingInProgress': False,
             'hashes': {
                 'md5': 'cae3869aa4b144a3aa5cffe979359836'
             }
@@ -54,6 +55,7 @@ class TestFigshareFileMetadata:
                 'downloadUrl': 'https://ndownloader.figshare.com/files/15562817',
                 'canDelete': True,
                 'webView': 'https://figshare.com/account/articles/8305859',
+                'hashingInProgress': False,
                 'hashes': {
                     'md5': 'cae3869aa4b144a3aa5cffe979359836'
                 }
@@ -84,6 +86,7 @@ class TestFigshareFileMetadata:
                     'downloadUrl': 'https://ndownloader.figshare.com/files/15562817',
                     'canDelete': True,
                     'webView': 'https://figshare.com/account/articles/8305859',
+                    'hashingInProgress': False,
                     'hashes': {
                         'md5': 'cae3869aa4b144a3aa5cffe979359836'
                     }
