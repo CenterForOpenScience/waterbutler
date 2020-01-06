@@ -8,15 +8,13 @@ import functools
 
 import furl
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core import streams, provider, exceptions
 
 from waterbutler.providers.cloudfiles import settings
-from waterbutler.providers.cloudfiles.metadata import CloudFilesFileMetadata
-from waterbutler.providers.cloudfiles.metadata import CloudFilesFolderMetadata
-from waterbutler.providers.cloudfiles.metadata import CloudFilesHeaderMetadata
+from waterbutler.providers.cloudfiles.metadata import (CloudFilesFileMetadata,
+                                                       CloudFilesFolderMetadata,
+                                                       CloudFilesHeaderMetadata, )
 
 
 def ensure_connection(func):
@@ -253,11 +251,11 @@ class CloudFilesProvider(provider.BaseProvider):
                 self.public_endpoint, self.endpoint = self._extract_endpoints(data)
         if not self.temp_url_key:
             self.metrics.add('ensure_connection.has_temp_url_key', False)
-            async with self.request('HEAD', self.endpoint, expects=(204, )) as resp:
-                try:
-                    self.temp_url_key = resp.headers['X-Account-Meta-Temp-URL-Key'].encode()
-                except KeyError:
-                    raise exceptions.ProviderError('No temp url key is available', code=503)
+            resp = await self.make_request('HEAD', self.endpoint, expects=(204, ))
+            try:
+                self.temp_url_key = resp.headers['X-Account-Meta-Temp-URL-Key'].encode()
+            except KeyError:
+                raise exceptions.ProviderError('No temp url key is available', code=503)
 
     def _extract_endpoints(self, data):
         """Pulls both the public and internal cloudfiles urls,
