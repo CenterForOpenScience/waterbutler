@@ -427,16 +427,7 @@ class GitLabProvider(provider.BaseProvider):
             throws=exceptions.NotFoundError,
         )
         raw_data = (await resp.read()).decode("utf-8")
-        data = None
-        try:
-            data = json.loads(raw_data)
-        except json.decoder.JSONDecodeError:
-            # GitLab API sometimes returns ruby hashes instead of json
-            # see: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790
-            # fixed in GL v9.5
-            data = self._convert_ruby_hash_to_dict(raw_data)
-
-        return data
+        return json.loads(raw_data)
 
     async def _fetch_tree_contents(self, path: GitLabPath) -> list:
         """Looks up the contents of the folder represented by ``path``.  The GitLab API is
@@ -526,16 +517,3 @@ class GitLabProvider(provider.BaseProvider):
         )
         data = await resp.json()
         return data['commit']['id']
-
-    def _convert_ruby_hash_to_dict(self, ruby_hash: str) -> dict:
-        """Adopted from https://stackoverflow.com/a/19322785 as a workaround for
-        https://gitlab.com/gitlab-org/gitlab-ce/issues/31790. Fixed in GL v9.5
-
-        :param str ruby_hash: serialized Ruby hash
-        :rtype: `dict`
-        :return: the data structure represented by the hash
-        """
-        dict_str = ruby_hash.replace(":", '"')     # Remove the ruby object key prefix
-        dict_str = dict_str.replace("=>", '" : ')  # swap the k => v notation, and close any unshut quotes
-        dict_str = dict_str.replace('""', '"')     # strip back any double quotes we created to sinlges
-        return json.loads(dict_str)

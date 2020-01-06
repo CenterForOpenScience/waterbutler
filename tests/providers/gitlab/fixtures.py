@@ -163,16 +163,6 @@ def revisions_for_file():
     ]
 
 
-@pytest.fixture
-def weird_ruby_response():
-    """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
-    return ('{:file_name=>"file", :file_path=>"file", :size=>5, '
-            ':encoding=>"base64", :content=>"cm9sZgo=", :ref=>"master", '
-            ':blob_id=>"cf37e8f1e80b5747301df4e1557036b37294a716", '
-            ':commit_id=>"8c7b653eab7191dde3aff9e33ddf309c3d1f440f", '
-            ':last_commit_id=>"8c7b653eab7191dde3aff9e33ddf309c3d1f440f"}')
-
-
 # fixtures for testing file revision metadata
 @pytest.fixture()
 def default_branches():

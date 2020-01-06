@@ -10,9 +10,8 @@ from waterbutler.providers.gitlab.path import GitLabPath
 from waterbutler.providers.gitlab.metadata import GitLabFileMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFolderMetadata
 
-from tests.providers.gitlab.fixtures import (simple_tree, simple_file_metadata,
-                                             subfolder_tree, revisions_for_file,
-                                             weird_ruby_response, default_branches, )
+from tests.providers.gitlab.fixtures import (simple_tree, simple_file_metadata, subfolder_tree,
+                                             revisions_for_file, default_branches, )
 
 
 @pytest.fixture
@@ -327,28 +326,6 @@ class TestMetadata:
                          '/folder1/folder2/file?branch=my-branch'),
             'delete': None,
         }
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_metadata_file_ruby_response(self, provider,
-                                               weird_ruby_response, revisions_for_file):
-        """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
-        path = '/folder1/folder2/file'
-        gl_path = GitLabPath(path, _ids=([(None, 'my-branch')] * 4))
-
-        url = ('http://base.url/api/v4/projects/123/repository/files/'
-               'folder1%2Ffolder2%2Ffile?ref=my-branch')
-        aiohttpretty.register_uri('GET', url, body=weird_ruby_response)
-
-        history_url = ('http://base.url/api/v4/projects/123/repository/commits'
-                       '?path=folder1/folder2/file&ref_name=my-branch&page=1'
-                       '&per_page={}'.format(provider.MAX_PAGE_SIZE))
-        aiohttpretty.register_json_uri('GET', history_url, body=revisions_for_file)
-
-        result = await provider.metadata(gl_path)
-        assert result.name == 'file'
-        assert result.size == 5
-        assert result.content_type == None
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
