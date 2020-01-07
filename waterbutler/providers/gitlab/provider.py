@@ -1,7 +1,5 @@
 import json
-import base64
 import typing
-import aiohttp
 import logging
 import mimetypes
 
@@ -200,17 +198,29 @@ class GitLabProvider(provider.BaseProvider):
                        path: GitLabPath, range: typing.Tuple[int, int]=None, **kwargs):
         r"""Return a stream to the specified file on GitLab.
 
-        There is an endpoint for downloading the raw file directly, but we cannot use it because
-        GitLab requires periods in the file path to be encoded.  Python and aiohttp make this
-        difficult, though their behavior is arguably correct. See
-        https://gitlab.com/gitlab-org/gitlab-ce/issues/31470 for details. (Update: this is due to
-        be fixed in the GL 10.0 release)
+        With GitLab CE Files API, there are two options to download a file.
 
-        API docs: https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
+        Option 1: ``GET /projects/:id/repository/files/:file_path/raw?``
 
-        This uses the same endpoint as `_fetch_file_contents`, but relies on the response headers,
-        which are not returned by that method.  It may also be replaced when the above bug is
-        fixed.
+        This is the preferred and currently used option which does exactly what we need.  ``range``
+        requests are handled correctly without any extra tweak.
+
+        API Docs: https://docs.gitlab.com/ce/api/repository_files.html#get-raw-file-from-repository
+
+        Option 2: ``GET /projects/:id/repository/files/:file_path?``
+
+        In this option, the raw response is not the file content by itself but a JSON that contains
+        both the file metadata and the Base64 encoded file content.  WB has to decode the content,
+        recalculate the content size and update the response header for each download.  ``range``
+        requests must be further taken care of.
+
+        API Docs: https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
+
+        This was the only way due to an issue (already fixed in GL API v10.0) in the above option:
+        GitLab requires periods in the file path to be encoded, and Python and aiohttp make this
+        difficult though their behavior is arguably correct.
+
+        Issue Link: https://gitlab.com/gitlab-org/gitlab-ce/issues/31470.
 
         :param str path: The path to the file on GitLab
         :param dict \*\*kwargs: Ignored
@@ -218,47 +228,19 @@ class GitLabProvider(provider.BaseProvider):
         """
 
         logger.debug('requested-range:: {}'.format(range))
-        url = self._build_file_url(path)
+
+        url = self._build_file_url(path, raw=True)
         resp = await self.make_request(
             'GET',
             url,
             range=range,
-            expects=(200,),
+            expects=(200, 206, ),
             throws=exceptions.DownloadError,
         )
+
         logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
 
-        raw_data = (await resp.read()).decode("utf-8")
-        data = None
-        try:
-            data = json.loads(raw_data)
-        except json.decoder.JSONDecodeError:
-            # GitLab API sometimes returns ruby hashes instead of json
-            # see: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790
-            # fixed in GL v9.5
-            data = self._convert_ruby_hash_to_dict(raw_data)
-
-        mdict_options = {}
-
-        raw = base64.b64decode(data['content'])
-        if range is not None:
-            start, end = range
-            orig_len = len(raw)
-            if start is not None and end is not None:
-                raw = raw[start:end + 1]
-                mdict_options['Content-Range'] = 'bytes {}-{}/{}'.format(start, end, orig_len)
-                resp.status = 206
-
-        mimetype = mimetypes.guess_type(path.full_path)[0]
-        if mimetype is not None:
-            mdict_options['CONTENT-TYPE'] = mimetype
-
-        mdict = aiohttp.multidict.MultiDict(resp.headers)
-        mdict.update(mdict_options)
-        resp.headers = mdict
-        resp.content = streams.StringStream(raw)
-
-        return streams.ResponseStreamReader(resp, size=len(raw))
+        return streams.ResponseStreamReader(resp)
 
     def can_duplicate_names(self):
         return False
@@ -297,26 +279,50 @@ class GitLabProvider(provider.BaseProvider):
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
 
-    def _build_file_url(self, path: GitLabPath) -> str:
-        """Build a url to GitLab's files endpoint.  This is done separately because the files
-        endpoint requires unusual quoting of the path.  GL requires that the directory-separating
-        slashes in the full path of the file be url encoded.  Ex. a file called ``foo/bar/baz``
-        would be encoded as ``foo%2Fbar%2Fbaz``.  WB's default url-building methods would split the
-        path, encode each segment, then rejoin them with literal slashes.  If we were to try to
-        pre-encode the path, any encoded characters will be double-encoded
+    def _build_file_url(self, path: GitLabPath, raw: bool=False) -> str:
+        """Build a url to GitLab's files endpoint.
+
+        Quirk 1:
+
+        This is done separately because the files endpoint requires unusual quoting of the path.
+        GL requires that the directory-separating slashes in the full path of the file be url
+        encoded.  Ex. a file called ``foo/bar/baz`` would be encoded as ``foo%2Fbar%2Fbaz``.  WB's
+        default url-building methods would split the path, encode each segment, then rejoin them
+        with literal slashes.  If we were to try to pre-encode the path, any encoded characters
+        will be double-encoded
+
+        Quirk 2:
+
+        GitLab CE File API takes care of file operations.  Most of them share the same endpoint /
+        URL format, and the specific action is determined by the HTTP method.
+
+            CRUD: ``POST | GET | PUT | DELETE /projects/:id/repository/files/:file_path?``
+
+        However, one issue with ``GET`` (i.e. read / download) is that the request returns a JSON
+        response containing both the file metadata and the Base64 encoded file content.  Replacing
+        ``GET`` with ``HEAD`` just returns the file metadata via response headers.
+
+        Alternatively, WB now uses the dedicated endpoint for downloading the raw content of a file
+        directly at ``GET /projects/:id/repository/files/:file_path/raw?``.  Set the optional param
+        ``raw`` to ``True`` to use this endpoint in download.
 
         API docs:
 
         * https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
 
+        * https://docs.gitlab.com/ce/api/repository_files.html#get-raw-file-from-repository
+
         * https://docs.gitlab.com/ce/api/README.html#namespaced-path-encoding
 
         :param GitLabPath path: path to a file
+        :param bool raw: get raw file content
         :rtype: str
         :return: url to the GitLab files endpoint for the given file
         """
         file_base = self._build_repo_url('repository', 'files')
-        return '{}/{}?ref={}'.format(file_base, path.raw_path.replace('/', '%2F'), path.ref)
+        suffix = '/raw' if raw else ''
+        return '{}/{}{}?ref={}'.format(file_base, path.raw_path.replace('/', '%2F'), suffix,
+                                       path.ref)
 
     async def _metadata_folder(self, path: GitLabPath) -> typing.List[BaseGitLabMetadata]:
         """Fetch metadata for the contents of the folder at ``path`` and return a `list` of
@@ -421,16 +427,7 @@ class GitLabProvider(provider.BaseProvider):
             throws=exceptions.NotFoundError,
         )
         raw_data = (await resp.read()).decode("utf-8")
-        data = None
-        try:
-            data = json.loads(raw_data)
-        except json.decoder.JSONDecodeError:
-            # GitLab API sometimes returns ruby hashes instead of json
-            # see: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790
-            # fixed in GL v9.5
-            data = self._convert_ruby_hash_to_dict(raw_data)
-
-        return data
+        return json.loads(raw_data)
 
     async def _fetch_tree_contents(self, path: GitLabPath) -> list:
         """Looks up the contents of the folder represented by ``path``.  The GitLab API is
@@ -520,16 +517,3 @@ class GitLabProvider(provider.BaseProvider):
         )
         data = await resp.json()
         return data['commit']['id']
-
-    def _convert_ruby_hash_to_dict(self, ruby_hash: str) -> dict:
-        """Adopted from https://stackoverflow.com/a/19322785 as a workaround for
-        https://gitlab.com/gitlab-org/gitlab-ce/issues/31790. Fixed in GL v9.5
-
-        :param str ruby_hash: serialized Ruby hash
-        :rtype: `dict`
-        :return: the data structure represented by the hash
-        """
-        dict_str = ruby_hash.replace(":", '"')     # Remove the ruby object key prefix
-        dict_str = dict_str.replace("=>", '" : ')  # swap the k => v notation, and close any unshut quotes
-        dict_str = dict_str.replace('""', '"')     # strip back any double quotes we created to sinlges
-        return json.loads(dict_str)
