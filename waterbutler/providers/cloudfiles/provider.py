@@ -43,7 +43,19 @@ class CloudFilesProvider(provider.BaseProvider):
         self.region = self.credentials['region']
         self.og_token = self.credentials['token']
         self.username = self.credentials['username']
-        self.container = self.settings['container']
+
+        # osfstorage used to store the bucket name under the "container" key but switched to using
+        # the "bucket" key during the googlecloud transistion.  Prefer "container" for backcompat,
+        # but if running with a recent OSF you may need to migrate your osfstorage version tables
+        # to use "bucket" instead.
+        if 'container' in self.settings:
+            self.container = self.settings['container']
+        elif 'bucket' in self.settings:
+            self.container = self.settings['bucket']
+        else:
+            raise exceptions.WaterButlerException('No "container" or "bucket" key in '
+                                                  'osfstorage settings')
+
         self.use_public = self.settings.get('use_public', True)
         self.metrics.add('region', self.region)
 
