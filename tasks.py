@@ -72,10 +72,7 @@ def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None)
     coverage = ' --cov-report term-missing --cov waterbutler' if not nocov else ''
     verbose = '-v' if verbose else ''
 
-    # TODO: update this ignore list when new providers are added
-    ignored_providers = '--ignore=tests/providers/cloudfiles/'
-
-    cmd = 'py.test{} {} tests{} {}'.format(coverage, ignored_providers, path, verbose)
+    cmd = 'py.test{} tests{} {}'.format(coverage, path, verbose)
     ctx.run(cmd, pty=True)
 
 

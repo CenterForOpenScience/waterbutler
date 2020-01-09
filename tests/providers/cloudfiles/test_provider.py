@@ -1,19 +1,14 @@
 import io
-import os
-import json
 import time
 import hashlib
-import functools
 from unittest import mock
 
 import furl
 import pytest
-import aiohttp
+import multidict
 import aiohttpretty
-import aiohttp.multidict
 
-from waterbutler.core import streams
-from waterbutler.core import exceptions
+from waterbutler.core import streams, exceptions
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.cloudfiles import CloudFilesProvider
 from waterbutler.providers.cloudfiles import settings as cloud_settings
@@ -174,7 +169,7 @@ def file_stream(file_like):
 
 @pytest.fixture
 def file_metadata():
-    return aiohttp.multidict.CIMultiDict([
+    return multidict.CIMultiDict([
         ('LAST-MODIFIED', 'Thu, 25 Dec 2014 02:54:35 GMT'),
         ('CONTENT-LENGTH', '0'),
         ('ETAG', 'edfa12d00b779b4b37b81fe5b61b2b3f'),
@@ -270,7 +265,7 @@ def folder_root_level1_level2():
 
 @pytest.fixture
 def file_root_level1_level2_file2_txt():
-    return aiohttp.multidict.CIMultiDict([
+    return multidict.CIMultiDict([
         ('ORIGIN', 'https://mycloud.rackspace.com'),
         ('CONTENT-LENGTH', '216945'),
         ('ACCEPT-RANGES', 'bytes'),
@@ -285,7 +280,7 @@ def file_root_level1_level2_file2_txt():
 
 @pytest.fixture
 def folder_root_level1_empty():
-    return aiohttp.multidict.CIMultiDict([
+    return multidict.CIMultiDict([
         ('ORIGIN', 'https://mycloud.rackspace.com'),
         ('CONTENT-LENGTH', '0'),
         ('ACCEPT-RANGES', 'bytes'),
@@ -300,7 +295,7 @@ def folder_root_level1_empty():
 
 @pytest.fixture
 def file_root_similar():
-    return aiohttp.multidict.CIMultiDict([
+    return multidict.CIMultiDict([
         ('ORIGIN', 'https://mycloud.rackspace.com'),
         ('CONTENT-LENGTH', '190'),
         ('ACCEPT-RANGES', 'bytes'),
@@ -315,7 +310,7 @@ def file_root_similar():
 
 @pytest.fixture
 def file_root_similar_name():
-    return aiohttp.multidict.CIMultiDict([
+    return multidict.CIMultiDict([
         ('ORIGIN', 'https://mycloud.rackspace.com'),
         ('CONTENT-LENGTH', '190'),
         ('ACCEPT-RANGES', 'bytes'),
@@ -357,10 +352,6 @@ class TestCRUD:
         result = await connected_provider.download(path, accept_url=True)
 
         assert result == parsed_url.url
-        aiohttpretty.register_uri('GET', url, body=body)
-        response = await aiohttp.request('GET', url)
-        content = await response.read()
-        assert content == body
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -382,10 +373,6 @@ class TestCRUD:
                                                    display_name=display_name_arg)
 
         assert result == parsed_url.url
-        aiohttpretty.register_uri('GET', url, body=body)
-        response = await aiohttp.request('GET', url)
-        content = await response.read()
-        assert content == body
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -526,9 +513,9 @@ class TestMetadata:
     @pytest.mark.aiohttpretty
     async def test_metadata_folder_root_empty(self, connected_provider, folder_root_empty):
         path = WaterButlerPath('/')
-        body = json.dumps(folder_root_empty).encode('utf-8')
+        body = folder_root_empty
         url = connected_provider.build_url(path.path, prefix=path.path, delimiter='/')
-        aiohttpretty.register_uri('GET', url, status=200, body=body)
+        aiohttpretty.register_json_uri('GET', url, status=200, body=body)
         result = await connected_provider.metadata(path)
 
         assert len(result) == 0
@@ -538,9 +525,9 @@ class TestMetadata:
     @pytest.mark.aiohttpretty
     async def test_metadata_folder_root(self, connected_provider, folder_root):
         path = WaterButlerPath('/')
-        body = json.dumps(folder_root).encode('utf-8')
+        body = folder_root
         url = connected_provider.build_url('', prefix=path.path, delimiter='/')
-        aiohttpretty.register_uri('GET', url, status=200, body=body)
+        aiohttpretty.register_json_uri('GET', url, status=200, body=body)
         result = await connected_provider.metadata(path)
 
         assert len(result) == 4
@@ -561,9 +548,9 @@ class TestMetadata:
     @pytest.mark.aiohttpretty
     async def test_metadata_folder_root_level1(self, connected_provider, folder_root_level1):
         path = WaterButlerPath('/level1/')
-        body = json.dumps(folder_root_level1).encode('utf-8')
+        body = folder_root_level1
         url = connected_provider.build_url('', prefix=path.path, delimiter='/')
-        aiohttpretty.register_uri('GET', url, status=200, body=body)
+        aiohttpretty.register_json_uri('GET', url, status=200, body=body)
         result = await connected_provider.metadata(path)
 
         assert len(result) == 1
@@ -576,9 +563,9 @@ class TestMetadata:
     async def test_metadata_folder_root_level1_level2(self, connected_provider,
                                                       folder_root_level1_level2):
         path = WaterButlerPath('/level1/level2/')
-        body = json.dumps(folder_root_level1_level2).encode('utf-8')
+        body = folder_root_level1_level2
         url = connected_provider.build_url('', prefix=path.path, delimiter='/')
-        aiohttpretty.register_uri('GET', url, status=200, body=body)
+        aiohttpretty.register_json_uri('GET', url, status=200, body=body)
         result = await connected_provider.metadata(path)
 
         assert len(result) == 1
@@ -608,9 +595,9 @@ class TestMetadata:
                                                         folder_root_level1_empty):
         path = WaterButlerPath('/level1_empty/')
         folder_url = connected_provider.build_url('', prefix=path.path, delimiter='/')
-        folder_body = json.dumps([]).encode('utf-8')
+        folder_body = []
         file_url = connected_provider.build_url(path.path.rstrip('/'))
-        aiohttpretty.register_uri('GET', folder_url, status=200, body=folder_body)
+        aiohttpretty.register_json_uri('GET', folder_url, status=200, body=folder_body)
         aiohttpretty.register_uri('HEAD', file_url, status=200, headers=folder_root_level1_empty)
         result = await connected_provider.metadata(path)
 
@@ -657,9 +644,9 @@ class TestMetadata:
     async def test_metadata_folder_does_not_exist(self, connected_provider):
         path = WaterButlerPath('/does_not_exist/')
         folder_url = connected_provider.build_url('', prefix=path.path, delimiter='/')
-        folder_body = json.dumps([]).encode('utf-8')
+        folder_body = []
         file_url = connected_provider.build_url(path.path.rstrip('/'))
-        aiohttpretty.register_uri('GET', folder_url, status=200, body=folder_body)
+        aiohttpretty.register_json_uri('GET', folder_url, status=200, body=folder_body)
         aiohttpretty.register_uri('HEAD', file_url, status=404)
         with pytest.raises(exceptions.MetadataError):
             await connected_provider.metadata(path)

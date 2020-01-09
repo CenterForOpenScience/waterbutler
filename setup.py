@@ -43,7 +43,7 @@ setup(
             'osf = waterbutler.auth.osf:OsfAuthHandler',
         ],
         'waterbutler.providers': [
-            # 'cloudfiles = waterbutler.providers.cloudfiles:CloudFilesProvider',
+            'cloudfiles = waterbutler.providers.cloudfiles:CloudFilesProvider',
             'dropbox = waterbutler.providers.dropbox:DropboxProvider',
             'figshare = waterbutler.providers.figshare:FigshareProvider',
             'filesystem = waterbutler.providers.filesystem:FileSystemProvider',
