@@ -14,7 +14,7 @@ pyjwe==1.0.0
 pyjwt==1.4.0
 python-dateutil==2.5.3
 pytz==2017.2
-sentry-sdk==0.13.2
+sentry-sdk==0.14.0
 setuptools==37.0.0
 stevedore==1.2.0
 tornado==6.0.3

@@ -9,6 +9,7 @@ import tornado.platform.asyncio
 
 import sentry_sdk
 from sentry_sdk.integrations.tornado import TornadoIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 from waterbutler import settings
 from waterbutler.server.api import v0
@@ -40,10 +41,15 @@ def api_to_handlers(api):
 
 
 def make_app(debug):
+
+    sentry_logging = LoggingIntegration(
+        level=logging.INFO,  # Capture INFO level and above as breadcrumbs
+        event_level=None,   # Do not send logs of any level as events
+    )
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
         release=__version__,
-        integrations=[TornadoIntegration()],
+        integrations=[TornadoIntegration(), sentry_logging, ],
     )
 
     app = tornado.web.Application(

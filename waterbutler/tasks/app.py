@@ -1,13 +1,17 @@
+import logging
+
 from celery import Celery
 from celery.signals import task_failure
 
 import sentry_sdk
 from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 from waterbutler.settings import config
-from waterbutler.tasks import settings as tasks_settings
 from waterbutler.version import __version__
+from waterbutler.tasks import settings as tasks_settings
 
+logger = logging.getLogger(__name__)
 
 app = Celery()
 app.config_from_object(tasks_settings)
@@ -28,5 +32,13 @@ def register_signal():
 
 sentry_dsn = config.get_nullable('SENTRY_DSN', None)
 if sentry_dsn:
-    sentry_sdk.init(sentry_dsn, release=__version__, integrations=[CeleryIntegration()])
+    sentry_logging = LoggingIntegration(
+        level=logging.INFO,  # Capture INFO level and above as breadcrumbs
+        event_level=None,   # Do not send logs of any level as events
+    )
+    sentry_sdk.init(
+        sentry_dsn,
+        release=__version__,
+        integrations=[CeleryIntegration(), sentry_logging]
+    )
     register_signal()
