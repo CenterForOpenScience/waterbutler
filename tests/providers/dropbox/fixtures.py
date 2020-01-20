@@ -29,6 +29,11 @@ def settings():
 
 
 @pytest.fixture
+def settings_root():
+    return {'folder': '/'}
+
+
+@pytest.fixture
 def provider_fixtures():
     # fixtures for testing validate_v1_path for root provider
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
@@ -70,3 +75,8 @@ def provider(auth, credentials, settings):
 @pytest.fixture
 def other_provider(auth, other_credentials, settings):
     return DropboxProvider(auth, other_credentials, settings)
+
+
+@pytest.fixture
+def provider_root(auth, credentials, settings_root):
+    return DropboxProvider(auth, credentials, settings_root)
