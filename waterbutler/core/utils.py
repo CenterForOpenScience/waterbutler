@@ -12,11 +12,8 @@ from urllib import parse
 import aiohttp
 import sentry_sdk
 from stevedore import driver
-from sentry_sdk.integrations.logging import LoggingIntegration
 
 from waterbutler.core import exceptions
-from waterbutler.settings import config
-from waterbutler.version import __version__
 from waterbutler.core.signing import Signer
 from waterbutler.core.streams import EmptyStream
 from waterbutler.server import settings as server_settings
@@ -24,14 +21,6 @@ from waterbutler.server import settings as server_settings
 logger = logging.getLogger(__name__)
 
 signer = Signer(server_settings.HMAC_SECRET, server_settings.HMAC_ALGORITHM)
-
-sentry_dsn = config.get_nullable('SENTRY_DSN', None)
-if sentry_dsn:
-    sentry_logging = LoggingIntegration(
-        level=logging.INFO,  # Capture INFO level and above as breadcrumbs
-        event_level=None,   # Do not send logs of any level as events
-    )
-    sentry_sdk.init(sentry_dsn, release=__version__, integrations=[sentry_logging, ])
 
 
 def make_provider(name: str, auth: dict, credentials: dict, settings: dict, **kwargs):
