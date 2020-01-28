@@ -59,7 +59,7 @@ class TestNewFromResponseRootProvider:
 
     def test_fails_without_base_folder(self, root_provider_fixtures):
         with pytest.raises(Exception):
-            od_path = OneDrivePath.new_from_response(root_provider_fixtures['file_metadata'])
+            _ = OneDrivePath.new_from_response(root_provider_fixtures['file_metadata'])
 
     def test_insert_zero_ids(self, path_fixtures):
         file_metadata = path_fixtures['deeply_nested_file_metadata']

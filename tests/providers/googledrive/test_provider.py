@@ -481,7 +481,7 @@ class TestUpload:
         aiohttpretty.register_uri('POST', start_upload_url,
                                   headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
 
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='PUT', uri=finish_upload_url)
@@ -521,7 +521,7 @@ class TestDelete:
                                   body=del_url_body,
                                   status=200)
 
-        result = await provider.delete(path)
+        _ = await provider.delete(path)
 
         assert aiohttpretty.has_call(method='PUT', uri=del_url)
 
@@ -598,7 +598,6 @@ class TestDownload:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -673,7 +672,6 @@ class TestDownload:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -703,7 +701,6 @@ class TestDownload:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -747,7 +744,6 @@ class TestDownload:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -772,7 +768,6 @@ class TestDownload:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -840,7 +835,6 @@ class TestDownload:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -864,7 +858,6 @@ class TestDownload:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -907,7 +900,6 @@ class TestDownload:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -932,7 +924,6 @@ class TestDownload:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -1113,7 +1104,6 @@ class TestMetadata:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -1178,7 +1168,6 @@ class TestMetadata:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -1204,7 +1193,6 @@ class TestMetadata:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -1244,7 +1232,6 @@ class TestMetadata:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -1265,7 +1252,6 @@ class TestMetadata:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -1323,7 +1309,6 @@ class TestMetadata:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -1342,7 +1327,6 @@ class TestMetadata:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -1380,7 +1364,6 @@ class TestMetadata:
             _ids=['1', '2', metadata_body['id']]
         )
 
-        metadata_query = provider._build_query(path.identifier)
         metadata_url = provider.build_url('files', path.identifier)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_body)
 
@@ -1506,7 +1489,7 @@ class TestCreateFolder:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_must_be_folder(self, provider, monkeypatch):
-        with pytest.raises(exceptions.CreateFolderError) as e:
+        with pytest.raises(exceptions.CreateFolderError):
             await provider.create_folder(WaterButlerPath('/carp.fish', _ids=('doesnt', 'matter')))
 
 
@@ -1669,7 +1652,7 @@ class TestOperationsOrMisc:
                                        body=error_fixtures['parts_file_missing_metadata'])
 
         with pytest.raises(exceptions.MetadataError) as e:
-            result = await provider._resolve_path_to_ids(file_name)
+            _ = await provider._resolve_path_to_ids(file_name)
 
         assert e.value.message == '{} not found'.format(str(path))
         assert e.value.code == 404

@@ -358,7 +358,7 @@ class TestMetadata:
         )
         aiohttpretty.register_json_uri('GET', path_meta_url, body=file_metadata)
 
-        result = await provider._fetch_path_metadata(path)
+        _ = await provider._fetch_path_metadata(path)
         assert not provider._fetch_branch_commit_sha.called
 
     @pytest.mark.asyncio

@@ -528,7 +528,7 @@ class TestCRUD:
             'POST', blob_url, body=crud_fixtures['checksum_mismatch_blob_data'], status=201
         )
 
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='GET', uri=commit_url)
@@ -1325,7 +1325,7 @@ class TestCreateFolder:
     async def test_must_be_folder(self, provider):
         path = GitHubPath('/Imarealboy', _ids=[(provider.default_branch, ''), ('other_branch', '')])
 
-        with pytest.raises(exceptions.CreateFolderError) as e:
+        with pytest.raises(exceptions.CreateFolderError):
             await provider.create_folder(path)
 
     @pytest.mark.asyncio

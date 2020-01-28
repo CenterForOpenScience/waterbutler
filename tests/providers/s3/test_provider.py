@@ -188,7 +188,6 @@ class TestRegionDetection:
     ])
     async def test_region_host(self, auth, credentials, settings, region_name, host, mock_time):
         provider = S3Provider(auth, credentials, settings)
-        orig_host = provider.connection.host
 
         region_url = provider.bucket.generate_url(
             100,

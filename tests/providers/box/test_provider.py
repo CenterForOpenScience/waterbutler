@@ -323,7 +323,7 @@ class TestUpload:
         aiohttpretty.register_json_uri('POST', upload_url, status=201,
                                        body=root_provider_fixtures['checksum_mismatch_metadata'])
 
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='POST', uri=upload_url)
