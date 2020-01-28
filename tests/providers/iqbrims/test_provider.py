@@ -1414,19 +1414,172 @@ class TestOperationsOrMisc:
         assert e.value.code == 404
 
 
+class TestCreateFolder:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_already_exists(self, provider):
+        path = WaterButlerPath('/hugo/', _ids=('doesnt', 'matter'))
+
+        with pytest.raises(exceptions.FolderNamingConflict) as e:
+            await provider.create_folder(path)
+
+        assert e.value.code == 409
+        assert e.value.message == ('Cannot create folder "hugo", because a file or folder '
+                                   'already exists with that name')
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_no_permissions(self, provider):
+        path = WaterButlerPath('/hugo/', _ids=('doesnt', 'matter'))
+
+        provider.permissions['hugo'] = ['VISIBLE']
+
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            await provider.create_folder(path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_returns_metadata(self, provider, root_provider_fixtures):
+        path = WaterButlerPath('/osf%20test/', _ids=(provider.folder['id'], None))
+
+        aiohttpretty.register_json_uri('POST', provider.build_url('files'),
+                                       body=root_provider_fixtures['folder_metadata'])
+
+        resp = await provider.create_folder(path)
+
+        assert resp.kind == 'folder'
+        assert resp.name == 'osf test'
+        assert resp.path == '/osf%20test/'
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_raises_non_404(self, provider):
+        path = WaterButlerPath('/hugo/kim/pins/', _ids=(provider.folder['id'],
+                                                        'something', 'something', None))
+
+        url = provider.build_url('files')
+        aiohttpretty.register_json_uri('POST', url, status=418)
+
+        with pytest.raises(exceptions.CreateFolderError) as e:
+            await provider.create_folder(path)
+
+        assert e.value.code == 418
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_must_be_folder(self, provider, monkeypatch):
+        with pytest.raises(exceptions.CreateFolderError) as e:
+            await provider.create_folder(WaterButlerPath('/carp.fish', _ids=('doesnt', 'matter')))
+
+
+class TestDelete:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['list_file']['items'][0]
+        path = WaterButlerPath('/birdie.jpg', _ids=(None, item['id']))
+        delete_url = provider.build_url('files', item['id'])
+        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
+        aiohttpretty.register_uri('PUT',
+                                  delete_url,
+                                  body=del_url_body,
+                                  status=200)
+
+        result = await provider.delete(path)
+
+        assert result is None
+        assert aiohttpretty.has_call(method='PUT', uri=delete_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_no_permissions(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['list_file']['items'][0]
+        dir = u'スキャン結果'
+        path = WaterButlerPath('/{}/birdie.jpg'.format(dir), _ids=(None, None, item['id']))
+        delete_url = provider.build_url('files', item['id'])
+        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
+        aiohttpretty.register_uri('PUT',
+                                  delete_url,
+                                  body=del_url_body,
+                                  status=200)
+
+        provider.permissions[dir] = ['VISIBLE']
+
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            await provider.delete(path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_folder(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['folder_metadata']
+        del_url = provider.build_url('files', item['id'])
+        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
+
+        path = WaterButlerPath('/foobar/', _ids=('doesntmatter', item['id']))
+
+        aiohttpretty.register_uri('PUT',
+                                  del_url,
+                                  body=del_url_body,
+                                  status=200)
+
+        result = await provider.delete(path)
+
+        assert aiohttpretty.has_call(method='PUT', uri=del_url)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_folder_no_permissions(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['folder_metadata']
+        del_url = provider.build_url('files', item['id'])
+        del_url_body = json.dumps({'labels': {'trashed': 'true'}})
+
+        path = WaterButlerPath('/foobar/', _ids=('doesntmatter', item['id']))
+
+        provider.permissions['foobar'] = ['VISIBLE']
+
+        aiohttpretty.register_uri('PUT',
+                                  del_url,
+                                  body=del_url_body,
+                                  status=200)
+
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            await provider.delete(path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_not_existing(self, provider):
+        with pytest.raises(exceptions.NotFoundError):
+            await provider.delete(WaterButlerPath('/foobar/'))
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_root_no_confirm(self, provider):
+        path = WaterButlerPath('/', _ids=('0'))
+
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            await provider.delete(path)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_delete_root(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['delete_contents_metadata']['items'][0]
+        root_path = WaterButlerPath('/', _ids=('0'))
+
+        url = provider.build_url('files', q="'{}' in parents".format('0'), fields='items(id)')
+        aiohttpretty.register_json_uri('GET', url,
+                                       body=root_provider_fixtures['delete_contents_metadata'])
+
+        delete_url = provider.build_url('files', item['id'])
+        data = json.dumps({'labels': {'trashed': 'true'}}),
+        aiohttpretty.register_json_uri('PUT', delete_url, data=data, status=200)
+
+        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
+            await provider.delete(root_path, 1)
+
+
 class TestReadOnlyProvider:
-
-    @pytest.mark.asyncio
-    async def test_create_folder(self, provider):
-        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
-            await provider.create_folder('foo')
-        assert e.value.code == 501
-
-    @pytest.mark.asyncio
-    async def test_delete(self, provider):
-        with pytest.raises(exceptions.ReadOnlyProviderError) as e:
-            await provider.delete()
-        assert e.value.code == 501
 
     @pytest.mark.asyncio
     async def test_move(self, provider):

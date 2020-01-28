@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 import hashlib
@@ -21,6 +22,9 @@ from waterbutler.providers.iqbrims.metadata import (BaseIQBRIMSMetadata,
                                                         IQBRIMSFileRevisionMetadata,
                                                         IQBRIMSFolderMetadata,
                                                         IQBRIMSRevision)
+
+
+logger = logging.getLogger(__name__)
 
 
 def clean_query(query: str):
@@ -185,8 +189,7 @@ class IQBRIMSProvider(provider.BaseProvider):
                      **kwargs) -> typing.Tuple[IQBRIMSFileMetadata, bool]:
         assert path.is_file
 
-        if path.parts[-2].value in self.permissions and 'WRITABLE' not in self.permissions[path.parts[-2].value]:
-            raise exceptions.ReadOnlyProviderError(self.NAME)
+        self._test_permissions(path)
 
         if path.identifier:
             segments = [path.identifier]
@@ -258,11 +261,76 @@ class IQBRIMSProvider(provider.BaseProvider):
     def can_intra_copy(self, other, path=None) -> bool:
         return False
 
-    async def create_folder(self, *args, **kwargs):
-        raise exceptions.ReadOnlyProviderError(self.NAME)
+    async def create_folder(self,
+                            path: WaterButlerPath,
+                            folder_precheck: bool=True,
+                            **kwargs) -> IQBRIMSFolderMetadata:
+        IQBRIMSPath.validate_folder(path)
+        self._test_permissions(path)
 
-    async def delete(self, *args, **kwargs):
-        raise exceptions.ReadOnlyProviderError(self.NAME)
+        if folder_precheck:
+            if path.identifier:
+                raise exceptions.FolderNamingConflict(path.name)
+
+        async with self.request(
+            'POST',
+            self.build_url('files'),
+            headers={
+                'Content-Type': 'application/json',
+            },
+            data=json.dumps({
+                'title': path.name,
+                'parents': [{
+                    'id': path.parent.identifier
+                }],
+                'mimeType': self.FOLDER_MIME_TYPE,
+            }),
+            expects=(200, ),
+            throws=exceptions.CreateFolderError,
+        ) as resp:
+            return IQBRIMSFolderMetadata(await resp.json(), path)
+
+    async def delete(self,  # type: ignore
+                     path: IQBRIMSPath,
+                     confirm_delete: int=0,
+                     **kwargs) -> None:
+        """Given a WaterButlerPath, delete that path
+        :param GoogleDrivePath path: Path to be deleted
+        :param int confirm_delete: Must be 1 to confirm root folder delete
+        :rtype: None
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+
+        Quirks:
+            If the WaterButlerPath given is for the provider root path, then
+            the contents of provider root path will be deleted. But not the
+            provider root itself.
+        """
+        if not path.identifier:
+            raise exceptions.NotFoundError(str(path))
+        self._test_permissions(path)
+
+        self.metrics.add('delete.is_root_delete', path.is_root)
+        if path.is_root:
+            self.metrics.add('delete.root_delete_confirmed', confirm_delete == 1)
+            if confirm_delete == 1:
+                await self._delete_folder_contents(path)
+                return
+            else:
+                raise exceptions.DeleteError(
+                    'confirm_delete=1 is required for deleting root provider folder',
+                    code=400
+                )
+
+        async with self.request(
+            'PUT',
+            self.build_url('files', path.identifier),
+            data=json.dumps({'labels': {'trashed': 'true'}}),
+            headers={'Content-Type': 'application/json'},
+            expects=(200, ),
+            throws=exceptions.DeleteError,
+        ):
+            return
 
     async def move(self, *args, **kwargs):
         raise exceptions.ReadOnlyProviderError(self.NAME)
@@ -418,6 +486,14 @@ class IQBRIMSProvider(provider.BaseProvider):
                 ret.append(await resp.json())
         return ret
 
+    def _test_permissions(self, path):
+        logger.info(u'TEST_PERMISSIONS: {}'.format(repr(path.parts)))
+        if len(path.parts) < 2:
+            raise exceptions.ReadOnlyProviderError(self.NAME)
+        assert path.parts[0].value == ''
+        if path.parts[1].value in self.permissions and 'WRITABLE' not in self.permissions[path.parts[1].value]:
+            raise exceptions.ReadOnlyProviderError(self.NAME)
+
     async def _handle_docs_versioning(self, path: IQBRIMSPath, item: dict, raw: bool=True):
         """Sends an extra request to GDrive to fetch revision information for Google Docs. Needed
         because Google Docs use a different versioning system from regular files.
@@ -552,3 +628,38 @@ class IQBRIMSProvider(provider.BaseProvider):
                 data['version'] = data['etag'] + settings.DRIVE_IGNORE_VERSION
 
         return data if raw else IQBRIMSFileMetadata(data, path)
+
+    async def _delete_folder_contents(self, path: WaterButlerPath) -> None:
+        """Given a WaterButlerPath, delete all contents of folder
+
+        :param WaterButlerPath path: Folder to be emptied
+        :rtype: None
+        :raises: :class:`waterbutler.core.exceptions.NotFoundError`
+        :raises: :class:`waterbutler.core.exceptions.MetadataError`
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        """
+        file_id = path.identifier
+        if not file_id:
+            raise exceptions.NotFoundError(str(path))
+        resp = await self.make_request(
+            'GET',
+            self.build_url('files',
+                           q="'{}' in parents".format(file_id),
+                           fields='items(id)'),
+            expects=(200, ),
+            throws=exceptions.MetadataError)
+
+        try:
+            child_ids = (await resp.json())['items']
+        except (KeyError, IndexError):
+            raise exceptions.MetadataError('{} not found'.format(str(path)),
+                                           code=HTTPStatus.NOT_FOUND)
+
+        for child in child_ids:
+            await self.make_request(
+                'PUT',
+                self.build_url('files', child['id']),
+                data=json.dumps({'labels': {'trashed': 'true'}}),
+                headers={'Content-Type': 'application/json'},
+                expects=(200, ),
+                throws=exceptions.DeleteError)
