@@ -275,18 +275,18 @@ class TestValidatePath:
         path = await provider.validate_path('/this/is/a/folder/')
         assert path.name == 'folder'
         assert path.parent.name == 'a'
+        assert path.name == 'folder'
         assert not path.is_file
         assert path.is_dir
         assert not path.is_root
 
     @pytest.mark.asyncio
     async def test_root(self, provider, mock_time):
-        path = await provider.validate_path('/this/is/a/folder/')
-        assert path.name == 'folder'
-        assert path.parent.name == 'a'
+        path = await provider.validate_path('/')
+        assert path.name == ''
         assert not path.is_file
         assert path.is_dir
-        assert not path.is_root
+        assert path.is_root
 
 
 class TestCRUD:

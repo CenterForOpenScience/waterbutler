@@ -1229,6 +1229,7 @@ class TestProjectCRUD:
                                        body=root_provider_fixtures['folder_article_metadata'])
 
         result = await project_provider.create_folder(path)
+        assert result is not None
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

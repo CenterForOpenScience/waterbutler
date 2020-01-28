@@ -68,7 +68,7 @@ class TestBaseProvider:
     @pytest.mark.asyncio
     async def test_intra_move_notimplemented(self, provider1):
         with pytest.raises(NotImplementedError):
-            await provider1.intra_copy(provider1, None, None)
+            await provider1.intra_move(provider1, None, None)
 
     @pytest.mark.asyncio
     async def test_intra_move_uses_intra_copy(self, provider1, monkeypatch):
