@@ -76,14 +76,14 @@ class TestValidatePath:
     async def test_validate_v1_path_file(self, mock_provider, file_wb_path):
         file_path = '/{}'.format(file_wb_path.path)
         assert file_path.startswith('/') and not file_path.endswith('/')
-        wb_path = await mock_provider.validate_path(file_path)
+        wb_path = await mock_provider.validate_v1_path(file_path)
         assert wb_path == file_wb_path
 
     @pytest.mark.asyncio
     async def test_validate_v1_path_folder(self, mock_provider, folder_wb_path):
         folder_path = '/{}'.format(folder_wb_path.path)
         assert folder_path.startswith('/') and folder_path.endswith('/')
-        wb_path = await mock_provider.validate_path(folder_path)
+        wb_path = await mock_provider.validate_v1_path(folder_path)
         assert wb_path == folder_wb_path
 
     @pytest.mark.asyncio

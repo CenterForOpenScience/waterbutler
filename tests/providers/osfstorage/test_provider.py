@@ -53,7 +53,6 @@ class TestCreateFolder:
     @pytest.mark.aiohttpretty
     async def test_create_folder(self, folder_path, provider_one, folder_metadata, mock_time):
 
-        provider = provider_one
         data = json.dumps(folder_metadata)
         url, params = build_signed_url_without_auth(provider_one, 'POST',
                                                     folder_path.parent.identifier,

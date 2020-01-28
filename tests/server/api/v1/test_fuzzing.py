@@ -71,7 +71,7 @@ class TestServerFuzzing(ServerTestCase):
                 x += len(msg)
                 yield write(msg)
 
-        with pytest.raises(httpclient.HTTPError) as exc:
+        with pytest.raises(httpclient.HTTPError):
             yield self.http_client.fetch(
                 self.get_url('/resources/jernk/providers/jaaaaank/'),
                 headers={'Content-Length': '1048580'},

@@ -262,10 +262,10 @@ class TestSubfolderProviderValidatePath:
                                        status=200)
 
         file_path = '/{}'.format(file_id)
-        with pytest.raises(exceptions.NotFoundError) as exc:
+        with pytest.raises(exceptions.NotFoundError):
             await subfolder_provider.validate_v1_path(file_path)
 
-        with pytest.raises(exceptions.NotFoundError) as exc:
+        with pytest.raises(exceptions.NotFoundError):
             await subfolder_provider.validate_path(file_path)
 
 
@@ -288,7 +288,7 @@ class TestRevalidatePath:
         actual_path = await root_provider.revalidate_path(parent_path, file_name, False)
         assert actual_path == expected_path
 
-        with pytest.raises(exceptions.NotFoundError) as exc:
+        with pytest.raises(exceptions.NotFoundError):
             await root_provider.revalidate_path(parent_path, file_name, True)
 
     @pytest.mark.aiohttpretty
@@ -308,7 +308,7 @@ class TestRevalidatePath:
         actual_path = await root_provider.revalidate_path(parent_path, folder_name, True)
         assert actual_path == expected_path
 
-        with pytest.raises(exceptions.NotFoundError) as exc:
+        with pytest.raises(exceptions.NotFoundError):
             await root_provider.revalidate_path(parent_path, folder_name, False)
 
     @pytest.mark.aiohttpretty
@@ -332,7 +332,7 @@ class TestRevalidatePath:
         actual_path = await root_provider.revalidate_path(parent_path, subfile_name, False)
         assert actual_path == expected_path
 
-        with pytest.raises(exceptions.NotFoundError) as exc:
+        with pytest.raises(exceptions.NotFoundError):
             await root_provider.revalidate_path(parent_path, subfile_name, True)
 
 
@@ -479,7 +479,7 @@ class TestDownload:
     @pytest.mark.asyncio
     async def test_download_no_such_file(self, provider):
         od_path = OneDrivePath('/does-not-exists', _ids=[None, None])
-        with pytest.raises(exceptions.DownloadError) as exc:
+        with pytest.raises(exceptions.DownloadError):
             await provider.download(od_path)
 
     @pytest.mark.asyncio
@@ -492,7 +492,7 @@ class TestDownload:
         revisions_url = provider._build_drive_url(*path.api_identifier, 'versions')
         aiohttpretty.register_json_uri('GET', revisions_url, body=revision_response)
 
-        with pytest.raises(exceptions.NotFoundError) as exc:
+        with pytest.raises(exceptions.NotFoundError):
             await provider.download(path, revision='thisisafakerevision')
 
     @pytest.mark.asyncio
@@ -505,7 +505,7 @@ class TestDownload:
         metadata_url = provider._build_drive_url('items', onenote_id)
         aiohttpretty.register_json_uri('GET', metadata_url, body=metadata_response)
 
-        with pytest.raises(exceptions.UnexportableFileTypeError) as exc:
+        with pytest.raises(exceptions.UnexportableFileTypeError):
             await provider.download(path)
 
     @pytest.mark.asyncio
@@ -518,7 +518,7 @@ class TestDownload:
         revisions_url = provider._build_drive_url('items', onenote_id, 'versions')
         aiohttpretty.register_json_uri('GET', revisions_url, body=revision_response)
 
-        with pytest.raises(exceptions.UnexportableFileTypeError) as exc:
+        with pytest.raises(exceptions.UnexportableFileTypeError):
             await provider.download(path,
                                     revision=download_fixtures['onenote_revision_non_exportable'])
 

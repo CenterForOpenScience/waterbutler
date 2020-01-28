@@ -236,7 +236,7 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', default_branch_url, body={}, status=404)
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            root_path = await provider.validate_v1_path(path)
+            _ = await provider.validate_v1_path(path)
         assert exc.value.code == 404
 
     @pytest.mark.asyncio
@@ -248,7 +248,7 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', default_branch_url, body={"default_branch": None})
 
         with pytest.raises(exceptions.UninitializedRepositoryError) as exc:
-            root_path = await provider.validate_v1_path(path)
+            _ = await provider.validate_v1_path(path)
         assert exc.value.code == 400
 
 

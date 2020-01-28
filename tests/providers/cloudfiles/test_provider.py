@@ -342,7 +342,6 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_download_accept_url(self, connected_provider):
-        body = b'dearly-beloved'
         path = WaterButlerPath('/lets-go-crazy')
 
         url = connected_provider.sign_url(path)
@@ -362,7 +361,6 @@ class TestCRUD:
     ])
     async def test_download_file_with_display_name(self, connected_provider, display_name_arg,
                                                    expected_name):
-        body = b'dearly-beloved'
         path = WaterButlerPath('/lets-go-crazy')
 
         url = connected_provider.sign_url(path)
