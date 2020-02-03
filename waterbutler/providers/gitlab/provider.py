@@ -194,33 +194,18 @@ class GitLabProvider(provider.BaseProvider):
 
         return [GitLabRevision(item) for item in data]
 
-    async def download(self,  # type: ignore
-                       path: GitLabPath, range: typing.Tuple[int, int]=None, **kwargs):
+    async def download(self, path: GitLabPath, **kwargs):  # type: ignore
         r"""Return a stream to the specified file on GitLab.
-
-        With GitLab CE Files API, there are two options to download a file.
-
-        Option 1: ``GET /projects/:id/repository/files/:file_path/raw?``
-
-        This is the preferred and currently used option which does exactly what we need.  ``range``
-        requests are handled correctly without any extra tweak.
 
         API Docs: https://docs.gitlab.com/ce/api/repository_files.html#get-raw-file-from-repository
 
-        Option 2: ``GET /projects/:id/repository/files/:file_path?``
-
-        In this option, the raw response is not the file content by itself but a JSON that contains
-        both the file metadata and the Base64 encoded file content.  WB has to decode the content,
-        recalculate the content size and update the response header for each download.  ``range``
-        requests must be further taken care of.
-
-        API Docs: https://docs.gitlab.com/ce/api/repository_files.html#get-file-from-repository
-
-        This was the only way due to an issue (already fixed in GL API v10.0) in the above option:
-        GitLab requires periods in the file path to be encoded, and Python and aiohttp make this
-        difficult though their behavior is arguably correct.
-
-        Issue Link: https://gitlab.com/gitlab-org/gitlab-ce/issues/31470.
+        Historically this method was implemented using a different endpoint which returned the file
+        data as a base-64 encoded string.  We used this endpoint because the one listed above was
+        buggy (see: https://gitlab.com/gitlab-org/gitlab-ce/issues/31470).  That issue has since
+        been fixed in GL.  We removed the workaround since it required slurping the file contents
+        into memory.  As a side-effect, the Gitlab download() method no longer supports the Range
+        header.  It had been manually implemented by array slicing the slurped data.  The raw file
+        endpoint does not currently respect it.
 
         :param str path: The path to the file on GitLab
         :param dict \*\*kwargs: Ignored
@@ -233,14 +218,14 @@ class GitLabProvider(provider.BaseProvider):
         resp = await self.make_request(
             'GET',
             url,
-            range=range,
             expects=(200, 206, ),
             throws=exceptions.DownloadError,
         )
 
         logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
 
-        return streams.ResponseStreamReader(resp)
+        # get size from X-Gitlab-Size header, since some responses don't set Content-Length
+        return streams.ResponseStreamReader(resp, size=int(resp.headers['X-Gitlab-Size']))
 
     def can_duplicate_names(self):
         return False
