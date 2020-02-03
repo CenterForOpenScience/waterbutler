@@ -469,26 +469,10 @@ class TestDownload:
 
         url = ('http://base.url/api/v4/projects/123/repository/files'
                '/folder1%2Ffile.py/raw?ref=a1b2c3d4')
-        aiohttpretty.register_uri('GET', url, body=b'hello')
+        aiohttpretty.register_uri('GET', url, body=b'hello', headers={'X-Gitlab-Size': '5'})
 
         result = await provider.download(gl_path, branch='master')
         assert await result.read() == b'hello'
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_download_range(self, provider):
-        path = '/folder1/file.py'
-        gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 3))
-
-        url = ('http://base.url/api/v4/projects/123/repository/files'
-               '/folder1%2Ffile.py/raw?ref=a1b2c3d4')
-        aiohttpretty.register_uri('GET', url, body=b'he', status=206)
-
-        result = await provider.download(gl_path, branch='master', range=(0, 1))
-        assert result.partial
-        assert await result.read() == b'he'
-        assert aiohttpretty.has_call(method='GET', uri=url,
-                                     headers={'Range': 'bytes=0-1', 'PRIVATE-TOKEN': 'naps'})
 
 
 class TestReadOnlyProvider:
