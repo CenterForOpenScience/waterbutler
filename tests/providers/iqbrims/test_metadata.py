@@ -37,7 +37,6 @@ class TestMetadata:
         assert parsed.content_type == item['mimeType']
         assert parsed.extra == {
             'revisionId': item['version'],
-            'webView': item['alternateLink'],
             'hashes': {'md5': item['md5Checksum']},
         }
         assert parsed.path == '/' + os.path.join(*[x.raw for x in path.parts])
@@ -59,7 +58,6 @@ class TestMetadata:
         assert parsed.content_type == item['mimeType']
         assert parsed.extra == {
             'revisionId': item['version'],
-            'webView': item['alternateLink'],
             'hashes': {'md5': item['md5Checksum']},
         }
         assert parsed.path == '/' + os.path.join(*[x.raw for x in path.parts])
@@ -76,7 +74,6 @@ class TestMetadata:
         assert parsed.extra == {
             'revisionId': item['version'],
             'downloadExt': '.docx',
-            'webView': item['alternateLink'],
         }
         assert parsed.is_iqbrims_doc is True
         assert parsed.export_name == item['title'] + '.docx'

@@ -113,7 +113,6 @@ class IQBRIMSFileMetadata(BaseIQBRIMSMetadata, metadata.BaseFileMetadata):
     @property
     def extra(self):
         ret = super().extra
-        ret['webView'] = self.raw.get('alternateLink')
 
         if self.is_iqbrims_doc:
             ret['downloadExt'] = utils.get_download_extension(self.raw)
