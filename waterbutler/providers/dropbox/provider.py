@@ -73,28 +73,35 @@ class DropboxProvider(provider.BaseProvider):
                               expects: typing.Tuple=(200, 409,),
                               *args,
                               **kwargs) -> dict:
-        """Convenience wrapper around ``BaseProvider.request`` for simple Dropbox API calls. Sets
-        the method to ``POST``, jsonifies the ``body`` param, and provides default error handling
-        for Dropbox's standard 409 error response structure.
+        r"""Convenience wrapper around ``BaseProvider.make_request`` for simple Dropbox API calls.
+        Sets the method to ``POST``, jsonifies the ``body`` param, and provides default error
+        handling for Dropbox's standard 409 error response structure.
+
+        Note: This ``.dropbox_request()`` doesn't fit all requests. For example, download doesn't
+              expect a JSON response.  In addition, this wrapper shouldn't be applied to requests
+              that clearly don't have the 409 problem even if they have a JSON response.
+
+        TODO: review all ``.dropbox_request()`` and ``.make_request()`` usages in the provider and
+              make sure each uses either one properly.  Make changes if necessary.
 
         :param str url: the url of the endpoint to POST to
         :param dict body: the data to send in the request body, will be jsonified
         :param tuple expects: expected error codes, defaults to 200 (success) and 409 (error)
-        :param tuple \*args: passed through to BaseProvider.request()
-        :param dict \*\*kwargs: passed through to BaseProvider.request()
+        :param tuple \*args: passed through to BaseProvider.make_request()
+        :param dict \*\*kwargs: passed through to BaseProvider.make_request()
         """
-        async with self.request(
+        resp = await self.make_request(
             'POST',
             url,
             data=json.dumps(body),
             expects=expects,
             *args,
             **kwargs,
-        ) as resp:
-            data = await resp.json()
-            if resp.status == 409:
-                self.dropbox_conflict_error_handler(data, body.get('path', ''))
-            return data
+        )
+        data = await resp.json()
+        if resp.status == 409:
+            self.dropbox_conflict_error_handler(data, body.get('path', ''))
+        return data
 
     def dropbox_conflict_error_handler(self, data: dict, error_path: str='') -> None:
         """Takes a standard Dropbox error response and an optional path and tries to throw a
@@ -233,6 +240,19 @@ class DropboxProvider(provider.BaseProvider):
                        revision: str=None,
                        range: typing.Tuple[int, int]=None,
                        **kwargs) -> streams.ResponseStreamReader:
+        """
+        Dropbox V2 API Files Download
+        https://www.dropbox.com/developers/documentation/http/documentation#files-download
+
+        Request and Response Format: Content-download endpoints
+        https://www.dropbox.com/developers/documentation/http/documentation#formats
+
+        According to Dropbox's API docs for files download and content-download endpoints, the file
+        content is contained in the response body and the result (metadata about the file) appears
+        as JSON in the "Dropbox-API-Result" response header.  As far as the WB Dropbox provider is
+        concerned, the header contains the size (in bytes) of the file that ``ResponseStreamReader``
+        needs if the "Content-Length" header is not provided.
+        """
         path_arg = {"path": ("rev:" + revision if revision else path.full_path)}
         resp = await self.make_request(
             'POST',

@@ -5,8 +5,6 @@ import logging
 from typing import Tuple
 from http import HTTPStatus
 
-import aiohttp
-
 from waterbutler.core.streams import CutoffStream
 from waterbutler.core import exceptions, provider, streams
 
@@ -76,16 +74,16 @@ class FigshareProvider:
     API docs: https://docs.figshare.com/
     """
 
-    def __new__(cls, auth, credentials, settings):
+    def __new__(cls, auth, credentials, settings, **kwargs):
 
         if settings['container_type'] == 'project':
             return FigshareProjectProvider(
-                auth, credentials, dict(settings, container_id=settings['container_id'])
+                auth, credentials, dict(settings, container_id=settings['container_id']), **kwargs
             )
 
         if settings['container_type'] in pd_settings.ARTICLE_CONTAINER_TYPES:
             return FigshareArticleProvider(
-                auth, credentials, dict(settings, container_id=settings['container_id'])
+                auth, credentials, dict(settings, container_id=settings['container_id']), **kwargs
             )
 
         raise exceptions.ProviderError(
@@ -128,7 +126,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         }
 
     def build_url(self, is_public: bool, *segments, **query) -> str:  # type: ignore
-        """A nice wrapper around furl, builds urls based on self.BASE_URL
+        r"""A nice wrapper around furl, builds urls based on self.BASE_URL
 
         :param bool is_public: ``True`` if addressing public resource
         :param tuple \*segments: A tuple of strings joined into ``/foo/bar/``
@@ -154,7 +152,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         return (super().build_url(*segments, **query))
 
     async def make_request(self, method, url, *args, **kwargs):
-        """JSONifies ``data`` kwarg, if present and a ``dict``.
+        r"""JSONifies ``data`` kwarg, if present and a ``dict``.
 
         :param str method: HTTP method
         :param str url: URL
@@ -195,6 +193,14 @@ class BaseFigshareProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(path))
 
         file_metadata = await self.metadata(path)
+        # The file download response for files (currently private ones only) does not provide the
+        # Content-Length header, of which the value are used to build the response stream and to
+        # set the stream size. This is not a problem for file download itself but it breaks move /
+        # copy from the figshare provider since the following upload-to-dest step fails on `None`
+        # stream size. Thus, save the file size here in advance and provide it later when building
+        # the response stream. `ResponseStreamReader` is smart enough to select the Content-Length
+        # header if provided.
+        file_size = file_metadata.size  # type: ignore
         download_url = file_metadata.extra['downloadUrl']  # type: ignore
         if download_url is None:
             raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)
@@ -213,22 +219,41 @@ class BaseFigshareProvider(provider.BaseProvider):
             await resp.release()
             raise exceptions.DownloadError('Download not available', code=resp.status)
 
+        # When a file has been published, the figshare download request returns a redirection URL
+        # which downloads the file directly from its backend storage (currently Amazon S3). The new
+        # request does not need any auth at all. More importantly, the default figshare auth header
+        # breaks the download since S3 API does not understand figshare API. Thus, the provider
+        # must use `no_auth_header=True` to inform `super().make_request()` to drop the header.
         if resp.status in (302, 301):
             await resp.release()
             if range:
-                resp = await aiohttp.request('GET', resp.headers['location'],
-                                             headers={'Range': self._build_range_header(range)})
+                range_header = {'Range': self._build_range_header(range)}
+                resp = await super().make_request('GET', resp.headers['location'],
+                                                  headers=range_header, no_auth_header=True)
             else:
-                resp = await aiohttp.request('GET', resp.headers['location'])
+                resp = await super().make_request('GET', resp.headers['location'],
+                                                  no_auth_header=True)
 
-        return streams.ResponseStreamReader(resp)
+        return streams.ResponseStreamReader(resp, size=file_size)
 
     def path_from_metadata(self, parent_path, metadata):
         """Build FigsharePath for child entity given child's metadata and parent's path object.
 
+        **HOWEVER** if ``parent_path`` represents a project root and ``metadata`` represents a
+        non-dataset article (a file from WB's perspective), then `path_from_metadata` needs to
+        skip the intermediate article container and return a path that points directly to the file.
+
         :param FigsharePath parent_path: path obj for child's parent
         :param metadata: Figshare*Metadata object for child
         """
+
+        if parent_path.is_root and metadata.kind != 'folder':
+            intermediate_path = parent_path.child(metadata.article_name,
+                                                  _id=str(metadata.extra['articleId']),
+                                                  folder=True)
+            return intermediate_path.child(metadata.name, _id=str(metadata.extra['fileId']),
+                                           folder=(metadata.kind == 'folder'))
+
         return parent_path.child(metadata.name, _id=str(metadata.id),
                                  folder=(metadata.kind == 'folder'))
 
@@ -567,7 +592,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                                  parent_is_folder=parent_is_folder)
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
-        """Upload a file to provider root or to an article whose defined_type is
+        r"""Upload a file to provider root or to an article whose defined_type is
         configured to represent a folder.
 
         :param asyncio.StreamReader stream: stream to upload
@@ -615,7 +640,10 @@ class FigshareProjectProvider(BaseFigshareProvider):
                             folder=False,
                             is_public=False)
         metadata = await self.metadata(path, **kwargs)
-        if stream.writers['md5'].hexdigest != metadata.extra['hashes']['md5']:
+        if (
+            (not metadata.extra['hashingInProgress']) and
+            stream.writers['md5'].hexdigest != metadata.extra['hashes']['md5']
+        ):
             raise exceptions.UploadChecksumMismatchError()
 
         return metadata, True
@@ -898,7 +926,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
         return FigsharePath('/' + file_id, _ids=('', ''), folder=False, is_public=False)
 
     async def revalidate_path(self, parent_path, child_name, folder: bool=False):
-        """Attempt to get child's id and return FigsharePath of child.
+        r"""Attempt to get child's id and return FigsharePath of child.
 
         ``revalidate_path`` is used to check for the existance of a child_name/folder
         within the parent. Returning a FigsharePath of child. Child will have _id
@@ -942,7 +970,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
                                  parent_is_folder=parent_is_folder)
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
-        """Upload a file to provider root or to an article whose defined_type is
+        r"""Upload a file to provider root or to an article whose defined_type is
         configured to represent a folder.
 
         :param asyncio.StreamReader stream: stream to upload
@@ -966,7 +994,10 @@ class FigshareArticleProvider(BaseFigshareProvider):
         # Build new file path and return metadata
         path = FigsharePath('/' + file_id, _ids=('', file_id), folder=False, is_public=False)
         metadata = await self.metadata(path, **kwargs)
-        if stream.writers['md5'].hexdigest != metadata.extra['hashes']['md5']:
+        if (
+            (not metadata.extra['hashingInProgress']) and
+            stream.writers['md5'].hexdigest != metadata.extra['hashes']['md5']
+        ):
             raise exceptions.UploadChecksumMismatchError()
 
         return metadata, True

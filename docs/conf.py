@@ -53,9 +53,9 @@ html_favicon = 'favicon.ico'
 extlinks = {}
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.5', None),
+    'python': ('https://docs.python.org/3.6', None),
     'tornado': ('http://www.tornadoweb.org/en/stable/', None),
-    'aiohttp': ('https://aiohttp.readthedocs.org/en/v0.18.2/', None),
+    'aiohttp': ('https://aiohttp.readthedocs.org/en/stable/', None),
 }
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'

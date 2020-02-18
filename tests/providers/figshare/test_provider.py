@@ -93,15 +93,14 @@ def file_stream(file_like):
 
 
 class TestPolymorphism:
-    # These should not be passing but are
 
-    async def test_project_provider(self, project_settings, project_provider):
+    def test_project_provider(self, project_settings, project_provider):
         assert isinstance(project_provider, provider.FigshareProjectProvider)
-        assert project_provider.project_id == project_settings['container_id']
+        assert project_provider.container_id == project_settings['container_id']
 
-    async def test_article_provider(self, article_settings, article_provider):
+    def test_article_provider(self, article_settings, article_provider):
         assert isinstance(article_provider, provider.FigshareArticleProvider)
-        assert article_provider.article_id == article_settings['container_id']
+        assert article_provider.container_id == article_settings['container_id']
 
 
 class TestProjectV1ValidatePath:
@@ -363,7 +362,6 @@ class TestProjectV0ValidatePath:
     @pytest.mark.aiohttpretty
     async def test_validate_v0_path_folder_article_bad_path(self, project_provider,
                                                             root_provider_fixtures):
-        item = root_provider_fixtures['folder_article_metadata']
         bad_article_id = '000000000'
         path = '/{}'.format(bad_article_id)
 
@@ -779,7 +777,6 @@ class TestArticleMetadata:
         file_name = file_metadata['name']
 
         folder_article_metadata_url = article_provider.build_url(False, *root_parts)
-        file_metadata_url = article_provider.build_url(False, *root_parts, 'files', file_id)
 
         aiohttpretty.register_json_uri('GET', folder_article_metadata_url, body=article_metadata)
 
@@ -809,7 +806,6 @@ class TestArticleMetadata:
         file_metadata = root_provider_fixtures['folder_file_metadata']
 
         root_parts = article_provider.root_path_parts
-        article_id = str(article_metadata['id'])
         file_id = str(file_metadata['id'])
 
         folder_article_metadata_url = article_provider.build_url(False, *root_parts)
@@ -910,7 +906,7 @@ class TestProjectCRUD:
         aiohttpretty.register_json_uri('GET', get_article_url,
                                        body=crud_fixtures['checksum_mismatch_article_metadata'])
 
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await project_provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(
@@ -1120,13 +1116,9 @@ class TestProjectCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_project_file_delete_bad_path(self, project_provider, root_provider_fixtures):
-        file_id = str(root_provider_fixtures['file_metadata']['id'])
-        article_id = str(root_provider_fixtures['list_project_articles'][0]['id'])
         file_name = str(root_provider_fixtures['file_metadata']['name'])
         article_name = str(root_provider_fixtures['list_project_articles'][0]['title'])
         path = FigsharePath('/{}/{}'.format(article_name, file_name), _ids=('',), folder=False)
-
-        root_parts = project_provider.root_path_parts
 
         with pytest.raises(exceptions.NotFoundError) as e:
             await project_provider.delete(path)
@@ -1230,6 +1222,7 @@ class TestProjectCRUD:
                                        body=root_provider_fixtures['folder_article_metadata'])
 
         result = await project_provider.create_folder(path)
+        assert result is not None
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -1341,7 +1334,6 @@ class TestArticleCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_article_download_path_not_file(self, article_provider, root_provider_fixtures):
-        item = root_provider_fixtures['file_metadata']
         path = FigsharePath('/testfolder/', _ids=('', ), folder=True, is_public=False)
 
         with pytest.raises(exceptions.NotFoundError) as e:
@@ -1399,7 +1391,7 @@ class TestArticleCRUD:
         aiohttpretty.register_json_uri('GET', get_article_url,
                                        body=crud_fixtures['checksum_mismatch_folder_article_metadata'])
 
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await article_provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='POST', uri=create_file_url)
@@ -1652,14 +1644,24 @@ class TestRevalidatePath:
 
 class TestMisc:
 
-    def test_path_from_metadata(self, project_provider, root_provider_fixtures):
+    def test_path_from_metadata_file(self, project_provider, root_provider_fixtures):
         file_article_metadata = root_provider_fixtures['file_article_metadata']
         fig_metadata = metadata.FigshareFileMetadata(file_article_metadata)
 
         path = FigsharePath('/', _ids=(''), folder=True)
-        item = file_article_metadata['files'][0]
 
-        expected = FigsharePath('/' + item['name'], _ids=('', item['id']), folder=False)
+        expected = FigsharePath('/file_article/file', _ids=('', '4037952', '6530715'), folder=False)
+
+        result = project_provider.path_from_metadata(path, fig_metadata)
+        assert result == expected
+
+    def test_path_from_metadata_folder(self, project_provider, root_provider_fixtures):
+        folder_article_metadata = root_provider_fixtures['folder_article_metadata']
+        fig_metadata = metadata.FigshareFolderMetadata(folder_article_metadata)
+
+        path = FigsharePath('/', _ids=(''), folder=True)
+
+        expected = FigsharePath('/folder_article/', _ids=('', '4040019'), folder=True)
 
         result = project_provider.path_from_metadata(path, fig_metadata)
         assert result == expected

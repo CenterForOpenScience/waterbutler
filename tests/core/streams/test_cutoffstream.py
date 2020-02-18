@@ -68,5 +68,5 @@ class TestCutoffStream:
 
     def test_no_cutoff_exception(self, blob):
         stream = streams.StringStream(blob)
-        with pytest.raises(TypeError) as exc:
-            cutoff_stream = streams.CutoffStream(stream)
+        with pytest.raises(TypeError):
+            streams.CutoffStream(stream)

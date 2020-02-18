@@ -10,6 +10,7 @@ from urllib import parse
 
 import furl
 import aiohttp
+from aiohttp.client import _RequestContextManager
 
 from waterbutler.core import streams
 from waterbutler.core import exceptions
@@ -107,6 +108,38 @@ class BaseProvider(metaclass=abc.ABCMeta):
         self.provider_metrics.add('auth', auth)
         self.metrics = self.provider_metrics.new_subrecord(self.NAME)
 
+        # The `.loop_session_map` ensures that only one session is created for one event loop per
+        # provider instance.  On one hand, we can't just have one session for each provider instance
+        # since actions such as move and copy are run in background probably with a different loop.
+        # On the other hand, we can't have one session for each request since sessions are only
+        # closed when the provider instance is destroyed. There would be too many for WB to handle.
+        self.loop_session_map = weakref.WeakKeyDictionary()  # type: weakref.WeakKeyDictionary
+        # The `.session_list` keeps track of all the sessions created for the provider instance so
+        # that they can be properly closed upon instance destroy.
+        self.session_list = []  # type: typing.List[aiohttp.ClientSession]
+
+    def __del__(self):
+        """
+        Manually close all sessions created during the life of the provider instance.  Our code are
+        a slightly modified version of how ``aiohttp-3.5.4`` closes sessions and connectors.
+
+        1. sessions: https://github.com/aio-libs/aiohttp/blob/v3.5.4/aiohttp/client.py#L893
+        2. connectors: https://github.com/aio-libs/aiohttp/blob/v3.5.4/aiohttp/connector.py#L389
+            2.1 Update: https://github.com/aio-libs/aiohttp/pull/3417/files.
+
+        Our implementation tries to avoid accessing protected members unless we can't.  For example,
+        we use ``session.connector`` instead of ``session._connector``, and use ``session.detach()``
+        instead of calling ``session._connector = None``.  We have to ``session._connector_owner``
+        since it doesn't have an public property. We have to call ``connector._close()`` instead of
+        ``connector.close()`` since ``aiohttp`` decided to make ``.close()`` async recently. Here is
+        the PR: https://github.com/aio-libs/aiohttp/pull/3417/files.
+        """
+        for session in self.session_list:
+            if not session.closed:
+                if session.connector is not None and session._connector_owner:
+                    session.connector._close()
+                session.detach()
+
     @property
     @abc.abstractmethod
     def NAME(self) -> str:
@@ -130,10 +163,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         }
 
     def build_url(self, *segments, **query) -> str:
-        """A nice wrapper around furl, builds urls based on self.BASE_URL
+        r"""A nice wrapper around furl, builds urls based on self.BASE_URL
 
         :param \*segments: ( :class:`tuple` ) A tuple of strings joined into /foo/bar/..
-        :param \*\*query: ( :class:`dict` ) A dictionary that will be turned into query parameters ?foo=bar
+        :param \*\*query: ( :class:`dict` ) A dictionary that will be turned into query parameters
         :rtype: :class:`str`
         """
         return build_url(self.BASE_URL, *segments, **query)
@@ -154,39 +187,137 @@ class BaseProvider(metaclass=abc.ABCMeta):
             if value is not None
         }
 
+    def get_or_create_session(self, connector=None):
+        """
+        Obtain an existing session or create a new one for making requests.
+
+        Quirks:
+
+        Sessions must be carefully managed by WB.  On one hand, we can't just have one session for
+        each provider instance since actions such as move and copy are run in background probably
+        with a different loop.  On the other hand, we can't have one session for each request since
+        sessions are only closed when the provider instance is destroyed.
+
+        For providers that use a customized connector such as owncloud, the new session is created
+        with the given connector; while an existing session simply ignores (and closes) the new
+        connector.  Given that the session is per event loop and instance, the existing session if
+        found must already have a connector with qualified customizations.
+
+        :param connector: a customized connector
+        :return: the one session that belongs to the current event loop
+        :rtype: :class:`aiohttp.ClientSession`
+        """
+        loop = asyncio.get_event_loop()
+        session = self.loop_session_map.get(loop, None)
+        if not session:
+            session = aiohttp.ClientSession(connector=connector)
+            self.loop_session_map[loop] = session
+            self.session_list.append(session)
+        elif connector:
+            # Ignore and close the kwarg connector if an existing session exists.
+            connector._close()
+
+        return session
+
     @throttle()
-    async def make_request(self, method: str, url: str, *args, **kwargs) -> aiohttp.client.ClientResponse:
-        """A wrapper around :func:`aiohttp.request`. Inserts default headers.
+    async def make_request(self, method, url, *args, **kwargs):
+        r"""
+        A wrapper around seven HTTP request methods in :class:`aiohttp.ClientSession`.  It replaces
+        the original ``.make_request()`` method which was a wrapper around :func:`aiohttp.request`.
+        This change is due to aiohttp triple-major-version upgrade from version 0.18 to 3.5.4 where
+        the main difference is the context manager (CM).
+
+        Core Quirk:
+
+        ``aiohttp3`` has explicitly provided two examples of making requests in the documentation.
+        Using :func:`aiohttp.request` directly with CM and using :class:`aiohttp.ClientSession` and
+        its HTTP methods with CM.  Unfortunately, an unpleasant side-effect of CM is that sessions
+        and connections are closed outside CM.  This breaks WB's design where responses are passed
+        from one provider to another.
+
+        Not-so-smart Solution:
+
+        By taking a look at the source code of ``aiohttp3``, it is discovered that requests can be
+        made without CM although we are not sure why the documentation does not mention it at all.
+        The trick / hack of this non-CM approach is that sessions must be carefully managed by WB.
+        Please take a look at the following methods for detailed implementation.
+
+        :func:`__init__()`: session list and event loop map initialization
+        :func:`__del__()`: session and connection closing
+        :func:`get_or_create_session()`: either get the current session or create a new one if not
+        found when making a request
 
         :param method: ( :class:`str` ) The HTTP method
-        :param url: ( :class:`str` ) The url to send the request to
-        :keyword range: An optional tuple (start, end) that is transformed into a Range header
-        :keyword expects: An optional tuple of HTTP status codes as integers raises an exception
-            if the returned status code is not in it.
-        :type expects: tuple of ints
-        :param throws: ( :class:`Exception` ) The exception to be raised from expects
-        :param \*args: ( :class:`tuple` )args passed to :func:`aiohttp.request`
-        :param \*\*kwargs:  ( :class:`dict` ) kwargs passed to :func:`aiohttp.request`
+        :param url: The URL or URL-to-be to send the request to
+        :type url: :class:`str` for the built URL or a :class:`functools.partial` object that will
+            be build when it is called
+        :param \*args: args passed to methods of :class:`aiohttp.ClientSession`
+        :param \*\*kwargs: kwargs passed to methods of :class:`aiohttp.ClientSession` except the
+            following ones that will be popped and used for Waterbutler specific purposes
+        :keyword no_auth_header: ( :class:`bool` ) An optional boolean flag that determines whether
+            to drop the default authorization header provided by the provider
+        :keyword range: ( :class:`tuple` ) An optional tuple (start, end) that is transformed into
+            a Range header
+        :keyword expects: ( :class:`tuple` ) An optional tuple of HTTP status codes as integers
+            raises an exception if the returned status code is not in it
+        :keyword retry: ( :class:`int` ) An optional integer with default value 2 that determines
+            how further to retry failed requests with the exponential back-off algorithm
+        :keyword throws: ( :class:`Exception` ) The exception to be raised from expects
+        :return: The HTTP response
         :rtype: :class:`aiohttp.ClientResponse`
         :raises: :class:`.UnhandledProviderError` Raised if expects is defined
+        :raises: :class:`.WaterButlerError` Raised if invalid HTTP method is provided
         """
+
         kwargs['headers'] = self.build_headers(**kwargs.get('headers', {}))
+        no_auth_header = kwargs.pop('no_auth_header', False)
+        if no_auth_header:
+            kwargs['headers'].pop('Authorization')
         retry = _retry = kwargs.pop('retry', 2)
-        range = kwargs.pop('range', None)
         expects = kwargs.pop('expects', None)
         throws = kwargs.pop('throws', exceptions.UnhandledProviderError)
-        if range:
-            kwargs['headers']['Range'] = self._build_range_header(range)
+        byte_range = kwargs.pop('range', None)
+        if byte_range:
+            kwargs['headers']['Range'] = self._build_range_header(byte_range)
+        connector = kwargs.pop('connector', None)
+        session = self.get_or_create_session(connector=connector)
 
+        method = method.upper()
         while retry >= 0:
             # Don't overwrite the callable ``url`` so that signed URLs are refreshed for every retry
             non_callable_url = url() if callable(url) else url
             try:
                 self.provider_metrics.incr('requests.count')
-                response = await aiohttp.request(method, non_callable_url, *args, **kwargs)
+                # TODO: use a `dict` to select methods with either `lambda` or `functools.partial`
+                if method == 'GET':
+                    response = await session.get(non_callable_url, *args, **kwargs)
+                elif method == 'PUT':
+                    response = await session.put(non_callable_url, *args, **kwargs)
+                elif method == 'POST':
+                    response = await session.post(non_callable_url, *args, **kwargs)
+                elif method == 'HEAD':
+                    response = await session.head(non_callable_url, *args, **kwargs)
+                elif method == 'DELETE':
+                    response = await session.delete(non_callable_url, **kwargs)
+                elif method == 'PATCH':
+                    response = await session.patch(non_callable_url, *args, **kwargs)
+                elif method == 'OPTIONS':
+                    response = await session.options(non_callable_url, *args, **kwargs)
+                elif method in wb_settings.WEBDAV_METHODS:
+                    # `aiohttp.ClientSession` only has functions available for native HTTP methods.
+                    # For WebDAV (a protocol that extends HTTP) ones, WB lets the `ClientSession`
+                    # instance call `_request()` directly and then wraps the return object with
+                    # `aiohttp.client._RequestContextManager`.
+                    response = await _RequestContextManager(
+                        session._request(method, url, *args, **kwargs)
+                    )
+                else:
+                    raise exceptions.WaterButlerError('Unsupported HTTP method ...')
                 self.provider_metrics.incr('requests.tally.ok')
                 if expects and response.status not in expects:
-                    raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
+                    unexpected = await exceptions.exception_from_response(response,
+                                                                          error=throws, **kwargs)
+                    raise unexpected
                 return response
             except throws as e:
                 self.provider_metrics.incr('requests.tally.nok')
@@ -541,7 +672,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         :param  base: ( :class:`.WaterButlerPath` ) The base folder to look under
         :param path: ( :class:`str`) the path of a child of `base`, relative to `base`
-        :param folder: ( :class:`bool` )whether the returned WaterButlerPath should represent a folder
+        :param folder: ( :class:`bool` ) whether the returned WaterButlerPath should be a folder
         :rtype: :class:`.WaterButlerPath`
         """
         return base.child(path, folder=folder)
@@ -576,8 +707,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def download(self, src_path: wb_path.WaterButlerPath, **kwargs) -> streams.ResponseStreamReader:
-        """Download a file from this provider.
+    async def download(self, src_path: wb_path.WaterButlerPath, **kwargs) \
+              -> streams.ResponseStreamReader:
+        r"""Download a file from this provider.
 
         :param src_path: ( :class:`.WaterButlerPath` ) Path to the file to be downloaded
         :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
@@ -587,9 +719,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def upload(self, stream: streams.BaseStream, path: wb_path.WaterButlerPath, *args, **kwargs) \
-            -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
-        """Uploads the given stream to the provider.  Returns the metadata for the newly created
+    async def upload(self, stream: streams.BaseStream, path: wb_path.WaterButlerPath, *args,
+                     **kwargs) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
+        r"""Uploads the given stream to the provider.  Returns the metadata for the newly created
         file and a boolean indicating whether the file is completely new (``True``) or overwrote
         a previously-existing file (``False``)
 
@@ -603,7 +735,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def delete(self, src_path: wb_path.WaterButlerPath, **kwargs) -> None:
-        """
+        r"""
         :param src_path: ( :class:`.WaterButlerPath` ) Path to be deleted
         :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
         :rtype: :class:`None`
@@ -614,13 +746,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     async def metadata(self, path: wb_path.WaterButlerPath, **kwargs) \
             -> typing.Union[wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
-        """Get metadata about the specified resource from this provider. Will be a :class:`list`
+        r"""Get metadata about the specified resource from this provider. Will be a :class:`list`
         if the resource is a directory otherwise an instance of
         :class:`.BaseFileMetadata`
 
         .. note::
-            Mypy doesn't seem to do very well with functions that can return more than one type of thing.
-            See: https://github.com/python/mypy/issues/1693
+            Mypy doesn't seem to do very well with functions that can return more than one type of
+            thing. See: https://github.com/python/mypy/issues/1693
 
         :param path: ( :class:`.WaterButlerPath` ) The path to a file or folder
         :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
@@ -643,7 +775,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         acted on. For v1, this must *always exist*.  If it does not, ``validate_v1_path`` should
         return a 404.  Creating a new file in v1 is done by making a PUT request against the parent
         folder and specifying the file name as a query parameter.  If a user attempts to create a
-        file by PUTting to its inferred path, validate_v1_path should reject this request with a 404.
+        file by PUTting to its inferred path, validate_v1_path should reject this request with a
+        404.
 
         :param path: ( :class:`str` ) user-supplied path to validate
         :rtype: :class:`.WaterButlerPath`

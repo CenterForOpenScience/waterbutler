@@ -50,7 +50,7 @@ class OwnCloudProvider(provider.BaseProvider):
         self.metrics.add('host', self.url)
 
     def connector(self):
-        return aiohttp.TCPConnector(verify_ssl=self.verify_ssl)
+        return aiohttp.TCPConnector(ssl=self.verify_ssl)
 
     @property
     def _webdav_url_(self):

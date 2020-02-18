@@ -61,7 +61,7 @@ def file_content():
 
 @pytest.fixture
 def file_sha_b64():
-    return 'KrIc0sRT6ELxGc/oX3hZvabgltE='
+    return '2jmj7l5rSw0yVb/vlWAYkK/YBwk='
 
 
 @pytest.fixture
@@ -84,10 +84,10 @@ class TestValidatePath:
         good_url = provider.build_url('files', file_id, fields='id,name,path_collection')
         bad_url = provider.build_url('folders', file_id, fields='id,name,path_collection')
 
-        aiohttpretty.register_json_uri('get', good_url,
+        aiohttpretty.register_json_uri('GET', good_url,
                                        body=root_provider_fixtures['file_metadata']['entries'][0],
                                        status=200)
-        aiohttpretty.register_uri('get', bad_url, status=404)
+        aiohttpretty.register_uri('GET', bad_url, status=404)
 
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + file_id)
@@ -112,10 +112,10 @@ class TestValidatePath:
         good_url = provider.build_url('folders', folder_id, fields='id,name,path_collection')
         bad_url = provider.build_url('files', folder_id, fields='id,name,path_collection')
 
-        aiohttpretty.register_json_uri('get', good_url,
+        aiohttpretty.register_json_uri('GET', good_url,
                                        body=root_provider_fixtures['folder_object_metadata'],
                                        status=200)
-        aiohttpretty.register_uri('get', bad_url, status=404)
+        aiohttpretty.register_uri('GET', bad_url, status=404)
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + folder_id + '/')
         except Exception as exc:
@@ -323,7 +323,7 @@ class TestUpload:
         aiohttpretty.register_json_uri('POST', upload_url, status=201,
                                        body=root_provider_fixtures['checksum_mismatch_metadata'])
 
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='POST', uri=upload_url)
@@ -342,7 +342,7 @@ class TestUpload:
         path = WaterButlerPath('/foobah/', _ids=('0', '1'))
         await provider.upload(file_stream, path)
 
-        assert provider._contiguous_upload.called_with(file_stream, path)
+        provider._contiguous_upload.assert_called_with(path, file_stream)
         assert not provider._chunked_upload.called
 
         provider.NONCHUNKED_UPLOAD_LIMIT = NONCHUNKED_UPLOAD_LIMIT
@@ -361,7 +361,7 @@ class TestUpload:
         path = WaterButlerPath('/foobah/', _ids=('0', '1'))
         await provider.upload(file_stream, path)
 
-        assert provider._chunked_upload.called_with(file_stream, path)
+        provider._chunked_upload.assert_called_with(path, file_stream)
         assert not provider._contiguous_upload.called
 
         provider.NONCHUNKED_UPLOAD_LIMIT = NONCHUNKED_UPLOAD_LIMIT
@@ -387,9 +387,9 @@ class TestUpload:
         path = WaterButlerPath('/foobah/', _ids=('0', '1'))
         await provider._chunked_upload(path, file_stream)
 
-        assert provider._create_chunked_upload_session.called_with(path, file_stream)
-        assert provider._upload_parts.called_with(file_stream, session_metadata)
-        assert provider._complete_chunked_upload_session.called_with(session_metadata,
+        provider._create_chunked_upload_session.assert_called_with(path, file_stream)
+        provider._upload_parts.assert_called_with(file_stream, session_metadata)
+        provider._complete_chunked_upload_session.assert_called_with(session_metadata,
                                                                      parts_manifest,
                                                                      file_sha_b64)
 
@@ -511,11 +511,13 @@ class TestUpload:
         responses = [
             {
                 'body': json.dumps(root_provider_fixtures['upload_part_one']),
-                'status': 201
+                'status': 201,
+                'headers': {'Content-Type': 'application/json'},
             },
             {
                 'body': json.dumps(root_provider_fixtures['upload_part_two']),
-                'status': 201
+                'status': 201,
+                'headers': {'Content-Type': 'application/json'},
             }
         ]
 
@@ -658,7 +660,7 @@ class TestDelete:
 
         url = provider.build_url('files', item['id'], fields='id,name,path_collection')
         delete_url = provider.build_url('files', path.identifier)
-        aiohttpretty.register_json_uri('get', url,
+        aiohttpretty.register_json_uri('GET', url,
                                        body=root_provider_fixtures['file_metadata']['entries'][0])
         aiohttpretty.register_json_uri('DELETE', delete_url, status=204)
 

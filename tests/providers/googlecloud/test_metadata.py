@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from aiohttp import MultiDict
+from multidict import MultiDict
 
 from tests.providers.googlecloud.fixtures.files import (file_name,
                                                         file_wb_path,

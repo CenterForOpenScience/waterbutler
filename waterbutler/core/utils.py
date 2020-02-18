@@ -10,26 +10,21 @@ from urllib import parse
 # from concurrent.futures import ProcessPoolExecutor  TODO Get this working
 
 import aiohttp
-from raven import Client
+import sentry_sdk
 from stevedore import driver
 
-from waterbutler.settings import config
 from waterbutler.core import exceptions
-from waterbutler.server import settings as server_settings
 from waterbutler.core.signing import Signer
 from waterbutler.core.streams import EmptyStream
-
+from waterbutler.server import settings as server_settings
 
 logger = logging.getLogger(__name__)
 
 signer = Signer(server_settings.HMAC_SECRET, server_settings.HMAC_ALGORITHM)
 
-sentry_dsn = config.get_nullable('SENTRY_DSN', None)
-client = Client(sentry_dsn) if sentry_dsn else None
-
 
 def make_provider(name: str, auth: dict, credentials: dict, settings: dict, **kwargs):
-    """Returns an instance of :class:`waterbutler.core.provider.BaseProvider`
+    r"""Returns an instance of :class:`waterbutler.core.provider.BaseProvider`
 
     :param str name: The name of the provider to instantiate. (s3, box, etc)
     :param dict auth:
@@ -59,12 +54,12 @@ def as_task(func):
 
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
-        return asyncio.async(func(*args, **kwargs))
+        return asyncio.ensure_future(func(*args, **kwargs))
 
     return wrapped
 
 
-def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
+def async_retry(retries=5, backoff=1, exceptions=(Exception, )):
 
     def _async_retry(func):
 
@@ -76,16 +71,18 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
             except exceptions as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
-                    logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting {4} seconds before retrying'.format(func, e, __retries, retries, wait_time))
+                    logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting '
+                                   '{4} seconds before retrying'.format(func, e, __retries,
+                                                                        retries, wait_time))
                     await asyncio.sleep(wait_time)
                     return await wrapped(*args, __retries=__retries + 1, **kwargs)
                 else:
                     # Logs before all things
                     logger.error('Task {0} failed with exception {1}'.format(func, e))
 
-                    if raven:
-                        # Only log if a raven client exists
-                        client.captureException()
+                    with sentry_sdk.configure_scope() as scope:
+                        scope.set_tag('debug', False)
+                    sentry_sdk.capture_exception(e)
 
                     # If anything happens to be listening
                     raise e
@@ -98,15 +95,26 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, ), raven=client):
 
 
 async def send_signed_request(method, url, payload):
+    """Calculates a signature for a payload, then sends a request to the given url with the payload
+    and signature.
+
+    This method will read the response into memory before returning, so **DO NOT** use it if the
+    response may be very large.  As of 2019-04-06, this function is only used by the callback logging
+    code in waterbutler.core.remote_logging.
+    """
+
     message, signature = signer.sign_payload(payload)
-    return (await aiohttp.request(
-        method, url,
-        data=json.dumps({
-            'payload': message.decode(),
-            'signature': signature,
-        }),
-        headers={'Content-Type': 'application/json'},
-    ))
+
+    async with aiohttp.request(
+            method,
+            url,
+            data=json.dumps({
+                'payload': message.decode(),
+                'signature': signature,
+            }),
+            headers={'Content-Type': 'application/json'}
+    ) as response:
+        return response.status, await response.read()
 
 
 def normalize_datetime(date_string):

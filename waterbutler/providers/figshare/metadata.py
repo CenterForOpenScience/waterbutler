@@ -115,6 +115,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
             'downloadUrl': self.raw_file['download_url'],
             'canDelete': self.can_delete,
             'webView': self.web_view,
+            'hashingInProgress': self.raw_file['status'] == 'ic_checking',
             'hashes': {
                 'md5': self.raw_file['computed_md5'],
             },

@@ -528,7 +528,7 @@ class TestCRUD:
             'POST', blob_url, body=crud_fixtures['checksum_mismatch_blob_data'], status=201
         )
 
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='GET', uri=commit_url)
@@ -756,13 +756,26 @@ class TestCRUD:
         )
 
         create_tree_url = provider.build_repo_url('git', 'trees')
-        aiohttpretty.register_json_uri('POST', create_tree_url, **{
-            "responses": [
-                {'body': json.dumps(
-                    crud_fixtures['deleted_subfolder_tree_data_1']).encode('utf-8'), 'status': 201},
-                {'body': json.dumps(
-                    crud_fixtures['deleted_subfolder_tree_data_2']).encode('utf-8'), 'status': 201},
-            ]})
+        crud_fixtures_1 = crud_fixtures['deleted_subfolder_tree_data_1']
+        crud_fixtures_2 = crud_fixtures['deleted_subfolder_tree_data_2']
+        aiohttpretty.register_uri(
+            'POST',
+            create_tree_url,
+            **{
+                "responses": [
+                    {
+                        'body': json.dumps(crud_fixtures_1).encode('utf-8'),
+                        'status': 201,
+                        'headers': {'Content-Type': 'application/json'}
+                    },
+                    {
+                        'body': json.dumps(crud_fixtures_2).encode('utf-8'),
+                        'status': 201,
+                        'headers': {'Content-Type': 'application/json'}
+                    },
+                ]
+            }
+        )
 
         commit_url = provider.build_repo_url('git', 'commits')
         aiohttpretty.register_json_uri(
@@ -1312,7 +1325,7 @@ class TestCreateFolder:
     async def test_must_be_folder(self, provider):
         path = GitHubPath('/Imarealboy', _ids=[(provider.default_branch, ''), ('other_branch', '')])
 
-        with pytest.raises(exceptions.CreateFolderError) as e:
+        with pytest.raises(exceptions.CreateFolderError):
             await provider.create_folder(path)
 
     @pytest.mark.asyncio
@@ -1447,8 +1460,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.OK,
             headers={
-                'X-RateLimit-Remaining': 1234,
-                'X-RateLimit-Reset': 5678
+                'X-RateLimit-Remaining': '1234',
+                'X-RateLimit-Reset': '5678'
             })
         await mock_provider.make_request(
             'GET',
@@ -1472,8 +1485,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.OK,
             headers={
-                'X-RateLimit-Remaining': 1234,
-                'X-RateLimit-Reset': 5678
+                'X-RateLimit-Remaining': '1234',
+                'X-RateLimit-Reset': '5678'
             })
         await mock_provider.make_request(
             'GET',
@@ -1497,8 +1510,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.FORBIDDEN,
             headers={
-                'X-RateLimit-Remaining': 0,
-                'X-RateLimit-Reset': 5678,
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': '5678',
             },
             body={'message': 'API rate limit exceeded'}
         )
@@ -1527,8 +1540,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.FORBIDDEN,
             headers={
-                'X-RateLimit-Remaining': 231,
-                'X-RateLimit-Reset': 5678,
+                'X-RateLimit-Remaining': '231',
+                'X-RateLimit-Reset': '5678',
             },
             body={'message': 'this is a fake error'}
         )
@@ -1556,8 +1569,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.FORBIDDEN,
             headers={
-                'X-RateLimit-Remaining': 0,
-                'X-RateLimit-Reset': 5678,
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': '5678',
             },
             body={'message': 'API rate limit exceeded'}
         )
@@ -1586,8 +1599,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.FORBIDDEN,
             headers={
-                'X-RateLimit-Remaining': 123,
-                'X-RateLimit-Reset': 5678,
+                'X-RateLimit-Remaining': '123',
+                'X-RateLimit-Reset': '5678',
             },
             body={'message': 'API rate limit exceeded'}
         )
@@ -1615,8 +1628,8 @@ class TestRateLimit:
             'wb-test-github.cos.io',
             status=HTTPStatus.SERVICE_UNAVAILABLE,
             headers={
-                'X-RateLimit-Remaining': 231,
-                'X-RateLimit-Reset': 5678,
+                'X-RateLimit-Remaining': '231',
+                'X-RateLimit-Reset': '5678',
             },
             body={'message': 'this is a fake error'}
         )

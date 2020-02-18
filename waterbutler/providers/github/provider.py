@@ -162,7 +162,8 @@ class GitHubProvider(provider.BaseProvider):
             resp = await super().make_request(method, url, **kwargs)
 
             if resp.status == HTTPStatus.FORBIDDEN:
-                await resp.release()
+                # Must not release the response here. It needs to be and will be released or
+                # consumed by `_rl_handle_forbidden_error()` and `exception_from_response()`.
                 raise await self._rl_handle_forbidden_error(resp, **kwargs)
 
             logger.debug('P({}):{}:make_request: done successfully!'.format(self._my_id,
@@ -205,7 +206,8 @@ class GitHubProvider(provider.BaseProvider):
         # Raise error if rate limit cap is hit even after WB's balancing effort. This can happen if
         # users try to copy/register multiple repos with many files/folders at the same time.
         if resp.status == HTTPStatus.FORBIDDEN:
-            await resp.release()
+            # Must not release the response here. It needs to be and will be released or consumed by
+            # `_rl_handle_forbidden_error()` and `exception_from_response()`.
             raise await self._rl_handle_forbidden_error(resp, **kwargs)
 
         logger.debug('P({}):{}:make_request: done successfully!'.format(self._my_id,
@@ -1253,10 +1255,14 @@ class GitHubProvider(provider.BaseProvider):
         if int(resp.headers['X-RateLimit-Remaining']) == 0:
             rate_limit_reset = int(resp.headers['X-RateLimit-Reset'])
             exc = GitHubRateLimitExceededError(rate_limit_reset)
+            # It is recommended to release the response here since it is no longer needed.
+            resp.release()
             logger.debug('P({}):{}:_rl_handle_forbidden_error: ran out of requests, will reset '
                          'at {}'.format(self._my_id, self._request_count, rate_limit_reset))
         else:
             throws = kwargs.get('throws', exceptions.UnhandledProviderError)
+            # No need to release the response here since `exception_from_response` guarantees to
+            # either release (i.e. `.release()`) or consume (i.e. `.read()` or `.json()`) it.
             exc = await exceptions.exception_from_response(resp, error=throws, **kwargs)
             logger.debug('P({}):{}:_rl_handle_forbidden_error: got a non-rate-limit error. '
                          'Bailing out.'.format(self._my_id, self._request_count))

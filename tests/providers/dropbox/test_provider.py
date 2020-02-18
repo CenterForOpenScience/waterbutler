@@ -1,4 +1,5 @@
 import json
+import unittest
 from http import HTTPStatus
 
 import pytest
@@ -218,7 +219,7 @@ class TestCRUD:
         path = WaterButlerPath('/foobah')
         await provider.upload(file_stream, path)
 
-        assert provider._contiguous_upload.called_with(file_stream, path)
+        provider._contiguous_upload.assert_called_with(file_stream, path, conflict='replace')
         assert not provider._chunked_upload.called
 
         provider.CONTIGUOUS_UPLOAD_SIZE_LIMIT = CONTIGUOUS_UPLOAD_SIZE_LIMIT
@@ -238,7 +239,7 @@ class TestCRUD:
         path = WaterButlerPath('/foobah')
         await provider.upload(file_stream, path)
 
-        assert provider._chunked_upload.called_with(file_stream, path)
+        provider._chunked_upload.assert_called_with(file_stream, path, conflict='replace')
         assert not provider._contiguous_upload.called
 
         provider.CHUNK_SIZE = CHUNK_SIZE
@@ -259,9 +260,10 @@ class TestCRUD:
         path = WaterButlerPath('/foobah')
         await provider._chunked_upload(file_stream, path)
 
-        assert provider._create_upload_session.called
-        assert provider._upload_parts.called_with(file_stream, session_id)
-        assert provider._complete_session.called_with(file_stream, path, session_id)
+        provider._create_upload_session.assert_called()
+        provider._upload_parts.assert_called_with(file_stream, session_id)
+        provider._complete_session.assert_called_with(file_stream, session_id, path,
+                                                      conflict='replace')
 
         provider.CHUNK_SIZE = CHUNK_SIZE
 
@@ -296,16 +298,18 @@ class TestCRUD:
         await provider._upload_parts(file_stream, session_id)
         assert provider._upload_part.call_count == 10
 
+        calls = []
         upload_args = {
             'close': False,
             'cursor': {'session_id': session_id, 'offset': 0, }
         }
         for i in range(0, 9):
             upload_args['cursor']['offset'] = i * 4
-            assert provider._upload_part.called_once_with(file_stream, provider.CHUNK_SIZE,
-                                                          upload_args)
+            calls.append(unittest.mock.call(file_stream, provider.CHUNK_SIZE, upload_args))
+
         upload_args['cursor']['offset'] = 36
-        assert provider._upload_part.called_once_with(file_stream, 2, upload_args)
+        calls.append(unittest.mock.call(file_stream, 2, upload_args))
+        provider._upload_part.assert_has_calls(calls, any_order=False)
 
         provider.CHUNK_SIZE = CHUNK_SIZE
 

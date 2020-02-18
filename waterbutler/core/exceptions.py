@@ -1,6 +1,8 @@
 import json
 from http import HTTPStatus
 
+from aiohttp.client_exceptions import ContentTypeError
+
 
 DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request to {response.url}'
 
@@ -261,7 +263,7 @@ class InvalidProviderConfigError(ProviderError):
 
 
 async def exception_from_response(resp, error=UnhandledProviderError, **kwargs):
-    """Build and return, not raise, an exception from a response object.
+    r"""Build and return, not raise, an exception from a response object.
 
     Quirks:
 
@@ -291,7 +293,8 @@ async def exception_from_response(resp, error=UnhandledProviderError, **kwargs):
         # Try to parse response body as JSON.
         data = await resp.json()
         return error(data, code=resp.status)
-    except (TypeError, json.JSONDecodeError):
+    # TODO: double check whether we should remove `TypeError` after adding `ContentTypeError`
+    except (TypeError, json.JSONDecodeError, ContentTypeError):
         pass
 
     try:

@@ -153,14 +153,14 @@ class BoxProvider(provider.BaseProvider):
     async def revalidate_path(self, base: WaterButlerPath, path: str,
                               folder: bool=None) -> WaterButlerPath:
         # TODO Research the search api endpoint
-        async with self.request(
+        response = await self.make_request(
             'GET',
             self.build_url('folders', base.identifier, 'items',
                            fields='id,name,type', limit=1000),
             expects=(200,),
-            throws=exceptions.ProviderError
-        ) as resp:
-            data = await resp.json()
+            throws=exceptions.ProviderError,
+        )
+        data = await response.json()
         lower_name = path.lower()
 
         try:
@@ -202,24 +202,24 @@ class BoxProvider(provider.BaseProvider):
         if dest_path.identifier is not None:
             await dest_provider.delete(dest_path)
 
-        async with self.request(
+        response = await self.make_request(
             'POST',
             self.build_url(
                 'files' if src_path.is_file else 'folders',
                 src_path.identifier,
                 'copy'
             ),
-            data=json.dumps({
+            data={
                 'name': dest_path.name,
                 'parent': {
                     'id': dest_path.parent.identifier
                 }
-            }),
+            },
             headers={'Content-Type': 'application/json'},
             expects=(200, 201),
-            throws=exceptions.IntraCopyError
-        ) as resp:
-            data = await resp.json()
+            throws=exceptions.IntraCopyError,
+        )
+        data = await response.json()
 
         return await self._intra_move_copy_metadata(dest_path, data)
 
@@ -229,23 +229,23 @@ class BoxProvider(provider.BaseProvider):
         if dest_path.identifier is not None and str(dest_path).lower() != str(src_path).lower():
             await dest_provider.delete(dest_path)
 
-        async with self.request(
+        response = await self.make_request(
             'PUT',
             self.build_url(
                 'files' if src_path.is_file else 'folders',
                 src_path.identifier,
             ),
-            data=json.dumps({
+            data={
                 'name': dest_path.name,
                 'parent': {
                     'id': dest_path.parent.identifier
                 }
-            }),
+            },
             headers={'Content-Type': 'application/json'},
             expects=(200, 201),
-            throws=exceptions.IntraCopyError
-        ) as resp:
-            data = await resp.json()
+            throws=exceptions.IntraCopyError,
+        )
+        data = await response.json()
 
         return await self._intra_move_copy_metadata(dest_path, data)
 
@@ -255,11 +255,10 @@ class BoxProvider(provider.BaseProvider):
             'Authorization': 'Bearer {}'.format(self.token),
         }
 
-    async def make_request(self, *args, **kwargs) -> aiohttp.client.ClientResponse:
+    async def make_request(self, method: str, url: str, *args, **kwargs) -> aiohttp.ClientResponse:
         if isinstance(kwargs.get('data'), dict):
             kwargs['data'] = json.dumps(kwargs['data'])
-
-        return await super().make_request(*args, **kwargs)
+        return await super().make_request(method, url, *args, **kwargs)
 
     async def download(self,  # type: ignore
                        path: WaterButlerPath, revision: str=None, range: Tuple[int, int]=None,
@@ -331,12 +330,15 @@ class BoxProvider(provider.BaseProvider):
         else:
             url = self.build_url('folders', path.identifier, recursive=True)
 
-        async with self.request(
-            'DELETE', url,
+        response = await self.make_request(
+            'DELETE',
+            url,
             expects=(204, ),
             throws=exceptions.DeleteError,
-        ):
-            return  # Ensures the response is properly released
+        )
+        await response.release()
+
+        return  # Ensures the response is properly released
 
     async def metadata(self,  # type: ignore
                        path: WaterButlerPath, raw: bool=False, folder=False, revision=None,
@@ -353,15 +355,15 @@ class BoxProvider(provider.BaseProvider):
         # Alert: Versions are only tracked for Box users with premium accounts.
         # Few users will have a premium account, return only current if not
         curr = await self.metadata(path, raw=True)
-        async with self.request(
+        response = await self.make_request(
             'GET',
             self.build_url('files', path.identifier, 'versions'),
             expects=(200, 403),
             throws=exceptions.RevisionsError,
-        ) as response:
-            data = await response.json()
+        )
+        data = await response.json()
 
-            revisions = data['entries'] if response.status == HTTPStatus.OK else []
+        revisions = data['entries'] if response.status == HTTPStatus.OK else []
 
         return [BoxRevision(each) for each in [curr] + revisions]
 
@@ -373,22 +375,20 @@ class BoxProvider(provider.BaseProvider):
             if path.identifier is not None:
                 raise exceptions.FolderNamingConflict(path.name)
 
-        async with self.request(
+        response = await self.make_request(
             'POST',
             self.build_url('folders'),
             data={
                 'name': path.name,
-                'parent': {
-                    'id': path.parent.identifier
-                }
+                'parent': {'id': path.parent.identifier}
             },
             expects=(201, 409),
             throws=exceptions.CreateFolderError,
-        ) as resp:
-            # Catch 409s to avoid race conditions
-            if resp.status == 409:
-                raise exceptions.FolderNamingConflict(path.name)
-            resp_json = await resp.json()
+        )
+        # Catch 409s to avoid race conditions
+        if response.status == 409:
+            raise exceptions.FolderNamingConflict(path.name)
+        resp_json = await response.json()
         # save new folder's id into the WaterButlerPath object. logs will need it later.
         path._parts[-1]._id = resp_json['id']
         return BoxFolderMetadata(resp_json, path)
@@ -400,12 +400,13 @@ class BoxProvider(provider.BaseProvider):
         else:
             url = self.build_url('files', path.identifier)
 
-        async with self.request(
-            'GET', url,
+        response = await self.make_request(
+            'GET',
+            url,
             expects=(200, ),
             throws=exceptions.MetadataError,
-        ) as resp:
-            data = await resp.json()
+        )
+        data = await response.json()
 
         if revision:
             try:
@@ -421,12 +422,14 @@ class BoxProvider(provider.BaseProvider):
     async def _get_folder_meta(self, path: WaterButlerPath, raw: bool=False,
                                folder: bool=False) -> Union[dict, List[BoxFolderMetadata]]:
         if folder:
-            async with self.request(
-                'GET', self.build_url('folders', path.identifier),
-                expects=(200, ), throws=exceptions.MetadataError,
-            ) as resp:
-                data = await resp.json()
-                return data if raw else self._serialize_item(data, path)
+            response = await self.make_request(
+                'GET',
+                self.build_url('folders', path.identifier),
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+            data = await response.json()
+            return data if raw else self._serialize_item(data, path)
 
         # Box maximum limit is 1000
         page_count, page_total, limit = 0, None, 1000
@@ -436,22 +439,26 @@ class BoxProvider(provider.BaseProvider):
                                  fields='id,name,size,modified_at,etag,total_count',
                                  offset=(page_count * limit),
                                  limit=limit)
-            async with self.request('GET', url, expects=(200, ),
-                                    throws=exceptions.MetadataError) as response:
-                resp_json = await response.json()
-                if raw:
-                    full_resp.update(resp_json)  # type: ignore
-                else:
-                    full_resp.extend([  # type: ignore
-                        self._serialize_item(
-                            each, path.child(each['name'], folder=(each['type'] == 'folder'))
-                        )
-                        for each in resp_json['entries']
-                    ])
+            response = await self.make_request(
+                'GET',
+                url,
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+            resp_json = await response.json()
+            if raw:
+                full_resp.update(resp_json)  # type: ignore
+            else:
+                full_resp.extend([  # type: ignore
+                    self._serialize_item(
+                        each, path.child(each['name'], folder=(each['type'] == 'folder'))
+                    )
+                    for each in resp_json['entries']
+                ])
 
-                page_count += 1
-                if page_total is None:
-                    page_total = ((resp_json['total_count'] - 1) // limit) + 1  # ceiling div
+            page_count += 1
+            if page_total is None:
+                page_total = ((resp_json['total_count'] - 1) // limit) + 1  # ceiling div
         self.metrics.add('metadata.folder.pages', page_total)
         return full_resp
 
@@ -511,15 +518,15 @@ class BoxProvider(provider.BaseProvider):
         else:
             segments = ['files', 'content']
 
-        async with self.request(
+        response = await self.make_request(
             'POST',
             self._build_upload_url(*segments),
             data=data_stream,
             headers=data_stream.headers,
             expects=(201, ),
             throws=exceptions.UploadError,
-        ) as resp:
-            data = await resp.json()
+        )
+        data = await response.json()
 
         entry = data['entries'][0]
         if stream.writers['sha1'].hexdigest != entry['sha1']:
@@ -543,25 +550,21 @@ class BoxProvider(provider.BaseProvider):
         logger.debug('chunked upload session data: {}'.format(json.dumps(session_data)))
 
         metadata = None
-
         try:
             # Step 3. Split the data into parts and upload them to box.
             parts_manifest = await self._upload_parts(stream, session_data)
             logger.debug('chunked upload parts manifest: {}'.format(json.dumps(parts_manifest)))
-
             data_sha = base64.standard_b64encode(stream.writers['sha1'].digest).decode()
-
             # Step 4. Complete the session and return the uploaded file's metadata.
             retry = self.UPLOAD_COMMIT_RETRIES
             while retry > 0:
-                --retry
+                retry -= 1
                 try:
                     metadata = await self._complete_chunked_upload_session(session_data,
                                                                            parts_manifest, data_sha)
                     break
                 except RetryChunkedUploadCommit:
                     continue
-
         except Exception as err:
             msg = 'An unexpected error has occurred during the multi-part upload.'
             logger.error('{} upload_id={} error={!r}'.format(msg, session_data, err))
@@ -570,7 +573,6 @@ class BoxProvider(provider.BaseProvider):
                 msg += '  The abort action failed to clean up the temporary file parts generated ' \
                     'during the upload process.  Please manually remove them.'
             raise exceptions.UploadError(msg)
-
         return metadata
 
     async def _create_chunked_upload_session(self, path: WaterButlerPath,
@@ -601,15 +603,15 @@ class BoxProvider(provider.BaseProvider):
             'file_name': path.name,
         })
 
-        async with self.request(
+        response = await self.make_request(
             'POST',
             self._build_upload_url(*segments),
             data=json.dumps(data, sort_keys=True),
             headers={'Content-Type': 'application/json'},
             expects=(201, ),
             throws=exceptions.UploadError,
-        ) as resp:
-            return await resp.json()
+        )
+        return await response.json()
 
     async def _upload_parts(self, stream: streams.BaseStream, session_data: dict) -> list:
         """Calculate the partitioning scheme and upload the parts of the stream.  Returns a list
@@ -664,7 +666,7 @@ class BoxProvider(provider.BaseProvider):
         byte_range = self._build_range_header((start_offset, start_offset + part_size - 1))
         content_range = str(byte_range).replace('=', ' ') + '/{}'.format(stream.size)
 
-        async with self.request(
+        response = await self.make_request(
             'PUT',
             self._build_upload_url('files', 'upload_sessions', session_id),
             headers={
@@ -677,8 +679,8 @@ class BoxProvider(provider.BaseProvider):
             data=file_stream,
             expects=(201, 200),
             throws=exceptions.UploadError,
-        ) as resp:
-            data = await resp.json()
+        )
+        data = await response.json()
 
         f.close()
         return data['part']
@@ -690,25 +692,23 @@ class BoxProvider(provider.BaseProvider):
 
         https://developer.box.com/reference#commit-upload
         """
-
-        async with self.request(
+        response = await self.make_request(
             'POST',
             self._build_upload_url('files', 'upload_sessions', session_data['id'], 'commit'),
-            data=json.dumps({'parts': parts_manifest}),
+            data={'parts': parts_manifest},
             headers={
                 'Content-Type:': 'application/json',
                 'Digest': 'sha={}'.format(data_sha)
             },
             expects=(201, 202),
             throws=exceptions.UploadError,
-        ) as resp:
-            if resp.status == HTTPStatus.ACCEPTED:
-                await resp.release()
-                await sleep(resp.headers['Retry-After'])
-                raise RetryChunkedUploadCommit('Failed to commit chunked upload')
-            data = await resp.json()
-            entry = data['entries'][0]
-
+        )
+        if response.status == HTTPStatus.ACCEPTED:
+            await response.release()
+            await sleep(response.headers['Retry-After'])
+            raise RetryChunkedUploadCommit('Failed to commit chunked upload')
+        data = await response.json()
+        entry = data['entries'][0]
         return entry
 
     async def _abort_chunked_upload(self, session_data: dict, data_sha: str) -> bool:
@@ -720,7 +720,7 @@ class BoxProvider(provider.BaseProvider):
         :rtype: bool
         :return: `True` if abort request succeeded, `False` otherwise.
         """
-        resp = await self.make_request(
+        response = await self.make_request(
             'DELETE',
             self._build_upload_url('files', 'upload_sessions', session_data['id']),
             headers={
@@ -728,6 +728,5 @@ class BoxProvider(provider.BaseProvider):
                 'Digest': 'sha={}'.format(data_sha)
             },
         )
-
-        await resp.release()
-        return resp.status == HTTPStatus.NO_CONTENT
+        await response.release()
+        return response.status == HTTPStatus.NO_CONTENT

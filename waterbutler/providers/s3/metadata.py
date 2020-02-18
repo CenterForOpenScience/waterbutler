@@ -28,15 +28,15 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def size(self):
-        return self.raw['CONTENT-LENGTH']
+        return self.raw['Content-Length']
 
     @property
     def content_type(self):
-        return self.raw['CONTENT-TYPE']
+        return self.raw['Content-Type']
 
     @property
     def modified(self):
-        return self.raw['LAST-MODIFIED']
+        return self.raw['Last-Modified']
 
     @property
     def created_utc(self):
@@ -44,14 +44,14 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return self.raw['ETAG'].replace('"', '')
+        return self.raw['Etag'].replace('"', '')
 
     @property
     def extra(self):
-        md5 = self.raw['ETAG'].replace('"', '')
+        md5 = self.raw['Etag'].replace('"', '')
         return {
             'md5': md5,
-            'encryption': self.raw.get('X-AMZ-SERVER-SIDE-ENCRYPTION', ''),
+            'encryption': self.raw.get('x-amz-server-side-encryption', ''),
             'hashes': {
                 'md5': md5,
             },

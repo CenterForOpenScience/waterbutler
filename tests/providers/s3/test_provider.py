@@ -188,7 +188,6 @@ class TestRegionDetection:
     ])
     async def test_region_host(self, auth, credentials, settings, region_name, host, mock_time):
         provider = S3Provider(auth, credentials, settings)
-        orig_host = provider.connection.host
 
         region_url = provider.bucket.generate_url(
             100,
@@ -275,18 +274,18 @@ class TestValidatePath:
         path = await provider.validate_path('/this/is/a/folder/')
         assert path.name == 'folder'
         assert path.parent.name == 'a'
+        assert path.name == 'folder'
         assert not path.is_file
         assert path.is_dir
         assert not path.is_root
 
     @pytest.mark.asyncio
     async def test_root(self, provider, mock_time):
-        path = await provider.validate_path('/this/is/a/folder/')
-        assert path.name == 'folder'
-        assert path.parent.name == 'a'
+        path = await provider.validate_path('/')
+        assert path.name == ''
         assert not path.is_file
         assert path.is_dir
-        assert not path.is_root
+        assert path.is_root
 
 
 class TestCRUD:
@@ -458,7 +457,7 @@ class TestCRUD:
 
         await provider.upload(file_stream, path)
 
-        assert provider._chunked_upload.called_with(file_stream, path)
+        provider._chunked_upload.assert_called_with(file_stream, path)
 
         # Fixtures are shared between tests. Need to revert the settings back.
         provider.CONTIGUOUS_UPLOAD_SIZE_LIMIT = pd_settings.CONTIGUOUS_UPLOAD_SIZE_LIMIT
@@ -477,7 +476,7 @@ class TestCRUD:
 
         await provider.upload(file_stream, path)
 
-        assert provider._contiguous_upload.called_with(file_stream, path)
+        provider._contiguous_upload.assert_called_with(file_stream, path)
 
         provider.CONTIGUOUS_UPLOAD_SIZE_LIMIT = pd_settings.CONTIGUOUS_UPLOAD_SIZE_LIMIT
         provider.CHUNK_SIZE = pd_settings.CHUNK_SIZE
@@ -1277,7 +1276,7 @@ class TestOperations:
         metadata, exists = await provider.intra_copy(provider, source_path, dest_path)
 
 
-        assert provider._check_region.called
+        provider._check_region.assert_called()
 
         assert metadata.kind == 'file'
         assert not exists
