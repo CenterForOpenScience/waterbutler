@@ -2,6 +2,49 @@
 ChangeLog
 *********
 
+20.0.0 (2020-02-18)
+===================
+- Code: Upgrade core library aiohttp from v0.18.2 to v3.6.2.  WaterButler uses aiohttp to make
+requests to the external providers.  Its interface has changed significantly from v0.18 and much
+of the internal `BaseProvider.make_request` code was refactored/rewritten.  Each provider has been
+updated to use the new `make_request` code.
+  - The newest aiohttp favors context managers for performing requests, which does not mesh well
+    with WB's tendency to pass around response objects.  To work around this, the core provider now
+    manually manages session setup and teardown.  Sessions are closed when the object is
+    garbage-collected.
+  - WB is moving away from using request context managers in provider code, where passing response
+    objects is more common.
+  - Update WB's stream classes to be compatible with recent asyncio.StreamReader.
+- Code: Requirements / dependency upgrades:
+  - Upgrade Tornado from v4.3 to v6.0.
+  - Add support for Newrelic monitoring, made possible by the upgrade to Tornado v6.0.
+  - Update Sentry logging to replace the deprecated `raven` library with `sentry-sdk`.
+  - Remove hack for `certifi` library and upgrade to the most recent version.
+  - Replace `agent` library with core async generators.
+  - Bump testing libraries to newer versions and update testing code to accommodate.
+  - Pin some unpinned dependencies in dev-requirements.txt.
+- Fix: Many miscellaneous test updates:
+  - Fix tests where copy-n-paste had gone awry.
+  - Remove `async` from `async def` tests that never `await`-ed anything.
+  - Stop saving unused return values into variables.
+  - Replace `assert $foo.called_` with `$foo.assert_called_`.
+  - Remove no-longer-valid tests.
+  - Move common move/copy task-testing code into a conftest.py.
+- Fix: Fix invalid pre-decrement of retry count in Box provider.
+- Fix: Support Rackspace Cloudfiles as an osfstorage backend.  During the transition to the Google
+Cloud backend, the bucket-identifying key in the osfstorage configuration changed from `container`
+to `bucket`.  Re-enable support for `container` to support legacy cloudfiles backends.
+- Fix: Support Figshare uploads where the content hashing has not completed before Figshare
+responds.  Previously, uploads less than 70Mb in size always had the checksum embedded in the
+response metadata.  Now the availability of the hash appears to be subject to some limit on
+Figshare's side.  If present, verify that it matches our checksum.  If not, bypass the check and
+set the `hashingInProgress` metadata field to true.
+- Code: Upgrade WB's Dockerfile to be based off python3.6 and Debian buster.  Remove manual gosu
+installation and fetch from apt-get instead.  python3.6 is now the only supported python version.
+- Code: Remove old GitLab workarounds.  As a side-effect, the GitLab provider no longer supports
+`Range` headers for downloads.  To support this would require slurping the file contents into
+memory (which was done by the workarounds), but this opens WB up to DOS attacks via large files.
+
 19.2.0 (2019-10-07)
 ===================
 - Feature: Support rate-limiting in large move/copies for GitHub.  GitHub limits the number of
