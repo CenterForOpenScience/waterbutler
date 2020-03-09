@@ -290,11 +290,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
                 self.provider_metrics.incr('requests.count')
                 # TODO: use a `dict` to select methods with either `lambda` or `functools.partial`
                 if method == 'GET':
-                    response = await session.get(non_callable_url, *args, **kwargs)
+                    response = await session.get(non_callable_url,
+                                                 timeout=wb_settings.AIOHTTP_TIMEOUT,
+                                                 *args, **kwargs)
                 elif method == 'PUT':
-                    response = await session.put(non_callable_url, *args, **kwargs)
+                    response = await session.put(non_callable_url,
+                                                 timeout=wb_settings.AIOHTTP_TIMEOUT,
+                                                 *args, **kwargs)
                 elif method == 'POST':
-                    response = await session.post(non_callable_url, *args, **kwargs)
+                    response = await session.post(non_callable_url,
+                                                  timeout=wb_settings.AIOHTTP_TIMEOUT,
+                                                  *args, **kwargs)
                 elif method == 'HEAD':
                     response = await session.head(non_callable_url, *args, **kwargs)
                 elif method == 'DELETE':
