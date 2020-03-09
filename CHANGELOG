@@ -2,6 +2,13 @@
 ChangeLog
 *********
 
+20.0.1 (2020-03-09)
+===================
+- Fix: Extend the default timeout for GET, PUT, and POST requests made by aiohttp.  A five minute
+timeout was added to aiohttp between versions v0.18.2 and v3.6.2.  WaterButler needs to support large
+uploads and downloads, so this has been changed to an hour, configurable by the `AIOHTTP_TIMEOUT`
+envvar.  Global request timeouts should be decided by the proxy set up in front of WB.
+
 20.0.0 (2020-02-18)
 ===================
 - Code: Upgrade core library aiohttp from v0.18.2 to v3.6.2.  WaterButler uses aiohttp to make
