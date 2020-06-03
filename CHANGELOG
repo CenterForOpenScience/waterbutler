@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+20.0.2 (2020-06-02)
+===================
+- Fix: Bump sentry-sdk dependency from v0.14.0 to v0.14.4 to avoid potential memory leak.
+
 20.0.1 (2020-03-09)
 ===================
 - Fix: Extend the default timeout for GET, PUT, and POST requests made by aiohttp.  A five minute
