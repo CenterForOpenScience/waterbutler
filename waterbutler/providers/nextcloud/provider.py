@@ -61,6 +61,15 @@ class NextcloudProvider(provider.BaseProvider):
             return self.url + '/remote.php/webdav/'
         return self.url + 'remote.php/webdav/'
 
+    @property
+    def _dav_url_(self):
+        """ Formats the outgoing url appropriately. This is used like below.
+        https://docs.nextcloud.com/server/latest/developer_manual/client_apis/WebDAV/versions.html
+        """
+        if self.url[-1] != '/':
+            return self.url + '/remote.php/dav/'
+        return self.url + 'remote.php/dav/'
+
     def shares_storage_root(self, other):
         """Nextcloud settings only include the root folder. If a cross-resource move occurs
         between two nextcloud providers that are on different accounts but have the same folder
@@ -143,19 +152,40 @@ class NextcloudProvider(provider.BaseProvider):
         :raises: `waterbutler.core.exceptions.DownloadError`
         """
 
+        revision = None
+        if 'revision' in kwargs:
+            if kwargs['revision'] is not None:
+                revision = int(kwargs['revision'])
+
         self.metrics.add('download', {
             'got_accept_url': accept_url is False,
             'got_range': range is not None,
         })
-        download_resp = await self.make_request(
-            'GET',
-            self._webdav_url_ + path.full_path,
-            range=range,
-            expects=(200, 206,),
-            throws=exceptions.DownloadError,
-            auth=self._auth,
-            connector=self.connector(),
-        )
+
+        if revision is None:
+            download_resp = await self.make_request(
+                'GET',
+                self._webdav_url_ + path.full_path,
+                range=range,
+                expects=(200, 206,),
+                throws=exceptions.DownloadError,
+                auth=self._auth,
+                connector=self.connector(),
+            )
+        else:
+            revisions = await self._metadata_revision(path)
+            fileid = revisions[0].fileid
+            etag = revisions[len(revisions) - revision].etag
+            download_resp = await self.make_request(
+                'GET',
+                self._dav_url_ + 'versions/' + self.credentials['username'] + '/versions/' + fileid + '/' + etag,
+                range=range,
+                expects=(200, 206,),
+                throws=exceptions.DownloadError,
+                auth=self._auth,
+                connector=self.connector(),
+            )
+
         return streams.ResponseStreamReader(download_resp)
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
@@ -239,6 +269,47 @@ class NextcloudProvider(provider.BaseProvider):
         await response.release()
         return items
 
+    async def _metadata_revision(self, path):
+        query = '<?xml version="1.0" encoding="UTF-8"?> <d:propfind xmlns:d="DAV:" xmlns:nc="http://nextcloud.org/ns" > <d:prop xmlns:oc="http://owncloud.org/ns"> <d:getlastmodified/> <d:getcontentlength/> <d:resourcetype/> <d:getetag/> <d:getcontenttype/> <oc:fileid/>  </d:prop> </d:propfind>'
+
+        response = await self.make_request('PROPFIND',
+            self._webdav_url_ + path.full_path,
+            data=query,
+            expects=(204, 207),
+            throws=exceptions.MetadataError,
+            auth=self._auth,
+            connector=self.connector(),
+        )
+
+        items = []
+        if response.status == 207:
+            content = await response.content.read()
+            items = await utils.parse_dav_response(content, self.folder, False)
+        await response.release()
+
+        if len(items) != 1:
+            return items
+
+        fileid = items[0].fileid
+
+        response = await self.make_request('PROPFIND',
+            self._dav_url_ + 'versions/' + self.credentials['username'] + '/versions/' + fileid,
+            expects=(204, 207),
+            throws=exceptions.MetadataError,
+            auth=self._auth,
+            connector=self.connector(),
+        )
+
+        revision_items = []
+        if response.status == 207:
+            content = await response.content.read()
+            revision_items = await utils.parse_dav_response(content, self.folder, True)
+        await response.release()
+
+        items.extend(revision_items)
+
+        return items
+
     async def create_folder(self, path, **kwargs):
         """Create a folder in the current provider at ``path``. Returns an
         `.metadata.NextcloudFolderMetadata` object if successful.
@@ -313,5 +384,9 @@ class NextcloudProvider(provider.BaseProvider):
         return meta, resp.status == 201
 
     async def revisions(self, path, **kwargs):
-        metadata = await self.metadata(path)
-        return [NextcloudFileRevisionMetadata.from_metadata(metadata)]
+        revisions = await self._metadata_revision(path)
+        items = []
+        latest = len(revisions)
+        for i in range(latest):
+            items.append(NextcloudFileRevisionMetadata.from_metadata(str(latest - i), revisions[i]))
+        return items
