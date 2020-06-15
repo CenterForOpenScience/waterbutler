@@ -14,7 +14,8 @@ def file_metadata_object():
      '{DAV:}getcontenttype': 'application/octet-stream',
      '{DAV:}getetag': '"a3c411808d58977a9ecd7485b5b7958e"',
      '{DAV:}getlastmodified': 'Sun, 10 Jul 2016 23:28:31 GMT',
-     '{DAV:}resourcetype': None}
+     '{DAV:}resourcetype': None,
+     '{http://owncloud.org/ns}fileid': '7923'}
 
     return NextcloudFileMetadata('/Documents/dissertation.aux', '/', file_attr)
 
@@ -48,7 +49,7 @@ def folder_metadata_object_less_info():
 
 @pytest.fixture
 def revision_metadata_object(file_metadata_object):
-    return NextcloudFileRevisionMetadata(file_metadata_object.modified)
+    return NextcloudFileRevisionMetadata('1', file_metadata_object)
 
 
 @pytest.fixture
@@ -145,3 +146,8 @@ def file_metadata_unparsable_response():
                            'fixtures/file_metadata_unparsable_response.xml'), 'r') as fp:
         return fp.read()
 
+
+@pytest.fixture
+def file_revision_metadata():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_revision_metadata.xml'), 'r') as fp:
+        return fp.read()

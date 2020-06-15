@@ -22,6 +22,7 @@ from tests.providers.nextcloud.fixtures import (
     credentials_host_with_trailing_slash,
     file_content,
     file_metadata,
+    file_revision_metadata,
     folder_contents_metadata,
     file_metadata_object,
     folder_list,
@@ -340,22 +341,77 @@ class TestMetadata:
         assert result[0].kind == 'folder'
         assert result[0].name == 'Documents'
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata_revision(self, provider, file_metadata, file_revision_metadata, file_metadata_object):
+        path = WaterButlerPath('/dissertation.aux', prepend=provider.folder)
+        url = provider._webdav_url_ + path.full_path
+        aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
+        url = provider._dav_url_ + 'versions/' + provider.credentials['username'] + '/versions/' + file_metadata_object.fileid
+        aiohttpretty.register_uri('PROPFIND', url, body=file_revision_metadata, auto_length=True, status=207)
+        result = await provider._metadata_revision(path)
+
+        assert isinstance(result, list)
+        assert len(result) == 3
+        assert isinstance(result[0], NextcloudFileMetadata)
+        assert isinstance(result[1], NextcloudFileMetadata)
+        assert isinstance(result[2], NextcloudFileMetadata)
+
+        assert result[0].size == '3011'
+        assert result[0].etag == '"a3c411808d58977a9ecd7485b5b7958e"'
+        assert result[0].modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
+        assert result[0].created_utc is None
+        assert result[0].content_type == 'application/octet-stream'
+        assert result[0].fileid == '7923'
+
+        assert result[1].size == '2983'
+        assert result[1].etag == '1591876099'
+        assert result[1].modified == 'Sat, 9 Jul 2016 11:48:19 GMT'
+        assert result[1].created_utc is None
+        assert result[1].content_type == 'application/octet-stream'
+        assert result[1].fileid is None
+
+        assert result[2].size == '2514'
+        assert result[2].etag == '1591864889'
+        assert result[2].modified == 'Wed, 6 Jul 2016 08:41:29 GMT'
+        assert result[2].created_utc is None
+        assert result[2].content_type == 'application/octet-stream'
+        assert result[2].fileid is None
+
 
 class TestRevisions:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_revisions(self, provider, file_metadata):
+    async def test_revisions(self, provider, file_metadata, file_revision_metadata, file_metadata_object):
         path = WaterButlerPath('/dissertation.aux', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
+        url = provider._dav_url_ + 'versions/' + provider.credentials['username'] + '/versions/' + file_metadata_object.fileid
+        aiohttpretty.register_uri('PROPFIND', url, body=file_revision_metadata, auto_length=True, status=207)
 
         result = await provider.revisions(path)
 
         assert isinstance(result, list)
+        assert len(result) == 3
         assert isinstance(result[0], NextcloudFileRevisionMetadata)
-        assert len(result) == 1
+        assert isinstance(result[1], NextcloudFileRevisionMetadata)
+        assert isinstance(result[2], NextcloudFileRevisionMetadata)
+
         assert result[0].modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
+        assert result[0].version == '3'
+        assert result[0].version_identifier == 'revision'
+        assert result[0].extra == {'hashes': {'md5': '', 'sha256': ''}}
+
+        assert result[1].modified == 'Sat, 9 Jul 2016 11:48:19 GMT'
+        assert result[1].version == '2'
+        assert result[1].version_identifier == 'revision'
+        assert result[1].extra == {'hashes': {'md5': '', 'sha256': ''}}
+
+        assert result[2].modified == 'Wed, 6 Jul 2016 08:41:29 GMT'
+        assert result[2].version == '1'
+        assert result[2].version_identifier == 'revision'
+        assert result[2].extra == {'hashes': {'md5': '', 'sha256': ''}}
 
 
 class TestOperations:

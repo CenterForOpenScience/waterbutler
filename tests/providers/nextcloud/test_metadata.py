@@ -25,6 +25,7 @@ class TestFileMetadata:
         assert file_metadata_object.modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
         assert file_metadata_object.modified_utc == '2016-07-10T23:28:31+00:00'
         assert file_metadata_object.created_utc is None
+        assert file_metadata_object.fileid == '7923'
         assert file_metadata_object.content_type == 'application/octet-stream'
         assert file_metadata_object.extra == {}
 
@@ -51,6 +52,7 @@ class TestFileMetadata:
         assert file_metadata_object_less_info.modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
         assert file_metadata_object_less_info.modified_utc == '2016-07-10T23:28:31+00:00'
         assert file_metadata_object_less_info.created_utc is None
+        assert file_metadata_object_less_info.fileid is None
         assert file_metadata_object_less_info.content_type is None
         assert file_metadata_object_less_info.extra == {}
 
@@ -115,29 +117,38 @@ class TestRevisionMetadata:
 
     def test_revision_metadata(self, revision_metadata_object):
         assert revision_metadata_object.version_identifier == 'revision'
-        assert revision_metadata_object.version == 'latest'
+        assert revision_metadata_object.version == '1'
         assert revision_metadata_object.modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
-        assert revision_metadata_object.extra == {}
+        assert revision_metadata_object.extra == {'hashes':
+                                                  {'md5': '',
+                                                   'sha256': ''}
+                                                  }
 
-        serialized = {'extra': {},
+        serialized = {'extra': 
+                      {'hashes':
+                       {'md5': '',
+                        'sha256': ''}},
                       'modified': 'Sun, 10 Jul 2016 23:28:31 GMT',
                       'modified_utc': '2016-07-10T23:28:31+00:00',
-                      'version': 'latest',
+                      'version': '1',
                       'versionIdentifier': 'revision'}
 
         assert revision_metadata_object.serialized() == serialized
 
         json_api_serialized = {'attributes':
-                          {'extra': {},
+                          {'extra': 
+                           {'hashes':
+                            {'md5': '',
+                             'sha256': ''}},
                            'modified': 'Sun, 10 Jul 2016 23:28:31 GMT',
                            'modified_utc': '2016-07-10T23:28:31+00:00',
-                           'version': 'latest',
+                           'version': '1',
                            'versionIdentifier': 'revision'},
-                      'id': 'latest',
+                      'id': '1',
                       'type': 'file_versions'}
 
         assert revision_metadata_object.json_api_serialized() == json_api_serialized
 
     def test_revision_from_metadata(self, revision_metadata_object, file_metadata_object):
-        revision = NextcloudFileRevisionMetadata.from_metadata(file_metadata_object)
+        revision = NextcloudFileRevisionMetadata.from_metadata('1', file_metadata_object)
         assert revision == revision_metadata_object
