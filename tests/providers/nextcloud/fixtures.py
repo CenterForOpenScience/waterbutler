@@ -29,6 +29,18 @@ def file_metadata_object_less_info():
 
 
 @pytest.fixture
+def file_metadata_object_2():
+    file_attr = {'{DAV:}getcontentlength': '1820',
+     '{DAV:}getcontenttype': 'text/plain',
+     '{DAV:}getetag': '"8acd67d989953d6a02c9e496bb2fe9ff"',
+     '{DAV:}getlastmodified': 'Thu, 11 Jun 2020 08:41:29 GMT',
+     '{DAV:}resourcetype': None,
+     '{http://owncloud.org/ns}fileid': '8512'}
+
+    return NextcloudFileMetadata('/Documents/meeting_memo.txt', '/', file_attr)
+
+
+@pytest.fixture
 def folder_metadata_object():
     file_attr = {'{DAV:}getetag': '"57688dd3584b0"',
          '{DAV:}getlastmodified': 'Tue, 21 Jun 2016 00:44:03 GMT',
@@ -148,6 +160,18 @@ def file_metadata_unparsable_response():
 
 
 @pytest.fixture
+def file_metadata_2():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_metadata_2.xml'), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
 def file_revision_metadata():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_revision_metadata.xml'), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def file_revision_metadata_error_response():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_revision_metadata_error_response.xml'), 'r') as fp:
         return fp.read()

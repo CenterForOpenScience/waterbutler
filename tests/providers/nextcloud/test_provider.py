@@ -22,12 +22,15 @@ from tests.providers.nextcloud.fixtures import (
     credentials_host_with_trailing_slash,
     file_content,
     file_metadata,
+    file_metadata_2,
     file_revision_metadata,
     folder_contents_metadata,
     file_metadata_object,
+    file_metadata_object_2,
     folder_list,
     folder_metadata,
     file_metadata_unparsable_response,
+    file_revision_metadata_error_response,
     moved_folder_metadata,
     moved_parent_folder_metadata
 )
@@ -343,7 +346,8 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_revision(self, provider, file_metadata, file_revision_metadata, file_metadata_object):
+    async def test_metadata_revision(self, provider, file_metadata, file_revision_metadata, file_metadata_object,
+                                     file_metadata_2, file_revision_metadata_error_response, file_metadata_object_2):
         path = WaterButlerPath('/dissertation.aux', prepend=provider.folder)
         url = provider._webdav_url_ + path.full_path
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
@@ -377,6 +381,25 @@ class TestMetadata:
         assert result[2].created_utc is None
         assert result[2].content_type == 'application/octet-stream'
         assert result[2].fileid is None
+
+
+        path = WaterButlerPath('/meeting_memo.txt', prepend=provider.folder)
+        url = provider._webdav_url_ + path.full_path
+        aiohttpretty.register_uri('PROPFIND', url, body=file_metadata_2, auto_length=True, status=207)
+        url = provider._dav_url_ + 'versions/' + provider.credentials['username'] + '/versions/' + file_metadata_object_2.fileid
+        aiohttpretty.register_uri('PROPFIND', url, body=file_revision_metadata_error_response, auto_length=True, status=404)
+        result = await provider._metadata_revision(path)
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], NextcloudFileMetadata)
+
+        assert result[0].size == '1820'
+        assert result[0].etag == '"8acd67d989953d6a02c9e496bb2fe9ff"'
+        assert result[0].modified == 'Thu, 11 Jun 2020 08:41:29 GMT'
+        assert result[0].created_utc is None
+        assert result[0].content_type == 'text/plain'
+        assert result[0].fileid == '8512'
 
 
 class TestRevisions:
