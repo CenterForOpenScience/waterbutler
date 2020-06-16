@@ -294,7 +294,7 @@ class NextcloudProvider(provider.BaseProvider):
 
         response = await self.make_request('PROPFIND',
             self._dav_url_ + 'versions/' + self.credentials['username'] + '/versions/' + fileid,
-            expects=(204, 207),
+            expects=(204, 207, 404),
             throws=exceptions.MetadataError,
             auth=self._auth,
             connector=self.connector(),
