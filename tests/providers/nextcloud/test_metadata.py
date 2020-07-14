@@ -3,6 +3,10 @@ import pytest
 from waterbutler.providers.nextcloud.metadata import NextcloudFileRevisionMetadata
 
 from tests.providers.nextcloud.fixtures import (
+    auth,
+    credentials,
+    settings,
+    provider,
     file_metadata_object,
     file_metadata_object_less_info,
     folder_metadata_object,
@@ -14,8 +18,8 @@ from tests.providers.nextcloud.fixtures import (
 
 class TestFileMetadata:
 
-    def test_file_metadata(self, file_metadata_object):
-        assert file_metadata_object.provider == 'nextcloud'
+    def test_file_metadata(self, file_metadata_object, provider):
+        assert file_metadata_object.provider == provider.NAME
         assert file_metadata_object.name == 'dissertation.aux'
         assert file_metadata_object.path == '/Documents/dissertation.aux'
         assert file_metadata_object.materialized_path == '/Documents/dissertation.aux'
@@ -30,19 +34,16 @@ class TestFileMetadata:
         assert file_metadata_object.extra == {}
 
 
-        json_api_links = {'delete': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/'
-                                    'Documents/dissertation.aux',
-                          'download': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/'
-                                      'Documents/dissertation.aux',
-                          'move': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/'
-                                  'Documents/dissertation.aux',
-                          'upload': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/'
-                                    'Documents/dissertation.aux?kind=file'}
+        url = 'http://localhost:7777/v1/resources/guid0/providers/{}/Documents/dissertation.aux'.format(provider.NAME)
+        json_api_links = {'delete': url,
+                          'download': url,
+                          'move': url,
+                          'upload': url + '?kind=file'}
 
         assert file_metadata_object._json_api_links('guid0') == json_api_links
 
-    def test_file_metadata_less_info(self, file_metadata_object_less_info):
-        assert file_metadata_object_less_info.provider == 'nextcloud'
+    def test_file_metadata_less_info(self, file_metadata_object_less_info, provider):
+        assert file_metadata_object_less_info.provider == provider.NAME
         assert file_metadata_object_less_info.name == 'dissertation.aux'
         assert file_metadata_object_less_info.path == '/Documents/dissertation.aux'
         assert file_metadata_object_less_info.materialized_path == '/Documents/dissertation.aux'
@@ -56,22 +57,19 @@ class TestFileMetadata:
         assert file_metadata_object_less_info.content_type is None
         assert file_metadata_object_less_info.extra == {}
 
-        json_api_links = {'delete': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/'
-                                    'Documents/dissertation.aux',
-                          'download': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/'
-                                      'Documents/dissertation.aux',
-                          'move': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/'
-                                  'Documents/dissertation.aux',
-                          'upload': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/'
-                                    'Documents/dissertation.aux?kind=file'}
+        url = 'http://localhost:7777/v1/resources/guid0/providers/{}/Documents/dissertation.aux'.format(provider.NAME)
+        json_api_links = {'delete': url,
+                          'download': url,
+                          'move': url,
+                          'upload': url + '?kind=file'}
 
         assert file_metadata_object_less_info._json_api_links('guid0') == json_api_links
 
 
 class TestFolderMetadata:
 
-    def test_folder_metadata(self, folder_metadata_object):
-        assert folder_metadata_object.provider == 'nextcloud'
+    def test_folder_metadata(self, folder_metadata_object, provider):
+        assert folder_metadata_object.provider == provider.NAME
         assert folder_metadata_object.name == 'Documents'
         assert folder_metadata_object.path == '/'
         assert folder_metadata_object.materialized_path == '/'
@@ -82,18 +80,17 @@ class TestFolderMetadata:
         assert folder_metadata_object.etag == '"57688dd3584b0"'
         assert folder_metadata_object.extra == {}
 
-        json_api_links = {'delete': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/',
-                          'move': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/',
-                          'new_folder': 'http://localhost:7777/v1/resources/guid0/providers'
-                                        '/nextcloud/?kind=folder',
-                          'upload': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/'
-                                    '?kind=file'}
+        url = 'http://localhost:7777/v1/resources/guid0/providers/{}/'.format(provider.NAME)
+        json_api_links = {'delete': url,
+                          'move': url,
+                          'new_folder': url + '?kind=folder',
+                          'upload': url + '?kind=file'}
 
         assert folder_metadata_object._json_api_links('guid0') == json_api_links
 
-    def test_folder_metadata_less_info(self, folder_metadata_object_less_info):
+    def test_folder_metadata_less_info(self, folder_metadata_object_less_info, provider):
 
-        assert folder_metadata_object_less_info.provider == 'nextcloud'
+        assert folder_metadata_object_less_info.provider == provider.NAME
         assert folder_metadata_object_less_info.name == 'Documents'
         assert folder_metadata_object_less_info.path == '/'
         assert folder_metadata_object_less_info.materialized_path == '/'
@@ -103,12 +100,11 @@ class TestFolderMetadata:
         assert folder_metadata_object_less_info.etag == '"a3c411808d58977a9ecd7485b5b7958e"'
         assert folder_metadata_object_less_info.extra == {}
 
-        json_api_links = {'delete': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/',
-                          'move': 'http://localhost:7777/v1/resources/guid0/providers/nextcloud/',
-                          'new_folder': 'http://localhost:7777/v1/resources/guid0/providers/'
-                                        'nextcloud/?kind=folder',
-                          'upload': 'http://localhost:7777/v1/resources/guid0/providers/'
-                                    'nextcloud/?kind=file'}
+        url = 'http://localhost:7777/v1/resources/guid0/providers/{}/'.format(provider.NAME)
+        json_api_links = {'delete': url,
+                          'move': url,
+                          'new_folder': url + '?kind=folder',
+                          'upload': url + '?kind=file'}
 
         assert folder_metadata_object_less_info._json_api_links('guid0') == json_api_links
 

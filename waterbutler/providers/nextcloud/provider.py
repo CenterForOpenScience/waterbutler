@@ -109,7 +109,7 @@ class NextcloudProvider(provider.BaseProvider):
             raise exceptions.NotFoundError(str(full_path.full_path))
 
         try:
-            item = await utils.parse_dav_response(content, '/')
+            item = await utils.parse_dav_response(self.NAME, content, '/')
         except exceptions.NotFoundError:
             # Re-raise with the proper path
             raise exceptions.NotFoundError(str(full_path.full_path))
@@ -139,7 +139,7 @@ class NextcloudProvider(provider.BaseProvider):
         await response.release()
 
         try:
-            await utils.parse_dav_response(content, '/')
+            await utils.parse_dav_response(self.NAME, content, '/')
         except exceptions.NotFoundError:
             pass
         return full_path
@@ -265,7 +265,7 @@ class NextcloudProvider(provider.BaseProvider):
         items = []
         if response.status == 207:
             content = await response.content.read()
-            items = await utils.parse_dav_response(content, self.folder, skip_first)
+            items = await utils.parse_dav_response(self.NAME, content, self.folder, skip_first)
         await response.release()
         return items
 
@@ -284,7 +284,7 @@ class NextcloudProvider(provider.BaseProvider):
         items = []
         if response.status == 207:
             content = await response.content.read()
-            items = await utils.parse_dav_response(content, self.folder, False)
+            items = await utils.parse_dav_response(self.NAME, content, self.folder, False)
         await response.release()
 
         if len(items) != 1:
@@ -303,7 +303,7 @@ class NextcloudProvider(provider.BaseProvider):
         revision_items = []
         if response.status == 207:
             content = await response.content.read()
-            revision_items = await utils.parse_dav_response(content, self.folder, True)
+            revision_items = await utils.parse_dav_response(self.NAME, content, self.folder, True)
         await response.release()
 
         items.extend(revision_items)

@@ -3,15 +3,16 @@ from waterbutler.core import metadata
 
 class BaseNextcloudMetadata(metadata.BaseMetadata):
 
-    def __init__(self, href, folder, attributes=None):
+    def __init__(self, href, folder, provider, attributes=None):
         super(BaseNextcloudMetadata, self).__init__(None)
         self.attributes = attributes or {}
         self._folder = folder
         self._href = href
+        self._provider = provider
 
     @property
     def provider(self):
-        return 'nextcloud'
+        return self._provider
 
     @property
     def name(self):

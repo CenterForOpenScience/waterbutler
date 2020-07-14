@@ -9,7 +9,7 @@ from waterbutler.providers.nextcloud.metadata import (NextcloudFileMetadata,
 
 
 @pytest.fixture
-def file_metadata_object():
+def file_metadata_object(provider):
     file_attr = {'{DAV:}getcontentlength': '3011',
      '{DAV:}getcontenttype': 'application/octet-stream',
      '{DAV:}getetag': '"a3c411808d58977a9ecd7485b5b7958e"',
@@ -17,19 +17,19 @@ def file_metadata_object():
      '{DAV:}resourcetype': None,
      '{http://owncloud.org/ns}fileid': '7923'}
 
-    return NextcloudFileMetadata('/Documents/dissertation.aux', '/', file_attr)
+    return NextcloudFileMetadata('/Documents/dissertation.aux', '/', provider.NAME, file_attr)
 
 
 @pytest.fixture
-def file_metadata_object_less_info():
+def file_metadata_object_less_info(provider):
     file_attr = {'{DAV:}getetag': '"a3c411808d58977a9ecd7485b5b7958e"',
      '{DAV:}getlastmodified': 'Sun, 10 Jul 2016 23:28:31 GMT',}
 
-    return NextcloudFileMetadata('/Documents/dissertation.aux', '/', file_attr)
+    return NextcloudFileMetadata('/Documents/dissertation.aux', '/', provider.NAME, file_attr)
 
 
 @pytest.fixture
-def file_metadata_object_2():
+def file_metadata_object_2(provider):
     file_attr = {'{DAV:}getcontentlength': '1820',
      '{DAV:}getcontenttype': 'text/plain',
      '{DAV:}getetag': '"8acd67d989953d6a02c9e496bb2fe9ff"',
@@ -37,26 +37,26 @@ def file_metadata_object_2():
      '{DAV:}resourcetype': None,
      '{http://owncloud.org/ns}fileid': '8512'}
 
-    return NextcloudFileMetadata('/Documents/meeting_memo.txt', '/', file_attr)
+    return NextcloudFileMetadata('/Documents/meeting_memo.txt', '/', provider.NAME, file_attr)
 
 
 @pytest.fixture
-def folder_metadata_object():
+def folder_metadata_object(provider):
     file_attr = {'{DAV:}getetag': '"57688dd3584b0"',
          '{DAV:}getlastmodified': 'Tue, 21 Jun 2016 00:44:03 GMT',
          '{DAV:}quota-available-bytes': '-3',
          '{DAV:}quota-used-bytes': '36227',
          '{DAV:}resourcetype': '\n                    '}
 
-    return NextcloudFolderMetadata('/Documents/', '/my_folder/', file_attr)
+    return NextcloudFolderMetadata('/Documents/', '/my_folder/', provider.NAME, file_attr)
 
 
 @pytest.fixture
-def folder_metadata_object_less_info():
+def folder_metadata_object_less_info(provider):
     file_attr = {'{DAV:}getetag': '"a3c411808d58977a9ecd7485b5b7958e"',
      '{DAV:}getlastmodified': 'Sun, 10 Jul 2016 23:28:31 GMT',}
 
-    return NextcloudFolderMetadata('/Documents/', '/my_folder/', file_attr)
+    return NextcloudFolderMetadata('/Documents/', '/my_folder/', provider.NAME, file_attr)
 
 
 @pytest.fixture
