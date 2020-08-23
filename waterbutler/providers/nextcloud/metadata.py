@@ -36,6 +36,12 @@ class BaseNextcloudMetadata(metadata.BaseMetadata):
         return None
 
     @property
+    def etag_noquote(self):
+        if self.etag:
+            return self.etag.strip("\"")
+        return None
+
+    @property
     def modified(self):
         if '{DAV:}getlastmodified' in self.attributes:
             return self.attributes['{DAV:}getlastmodified']
@@ -76,8 +82,8 @@ class NextcloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
         self._metadata = metadata
         self._version = version
         self._modified = self._metadata.modified
-        self._md5 = ''
-        self._sha256 = ''
+        # self._md5 = ''
+        # self._sha256 = ''
 
     @classmethod
     def from_metadata(cls, revision, metadata):
@@ -95,11 +101,11 @@ class NextcloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
     def modified(self):
         return self._modified
 
-    @property
-    def extra(self):
-        return {
-            'hashes': {
-                'md5': self._md5,
-                'sha256': self._sha256
-            },
-        }
+    # @property
+    # def extra(self):
+    #     return {
+    #         'hashes': {
+    #             'md5': self._md5,
+    #             'sha256': self._sha256,
+    #         },
+    #     }

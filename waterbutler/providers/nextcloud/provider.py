@@ -155,7 +155,7 @@ class NextcloudProvider(provider.BaseProvider):
         revision = None
         if 'revision' in kwargs:
             if kwargs['revision'] is not None:
-                revision = int(kwargs['revision'])
+                revision = kwargs['revision']
 
         self.metrics.add('download', {
             'got_accept_url': accept_url is False,
@@ -175,7 +175,7 @@ class NextcloudProvider(provider.BaseProvider):
         else:
             revisions = await self._metadata_revision(path)
             fileid = revisions[0].fileid
-            etag = revisions[len(revisions) - revision].etag
+            etag = revision
             download_resp = await self.make_request(
                 'GET',
                 self._dav_url_ + 'versions/' + self.credentials['username'] + '/versions/' + fileid + '/' + etag,
@@ -388,5 +388,7 @@ class NextcloudProvider(provider.BaseProvider):
         items = []
         latest = len(revisions)
         for i in range(latest):
-            items.append(NextcloudFileRevisionMetadata.from_metadata(str(latest - i), revisions[i]))
+            r = revisions[i]
+            ver = str(r.etag_noquote)
+            items.append(NextcloudFileRevisionMetadata.from_metadata(ver, r))
         return items

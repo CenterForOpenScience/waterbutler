@@ -115,15 +115,12 @@ class TestRevisionMetadata:
         assert revision_metadata_object.version_identifier == 'revision'
         assert revision_metadata_object.version == '1'
         assert revision_metadata_object.modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
-        assert revision_metadata_object.extra == {'hashes':
-                                                  {'md5': '',
-                                                   'sha256': ''}
-                                                  }
 
-        serialized = {'extra': 
-                      {'hashes':
-                       {'md5': '',
-                        'sha256': ''}},
+        # hashes = {'hashes': {'md5': '', 'sha256': ''}
+        hashes = {}
+        assert revision_metadata_object.extra == hashes
+
+        serialized = {'extra': hashes,
                       'modified': 'Sun, 10 Jul 2016 23:28:31 GMT',
                       'modified_utc': '2016-07-10T23:28:31+00:00',
                       'version': '1',
@@ -132,10 +129,7 @@ class TestRevisionMetadata:
         assert revision_metadata_object.serialized() == serialized
 
         json_api_serialized = {'attributes':
-                          {'extra': 
-                           {'hashes':
-                            {'md5': '',
-                             'sha256': ''}},
+                          {'extra': hashes,
                            'modified': 'Sun, 10 Jul 2016 23:28:31 GMT',
                            'modified_utc': '2016-07-10T23:28:31+00:00',
                            'version': '1',
