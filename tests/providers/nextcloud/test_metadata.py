@@ -111,19 +111,22 @@ class TestFolderMetadata:
 
 class TestRevisionMetadata:
 
+    etag = '"a3c411808d58977a9ecd7485b5b7958e"'
+    version = etag.strip('"')
+
     def test_revision_metadata(self, revision_metadata_object):
         assert revision_metadata_object.version_identifier == 'revision'
-        assert revision_metadata_object.version == '1'
+        assert revision_metadata_object.version == self.version
         assert revision_metadata_object.modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
 
-        # hashes = {'hashes': {'md5': '', 'sha256': ''}
+        # hashes = {'hashes': {'md5': '', 'sha256': ''}}
         hashes = {}
         assert revision_metadata_object.extra == hashes
 
         serialized = {'extra': hashes,
                       'modified': 'Sun, 10 Jul 2016 23:28:31 GMT',
                       'modified_utc': '2016-07-10T23:28:31+00:00',
-                      'version': '1',
+                      'version': self.version,
                       'versionIdentifier': 'revision'}
 
         assert revision_metadata_object.serialized() == serialized
@@ -132,13 +135,14 @@ class TestRevisionMetadata:
                           {'extra': hashes,
                            'modified': 'Sun, 10 Jul 2016 23:28:31 GMT',
                            'modified_utc': '2016-07-10T23:28:31+00:00',
-                           'version': '1',
+                           'version': self.version,
                            'versionIdentifier': 'revision'},
-                      'id': '1',
+                      'id': self.version,
                       'type': 'file_versions'}
 
         assert revision_metadata_object.json_api_serialized() == json_api_serialized
 
     def test_revision_from_metadata(self, revision_metadata_object, file_metadata_object):
-        revision = NextcloudFileRevisionMetadata.from_metadata('1', file_metadata_object)
+        revision = NextcloudFileRevisionMetadata.from_metadata(
+            self.version, file_metadata_object)
         assert revision == revision_metadata_object

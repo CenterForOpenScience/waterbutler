@@ -38,7 +38,7 @@ class BaseNextcloudMetadata(metadata.BaseMetadata):
     @property
     def etag_noquote(self):
         if self.etag:
-            return self.etag.strip("\"")
+            return self.etag.strip('"')
         return None
 
     @property

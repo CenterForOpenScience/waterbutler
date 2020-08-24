@@ -421,23 +421,23 @@ class TestRevisions:
         assert isinstance(result[1], NextcloudFileRevisionMetadata)
         assert isinstance(result[2], NextcloudFileRevisionMetadata)
 
+        # hashes = {'hashes': {'md5': '', 'sha256': ''}}
+        hashes = {}
+
         assert result[0].modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
         assert result[0].version == 'a3c411808d58977a9ecd7485b5b7958e'
         assert result[0].version_identifier == 'revision'
-        # assert result[0].extra == {'hashes': {'md5': '', 'sha256': ''}}
-        assert result[0].extra == {}
+        assert result[0].extra == hashes
 
         assert result[1].modified == 'Sat, 9 Jul 2016 11:48:19 GMT'
         assert result[1].version == '1591876099'
         assert result[1].version_identifier == 'revision'
-        # assert result[1].extra == {'hashes': {'md5': '', 'sha256': ''}}
-        assert result[1].extra == {}
+        assert result[1].extra == hashes
 
         assert result[2].modified == 'Wed, 6 Jul 2016 08:41:29 GMT'
         assert result[2].version == '1591864889'
         assert result[2].version_identifier == 'revision'
-        # assert result[2].extra == {'hashes': {'md5': '', 'sha256': ''}}
-        assert result[2].extra == {}
+        assert result[2].extra == hashes
 
 
 class TestOperations:

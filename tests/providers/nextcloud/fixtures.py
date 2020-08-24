@@ -61,7 +61,8 @@ def folder_metadata_object_less_info(provider):
 
 @pytest.fixture
 def revision_metadata_object(file_metadata_object):
-    return NextcloudFileRevisionMetadata('1', file_metadata_object)
+    return NextcloudFileRevisionMetadata('a3c411808d58977a9ecd7485b5b7958e',
+                                         file_metadata_object)
 
 
 @pytest.fixture
