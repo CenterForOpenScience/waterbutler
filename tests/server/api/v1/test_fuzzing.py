@@ -2,7 +2,8 @@ from http import client
 from unittest import mock
 
 import pytest
-import aiohttp
+
+from aiohttp import ClientError
 
 from tornado import gen
 from tornado import testing
@@ -17,7 +18,7 @@ class TestServerFuzzing(ServerTestCase):
     @testing.gen_test
     def test_head_no_auth_server(self):
         with mock.patch('waterbutler.auth.osf.handler.aiohttp.request') as mock_auth:
-            mock_auth.side_effect = aiohttp.errors.ClientError
+            mock_auth.side_effect = ClientError
 
             with pytest.raises(httpclient.HTTPError) as exc:
                 yield self.http_client.fetch(
@@ -70,7 +71,7 @@ class TestServerFuzzing(ServerTestCase):
                 x += len(msg)
                 yield write(msg)
 
-        with pytest.raises(httpclient.HTTPError) as exc:
+        with pytest.raises(httpclient.HTTPError):
             yield self.http_client.fetch(
                 self.get_url('/resources/jernk/providers/jaaaaank/'),
                 headers={'Content-Length': '1048580'},
@@ -135,13 +136,3 @@ class TestServerFuzzingMocks(ServerTestCase):
             )
 
         assert exc.value.code == client.NOT_IMPLEMENTED
-
-    @testing.gen_test
-    def test_handles_invalid_json(self):
-        with pytest.raises(httpclient.HTTPError) as exc:
-            yield self.http_client.fetch(
-                self.get_url('/resources/jernk/providers/jaaaaank/'),
-                method='POST', body='<XML4LYFE/>'
-            )
-        assert exc.value.code == client.BAD_REQUEST
-        # Make sure the message returned is correct

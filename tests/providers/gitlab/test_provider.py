@@ -3,16 +3,15 @@ import hashlib
 import pytest
 import aiohttpretty
 
-from waterbutler.core import streams
 from waterbutler.core import exceptions
 
 from waterbutler.providers.gitlab import GitLabProvider
 from waterbutler.providers.gitlab.path import GitLabPath
-from waterbutler.providers.gitlab import settings as gitlab_settings
 from waterbutler.providers.gitlab.metadata import GitLabFileMetadata
 from waterbutler.providers.gitlab.metadata import GitLabFolderMetadata
 
-from tests.providers.gitlab import fixtures
+from tests.providers.gitlab.fixtures import (simple_tree, simple_file_metadata, subfolder_tree,
+                                             revisions_for_file, default_branches, )
 
 
 @pytest.fixture
@@ -72,14 +71,14 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_root(self, provider):
+    async def test_validate_v1_root(self, provider, default_branches):
         path = '/'
         default_branch_url = 'http://base.url/api/v4/projects/123'
-        body = fixtures.default_branches['default_branch']
+        body = default_branches['default_branch']
         aiohttpretty.register_json_uri('GET', default_branch_url, body=body, status=200)
 
         commit_sha_url = 'http://base.url/api/v4/projects/123/repository/branches/master'
-        commit_sha_body = fixtures.default_branches['get_commit_sha']
+        commit_sha_body = default_branches['get_commit_sha']
         aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
 
         root_path = await provider.validate_v1_path(path)
@@ -95,9 +94,9 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_root_by_branch(self, provider):
+    async def test_validate_v1_root_by_branch(self, provider, default_branches):
         commit_sha_url = 'http://base.url/api/v4/projects/123/repository/branches/otherbranch'
-        commit_sha_body = fixtures.default_branches['get_commit_sha']
+        commit_sha_body = default_branches['get_commit_sha']
         aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
 
         root_path = await provider.validate_v1_path('/', branch='otherbranch')
@@ -143,9 +142,9 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_root_by_revision_branch(self, provider):
+    async def test_validate_v1_root_by_revision_branch(self, provider, default_branches):
         commit_sha_url = 'http://base.url/api/v4/projects/123/repository/branches/otherbranch'
-        commit_sha_body = fixtures.default_branches['get_commit_sha']
+        commit_sha_body = default_branches['get_commit_sha']
         aiohttpretty.register_json_uri('GET', commit_sha_url, body=commit_sha_body, status=200)
 
         root_path = await provider.validate_v1_path('/', revision='otherbranch')
@@ -161,11 +160,11 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_file(self, provider):
+    async def test_validate_v1_path_file(self, provider, simple_tree):
         path = '/folder1/file1'
         url = ('http://base.url/api/v4/projects/123/repository/tree'
                '?path=folder1/&page=1&per_page={}&ref=a1b2c3d4'.format(provider.MAX_PAGE_SIZE))
-        aiohttpretty.register_json_uri('GET', url, body=fixtures.simple_tree())
+        aiohttpretty.register_json_uri('GET', url, body=simple_tree)
 
         try:
             file_path = await provider.validate_v1_path(path, commitSha='a1b2c3d4',
@@ -203,11 +202,11 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_validate_v1_path_folder(self, provider):
+    async def test_validate_v1_path_folder(self, provider, subfolder_tree):
         path = '/files/lfs/'
         url = ('http://base.url/api/v4/projects/123/repository/tree'
                '?path=files/&page=1&per_page={}&ref=a1b2c3d4'.format(provider.MAX_PAGE_SIZE))
-        aiohttpretty.register_json_uri('GET', url, body=fixtures.subfolder_tree())
+        aiohttpretty.register_json_uri('GET', url, body=subfolder_tree)
 
         try:
             folder_path = await provider.validate_v1_path(path, commitSha='a1b2c3d4',
@@ -237,7 +236,7 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', default_branch_url, body={}, status=404)
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            root_path = await provider.validate_v1_path(path)
+            _ = await provider.validate_v1_path(path)
         assert exc.value.code == 404
 
     @pytest.mark.asyncio
@@ -249,7 +248,7 @@ class TestValidatePath:
         aiohttpretty.register_json_uri('GET', default_branch_url, body={"default_branch": None})
 
         with pytest.raises(exceptions.UninitializedRepositoryError) as exc:
-            root_path = await provider.validate_v1_path(path)
+            _ = await provider.validate_v1_path(path)
         assert exc.value.code == 400
 
 
@@ -257,18 +256,19 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file_with_default_ref(self, provider):
+    async def test_metadata_file_with_default_ref(self, provider, simple_file_metadata,
+                                                  revisions_for_file):
         path = '/folder1/folder2/file'
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
 
         url = ('http://base.url/api/v4/projects/123/repository/files/'
                'folder1%2Ffolder2%2Ffile?ref=a1b2c3d4')
-        aiohttpretty.register_json_uri('GET', url, body=fixtures.simple_file_metadata())
+        aiohttpretty.register_json_uri('GET', url, body=simple_file_metadata)
 
         history_url = ('http://base.url/api/v4/projects/123/repository/commits'
                        '?path=folder1/folder2/file&ref_name=a1b2c3d4&page=1'
                        '&per_page={}'.format(provider.MAX_PAGE_SIZE))
-        aiohttpretty.register_json_uri('GET', history_url, body=fixtures.revisions_for_file())
+        aiohttpretty.register_json_uri('GET', history_url, body=revisions_for_file)
 
         etag = hashlib.sha256('{}::{}::{}'.format('gitlab', path, 'a1b2c3d4').encode('utf-8'))\
                       .hexdigest()
@@ -303,18 +303,19 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file_with_branch(self, provider):
+    async def test_metadata_file_with_branch(self, provider,
+                                             simple_file_metadata, revisions_for_file):
         path = '/folder1/folder2/file'
         gl_path = GitLabPath(path, _ids=([(None, 'my-branch')] * 4))
 
         url = ('http://base.url/api/v4/projects/123/repository/files/'
                'folder1%2Ffolder2%2Ffile?ref=my-branch')
-        aiohttpretty.register_json_uri('GET', url, body=fixtures.simple_file_metadata())
+        aiohttpretty.register_json_uri('GET', url, body=simple_file_metadata)
 
         history_url = ('http://base.url/api/v4/projects/123/repository/commits'
                        '?path=folder1/folder2/file&ref_name=my-branch&page=1'
                        '&per_page={}'.format(provider.MAX_PAGE_SIZE))
-        aiohttpretty.register_json_uri('GET', history_url, body=fixtures.revisions_for_file())
+        aiohttpretty.register_json_uri('GET', history_url, body=revisions_for_file)
 
         result = await provider.metadata(gl_path)
         assert result.json_api_serialized('mst3k')['links'] == {
@@ -325,27 +326,6 @@ class TestMetadata:
                          '/folder1/folder2/file?branch=my-branch'),
             'delete': None,
         }
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_metadata_file_ruby_response(self, provider):
-        """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
-        path = '/folder1/folder2/file'
-        gl_path = GitLabPath(path, _ids=([(None, 'my-branch')] * 4))
-
-        url = ('http://base.url/api/v4/projects/123/repository/files/'
-               'folder1%2Ffolder2%2Ffile?ref=my-branch')
-        aiohttpretty.register_uri('GET', url, body=fixtures.weird_ruby_response())
-
-        history_url = ('http://base.url/api/v4/projects/123/repository/commits'
-                       '?path=folder1/folder2/file&ref_name=my-branch&page=1'
-                       '&per_page={}'.format(provider.MAX_PAGE_SIZE))
-        aiohttpretty.register_json_uri('GET', history_url, body=fixtures.revisions_for_file())
-
-        result = await provider.metadata(gl_path)
-        assert result.name == 'file'
-        assert result.size == 5
-        assert result.content_type == None
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -441,13 +421,13 @@ class TestRevisions:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_revisions(self, provider):
+    async def test_revisions(self, provider, revisions_for_file):
         path = '/folder1/folder2/file'
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 4))
 
         url = ('http://base.url/api/v4/projects/123/repository/commits'
                '?path=folder1/folder2/file&ref_name=a1b2c3d4')
-        aiohttpretty.register_json_uri('GET', url, body=fixtures.revisions_for_file())
+        aiohttpretty.register_json_uri('GET', url, body=revisions_for_file)
 
         revisions = await provider.revisions(gl_path)
         assert len(revisions) == 3
@@ -488,60 +468,11 @@ class TestDownload:
         gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 3))
 
         url = ('http://base.url/api/v4/projects/123/repository/files'
-               '/folder1%2Ffile.py?ref=a1b2c3d4')
-        aiohttpretty.register_json_uri('GET', url, body={
-            'content': 'aGVsbG8='
-        })
+               '/folder1%2Ffile.py/raw?ref=a1b2c3d4')
+        aiohttpretty.register_uri('GET', url, body=b'hello', headers={'X-Gitlab-Size': '5'})
 
         result = await provider.download(gl_path, branch='master')
         assert await result.read() == b'hello'
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_download_range(self, provider):
-        path = '/folder1/file.py'
-        gl_path = GitLabPath(path, _ids=([('a1b2c3d4', 'master')] * 3))
-
-        url = ('http://base.url/api/v4/projects/123/repository/files'
-               '/folder1%2Ffile.py?ref=a1b2c3d4')
-        aiohttpretty.register_json_uri('GET', url, body={'content': 'aGVsbG8='})
-
-        result = await provider.download(gl_path, branch='master', range=(0, 1))
-        assert result.partial
-        assert await result.read() == b'he'  # body content after base64 decoding and slice
-        assert aiohttpretty.has_call(method='GET', uri=url,
-                                     headers={'Range': 'bytes=0-1', 'PRIVATE-TOKEN': 'naps'})
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_download_file_ruby_response(self, provider):
-        """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
-        path = '/folder1/folder2/file'
-        gl_path = GitLabPath(path, _ids=([(None, 'my-branch')] * 4))
-
-        url = ('http://base.url/api/v4/projects/123/repository/files/'
-               'folder1%2Ffolder2%2Ffile?ref=my-branch')
-        aiohttpretty.register_uri('GET', url, body=fixtures.weird_ruby_response())
-
-        result = await provider.download(gl_path)
-        assert await result.read() == b'rolf\n'
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_download_file_ruby_response_range(self, provider):
-        """See: https://gitlab.com/gitlab-org/gitlab-ce/issues/31790"""
-        path = '/folder1/folder2/file'
-        gl_path = GitLabPath(path, _ids=([(None, 'my-branch')] * 4))
-
-        url = ('http://base.url/api/v4/projects/123/repository/files/'
-               'folder1%2Ffolder2%2Ffile?ref=my-branch')
-        aiohttpretty.register_uri('GET', url, body=fixtures.weird_ruby_response())
-
-        result = await provider.download(gl_path, range=(0, 1))
-        assert result.partial
-        assert await result.read() == b'ro'
-        assert aiohttpretty.has_call(method='GET', uri=url,
-                                     headers={'Range': 'bytes=0-1', 'PRIVATE-TOKEN': 'naps'})
 
 
 class TestReadOnlyProvider:

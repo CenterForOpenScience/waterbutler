@@ -4,7 +4,7 @@ import typing
 import binascii
 from urllib.parse import urlparse, quote
 
-from aiohttp import MultiDict, MultiDictProxy
+from multidict import MultiDict, MultiDictProxy
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.exceptions import WaterButlerError

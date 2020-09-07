@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import asyncio
 from unittest import mock
 
 import pytest
@@ -10,7 +9,6 @@ from tornado.httputil import HTTPServerRequest
 from tornado.http1connection import HTTP1ConnectionParameters
 
 import waterbutler
-from waterbutler.server.app import make_app
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.tasks.exceptions import WaitTimeOutError
 from waterbutler.server.api.v1.provider import ProviderHandler
@@ -30,37 +28,6 @@ def http_request():
     mocked_http_request.request_time = mock.Mock(return_value=10)
     mocked_http_request.body = MockRequestBody()
     return mocked_http_request
-
-
-@pytest.fixture
-def handler(http_request):
-    mocked_handler = ProviderHandler(make_app(True), http_request)
-
-    mocked_handler.path_kwargs = {
-        'provider': 'test',
-        'path': '/file',
-        'resource': 'guid1'
-    }
-    mocked_handler.path = '/test_path'
-    mocked_handler.provider = MockProvider()
-    mocked_handler.requested_version = None
-
-    mocked_handler.resource = 'test_source_resource'
-    mocked_handler.metadata = MockFileMetadata()
-
-    mocked_handler.dest_path = '/test_dest_path'
-    mocked_handler.dest_provider = MockProvider()
-    mocked_handler.dest_resource = 'test_dest_resource'
-    mocked_handler.dest_meta = MockFileMetadata()
-    mocked_handler.arguments = {}
-    mocked_handler.write = mock.Mock()
-    mocked_handler.write_stream = MockCoroutine()
-    mocked_handler.redirect = mock.Mock()
-    mocked_handler.uploader = asyncio.Future()
-    mocked_handler.wsock = mock.Mock()
-    mocked_handler.writer = mock.Mock()
-
-    return mocked_handler
 
 
 @pytest.fixture
@@ -268,7 +235,3 @@ def serialized_metadata():
 def serialized_request():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json'), 'r') as fp:
         return json.load(fp)['serialized_request']
-
-
-
-

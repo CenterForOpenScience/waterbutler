@@ -19,3 +19,4 @@ dist/
 build/
 .cache
 .mypy_cache
+newrelic.ini

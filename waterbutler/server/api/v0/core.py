@@ -4,7 +4,8 @@ import logging
 import tornado.web
 import tornado.gen
 import tornado.iostream
-from raven.contrib.tornado import SentryMixin
+
+import sentry_sdk
 
 from waterbutler import tasks
 from waterbutler.core import utils
@@ -32,7 +33,7 @@ auth_handler = AuthHandler(settings.AUTH_HANDLERS)
 signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
 
 
-class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.RequestHandler, SentryMixin):
+class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.RequestHandler):
     """Base Handler to inherit from when defining a new view.
     Handles CORs headers, additional status codes, and translating
     :class:`waterbutler.core.exceptions.ProviderError`s into http responses
@@ -45,7 +46,7 @@ class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.Re
     ACTION_MAP = {}  # type: dict
 
     def write_error(self, status_code, exc_info):
-        self.captureException(exc_info)
+        sentry_sdk.capture_exception(exc_info)
         etype, exc, _ = exc_info
 
         if issubclass(etype, exceptions.PluginError):

@@ -2,31 +2,28 @@ import io
 import os
 import copy
 import json
-import base64
+import time
 import hashlib
-from http import client
+from unittest import mock
+from http import HTTPStatus
 
 import furl
 import pytest
 import aiohttpretty
 
-from waterbutler.core import streams
-from waterbutler.core import exceptions
-
+from waterbutler.core import streams, exceptions
 from waterbutler.providers.github import GitHubProvider
 from waterbutler.providers.github.path import GitHubPath
 from waterbutler.providers.github.metadata import (GitHubRevision,
                                                    GitHubFileTreeMetadata,
                                                    GitHubFolderTreeMetadata,
                                                    GitHubFileContentMetadata,
-                                                   GitHubFolderContentMetadata)
-from waterbutler.providers.github import settings as github_settings
-from waterbutler.providers.github.exceptions import GitHubUnsupportedRepoError
+                                                   GitHubFolderContentMetadata, )
+from waterbutler.providers.github.exceptions import (GitHubUnsupportedRepoError,
+                                                     GitHubRateLimitExceededError, )
 
-
-from tests.providers.github.fixtures import (crud_fixtures,
-                                             revision_fixtures,
-                                             provider_fixtures)
+from tests import utils
+from tests.providers.github.fixtures import crud_fixtures, revision_fixtures, provider_fixtures
 
 
 @pytest.fixture
@@ -102,6 +99,25 @@ def other_provider(other_auth, other_credentials, other_settings, provider_fixtu
     return provider
 
 
+@pytest.fixture
+def rate_limit_provider(provider):
+
+    provider.is_celery_task = True
+    provider.rl_remaining = 500
+    provider.rl_reset = 600
+    provider.rl_available_tokens = 0
+    provider.rl_tokens_updated = 90
+
+    return provider
+
+
+@pytest.fixture
+def mock_time(monkeypatch):
+
+    mock_time = mock.Mock(return_value=100)
+    monkeypatch.setattr(time, 'time', mock_time)
+
+
 class TestHelpers:
 
     def test_build_repo_url(self, provider, settings):
@@ -121,29 +137,30 @@ class TestValidatePath:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_validate_v1_path_file(self, provider, provider_fixtures):
-        branch_url = provider.build_repo_url('branches', provider.default_branch)
-        tree_url = provider.build_repo_url(
-            'git', 'trees',
-            provider_fixtures['branch_metadata']['commit']['commit']['tree']['sha'],
-            recursive=1
-        )
 
-        aiohttpretty.register_json_uri('GET', branch_url, body=provider_fixtures['branch_metadata'])
-        aiohttpretty.register_json_uri(
-            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
-        )
+        branch_name = provider.default_branch
+        branch_metadata = provider_fixtures['branch_metadata']
+        tree_sha = branch_metadata['commit']['commit']['tree']['sha']
 
-        blob_path = 'file.txt'
+        branch_url = provider.build_repo_url('branches', branch_name)
+        tree_url = provider.build_repo_url('git', 'trees', tree_sha, recursive=1)
 
-        result = await provider.validate_v1_path('/' + blob_path)
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+        aiohttpretty.register_json_uri('GET', tree_url,
+                                       body=provider_fixtures['repo_tree_metadata_root'])
+
+        blob_name = 'file.txt'
+        blob_path = '/{}'.format(blob_name)
+
+        result = await provider.validate_v1_path(blob_path)
+        expected = GitHubPath(blob_path, _ids=[(branch_name, ''), (branch_name, '')])
+        assert result == expected
+        assert result.identifier[0] == expected.identifier[0]
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + blob_path + '/')
+            await provider.validate_v1_path('/{}/'.format(blob_path))
 
-        expected = GitHubPath('/' + blob_path, _ids=[(provider.default_branch, '')])
-
-        assert exc.value.code == client.NOT_FOUND
-        assert result == expected
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -161,35 +178,31 @@ class TestValidatePath:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_validate_v1_path_folder(self, provider, provider_fixtures):
-        branch_url = provider.build_repo_url('branches', provider.default_branch)
-        tree_url = provider.build_repo_url(
-            'git', 'trees',
-            provider_fixtures['branch_metadata']['commit']['commit']['tree']['sha'],
-            recursive=1
-        )
 
-        aiohttpretty.register_json_uri(
-            'GET', branch_url, body=provider_fixtures['branch_metadata']
-        )
-        aiohttpretty.register_json_uri(
-            'GET', tree_url, body=provider_fixtures['repo_tree_metadata_root']
-        )
+        branch_name = provider.default_branch
+        branch_metadata = provider_fixtures['branch_metadata']
+        tree_sha = branch_metadata['commit']['commit']['tree']['sha']
 
-        tree_path = 'level1'
+        branch_url = provider.build_repo_url('branches', branch_name)
+        tree_url = provider.build_repo_url('git', 'trees', tree_sha, recursive=1)
 
-        expected = GitHubPath(
-            '/' + tree_path + '/', _ids=[(provider.default_branch, ''),
-            (provider.default_branch, None)]
-        )
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+        aiohttpretty.register_json_uri('GET', tree_url,
+                                       body=provider_fixtures['repo_tree_metadata_root'])
 
-        result = await provider.validate_v1_path('/' + tree_path + '/')
+        tree_name = 'level1'
+        tree_path = '/{}/'.format(tree_name)
+        result = await provider.validate_v1_path(tree_path)
+        expected = GitHubPath(tree_path, _ids=[(branch_name, ''), (branch_name, None)])
 
-        with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + tree_path)
-
-        assert exc.value.code == client.NOT_FOUND
         assert result == expected
         assert result.extra == expected.extra
+        assert result.identifier[0] == expected.identifier[0]
+
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.validate_v1_path('/{}'.format(tree_name))
+
+        assert exc.value.code == HTTPStatus.NOT_FOUND
 
     @pytest.mark.asyncio
     async def test_reject_multiargs(self, provider):
@@ -197,12 +210,12 @@ class TestValidatePath:
         with pytest.raises(exceptions.InvalidParameters) as exc:
             await provider.validate_v1_path('/foo', ref=['bar', 'baz'])
 
-        assert exc.value.code == client.BAD_REQUEST
+        assert exc.value.code == HTTPStatus.BAD_REQUEST
 
         with pytest.raises(exceptions.InvalidParameters) as exc:
             await provider.validate_path('/foo', ref=['bar', 'baz'])
 
-        assert exc.value.code == client.BAD_REQUEST
+        assert exc.value.code == HTTPStatus.BAD_REQUEST
 
     @pytest.mark.asyncio
     async def test_validate_path(self, provider):
@@ -272,7 +285,6 @@ class TestCRUD:
 
         url = provider.build_repo_url('git', 'blobs', file_sha)
         tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
-        latest_sha_url = provider.build_repo_url('git', 'refs', 'heads', path.identifier[0])
         commit_url = provider.build_repo_url(
             'commits', path=path.path.lstrip('/'), sha=path.identifier[0]
         )
@@ -324,7 +336,7 @@ class TestCRUD:
         url = provider.build_repo_url('git', 'blobs', file_sha)
         tree_url = provider.build_repo_url('git', 'trees', ref, recursive=1)
         commit_url = provider.build_repo_url(
-            'commits', path=path.path.lstrip('/'), sha='Just a test'
+            'commits', path=path.path.lstrip('/'), sha='other_branch'
         )
 
         aiohttpretty.register_uri('GET', url, body=b'delicious')
@@ -516,7 +528,7 @@ class TestCRUD:
             'POST', blob_url, body=crud_fixtures['checksum_mismatch_blob_data'], status=201
         )
 
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='GET', uri=commit_url)
@@ -663,10 +675,7 @@ class TestCRUD:
             'git', 'trees',
             crud_fixtures['deleted_branch_metadata']['commit']['commit']['tree']['sha'])
         )
-
         create_tree_url = provider.build_repo_url('git', 'trees')
-        commit_url = provider.build_repo_url('git', 'commits')
-        patch_url = provider.build_repo_url('git', 'refs', 'heads', path.branch_ref)
 
         aiohttpretty.register_json_uri(
             'GET', branch_url, body=crud_fixtures['deleted_branch_metadata']
@@ -747,13 +756,26 @@ class TestCRUD:
         )
 
         create_tree_url = provider.build_repo_url('git', 'trees')
-        aiohttpretty.register_json_uri('POST', create_tree_url, **{
-            "responses": [
-                {'body': json.dumps(
-                    crud_fixtures['deleted_subfolder_tree_data_1']).encode('utf-8'), 'status': 201},
-                {'body': json.dumps(
-                    crud_fixtures['deleted_subfolder_tree_data_2']).encode('utf-8'), 'status': 201},
-            ]})
+        crud_fixtures_1 = crud_fixtures['deleted_subfolder_tree_data_1']
+        crud_fixtures_2 = crud_fixtures['deleted_subfolder_tree_data_2']
+        aiohttpretty.register_uri(
+            'POST',
+            create_tree_url,
+            **{
+                "responses": [
+                    {
+                        'body': json.dumps(crud_fixtures_1).encode('utf-8'),
+                        'status': 201,
+                        'headers': {'Content-Type': 'application/json'}
+                    },
+                    {
+                        'body': json.dumps(crud_fixtures_2).encode('utf-8'),
+                        'status': 201,
+                        'headers': {'Content-Type': 'application/json'}
+                    },
+                ]
+            }
+        )
 
         commit_url = provider.build_repo_url('git', 'commits')
         aiohttpretty.register_json_uri(
@@ -961,8 +983,6 @@ class TestMetadata:
         url = furl.furl(provider.build_repo_url('contents', '/test/'))
         url.args.update({'ref': path.branch_ref})
 
-        message = 'This repository is empty.'
-
         aiohttpretty.register_json_uri('GET', url, body={})
 
         with pytest.raises(exceptions.MetadataError) as e:
@@ -979,8 +999,7 @@ class TestMetadata:
             '/file.txt', _ids=[("master", metadata[0]['sha']), ('master', metadata[0]['sha'])]
         )
 
-        url = provider.build_repo_url('commits', path=path.path, sha=path.file_sha)
-
+        url = provider.build_repo_url('commits', path=path.path, sha='master')
         aiohttpretty.register_json_uri('GET', url, body=metadata)
 
         result = await provider.revisions(path)
@@ -1306,7 +1325,7 @@ class TestCreateFolder:
     async def test_must_be_folder(self, provider):
         path = GitHubPath('/Imarealboy', _ids=[(provider.default_branch, ''), ('other_branch', '')])
 
-        with pytest.raises(exceptions.CreateFolderError) as e:
+        with pytest.raises(exceptions.CreateFolderError):
             await provider.create_folder(path)
 
     @pytest.mark.asyncio
@@ -1367,6 +1386,264 @@ class TestCreateFolder:
         assert metadata.kind == 'folder'
         assert metadata.name == 'trains'
         assert metadata.path == '/i/like/trains/'
+
+
+class TestRateLimit:
+
+    def test_add_tokens_min_rate(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 600
+        mock_provider._rl_add_more_tokens()
+        assert mock_provider.rl_available_tokens == 0.01
+
+    def test_add_tokens_min_rate_max_tokens(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 600
+        mock_provider.rl_available_tokens = 9.99
+        mock_provider._rl_add_more_tokens()
+        assert mock_provider.rl_available_tokens == 10.0
+
+    def test_add_tokens_variable_rate(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
+        mock_provider._rl_add_more_tokens()  # (500 - 200) / (600 - 100) = 0.6
+        assert mock_provider.rl_available_tokens == 0.6
+
+    def test_add_tokens_variable_rate_max_tokens(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
+        mock_provider.rl_available_tokens = 11
+        mock_provider._rl_add_more_tokens()
+        assert mock_provider.rl_available_tokens == 10
+
+    def test_add_tokens_reset_smaller_than_now(self, mock_time, rate_limit_provider):
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
+        mock_provider.rl_reset = 50
+        mock_provider._rl_add_more_tokens()
+        assert mock_provider.rl_available_tokens == 10
+
+    @pytest.mark.asyncio
+    async def test_wait_for_tokens(self, mock_time, rate_limit_provider):
+        """No whole tokens remaining. Call _rl_add_more_tokens until fixed."""
+
+        mock_provider = rate_limit_provider
+        mock_provider.rl_reserved = 200
+        orig_add_more_tokens = mock_provider._rl_add_more_tokens
+        mock_provider._rl_add_more_tokens = mock.Mock(side_effect=orig_add_more_tokens)
+        await mock_provider._rl_check_available_tokens()  # rate should be 0.6, two iterations and done
+
+        assert mock_provider.rl_available_tokens < 0.205
+        assert mock_provider.rl_available_tokens > 0.195
+        assert mock_provider._rl_add_more_tokens.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_dont_wait_for_tokens(self, mock_time, rate_limit_provider):
+        """Plenty of tokens available, no need to add more"""
+
+        mock_provider = rate_limit_provider
+        mock_provider.rl_available_tokens = 3.0
+        mock_provider._rl_add_more_tokens = mock.Mock()
+        await mock_provider._rl_check_available_tokens()
+
+        assert mock_provider.rl_available_tokens == 2.0
+        mock_provider._rl_add_more_tokens.assert_not_called()
+
+    # Test that celery requests update the `rl_remaining` and `rl_reset` with resp headers
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_celery(self, mock_time, rate_limit_provider):
+
+        mock_provider = rate_limit_provider
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.OK,
+            headers={
+                'X-RateLimit-Remaining': '1234',
+                'X-RateLimit-Reset': '5678'
+            })
+        await mock_provider.make_request(
+            'GET',
+            'wb-test-github.cos.io',
+            expects=(HTTPStatus.OK, ),
+            throws=exceptions.MetadataError,
+        )
+        assert mock_provider.rl_remaining == 1234
+        assert mock_provider.rl_reset == 5678
+
+    # Test that non-celery ones don't update the `rl_remaining` and `rl_reset` with resp headers
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_celery(self, mock_time, rate_limit_provider):
+
+        mock_provider = rate_limit_provider
+        mock_provider.is_celery_task = False
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.OK,
+            headers={
+                'X-RateLimit-Remaining': '1234',
+                'X-RateLimit-Reset': '5678'
+            })
+        await mock_provider.make_request(
+            'GET',
+            'wb-test-github.cos.io',
+            expects=(HTTPStatus.OK,),
+            throws=exceptions.MetadataError,
+        )
+
+        assert mock_provider.rl_remaining == 500
+        assert mock_provider.rl_reset == 600
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_celery_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Verify error-handling behavior for celery-based rate-limited errors."""
+
+        mock_provider = rate_limit_provider
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.FORBIDDEN,
+            headers={
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': '5678',
+            },
+            body={'message': 'API rate limit exceeded'}
+        )
+
+        with pytest.raises(GitHubRateLimitExceededError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(HTTPStatus.OK,),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.SERVICE_UNAVAILABLE
+        assert '1970-01-01T01:34:38+00:00.' in exc.value.message
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_celery_not_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Verify error-handling behavior for celery-based not-rate-limited errors. E.g.
+        permissions-based errors."""
+
+        mock_provider = rate_limit_provider
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.FORBIDDEN,
+            headers={
+                'X-RateLimit-Remaining': '231',
+                'X-RateLimit-Reset': '5678',
+            },
+            body={'message': 'this is a fake error'}
+        )
+
+        with pytest.raises(exceptions.MetadataError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(HTTPStatus.OK,),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.FORBIDDEN
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_celery_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Test that non-celery requests throw rate limit exceeded error"""
+
+        mock_provider = rate_limit_provider
+        mock_provider.is_celery_task = False
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.FORBIDDEN,
+            headers={
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': '5678',
+            },
+            body={'message': 'API rate limit exceeded'}
+        )
+
+        with pytest.raises(GitHubRateLimitExceededError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.SERVICE_UNAVAILABLE
+        assert '1970-01-01T01:34:38+00:00.' in exc.value.message
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_celery_not_rate_limit_error(self, mock_time, rate_limit_provider):
+        """Test that non-celery requests re-throw non-limit exceeded errors"""
+
+        mock_provider = rate_limit_provider
+        mock_provider.is_celery_task = False
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.FORBIDDEN,
+            headers={
+                'X-RateLimit-Remaining': '123',
+                'X-RateLimit-Reset': '5678',
+            },
+            body={'message': 'API rate limit exceeded'}
+        )
+
+        with pytest.raises(exceptions.MetadataError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.FORBIDDEN
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_make_request_not_forbidden_error(self, mock_time, rate_limit_provider):
+        """make_request should rethrow non-FORBIDDEN errors w/o any additional error-handling"""
+
+        mock_provider = rate_limit_provider
+        mock_provider._rl_handle_forbidden_error = utils.MockCoroutine()
+
+        aiohttpretty.register_json_uri(
+            'GET',
+            'wb-test-github.cos.io',
+            status=HTTPStatus.SERVICE_UNAVAILABLE,
+            headers={
+                'X-RateLimit-Remaining': '231',
+                'X-RateLimit-Reset': '5678',
+            },
+            body={'message': 'this is a fake error'}
+        )
+
+        with pytest.raises(exceptions.MetadataError) as exc:
+            await mock_provider.make_request(
+                'GET',
+                'wb-test-github.cos.io',
+                expects=(HTTPStatus.OK,),
+                throws=exceptions.MetadataError,
+            )
+
+        assert exc.value.code == HTTPStatus.SERVICE_UNAVAILABLE
+        mock_provider._rl_handle_forbidden_error.assert_not_called()
 
 
 class TestOperations:
@@ -1489,7 +1766,7 @@ class TestUtilities:
             GitHubPath('/beta/gam/', _ids=_ids)
         )
 
-        assert missing_file_tree == provider_fixtures['nested_tree_metadata']['tree']
+        assert missing_folder_tree == provider_fixtures['nested_tree_metadata']['tree']
 
     def test__reparent_blobs(self, provider, provider_fixtures):
         _ids = [('master', '')]
@@ -1529,3 +1806,201 @@ class TestUtilities:
 
         assert len(pruned_tree) == 3  # alpha.txt, gamma.txt, epsilon.txt
         assert len([x for x in pruned_tree if x['type'] == 'tree']) == 0
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize('param', [
+        ('branch'),
+        ('ref'),
+        ('version'),
+        ('sha'),
+        ('revision')
+    ])
+    async def test__interpret_query_parameters_branch(self, provider, provider_fixtures, param):
+
+        branch_name = 'develop'
+        branch_metadata = provider_fixtures['branch_metadata']
+        tree_sha = branch_metadata['commit']['commit']['tree']['sha']
+
+        branch_url = provider.build_repo_url('branches', branch_name)
+        tree_url = provider.build_repo_url('git', 'trees', tree_sha, recursive=1)
+
+        aiohttpretty.register_json_uri('GET', branch_url, body=branch_metadata)
+        aiohttpretty.register_json_uri('GET', tree_url,
+                                       body=provider_fixtures['repo_tree_metadata_root'])
+
+        blob_path = '/file.txt'
+        params = {param: branch_name}
+        result = await provider.validate_v1_path(blob_path, **params)
+        expected = GitHubPath(blob_path, _ids=[(branch_name, ''), (branch_name, '')])
+
+        assert result == expected
+        assert result.identifier[0] == expected.identifier[0]
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    @pytest.mark.parametrize('param', [
+        ('ref'),
+        ('version'),
+        ('sha'),
+        ('revision')
+    ])
+    async def test__interpret_query_parameters_sha(self, provider, provider_fixtures, param):
+
+        commit_sha = '6dcb09b5b57875f334f61aebed695e2e4193db5e'
+        commit_url = provider.build_repo_url('git', 'commits', commit_sha)
+
+        tree_sha = '394164986adbe26c0c7605c6fe627e4fe3b13aa6'
+        tree_url = provider.build_repo_url('git', 'trees', tree_sha, recursive=1)
+
+        aiohttpretty.register_json_uri('GET', commit_url,
+                                       body=provider_fixtures['commit_metadata'])
+        aiohttpretty.register_json_uri('GET', tree_url,
+                                       body=provider_fixtures['repo_tree_metadata_root'])
+
+        blob_path = '/file.txt'
+        params = {param: commit_sha}
+        result = await provider.validate_v1_path(blob_path, **params)
+        expected = GitHubPath(blob_path, _ids=[(commit_sha, ''), (commit_sha, '')])
+
+        assert result == expected
+        assert result.identifier[0] == expected.identifier[0]
+
+    def test__interpret_query_parameters_sha_priorities(self, provider):
+        params = {
+            'ref': 'b4eecafa9be2f2006ce1b709d6857b07069b4608',
+            'version': '7fd1a60b01f91b314f59955a4e4d4e80d8edf11d',
+            'sha': 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391',
+            'revision': 'bc1087ebfe8354a684bf9f8b75517784143dde86',
+            'branch': '71a892a5cd479bc73ae750b121c0d47a33028e66',
+        }
+
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['ref']
+
+        del params['ref']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['version']
+
+        del params['version']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['sha']
+
+        del params['sha']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['revision']
+
+        del params['revision']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['branch']
+
+        del params['branch']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == provider.default_branch
+
+    def test__interpret_query_parameters_branch_priorities(self, provider):
+        params = {
+            'branch': 'grr',
+            'ref': 'quack',
+            'version': 'woof',
+            'sha': 'moo',
+            'revision': 'meow',
+        }
+
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['branch']
+
+        del params['branch']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['ref']
+
+        del params['ref']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['version']
+
+        del params['version']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['sha']
+
+        del params['sha']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['revision']
+
+        del params['revision']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == provider.default_branch
+
+    def test__interpret_query_parameters_sha_vs_branch_priority(self, provider):
+        params = {
+            'ref': 'quack',
+            'version': 'ca39bcbf849231525ce9e775935fcb18ed477b5a',
+            'branch': 'tooth',
+        }
+
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'commit_sha'
+        assert ref == params['version']
+
+        del params['version']
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**params)
+        assert ref_type == 'branch_name'
+        assert ref == params['branch']
+
+    @pytest.mark.parametrize('kwargs,expected', [
+        (
+            {'ref': ['foo', 'bar'], 'sha': 'ca39bcbf849231525ce9e775935fcb18ed477b5a'},
+            ('ca39bcbf849231525ce9e775935fcb18ed477b5a', 'commit_sha', 'query_sha'),
+        ),
+        (
+            {'sha': ['foo', 'bar'], 'ref': 'ca39bcbf849231525ce9e775935fcb18ed477b5a'},
+            ('ca39bcbf849231525ce9e775935fcb18ed477b5a', 'commit_sha', 'query_ref'),
+        ),
+        (
+            {'ref': ['foo', 'bar'], 'branch': 'ca39bcbf849231525ce9e775935fcb18ed477b5a'},
+            ('ca39bcbf849231525ce9e775935fcb18ed477b5a', 'commit_sha', 'query_branch'),
+        ),
+        (
+            {'ref': ['foo', 'bar'], 'branch': 'master'},
+            ('master', 'branch_name', 'query_branch'),
+        ),
+        (
+            {'branch': ['foo', 'bar'], 'revision': 'master'},
+            ('master', 'branch_name', 'query_revision'),
+        ),
+    ])
+    def test__interpret_query_parameters_multival(self, provider, kwargs, expected):
+        ref, ref_type, ref_from = provider._interpret_query_parameters(**kwargs)
+        assert (ref, ref_type, ref_from) == expected
+
+    @pytest.mark.parametrize('kwargs', [
+        {'ref': ['foo', 'bar']},
+        {'ref': ['foo', 'bar'], 'branch': ['moo', 'quack']},
+        {'branch': ['moo', 'quack']},
+    ])
+    def test__interpret_query_parameters_multival_error(self, provider, kwargs):
+        with pytest.raises(exceptions.InvalidParameters) as exc:
+            provider._interpret_query_parameters(**kwargs)
+
+        assert exc.value.code == HTTPStatus.BAD_REQUEST
+
+    @pytest.mark.parametrize('ref,expected', [
+        ('ca39bcbf849231525ce9e775935fcb18ed477b5a', True),
+        ('ca39bcbf849231525ce9e775935fcb18ed477b5', False),  # one character short
+        ('bad', False),  # valid SHA, too short, must be branch
+        ('meow', False),  # not valid base 16, must be branch name
+        ('ca39bcbf849231525ce9e775935fcb18ed477b5x', False),  # 'x' not valid base16
+    ])
+    def test__looks_like_sha(self, provider, ref, expected):
+        assert provider._looks_like_sha(ref) == expected

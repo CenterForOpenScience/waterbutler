@@ -26,7 +26,7 @@ HTTP_REASONS = {
 
 
 def parse_request_range(range_header):
-    """WB uses tornado's ``httputil._parse_request_range`` function to parse the Range HTTP header
+    r"""WB uses tornado's ``httputil._parse_request_range`` function to parse the Range HTTP header
     and return a tuple representing the range.  Tornado's version returns a tuple suitable for
     slicing arrays, meaning that a range of 0-1 will be returned as ``(0, 2)``.  WB had been
     assuming that the tuple would represent the first and last byte positions and was consistently

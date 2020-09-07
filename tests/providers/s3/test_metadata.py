@@ -20,7 +20,7 @@ class TestFileMetadataHeaders:
         assert file_metadata_headers_object.materialized_path == '/test-path'
         assert file_metadata_headers_object.kind == 'file'
         assert file_metadata_headers_object.provider == 's3'
-        assert file_metadata_headers_object.size == 9001
+        assert file_metadata_headers_object.size == '9001'
         assert file_metadata_headers_object.size_as_int == 9001
         assert type(file_metadata_headers_object.size_as_int) == int
         assert file_metadata_headers_object.content_type == 'binary/octet-stream'

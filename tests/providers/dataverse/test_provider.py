@@ -301,7 +301,7 @@ class TestCRUD:
         ])
 
         path = await provider.validate_path(path)
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='POST', uri=url)
@@ -511,7 +511,7 @@ class TestMetadata:
 
         path = await provider.validate_path('/')
         with pytest.raises(exceptions.MetadataError) as e:
-            result = await provider.metadata(path)
+            _ = await provider.metadata(path)
 
         assert e.value.code == 400
 

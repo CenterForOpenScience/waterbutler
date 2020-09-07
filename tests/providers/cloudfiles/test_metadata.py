@@ -1,15 +1,15 @@
 import pytest
-import aiohttp
+import multidict
 
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.providers.cloudfiles.metadata import (CloudFilesFileMetadata,
                                                        CloudFilesHeaderMetadata,
-                                                       CloudFilesFolderMetadata)
+                                                       CloudFilesFolderMetadata, )
 
 
 @pytest.fixture
 def file_header_metadata_txt():
-    return aiohttp.multidict.CIMultiDict([
+    return multidict.CIMultiDict([
         ('ORIGIN', 'https://mycloud.rackspace.com'),
         ('CONTENT-LENGTH', '216945'),
         ('ACCEPT-RANGES', 'bytes'),

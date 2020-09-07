@@ -22,7 +22,7 @@
 
 ### Compatibility
 
-WaterButler is compatible with Python 3.5 (tested up to 3.5.3) and 3.6.
+WaterButler is compatible with Python 3.6.
 
 ### Documentation
 
@@ -30,7 +30,7 @@ Documentation available at https://waterbutler.readthedocs.io/en/latest/
 
 ### Setting up
 
-In order to run WaterButler, you must create a Python 3.5-based virtualenv for it.
+In order to run WaterButler, you must create a Python 3.6-based virtualenv for it.
 
 For MacOSX, you can install the latest version of Python3 using:
 
@@ -41,15 +41,15 @@ brew install python3
 For Ubuntu users:
 
 ```bash
-apt-get install python3.5
+apt-get install python3.6
 ```
 
-After completing the installation of Python 3.5, you must create a virtual environment. This can be done with the following commands:
+After completing the installation of Python 3.6, you must create a virtual environment. This can be done with the following commands:
 
 ```bash
 pip install virtualenv
 pip install virtualenvwrapper
-mkvirtualenv --python=python3.5 waterbutler
+mkvirtualenv --python=python3.6 waterbutler
 
 pip install setuptools=37.0.0
 pip install invoke==0.13.0
@@ -88,30 +88,13 @@ WaterButler configuration is done through a JSON file (`waterbutler-test.json`) 
 mkdir ~/.cos
 ```
 
-A minimal config file would be:
-
-```json
-{
-  "SERVER_CONFIG": {
-    "DEBUG": false
-  }
-}
-```
-
-That flag is necessary because Python 3.5's asyncio [has a bug](https://bugs.python.org/issue25394) that is triggered by turning on debugging in Tornado. If you are upgrading from the 3.4-based WaterButler, change that setting in your `waterbutler-test.json`. If you do not, you will encounter this error:
-
-```
-TypeError: throw() takes 2 positional arguments but 4 were given
-```
-
 The data in `waterbutler-test.json` is used by the many Django-style `settings.py` files sprinkled about.  Most of these files define a top-level key that its specific configuration should be listed under.  For instance, if you wanted your local WaterButler server to listen on port 8989 instead of the default 7777, you would check the settings file for `waterbutler.server`.  That file looks for `HOST` and `DOMAIN` configuration keys under the `SERVER_CONFIG` top-level key.  Your configuration file would need to be updated to look like this:
 
 ```json
 {
   "SERVER_CONFIG": {
     "PORT": 8989,
-    "DOMAIN": "http://localhost:8989",
-    "DEBUG": false
+    "DOMAIN": "http://localhost:8989"
   }
 }
 ```
@@ -122,8 +105,7 @@ If you then wanted to update the GitHub commit message WaterButler submits when 
 {
   "SERVER_CONFIG": {
     "PORT": 8989,
-    "DOMAIN": "http://localhost:8989",
-    "DEBUG": false
+    "DOMAIN": "http://localhost:8989"
   },
   "GITHUB_PROVIDER_CONFIG": {
     "DELETE_FILE_MESSAGE": "WaterButler deleted this. You're welcome."

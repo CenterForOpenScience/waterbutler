@@ -8,15 +8,13 @@ import functools
 
 import furl
 
-from waterbutler.core import streams
-from waterbutler.core import provider
-from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core import streams, provider, exceptions
 
 from waterbutler.providers.cloudfiles import settings
-from waterbutler.providers.cloudfiles.metadata import CloudFilesFileMetadata
-from waterbutler.providers.cloudfiles.metadata import CloudFilesFolderMetadata
-from waterbutler.providers.cloudfiles.metadata import CloudFilesHeaderMetadata
+from waterbutler.providers.cloudfiles.metadata import (CloudFilesFileMetadata,
+                                                       CloudFilesFolderMetadata,
+                                                       CloudFilesHeaderMetadata, )
 
 
 def ensure_connection(func):
@@ -36,8 +34,8 @@ class CloudFilesProvider(provider.BaseProvider):
     """
     NAME = 'cloudfiles'
 
-    def __init__(self, auth, credentials, settings):
-        super().__init__(auth, credentials, settings)
+    def __init__(self, auth, credentials, settings, **kwargs):
+        super().__init__(auth, credentials, settings, **kwargs)
         self.token = None
         self.endpoint = None
         self.public_endpoint = None
@@ -45,7 +43,19 @@ class CloudFilesProvider(provider.BaseProvider):
         self.region = self.credentials['region']
         self.og_token = self.credentials['token']
         self.username = self.credentials['username']
-        self.container = self.settings['container']
+
+        # osfstorage used to store the bucket name under the "container" key but switched to using
+        # the "bucket" key during the googlecloud transistion.  Prefer "container" for backcompat,
+        # but if running with a recent OSF you may need to migrate your osfstorage version tables
+        # to use "bucket" instead.
+        if 'container' in self.settings:
+            self.container = self.settings['container']
+        elif 'bucket' in self.settings:
+            self.container = self.settings['bucket']
+        else:
+            raise exceptions.WaterButlerException('No "container" or "bucket" key in '
+                                                  'osfstorage settings')
+
         self.use_public = self.settings.get('use_public', True)
         self.metrics.add('region', self.region)
 
@@ -80,7 +90,7 @@ class CloudFilesProvider(provider.BaseProvider):
 
     @ensure_connection
     async def download(self, path, accept_url=False, range=None, **kwargs):
-        """Returns a ResponseStreamReader (Stream) for the specified path
+        r"""Returns a ResponseStreamReader (Stream) for the specified path
         :param str path: Path to the object you want to download
         :param dict \*\*kwargs: Additional arguments that are ignored
         :rtype str:
@@ -253,11 +263,11 @@ class CloudFilesProvider(provider.BaseProvider):
                 self.public_endpoint, self.endpoint = self._extract_endpoints(data)
         if not self.temp_url_key:
             self.metrics.add('ensure_connection.has_temp_url_key', False)
-            async with self.request('HEAD', self.endpoint, expects=(204, )) as resp:
-                try:
-                    self.temp_url_key = resp.headers['X-Account-Meta-Temp-URL-Key'].encode()
-                except KeyError:
-                    raise exceptions.ProviderError('No temp url key is available', code=503)
+            resp = await self.make_request('HEAD', self.endpoint, expects=(204, ))
+            try:
+                self.temp_url_key = resp.headers['X-Account-Meta-Temp-URL-Key'].encode()
+            except KeyError:
+                raise exceptions.ProviderError('No temp url key is available', code=503)
 
     def _extract_endpoints(self, data):
         """Pulls both the public and internal cloudfiles urls,

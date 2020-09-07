@@ -61,7 +61,7 @@ def file_content():
 
 @pytest.fixture
 def file_sha_b64():
-    return 'KrIc0sRT6ELxGc/oX3hZvabgltE='
+    return '2jmj7l5rSw0yVb/vlWAYkK/YBwk='
 
 
 @pytest.fixture
@@ -84,10 +84,10 @@ class TestValidatePath:
         good_url = provider.build_url('files', file_id, fields='id,name,path_collection')
         bad_url = provider.build_url('folders', file_id, fields='id,name,path_collection')
 
-        aiohttpretty.register_json_uri('get', good_url,
+        aiohttpretty.register_json_uri('GET', good_url,
                                        body=root_provider_fixtures['file_metadata']['entries'][0],
                                        status=200)
-        aiohttpretty.register_uri('get', bad_url, status=404)
+        aiohttpretty.register_uri('GET', bad_url, status=404)
 
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + file_id)
@@ -112,10 +112,10 @@ class TestValidatePath:
         good_url = provider.build_url('folders', folder_id, fields='id,name,path_collection')
         bad_url = provider.build_url('files', folder_id, fields='id,name,path_collection')
 
-        aiohttpretty.register_json_uri('get', good_url,
+        aiohttpretty.register_json_uri('GET', good_url,
                                        body=root_provider_fixtures['folder_object_metadata'],
                                        status=200)
-        aiohttpretty.register_uri('get', bad_url, status=404)
+        aiohttpretty.register_uri('GET', bad_url, status=404)
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + folder_id + '/')
         except Exception as exc:
@@ -323,7 +323,7 @@ class TestUpload:
         aiohttpretty.register_json_uri('POST', upload_url, status=201,
                                        body=root_provider_fixtures['checksum_mismatch_metadata'])
 
-        with pytest.raises(exceptions.UploadChecksumMismatchError) as exc:
+        with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='POST', uri=upload_url)
@@ -342,7 +342,7 @@ class TestUpload:
         path = WaterButlerPath('/foobah/', _ids=('0', '1'))
         await provider.upload(file_stream, path)
 
-        assert provider._contiguous_upload.called_with(file_stream, path)
+        provider._contiguous_upload.assert_called_with(path, file_stream)
         assert not provider._chunked_upload.called
 
         provider.NONCHUNKED_UPLOAD_LIMIT = NONCHUNKED_UPLOAD_LIMIT
@@ -361,7 +361,7 @@ class TestUpload:
         path = WaterButlerPath('/foobah/', _ids=('0', '1'))
         await provider.upload(file_stream, path)
 
-        assert provider._chunked_upload.called_with(file_stream, path)
+        provider._chunked_upload.assert_called_with(path, file_stream)
         assert not provider._contiguous_upload.called
 
         provider.NONCHUNKED_UPLOAD_LIMIT = NONCHUNKED_UPLOAD_LIMIT
@@ -387,59 +387,122 @@ class TestUpload:
         path = WaterButlerPath('/foobah/', _ids=('0', '1'))
         await provider._chunked_upload(path, file_stream)
 
-        assert provider._create_chunked_upload_session.called_with(path, file_stream)
-        assert provider._upload_parts.called_with(file_stream, session_metadata)
-        assert provider._complete_chunked_upload_session.called_with(session_metadata,
+        provider._create_chunked_upload_session.assert_called_with(path, file_stream)
+        provider._upload_parts.assert_called_with(file_stream, session_metadata)
+        provider._complete_chunked_upload_session.assert_called_with(session_metadata,
                                                                      parts_manifest,
                                                                      file_sha_b64)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_create_upload_session_new_file(self, provider, root_provider_fixtures,
-                                                  file_stream):
-        """Check that the chunked upload session creation makes a request to the correct url when
-        creating a new file.
+    async def test_create_upload_session_new_file(self, provider, file_stream):
+        """Check that the chunked upload session creation is sending the proper data payload to
+        the appropriate URL when creating a new file in the root of the project.
         """
 
         path = WaterButlerPath('/newfile', _ids=(provider.folder, None))
         session_url = provider._build_upload_url('files', 'upload_sessions')
 
-        create_session_metadata = root_provider_fixtures['create_session_metadata']
         aiohttpretty.register_json_uri(
             'POST',
             session_url,
             status=201,
-            body=create_session_metadata
+            body={'dummy': 'data'},
         )
 
-        session_data = await provider._create_chunked_upload_session(path, file_stream)
-
-        assert root_provider_fixtures['create_session_metadata'] == session_data
-        assert aiohttpretty.has_call(method='POST', uri=session_url)
+        await provider._create_chunked_upload_session(path, file_stream)
+        assert aiohttpretty.has_call(
+            method='POST',
+            uri=session_url,
+            data=json.dumps({
+                'folder_id': provider.folder,
+                'file_name': 'newfile',
+                'file_size': 38,
+            }, sort_keys=True),
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_create_upload_session_existing_file(self, provider, root_provider_fixtures,
-                                                       file_stream):
-        """Check that the chunked upload session creation makes a request to the correct url when
-        updating an existing file.
+    async def test_create_upload_session_new_file_nonroot(self, provider, file_stream):
+        """Check that the chunked upload session creation is sending the proper data payload to
+        the appropriate URL when creating a new file in a subdirectory.
+        """
+
+        subfolder_id = '444444444'
+        path = WaterButlerPath('/subdir/newfile', _ids=(provider.folder, subfolder_id, None))
+        session_url = provider._build_upload_url('files', 'upload_sessions')
+
+        aiohttpretty.register_json_uri(
+            'POST',
+            session_url,
+            status=201,
+            body={'dummy': 'data'},
+        )
+
+        await provider._create_chunked_upload_session(path, file_stream)
+        assert aiohttpretty.has_call(
+            method='POST',
+            uri=session_url,
+            data=json.dumps({
+                'folder_id': subfolder_id,
+                'file_name': 'newfile',
+                'file_size': 38,
+            }, sort_keys=True),
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_upload_session_existing_file(self, provider, file_stream):
+        """Check that the chunked upload session creation is sending the proper data payload to
+        the appropriate URL when updating an existing file in the root of the project.
         """
 
         path = WaterButlerPath('/newfile', _ids=(provider.folder, '2345'))
 
         session_url = 'https://upload.box.com/api/2.0/files/2345/upload_sessions'
-        create_session_metadata = root_provider_fixtures['create_session_metadata']
         aiohttpretty.register_json_uri(
             'POST',
             session_url,
             status=201,
-            body=create_session_metadata
+            body={'dummy': 'data'},
         )
 
-        session_data = await provider._create_chunked_upload_session(path, file_stream)
+        await provider._create_chunked_upload_session(path, file_stream)
+        assert aiohttpretty.has_call(
+            method='POST',
+            uri=session_url,
+            data=json.dumps({
+                'file_name': 'newfile',
+                'file_size': 38,
+            }, sort_keys=True),
+        )
 
-        assert root_provider_fixtures['create_session_metadata'] == session_data
-        assert aiohttpretty.has_call(method='POST', uri=session_url)
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_create_upload_session_existing_file_nonroot(self, provider, file_stream):
+        """Check that the chunked upload session creation is sending the proper data payload to
+        the appropriate URL when updating an existing file in a subdirectory.
+        """
+
+        path = WaterButlerPath('/subdir/newfile', _ids=(provider.folder, '44444444', '2345'))
+
+        session_url = 'https://upload.box.com/api/2.0/files/2345/upload_sessions'
+        aiohttpretty.register_json_uri(
+            'POST',
+            session_url,
+            status=201,
+            body={'dummy': 'data'},
+        )
+
+        await provider._create_chunked_upload_session(path, file_stream)
+        assert aiohttpretty.has_call(
+            method='POST',
+            uri=session_url,
+            data=json.dumps({
+                'file_name': 'newfile',
+                'file_size': 38,
+            }, sort_keys=True),
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -448,11 +511,13 @@ class TestUpload:
         responses = [
             {
                 'body': json.dumps(root_provider_fixtures['upload_part_one']),
-                'status': 201
+                'status': 201,
+                'headers': {'Content-Type': 'application/json'},
             },
             {
                 'body': json.dumps(root_provider_fixtures['upload_part_two']),
-                'status': 201
+                'status': 201,
+                'headers': {'Content-Type': 'application/json'},
             }
         ]
 
@@ -595,7 +660,7 @@ class TestDelete:
 
         url = provider.build_url('files', item['id'], fields='id,name,path_collection')
         delete_url = provider.build_url('files', path.identifier)
-        aiohttpretty.register_json_uri('get', url,
+        aiohttpretty.register_json_uri('GET', url,
                                        body=root_provider_fixtures['file_metadata']['entries'][0])
         aiohttpretty.register_json_uri('DELETE', delete_url, status=204)
 

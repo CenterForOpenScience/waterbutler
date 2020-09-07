@@ -2,6 +2,93 @@
 ChangeLog
 *********
 
+20.0.2 (2020-06-02)
+===================
+- Fix: Bump sentry-sdk dependency from v0.14.0 to v0.14.4 to avoid potential memory leak.
+
+20.0.1 (2020-03-09)
+===================
+- Fix: Extend the default timeout for GET, PUT, and POST requests made by aiohttp.  A five minute
+timeout was added to aiohttp between versions v0.18.2 and v3.6.2.  WaterButler needs to support large
+uploads and downloads, so this has been changed to an hour, configurable by the `AIOHTTP_TIMEOUT`
+envvar.  Global request timeouts should be decided by the proxy set up in front of WB.
+
+20.0.0 (2020-02-18)
+===================
+- Code: Upgrade core library aiohttp from v0.18.2 to v3.6.2.  WaterButler uses aiohttp to make
+requests to the external providers.  Its interface has changed significantly from v0.18 and much
+of the internal `BaseProvider.make_request` code was refactored/rewritten.  Each provider has been
+updated to use the new `make_request` code.
+  - The newest aiohttp favors context managers for performing requests, which does not mesh well
+    with WB's tendency to pass around response objects.  To work around this, the core provider now
+    manually manages session setup and teardown.  Sessions are closed when the object is
+    garbage-collected.
+  - WB is moving away from using request context managers in provider code, where passing response
+    objects is more common.
+  - Update WB's stream classes to be compatible with recent asyncio.StreamReader.
+- Code: Requirements / dependency upgrades:
+  - Upgrade Tornado from v4.3 to v6.0.
+  - Add support for Newrelic monitoring, made possible by the upgrade to Tornado v6.0.
+  - Update Sentry logging to replace the deprecated `raven` library with `sentry-sdk`.
+  - Remove hack for `certifi` library and upgrade to the most recent version.
+  - Replace `agent` library with core async generators.
+  - Bump testing libraries to newer versions and update testing code to accommodate.
+  - Pin some unpinned dependencies in dev-requirements.txt.
+- Fix: Many miscellaneous test updates:
+  - Fix tests where copy-n-paste had gone awry.
+  - Remove `async` from `async def` tests that never `await`-ed anything.
+  - Stop saving unused return values into variables.
+  - Replace `assert $foo.called_` with `$foo.assert_called_`.
+  - Remove no-longer-valid tests.
+  - Move common move/copy task-testing code into a conftest.py.
+- Fix: Fix invalid pre-decrement of retry count in Box provider.
+- Fix: Support Rackspace Cloudfiles as an osfstorage backend.  During the transition to the Google
+Cloud backend, the bucket-identifying key in the osfstorage configuration changed from `container`
+to `bucket`.  Re-enable support for `container` to support legacy cloudfiles backends.
+- Fix: Support Figshare uploads where the content hashing has not completed before Figshare
+responds.  Previously, uploads less than 70Mb in size always had the checksum embedded in the
+response metadata.  Now the availability of the hash appears to be subject to some limit on
+Figshare's side.  If present, verify that it matches our checksum.  If not, bypass the check and
+set the `hashingInProgress` metadata field to true.
+- Code: Upgrade WB's Dockerfile to be based off python3.6 and Debian buster.  Remove manual gosu
+installation and fetch from apt-get instead.  python3.6 is now the only supported python version.
+- Code: Remove old GitLab workarounds.  As a side-effect, the GitLab provider no longer supports
+`Range` headers for downloads.  To support this would require slurping the file contents into
+memory (which was done by the workarounds), but this opens WB up to DOS attacks via large files.
+
+19.2.0 (2019-10-07)
+===================
+- Feature: Support rate-limiting in large move/copies for GitHub.  GitHub limits the number of
+per-user API requests to 5,000 per hour.  To avoid running afoul of these limits, slow down the
+rate of requests made by WB as we start to approach the rate-limiting threshold.  Reserve a
+configurable number of requests for regular requests.  If the request limit is exhausted by an
+external request, WB will throw a `GitHubRateLimitExceededError` error.
+- Fix: Consistently handle revision-identifying query parameters in the GitHub provider.  Over its
+lifetime the GH provider has supported "ref", "sha", "revision", "version", and (sometimes)
+"branch" as valid revision-identifying parameters.  With this change, all of those params are
+handled in a single method and in a defined fashion.  Revisions may be commit SHAs or branch
+names.  A revision is assumed to be a commit SHA if it is a valid 40-digit base-16 number.
+Otherwise it is assumed to be a branch name.  See method documentation for how multiple conflicting
+parameters are handled.
+- Fix: Update figshare provider to report the correct url for publicly-viewable files.
+- Fix: Update figshare provider to support "dataset" articles as folders.  figshare has many
+article types.  Previously, only the "fileset" article type represented a folder in the figshare WB
+provider. figshare now automatically updates "fileset"s to "dataset"s.  Promote "dataset"s to be the
+default folder-analagous article type.
+
+19.1.0 (2019-09-04)
+===================
+- Fix: Correctly annotate HEAD requests as metadata requests and revision requests as revision
+requests in the auth payload sent to the OSF.  These were being incorrectly marked as download
+requests, causing spurious download counts on OSF files.
+
+19.0.1 (2019-08-07)
+===================
+- Fix: Fix bug in the Box provider that was causing files uploaded to subdirectories to end up in
+the project root instead.  This would NOT cause an accidental overwrite; if a file with the same
+name was already present in the project root, Box would throw a 409 Conflict error and refuse to
+proceed.
+
 19.0.0 (2019-06-11)
 ===================
 - Fix: Bitbucket has retired their v1 API.  Update the WaterButler provider to use v2 instead.

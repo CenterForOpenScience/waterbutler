@@ -66,9 +66,6 @@ class MoveCopyMixin:
         path will all be the same as the source.
         """
 
-        # Force the json body to load into memory
-        await self.request.body
-
         auth_action = self.json.get('action', 'null')
         if auth_action not in ('copy', 'move', 'rename'):
             raise exceptions.InvalidParameters('Auth action must be "copy", "move", or "rename", '

@@ -54,7 +54,6 @@ class TestCreateFolder:
     @pytest.mark.aiohttpretty
     async def test_create_folder(self, folder_path, provider_one, folder_metadata, mock_time):
 
-        provider = provider_one
         data = json.dumps(folder_metadata)
         url, params = build_signed_url_without_auth(provider_one, 'POST',
                                                     folder_path.parent.identifier,
@@ -675,7 +674,7 @@ class TestValidatePath:
         url, params = build_signed_url_without_auth(provider_one, 'GET', file_id, 'lineage')
         aiohttpretty.register_json_uri('GET', url, params=params, status=200, body=file_lineage)
 
-        url, params = build_signed_url_without_auth(provider_one, 'GET', 'New%20Folder', 'lineage')
+        url, params = build_signed_url_without_auth(provider_one, 'GET', 'New Folder', 'lineage')
         aiohttpretty.register_json_uri('GET', url, params=params, status=200, body=folder_lineage)
 
         wb_path_v0 = await provider_one.validate_path('New Folder/' + file_id)

@@ -51,7 +51,7 @@ class GoogleCloudProvider(BaseProvider):
     # EXPIRATION for Signed Request/URL for XML API
     SIGNATURE_EXPIRATION = pd_settings.SIGNATURE_EXPIRATION
 
-    def __init__(self, auth: dict, credentials: dict, settings: dict) -> None:
+    def __init__(self, auth: dict, credentials: dict, settings: dict, **kwargs) -> None:
         """Initialize a provider instance with the given parameters.
 
         :param dict auth: the auth dictionary
@@ -76,7 +76,7 @@ class GoogleCloudProvider(BaseProvider):
         #
         #     WATERBUTLER_RESOURCE = 'bucket'
 
-        super().__init__(auth, credentials, settings)
+        super().__init__(auth, credentials, settings, **kwargs)
 
         self.bucket = settings.get('bucket')
         if not self.bucket:
@@ -109,7 +109,7 @@ class GoogleCloudProvider(BaseProvider):
                        path: WaterButlerPath,
                        **kwargs) \
                        -> typing.Union[GoogleCloudFileMetadata, typing.List[BaseGoogleCloudMetadata]]:
-        """Get the metadata about the object with the given WaterButlerPath.
+        r"""Get the metadata about the object with the given WaterButlerPath.
 
         .. note::
 
@@ -244,7 +244,7 @@ class GoogleCloudProvider(BaseProvider):
         return ResponseStreamReader(resp)
 
     async def delete(self, path: WaterButlerPath, *args, **kwargs) -> None:  # type: ignore
-        """Deletes the file object with the specified WaterButler path.
+        r"""Deletes the file object with the specified WaterButler path.
 
         .. note::
 
@@ -496,7 +496,7 @@ class GoogleCloudProvider(BaseProvider):
     def _build_and_sign_url(self, http_method: str, obj_name: str, content_md5: str='',
                             content_type: str='', canonical_ext_headers: dict=None,
                             **queries) -> str:
-        """Build and sign the request URL for various actions.
+        r"""Build and sign the request URL for various actions.
 
         **Building the URL**
 

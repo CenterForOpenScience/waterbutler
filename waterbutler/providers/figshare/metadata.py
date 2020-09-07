@@ -1,6 +1,4 @@
 from waterbutler.core import metadata
-from waterbutler.core.provider import build_url
-
 from waterbutler.providers.figshare import settings
 
 
@@ -81,15 +79,27 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
 
     @property
     def is_public(self):
-        return (settings.PRIVATE_IDENTIFIER not in self.raw['url'])
+        """A property which indicates whether the article is public or not.
+
+        The figshare "articles" endpoint now returns a dedicated field "is_public" to indicate if
+        this article is public or not.  Every file in the article shares the same public/private
+        attribute with its parent article.
+        """
+        return self.raw['is_public']
 
     @property
     def web_view(self):
+        """A property which is a URL that let users view the article on the figshare website.
+
+        The figshare "articles" endpoint now returns two dedicated fields for users to view the
+        article on the figshare website, namely "url_private_html" and "url_public_html".  For all
+        articles, both EXIST in the API response with a non-empty value.  The trick is, however,
+        that both URLs WORK for public articles while only the former WORKS for private ones.
+        """
         if self.is_public:
-            segments = ('articles', str(self.article_id))
+            return self.raw['url_public_html']
         else:
-            segments = ('account', 'articles', str(self.article_id))
-        return build_url(settings.VIEW_URL, *segments)
+            return self.raw['url_private_html']
 
     @property
     def can_delete(self):
@@ -105,6 +115,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
             'downloadUrl': self.raw_file['download_url'],
             'canDelete': self.can_delete,
             'webView': self.web_view,
+            'hashingInProgress': self.raw_file['status'] == 'ic_checking',
             'hashes': {
                 'md5': self.raw_file['computed_md5'],
             },

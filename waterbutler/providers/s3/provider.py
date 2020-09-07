@@ -46,7 +46,7 @@ class S3Provider(provider.BaseProvider):
     CHUNK_SIZE = settings.CHUNK_SIZE
     CONTIGUOUS_UPLOAD_SIZE_LIMIT = settings.CONTIGUOUS_UPLOAD_SIZE_LIMIT
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, **kwargs):
         """
         .. note::
 
@@ -57,7 +57,7 @@ class S3Provider(provider.BaseProvider):
         :param dict credentials: Dict containing `access_key` and `secret_key`
         :param dict settings: Dict containing `bucket`
         """
-        super().__init__(auth, credentials, settings)
+        super().__init__(auth, credentials, settings, **kwargs)
 
         self.connection = S3Connection(credentials['access_key'],
                 credentials['secret_key'], calling_format=OrdinaryCallingFormat())
@@ -138,7 +138,7 @@ class S3Provider(provider.BaseProvider):
         return (await dest_provider.metadata(dest_path)), not exists
 
     async def download(self, path, accept_url=False, revision=None, range=None, **kwargs):
-        """Returns a ResponseWrapper (Stream) for the specified path
+        r"""Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from S3 is not 200
 
         :param str path: Path to the key you want to download
@@ -653,14 +653,15 @@ class S3Provider(provider.BaseProvider):
             if (await self.exists(path)):
                 raise exceptions.FolderNamingConflict(path.name)
 
-        async with self.request(
+        await self.make_request(
             'PUT',
             functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
             skip_auto_headers={'CONTENT-TYPE'},
             expects=(200, 201, ),
             throws=exceptions.CreateFolderError
-        ):
-            return S3FolderMetadata({'Prefix': path.path})
+        )
+
+        return S3FolderMetadata({'Prefix': path.path})
 
     async def _metadata_file(self, path, revision=None):
         await self._check_region()

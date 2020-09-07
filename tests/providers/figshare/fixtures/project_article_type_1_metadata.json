@@ -1,0 +1,212 @@
+{
+    "private": {
+        "group_resource_id": null,
+        "embargo_date": null,
+        "defined_type_name": "figure",
+        "citation": "Chen, Longze (2019): FigurePrivate. figshare. Figure.",
+        "url_private_api": "https://api.figshare.com/v2/account/articles/8305859",
+        "embargo_reason": "",
+        "references": [],
+        "funding_list": [],
+        "url_public_api": "https://api.figshare.com/v2/articles/8305859",
+        "id": 8305859,
+        "custom_fields": [],
+        "size": 89281,
+        "metadata_reason": "",
+        "funding": null,
+        "figshare_url": "https://figshare.com/articles/_/8305859",
+        "embargo_type": "file",
+        "title": "FigurePrivate",
+        "defined_type": 1,
+        "is_embargoed": false,
+        "version": 0,
+        "resource_doi": null,
+        "confidential_reason": "",
+        "files": [
+            {
+                "status": "available",
+                "is_link_only": false,
+                "name": "FigurePrivate01.png",
+                "viewer_type": "",
+                "preview_state": "preview_error",
+                "download_url": "https://ndownloader.figshare.com/files/15562817",
+                "supplied_md5": "cae3869aa4b144a3aa5cffe979359836",
+                "computed_md5": "cae3869aa4b144a3aa5cffe979359836",
+                "upload_token": "105ca509-759b-491b-af48-fa5589cd7b49",
+                "upload_url": "",
+                "id": 15562817,
+                "size": 89281
+            }
+        ],
+        "handle": "",
+        "description": "FigurePrivate",
+        "tags": [],
+        "timeline": {},
+        "url_private_html": "https://figshare.com/account/articles/8305859",
+        "created_date": "2019-06-21T06:23:08Z",
+        "is_active": true,
+        "authors": [
+            {
+                "url_name": "Longze_Chen",
+                "is_active": true,
+                "id": 4449739,
+                "full_name": "Longze Chen",
+                "orcid_id": ""
+            }
+        ],
+        "is_public": false,
+        "categories": [
+            {
+                "parent_id": 5,
+                "id": 23,
+                "title": "Software Engineering"
+            }
+        ],
+        "thumb": "",
+        "status": "draft",
+        "is_confidential": false,
+        "doi": "",
+        "license": {
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "name": "CC BY 4.0",
+            "value": 1
+        },
+        "has_linked_file": false,
+        "url": "https://api.figshare.com/v2/account/projects/64916/articles/8305859",
+        "resource_title": null,
+        "url_public_html": "https://figshare.com/articles/_/8305859",
+        "published_date": null,
+        "group_id": null,
+        "is_metadata_record": false,
+        "modified_date": "2019-06-21T06:24:39Z"
+    },
+    "public": {
+        "group_resource_id": null,
+        "embargo_date": null,
+        "defined_type_name": "figure",
+        "citation": "Chen, Longze (2019): Figure. figshare. Figure.",
+        "url_private_api": "https://api.figshare.com/v2/account/articles/8263730",
+        "embargo_reason": "",
+        "references": [],
+        "funding_list": [],
+        "url_public_api": "https://api.figshare.com/v2/articles/8263730",
+        "id": 8263730,
+        "custom_fields": [],
+        "size": 338002,
+        "metadata_reason": "",
+        "funding": null,
+        "figshare_url": "https://figshare.com/articles/Figure01_png/8263730",
+        "embargo_type": "file",
+        "title": "Figure",
+        "defined_type": 1,
+        "is_embargoed": false,
+        "version": 3,
+        "resource_doi": null,
+        "confidential_reason": "",
+        "files": [
+            {
+                "status": "available",
+                "is_link_only": false,
+                "name": "Figure01.png",
+                "viewer_type": "image",
+                "preview_state": "preview_available",
+                "download_url": "https://ndownloader.figshare.com/files/15451592",
+                "supplied_md5": "cae3869aa4b144a3aa5cffe979359836",
+                "computed_md5": "cae3869aa4b144a3aa5cffe979359836",
+                "upload_token": "ecb258a2-6286-441d-89a1-02cb39c7e34f",
+                "upload_url": "",
+                "id": 15451592,
+                "size": 89281
+            },
+            {
+                "status": "available",
+                "is_link_only": false,
+                "name": "Figure02.png",
+                "viewer_type": "image",
+                "preview_state": "preview_available",
+                "download_url": "https://ndownloader.figshare.com/files/15461024",
+                "supplied_md5": "507b58e2f7dfb23811441e6f2d64e0d6",
+                "computed_md5": "507b58e2f7dfb23811441e6f2d64e0d6",
+                "upload_token": "e0ead5b2-d897-479c-a375-7a2ab81ea19d",
+                "upload_url": "",
+                "id": 15461024,
+                "size": 106291
+            },
+            {
+                "status": "available",
+                "is_link_only": false,
+                "name": "Figure03.png",
+                "viewer_type": "image",
+                "preview_state": "preview_available",
+                "download_url": "https://ndownloader.figshare.com/files/15461030",
+                "supplied_md5": "5697bb03e20c3a841e7331ee51362c8d",
+                "computed_md5": "5697bb03e20c3a841e7331ee51362c8d",
+                "upload_token": "ebd3cf1e-17ad-4d10-8edf-899ab06c60e7",
+                "upload_url": "",
+                "id": 15461030,
+                "size": 40995
+            },
+            {
+                "status": "available",
+                "is_link_only": false,
+                "name": "Figure04.png",
+                "viewer_type": "image",
+                "preview_state": "preview_available",
+                "download_url": "https://ndownloader.figshare.com/files/15461033",
+                "supplied_md5": "154d71b2cd8a657caadd18641918ce4f",
+                "computed_md5": "154d71b2cd8a657caadd18641918ce4f",
+                "upload_token": "45232cd5-cc19-4702-9c15-d205952ad860",
+                "upload_url": "",
+                "id": 15461033,
+                "size": 101435
+            }
+        ],
+        "handle": "",
+        "description": "Figure",
+        "tags": [
+            "Software Development And Testing"
+        ],
+        "timeline": {
+            "revision": "2019-06-13T13:56:05",
+            "firstOnline": "2019-06-12T14:47:31",
+            "posted": "2019-06-13T13:56:05"
+        },
+        "url_private_html": "https://figshare.com/account/articles/8263730",
+        "created_date": "2019-06-12T14:41:44Z",
+        "is_active": true,
+        "authors": [
+            {
+                "url_name": "Longze_Chen",
+                "is_active": true,
+                "id": 4449739,
+                "full_name": "Longze Chen",
+                "orcid_id": ""
+            }
+        ],
+        "is_public": true,
+        "categories": [
+            {
+                "parent_id": 5,
+                "id": 23,
+                "title": "Software Engineering"
+            }
+        ],
+        "thumb": "https://s3-eu-west-1.amazonaws.com/pfigshare-u-previews/15461024/thumb.png",
+        "status": "public",
+        "is_confidential": false,
+        "doi": "10.6084/m9.figshare.8263730",
+        "license": {
+            "url": "https://creativecommons.org/licenses/by/4.0/",
+            "name": "CC BY 4.0",
+            "value": 1
+        },
+        "has_linked_file": false,
+        "url": "https://api.figshare.com/v2/account/projects/64916/articles/8263730",
+        "resource_title": null,
+        "url_public_html": "https://figshare.com/articles/Figure01_png/8263730",
+        "published_date": "2019-06-13T13:56:05Z",
+        "group_id": null,
+        "is_metadata_record": false,
+        "modified_date": "2019-06-13T13:56:05Z"
+    }
+}

@@ -1,33 +1,16 @@
 import os
+import sys
 
 from invoke import task
 
 WHEELHOUSE_PATH = os.environ.get('WHEELHOUSE')
 
 
-def monkey_patch(ctx):
-    # Force an older cacert.pem from certifi v2015.4.28, prevents an ssl failure w/ identity.api.rackspacecloud.com.
-    #
-    # SubjectAltNameWarning: Certificate for identity.api.rackspacecloud.com has no `subjectAltName`, falling
-    # back to check for a `commonName` for now. This feature is being removed by major browsers and deprecated by
-    # RFC 2818. (See  https://github.com/shazow/urllib3/issues/497  for details.)
-    # SubjectAltNameWarning
-    import ssl
-    import certifi
-
-    _create_default_context = ssl.create_default_context
-
-    def create_default_context(purpose=ssl.Purpose.SERVER_AUTH, *, cafile=None, capath=None, cadata=None):
-        if cafile is None:
-            cafile = certifi.where()
-        return _create_default_context(purpose=purpose, cafile=cafile, capath=capath, cadata=cadata)
-    ssl.create_default_context = create_default_context
-
-
 @task
 def wheelhouse(ctx, develop=False, pty=True):
     req_file = 'dev-requirements.txt' if develop else 'requirements.txt'
-    cmd = 'pip wheel --find-links={} -r {} --wheel-dir={}'.format(WHEELHOUSE_PATH, req_file, WHEELHOUSE_PATH)
+    cmd = 'pip wheel --find-links={} -r {} --wheel-dir={}'.format(WHEELHOUSE_PATH, req_file,
+                                                                  WHEELHOUSE_PATH)
     ctx.run(cmd, pty=pty)
 
 
@@ -53,7 +36,8 @@ def flake(ctx):
 @task
 def mypy(ctx):
     """
-    Check python types using mypy (additional level of linting). Follows options defined in setup.cfg
+    Check python types using mypy (additional level of linting). Follows options defined in
+    setup.cfg
     """
     ctx.run('mypy waterbutler/', pty=True)
 
@@ -94,7 +78,6 @@ def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None)
 
 @task
 def celery(ctx, loglevel='INFO', hostname='%h'):
-    monkey_patch(ctx)
 
     from waterbutler.tasks.app import app
     command = ['worker']
@@ -112,13 +95,13 @@ def rabbitmq(ctx):
 
 @task
 def server(ctx):
-    monkey_patch(ctx)
 
     if os.environ.get('REMOTE_DEBUG', None):
         import pydevd
         # e.g. '127.0.0.1:5678'
         remote_parts = os.environ.get('REMOTE_DEBUG').split(':')
-        pydevd.settrace(remote_parts[0], port=int(remote_parts[1]), suspend=False, stdoutToServer=True, stderrToServer=True)
+        pydevd.settrace(remote_parts[0], port=int(remote_parts[1]), suspend=False,
+                        stdoutToServer=True, stderrToServer=True)
 
     from waterbutler.server.app import serve
     serve()
@@ -127,6 +110,31 @@ def server(ctx):
 @task
 def clean(ctx, verbose=False):
     cmd = 'find . -name "*.pyc" -delete'
+    if verbose:
+        print(cmd)
+    ctx.run(cmd, pty=True)
+
+
+@task
+def newrelic_init(ctx, key=None, verbose=False):
+    if key is None:
+        sys.exit('No newrelic api key given.  Please generate one and rerun this command '
+                 'with `invoke newrelic_init --key=$key`')
+
+    cmd_tmpl = 'newrelic-admin generate-config {} newrelic.ini'
+    cmd = cmd_tmpl.format(key)
+    if verbose:
+        print(cmd_tmpl.format('<redacted>'))
+    ctx.run(cmd, pty=True)
+
+
+@task
+def newrelic_server(ctx, config='newrelic.ini', verbose=False):
+    if not os.path.exists(config):
+        sys.exit("Couldn't find config file '{}'.  Check path or run `invoke newrelic_init` "
+                 "to generate it.".format(config))
+
+    cmd = 'NEW_RELIC_CONFIG_FILE={} newrelic-admin run-program invoke server'.format(config)
     if verbose:
         print(cmd)
     ctx.run(cmd, pty=True)

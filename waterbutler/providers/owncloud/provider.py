@@ -37,8 +37,8 @@ class OwnCloudProvider(provider.BaseProvider):
     """
     NAME = 'owncloud'
 
-    def __init__(self, auth, credentials, settings):
-        super().__init__(auth, credentials, settings)
+    def __init__(self, auth, credentials, settings, **kwargs):
+        super().__init__(auth, credentials, settings, **kwargs)
 
         self.folder = settings['folder']
         if not self.folder.endswith('/'):
@@ -50,7 +50,7 @@ class OwnCloudProvider(provider.BaseProvider):
         self.metrics.add('host', self.url)
 
     def connector(self):
-        return aiohttp.TCPConnector(verify_ssl=self.verify_ssl)
+        return aiohttp.TCPConnector(ssl=self.verify_ssl)
 
     @property
     def _webdav_url_(self):

@@ -1,17 +1,20 @@
+import logging
 import datetime
 
 import jwe
 import jwt
 import aiohttp
+from aiohttp.client_exceptions import ClientError, ContentTypeError
 
 from waterbutler.core import exceptions
 from waterbutler.auth.osf import settings
-from waterbutler.core.auth import (BaseAuthHandler,
-                                   AuthType)
+from waterbutler.core.auth import AuthType, BaseAuthHandler
 from waterbutler.settings import MFR_IDENTIFYING_HEADER
 
 
 JWE_KEY = jwe.kdf(settings.JWE_SECRET.encode(), settings.JWE_SALT.encode())
+
+logger = logging.getLogger(__name__)
 
 
 class OsfAuthHandler(BaseAuthHandler):
@@ -33,39 +36,45 @@ class OsfAuthHandler(BaseAuthHandler):
             # View only must go outside of the jwt
             query_params['view_only'] = view_only
 
-        query_params['payload'] = jwe.encrypt(jwt.encode({
+        raw_payload = jwe.encrypt(jwt.encode({
             'data': bundle,
             'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
         }, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM), JWE_KEY)
+
+        # Note: `aiohttp3` uses `yarl` which only supports string parameters
+        query_params['payload'] = raw_payload.decode("utf-8")
 
         return query_params
 
     async def make_request(self, params, headers, cookies):
         try:
-            response = await aiohttp.request(
+            # Note: with simple request whose response is handled right afterwards without "being passed
+            #       further along", use the context manager so WB doesn't need to handle the sessions.
+            async with aiohttp.request(
                 'get',
                 settings.API_URL,
                 params=params,
                 headers=headers,
                 cookies=cookies,
-            )
-        except aiohttp.errors.ClientError:
+            ) as response:
+                if response.status != 200:
+                    try:
+                        data = await response.json()
+                    except (ValueError, ContentTypeError):
+                        data = await response.read()
+                    raise exceptions.AuthError(data, code=response.status)
+
+                try:
+                    raw = await response.json()
+                    signed_jwt = jwe.decrypt(raw['payload'].encode(), JWE_KEY)
+                    data = jwt.decode(signed_jwt, settings.JWT_SECRET,
+                                      algorithm=settings.JWT_ALGORITHM,
+                                      options={'require_exp': True})
+                    return data['data']
+                except (jwt.InvalidTokenError, KeyError):
+                    raise exceptions.AuthError(data, code=response.status)
+        except ClientError:
             raise exceptions.AuthError('Unable to connect to auth sever', code=503)
-
-        if response.status != 200:
-            try:
-                data = await response.json()
-            except ValueError:
-                data = await response.read()
-            raise exceptions.AuthError(data, code=response.status)
-
-        try:
-            raw = await response.json()
-            signed_jwt = jwe.decrypt(raw['payload'].encode(), JWE_KEY)
-            data = jwt.decode(signed_jwt, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM, options={'require_exp': True})
-            return data['data']
-        except (jwt.InvalidTokenError, KeyError):
-            raise exceptions.AuthError(data, code=response.status)
 
     async def fetch(self, request, bundle):
         """Used for v0"""
@@ -116,7 +125,12 @@ class OsfAuthHandler(BaseAuthHandler):
                 raise exceptions.UnsupportedActionError(mfr_action, supported=mfr_action_map.keys())
         else:
             try:
-                osf_action = self.ACTION_MAP[method]
+                if method == 'get' and 'meta' in request.query_arguments:
+                    osf_action = 'metadata'
+                elif method == 'get' and 'revisions' in request.query_arguments:
+                    osf_action = 'revisions'
+                else:
+                    osf_action = self.ACTION_MAP[method]
             except KeyError:
                 raise exceptions.UnsupportedHTTPMethodError(method, supported=self.ACTION_MAP.keys())
 
@@ -137,7 +151,7 @@ class OsfAuthHandler(BaseAuthHandler):
             # View only must go outside of the jwt
             view_only = view_only[0].decode()
 
-        payload = (await self.make_request(
+        payload = await self.make_request(
             self.build_payload({
                 'nid': resource,
                 'provider': provider,
@@ -153,7 +167,7 @@ class OsfAuthHandler(BaseAuthHandler):
             }, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)
-        ))
+        )
 
         payload['auth']['callback_url'] = payload['callback_url']
         return payload
