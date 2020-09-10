@@ -148,7 +148,7 @@ class WEKODraftFileMetadata(BaseWEKOMetadata, metadata.BaseFileMetadata):
             try:
                 with zipfile.ZipFile(self.raw['filepath'], 'r') as zf:
                     self.has_import_xml = 'import.xml' in zf.namelist()
-            except:
+            except Exception as e:
                 pass
 
     @property
