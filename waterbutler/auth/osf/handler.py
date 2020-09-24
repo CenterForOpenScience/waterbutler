@@ -237,6 +237,7 @@ class OsfAuthHandler(BaseAuthHandler):
                     osf_action = self.ACTION_MAP[method]
                     intended_action = self.ACTION_MAP[method]
             except KeyError:
-                raise exceptions.UnsupportedHTTPMethodError(method, supported=self.ACTION_MAP.keys())
+                raise exceptions.UnsupportedHTTPMethodError(method,
+                                                            supported=self.ACTION_MAP.keys())
 
         return (osf_action, intended_action)
