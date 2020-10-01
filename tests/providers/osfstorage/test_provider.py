@@ -575,6 +575,96 @@ class TestUtils:
     def test_can_duplicate_names(self, provider_one):
         assert provider_one.can_duplicate_names()
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test__check_resource_quota_retries_zero(self, provider_one, monkeypatch, mock_time):
+
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES', 2)
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES_DELAY', 1)
+
+        responses = [
+            {
+                'body': json.dumps({'over_quota': True}),
+                'status': 200,
+                'headers': {'Content-Type': 'application/json'},
+            },
+        ]
+
+        quota_url, quota_params = build_signed_url_without_auth(provider_one, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, responses=responses)
+
+        resp = await provider_one._check_resource_quota()
+        assert resp == {'over_quota': True}
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test__check_resource_quota_retries_one(self, provider_one, monkeypatch, mock_time):
+
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES', 2)
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES_DELAY', 1)
+
+        responses = [
+            {'status': 202,},
+            {
+                'body': json.dumps({'over_quota': True}),
+                'status': 200,
+                'headers': {'Content-Type': 'application/json'},
+            },
+        ]
+
+        quota_url, quota_params = build_signed_url_without_auth(provider_one, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, responses=responses)
+
+        resp = await provider_one._check_resource_quota()
+        assert resp == {'over_quota': True}
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test__check_resource_quota_retries_two(self, provider_one, monkeypatch, mock_time):
+
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES', 2)
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES_DELAY', 1)
+
+        responses = [
+            {'status': 202,},
+            {'status': 202,},
+            {
+                'body': json.dumps({'over_quota': True}),
+                'status': 200,
+                'headers': {'Content-Type': 'application/json'},
+            },
+        ]
+
+        quota_url, quota_params = build_signed_url_without_auth(provider_one, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, responses=responses)
+
+        resp = await provider_one._check_resource_quota()
+        assert resp == {'over_quota': True}
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test__check_resource_quota_exhaust_retries(self, provider_one, monkeypatch, mock_time):
+
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES', 2)
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES_DELAY', 1)
+
+        responses = [
+            {'status': 202,},
+            {'status': 202,},
+            {'status': 202,},
+            {
+                'body': json.dumps({'over_quota': True}),
+                'status': 200,
+                'headers': {'Content-Type': 'application/json'},
+            },
+        ]
+
+        quota_url, quota_params = build_signed_url_without_auth(provider_one, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, responses=responses)
+
+        resp = await provider_one._check_resource_quota()
+        assert resp == {'over_quota': False}
+
 
 class TestValidatePath:
 

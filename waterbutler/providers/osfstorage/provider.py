@@ -2,8 +2,10 @@ import os
 import json
 import uuid
 import typing
+import asyncio
 import hashlib
 import logging
+from http import HTTPStatus
 
 from waterbutler.core import utils
 from waterbutler.core import signing
@@ -524,12 +526,39 @@ class OSFStorageProvider(provider.BaseProvider):
     async def _check_resource_quota(self):
         """Get the quota information for the resource attached to the provider. Can be used by the
         caller to reject the request if the project has exceeded its quota.
+
+        The OSF calculates quota usage asynchronously and may return a ``202 ACCEPTED`` if the
+        calculation has not yet completed.  This calculation is expected to be fast, so retry a
+        configurable number of times.  If we fail to get a ``200 OK` response after
+        ``QUOTA_RETRIES``, give user the benefit of the doubt and assume the node is under quota.
         """
-        resp = await self.make_signed_request(
-            'GET',
-            self.build_url('quota_status'),
-            expects=(200, )
-        )
+        resp, retry = None, 0
+        while retry <= settings.QUOTA_RETRIES:
+            if retry > 0:
+                await asyncio.sleep(settings.QUOTA_RETRIES_DELAY * retry)
+
+            try:
+                resp = await self.make_signed_request(
+                    'GET',
+                    self.build_url('quota_status'),
+                    expects=(200, )
+                )
+            except exceptions.WaterButlerError as exc:
+                if exc.code != HTTPStatus.ACCEPTED:
+                    # Didn't get 200 or 202 response from 'quota_status'. Rethrow exception.
+                    raise exc
+            else:
+                # 200 response from 'quota_status'!  Bail out of the 'while' and keep going
+                break
+
+            # 202 respose from 'quota_status'. Try again.
+            retry += 1
+
+        # If after `QUOTA_RETRIES` attempts we still don't know if the destination is over quota,
+        # assume it isn't and return.
+        if resp is None:
+            return {'over_quota': False}
+
         return await resp.json()
 
     async def _do_intra_move_or_copy(self, action: str, dest_provider, src_path, dest_path):
