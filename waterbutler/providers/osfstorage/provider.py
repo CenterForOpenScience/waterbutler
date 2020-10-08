@@ -164,9 +164,13 @@ class OSFStorageProvider(provider.BaseProvider):
         return isinstance(other, self.__class__) and self.is_same_region(other)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
+        """Usually called by `waterbutler.core.provider.BaseProvider.move`, but ``osfstorage``
+        overrides this method with its own ``.move()`` implementation."""
         return await self._do_intra_move_or_copy('move', dest_provider, src_path, dest_path)
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
+        """Usually called by `waterbutler.core.provider.BaseProvider.copy`, but ``osfstorage``
+        overrides this method with its own ``.copy()`` implementation."""
         return await self._do_intra_move_or_copy('copy', dest_provider, src_path, dest_path)
 
     def build_signed_url(self, method, url, data=None, params=None, ttl=100, **kwargs):
@@ -386,6 +390,11 @@ class OSFStorageProvider(provider.BaseProvider):
 
         self.provider_metrics.add('move.can_intra_move', False)
         if self.can_intra_move(dest_provider, src_path):
+            if self.nid != dest_provider.nid:
+                dest_quota = await dest_provider._check_resource_quota()
+                if dest_quota['over_quota']:
+                    raise OsfStorageQuotaExceededError('')
+
             self.provider_metrics.add('move.can_intra_move', True)
             return await self.intra_move(*args)
 
@@ -462,6 +471,11 @@ class OSFStorageProvider(provider.BaseProvider):
 
         self.provider_metrics.add('copy.can_intra_copy', False)
         if self.can_intra_copy(dest_provider, src_path):
+            if self.nid != dest_provider.nid:
+                dest_quota = await dest_provider._check_resource_quota()
+                if dest_quota['over_quota']:
+                    raise OsfStorageQuotaExceededError('')
+
             self.provider_metrics.add('copy.can_intra_copy', True)
             return await self.intra_copy(*args)
 

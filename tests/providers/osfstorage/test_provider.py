@@ -1024,13 +1024,13 @@ class TestCrossRegionMove:
         src_provider.download.assert_not_called()
 
     @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_move_but_intra_move(self, provider_one, auth, credentials,
                                        settings_region_one):
         """OSFStorageProvider.move checks to see if intra_move can be called as an optimization.
-        This is copied over from the `BaseProvider.move()` implementation, and is unlikely to be
-        called in a real-world situation.  All calls to `OSFStorageProvider.move()` have probably
-        passed through a `can_intra_move` check already.  Nevertheless, let's test it to make sure
-        it behaves as expected."""
+        If the destination is not `osfstorage`, delegate to the parent method.  Otherwise, check
+        whether we can optimize by doing an `intra_move` action.  `intra_move` is permissable when
+        both `osfstorage` providers are in the same region."""
 
         # aliased for clarity
         src_provider = provider_one
@@ -1045,10 +1045,45 @@ class TestCrossRegionMove:
         src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
         dest_path = WaterButlerPath('/', _ids=('Test',))
 
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': False})
+
         await src_provider.move(dst_provider, src_path, dest_path, handle_naming=False);
 
         src_provider.can_intra_move.assert_called_once_with(dst_provider, src_path)
         src_provider.intra_move.assert_called_once_with(dst_provider, src_path, dest_path)
+        src_provider.download.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_move_reject_by_quota(self, provider_one, auth, credentials,
+                                              settings_region_one):
+        """Same as previous, but assume the destination node is not the same as the source node
+        and is subject to storage caps."""
+
+        # aliased for clarity
+        src_provider = provider_one
+
+        settings_region_one['nid'] = 'fake-nid'
+        dst_provider = OSFStorageProvider(auth, credentials, settings_region_one)
+
+        src_provider.can_intra_move = mock.Mock(return_value=True)
+        src_provider.intra_move = utils.MockCoroutine()
+        src_provider.download = utils.MockCoroutine()
+
+        src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
+        dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': True})
+
+        with pytest.raises(OsfStorageQuotaExceededError):
+            await src_provider.move(dst_provider, src_path, dest_path, handle_naming=False);
+
+        src_provider.can_intra_move.assert_called_once_with(dst_provider, src_path)
+        src_provider.intra_move.assert_not_called()
         src_provider.download.assert_not_called()
 
 
@@ -1157,13 +1192,13 @@ class TestCrossRegionCopy:
         src_provider.download.assert_not_called()
 
     @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_copy_but_intra_copy(self, provider_one, auth, credentials,
                                        settings_region_one):
         """OSFStorageProvider.copy checks to see if intra_copy can be called as an optimization.
-        This is copied over from the `BaseProvider.copy()` implementation, and is unlikely to be
-        called in a real-world situation.  All calls to `OSFStorageProvider.copy()` have probably
-        passed through a `can_intra_copy` check already.  Nevertheless, let's test it to make sure
-        it behaves as expected."""
+        If the destination is not `osfstorage`, delegate to the parent method.  Otherwise, check
+        whether we can optimize by doing an `intra_copy` action.  `intra_copy` is permissable when
+        both `osfstorage` providers are in the same region."""
 
         # aliased for clarity
         src_provider = provider_one
@@ -1178,8 +1213,43 @@ class TestCrossRegionCopy:
         src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
         dest_path = WaterButlerPath('/', _ids=('Test',))
 
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': False})
+
         await src_provider.copy(dst_provider, src_path, dest_path, handle_naming=False);
 
         src_provider.can_intra_copy.assert_called_once_with(dst_provider, src_path)
         src_provider.intra_copy.assert_called_once_with(dst_provider, src_path, dest_path)
+        src_provider.download.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_copy_reject_by_quota(self, provider_one, auth, credentials,
+                                              settings_region_one):
+        """Same as previous, but assume the destination node is not the same as the source node
+        and is subject to storage caps."""
+
+        # aliased for clarity
+        src_provider = provider_one
+
+        settings_region_one['nid'] = 'fake-nid'
+        dst_provider = OSFStorageProvider(auth, credentials, settings_region_one)
+
+        src_provider.can_intra_copy = mock.Mock(return_value=True)
+        src_provider.intra_copy = utils.MockCoroutine()
+        src_provider.download = utils.MockCoroutine()
+
+        src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
+        dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': True})
+
+        with pytest.raises(OsfStorageQuotaExceededError):
+            await src_provider.copy(dst_provider, src_path, dest_path, handle_naming=False);
+
+        src_provider.can_intra_copy.assert_called_once_with(dst_provider, src_path)
+        src_provider.intra_copy.assert_not_called()
         src_provider.download.assert_not_called()
