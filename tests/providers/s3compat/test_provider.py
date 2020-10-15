@@ -296,7 +296,7 @@ def bulk_delete_body(keys):
     return (payload, headers)
 
 def build_folder_params(path):
-    return {'prefix': path.path, 'delimiter': '/'}
+    return {'prefix': path.full_path, 'delimiter': '/'}
 
 
 class TestProviderConstruction:
@@ -420,8 +420,8 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_download(self, provider, mock_time):
-        path = WaterButlerPath('/muhtriangle')
-        url = provider.bucket.new_key(path.path).generate_url(100, response_headers={'response-content-disposition': 'attachment'})
+        path = WaterButlerPath('/muhtriangle', prepend=provider.prefix)
+        url = provider.bucket.new_key(path.full_path).generate_url(100, response_headers={'response-content-disposition': 'attachment'})
         aiohttpretty.register_uri('GET', url[:url.index('?')], body=b'delicious', auto_length=True)
 
         result = await provider.download(path)
@@ -432,8 +432,8 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_download_version(self, provider, mock_time):
-        path = WaterButlerPath('/muhtriangle')
-        url = provider.bucket.new_key(path.path).generate_url(
+        path = WaterButlerPath('/muhtriangle', prepend=provider.prefix)
+        url = provider.bucket.new_key(path.full_path).generate_url(
             100,
             query_parameters={'versionId': 'someversion'},
             response_headers={'response-content-disposition': 'attachment'},
@@ -448,8 +448,8 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_download_display_name(self, provider, mock_time):
-        path = WaterButlerPath('/muhtriangle')
-        url = provider.bucket.new_key(path.path).generate_url(100, response_headers={'response-content-disposition': "attachment; filename*=UTF-8''tuna"})
+        path = WaterButlerPath('/muhtriangle', prepend=provider.prefix)
+        url = provider.bucket.new_key(path.full_path).generate_url(100, response_headers={'response-content-disposition': "attachment; filename*=UTF-8''tuna"})
         aiohttpretty.register_uri('GET', url[:url.index('?')], body=b'delicious', auto_length=True)
 
         result = await provider.download(path, displayName='tuna')
@@ -460,8 +460,8 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_download_not_found(self, provider, mock_time):
-        path = WaterButlerPath('/muhtriangle')
-        url = provider.bucket.new_key(path.path).generate_url(100, response_headers={'response-content-disposition': 'attachment'})
+        path = WaterButlerPath('/muhtriangle', prepend=provider.prefix)
+        url = provider.bucket.new_key(path.full_path).generate_url(100, response_headers={'response-content-disposition': 'attachment'})
         aiohttpretty.register_uri('GET', url[:url.index('?')], status=404)
 
         with pytest.raises(exceptions.DownloadError):
@@ -471,16 +471,16 @@ class TestCRUD:
     @pytest.mark.aiohttpretty
     async def test_download_folder_400s(self, provider, mock_time):
         with pytest.raises(exceptions.DownloadError) as e:
-            await provider.download(WaterButlerPath('/cool/folder/mom/'))
+            await provider.download(WaterButlerPath('/cool/folder/mom/', prepend=provider.prefix))
         assert e.value.code == 400
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_upload_update(self, provider, file_content, file_stream, file_metadata, mock_time):
-        path = WaterButlerPath('/foobah')
+        path = WaterButlerPath('/foobah', prepend=provider.prefix)
         content_md5 = hashlib.md5(file_content).hexdigest()
-        url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
-        metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
+        url = provider.bucket.new_key(path.full_path).generate_url(100, 'PUT')
+        metadata_url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
         aiohttpretty.register_uri('HEAD', metadata_url, headers=file_metadata)
         aiohttpretty.register_uri('PUT', url, status=201, headers={'ETag': '"{}"'.format(content_md5)})
 
@@ -496,10 +496,10 @@ class TestCRUD:
     async def test_upload_encrypted(self, provider, file_content, file_stream, file_metadata, mock_time):
         # Set trigger for encrypt_key=True in s3compat.provider.upload
         provider.encrypt_uploads = True
-        path = WaterButlerPath('/foobah')
+        path = WaterButlerPath('/foobah', prepend=provider.prefix)
         content_md5 = hashlib.md5(file_content).hexdigest()
-        url = provider.bucket.new_key(path.path).generate_url(100, 'PUT', encrypt_key=True)
-        metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
+        url = provider.bucket.new_key(path.full_path).generate_url(100, 'PUT', encrypt_key=True)
+        metadata_url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
         aiohttpretty.register_uri(
             'HEAD',
             metadata_url,
@@ -521,8 +521,8 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_delete(self, provider, mock_time):
-        path = WaterButlerPath('/some-file')
-        url = provider.bucket.new_key(path.path).generate_url(100, 'DELETE')
+        path = WaterButlerPath('/some-file', prepend=provider.prefix)
+        url = provider.bucket.new_key(path.full_path).generate_url(100, 'DELETE')
         aiohttpretty.register_uri('DELETE', url, status=200)
 
         await provider.delete(path)
@@ -532,9 +532,9 @@ class TestCRUD:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_folder_delete(self, provider, contents_and_self, mock_time):
-        path = WaterButlerPath('/some-folder/')
+        path = WaterButlerPath('/some-folder/', prepend=provider.prefix)
 
-        params = {'prefix': 'some-folder/'}
+        params = {'prefix': path.full_path}
         query_url = provider.bucket.generate_url(100, 'GET')
         aiohttpretty.register_uri(
             'GET',
@@ -566,7 +566,7 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_metadata_folder(self, provider, folder_metadata, mock_time):
-        path = WaterButlerPath('/darp/')
+        path = WaterButlerPath('/darp/', prepend=provider.prefix)
         url = provider.bucket.generate_url(100)
         params = build_folder_params(path)
         aiohttpretty.register_uri('GET', url, params=params, body=folder_metadata,
@@ -583,7 +583,7 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_metadata_folder_self_listing(self, provider, contents_and_self, mock_time):
-        path = WaterButlerPath('/thisfolder/')
+        path = WaterButlerPath('/thisfolder/', prepend=provider.prefix)
         url = provider.bucket.generate_url(100)
         params = build_folder_params(path)
         aiohttpretty.register_uri('GET', url, params=params, body=contents_and_self)
@@ -593,12 +593,12 @@ class TestMetadata:
         assert isinstance(result, list)
         assert len(result) == 2
         for fobj in result:
-            assert fobj.name != path.path
+            assert fobj.name != path.full_path
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_just_a_folder_metadata_folder(self, provider, just_a_folder_metadata, mock_time):
-        path = WaterButlerPath('/')
+        path = WaterButlerPath('/', prepend=provider.prefix)
         url = provider.bucket.generate_url(100)
         params = build_folder_params(path)
         aiohttpretty.register_uri('GET', url, params=params, body=just_a_folder_metadata,
@@ -619,22 +619,22 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_metadata_file(self, provider, file_metadata, mock_time):
-        path = WaterButlerPath('/Foo/Bar/my-image.jpg')
-        url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
+        path = WaterButlerPath('/Foo/Bar/my-image.jpg', prepend=provider.prefix)
+        url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
         aiohttpretty.register_uri('HEAD', url, headers=file_metadata)
 
         result = await provider.metadata(path)
 
         assert isinstance(result, metadata.BaseFileMetadata)
-        assert result.path == str(path)
+        assert result.path == path.full_path
         assert result.name == 'my-image.jpg'
         assert result.extra['md5'] == 'fba9dede5f27731c9771645a39863328'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_metadata_file_missing(self, provider, mock_time):
-        path = WaterButlerPath('/notfound.txt')
-        url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
+        path = WaterButlerPath('/notfound.txt', prepend=provider.prefix)
+        url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
         aiohttpretty.register_uri('HEAD', url, status=404)
 
         with pytest.raises(exceptions.MetadataError):
@@ -643,10 +643,10 @@ class TestMetadata:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_upload(self, provider, file_content, file_stream, file_metadata, mock_time):
-        path = WaterButlerPath('/foobah')
+        path = WaterButlerPath('/foobah', prepend=provider.prefix)
         content_md5 = hashlib.md5(file_content).hexdigest()
-        url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
-        metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
+        url = provider.bucket.new_key(path.full_path).generate_url(100, 'PUT')
+        metadata_url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
         aiohttpretty.register_uri(
             'HEAD',
             metadata_url,
@@ -670,7 +670,7 @@ class TestCreateFolder:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_raise_409(self, provider, just_a_folder_metadata, mock_time):
-        path = WaterButlerPath('/alreadyexists/')
+        path = WaterButlerPath('/alreadyexists/', prepend=provider.prefix)
         url = provider.bucket.generate_url(100, 'GET')
         params = build_folder_params(path)
         aiohttpretty.register_uri('GET', url, params=params, body=just_a_folder_metadata,
@@ -685,7 +685,7 @@ class TestCreateFolder:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_must_start_with_slash(self, provider, mock_time):
-        path = WaterButlerPath('/alreadyexists')
+        path = WaterButlerPath('/alreadyexists', prepend=provider.prefix)
 
         with pytest.raises(exceptions.CreateFolderError) as e:
             await provider.create_folder(path)
@@ -699,7 +699,7 @@ class TestCreateFolder:
         path = WaterButlerPath('/alreadyexists/')
         url = provider.bucket.generate_url(100, 'GET')
         params = build_folder_params(path)
-        create_url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
+        create_url = provider.bucket.new_key(path.full_path).generate_url(100, 'PUT')
 
         aiohttpretty.register_uri('GET', url, params=params, status=404)
         aiohttpretty.register_uri('PUT', create_url, status=403)
@@ -712,7 +712,7 @@ class TestCreateFolder:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_errors_out_metadata(self, provider, mock_time):
-        path = WaterButlerPath('/alreadyexists/')
+        path = WaterButlerPath('/alreadyexists/', prepend=provider.prefix)
         url = provider.bucket.generate_url(100, 'GET')
         params = build_folder_params(path)
 
@@ -726,10 +726,10 @@ class TestCreateFolder:
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_creates(self, provider, mock_time):
-        path = WaterButlerPath('/doesntalreadyexists/')
+        path = WaterButlerPath('/doesntalreadyexists/', prepend=provider.prefix)
         url = provider.bucket.generate_url(100, 'GET')
         params = build_folder_params(path)
-        create_url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
+        create_url = provider.bucket.new_key(path.full_path).generate_url(100, 'PUT')
 
         aiohttpretty.register_uri('GET', url, params=params, status=404)
         aiohttpretty.register_uri('PUT', create_url, status=200)
@@ -738,7 +738,7 @@ class TestCreateFolder:
 
         assert resp.kind == 'folder'
         assert resp.name == 'doesntalreadyexists'
-        assert resp.path == '/doesntalreadyexists/'
+        assert resp.path == path.full_path
 
 
 class TestOperations:
@@ -746,12 +746,12 @@ class TestOperations:
     # @pytest.mark.asyncio
     # @pytest.mark.aiohttpretty
     # async def test_copy(self, provider, file_metadata, mock_time):
-    #     dest_path = WaterButlerPath('/dest')
-    #     source_path = WaterButlerPath('/source')
-    #     headers = {'x-amz-copy-source': '/{}/{}'.format(provider.settings['bucket'], source_path.path)}
+    #     dest_path = WaterButlerPath('/dest', prepend=provider.prefix)
+    #     source_path = WaterButlerPath('/source', prepend=provider.prefix)
+    #     headers = {'x-amz-copy-source': '/{}/{}'.format(provider.settings['bucket'], source_path.full_path)}
 
-    #     metadata_url = provider.bucket.new_key(dest_path.path).generate_url(100, 'HEAD')
-    #     url = provider.bucket.new_key(dest_path.path).generate_url(100, 'PUT', headers=headers)
+    #     metadata_url = provider.bucket.new_key(dest_path.full_path).generate_url(100, 'HEAD')
+    #     url = provider.bucket.new_key(dest_path.full_path).generate_url(100, 'PUT', headers=headers)
 
     #     aiohttpretty.register_uri('PUT', url, status=200)
     #     aiohttpretty.register_uri('HEAD', metadata_url, headers=file_metadata)

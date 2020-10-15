@@ -24,7 +24,7 @@ class S3CompatFileMetadataHeaders(S3CompatMetadata, metadata.BaseFileMetadata):
 
     @property
     def path(self):
-        return '/' + self._path
+        return '/' + self._path.lstrip('/')
 
     @property
     def size(self):
@@ -58,7 +58,7 @@ class S3CompatFileMetadata(S3CompatMetadata, metadata.BaseFileMetadata):
 
     @property
     def path(self):
-        return '/' + self.raw['Key']
+        return '/' + self.raw['Key'].lstrip('/')
 
     @property
     def size(self):
@@ -95,7 +95,7 @@ class S3CompatFolderKeyMetadata(S3CompatMetadata, metadata.BaseFolderMetadata):
 
     @property
     def path(self):
-        return '/' + self.raw['Key']
+        return '/' + self.raw['Key'].lstrip('/')
 
 
 class S3CompatFolderMetadata(S3CompatMetadata, metadata.BaseFolderMetadata):
@@ -106,7 +106,7 @@ class S3CompatFolderMetadata(S3CompatMetadata, metadata.BaseFolderMetadata):
 
     @property
     def path(self):
-        return '/' + self.raw['Prefix']
+        return '/' + self.raw['Prefix'].lstrip('/')
 
 
 # TODO dates!

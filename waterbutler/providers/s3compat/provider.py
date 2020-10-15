@@ -98,10 +98,11 @@ class S3CompatProvider(provider.BaseProvider):
                                              is_secure=port == 443)
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
+        self.prefix = settings.get('prefix', '/')
 
     async def validate_v1_path(self, path, **kwargs):
         if path == '/':
-            return WaterButlerPath(path)
+            return WaterButlerPath(path, prepend=self.prefix)
 
         implicit_folder = path.endswith('/')
 
@@ -127,10 +128,10 @@ class S3CompatProvider(provider.BaseProvider):
         if resp.status == 404:
             raise exceptions.NotFoundError(str(path))
 
-        return WaterButlerPath(path)
+        return WaterButlerPath(path, prepend=self.prefix)
 
     async def validate_path(self, path, **kwargs):
-        return WaterButlerPath(path)
+        return WaterButlerPath(path, prepend=self.prefix)
 
     def can_duplicate_names(self):
         return True
@@ -147,10 +148,10 @@ class S3CompatProvider(provider.BaseProvider):
         """
         exists = await dest_provider.exists(dest_path)
 
-        dest_key = dest_provider.bucket.new_key(dest_path.path)
+        dest_key = dest_provider.bucket.new_key(dest_path.full_path)
 
         # ensure no left slash when joining paths
-        source_path = '/' + os.path.join(self.settings['bucket'], source_path.path)
+        source_path = '/' + os.path.join(self.settings['bucket'], source_path.full_path)
         headers = {'x-amz-copy-source': parse.quote(source_path)}
         url = functools.partial(
             dest_key.generate_url,
@@ -191,7 +192,7 @@ class S3CompatProvider(provider.BaseProvider):
             response_headers = {'response-content-disposition': 'attachment'}
 
         url = functools.partial(
-            self.bucket.new_key(path.path).generate_url,
+            self.bucket.new_key(path.full_path).generate_url,
             settings.TEMP_URL_SECS,
             query_parameters=query_parameters,
             response_headers=response_headers
@@ -230,7 +231,7 @@ class S3CompatProvider(provider.BaseProvider):
             headers['x-amz-server-side-encryption'] = 'AES256'
 
         upload_url = functools.partial(
-            self.bucket.new_key(path.path).generate_url,
+            self.bucket.new_key(path.full_path).generate_url,
             settings.TEMP_URL_SECS,
             'PUT',
             headers=headers,
@@ -267,7 +268,7 @@ class S3CompatProvider(provider.BaseProvider):
         if path.is_file:
             resp = await self.make_request(
                 'DELETE',
-                self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
+                self.bucket.new_key(path.full_path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
                 expects=(200, 204, ),
                 throws=exceptions.DeleteError,
             )
@@ -293,7 +294,7 @@ class S3CompatProvider(provider.BaseProvider):
         """
         more_to_come = True
         content_keys = []
-        query_params = {'prefix': path.path}
+        query_params = {'prefix': path.full_path}
         marker = None
 
         while more_to_come:
@@ -339,7 +340,7 @@ class S3CompatProvider(provider.BaseProvider):
         :param str path: The path to a key
         :rtype list:
         """
-        query_params = {'prefix': path.path, 'delimiter': '/', 'versions': ''}
+        query_params = {'prefix': path.full_path, 'delimiter': '/', 'versions': ''}
         url = functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
         resp = await self.make_request(
             'GET',
@@ -357,7 +358,7 @@ class S3CompatProvider(provider.BaseProvider):
         return [
             S3CompatRevision(item)
             for item in versions
-            if item['Key'] == path.path
+            if item['Key'] == path.full_path
         ]
 
     async def metadata(self, path, revision=None, **kwargs):
@@ -383,12 +384,12 @@ class S3CompatProvider(provider.BaseProvider):
 
         async with self.request(
             'PUT',
-            functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
+            functools.partial(self.bucket.new_key(path.full_path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
             skip_auto_headers={'CONTENT-TYPE'},
             expects=(200, 201),
             throws=exceptions.CreateFolderError
         ):
-            return S3CompatFolderMetadata({'Prefix': path.path})
+            return S3CompatFolderMetadata({'Prefix': path.full_path})
 
     async def _metadata_file(self, path, revision=None):
         if revision == 'Latest':
@@ -396,7 +397,7 @@ class S3CompatProvider(provider.BaseProvider):
         resp = await self.make_request(
             'HEAD',
             functools.partial(
-                self.bucket.new_key(path.path).generate_url,
+                self.bucket.new_key(path.full_path).generate_url,
                 settings.TEMP_URL_SECS,
                 'HEAD',
                 query_parameters={'versionId': revision} if revision else None
@@ -405,10 +406,10 @@ class S3CompatProvider(provider.BaseProvider):
             throws=exceptions.MetadataError,
         )
         await resp.release()
-        return S3CompatFileMetadataHeaders(path.path, resp.headers)
+        return S3CompatFileMetadataHeaders(path.full_path, resp.headers)
 
     async def _metadata_folder(self, path):
-        params = {'prefix': path.path, 'delimiter': '/'}
+        params = {'prefix': path.full_path, 'delimiter': '/'}
         resp = await self.make_request(
             'GET',
             functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
@@ -430,7 +431,7 @@ class S3CompatProvider(provider.BaseProvider):
             # if the path is root there is no need to test if it exists
             resp = await self.make_request(
                 'HEAD',
-                functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
+                functools.partial(self.bucket.new_key(path.full_path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
