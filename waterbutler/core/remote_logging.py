@@ -75,7 +75,7 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
                       bytes_downloaded=0, bytes_uploaded=0):
     """Send events to Keen describing the action that occurred.  A scrubbed version of the payload
     suitable for public display is also sent."""
-    if settings.KEEN_PRIVATE_PROJECT_ID is None:
+    if not settings.KEEN_ENABLE_LOGGING:
         return
 
     keen_payload = {
@@ -171,10 +171,16 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
         keen_payload['providers']['destination'] = destination.provider.provider_metrics.serialize()
 
     # send the private payload
-    await _send_to_keen(keen_payload, 'file_access', settings.KEEN_PRIVATE_PROJECT_ID,
-                        settings.KEEN_PRIVATE_WRITE_KEY, action, domain='private')
+    if settings.KEEN_PRIVATE_LOG_ACTIONS:
+        await _send_to_keen(keen_payload, 'file_access', settings.KEEN_PRIVATE_PROJECT_ID,
+                            settings.KEEN_PRIVATE_WRITE_KEY, action, domain='private')
 
-    if errors is not None or action not in ('download_file', 'download_zip') or keen_payload['action']['is_mfr_render']:
+    if (
+        errors is not None or
+        action not in ('download_file', 'download_zip') or
+        keen_payload['action']['is_mfr_render'] or
+        not settings.KEEN_PUBLIC_LOG_ACTIONS
+    ):
         return
 
     # build and ship the public file stats payload

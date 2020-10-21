@@ -169,14 +169,17 @@ MFR_DOMAIN = analytics_config.get('MFR_DOMAIN', 'http://localhost:7778').rstrip(
 keen_config = analytics_config.child('KEEN')
 KEEN_API_BASE_URL = keen_config.get('API_BASE_URL', 'https://api.keen.io')
 KEEN_API_VERSION = keen_config.get('API_VERSION', '3.0')
+KEEN_ENABLE_LOGGING = keen_config.get_bool('ENABLE_LOGGING', True)
 
 keen_private_config = keen_config.child('PRIVATE')
 KEEN_PRIVATE_PROJECT_ID = keen_private_config.get_nullable('PROJECT_ID', None)
 KEEN_PRIVATE_WRITE_KEY = keen_private_config.get_nullable('WRITE_KEY', None)
+KEEN_PRIVATE_LOG_ACTIONS = keen_private_config.get_bool('LOG_ACTIONS', True)
 
 keen_public_config = keen_config.child('PUBLIC')
 KEEN_PUBLIC_PROJECT_ID = keen_public_config.get_nullable('PROJECT_ID', None)
 KEEN_PUBLIC_WRITE_KEY = keen_public_config.get_nullable('WRITE_KEY', None)
+KEEN_PUBLIC_LOG_ACTIONS = keen_public_config.get_bool('LOG_ACTIONS', True)
 
 WEBDAV_METHODS = {'PROPFIND', 'MKCOL', 'MOVE', 'COPY'}
 
