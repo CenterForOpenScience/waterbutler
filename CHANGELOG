@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+20.0.3 (2020-10-21)
+===================
+- Feature: Add flags to toggle logging of WaterButler events to specific Keen collections.
+
 20.0.2 (2020-06-02)
 ===================
 - Fix: Bump sentry-sdk dependency from v0.14.0 to v0.14.4 to avoid potential memory leak.
