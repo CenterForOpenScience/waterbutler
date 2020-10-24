@@ -72,8 +72,12 @@ def file_stream(file_like):
 
 
 @pytest.fixture
-def folder_metadata():
-    return b'''<?xml version="1.0" encoding="UTF-8"?>
+def base_prefix():
+    return ''
+
+@pytest.fixture
+def folder_metadata(base_prefix):
+    return '''<?xml version="1.0" encoding="UTF-8"?>
         <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
             <Name>bucket</Name>
             <Prefix/>
@@ -81,7 +85,7 @@ def folder_metadata():
             <MaxKeys>1000</MaxKeys>
             <IsTruncated>false</IsTruncated>
             <Contents>
-                <Key>my-image.jpg</Key>
+                <Key>{prefix}my-image.jpg</Key>
                 <LastModified>2009-10-12T17:50:30.000Z</LastModified>
                 <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
                 <Size>434234</Size>
@@ -92,7 +96,7 @@ def folder_metadata():
                 </Owner>
             </Contents>
             <Contents>
-                <Key>my-third-image.jpg</Key>
+                <Key>{prefix}my-third-image.jpg</Key>
                 <LastModified>2009-10-12T17:50:30.000Z</LastModified>
                 <ETag>&quot;1b2cf535f27731c974343645a3985328&quot;</ETag>
                 <Size>64994</Size>
@@ -103,14 +107,14 @@ def folder_metadata():
                 </Owner>
             </Contents>
             <CommonPrefixes>
-                <Prefix>   photos/</Prefix>
+                <Prefix>{prefix}   photos/</Prefix>
             </CommonPrefixes>
-        </ListBucketResult>'''
+        </ListBucketResult>'''.format(prefix=base_prefix)
 
 
 @pytest.fixture
-def just_a_folder_metadata():
-    return b'''<?xml version="1.0" encoding="UTF-8"?>
+def just_a_folder_metadata(base_prefix):
+    return '''<?xml version="1.0" encoding="UTF-8"?>
         <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
             <Name>bucket</Name>
             <Prefix/>
@@ -118,7 +122,7 @@ def just_a_folder_metadata():
             <MaxKeys>1000</MaxKeys>
             <IsTruncated>false</IsTruncated>
             <Contents>
-                <Key>naptime/</Key>
+                <Key>{prefix}naptime/</Key>
                 <LastModified>2009-10-12T17:50:30.000Z</LastModified>
                 <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
                 <Size>0</Size>
@@ -128,12 +132,12 @@ def just_a_folder_metadata():
                     <DisplayName>mtd@amazon.com</DisplayName>
                 </Owner>
             </Contents>
-        </ListBucketResult>'''
+        </ListBucketResult>'''.format(prefix=base_prefix)
 
 
 @pytest.fixture
-def contents_and_self():
-    return b'''<?xml version="1.0" encoding="UTF-8"?>
+def contents_and_self(base_prefix):
+    return '''<?xml version="1.0" encoding="UTF-8"?>
         <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
             <Name>bucket</Name>
             <Prefix/>
@@ -141,7 +145,7 @@ def contents_and_self():
             <MaxKeys>1000</MaxKeys>
             <IsTruncated>false</IsTruncated>
             <Contents>
-                <Key>thisfolder/</Key>
+                <Key>{prefix}thisfolder/</Key>
                 <LastModified>2009-10-12T17:50:30.000Z</LastModified>
                 <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
                 <Size>0</Size>
@@ -152,7 +156,7 @@ def contents_and_self():
                 </Owner>
             </Contents>
             <Contents>
-                <Key>thisfolder/item1</Key>
+                <Key>{prefix}thisfolder/item1</Key>
                 <LastModified>2009-10-12T17:50:30.000Z</LastModified>
                 <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
                 <Size>0</Size>
@@ -163,7 +167,7 @@ def contents_and_self():
                 </Owner>
             </Contents>
             <Contents>
-                <Key>thisfolder/item2</Key>
+                <Key>{prefix}thisfolder/item2</Key>
                 <LastModified>2009-10-12T17:50:30.000Z</LastModified>
                 <ETag>&quot;fba9dede5f27731c9771645a39863328&quot;</ETag>
                 <Size>0</Size>
@@ -173,7 +177,7 @@ def contents_and_self():
                     <DisplayName>mtd@amazon.com</DisplayName>
                 </Owner>
             </Contents>
-        </ListBucketResult>'''
+        </ListBucketResult>'''.format(prefix=base_prefix)
 
 
 @pytest.fixture
@@ -296,7 +300,8 @@ def bulk_delete_body(keys):
     return (payload, headers)
 
 def build_folder_params(path):
-    return {'prefix': path.full_path, 'delimiter': '/'}
+    prefix = path.full_path.lstrip('/')
+    return {'prefix': prefix, 'delimiter': '/'}
 
 
 class TestProviderConstruction:
@@ -338,12 +343,17 @@ class TestValidatePath:
     @pytest.mark.aiohttpretty
     async def test_validate_v1_path_file(self, provider, file_metadata, mock_time):
         file_path = 'foobah'
-
-        params = {'prefix': '/' + file_path + '/', 'delimiter': '/'}
-        good_metadata_url = provider.bucket.new_key('/' + file_path).generate_url(100, 'HEAD')
+        full_path = file_path
+        prefix = provider.prefix
+        if prefix:
+            full_path = prefix + full_path
+        params_for_dir = {'prefix': full_path + '/', 'delimiter': '/'}
+        good_metadata_url = provider.bucket.new_key(full_path).generate_url(100, 'HEAD')
         bad_metadata_url = provider.bucket.generate_url(100)
         aiohttpretty.register_uri('HEAD', good_metadata_url, headers=file_metadata)
-        aiohttpretty.register_uri('GET', bad_metadata_url, params=params, status=404)
+        aiohttpretty.register_uri('GET', bad_metadata_url, params=params_for_dir, status=404)
+
+        assert WaterButlerPath('/') == await provider.validate_v1_path('/')
 
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + file_path)
@@ -363,12 +373,16 @@ class TestValidatePath:
     @pytest.mark.aiohttpretty
     async def test_validate_v1_path_folder(self, provider, folder_metadata, mock_time):
         folder_path = 'Photos'
+        full_path = folder_path
+        prefix = provider.prefix
+        if prefix:
+            full_path = prefix + full_path
 
-        params = {'prefix': '/' + folder_path + '/', 'delimiter': '/'}
+        params_for_dir = {'prefix': full_path + '/', 'delimiter': '/'}
         good_metadata_url = provider.bucket.generate_url(100)
-        bad_metadata_url = provider.bucket.new_key('/' + folder_path).generate_url(100, 'HEAD')
+        bad_metadata_url = provider.bucket.new_key(full_path).generate_url(100, 'HEAD')
         aiohttpretty.register_uri(
-            'GET', good_metadata_url, params=params,
+            'GET', good_metadata_url, params=params_for_dir,
             body=folder_metadata, headers={'Content-Type': 'application/xml'}
         )
         aiohttpretty.register_uri('HEAD', bad_metadata_url, status=404)
@@ -546,8 +560,11 @@ class TestCRUD:
 
         target_items = ['thisfolder/', 'thisfolder/item1', 'thisfolder/item2']
         delete_urls = []
+        prefix = provider.prefix
+        if prefix is None:
+            prefix = ''
         for i in target_items:
-            delete_url = provider.bucket.new_key(i).generate_url(
+            delete_url = provider.bucket.new_key(prefix + i).generate_url(
                 100,
                 'DELETE',
             )
@@ -626,7 +643,7 @@ class TestMetadata:
         result = await provider.metadata(path)
 
         assert isinstance(result, metadata.BaseFileMetadata)
-        assert result.path == path.full_path
+        assert result.path == '/' + path.path
         assert result.name == 'my-image.jpg'
         assert result.extra['md5'] == 'fba9dede5f27731c9771645a39863328'
 
@@ -738,7 +755,7 @@ class TestCreateFolder:
 
         assert resp.kind == 'folder'
         assert resp.name == 'doesntalreadyexists'
-        assert resp.path == path.full_path
+        assert resp.path == '/' + path.path
 
 
 class TestOperations:

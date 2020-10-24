@@ -29,10 +29,14 @@ from tests.providers.s3compat.test_provider import (
 )
 
 @pytest.fixture
-def settings():
+def base_prefix():
+    return 'testrootdir/'
+
+@pytest.fixture
+def settings(base_prefix):
     return {
         'bucket': 'that kerning',
-        'prefix': '/testrootdir',
+        'prefix': base_prefix,
         'encrypt_uploads': False
     }
 
