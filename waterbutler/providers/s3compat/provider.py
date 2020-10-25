@@ -423,10 +423,8 @@ class S3CompatProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.MetadataError,
         )
-        logger.error(u'DEBUG resp={}'.format(str(resp)))  # TODO
 
         contents = await resp.read()
-        logger.error(u'DEBUG contents={}'.format(str(contents)))  # TODO
 
         parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
 
