@@ -250,6 +250,16 @@ class OSFStorageProvider(provider.BaseProvider):
         # a non-osfstorage provider and is therefore subject to quota limits
         quota = await self._check_resource_quota()
         if quota['over_quota']:
+
+            # NOTE: this sucks, and we hate to do it, but throwing an over quota error while a file
+            # is still being uploaded causes an unbreakable hang.  The hand has something to do w/
+            # reading & writing to the sockets WB creates to manage uploads, but we have no idea how
+            # to fix it.  A terrible workaround is to keep reading the upload request stream until
+            # we exhaust it.  This will cause the server to wait until the upload is completed, but
+            # it will always properly return the intended error.
+            while not stream.at_eof():
+                _ = await stream.read(64000)
+
             raise OsfStorageQuotaExceededError('')
 
         metadata = await self._send_to_storage_provider(stream, path, **kwargs)
