@@ -32,7 +32,11 @@ from tests.providers.nextcloud.fixtures import (
     file_metadata_unparsable_response,
     file_revision_metadata_error_response,
     moved_folder_metadata,
-    moved_parent_folder_metadata
+    moved_parent_folder_metadata,
+    file_checksum,
+    file_checksum_2,
+    file_checksum_3,
+    file_checksum_4
 )
 
 from tests.providers.nextcloudinstitutions.fixtures import (

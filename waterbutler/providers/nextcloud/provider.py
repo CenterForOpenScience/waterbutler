@@ -70,6 +70,15 @@ class NextcloudProvider(provider.BaseProvider):
             return self.url + '/remote.php/dav/'
         return self.url + 'remote.php/dav/'
 
+    @property
+    def _ocs_url(self):
+        """ Formats the outgoing url appropriately. This is used like below.
+        https://docs.nextcloud.com/server/latest/developer_manual/client_apis/OCS/ocs-api-overview.html
+        """
+        if self.url[-1] != '/':
+            return self.url + '/ocs/v2.php/'
+        return self.url + 'ocs/v2.php/'
+
     def shares_storage_root(self, other):
         """Nextcloud settings only include the root folder. If a cross-resource move occurs
         between two nextcloud providers that are on different accounts but have the same folder
@@ -267,6 +276,25 @@ class NextcloudProvider(provider.BaseProvider):
             content = await response.content.read()
             items = await utils.parse_dav_response(self.NAME, content, self.folder, skip_first)
         await response.release()
+
+        for i in items:
+            if i.is_file:
+                response = await self.make_request('GET',
+                    self._ocs_url + 'apps/checksum-api/api/checksum?path=' + i._href + '&hash=md5,sha256,sha512',
+                    expects=(200,),
+                    throws=exceptions.MetadataError,
+                    auth=self._auth,
+                    connector=self.connector(),
+                    headers={'OCS-APIRequest': 'true'}
+                )
+
+                if response.status == 200:
+                    content = await response.content.read()
+                    extra = {}
+                    extra['hashes'] = await utils.parse_checksum_response(content)
+                    i.extra = extra
+                await response.release()
+
         return items
 
     async def _metadata_revision(self, path):
@@ -290,6 +318,22 @@ class NextcloudProvider(provider.BaseProvider):
         if len(items) != 1:
             return items
 
+        response = await self.make_request('GET',
+            self._ocs_url + 'apps/checksum-api/api/checksum?path=' + path.full_path + '&hash=md5,sha256,sha512',
+            expects=(200,),
+            throws=exceptions.MetadataError,
+            auth=self._auth,
+            connector=self.connector(),
+            headers={'OCS-APIRequest': 'true'}
+        )
+
+        if response.status == 200:
+            content = await response.content.read()
+            extra = {}
+            extra['hashes'] = await utils.parse_checksum_response(content)
+            items[0].extra = extra
+        await response.release()
+
         fileid = items[0].fileid
 
         response = await self.make_request('PROPFIND',
@@ -305,6 +349,27 @@ class NextcloudProvider(provider.BaseProvider):
             content = await response.content.read()
             revision_items = await utils.parse_dav_response(self.NAME, content, self.folder, True)
         await response.release()
+
+        for rev in revision_items:
+            response = await self.make_request('GET',
+                self._ocs_url +
+                    'apps/checksum-api/api/checksum?' +
+                    'path=' + path.full_path +
+                    '&hash=md5,sha256,sha512' +
+                    '&revision=' + str(rev.etag),
+                expects=(200,),
+                throws=exceptions.MetadataError,
+                auth=self._auth,
+                connector=self.connector(),
+                headers={'OCS-APIRequest': 'true'}
+            )
+
+            if response.status == 200:
+                content = await response.content.read()
+                extra = {}
+                extra['hashes'] = await utils.parse_checksum_response(content)
+                rev.extra = extra
+            await response.release()
 
         items.extend(revision_items)
 
@@ -390,5 +455,5 @@ class NextcloudProvider(provider.BaseProvider):
         for i in range(latest):
             r = revisions[i]
             ver = str(r.etag_noquote)
-            items.append(NextcloudFileRevisionMetadata.from_metadata(ver, r))
+            items.append(NextcloudFileRevisionMetadata.from_metadata(self.NAME, ver, r))
         return items
