@@ -258,7 +258,7 @@ class OSFStorageProvider(provider.BaseProvider):
             # we exhaust it.  This will cause the server to wait until the upload is completed, but
             # it will always properly return the intended error.
             while not stream.at_eof():
-                _ = await stream.read(64000)
+                _ = await stream.read(64000)  # noqa: F841
 
             raise OsfStorageQuotaExceededError('')
 
