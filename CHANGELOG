@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+20.1.0 (2020-11-03)
+===================
+- Feature: Support storage limits on osfstorage.  The OSF now enforces storage quotas for OSF
+projects.  Update WaterButler to check the project's quota status before executing uploads,
+moves, and copies.
+
 20.0.3 (2020-10-21)
 ===================
 - Feature: Add flags to toggle logging of WaterButler events to specific Keen collections.
