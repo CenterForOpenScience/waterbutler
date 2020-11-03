@@ -2,8 +2,10 @@ import os
 import json
 import uuid
 import typing
+import asyncio
 import hashlib
 import logging
+from http import HTTPStatus
 
 from waterbutler.core import utils
 from waterbutler.core import signing
@@ -17,6 +19,7 @@ from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.metadata import OsfStorageFileMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageFolderMetadata
 from waterbutler.providers.osfstorage.metadata import OsfStorageRevisionMetadata
+from waterbutler.providers.osfstorage.exceptions import OsfStorageQuotaExceededError
 
 logger = logging.getLogger(__name__)
 
@@ -161,9 +164,13 @@ class OSFStorageProvider(provider.BaseProvider):
         return isinstance(other, self.__class__) and self.is_same_region(other)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
+        """Usually called by `waterbutler.core.provider.BaseProvider.move`, but ``osfstorage``
+        overrides this method with its own ``.move()`` implementation."""
         return await self._do_intra_move_or_copy('move', dest_provider, src_path, dest_path)
 
     async def intra_copy(self, dest_provider, src_path, dest_path):
+        """Usually called by `waterbutler.core.provider.BaseProvider.copy`, but ``osfstorage``
+        overrides this method with its own ``.copy()`` implementation."""
         return await self._do_intra_move_or_copy('copy', dest_provider, src_path, dest_path)
 
     def build_signed_url(self, method, url, data=None, params=None, ttl=100, **kwargs):
@@ -238,6 +245,22 @@ class OSFStorageProvider(provider.BaseProvider):
         Finally, WB constructs its metadata response and sends that back to the original request
         issuer.
         """
+
+        # This path is called when uploading to osfstorage directly or when moving/copying from
+        # a non-osfstorage provider and is therefore subject to quota limits
+        quota = await self._check_resource_quota()
+        if quota['over_quota']:
+
+            # NOTE: this sucks, and we hate to do it, but throwing an over quota error while a file
+            # is still being uploaded causes an unbreakable hang.  The hand has something to do w/
+            # reading & writing to the sockets WB creates to manage uploads, but we have no idea how
+            # to fix it.  A terrible workaround is to keep reading the upload request stream until
+            # we exhaust it.  This will cause the server to wait until the upload is completed, but
+            # it will always properly return the intended error.
+            while not stream.at_eof():
+                _ = await stream.read(64000)  # noqa: F841
+
+            raise OsfStorageQuotaExceededError('')
 
         metadata = await self._send_to_storage_provider(stream, path, **kwargs)
         metadata = metadata.serialized()
@@ -377,6 +400,11 @@ class OSFStorageProvider(provider.BaseProvider):
 
         self.provider_metrics.add('move.can_intra_move', False)
         if self.can_intra_move(dest_provider, src_path):
+            if self.nid != dest_provider.nid:
+                dest_quota = await dest_provider._check_resource_quota()
+                if dest_quota['over_quota']:
+                    raise OsfStorageQuotaExceededError('')
+
             self.provider_metrics.add('move.can_intra_move', True)
             return await self.intra_move(*args)
 
@@ -384,6 +412,15 @@ class OSFStorageProvider(provider.BaseProvider):
             meta_data, created = await self._folder_file_op(self.move, *args, **kwargs)  # type: ignore
             await self.delete(src_path)
         else:
+            # Check whether the destination project is over its quota.  If so, reject the request.
+            # This path only occurs when both source and dest are osfstorage but are located in
+            # different storage regions.  Since this involves uploading new data to the destination
+            # region, it is appropriate to check the destination quota.  If both were in the same
+            # region, no new data would need to be uploaded.
+            dest_quota = await dest_provider._check_resource_quota()
+            if dest_quota['over_quota']:
+                raise OsfStorageQuotaExceededError('')
+
             download_stream = await self.download(src_path)
             if getattr(download_stream, 'name', None):
                 dest_path.rename(download_stream.name)
@@ -444,12 +481,26 @@ class OSFStorageProvider(provider.BaseProvider):
 
         self.provider_metrics.add('copy.can_intra_copy', False)
         if self.can_intra_copy(dest_provider, src_path):
+            if self.nid != dest_provider.nid:
+                dest_quota = await dest_provider._check_resource_quota()
+                if dest_quota['over_quota']:
+                    raise OsfStorageQuotaExceededError('')
+
             self.provider_metrics.add('copy.can_intra_copy', True)
             return await self.intra_copy(*args)
 
         if src_path.is_dir:
             meta_data, created = await self._folder_file_op(self.copy, *args, **kwargs)  # type: ignore
         else:
+            # Check whether the destination project is over its quota.  If so, reject the request.
+            # This path only occurs when both source and dest are osfstorage but are located in
+            # different storage regions.  Since this involves uploading new data to the destination
+            # region, it is appropriate to check the destination quota.  If both were in the same
+            # region, no new data would need to be uploaded.
+            dest_quota = await self._check_resource_quota()
+            if dest_quota['over_quota']:
+                raise OsfStorageQuotaExceededError('')
+
             download_stream = await self.download(src_path)
             if getattr(download_stream, 'name', None):
                 dest_path.rename(download_stream.name)
@@ -495,6 +546,44 @@ class OSFStorageProvider(provider.BaseProvider):
         for child in meta:
             osf_path = await self.validate_path(child.path)
             await self.delete(osf_path)
+
+    async def _check_resource_quota(self):
+        """Get the quota information for the resource attached to the provider. Can be used by the
+        caller to reject the request if the project has exceeded its quota.
+
+        The OSF calculates quota usage asynchronously and may return a ``202 ACCEPTED`` if the
+        calculation has not yet completed.  This calculation is expected to be fast, so retry a
+        configurable number of times.  If we fail to get a ``200 OK` response after
+        ``QUOTA_RETRIES``, give user the benefit of the doubt and assume the node is under quota.
+        """
+        resp, retry = None, 0
+        while retry <= settings.QUOTA_RETRIES:
+            if retry > 0:
+                await asyncio.sleep(settings.QUOTA_RETRIES_DELAY * retry)
+
+            try:
+                resp = await self.make_signed_request(
+                    'GET',
+                    self.build_url('quota_status'),
+                    expects=(200, )
+                )
+            except exceptions.WaterButlerError as exc:
+                if exc.code != HTTPStatus.ACCEPTED:
+                    # Didn't get 200 or 202 response from 'quota_status'. Rethrow exception.
+                    raise exc
+            else:
+                # 200 response from 'quota_status'!  Bail out of the 'while' and keep going
+                break
+
+            # 202 respose from 'quota_status'. Try again.
+            retry += 1
+
+        # If after `QUOTA_RETRIES` attempts we still don't know if the destination is over quota,
+        # assume it isn't and return.
+        if resp is None:
+            return {'over_quota': False}
+
+        return await resp.json()
 
     async def _do_intra_move_or_copy(self, action: str, dest_provider, src_path, dest_path):
         """Update files and folders on osfstorage with a single request.

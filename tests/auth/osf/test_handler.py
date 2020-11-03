@@ -81,6 +81,7 @@ class TestOsfAuthHandler(ServerTestCase):
                     'nid': 'test',
                     'provider': 'test',
                     'action': 'download',
+                    'intent': 'copyfrom',
                     'path': '',
                     'version': None,
                     'metrics': {
@@ -95,6 +96,7 @@ class TestOsfAuthHandler(ServerTestCase):
                     'nid': 'test',
                     'provider': 'test',
                     'action': 'upload',
+                    'intent': 'copyto',
                     'path': '',
                     'version': None,
                     'metrics': {
@@ -109,24 +111,47 @@ class TestOsfAuthHandler(ServerTestCase):
 class TestActionMapping:
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize('method, action, auth_type, headers, query_args, expected', [
-        ['post', 'copy',   AuthType.SOURCE,      None, None, 'download'],
-        ['post', 'copy',   AuthType.DESTINATION, None, None, 'upload'],
-        ['post', 'move',   AuthType.SOURCE,      None, None, 'upload'],  # TODO: really?
-        ['post', 'move',   AuthType.DESTINATION, None, None, 'upload'],
-        ['post', 'rename', AuthType.SOURCE,      None, None, 'upload'],  # TODO: really?
-        ['post', 'rename', AuthType.DESTINATION, None, None, 'upload'],
+    @pytest.mark.parametrize('method, action, path, auth_type, headers, query_args, exp_perm_action, exp_intent', [
+        ['post', 'copy',   '/folder/', AuthType.SOURCE,      None, None, 'download', 'copyfrom'],
+        ['post', 'copy',   '/folder/', AuthType.DESTINATION, None, None, 'upload',   'copyto'],
+        ['post', 'move',   '/folder/', AuthType.SOURCE,      None, None, 'delete',   'movefrom'],
+        ['post', 'move',   '/folder/', AuthType.DESTINATION, None, None, 'upload',   'moveto'],
+        ['post', 'rename', '/folder/', AuthType.SOURCE,      None, None, 'upload',   'rename'],
+        ['post', 'rename', '/folder/', AuthType.DESTINATION, None, None, 'upload',   'rename'],
 
-        ['head', None, None, {settings.MFR_ACTION_HEADER: 'render'}, None, 'render'],
-        ['head', None, None, {settings.MFR_ACTION_HEADER: 'export'}, None, 'export'],
+        ['post', 'copy',   '/file', AuthType.SOURCE,      None, None, 'download', 'copyfrom'],
+        ['post', 'copy',   '/file', AuthType.DESTINATION, None, None, 'upload',   'copyto'],
+        ['post', 'move',   '/file', AuthType.SOURCE,      None, None, 'delete',   'movefrom'],
+        ['post', 'move',   '/file', AuthType.DESTINATION, None, None, 'upload',   'moveto'],
+        ['post', 'rename', '/file', AuthType.SOURCE,      None, None, 'upload',   'rename'],
+        ['post', 'rename', '/file', AuthType.DESTINATION, None, None, 'upload',   'rename'],
 
-        ['get',    None, None, None, None,             'download'],
-        ['put',    None, None, None, None,             'upload'],
-        ['delete', None, None, None, None,             'delete'],
-        ['get',    None, None, None, {'meta': 1},      'metadata'],
-        ['get',    None, None, None, {'revisions': 1}, 'revisions'],
+        ['head', None, '/folder/', None, {settings.MFR_ACTION_HEADER: 'render'}, None, 'render', 'render'],
+        ['head', None, '/folder/', None, {settings.MFR_ACTION_HEADER: 'export'}, None, 'export', 'export'],
+
+        ['head', None, '/file', None, {settings.MFR_ACTION_HEADER: 'render'}, None, 'render', 'render'],
+        ['head', None, '/file', None, {settings.MFR_ACTION_HEADER: 'export'}, None, 'export', 'export'],
+
+        ['get',    None, '/folder/', None, None, None,               'metadata',  'metadata'],
+        ['head',   None, '/folder/', None, None, None,               'metadata',  'metadata'],
+        ['put',    None, '/folder/', None, None, {'kind': 'folder'}, 'upload',    'create_dir'],
+        ['put',    None, '/folder/', None, None, {'kind': 'file'},   'upload',    'create_file'],
+        ['delete', None, '/folder/', None, None, None,               'delete',    'delete'],
+        ['get',    None, '/folder/', None, None, {'meta': 1},        'metadata',  'metadata'],
+        ['get',    None, '/folder/', None, None, {'revisions': 1},   'metadata',  'metadata'],
+        ['get',    None, '/folder/', None, None, {'zip': 1},         'download',  'daz'],
+
+        ['get',    None, '/file', None, None, None,                        'download',  'download'],
+        ['head',   None, '/file', None, None, None,                        'metadata',  'metadata'],
+        ['put',    None, '/file', None, None, None,                        'upload',    'update_file'],
+        ['delete', None, '/file', None, None, None,                        'delete',    'delete'],
+        ['get',    None, '/file', None, None, {'meta': 1},                 'metadata',  'metadata'],
+        ['get',    None, '/file', None, None, {'revisions': 1},            'revisions', 'revisions'],
+        ['get',    None, '/file', None, None, {'zip': 1},                  'download',  'download'],
+        ['get',    None, '/file', None, None, {'meta': 1, 'revisions': 1}, 'metadata',  'metadata'],
     ])
-    async def test_action_type(self, method, action, auth_type, headers, query_args, expected):
+    async def test_action_type(self, method, action, path, auth_type, headers, query_args,
+                               exp_perm_action, exp_intent):
 
         handler = OsfAuthHandler()
 
@@ -136,7 +161,7 @@ class TestActionMapping:
         request.query_arguments = query_args if query_args is not None else {}
         request.cookies = {}
 
-        kwargs = {}
+        kwargs = {'path': path}
         if action is not None:
             kwargs['action'] = action
         if auth_type is not None:
@@ -151,7 +176,8 @@ class TestActionMapping:
 
         handler.build_payload.asssert_called_once()
         args, _ = handler.build_payload.call_args
-        assert args[0]['action'] == expected
+        assert args[0]['action'] == exp_perm_action
+        assert args[0]['intent'] == exp_intent
 
     @pytest.mark.asyncio
     async def test_unhandled_mfr_action(self):
