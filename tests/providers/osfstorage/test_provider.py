@@ -13,6 +13,7 @@ from waterbutler.providers.osfstorage.provider import OSFStorageProvider
 from waterbutler.providers.osfstorage.metadata import (OsfStorageFileMetadata,
                                                        OsfStorageFolderMetadata,
                                                        OsfStorageRevisionMetadata)
+from waterbutler.providers.osfstorage.exceptions import OsfStorageQuotaExceededError
 
 from tests import utils
 from tests.providers.osfstorage.fixtures import (auth, credentials, settings,
@@ -574,6 +575,96 @@ class TestUtils:
     def test_can_duplicate_names(self, provider_one):
         assert provider_one.can_duplicate_names()
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test__check_resource_quota_retries_zero(self, provider_one, monkeypatch, mock_time):
+
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES', 2)
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES_DELAY', 1)
+
+        responses = [
+            {
+                'body': json.dumps({'over_quota': True}),
+                'status': 200,
+                'headers': {'Content-Type': 'application/json'},
+            },
+        ]
+
+        quota_url, quota_params = build_signed_url_without_auth(provider_one, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, responses=responses)
+
+        resp = await provider_one._check_resource_quota()
+        assert resp == {'over_quota': True}
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test__check_resource_quota_retries_one(self, provider_one, monkeypatch, mock_time):
+
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES', 2)
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES_DELAY', 1)
+
+        responses = [
+            {'status': 202,},
+            {
+                'body': json.dumps({'over_quota': True}),
+                'status': 200,
+                'headers': {'Content-Type': 'application/json'},
+            },
+        ]
+
+        quota_url, quota_params = build_signed_url_without_auth(provider_one, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, responses=responses)
+
+        resp = await provider_one._check_resource_quota()
+        assert resp == {'over_quota': True}
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test__check_resource_quota_retries_two(self, provider_one, monkeypatch, mock_time):
+
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES', 2)
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES_DELAY', 1)
+
+        responses = [
+            {'status': 202,},
+            {'status': 202,},
+            {
+                'body': json.dumps({'over_quota': True}),
+                'status': 200,
+                'headers': {'Content-Type': 'application/json'},
+            },
+        ]
+
+        quota_url, quota_params = build_signed_url_without_auth(provider_one, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, responses=responses)
+
+        resp = await provider_one._check_resource_quota()
+        assert resp == {'over_quota': True}
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test__check_resource_quota_exhaust_retries(self, provider_one, monkeypatch, mock_time):
+
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES', 2)
+        monkeypatch.setattr('waterbutler.providers.osfstorage.settings.QUOTA_RETRIES_DELAY', 1)
+
+        responses = [
+            {'status': 202,},
+            {'status': 202,},
+            {'status': 202,},
+            {
+                'body': json.dumps({'over_quota': True}),
+                'status': 200,
+                'headers': {'Content-Type': 'application/json'},
+            },
+        ]
+
+        quota_url, quota_params = build_signed_url_without_auth(provider_one, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, responses=responses)
+
+        resp = await provider_one._check_resource_quota()
+        assert resp == {'over_quota': False}
+
 
 class TestValidatePath:
 
@@ -700,6 +791,10 @@ class TestUploads:
         provider, inner_provider = provider_and_mock_one
         inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())
 
+        quota_url, quota_params = build_signed_url_without_auth(provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': False})
+
         res, created = await provider.upload(file_stream, upload_path)
 
         assert created is True
@@ -724,6 +819,10 @@ class TestUploads:
         provider, inner_provider = provider_and_mock_one
 
         url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
+
+        quota_url, quota_params = build_signed_url_without_auth(provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': False})
 
         inner_provider.move.return_value = (utils.MockFileMetadata(), True)
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=404)
@@ -757,6 +856,10 @@ class TestUploads:
         self.patch_uuid(monkeypatch)
         provider, inner_provider = provider_and_mock_one
 
+        quota_url, quota_params = build_signed_url_without_auth(provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': False})
+
         url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
 
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=500)
@@ -779,6 +882,10 @@ class TestUploads:
         inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())
         inner_provider.upload.side_effect = Exception()
 
+        quota_url, quota_params = build_signed_url_without_auth(provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': False})
+
         with pytest.raises(Exception):
             await provider.upload(file_stream, path)
 
@@ -789,10 +896,31 @@ class TestUploads:
             fetch_metadata=False
         )
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_reject_quota(self, monkeypatch, provider_and_mock_one, file_stream,
+                                       upload_path, mock_time):
+        self.patch_uuid(monkeypatch)
+
+        provider, inner_provider = provider_and_mock_one
+        provider._send_to_storage_provider = utils.MockCoroutine()
+        provider._send_to_metadata_provider = utils.MockCoroutine()
+
+        quota_url, quota_params = build_signed_url_without_auth(provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': True})
+
+        with pytest.raises(OsfStorageQuotaExceededError):
+            await provider.upload(file_stream, upload_path)
+
+        provider._send_to_storage_provider.assert_not_called()
+        provider._send_to_metadata_provider.assert_not_called()
+
 
 class TestCrossRegionMove:
 
     @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_move_file(self, provider_one, provider_two, file_stream, upload_response):
 
         # aliased for clarity
@@ -804,6 +932,10 @@ class TestCrossRegionMove:
 
         src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
         dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': False})
 
         metadata, created = await src_provider.move(dst_provider, src_path, dest_path,
                                                     handle_naming=False);
@@ -818,6 +950,31 @@ class TestCrossRegionMove:
                                                                        conflict='replace')
         src_provider.intra_move.assert_called_once_with(dst_provider, WaterButlerPath('/foo'),
                                                         WaterButlerPath('/'))
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_move_file_reject_quota(self, provider_one, provider_two):
+
+        # aliased for clarity
+        src_provider, dst_provider = provider_one, provider_two
+
+        src_provider.download = utils.MockCoroutine()
+        src_provider.intra_move = utils.MockCoroutine()
+        dst_provider._send_to_storage_provider = utils.MockCoroutine()
+
+        src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
+        dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': True})
+
+        with pytest.raises(OsfStorageQuotaExceededError):
+            await src_provider.move(dst_provider, src_path, dest_path, handle_naming=False)
+
+        src_provider.download.assert_not_called()
+        dst_provider._send_to_storage_provider.assert_not_called()
+        src_provider.intra_move.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_move_folder(self, provider_one, provider_two):
@@ -867,13 +1024,13 @@ class TestCrossRegionMove:
         src_provider.download.assert_not_called()
 
     @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_move_but_intra_move(self, provider_one, auth, credentials,
                                        settings_region_one):
         """OSFStorageProvider.move checks to see if intra_move can be called as an optimization.
-        This is copied over from the `BaseProvider.move()` implementation, and is unlikely to be
-        called in a real-world situation.  All calls to `OSFStorageProvider.move()` have probably
-        passed through a `can_intra_move` check already.  Nevertheless, let's test it to make sure
-        it behaves as expected."""
+        If the destination is not `osfstorage`, delegate to the parent method.  Otherwise, check
+        whether we can optimize by doing an `intra_move` action.  `intra_move` is permissable when
+        both `osfstorage` providers are in the same region."""
 
         # aliased for clarity
         src_provider = provider_one
@@ -888,16 +1045,52 @@ class TestCrossRegionMove:
         src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
         dest_path = WaterButlerPath('/', _ids=('Test',))
 
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': False})
+
         await src_provider.move(dst_provider, src_path, dest_path, handle_naming=False);
 
         src_provider.can_intra_move.assert_called_once_with(dst_provider, src_path)
         src_provider.intra_move.assert_called_once_with(dst_provider, src_path, dest_path)
         src_provider.download.assert_not_called()
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_move_reject_by_quota(self, provider_one, auth, credentials,
+                                              settings_region_one):
+        """Same as previous, but assume the destination node is not the same as the source node
+        and is subject to storage caps."""
+
+        # aliased for clarity
+        src_provider = provider_one
+
+        settings_region_one['nid'] = 'fake-nid'
+        dst_provider = OSFStorageProvider(auth, credentials, settings_region_one)
+
+        src_provider.can_intra_move = mock.Mock(return_value=True)
+        src_provider.intra_move = utils.MockCoroutine()
+        src_provider.download = utils.MockCoroutine()
+
+        src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
+        dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': True})
+
+        with pytest.raises(OsfStorageQuotaExceededError):
+            await src_provider.move(dst_provider, src_path, dest_path, handle_naming=False);
+
+        src_provider.can_intra_move.assert_called_once_with(dst_provider, src_path)
+        src_provider.intra_move.assert_not_called()
+        src_provider.download.assert_not_called()
+
 
 class TestCrossRegionCopy:
 
     @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_copy_file(self, provider_one, provider_two, file_stream, upload_response):
 
         # aliased for clarity
@@ -909,6 +1102,10 @@ class TestCrossRegionCopy:
 
         src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
         dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': False})
 
         metadata, created = await src_provider.copy(dst_provider, src_path, dest_path,
                                                     handle_naming=False);
@@ -923,6 +1120,31 @@ class TestCrossRegionCopy:
                                                                        conflict='replace')
         src_provider.intra_copy.assert_called_once_with(dst_provider, WaterButlerPath('/foo'),
                                                         WaterButlerPath('/'))
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_copy_file_reject_quota(self, provider_one, provider_two):
+
+        # aliased for clarity
+        src_provider, dst_provider = provider_one, provider_two
+
+        src_provider.download = utils.MockCoroutine()
+        src_provider.intra_copy = utils.MockCoroutine()
+        dst_provider._send_to_storage_provider = utils.MockCoroutine()
+
+        src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
+        dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': True})
+
+        with pytest.raises(OsfStorageQuotaExceededError):
+            await src_provider.copy(dst_provider, src_path, dest_path, handle_naming=False)
+
+        src_provider.download.assert_not_called()
+        dst_provider._send_to_storage_provider.assert_not_called()
+        src_provider.intra_copy.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_copy_folder(self, provider_one, provider_two):
@@ -970,13 +1192,13 @@ class TestCrossRegionCopy:
         src_provider.download.assert_not_called()
 
     @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_copy_but_intra_copy(self, provider_one, auth, credentials,
                                        settings_region_one):
         """OSFStorageProvider.copy checks to see if intra_copy can be called as an optimization.
-        This is copied over from the `BaseProvider.copy()` implementation, and is unlikely to be
-        called in a real-world situation.  All calls to `OSFStorageProvider.copy()` have probably
-        passed through a `can_intra_copy` check already.  Nevertheless, let's test it to make sure
-        it behaves as expected."""
+        If the destination is not `osfstorage`, delegate to the parent method.  Otherwise, check
+        whether we can optimize by doing an `intra_copy` action.  `intra_copy` is permissable when
+        both `osfstorage` providers are in the same region."""
 
         # aliased for clarity
         src_provider = provider_one
@@ -991,8 +1213,43 @@ class TestCrossRegionCopy:
         src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
         dest_path = WaterButlerPath('/', _ids=('Test',))
 
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': False})
+
         await src_provider.copy(dst_provider, src_path, dest_path, handle_naming=False);
 
         src_provider.can_intra_copy.assert_called_once_with(dst_provider, src_path)
         src_provider.intra_copy.assert_called_once_with(dst_provider, src_path, dest_path)
+        src_provider.download.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_intra_copy_reject_by_quota(self, provider_one, auth, credentials,
+                                              settings_region_one):
+        """Same as previous, but assume the destination node is not the same as the source node
+        and is subject to storage caps."""
+
+        # aliased for clarity
+        src_provider = provider_one
+
+        settings_region_one['nid'] = 'fake-nid'
+        dst_provider = OSFStorageProvider(auth, credentials, settings_region_one)
+
+        src_provider.can_intra_copy = mock.Mock(return_value=True)
+        src_provider.intra_copy = utils.MockCoroutine()
+        src_provider.download = utils.MockCoroutine()
+
+        src_path = WaterButlerPath('/foo', _ids=('Test', '56ab34'))
+        dest_path = WaterButlerPath('/', _ids=('Test',))
+
+        quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
+                                       body={'over_quota': True})
+
+        with pytest.raises(OsfStorageQuotaExceededError):
+            await src_provider.copy(dst_provider, src_path, dest_path, handle_naming=False);
+
+        src_provider.can_intra_copy.assert_called_once_with(dst_provider, src_path)
+        src_provider.intra_copy.assert_not_called()
         src_provider.download.assert_not_called()
