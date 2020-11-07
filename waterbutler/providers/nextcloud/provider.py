@@ -279,8 +279,13 @@ class NextcloudProvider(provider.BaseProvider):
 
         for i in items:
             if i.is_file:
+                params = {
+                    'path': i._href,
+                    'hash': 'md5,sha256,sha512'
+                }
                 response = await self.make_request('GET',
-                    self._ocs_url + 'apps/checksum-api/api/checksum?path=' + i._href + '&hash=md5,sha256,sha512',
+                    self._ocs_url + 'apps/checksum-api/api/checksum',
+                    params=params,
                     expects=(200,),
                     throws=exceptions.MetadataError,
                     auth=self._auth,
@@ -318,8 +323,13 @@ class NextcloudProvider(provider.BaseProvider):
         if len(items) != 1:
             return items
 
+        params = {
+            'path': path.full_path,
+            'hash': 'md5,sha256,sha512'
+        }
         response = await self.make_request('GET',
-            self._ocs_url + 'apps/checksum-api/api/checksum?path=' + path.full_path + '&hash=md5,sha256,sha512',
+            self._ocs_url + 'apps/checksum-api/api/checksum',
+            params=params,
             expects=(200,),
             throws=exceptions.MetadataError,
             auth=self._auth,
@@ -351,12 +361,14 @@ class NextcloudProvider(provider.BaseProvider):
         await response.release()
 
         for rev in revision_items:
+            params = {
+                'path': path.full_path,
+                'hash': 'md5,sha256,sha512',
+                'revision': str(rev.etag)
+            }
             response = await self.make_request('GET',
-                self._ocs_url +
-                    'apps/checksum-api/api/checksum?' +
-                    'path=' + path.full_path +
-                    '&hash=md5,sha256,sha512' +
-                    '&revision=' + str(rev.etag),
+                self._ocs_url + 'apps/checksum-api/api/checksum',
+                params=params,
                 expects=(200,),
                 throws=exceptions.MetadataError,
                 auth=self._auth,
