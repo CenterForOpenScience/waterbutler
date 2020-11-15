@@ -281,6 +281,31 @@ class S3CompatProvider(provider.BaseProvider):
         else:
             await self._delete_folder(path, **kwargs)
 
+    async def _folder_prefix_exists(self, folder_prefix):
+        # Even if the storage is MinIO, Contents with a leaf folder is
+        # returned when a last slash of a prefix is removed.
+        query_params = {
+            'prefix': folder_prefix.rstrip('/'),  # 'A/B/' -> 'A/B'
+            'delimiter': '/'}
+        resp = await self.make_request(
+            'GET',
+            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
+            params=query_params,
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
+        contents = await resp.read()
+        parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
+        common_prefixes = parsed.get('CommonPrefixes', [])
+        # common_prefixes is dict when returned prefix is one.
+        if not isinstance(common_prefixes, list):
+            common_prefixes = [common_prefixes]
+        for common_prefix in common_prefixes:
+            val = common_prefix.get('Prefix')
+            if val == folder_prefix:  # with last slash
+                return True
+        return False
+
     async def _delete_folder(self, path, **kwargs):
         """Query for recursive contents of folder and delete in batches of 1000
 
@@ -297,9 +322,12 @@ class S3CompatProvider(provider.BaseProvider):
         To fully delete an occupied folder, we must delete all of the comprising
         objects.  Amazon provides a bulk delete operation to simplify this.
         """
+        if not path.full_path.endswith('/'):
+            raise exceptions.InvalidParameters('not a folder: {}'.format(str(path)))
         more_to_come = True
         content_keys = []
-        query_params = {'prefix': path.full_path}
+        prefix = path.full_path.lstrip('/')  # '/' -> '', '/A/B/' -> 'A/B/'
+        query_params = {'prefix': prefix}
         marker = None
 
         while more_to_come:
@@ -328,7 +356,11 @@ class S3CompatProvider(provider.BaseProvider):
 
         # Query against non-existant folder does not return 404
         if len(content_keys) == 0:
-            raise exceptions.NotFoundError(str(path))
+            # MinIO cannot return Contents with a leaf folder itself.
+            if await self._folder_prefix_exists(prefix):
+                content_keys = [prefix]
+            else:
+                raise exceptions.NotFoundError(str(path))
 
         for content_key in content_keys[::-1]:
             resp = await self.make_request(
