@@ -548,7 +548,7 @@ class TestCRUD:
     async def test_folder_delete(self, provider, contents_and_self, mock_time):
         path = WaterButlerPath('/some-folder/', prepend=provider.prefix)
 
-        params = {'prefix': path.full_path}
+        params = {'prefix': path.full_path.lstrip('/')}
         query_url = provider.bucket.generate_url(100, 'GET')
         aiohttpretty.register_uri(
             'GET',

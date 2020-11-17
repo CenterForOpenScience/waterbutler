@@ -377,17 +377,28 @@ class S3CompatProvider(provider.BaseProvider):
         :param str path: The path to a key
         :rtype list:
         """
-        query_params = {'prefix': path.full_path, 'delimiter': '/', 'versions': ''}
+        prefix = path.full_path.lstrip('/')  # '/' -> '', '/A/B' -> 'A/B'
+        # "versions" in "query_parameters" is required for generate_url().
+        # SignatureDoesNotMatch is returned when "versions" is not specified.
+        query_params = {'prefix': prefix, 'delimiter': '/', 'versions': ''}
         url = functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
-        resp = await self.make_request(
-            'GET',
-            url,
-            params=query_params,
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
+        try:
+            resp = await self.make_request(
+                'GET',
+                url,
+                params=query_params,
+                expects=(200,),
+                throws=exceptions.MetadataError,
+            )
+        except exceptions.MetadataError as e:
+            # MinIO may not support "versions" from generate_url() of boto2.
+            # (And, MinIO does not support ListObjectVersions yet.)
+            logger.info('ListObjectVersions may not be supported: url={}: {}'.format(url(), str(e)))
+            return []
+
         content = await resp.read()
-        versions = xmltodict.parse(content)['ListVersionsResult'].get('Version') or []
+        xml = xmltodict.parse(content)
+        versions = xml['ListVersionsResult'].get('Version') or []
 
         if isinstance(versions, dict):
             versions = [versions]
@@ -395,7 +406,7 @@ class S3CompatProvider(provider.BaseProvider):
         return [
             S3CompatRevision(item)
             for item in versions
-            if item['Key'] == path.full_path
+            if item['Key'] == prefix
         ]
 
     async def metadata(self, path, revision=None, **kwargs):
