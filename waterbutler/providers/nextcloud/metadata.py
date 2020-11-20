@@ -74,7 +74,7 @@ class NextcloudFileMetadata(BaseNextcloudMetadata, metadata.BaseFileMetadata):
     def extra(self):
         return {
             'hashes': {
-                self.provider: self._extra['hashes'],
+                self.provider: self._extra.get('hashes', {}),
             },
         }
 
@@ -99,8 +99,8 @@ class NextcloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
         self._metadata = metadata
         self._version = version
         self._modified = self._metadata.modified
-        self._md5 = metadata.extra['hashes'][self.provider]['md5']
-        self._sha256 = metadata.extra['hashes'][self.provider]['sha256']
+        self._md5 = metadata.extra['hashes'][self.provider].get('md5')
+        self._sha256 = metadata.extra['hashes'][self.provider].get('sha256')
 
     @classmethod
     def from_metadata(cls, provider, revision, metadata):
@@ -124,9 +124,9 @@ class NextcloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
 
     @property
     def extra(self):
-        return {
-            'hashes': {
-                'md5': self._md5,
-                'sha256': self._sha256,
-            },
-        }
+        hashes = {}
+        if self._md5:
+            hashes['md5'] = self._md5
+        if self._md5:
+            hashes['sha256'] = self._sha256
+        return {'hashes': hashes}
