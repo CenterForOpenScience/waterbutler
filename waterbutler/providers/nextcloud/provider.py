@@ -1,3 +1,4 @@
+import logging
 import aiohttp
 
 from waterbutler.core import streams
@@ -7,6 +8,8 @@ from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.nextcloud import utils
 from waterbutler.providers.nextcloud.metadata import NextcloudFileRevisionMetadata
+
+logger = logging.getLogger(__name__)
 
 
 class NextcloudProvider(provider.BaseProvider):
@@ -284,7 +287,7 @@ class NextcloudProvider(provider.BaseProvider):
                     'hash': 'md5,sha256,sha512'
                 }
                 response = await self.make_request('GET',
-                    self._ocs_url + 'apps/checksum-api/api/checksum',
+                    self._ocs_url + 'apps/checksum_api/api/checksum',
                     params=params,
                     expects=(200, 404),
                     throws=exceptions.MetadataError,
@@ -328,7 +331,7 @@ class NextcloudProvider(provider.BaseProvider):
             'hash': 'md5,sha256,sha512'
         }
         response = await self.make_request('GET',
-            self._ocs_url + 'apps/checksum-api/api/checksum',
+            self._ocs_url + 'apps/checksum_api/api/checksum',
             params=params,
             expects=(200, 404),
             throws=exceptions.MetadataError,
@@ -367,7 +370,7 @@ class NextcloudProvider(provider.BaseProvider):
                 'revision': str(rev.etag)
             }
             response = await self.make_request('GET',
-                self._ocs_url + 'apps/checksum-api/api/checksum',
+                self._ocs_url + 'apps/checksum_api/api/checksum',
                 params=params,
                 expects=(200, 404),
                 throws=exceptions.MetadataError,

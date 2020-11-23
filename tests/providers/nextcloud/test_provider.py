@@ -179,7 +179,7 @@ class TestCRUD:
         url = provider._webdav_url_ + path.full_path
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
         aiohttpretty.register_uri('PUT', url, body=b'squares', auto_length=True, status=201)
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=' + file_metadata_object.path + '&hash=md5,sha256,sha512'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=' + file_metadata_object.path + '&hash=md5,sha256,sha512'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum, auto_length=True, status=200)
         metadata, created = await provider.upload(file_stream, path)
 
@@ -215,7 +215,7 @@ class TestCRUD:
                                   body=b'squares',
                                   auto_length=True,
                                   status=201)
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=' + file_metadata_object.path + '&hash=md5,sha256,sha512'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=' + file_metadata_object.path + '&hash=md5,sha256,sha512'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum, auto_length=True, status=200)
         metadata, created = await provider.upload(file_stream, path, 'keep')
 
@@ -257,7 +257,7 @@ class TestCRUD:
         aiohttpretty.register_uri('PROPFIND', parent_url, body=folder_contents_metadata,
                                   auto_length=True, status=207)
 
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=/Documents/Example.odt&hash=md5,sha256,sha512'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/Documents/Example.odt&hash=md5,sha256,sha512'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum, auto_length=True, status=200)
 
         folder_metadata = await provider.create_folder(path)
@@ -300,7 +300,7 @@ class TestIntraMoveCopy:
                                   body=moved_parent_folder_metadata,
                                   status=207)
 
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=/moved_folder/child_file&hash=md5,sha256,sha512'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/moved_folder/child_file&hash=md5,sha256,sha512'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum, auto_length=True, status=200)
 
         metadata, exists = await provider.intra_copy(None, src_path, dest_path)
@@ -335,7 +335,7 @@ class TestIntraMoveCopy:
                                   body=moved_parent_folder_metadata,
                                   status=207)
 
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=/moved_folder/child_file&hash=md5,sha256,sha512'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/moved_folder/child_file&hash=md5,sha256,sha512'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum, auto_length=True, status=200)
 
         metadata, exists = await provider.intra_move(None, src_path, dest_path)
@@ -358,7 +358,7 @@ class TestIntraMoveCopy:
         metadata_url = provider._webdav_url_ + dest_path.full_path
         aiohttpretty.register_uri('COPY', url, auto_length=True, status=201)
         aiohttpretty.register_uri('PROPFIND', metadata_url, body=file_metadata, status=207)
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=/Documents/dissertation.aux&hash=md5,sha256,sha512'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/Documents/dissertation.aux&hash=md5,sha256,sha512'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum, auto_length=True, status=200)
 
         metadata, exists = await provider.intra_copy(None, src_path, dest_path)
@@ -406,11 +406,11 @@ class TestMetadata:
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
         url = provider._dav_url_ + 'versions/' + provider.credentials['username'] + '/versions/' + file_metadata_object.fileid
         aiohttpretty.register_uri('PROPFIND', url, body=file_revision_metadata, auto_length=True, status=207)
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum, auto_length=True, status=200)
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512&revision=1591876099'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512&revision=1591876099'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum_2, auto_length=True, status=200)
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512&revision=1591864889'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512&revision=1591864889'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum_3, auto_length=True, status=200)
         result = await provider._metadata_revision(path)
 
@@ -480,7 +480,7 @@ class TestMetadata:
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata_2, auto_length=True, status=207)
         url = provider._dav_url_ + 'versions/' + provider.credentials['username'] + '/versions/' + file_metadata_object_2.fileid
         aiohttpretty.register_uri('PROPFIND', url, body=file_revision_metadata_error_response, auto_length=True, status=404)
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=/my_folder/meeting_memo.txt&hash=md5,sha256,sha512'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/my_folder/meeting_memo.txt&hash=md5,sha256,sha512'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum_4, auto_length=True, status=200)
         result = await provider._metadata_revision(path)
 
@@ -518,11 +518,11 @@ class TestRevisions:
         aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
         url = provider._dav_url_ + 'versions/' + provider.credentials['username'] + '/versions/' + file_metadata_object.fileid
         aiohttpretty.register_uri('PROPFIND', url, body=file_revision_metadata, auto_length=True, status=207)
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum, auto_length=True, status=200)
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512&revision=1591876099'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512&revision=1591876099'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum_2, auto_length=True, status=200)
-        checksum_url = provider._ocs_url + 'apps/checksum-api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512&revision=1591864889'
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512&revision=1591864889'
         aiohttpretty.register_uri('GET', checksum_url, body=file_checksum_3, auto_length=True, status=200)
 
         result = await provider.revisions(path)
