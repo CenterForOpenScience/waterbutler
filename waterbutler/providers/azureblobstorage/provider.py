@@ -123,7 +123,7 @@ class AzureBlobStorageProvider(provider.BaseProvider):
         target_url = 0
         while retry >= 0:
             try:
-                response = await aiohttp.request(method, urls[target_url % len(urls)], *args, **kwargs)
+                response = await aiohttp.request(method, urls[target_url % len(urls)], *args, **kwargs).__aenter__()
                 if expects and response.status not in expects:
                     raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
                 return response
