@@ -44,12 +44,12 @@ class S3CompatFileMetadataHeaders(S3CompatMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return self.raw['ETAG'].replace('"', '')
+        return self.raw['ETag'].replace('"', '')
 
     @property
     def extra(self):
         return {
-            'md5': self.raw['ETAG'].replace('"', ''),
+            'md5': self.raw['ETag'].replace('"', ''),
             'encryption': self.raw.get('X-AMZ-SERVER-SIDE-ENCRYPTION', '')
         }
 

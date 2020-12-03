@@ -14,13 +14,14 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-
+from waterbutler.core.utils import make_disposition
 from waterbutler.providers.s3compat import settings
-from waterbutler.providers.s3compat.metadata import S3CompatRevision
-from waterbutler.providers.s3compat.metadata import S3CompatFileMetadata
-from waterbutler.providers.s3compat.metadata import S3CompatFolderMetadata
-from waterbutler.providers.s3compat.metadata import S3CompatFolderKeyMetadata
-from waterbutler.providers.s3compat.metadata import S3CompatFileMetadataHeaders
+from waterbutler.providers.s3compat.metadata import (S3CompatRevision,
+                                                     S3CompatFileMetadata,
+                                                     S3CompatFolderMetadata,
+                                                     S3CompatFolderKeyMetadata,
+                                                     S3CompatFileMetadataHeaders,
+                                                     )
 
 
 class S3CompatConnection(S3Connection):
@@ -71,7 +72,7 @@ class S3CompatProvider(provider.BaseProvider):
     """
     NAME = 's3compat'
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, **kwargs):
         """
         .. note::
 
@@ -82,7 +83,7 @@ class S3CompatProvider(provider.BaseProvider):
         :param dict credentials: Dict containing `access_key` and `secret_key`
         :param dict settings: Dict containing `bucket`
         """
-        super().__init__(auth, credentials, settings)
+        super().__init__(auth, credentials, settings, **kwargs)
 
         host = credentials['host']
         port = 443
@@ -111,14 +112,14 @@ class S3CompatProvider(provider.BaseProvider):
                 'GET',
                 functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
                 params=params,
-                expects=(200, 404),
+                expects=(200, 404, ),
                 throws=exceptions.MetadataError,
             )
         else:
             resp = await self.make_request(
                 'HEAD',
                 functools.partial(self.bucket.new_key(path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
-                expects=(200, 404),
+                expects=(200, 404, ),
                 throws=exceptions.MetadataError,
             )
 
@@ -168,8 +169,8 @@ class S3CompatProvider(provider.BaseProvider):
         await resp.release()
         return (await dest_provider.metadata(dest_path)), not exists
 
-    async def download(self, path, accept_url=False, version=None, range=None, **kwargs):
-        """Returns a ResponseWrapper (Stream) for the specified path
+    async def download(self, path, accept_url=False, revision=None, range=None, **kwargs):
+        r"""Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from S3 is not 200
 
         :param str path: Path to the key you want to download
@@ -180,15 +181,15 @@ class S3CompatProvider(provider.BaseProvider):
         if not path.is_file:
             raise exceptions.DownloadError('No file specified for download', code=400)
 
-        if not version or version.lower() == 'latest':
+        if not revision or revision.lower() == 'latest':
             query_parameters = None
         else:
-            query_parameters = {'versionId': version}
+            query_parameters = {'versionId': revision}
 
-        if kwargs.get('displayName'):
-            response_headers = {'response-content-disposition': 'attachment; filename*=UTF-8\'\'{}'.format(parse.quote(kwargs['displayName']))}
-        else:
-            response_headers = {'response-content-disposition': 'attachment'}
+        display_name = kwargs.get('display_name') or path.name
+        response_headers = {
+            'response-content-disposition': make_disposition(display_name)
+        }
 
         url = functools.partial(
             self.bucket.new_key(path.path).generate_url,
@@ -244,11 +245,11 @@ class S3CompatProvider(provider.BaseProvider):
             expects=(200, 201, ),
             throws=exceptions.UploadError,
         )
-        # md5 is returned as ETag header as long as server side encryption is not used.
-        # TODO: nice assertion error goes here
-        assert resp.headers['ETag'].replace('"', '') == stream.writers['md5'].hexdigest
-
         await resp.release()
+
+        # md5 is returned as ETag header as long as server side encryption is not used.
+        if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
+            raise exceptions.UploadChecksumMismatchError()
         return (await self.metadata(path, **kwargs)), not exists
 
     async def delete(self, path, confirm_delete=0, **kwargs):
@@ -385,7 +386,7 @@ class S3CompatProvider(provider.BaseProvider):
             'PUT',
             functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
             skip_auto_headers={'CONTENT-TYPE'},
-            expects=(200, 201),
+            expects=(200, 201, ),
             throws=exceptions.CreateFolderError
         ):
             return S3CompatFolderMetadata({'Prefix': path.path})
