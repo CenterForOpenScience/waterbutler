@@ -28,7 +28,8 @@ class TestValidatePut:
         handler.get_query_argument.assert_called_once_with('name', default=None)
 
     @pytest.mark.asyncio
-    async def test_postvalidate_quota_ok(self, handler):
+    async def test_postvalidate_quota_ok(self, http_request):
+        handler = mock_handler(http_request)
         handler.path = WaterButlerPath('/file')
         handler.kind = 'file'
         handler.get_query_argument = mock.Mock(return_value=None)
@@ -43,7 +44,8 @@ class TestValidatePut:
         handler.provider.get_quota.assert_called_once_with()
 
     @pytest.mark.asyncio
-    async def test_postvalidate_quota_denied(self, handler):
+    async def test_postvalidate_quota_denied(self, http_request):
+        handler = mock_handler(http_request)
         handler.path = WaterButlerPath('/file')
         handler.kind = 'file'
         handler.get_query_argument = mock.Mock(return_value=None)

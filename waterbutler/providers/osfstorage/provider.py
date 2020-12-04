@@ -129,12 +129,14 @@ class OSFStorageProvider(provider.BaseProvider):
 
         If the creator of the project doesn't have enough quota, we invalidate the upload request.
         """
-        async with self.signed_request(
+        resp = await self.make_signed_request(
             'GET',
             '{}/api/v1/project/{}/creator_quota/'.format(wb_settings.OSF_URL, self.nid),
             expects=(200, )
-        ) as resp:
-            return await resp.json()
+        )
+        body = await resp.json()
+        await resp.release()
+        return body
 
     def make_provider(self, settings):
         """Requests on different files may need to use different providers,
