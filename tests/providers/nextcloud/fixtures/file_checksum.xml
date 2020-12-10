@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<ocs>
+ <meta>
+  <status>ok</status>
+  <statuscode>200</statuscode>
+  <message>OK</message>
+ </meta>
+ <data>
+  <hash>
+   <md5>b204384c399505d2b82b7172f3494358</md5>
+   <sha256>2ddc9cedb34b4e7fb056b7868b1af29af1fe9ee025b8a67c8c63607587baa657</sha256>
+   <sha512>9157b6864199953e1f06d32325f0789ffc0e3cefbf93bf4fd95fa1b15948d6dfdef2d2ca1836ea43ce8271a1f3ae0a589dd2e259435da822c994d3609bd277ae</sha512>
+  </hash>
+ </data>
+</ocs>

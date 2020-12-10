@@ -7,24 +7,31 @@ class S3CompatMetadata(metadata.BaseMetadata):
 
     @property
     def provider(self):
-        return 's3compat'
+        return self.raw['provider']
 
     @property
     def name(self):
         return os.path.split(self.path)[1]
 
+    @staticmethod
+    def convert_prefix(provider, raw, key):
+        raw['provider'] = provider.NAME
+        raw[key] = raw[key][len(provider.prefix):].lstrip('/')
+
 
 class S3CompatFileMetadataHeaders(S3CompatMetadata, metadata.BaseFileMetadata):
 
-    def __init__(self, path, headers):
-        self._path = path
+    def __init__(self, provider, path, headers):
         # Cast to dict to clone as the headers will
         # be destroyed when the request leaves scope
-        super().__init__(dict(headers))
+        new_headers = dict(headers)
+        new_headers['Key'] = path
+        self.convert_prefix(provider, new_headers, 'Key')
+        super().__init__(new_headers)
 
     @property
     def path(self):
-        return '/' + self._path
+        return '/' + self.raw['Key'].lstrip('/')
 
     @property
     def size(self):
@@ -56,9 +63,14 @@ class S3CompatFileMetadataHeaders(S3CompatMetadata, metadata.BaseFileMetadata):
 
 class S3CompatFileMetadata(S3CompatMetadata, metadata.BaseFileMetadata):
 
+    def __init__(self, provider, raw):
+        new_raw = dict(raw)
+        self.convert_prefix(provider, new_raw, 'Key')
+        super().__init__(new_raw)
+
     @property
     def path(self):
-        return '/' + self.raw['Key']
+        return '/' + self.raw['Key'].lstrip('/')
 
     @property
     def size(self):
@@ -89,16 +101,26 @@ class S3CompatFileMetadata(S3CompatMetadata, metadata.BaseFileMetadata):
 
 class S3CompatFolderKeyMetadata(S3CompatMetadata, metadata.BaseFolderMetadata):
 
+    def __init__(self, provider, raw):
+        new_raw = dict(raw)
+        self.convert_prefix(provider, new_raw, 'Key')
+        super().__init__(new_raw)
+
     @property
     def name(self):
         return self.raw['Key'].split('/')[-2]
 
     @property
     def path(self):
-        return '/' + self.raw['Key']
+        return '/' + self.raw['Key'].lstrip('/')
 
 
 class S3CompatFolderMetadata(S3CompatMetadata, metadata.BaseFolderMetadata):
+
+    def __init__(self, provider, raw):
+        new_raw = dict(raw)
+        self.convert_prefix(provider, new_raw, 'Prefix')
+        super().__init__(new_raw)
 
     @property
     def name(self):
@@ -106,7 +128,7 @@ class S3CompatFolderMetadata(S3CompatMetadata, metadata.BaseFolderMetadata):
 
     @property
     def path(self):
-        return '/' + self.raw['Prefix']
+        return '/' + self.raw['Prefix'].lstrip('/')
 
 
 # TODO dates!

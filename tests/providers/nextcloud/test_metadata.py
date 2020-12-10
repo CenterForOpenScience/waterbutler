@@ -15,7 +15,6 @@ from tests.providers.nextcloud.fixtures import (
 )
 
 
-
 class TestFileMetadata:
 
     def test_file_metadata(self, file_metadata_object, provider):
@@ -31,8 +30,18 @@ class TestFileMetadata:
         assert file_metadata_object.created_utc is None
         assert file_metadata_object.fileid == '7923'
         assert file_metadata_object.content_type == 'application/octet-stream'
-        assert file_metadata_object.extra == {}
 
+        extra = {
+            'hashes': {
+                provider.NAME: {
+                    'md5': 'ee0558f500468642243e29dc914832e9',
+                    'sha256': 'c9b2543ae9c0a94579fa899dde770af9538d93ce6c58948c86c0a6d8f5d1b014',
+                    'sha512': '45e0920b6d7850fbaf028a1ee1241154a7641f3ee325efb3fe483d86dba5c170a4b1075d7e7fd2ae0c321def6022f3aa2b59e0c1dc5213bf1c50690f5cf0b688'
+                }
+            }
+        }
+
+        assert file_metadata_object.extra == extra
 
         url = 'http://localhost:7777/v1/resources/guid0/providers/{}/Documents/dissertation.aux'.format(provider.NAME)
         json_api_links = {'delete': url,
@@ -55,7 +64,18 @@ class TestFileMetadata:
         assert file_metadata_object_less_info.created_utc is None
         assert file_metadata_object_less_info.fileid is None
         assert file_metadata_object_less_info.content_type is None
-        assert file_metadata_object_less_info.extra == {}
+
+        extra = {
+            'hashes': {
+                provider.NAME: {
+                    'md5': 'ee0558f500468642243e29dc914832e9',
+                    'sha256': 'c9b2543ae9c0a94579fa899dde770af9538d93ce6c58948c86c0a6d8f5d1b014',
+                    'sha512': '45e0920b6d7850fbaf028a1ee1241154a7641f3ee325efb3fe483d86dba5c170a4b1075d7e7fd2ae0c321def6022f3aa2b59e0c1dc5213bf1c50690f5cf0b688'
+                }
+            }
+        }
+
+        assert file_metadata_object_less_info.extra == extra
 
         url = 'http://localhost:7777/v1/resources/guid0/providers/{}/Documents/dissertation.aux'.format(provider.NAME)
         json_api_links = {'delete': url,
@@ -119,11 +139,16 @@ class TestRevisionMetadata:
         assert revision_metadata_object.version == self.version
         assert revision_metadata_object.modified == 'Sun, 10 Jul 2016 23:28:31 GMT'
 
-        # hashes = {'hashes': {'md5': '', 'sha256': ''}}
-        hashes = {}
-        assert revision_metadata_object.extra == hashes
+        extra = {
+            'hashes': {
+                'md5': 'ee0558f500468642243e29dc914832e9',
+                'sha256': 'c9b2543ae9c0a94579fa899dde770af9538d93ce6c58948c86c0a6d8f5d1b014'
+            }
+        }
 
-        serialized = {'extra': hashes,
+        assert revision_metadata_object.extra == extra
+
+        serialized = {'extra': extra,
                       'modified': 'Sun, 10 Jul 2016 23:28:31 GMT',
                       'modified_utc': '2016-07-10T23:28:31+00:00',
                       'version': self.version,
@@ -132,7 +157,7 @@ class TestRevisionMetadata:
         assert revision_metadata_object.serialized() == serialized
 
         json_api_serialized = {'attributes':
-                          {'extra': hashes,
+                          {'extra': extra,
                            'modified': 'Sun, 10 Jul 2016 23:28:31 GMT',
                            'modified_utc': '2016-07-10T23:28:31+00:00',
                            'version': self.version,
@@ -144,5 +169,5 @@ class TestRevisionMetadata:
 
     def test_revision_from_metadata(self, revision_metadata_object, file_metadata_object):
         revision = NextcloudFileRevisionMetadata.from_metadata(
-            self.version, file_metadata_object)
+            file_metadata_object.provider, self.version, file_metadata_object)
         assert revision == revision_metadata_object

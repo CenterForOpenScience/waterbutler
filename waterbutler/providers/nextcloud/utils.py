@@ -56,3 +56,17 @@ async def parse_dav_response(provider, content, folder, skip_first=False):
         else:
             items.append(NextcloudFolderMetadata(href, folder, provider, file_attrs))
     return items
+
+async def parse_checksum_response(content):
+    hashes = {}
+
+    root = ET.fromstring(content)
+    meta = root[0]
+    statuscode = meta[1]
+    CHECKSUM_API_SUCCESS = '200'
+    if statuscode.text == CHECKSUM_API_SUCCESS:
+        data = root[1]
+        for h in data[0]:
+            hashes[h.tag] = h.text
+
+    return hashes

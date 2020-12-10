@@ -66,6 +66,7 @@ setup(
             'iqbrims = waterbutler.providers.iqbrims:IQBRIMSProvider',
             'dropboxbusiness = waterbutler.providers.dropboxbusiness:DropboxBusinessProvider',
             'nextcloudinstitutions = waterbutler.providers.nextcloudinstitutions:NextcloudInstitutionsProvider',
+            's3compatinstitutions = waterbutler.providers.s3compatinstitutions:S3CompatInstitutionsProvider',
         ],
     },
 )

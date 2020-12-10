@@ -16,16 +16,32 @@ def file_metadata_object(provider):
      '{DAV:}getlastmodified': 'Sun, 10 Jul 2016 23:28:31 GMT',
      '{DAV:}resourcetype': None,
      '{http://owncloud.org/ns}fileid': '7923'}
+    metadata = NextcloudFileMetadata('/Documents/dissertation.aux', '/', provider.NAME, file_attr)
+    metadata.extra = {
+        'hashes': {
+            'md5': 'ee0558f500468642243e29dc914832e9',
+            'sha256': 'c9b2543ae9c0a94579fa899dde770af9538d93ce6c58948c86c0a6d8f5d1b014',
+            'sha512': '45e0920b6d7850fbaf028a1ee1241154a7641f3ee325efb3fe483d86dba5c170a4b1075d7e7fd2ae0c321def6022f3aa2b59e0c1dc5213bf1c50690f5cf0b688'
+        }
+    }
 
-    return NextcloudFileMetadata('/Documents/dissertation.aux', '/', provider.NAME, file_attr)
+    return metadata
 
 
 @pytest.fixture
 def file_metadata_object_less_info(provider):
     file_attr = {'{DAV:}getetag': '"a3c411808d58977a9ecd7485b5b7958e"',
      '{DAV:}getlastmodified': 'Sun, 10 Jul 2016 23:28:31 GMT',}
+    metadata = NextcloudFileMetadata('/Documents/dissertation.aux', '/', provider.NAME, file_attr)
+    metadata.extra = {
+        'hashes': {
+            'md5': 'ee0558f500468642243e29dc914832e9',
+            'sha256': 'c9b2543ae9c0a94579fa899dde770af9538d93ce6c58948c86c0a6d8f5d1b014',
+            'sha512': '45e0920b6d7850fbaf028a1ee1241154a7641f3ee325efb3fe483d86dba5c170a4b1075d7e7fd2ae0c321def6022f3aa2b59e0c1dc5213bf1c50690f5cf0b688'
+        }
+    }
 
-    return NextcloudFileMetadata('/Documents/dissertation.aux', '/', provider.NAME, file_attr)
+    return metadata
 
 
 @pytest.fixture
@@ -61,7 +77,8 @@ def folder_metadata_object_less_info(provider):
 
 @pytest.fixture
 def revision_metadata_object(file_metadata_object):
-    return NextcloudFileRevisionMetadata('a3c411808d58977a9ecd7485b5b7958e',
+    return NextcloudFileRevisionMetadata(file_metadata_object.provider,
+                                         'a3c411808d58977a9ecd7485b5b7958e',
                                          file_metadata_object)
 
 
@@ -118,6 +135,30 @@ def file_content():
 def moved_parent_folder_metadata():
     with open(os.path.join(os.path.dirname(__file__),
                            'fixtures/moved_parent_folder_metadata.xml'), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def file_checksum():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_checksum.xml'), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def file_checksum_2():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_checksum_2.xml'), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def file_checksum_3():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_checksum_3.xml'), 'r') as fp:
+        return fp.read()
+
+
+@pytest.fixture
+def file_checksum_4():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_checksum_4.xml'), 'r') as fp:
         return fp.read()
 
 

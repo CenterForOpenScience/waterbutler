@@ -54,6 +54,10 @@ class BaseNextcloudMetadata(metadata.BaseMetadata):
 
 class NextcloudFileMetadata(BaseNextcloudMetadata, metadata.BaseFileMetadata):
 
+    def __init__(self, href, folder, provider, attributes=None):
+        super().__init__(href, folder, provider, attributes=attributes)
+        self._extra = {}
+
     @property
     def content_type(self):
         if '{DAV:}getcontenttype' in self.attributes:
@@ -65,6 +69,18 @@ class NextcloudFileMetadata(BaseNextcloudMetadata, metadata.BaseFileMetadata):
         if '{http://owncloud.org/ns}fileid' in self.attributes:
             return str(self.attributes['{http://owncloud.org/ns}fileid'])
         return None
+
+    @property
+    def extra(self):
+        return {
+            'hashes': {
+                self.provider: self._extra.get('hashes', {}),
+            },
+        }
+
+    @extra.setter
+    def extra(self, data):
+        self._extra = data
 
 
 class NextcloudFolderMetadata(BaseNextcloudMetadata, metadata.BaseFolderMetadata):
@@ -78,16 +94,21 @@ class NextcloudFolderMetadata(BaseNextcloudMetadata, metadata.BaseFolderMetadata
 
 class NextcloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
 
-    def __init__(self, version, metadata):
+    def __init__(self, provider, version, metadata):
+        self._provider = provider
         self._metadata = metadata
         self._version = version
         self._modified = self._metadata.modified
-        # self._md5 = ''
-        # self._sha256 = ''
+        self._md5 = metadata.extra['hashes'][self.provider].get('md5')
+        self._sha256 = metadata.extra['hashes'][self.provider].get('sha256')
 
     @classmethod
-    def from_metadata(cls, revision, metadata):
-        return NextcloudFileRevisionMetadata(revision, metadata)
+    def from_metadata(cls, provider, revision, metadata):
+        return NextcloudFileRevisionMetadata(provider, revision, metadata)
+
+    @property
+    def provider(self):
+        return self._provider
 
     @property
     def version_identifier(self):
@@ -101,11 +122,11 @@ class NextcloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
     def modified(self):
         return self._modified
 
-    # @property
-    # def extra(self):
-    #     return {
-    #         'hashes': {
-    #             'md5': self._md5,
-    #             'sha256': self._sha256,
-    #         },
-    #     }
+    @property
+    def extra(self):
+        hashes = {}
+        if self._md5:
+            hashes['md5'] = self._md5
+        if self._md5:
+            hashes['sha256'] = self._sha256
+        return {'hashes': hashes}
