@@ -74,13 +74,13 @@ class AzureBlobStorageProvider(provider.BaseProvider):
     """
     NAME = 'azureblobstorage'
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, **kwargs):
         """
         :param dict auth: Not used
         :param dict credentials: Dict containing `username`, `password` and `tenant_name`
         :param dict settings: Dict containing `container`
         """
-        super().__init__(auth, credentials, settings)
+        super().__init__(auth, credentials, settings, **kwargs)
 
         self.connection = BlockBlobService(account_name=credentials['account_name'],
                                            account_key=credentials['account_key'])
