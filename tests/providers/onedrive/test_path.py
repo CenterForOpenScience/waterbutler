@@ -7,25 +7,6 @@ from tests.providers.onedrive.fixtures import (path_fixtures,
                                                subfolder_provider_fixtures)
 
 
-class TestApiIdentifier:
-
-    def test_api_identifier_none(self):
-        path = OneDrivePath('/foo', _ids=('root', None,))
-        assert path.api_identifier is None
-
-    def test_api_identifier_root(self):
-        path = OneDrivePath('/', _ids=('root',))
-        assert path.api_identifier == ('root',)
-
-    def test_api_identifier_folder_id(self):
-        path = OneDrivePath('/', _ids=('123456',))
-        assert path.api_identifier == ('items', '123456',)
-
-    def test_api_identifier_file_id(self):
-        path = OneDrivePath('/foo', _ids=('123456','7891011',))
-        assert path.api_identifier == ('items', '7891011',)
-
-
 class TestNewFromResponseRootProvider:
 
     def test_file_in_root(self, root_provider_fixtures):
@@ -57,9 +38,16 @@ class TestNewFromResponseRootProvider:
                        root_provider_fixtures['folder_id'],
                        root_provider_fixtures['subfile_id']]
 
-    def test_fails_without_base_folder(self, root_provider_fixtures):
+    def test_fails_without_base_folder_id(self, root_provider_fixtures):
         with pytest.raises(Exception):
-            _ = OneDrivePath.new_from_response(root_provider_fixtures['file_metadata'])
+            _ = OneDrivePath.new_from_response(
+                root_provider_fixtures['file_metadata'],
+                base_folder_metadata=root_provider_fixtures['folder_metadata']
+            )
+
+    def test_fails_with_wrong_base_folder_id(self, root_provider_fixtures):
+        with pytest.raises(Exception):
+            _ = OneDrivePath.new_from_response(root_provider_fixtures['file_metadata'], '123')
 
     def test_insert_zero_ids(self, path_fixtures):
         file_metadata = path_fixtures['deeply_nested_file_metadata']

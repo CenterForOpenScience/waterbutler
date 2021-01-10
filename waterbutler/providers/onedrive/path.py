@@ -67,13 +67,3 @@ class OneDrivePath(WaterButlerPath):
         ids[0] = base_folder_id  # redundant for middle case, but so what.
 
         return cls('/'.join(names), _ids=ids, folder=is_folder)
-
-    @property
-    def api_identifier(self):
-        """Convenience method.  OneDrive API endpoints are ``root`` when the path is the root and
-        ``items/$id`` when the path is a file or non-root folder."""
-        if self.identifier is None:
-            return None
-        if self.identifier == 'root':
-            return ('root', )
-        return ('items', self.identifier, )

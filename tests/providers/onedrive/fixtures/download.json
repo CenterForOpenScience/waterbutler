@@ -107,7 +107,119 @@
         "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21291')/children",
         "size" : 11
     },
-    "onenote_metadata": {"createdDateTime": "2017-02-23T07:27:44.253Z", "createdBy": {"application": {"id": "44048800", "displayName": "OneDrive website"}, "user": {"id": "f4d50e400dfe7d4e", "displayName": "Fitz Elliott"}}, "fileSystemInfo": {"createdDateTime": "2017-02-23T07:27:44.253Z", "lastModifiedDateTime": "2017-03-30T15:06:25.41Z"}, "children@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21154')/children", "children": [{"createdDateTime": "2017-02-23T07:28:14.373Z", "createdBy": {"user": {"id": "f4d50e400dfe7d4e", "displayName": "Fitz Elliott"}}, "fileSystemInfo": {"createdDateTime": "2017-02-23T07:28:14.373Z", "lastModifiedDateTime": "2017-02-23T07:28:30.647Z"}, "parentReference": {"name": "foo", "driveId": "f4d50e400dfe7d4e", "id": "F4D50E400DFE7D4E!154", "path": "/drive/root:/onenote/foo"}, "id": "F4D50E400DFE7D4E!157", "@content.downloadUrl": "https://iphwow.bn1303.livefilestore.com/y4mAB7VXKZCHWK5ib57BF1aaT_v4YLxoPS4xsR9Hw550zzwU56pPw_SC7OZbzDvHx5q5NTZ-BFQgfSuVgZ3vmURfkMOPRDmWC3vZiznhvfNNL46eBg9ZIFYNVpEolrUIvtsz_PjjlfUT0g_JA4qzGqCIMLPXLweE02hEVc9OfynPJiwx9vNNJpF1e021bkXv-kFEN3efR0uenDB-epaphmEQg", "name": "foo.one", "eTag": "aRjRENTBFNDAwREZFN0Q0RSExNTcuMjI", "size": 25474, "webUrl": "https://1drv.ms/o/s!AE59_g1ADtX0gR0", "file": {"mimeType": "application/msonenote"}, "lastModifiedBy": {"user": {"id": "f4d50e400dfe7d4e", "displayName": "Fitz Elliott"}}, "lastModifiedDateTime": "2017-02-23T07:28:30.663Z"}, {"createdDateTime": "2017-02-23T07:28:17.623Z", "createdBy": {"user": {"id": "f4d50e400dfe7d4e", "displayName": "Fitz Elliott"}}, "fileSystemInfo": {"createdDateTime": "2017-02-23T07:28:17.623Z", "lastModifiedDateTime": "2017-02-23T07:28:18.86Z"}, "parentReference": {"name": "foo", "driveId": "f4d50e400dfe7d4e", "id": "F4D50E400DFE7D4E!154", "path": "/drive/root:/onenote/foo"}, "id": "F4D50E400DFE7D4E!158", "@content.downloadUrl": "https://iphwow.bn1303.livefilestore.com/y4mpsZP831upa5BsCeniFzoWYj4vkU1Ul_M4VEi_QYvAeGoU-FiH9GiH9UzL9_cVYtPxgyLnyesMkeAFC9mjcbKNU8kMstHLbypJjKI5oiUGVjBoqUhKaVifBR1cTrKXkN4aQKmHjZce8O65IRgQHiT_HuPCSE4DmqnyPMwWCg36b1PLH2OsU1kww7HOLKxMb_eeBtNaJMUbZMk1CgJLVpDvA", "name": "Open Notebook.onetoc2", "eTag": "aRjRENTBFNDAwREZFN0Q0RSExNTguNA", "size": 2885, "webUrl": "https://1drv.ms/o/s!AE59_g1ADtX0gR4", "file": {"mimeType": "application/msonenote"}, "lastModifiedBy": {"user": {"id": "f4d50e400dfe7d4e", "displayName": "Fitz Elliott"}}, "lastModifiedDateTime": "2017-02-23T07:28:18.873Z"}], "eTag": "aRjRENTBFNDAwREZFN0Q0RSExNTQuMg", "parentReference": {"name": "onenote", "driveId": "f4d50e400dfe7d4e", "id": "F4D50E400DFE7D4E!289", "path": "/drive/root:/onenote"}, "id": "F4D50E400DFE7D4E!154", "name": "foo", "package": {"type": "oneNote"}, "@odata.context": "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity", "size": 28359, "webUrl": "https://1drv.ms/o/s!AE59_g1ADtX0gRo", "cTag": "adDpGNEQ1MEU0MDBERkU3RDRFITE1NC42MzYyNjQ4MzE4NTQxMDAwMDA", "lastModifiedBy": {"user": {"id": "f4d50e400dfe7d4e", "displayName": "Fitz Elliott"}}, "lastModifiedDateTime": "2017-03-30T15:06:25.41Z"},
+    "onenote_metadata": {
+        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITE1NC42MzYyNjQ4MzE4NTQxMDAwMDA",
+        "children" : [
+            {
+                "@content.downloadUrl" : "https://iphwow.bn1303.livefilestore.com/y4mAB7VXKZCHWK5ib57BF1aaT_v4YLxoPS4xsR9Hw550zzwU56pPw_SC7OZbzDvHx5q5NTZ-BFQgfSuVgZ3vmURfkMOPRDmWC3vZiznhvfNNL46eBg9ZIFYNVpEolrUIvtsz_PjjlfUT0g_JA4qzGqCIMLPXLweE02hEVc9OfynPJiwx9vNNJpF1e021bkXv-kFEN3efR0uenDB-epaphmEQg",
+                "createdBy" : {
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    }
+                },
+                "createdDateTime" : "2017-02-23T07:28:14.373Z",
+                "eTag" : "aRjRENTBFNDAwREZFN0Q0RSExNTcuMjI",
+                "file" : {
+                    "mimeType" : "application/msonenote"
+                },
+                "fileSystemInfo" : {
+                    "createdDateTime" : "2017-02-23T07:28:14.373Z",
+                    "lastModifiedDateTime" : "2017-02-23T07:28:30.647Z"
+                },
+                "id" : "F4D50E400DFE7D4E!157",
+                "lastModifiedBy" : {
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    }
+                },
+                "lastModifiedDateTime" : "2017-02-23T07:28:30.663Z",
+                "name" : "foo.one",
+                "parentReference" : {
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "id" : "F4D50E400DFE7D4E!154",
+                    "name" : "foo",
+                    "path" : "/drive/root:/onenote/foo"
+                },
+                "size" : 25474,
+                "webUrl" : "https://1drv.ms/o/s!AE59_g1ADtX0gR0"
+            },
+            {
+                "@content.downloadUrl" : "https://iphwow.bn1303.livefilestore.com/y4mpsZP831upa5BsCeniFzoWYj4vkU1Ul_M4VEi_QYvAeGoU-FiH9GiH9UzL9_cVYtPxgyLnyesMkeAFC9mjcbKNU8kMstHLbypJjKI5oiUGVjBoqUhKaVifBR1cTrKXkN4aQKmHjZce8O65IRgQHiT_HuPCSE4DmqnyPMwWCg36b1PLH2OsU1kww7HOLKxMb_eeBtNaJMUbZMk1CgJLVpDvA",
+                "createdBy" : {
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    }
+                },
+                "createdDateTime" : "2017-02-23T07:28:17.623Z",
+                "eTag" : "aRjRENTBFNDAwREZFN0Q0RSExNTguNA",
+                "file" : {
+                    "mimeType" : "application/msonenote"
+                },
+                "fileSystemInfo" : {
+                    "createdDateTime" : "2017-02-23T07:28:17.623Z",
+                    "lastModifiedDateTime" : "2017-02-23T07:28:18.86Z"
+                },
+                "id" : "F4D50E400DFE7D4E!158",
+                "lastModifiedBy" : {
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    }
+                },
+                "lastModifiedDateTime" : "2017-02-23T07:28:18.873Z",
+                "name" : "Open Notebook.onetoc2",
+                "parentReference" : {
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "id" : "F4D50E400DFE7D4E!154",
+                    "name" : "foo",
+                    "path" : "/drive/root:/onenote/foo"
+                },
+                "size" : 2885,
+                "webUrl" : "https://1drv.ms/o/s!AE59_g1ADtX0gR4"
+            }
+        ],
+        "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21154')/children",
+        "createdBy" : {
+            "application" : {
+                "displayName" : "OneDrive website",
+                "id" : "44048800"
+            },
+            "user" : {
+                "displayName" : "Fitz Elliott",
+                "id" : "f4d50e400dfe7d4e"
+            }
+        },
+        "createdDateTime" : "2017-02-23T07:27:44.253Z",
+        "eTag" : "aRjRENTBFNDAwREZFN0Q0RSExNTQuMg",
+        "fileSystemInfo" : {
+            "createdDateTime" : "2017-02-23T07:27:44.253Z",
+            "lastModifiedDateTime" : "2017-03-30T15:06:25.41Z"
+        },
+        "id" : "F4D50E400DFE7D4E!154",
+        "lastModifiedBy" : {
+            "user" : {
+                "displayName" : "Fitz Elliott",
+                "id" : "f4d50e400dfe7d4e"
+            }
+        },
+        "lastModifiedDateTime" : "2017-03-30T15:06:25.41Z",
+        "name" : "foo",
+        "package" : {
+            "type" : "oneNote"
+        },
+        "parentReference" : {
+            "driveId" : "f4d50e400dfe7d4e",
+            "id" : "F4D50E400DFE7D4E!289",
+            "name" : "onenote",
+            "path" : "/drive/root:/onenote"
+        },
+        "size" : 28359,
+        "webUrl" : "https://1drv.ms/o/s!AE59_g1ADtX0gRo"
+    },
     "onenote_revisions": {
         "@delta.token" : "aTE09NjM2MjY0ODMxODU0MTA7SUQ9RjRENTBFNDAwREZFN0Q0RSExNTQ7TFI9NjM2Mzg5MzczNzM0NjA7RVA9MTY7U0k9MjM7U0c9MTtTTz0yO1BJPTM",
         "value" : [
