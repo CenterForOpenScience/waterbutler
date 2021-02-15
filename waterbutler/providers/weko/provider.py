@@ -35,13 +35,13 @@ class WEKOProvider(provider.BaseProvider):
     NAME = 'weko'
     connection = None
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, **kwargs):
         """
         :param dict auth: Not used
         :param dict credentials: Contains `token`
         :param dict settings: Contains `url`, `index_id` and `index_title` of a repository.
         """
-        super().__init__(auth, credentials, settings)
+        super().__init__(auth, credentials, settings, **kwargs)
         self.nid = self.settings['nid']
         self.BASE_URL = self.settings['url']
 

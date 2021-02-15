@@ -74,13 +74,13 @@ class AzureBlobStorageProvider(provider.BaseProvider):
     """
     NAME = 'azureblobstorage'
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, **kwargs):
         """
         :param dict auth: Not used
         :param dict credentials: Dict containing `username`, `password` and `tenant_name`
         :param dict settings: Dict containing `container`
         """
-        super().__init__(auth, credentials, settings)
+        super().__init__(auth, credentials, settings, **kwargs)
 
         self.connection = BlockBlobService(account_name=credentials['account_name'],
                                            account_key=credentials['account_key'])
@@ -123,7 +123,7 @@ class AzureBlobStorageProvider(provider.BaseProvider):
         target_url = 0
         while retry >= 0:
             try:
-                response = await aiohttp.request(method, urls[target_url % len(urls)], *args, **kwargs)
+                response = await aiohttp.request(method, urls[target_url % len(urls)], *args, **kwargs).__aenter__()
                 if expects and response.status not in expects:
                     raise (await exceptions.exception_from_response(response, error=throws, **kwargs))
                 return response
