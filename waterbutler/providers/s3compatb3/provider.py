@@ -24,24 +24,6 @@ logger = logging.getLogger(__name__)
 
 
 class S3CompatB3Connection:
-    # def __init__(self, aws_access_key_id=None, aws_secret_access_key=None,
-    #              is_secure=True, port=None, proxy=None, proxy_port=None,
-    #              proxy_user=None, proxy_pass=None,
-    #              host=None, debug=0, https_connection_factory=None,
-    #             calling_format=None, path='/',
-    #              provider='aws', bucket_class=None, security_token=None,
-    #              suppress_consec_slashes=True, anon=False,
-    #             validate_certs=None, profile_name=None):
-    #     port = 443
-    #     m = re.match(r'^(.+)\:([0-9]+)$', host)
-    #     if m is not None:
-    #         host = m.group(1)
-    #         port = int(m.group(2))
-    #     # if not s3_config.get('s3', 'use-sigv4'):
-    #     #     s3_config.add_section('s3')
-    #     #     s3_config.set('s3', 'use-sigv4', 'True')
-    #    region = host.split('.')[3]
-    #    url = ('https://' if port == 443 else 'http://') + host
     def __init__(self, aws_access_key_id=None, aws_secret_access_key=None,
                 endpoint_url=None, region_name=None):
         self.s3 = boto3.resource(
@@ -94,12 +76,6 @@ class S3CompatB3Provider(provider.BaseProvider):
         if m is not None:
             host = m.group(1)
             port = int(m.group(2))
-        # self.connection = S3CompatB3Connection(credentials['access_key'],
-        #                                      credentials['secret_key'],
-        #                                      calling_format=None,
-        #                                      host=host,
-        #                                      port=port,
-        #                                      is_secure=port == 443)
         region = ''
         if host.endswith('.oraclecloud.com'):
             region = host.split('.')[-3]
@@ -199,16 +175,6 @@ class S3CompatB3Provider(provider.BaseProvider):
         """
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
-
-        # logger.info('upload: {}: start'.format(path.full_path))
-        # resp = await self.bucket.put_object(
-        #     Key=path.full_path,
-        #     Body=stream,
-        #     ServerSideEncryption='AES256',
-        #     ContentLength=stream.size
-        # )
-        # logger.info('upload: {}: {}'.format(path.full_path, str(resp)))
-        # assert resp.e_tag.replace('"', '') == stream.writers['md5'].hexdigest
 
         headers = {'Content-Length': str(stream.size)}
 
