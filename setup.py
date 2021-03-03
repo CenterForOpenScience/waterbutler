@@ -62,11 +62,13 @@ setup(
             'azureblobstorage = waterbutler.providers.azureblobstorage:AzureBlobStorageProvider',
             'weko = waterbutler.providers.weko:WEKOProvider',
             's3compat = waterbutler.providers.s3compat:S3CompatProvider',
+            's3compatb3 = waterbutler.providers.s3compatb3:S3CompatProviderb3',
             'nextcloud = waterbutler.providers.nextcloud:NextcloudProvider',
             'iqbrims = waterbutler.providers.iqbrims:IQBRIMSProvider',
             'dropboxbusiness = waterbutler.providers.dropboxbusiness:DropboxBusinessProvider',
             'nextcloudinstitutions = waterbutler.providers.nextcloudinstitutions:NextcloudInstitutionsProvider',
             's3compatinstitutions = waterbutler.providers.s3compatinstitutions:S3CompatInstitutionsProvider',
+            'ociinstitutions = waterbutler.providers.ociinstitutions:OCIInstitutionsProvider',
         ],
     },
 )
