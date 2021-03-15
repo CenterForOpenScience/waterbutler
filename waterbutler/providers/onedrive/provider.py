@@ -24,11 +24,9 @@ logger = logging.getLogger(__name__)
 class OneDriveProvider(provider.BaseProvider):
     r"""Provider for the Microsoft OneDrive cloud storage service.
 
-    This provider is currently **read-only** and does not contain write support.
-
     This provider uses **ID-based paths**.
 
-    Special drives: https://dev.onedrive.com/resources/drive.htm#tasks-on-drive-resources
+    Special drives: https://docs.microsoft.com/en-us/graph/api/resources/driveitem?view=graph-rest-1.0
 
     **Auth:**
 
@@ -40,10 +38,11 @@ class OneDriveProvider(provider.BaseProvider):
 
     **API:**
 
-    * Docs:  https://dev.onedrive.com/README.htm
+    * Docs:  https://docs.microsoft.com/en-us/graph/api/resources/onedrive?view=graph-rest-1.0
 
     * Get folder contents:  If folder is root, api path is ``/drive/root/children``. If folder
       is not root, api path is ``/drive/items/$item-id/children``.
+      This provider used the OneDrive API, but now it uses the Microsoft Graph API. These APIs are mostly compatible.
 
     **Quirks:**
 
@@ -79,7 +78,7 @@ class OneDriveProvider(provider.BaseProvider):
     def default_headers(self) -> dict:
         """Set Authorization header with access token from auth provider.
 
-        API docs: https://dev.onedrive.com/auth/msa_oauth.htm
+        API docs: https://docs.microsoft.com/en-us/graph/auth/auth-concepts?view=graph-rest-1.0
         """
         return {'Authorization': 'bearer {}'.format(self.token)}
 
@@ -103,8 +102,6 @@ class OneDriveProvider(provider.BaseProvider):
         if path == '/':
             return OneDrivePath(path, _ids=[self.folder])
 
-        url = self._build_item_url(path)
-        logger.debug('validate_v1_path url::{}'.format(url))
         resp = await self.make_request(
             'GET', self._build_item_url(path),
             expects=(200, ),
@@ -202,14 +199,6 @@ class OneDriveProvider(provider.BaseProvider):
                               folder: bool=None) -> OneDrivePath:
         """Take a string file/folder name ``path`` and return a OneDrivePath object
         representing this file under ``base``.
-
-        Since the OneDrive provider is currently readonly, the only place that calls this is
-        `core.provider._file_folder_op`.  The base object passed there will always have an
-        identifier.  Once write support is added to this provider, that will no longer be the
-        case.
-
-        This probably isn't necessary for RO, and could probably be replaced by
-        `path_from_metadata`.
         """
         logger.debug('revalidate_path base::{} path::{} base.id::{} folder::{}'.format(
             base, path, base.identifier, folder))
@@ -236,7 +225,7 @@ class OneDriveProvider(provider.BaseProvider):
     async def metadata(self, path: OneDrivePath, **kwargs):  # type: ignore
         """Fetch metadata for the file or folder identified by ``path``.
 
-        API docs: https://dev.onedrive.com/items/get.htm
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-get?view=graph-rest-1.0
 
         :param OneDrivePath path: the file or folder to fetch metadata for
         :rtype: OneDriveMetadata
@@ -278,7 +267,7 @@ class OneDriveProvider(provider.BaseProvider):
                         **kwargs) -> typing.List[OneDriveRevisionMetadata]:
         """Get a list of revisions for the file identified by ``path``.
 
-        API docs: https://dev.onedrive.com/items/view_delta.htm
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-list-versions?view=graph-rest-1.0
 
         :param OneDrivePath path: the file to get revisions for
         :rtype: list(OneDriveRevisionMetadata)
@@ -301,14 +290,14 @@ class OneDriveProvider(provider.BaseProvider):
         r"""Download the file identified by ``path``.  If ``revision`` is not ``None``, get
         the file at the version identified by ``revision``.
 
-        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-get-content
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-get-content?view=graph-rest-1.0
 
-        :param str path: The path to the file on OneDrive
+        :param OneDrivePath path: The path to the file on OneDrive
         :param str revision: The revision of the file to download. If ``None``, download latest.
         :param dict \*\*kwargs: Ignored
-        :raises: :class:`waterbutler.core.exceptions.DownloadError`
         :rtype: waterbutler.core.streams.ResponseStreamReader
         :return: a stream of the contents of the file
+        :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
         logger.debug('download path::{} path.identifier::{} revision::{} range::{} '
                      'kwargs::{}'.format(path, path.identifier, revision, range, kwargs))
@@ -364,6 +353,16 @@ class OneDriveProvider(provider.BaseProvider):
                          dest_provider: 'OneDriveProvider',
                          src_path: OneDrivePath,
                          dest_path: OneDrivePath) -> Tuple[BaseOneDriveMetadata, bool]:
+        """Move the file or folder identified by ``src_path`` to the path identified by ``dest_path``.
+
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-move?view=graph-rest-1.0
+
+        :param OneDriveProvider dest_provider: OneDrive provider
+        :param OneDrivePath src_path: The source path to the file on OneDrive
+        :param OneDrivePath dest_path: The destination path to the file on OneDrive
+        :rtype: (:class:`.BaseOneDriveMetadata`, :class:`bool`)
+        :raises: :class:`waterbutler.core.exceptions.IntraMoveError`
+        """
         logger.debug('intra_move src_path::{} dest_path::{}'.format(repr(src_path), repr(dest_path)))
 
         url = self._build_drive_url(*src_path.api_identifier)
@@ -388,12 +387,28 @@ class OneDriveProvider(provider.BaseProvider):
         data = await resp.json()
         logger.debug('intra_move data::{}'.format(json.dumps(data)))
 
-        return OneDriveFileMetadata(data, dest_path), True
+        dest_path.parts[-1]._id = data['id']
+        if dest_path.is_dir:
+            metadata = OneDriveFolderMetadata(data, dest_path)
+            metadata._children = await self.metadata(dest_path)
+            return metadata, True
+        else:
+            return OneDriveFileMetadata(data, dest_path), True
 
     async def intra_copy(self,
                          dest_provider: 'OneDriveProvider',
                          src_path: OneDrivePath,
-                         dest_path: OneDrivePath) -> Tuple[OneDriveFileMetadata, bool]:
+                         dest_path: OneDrivePath) -> Tuple[BaseOneDriveMetadata, bool]:
+        """Copy the file or folder identified by ``src_path`` to the path identified by ``dest_path``.
+
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-copy?view=graph-rest-1.0
+
+        :param OneDriveProvider dest_provider: OneDrive provider
+        :param OneDrivePath src_path: The source path to the file on OneDrive
+        :param OneDrivePath dest_path: The destination path to the file on OneDrive
+        :rtype: (:class:`.BaseOneDriveMetadata`, :class:`bool`)
+        :raises: :class:`waterbutler.core.exceptions.IntraCopyError`
+        """
         logger.debug('intra_copy src_path::{} dest_path::{}'.format(repr(src_path), repr(dest_path)))
 
         url = self._build_drive_url(*src_path.api_identifier, 'copy')
@@ -428,15 +443,31 @@ class OneDriveProvider(provider.BaseProvider):
             throws=exceptions.MetadataError
         )
         logger.debug("intra_copy metadata resp::{}".format(repr(resp)))
-        copied_metadata = await resp.json()
-        logger.debug("intra_copy metadata data::{}".format(json.dumps(copied_metadata)))
+        data = await resp.json()
+        logger.debug("intra_copy metadata data::{}".format(json.dumps(data)))
 
-        return OneDriveFileMetadata(copied_metadata, dest_path), True
+        dest_path.parts[-1]._id = data['id']
+        if dest_path.is_dir:
+            metadata = OneDriveFolderMetadata(data, dest_path)
+            metadata._children = await self.metadata(dest_path)
+            return metadata, True
+        else:
+            return OneDriveFileMetadata(data, dest_path), True
 
     async def create_folder(self,
                             path: OneDrivePath,
                             folder_precheck: bool=True,
                             **kwargs) -> OneDriveFolderMetadata:
+        """Create a folder identified by ``path``.
+
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-post-children?view=graph-rest-1.0
+
+        :param OneDrivePath path: The folder path to create on OneDrive
+        :param bool folder_precheck:
+        :param dict \*\*kwargs: Ignored
+        :rtype: :class:`.BaseFileMetadata`
+        :raises: :class:`waterbutler.core.exceptions.CreateFolderError`
+        """
         OneDrivePath.validate_folder(path)
 
         if folder_precheck:
@@ -467,73 +498,45 @@ class OneDriveProvider(provider.BaseProvider):
         return OneDriveFolderMetadata(data, path)
 
     async def upload(self,
-                     stream,
+                     stream: streams.BaseStream,
                      path: OneDrivePath,
                      *args,
                      **kwargs) -> Tuple[OneDriveFileMetadata, bool]:
-        all_size = stream.size
-        logger.debug('upload path::{} stream.size::{}'.format(repr(path), all_size))
+        """Upload the stream as the file identified by ``path``.
+        Upload the file at once if the file is empty, otherwise, resumed upload the file.
 
-        url = '{}:/{}:/createUploadSession'.format(
-            self._build_drive_url(*path.parent.api_identifier),
-            path.name,
-        )
-        logger.debug("upload start url::{}".format(url))
-        resp = await self.make_request(
-            'POST',
-            url,
-            headers={
-                'Content-Type': 'application/json',
-            },
-            data=json.dumps({
-                'name': path.name
-            }),
-            expects=(200, ),
-            throws=exceptions.UploadError,
-        )
-        logger.debug('upload start resp::{}'.format(repr(resp)))
-        data = await resp.json()
-        logger.debug('upload start data::{}'.format(json.dumps(data)))
-        upload_url = data['uploadUrl']
-        logger.debug("upload upload_url::{}".format(upload_url))
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-put-content?view=graph-rest-1.0
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-createuploadsession?view=graph-rest-1.0
 
-        # upload data at least once.
-        # data must be sent in order.
-        start_byte = 0
-        while True:
-            chunk_size = min(settings.ONEDRIVE_MAX_UPLOAD_CHUNK_SIZE, all_size - start_byte)
-            chunk = CutoffStream(stream, cutoff=chunk_size)
-            headers = {
-                'Content-Length': str(chunk_size),
-                'Content-Range': 'bytes {}-{}/{}'.format(
-                    start_byte,
-                    start_byte + chunk_size - 1,
-                    all_size
-                ),
-            }
-            logger.debug('upload put headers::{}'.format(json.dumps(headers)))
-            resp = await self.make_request(
-                'PUT',
-                upload_url,
-                headers=headers,
-                data=chunk,
-                expects=(201, 202, ),
-                throws=exceptions.UploadError,
-                no_auth_header=True,
-            )
-            logger.debug('upload put resp::{}'.format(repr(resp)))
-            data = await resp.json()
-            logger.debug('upload put data::{}'.format(json.dumps(data)))
-            start_byte += chunk_size
-            if start_byte == all_size:
-                break
+        :param streams.BaseStream stream: The content to be uploaded
+        :param OneDrivePath path: The path to upload the file on OneDrive
+        :param args: Ignored
+        :param kwargs: Ignored
+        :rtype: (:class:`OneDriveFileMetadata`, :class:`bool`)
+        :raises: :class:`waterbutler.core.exceptions.UploadError`
+        """
+        logger.debug('upload path::{} stream.size::{}'.format(repr(path), stream.size))
 
-        return OneDriveFileMetadata(data, path), True
+        if stream.size == 0:
+            metadata = await self._upload_empty_file(path)
+        else:
+            metadata = await self._resumed_upload(stream, path)
+
+        return metadata, True
 
     async def delete(self,
                      path: OneDrivePath,
                      confirm_delete: int=0,
                      **kwargs) -> None:
+        """Delete the file or directory identified by ``path``.
+
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-delete?view=graph-rest-1.0
+
+        :param OneDrivePath path: The path to delete the file or directory on OneDrive
+        :param int confirm_delete:
+        :param kwargs: Ignored
+        :raises: :class:`waterbutler.core.exceptions.DeleteError`
+        """
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
@@ -550,7 +553,7 @@ class OneDriveProvider(provider.BaseProvider):
             'DELETE',
             url,
             expects=(204, ),
-            throws=exceptions.MetadataError
+            throws=exceptions.DeleteError
         )
         logger.debug("delete resp::{}".format(repr(resp)))
 
@@ -584,7 +587,7 @@ class OneDriveProvider(provider.BaseProvider):
     async def _revisions_json(self, path: OneDrivePath, **kwargs) -> dict:
         """Fetch a list of revisions for the file at ``path``.
 
-        API docs: https://docs.microsoft.com/en-us/onedrive/developer/rest-api/resources/driveitemversion
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-list-versions?view=graph-rest-1.0
 
         :param OneDrivePath path: the path of the file to get revisions for
         :rtype: dict
@@ -624,9 +627,110 @@ class OneDriveProvider(provider.BaseProvider):
 
         return data
 
-    async def _wait_for_api_action(self, monitor_url, http_error) -> str:
+    async def _upload_empty_file(self, path: OneDrivePath) -> OneDriveFileMetadata:
+        """Upload empty file identified by ``path``.
+
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-put-content?view=graph-rest-1.0
+
+        :param OneDrivePath path: The path to upload the file on OneDrive
+        :rtype: OneDriveFileMetadata
+        :raises: :class:`waterbutler.core.exceptions.UploadError`
         """
-        https://docs.microsoft.com/en-us/graph/long-running-actions-overview
+        url = '{}:/{}:/content'.format(
+            self._build_drive_url(*path.parent.api_identifier),
+            path.name,
+        )
+        logger.debug("_upload_empty_file url::{}".format(url))
+        resp = await self.make_request(
+            'PUT',
+            url,
+            expects=(201, ),
+            throws=exceptions.UploadError,
+        )
+        logger.debug('_upload_empty_file resp::{}'.format(repr(resp)))
+        data = await resp.json()
+        logger.debug('_upload_empty_file data::{}'.format(json.dumps(data)))
+
+        return OneDriveFileMetadata(data, path)
+
+    async def _resumed_upload(self,
+                              stream: streams.BaseStream,
+                              path: OneDrivePath) -> OneDriveFileMetadata:
+        """Upload the stream as the file identified by ``path``.
+
+        API docs: https://docs.microsoft.com/en-us/graph/api/driveitem-createuploadsession?view=graph-rest-1.0
+
+        :param streams.BaseStream stream: The content to be uploaded
+        :param OneDrivePath path: The path to upload the file on OneDrive
+        :rtype: OneDriveFileMetadata
+        :raises: :class:`waterbutler.core.exceptions.UploadError`
+        """
+        url = '{}:/{}:/createUploadSession'.format(
+            self._build_drive_url(*path.parent.api_identifier),
+            path.name,
+        )
+        logger.debug("_resumed_upload start url::{}".format(url))
+        resp = await self.make_request(
+            'POST',
+            url,
+            headers={
+                'Content-Type': 'application/json',
+            },
+            data=json.dumps({
+                'name': path.name
+            }),
+            expects=(200, ),
+            throws=exceptions.UploadError,
+        )
+        logger.debug('_resumed_upload start resp::{}'.format(repr(resp)))
+        data = await resp.json()
+        logger.debug('_resumed_upload start data::{}'.format(json.dumps(data)))
+        upload_url = data['uploadUrl']
+        logger.debug("_resumed_upload upload_url::{}".format(upload_url))
+
+        # upload data at least once.
+        # data must be sent in order.
+        all_size = stream.size
+        start_byte = 0
+        while True:
+            chunk_size = min(settings.ONEDRIVE_MAX_UPLOAD_CHUNK_SIZE, all_size - start_byte)
+            chunk = CutoffStream(stream, cutoff=chunk_size)
+            headers = {
+                'Content-Length': str(chunk_size),
+                'Content-Range': 'bytes {}-{}/{}'.format(
+                    start_byte,
+                    start_byte + chunk_size - 1,
+                    all_size
+                ),
+            }
+            logger.debug('_resumed_upload put headers::{}'.format(json.dumps(headers)))
+            resp = await self.make_request(
+                'PUT',
+                upload_url,
+                headers=headers,
+                data=chunk,
+                expects=(201, 202, ),
+                throws=exceptions.UploadError,
+                no_auth_header=True,
+            )
+            logger.debug('_resumed_upload put resp::{}'.format(repr(resp)))
+            data = await resp.json()
+            logger.debug('_resumed_upload put data::{}'.format(json.dumps(data)))
+            start_byte += chunk_size
+            if start_byte == all_size:
+                break
+
+        return OneDriveFileMetadata(data, path)
+
+    async def _wait_for_api_action(self, monitor_url: str, exception: exceptions.WaterButlerError) -> str:
+        """Wait for the API Action to finish.
+
+        API docs:  https://docs.microsoft.com/en-us/graph/long-running-actions-overview
+
+        :param str monitor_url: The monitor URL provided by API
+        :param waterbutler.core.exceptions.WaterButlerError exception: The exception
+        :return: Resource ID
+        :rtype: str
         """
         logger.debug('_wait_for_api_action monitor url::{}'.format(monitor_url))
 
@@ -635,7 +739,7 @@ class OneDriveProvider(provider.BaseProvider):
                 'GET',
                 monitor_url,
                 expects=(200, 202, ),
-                throws=http_error,
+                throws=exception,
                 no_auth_header=True,
             )
             logger.debug('_wait_for_api_action resp::{}'.format(repr(resp)))
@@ -645,6 +749,6 @@ class OneDriveProvider(provider.BaseProvider):
             if data['status'] == 'completed':
                 return data['resourceId']
             elif data['status'] == 'failed':
-                raise exceptions.WaterButlerError('failed OneDrive API action. status={}'.format(data['status']))
+                raise exception('failed OneDrive API action.', code=data['status'])
             else:
                 await sleep(settings.ONEDRIVE_COPY_SLEEP_INTERVAL)
