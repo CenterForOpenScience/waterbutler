@@ -28,14 +28,6 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
             'webView': self.raw.get('webUrl'),
         }
 
-    def _json_api_links(self, resource) -> dict:
-        """Update JSON-API links to remove mutation actions"""
-        links = super()._json_api_links(resource)
-        for action in ['delete', 'upload', 'new_folder']:
-            if action in links:
-                links[action] = None
-        return links
-
 
 class OneDriveFolderMetadata(BaseOneDriveMetadata, metadata.BaseFolderMetadata):
 
@@ -104,6 +96,15 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
         if created is not None:
             created = utils.normalize_datetime(created)
         return created
+
+    def download_url(self):
+        return self.raw.get('@microsoft.graph.downloadUrl', None)
+
+    def package_type(self):
+        if 'package' in self.raw:
+            if 'type' in self.raw['package']:
+                return self.raw['package']['type']
+        return None
 
 
 class OneDriveRevisionMetadata(metadata.BaseFileRevisionMetadata):
