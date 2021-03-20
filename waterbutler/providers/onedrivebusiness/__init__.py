@@ -1,1 +1,1 @@
-from .provider import DropboxBusinessProvider  # noqa
+from .provider import OneDriveBusinessProvider  # noqa
