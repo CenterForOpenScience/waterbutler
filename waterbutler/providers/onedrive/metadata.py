@@ -4,17 +4,18 @@ from waterbutler.core import metadata
 
 class BaseOneDriveMetadata(metadata.BaseMetadata):
 
-    def __init__(self, raw, path_obj):
+    def __init__(self, raw, path_obj, provider):
         """Figuring out the materialized path for a OneDrive entity can be a bit tricky. If the
         base folder is not the provider root, we need to make sure to scrub out everything up to
         and including the base folder.  All this has been done already in building the
         OneDrivePath object, so we'll just pass that in and save ourselves some trouble."""
         super().__init__(raw)
         self._path_obj = path_obj
+        self._provider = provider
 
     @property
     def provider(self):
-        return 'onedrive'
+        return self._provider
 
     @property
     def materialized_path(self):

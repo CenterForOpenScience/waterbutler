@@ -389,11 +389,11 @@ class OneDriveProvider(provider.BaseProvider):
 
         dest_path.parts[-1]._id = data['id']
         if dest_path.is_dir:
-            metadata = OneDriveFolderMetadata(data, dest_path)
+            metadata = OneDriveFolderMetadata(data, dest_path, self.NAME)
             metadata._children = await self.metadata(dest_path)
             return metadata, True
         else:
-            return OneDriveFileMetadata(data, dest_path), True
+            return OneDriveFileMetadata(data, dest_path, self.NAME), True
 
     async def intra_copy(self,
                          dest_provider: 'OneDriveProvider',
@@ -448,11 +448,11 @@ class OneDriveProvider(provider.BaseProvider):
 
         dest_path.parts[-1]._id = data['id']
         if dest_path.is_dir:
-            metadata = OneDriveFolderMetadata(data, dest_path)
+            metadata = OneDriveFolderMetadata(data, dest_path, self.NAME)
             metadata._children = await self.metadata(dest_path)
             return metadata, True
         else:
-            return OneDriveFileMetadata(data, dest_path), True
+            return OneDriveFileMetadata(data, dest_path, self.NAME), True
 
     async def create_folder(self,
                             path: OneDrivePath,
@@ -495,7 +495,7 @@ class OneDriveProvider(provider.BaseProvider):
         data = await resp.json()
         logger.debug('create_folder data::{}'.format(json.dumps(data)))
 
-        return OneDriveFolderMetadata(data, path)
+        return OneDriveFolderMetadata(data, path, self.NAME)
 
     async def upload(self,
                      stream: streams.BaseStream,
@@ -577,12 +577,12 @@ class OneDriveProvider(provider.BaseProvider):
                     is_folder = 'folder' in item.keys()
                     child_path = path.child(item['name'], _id=item['id'], folder=is_folder)
                     if is_folder:
-                        ret.append(OneDriveFolderMetadata(item, child_path))  # type: ignore
+                        ret.append(OneDriveFolderMetadata(item, child_path, self.NAME))  # type: ignore
                     else:
-                        ret.append(OneDriveFileMetadata(item, child_path))  # type: ignore
+                        ret.append(OneDriveFileMetadata(item, child_path, self.NAME))  # type: ignore
             return ret
 
-        return OneDriveFileMetadata(data, path)
+        return OneDriveFileMetadata(data, path, self.NAME)
 
     async def _revisions_json(self, path: OneDrivePath, **kwargs) -> dict:
         """Fetch a list of revisions for the file at ``path``.
@@ -651,7 +651,7 @@ class OneDriveProvider(provider.BaseProvider):
         data = await resp.json()
         logger.debug('_upload_empty_file data::{}'.format(json.dumps(data)))
 
-        return OneDriveFileMetadata(data, path)
+        return OneDriveFileMetadata(data, path, self.NAME)
 
     async def _resumed_upload(self,
                               stream: streams.BaseStream,
@@ -720,7 +720,7 @@ class OneDriveProvider(provider.BaseProvider):
             if start_byte == all_size:
                 break
 
-        return OneDriveFileMetadata(data, path)
+        return OneDriveFileMetadata(data, path, self.NAME)
 
     async def _wait_for_api_action(self, monitor_url: str, exception: exceptions.WaterButlerError) -> str:
         """Wait for the API Action to finish.
