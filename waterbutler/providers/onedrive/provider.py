@@ -238,7 +238,7 @@ class OneDriveProvider(provider.BaseProvider):
         if path.api_identifier is None:  # TESTME
             raise exceptions.NotFoundError(str(path))
 
-        url = self._build_drive_url(*path.api_identifier, expand='children')
+        url = self._build_drive_url(*path.api_identifier, **{'$expand': 'children'})
         logger.debug("metadata url::{}".format(repr(url)))
         resp = await self.make_request(
             'GET',
@@ -247,7 +247,6 @@ class OneDriveProvider(provider.BaseProvider):
             throws=exceptions.MetadataError
         )
         logger.debug("metadata resp::{}".format(repr(resp)))
-
         data = await resp.json()
         logger.debug("metadata data::{}".format(json.dumps(data)))
 
@@ -259,6 +258,23 @@ class OneDriveProvider(provider.BaseProvider):
                 ),
                 code=HTTPStatus.NOT_FOUND,
             )
+
+        next_url = data.get('children@odata.nextLink', None)
+
+        while next_url is not None:
+            logger.debug("metadata nextLink::{}".format(repr(next_url)))
+            next_resp = await self.make_request(
+                'GET',
+                next_url,
+                expects=(200, ),
+                throws=exceptions.MetadataError
+            )
+            logger.debug("metadata next resp::{}".format(repr(next_resp)))
+            next_data = await next_resp.json()
+            logger.debug("metadata next data::{}".format(json.dumps(next_data)))
+            data['children'].extend(next_data['value'])
+
+            next_url = next_data.get('@odata.nextLink', None)
 
         return self._construct_metadata(data, path)
 
