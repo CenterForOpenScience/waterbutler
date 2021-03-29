@@ -359,7 +359,7 @@ class S3CompatB3Provider(provider.BaseProvider):
         contents = resp.get('Contents', [])
         prefixes = resp.get('CommonPrefixes', [])
 
-        if len(list(contents)) == 0:
+        if len(list(contents)) == 0 and path.full_path != '/':
             raise exceptions.NotFoundError(str(path.full_path))
 
         items = [
