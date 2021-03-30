@@ -98,9 +98,11 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
             created = utils.normalize_datetime(created)
         return created
 
+    @property
     def download_url(self):
         return self.raw.get('@microsoft.graph.downloadUrl', None)
 
+    @property
     def package_type(self):
         if 'package' in self.raw:
             if 'type' in self.raw['package']:
