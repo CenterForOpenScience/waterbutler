@@ -47,7 +47,7 @@ RUN apt-get update \
 RUN mkdir -p /code
 WORKDIR /code
 
-RUN pip install -U pip
+RUN pip install -U pip==19.3.1
 RUN pip install setuptools==37.0.0
 
 COPY ./requirements.txt /code/
