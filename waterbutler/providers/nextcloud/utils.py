@@ -57,6 +57,7 @@ async def parse_dav_response(provider, content, folder, skip_first=False):
             items.append(NextcloudFolderMetadata(href, folder, provider, file_attrs))
     return items
 
+
 async def parse_checksum_response(content):
     hashes = {}
 
