@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:oc="http://owncloud.org/ns">
+    <d:response>
+        <d:href>/nextcloud/remote.php/webdav/Documents/meeting_memo.txt</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:getlastmodified>Thu, 11 Jun 2020 08:41:29 GMT</d:getlastmodified>
+                <d:getcontentlength>1820</d:getcontentlength>
+                <d:resourcetype/>
+                <d:getetag>&quot;8acd67d989953d6a02c9e496bb2fe9ff&quot;</d:getetag>
+                <d:getcontenttype>text/plain</d:getcontenttype>
+                <oc:fileid>8512</oc:fileid>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+</d:multistatus>

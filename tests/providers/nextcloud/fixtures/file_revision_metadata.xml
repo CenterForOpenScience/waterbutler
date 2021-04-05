@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
+    <d:response>
+        <d:href>/nextcloud/remote.php/dav/versions/cat/versions/7923/</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:resourcetype>
+                    <d:collection/>
+                </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+    <d:response>
+        <d:href>/nextcloud/remote.php/dav/versions/cat/versions/7923/1591876099</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:getlastmodified>Sat, 9 Jul 2016 11:48:19 GMT</d:getlastmodified>
+                <d:getcontentlength>2983</d:getcontentlength>
+                <d:resourcetype/>
+                <d:getetag>1591876099</d:getetag>
+                <d:getcontenttype>application/octet-stream</d:getcontenttype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+        <d:propstat>
+            <d:prop>
+                <d:quota-used-bytes/>
+                <d:quota-available-bytes/>
+            </d:prop>
+            <d:status>HTTP/1.1 404 Not Found</d:status>
+        </d:propstat>
+    </d:response>
+    <d:response>
+        <d:href>/nextcloud/remote.php/dav/versions/cat/versions/7923/1591864889</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:getlastmodified>Wed, 6 Jul 2016 08:41:29 GMT</d:getlastmodified>
+                <d:getcontentlength>2514</d:getcontentlength>
+                <d:resourcetype/>
+                <d:getetag>1591864889</d:getetag>
+                <d:getcontenttype>application/octet-stream</d:getcontenttype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+        <d:propstat>
+            <d:prop>
+                <d:quota-used-bytes/>
+                <d:quota-available-bytes/>
+            </d:prop>
+            <d:status>HTTP/1.1 404 Not Found</d:status>
+        </d:propstat>
+    </d:response>
+</d:multistatus>

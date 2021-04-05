@@ -265,6 +265,7 @@ class OSFStorageProvider(provider.BaseProvider):
             'md5': data['data']['md5'],
             'path': data['data']['path'],
             'sha256': data['data']['sha256'],
+            'sha512': data['data']['sha512'],
             'version': data['data']['version'],
             'downloads': data['data']['downloads'],
             'checkout': data['data']['checkout'],
@@ -565,6 +566,7 @@ class OSFStorageProvider(provider.BaseProvider):
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
         stream.add_writer('sha256', streams.HashStreamWriter(hashlib.sha256))
+        stream.add_writer('sha512', streams.HashStreamWriter(hashlib.sha512))
 
         await provider.upload(stream, remote_pending_path, check_created=False,
                               fetch_metadata=False, **kwargs)
@@ -603,6 +605,7 @@ class OSFStorageProvider(provider.BaseProvider):
                     'md5': stream.writers['md5'].hexdigest,
                     'sha1': stream.writers['sha1'].hexdigest,
                     'sha256': stream.writers['sha256'].hexdigest,
+                    'sha512': stream.writers['sha512'].hexdigest,
                 },
                 'worker': {
                     'host': os.uname()[1],

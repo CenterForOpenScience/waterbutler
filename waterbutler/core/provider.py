@@ -389,7 +389,11 @@ class BaseProvider(metaclass=abc.ABCMeta):
         else:
             meta_data, created = await self.copy(*args, handle_naming=False, **kwargs)  # type: ignore
 
-        await self.delete(src_path)
+        try:
+            await self.delete(src_path)
+        except exceptions.ProviderError as e:
+            if e.code != 404:
+                raise
 
         return meta_data, created
 

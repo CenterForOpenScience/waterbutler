@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:oc="http://nextcloud.org/ns">
+<d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:oc="http://owncloud.org/ns">
     <d:response>
         <d:href>/nextcloud/remote.php/webdav/Documents/dissertation.aux</d:href>
         <d:propstat>
@@ -9,6 +9,7 @@
                 <d:resourcetype/>
                 <d:getetag>&quot;a3c411808d58977a9ecd7485b5b7958e&quot;</d:getetag>
                 <d:getcontenttype>application/octet-stream</d:getcontenttype>
+                <oc:fileid>7923</oc:fileid>
             </d:prop>
             <d:status>HTTP/1.1 200 OK</d:status>
         </d:propstat>

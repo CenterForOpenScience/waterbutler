@@ -3,7 +3,7 @@ import os
 from waterbutler.core import metadata
 
 
-class S3CompatMetadata(metadata.BaseMetadata):
+class S3CompatB3Metadata(metadata.BaseMetadata):
 
     @property
     def provider(self):
@@ -19,7 +19,7 @@ class S3CompatMetadata(metadata.BaseMetadata):
         raw[key] = raw[key][len(provider.prefix):].lstrip('/')
 
 
-class S3CompatFileMetadataHeaders(S3CompatMetadata, metadata.BaseFileMetadata):
+class S3CompatB3FileMetadataHeaders(S3CompatB3Metadata, metadata.BaseFileMetadata):
 
     def __init__(self, provider, path, headers):
         # Cast to dict to clone as the headers will
@@ -51,17 +51,17 @@ class S3CompatFileMetadataHeaders(S3CompatMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return self.raw['ETag'].replace('"', '')
+        return self.raw['ETAG'].replace('"', '')
 
     @property
     def extra(self):
         return {
-            'md5': self.raw['ETag'].replace('"', ''),
+            'md5': self.raw['ETAG'].replace('"', ''),
             'encryption': self.raw.get('X-AMZ-SERVER-SIDE-ENCRYPTION', '')
         }
 
 
-class S3CompatFileMetadata(S3CompatMetadata, metadata.BaseFileMetadata):
+class S3CompatB3FileMetadata(S3CompatB3Metadata, metadata.BaseFileMetadata):
 
     def __init__(self, provider, raw):
         new_raw = dict(raw)
@@ -78,7 +78,7 @@ class S3CompatFileMetadata(S3CompatMetadata, metadata.BaseFileMetadata):
 
     @property
     def modified(self):
-        return self.raw['LastModified']
+        return str(self.raw['LastModified'])
 
     @property
     def created_utc(self):
@@ -99,7 +99,7 @@ class S3CompatFileMetadata(S3CompatMetadata, metadata.BaseFileMetadata):
         }
 
 
-class S3CompatFolderKeyMetadata(S3CompatMetadata, metadata.BaseFolderMetadata):
+class S3CompatB3FolderKeyMetadata(S3CompatB3Metadata, metadata.BaseFolderMetadata):
 
     def __init__(self, provider, raw):
         new_raw = dict(raw)
@@ -115,7 +115,7 @@ class S3CompatFolderKeyMetadata(S3CompatMetadata, metadata.BaseFolderMetadata):
         return '/' + self.raw['Key'].lstrip('/')
 
 
-class S3CompatFolderMetadata(S3CompatMetadata, metadata.BaseFolderMetadata):
+class S3CompatB3FolderMetadata(S3CompatB3Metadata, metadata.BaseFolderMetadata):
 
     def __init__(self, provider, raw):
         new_raw = dict(raw)
@@ -132,7 +132,7 @@ class S3CompatFolderMetadata(S3CompatMetadata, metadata.BaseFolderMetadata):
 
 
 # TODO dates!
-class S3CompatRevision(metadata.BaseFileRevisionMetadata):
+class S3CompatB3Revision(metadata.BaseFileRevisionMetadata):
 
     @property
     def version_identifier(self):
@@ -140,13 +140,13 @@ class S3CompatRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def version(self):
-        if self.raw['IsLatest'] == 'true':
+        if self.raw['IsLatest'] is True:
             return 'Latest'
         return self.raw['VersionId']
 
     @property
     def modified(self):
-        return self.raw['LastModified']
+        return str(self.raw['LastModified'])
 
     @property
     def extra(self):

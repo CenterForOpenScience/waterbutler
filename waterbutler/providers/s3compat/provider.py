@@ -3,6 +3,7 @@ import hashlib
 import functools
 from urllib import parse
 import re
+import logging
 
 import xmltodict
 
@@ -22,6 +23,8 @@ from waterbutler.providers.s3compat.metadata import (S3CompatRevision,
                                                      S3CompatFolderKeyMetadata,
                                                      S3CompatFileMetadataHeaders,
                                                      )
+
+logger = logging.getLogger(__name__)
 
 
 class S3CompatConnection(S3Connection):
@@ -99,18 +102,21 @@ class S3CompatProvider(provider.BaseProvider):
                                              is_secure=port == 443)
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
+        self.prefix = settings.get('prefix', '')
 
     async def validate_v1_path(self, path, **kwargs):
+        wbpath = WaterButlerPath(path, prepend=self.prefix)
         if path == '/':
-            return WaterButlerPath(path)
+            return wbpath
 
         implicit_folder = path.endswith('/')
 
+        prefix = wbpath.full_path.lstrip('/')  # '/' -> '', '/A/B' -> 'A/B'
         if implicit_folder:
-            params = {'prefix': path, 'delimiter': '/'}
+            params = {'prefix': prefix, 'delimiter': '/'}
             resp = await self.make_request(
                 'GET',
-                functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+                functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET'),
                 params=params,
                 expects=(200, 404, ),
                 throws=exceptions.MetadataError,
@@ -118,7 +124,7 @@ class S3CompatProvider(provider.BaseProvider):
         else:
             resp = await self.make_request(
                 'HEAD',
-                functools.partial(self.bucket.new_key(path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
+                functools.partial(self.bucket.new_key(prefix).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
                 expects=(200, 404, ),
                 throws=exceptions.MetadataError,
             )
@@ -126,12 +132,12 @@ class S3CompatProvider(provider.BaseProvider):
         await resp.release()
 
         if resp.status == 404:
-            raise exceptions.NotFoundError(str(path))
+            raise exceptions.NotFoundError(str(prefix))
 
-        return WaterButlerPath(path)
+        return wbpath
 
     async def validate_path(self, path, **kwargs):
-        return WaterButlerPath(path)
+        return WaterButlerPath(path, prepend=self.prefix)
 
     def can_duplicate_names(self):
         return True
@@ -148,10 +154,10 @@ class S3CompatProvider(provider.BaseProvider):
         """
         exists = await dest_provider.exists(dest_path)
 
-        dest_key = dest_provider.bucket.new_key(dest_path.path)
+        dest_key = dest_provider.bucket.new_key(dest_path.full_path)
 
         # ensure no left slash when joining paths
-        source_path = '/' + os.path.join(self.settings['bucket'], source_path.path)
+        source_path = '/' + os.path.join(self.settings['bucket'], source_path.full_path)
         headers = {'x-amz-copy-source': parse.quote(source_path)}
         url = functools.partial(
             dest_key.generate_url,
@@ -192,7 +198,7 @@ class S3CompatProvider(provider.BaseProvider):
         }
 
         url = functools.partial(
-            self.bucket.new_key(path.path).generate_url,
+            self.bucket.new_key(path.full_path).generate_url,
             settings.TEMP_URL_SECS,
             query_parameters=query_parameters,
             response_headers=response_headers
@@ -231,7 +237,7 @@ class S3CompatProvider(provider.BaseProvider):
             headers['x-amz-server-side-encryption'] = 'AES256'
 
         upload_url = functools.partial(
-            self.bucket.new_key(path.path).generate_url,
+            self.bucket.new_key(path.full_path).generate_url,
             settings.TEMP_URL_SECS,
             'PUT',
             headers=headers,
@@ -268,13 +274,38 @@ class S3CompatProvider(provider.BaseProvider):
         if path.is_file:
             resp = await self.make_request(
                 'DELETE',
-                self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
+                self.bucket.new_key(path.full_path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
                 expects=(200, 204, ),
                 throws=exceptions.DeleteError,
             )
             await resp.release()
         else:
             await self._delete_folder(path, **kwargs)
+
+    async def _folder_prefix_exists(self, folder_prefix):
+        # Even if the storage is MinIO, Contents with a leaf folder is
+        # returned when a last slash of a prefix is removed.
+        query_params = {
+            'prefix': folder_prefix.rstrip('/'),  # 'A/B/' -> 'A/B'
+            'delimiter': '/'}
+        resp = await self.make_request(
+            'GET',
+            self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
+            params=query_params,
+            expects=(200, ),
+            throws=exceptions.MetadataError,
+        )
+        contents = await resp.read()
+        parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
+        common_prefixes = parsed.get('CommonPrefixes', [])
+        # common_prefixes is dict when returned prefix is one.
+        if not isinstance(common_prefixes, list):
+            common_prefixes = [common_prefixes]
+        for common_prefix in common_prefixes:
+            val = common_prefix.get('Prefix')
+            if val == folder_prefix:  # with last slash
+                return True
+        return False
 
     async def _delete_folder(self, path, **kwargs):
         """Query for recursive contents of folder and delete in batches of 1000
@@ -292,9 +323,12 @@ class S3CompatProvider(provider.BaseProvider):
         To fully delete an occupied folder, we must delete all of the comprising
         objects.  Amazon provides a bulk delete operation to simplify this.
         """
+        if not path.full_path.endswith('/'):
+            raise exceptions.InvalidParameters('not a folder: {}'.format(str(path)))
         more_to_come = True
         content_keys = []
-        query_params = {'prefix': path.path}
+        prefix = path.full_path.lstrip('/')  # '/' -> '', '/A/B/' -> 'A/B/'
+        query_params = {'prefix': prefix}
         marker = None
 
         while more_to_come:
@@ -303,7 +337,7 @@ class S3CompatProvider(provider.BaseProvider):
 
             resp = await self.make_request(
                 'GET',
-                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET', query_parameters=query_params),
+                self.bucket.generate_url(settings.TEMP_URL_SECS, 'GET'),
                 params=query_params,
                 expects=(200, ),
                 throws=exceptions.MetadataError,
@@ -323,7 +357,11 @@ class S3CompatProvider(provider.BaseProvider):
 
         # Query against non-existant folder does not return 404
         if len(content_keys) == 0:
-            raise exceptions.NotFoundError(str(path))
+            # MinIO cannot return Contents with a leaf folder itself.
+            if await self._folder_prefix_exists(prefix):
+                content_keys = [prefix]
+            else:
+                raise exceptions.NotFoundError(str(path))
 
         for content_key in content_keys[::-1]:
             resp = await self.make_request(
@@ -340,17 +378,28 @@ class S3CompatProvider(provider.BaseProvider):
         :param str path: The path to a key
         :rtype list:
         """
-        query_params = {'prefix': path.path, 'delimiter': '/', 'versions': ''}
+        prefix = path.full_path.lstrip('/')  # '/' -> '', '/A/B' -> 'A/B'
+        # "versions" in "query_parameters" is required for generate_url().
+        # SignatureDoesNotMatch is returned when "versions" is not specified.
+        query_params = {'prefix': prefix, 'delimiter': '/', 'versions': ''}
         url = functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=query_params)
-        resp = await self.make_request(
-            'GET',
-            url,
-            params=query_params,
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
+        try:
+            resp = await self.make_request(
+                'GET',
+                url,
+                params=query_params,
+                expects=(200,),
+                throws=exceptions.MetadataError,
+            )
+        except exceptions.MetadataError as e:
+            # MinIO may not support "versions" from generate_url() of boto2.
+            # (And, MinIO does not support ListObjectVersions yet.)
+            logger.info('ListObjectVersions may not be supported: url={}: {}'.format(url(), str(e)))
+            return []
+
         content = await resp.read()
-        versions = xmltodict.parse(content)['ListVersionsResult'].get('Version') or []
+        xml = xmltodict.parse(content)
+        versions = xml['ListVersionsResult'].get('Version') or []
 
         if isinstance(versions, dict):
             versions = [versions]
@@ -358,7 +407,7 @@ class S3CompatProvider(provider.BaseProvider):
         return [
             S3CompatRevision(item)
             for item in versions
-            if item['Key'] == path.path
+            if item['Key'] == prefix
         ]
 
     async def metadata(self, path, revision=None, **kwargs):
@@ -384,12 +433,12 @@ class S3CompatProvider(provider.BaseProvider):
 
         async with self.request(
             'PUT',
-            functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
+            functools.partial(self.bucket.new_key(path.full_path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
             skip_auto_headers={'CONTENT-TYPE'},
             expects=(200, 201, ),
             throws=exceptions.CreateFolderError
         ):
-            return S3CompatFolderMetadata({'Prefix': path.path})
+            return S3CompatFolderMetadata(self, {'Prefix': path.full_path})
 
     async def _metadata_file(self, path, revision=None):
         if revision == 'Latest':
@@ -397,7 +446,7 @@ class S3CompatProvider(provider.BaseProvider):
         resp = await self.make_request(
             'HEAD',
             functools.partial(
-                self.bucket.new_key(path.path).generate_url,
+                self.bucket.new_key(path.full_path).generate_url,
                 settings.TEMP_URL_SECS,
                 'HEAD',
                 query_parameters={'versionId': revision} if revision else None
@@ -406,13 +455,14 @@ class S3CompatProvider(provider.BaseProvider):
             throws=exceptions.MetadataError,
         )
         await resp.release()
-        return S3CompatFileMetadataHeaders(path.path, resp.headers)
+        return S3CompatFileMetadataHeaders(self, path.full_path, resp.headers)
 
     async def _metadata_folder(self, path):
-        params = {'prefix': path.path, 'delimiter': '/'}
+        prefix = path.full_path.lstrip('/')  # '/' -> '', '/A/B' -> 'A/B'
+        params = {'prefix': prefix, 'delimiter': '/'}
         resp = await self.make_request(
             'GET',
-            functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
+            functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET'),
             params=params,
             expects=(200, ),
             throws=exceptions.MetadataError,
@@ -431,7 +481,7 @@ class S3CompatProvider(provider.BaseProvider):
             # if the path is root there is no need to test if it exists
             resp = await self.make_request(
                 'HEAD',
-                functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
+                functools.partial(self.bucket.new_key(prefix).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
                 expects=(200, ),
                 throws=exceptions.MetadataError,
             )
@@ -444,17 +494,17 @@ class S3CompatProvider(provider.BaseProvider):
             prefixes = [prefixes]
 
         items = [
-            S3CompatFolderMetadata(item)
+            S3CompatFolderMetadata(self, item)
             for item in prefixes
         ]
 
         for content in contents:
-            if content['Key'] == path.path:
+            if content['Key'] == path.full_path:  # self
                 continue
 
             if content['Key'].endswith('/'):
-                items.append(S3CompatFolderKeyMetadata(content))
+                items.append(S3CompatFolderKeyMetadata(self, content))
             else:
-                items.append(S3CompatFileMetadata(content))
+                items.append(S3CompatFileMetadata(self, content))
 
         return items

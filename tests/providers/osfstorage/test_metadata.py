@@ -30,7 +30,8 @@ class TestFileMetadata:
             'guid': None,
             'hashes': {
                 'md5': 'eb3f7cc15ba7b6effb2186284185c5cf',
-                'sha256': '043be9ff919762f0dc36fff0222cd90c753ce28b39feb52112be9360c476ef88'
+                'sha256': '043be9ff919762f0dc36fff0222cd90c753ce28b39feb52112be9360c476ef88',
+                'sha512': '3b868abf17188355523b5c45d3b60ba2ee75bd5081a124519ed50908cfef5199d074d9ef32d99d7b1ea9512d27007374ab89ea288f95f9a1757f30590d58a6e7',
             },
             'version': 1,
             'latestVersionSeen': None
@@ -98,7 +99,9 @@ class TestRevisionMetadata:
             'downloads': 0,
             'hashes': {
                 'md5': 'c4ca4238a0b923820dcc509a6f75849b',
-                'sha256': '6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b'},
+                'sha256': '6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b',
+                'sha512': '4b868abf17188355523b5c45d3b60ba2ee75bd5081a124519ed50908cfef5199d074d9ef32d99d7b1ea9512d27007374ab89ea288f95f9a1757f30590d58a6e7',
+            },
             'user': {
                 'name': 'Dr. Fake, DDS ΩΩΩ',
                 'url': '/64yvj/'

@@ -105,7 +105,8 @@ class OsfStorageFileMetadata(BaseOsfStorageItemMetadata, metadata.BaseFileMetada
             'latestVersionSeen': self.raw.get('latestVersionSeen', None),
             'hashes': {
                 'md5': self.raw['md5'],
-                'sha256': self.raw['sha256']
+                'sha256': self.raw['sha256'],
+                'sha512': self.raw.get('sha512', None)  # for GRDM
             },
         }
 
@@ -135,6 +136,7 @@ class OsfStorageRevisionMetadata(BaseOsfStorageMetadata, metadata.BaseFileRevisi
             'downloads': self.raw['downloads'],
             'hashes': {
                 'md5': self.raw['md5'],
-                'sha256': self.raw['sha256']
+                'sha256': self.raw['sha256'],
+                'sha512': self.raw.get('sha512', None)  # for GRDM
             },
         }
