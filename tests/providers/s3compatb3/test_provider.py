@@ -207,7 +207,7 @@ def folder_empty_metadata():
 @pytest.fixture
 def file_metadata():
     return {
-        'Content-Length': 9001,
+        'Content-Length': '9001',
         'Last-Modified': 'SomeTime',
         'Content-Type': 'binary/octet-stream',
         'ETag': '"fba9dede5f27731c9771645a39863328"',
