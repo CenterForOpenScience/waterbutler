@@ -730,7 +730,7 @@ class OneDriveProvider(provider.BaseProvider):
                     start_range=start_range,
                     total_size=total_size,
                 )
-                start_range += settings.ONEDRIVE_CHUNKED_UPLOAD_CHUNK_SIZE
+                start_range += len(data)
 
         if missed_chunks or not result:
             raise exceptions.UploadError("OneDrive API upload request failed. Please repeat the "
