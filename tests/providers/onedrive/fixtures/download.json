@@ -84,6 +84,7 @@
             "id" : "F4D50E400DFE7D4E!103"
         },
         "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mB8JhDUWbofzVglNap3rO5i6R7jOQyJAz995dPlkrOiQeOV2jgK-EOf916z8YHi9A42WCTMVfNmHjJliYLccUFzJgsEK3j3cviT2YLlZBMRVN-sC0mfvZz_ZeDgiLzfSChMmNXkRoq6Ymh_F8r8jRAvZTzJOgyX3F7jdw4qcY27tz95Rutrl68W0Z8ntuh3bVoPIDHC5kckF8sSWoyv5j4BfRQCckjyrmaV8F1BM5Cb1x10WNdE7CP_X1bBFqY7ZTJzYcsQcDR07BdalvRTDp-A",
         "lastModifiedDateTime" : "2017-08-17T17:49:50.38Z",
         "file" : {
             "hashes" : {
