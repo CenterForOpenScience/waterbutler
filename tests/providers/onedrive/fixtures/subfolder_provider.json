@@ -21,7 +21,7 @@
             "id" : "F4D50E400DFE7D4E!103",
             "driveId" : "f4d50e400dfe7d4e"
         },
-        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "@odata.context" : "https://graph.microsoft.com/v1.0/$metadata#drive/items(children())/$entity",
         "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21290')/children",
         "lastModifiedBy" : {
             "user" : {
@@ -99,7 +99,7 @@
                 "size" : 45
             },
             {
-                "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4m6vJbXfO-fuQZKr11RiBjuRAzM_DcRzU3JtT06HHt17abJkMJBCTuyBDXr18CPjaLPVVB8F02VGPXi2kmJYy4OdCjrIZ72J3FlpKTbSDd-ccQwvXzZNoVZWhLDU5_bx-aR588pIUcxhBMN527kR99PnDgGEhu6nt8xMNF0y4urvxBoT-snnzNfAnqqqlnYmIVHd7CEFihZigJVdKd_Q2BPlNuiVSpGjnHgYyuXtetOEDOfPJiTCZ80drcFr5z1d_ech-sPVbjtgTtdpTm8ZfjEg",
+                "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4m6vJbXfO-fuQZKr11RiBjuRAzM_DcRzU3JtT06HHt17abJkMJBCTuyBDXr18CPjaLPVVB8F02VGPXi2kmJYy4OdCjrIZ72J3FlpKTbSDd-ccQwvXzZNoVZWhLDU5_bx-aR588pIUcxhBMN527kR99PnDgGEhu6nt8xMNF0y4urvxBoT-snnzNfAnqqqlnYmIVHd7CEFihZigJVdKd_Q2BPlNuiVSpGjnHgYyuXtetOEDOfPJiTCZ80drcFr5z1d_ech-sPVbjtgTtdpTm8ZfjEg",
                 "parentReference" : {
                     "driveId" : "f4d50e400dfe7d4e",
                     "path" : "/drive/root:/teeth",
@@ -164,7 +164,7 @@
         "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giQ",
         "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21292')/children",
         "size" : 40,
-        "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mSGfK7V7xQl1tZrz7UQTsCKyTXFp0d0H75AQdzM3_GgwUoPdE4-RkkZF3-c14dlj-oPoiCttFqlkMe2Ja-R-rzrcjUKNbl5HaprTkANJe_Nb8Qv0EOJ-ngFTg6-NaIx7tgvPXrBvaDMyyMWfUSuDnfNQVumL9xmQ-CbcpJe-N86sACf1RERKPsAsesO2VWSmevXUK6U1A87Efw1bk3FAGp7bh5RSmZfvpXSGLswPRbmI_xShjMdo8J1DUsTnC6remAtRuUXyZ5yEpJCpiY75kqw",
+        "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mSGfK7V7xQl1tZrz7UQTsCKyTXFp0d0H75AQdzM3_GgwUoPdE4-RkkZF3-c14dlj-oPoiCttFqlkMe2Ja-R-rzrcjUKNbl5HaprTkANJe_Nb8Qv0EOJ-ngFTg6-NaIx7tgvPXrBvaDMyyMWfUSuDnfNQVumL9xmQ-CbcpJe-N86sACf1RERKPsAsesO2VWSmevXUK6U1A87Efw1bk3FAGp7bh5RSmZfvpXSGLswPRbmI_xShjMdo8J1DUsTnC6remAtRuUXyZ5yEpJCpiY75kqw",
         "file" : {
             "mimeType" : "text/plain",
             "hashes" : {
@@ -178,7 +178,7 @@
             "name" : "teeth",
             "id" : "F4D50E400DFE7D4E!290"
         },
-        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "@odata.context" : "https://graph.microsoft.com/v1.0/$metadata#drive/items(children())/$entity",
         "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
         "name" : "bicuspid.txt",
         "lastModifiedBy" : {
@@ -222,7 +222,7 @@
             "driveId" : "f4d50e400dfe7d4e",
             "path" : "/drive/root:/teeth"
         },
-        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "@odata.context" : "https://graph.microsoft.com/v1.0/$metadata#drive/items(children())/$entity",
         "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
         "id" : "F4D50E400DFE7D4E!293",
         "children" : [
@@ -263,7 +263,7 @@
                         "id" : "481710a4"
                     }
                 },
-                "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mO1VUyGkx1jMbvuSh39sB5hHkVtY9jF-z0eEzmmSwz85fwmzQwFA0MKYlJiTFHPuUItQaHbocR-fxLCt4-LAM--20CvEyr4hX6BNtnlhxwg3FRFg_fLYsk8ESqqJbbnxQYLmBpqJZ1ympsnv1U9KxWoW0Fb07HqKxm5bKIWhFmmmFwfSoTe80yE_-9eV9-ATFAuBFkZ8uVODyrgIN-hsrKDWh4CUJs2V3FFEg_6nERUpncQWfsL7HaMJbUD4LsU_tpSLEemayqxcguyUmMdrCmA",
+                "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mO1VUyGkx1jMbvuSh39sB5hHkVtY9jF-z0eEzmmSwz85fwmzQwFA0MKYlJiTFHPuUItQaHbocR-fxLCt4-LAM--20CvEyr4hX6BNtnlhxwg3FRFg_fLYsk8ESqqJbbnxQYLmBpqJZ1ympsnv1U9KxWoW0Fb07HqKxm5bKIWhFmmmFwfSoTe80yE_-9eV9-ATFAuBFkZ8uVODyrgIN-hsrKDWh4CUJs2V3FFEg_6nERUpncQWfsL7HaMJbUD4LsU_tpSLEemayqxcguyUmMdrCmA",
                 "file" : {
                     "mimeType" : "text/plain",
                     "hashes" : {
@@ -319,7 +319,7 @@
                 "sha1Hash" : "71E36DE69F693D7DED11A689CEE9779DCCC37928"
             }
         },
-        "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4msgC4teoghHKiACyXiJoRwNNI0vUf_rsaT6tci9H0d_YRIL7l-z32DkOKQAySqmeNQ2p5-G0thk3CjRmRVllqhVyM7xrHLO_1ybnfNO1IN_31WdLytIjcXUb_G9068o2wClIinh-liGSz3dsm7cGb6I0cOxYwFy8GgqN4X2QfF4VErDCWy7ZCNoUiYh4jlew6ZI9W0-_Xkv09NvToYE4ErnniEnh-_trg1MrtOlD7bUqxBleJHr6h4zeqSyk5M1gC-HUfwKpFGdOq4yEsf36MKQ",
+        "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4msgC4teoghHKiACyXiJoRwNNI0vUf_rsaT6tci9H0d_YRIL7l-z32DkOKQAySqmeNQ2p5-G0thk3CjRmRVllqhVyM7xrHLO_1ybnfNO1IN_31WdLytIjcXUb_G9068o2wClIinh-liGSz3dsm7cGb6I0cOxYwFy8GgqN4X2QfF4VErDCWy7ZCNoUiYh4jlew6ZI9W0-_Xkv09NvToYE4ErnniEnh-_trg1MrtOlD7bUqxBleJHr6h4zeqSyk5M1gC-HUfwKpFGdOq4yEsf36MKQ",
         "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5NC4yNTg",
         "parentReference" : {
             "path" : "/drive/root:/teeth/crushers",
@@ -327,7 +327,7 @@
             "name" : "crushers",
             "id" : "F4D50E400DFE7D4E!293"
         },
-        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "@odata.context" : "https://graph.microsoft.com/v1.0/$metadata#drive/items(children())/$entity",
         "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
         "name" : "molars.txt",
         "lastModifiedBy" : {
@@ -374,7 +374,7 @@
             "path" : "/drive/root:",
             "id" : "F4D50E400DFE7D4E!103"
         },
-        "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+        "@odata.context" : "https://graph.microsoft.com/v1.0/$metadata#drive/items(children())/$entity",
         "lastModifiedDateTime" : "2017-08-17T17:49:50.38Z",
         "file" : {
             "hashes" : {
@@ -382,7 +382,7 @@
             },
             "mimeType" : "text/plain"
         },
-        "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mB8JhDUWbofzVglNap3rO5i6R7jOQyJAz995dPlkrOiQeOV2jgK-EOf916z8YHi9A42WCTMVfNmHjJliYLccUFzJgsEK3j3cviT2YLlZBMRVN-sC0mfvZz_ZeDgiLzfSChMmNXkRoq6Ymh_F8r8jRAvZTzJOgyX3F7jdw4qcY27tz95Rutrl68W0Z8ntuh3bVoPIDHC5kckF8sSWoyv5j4BfRQCckjyrmaV8F1BM5Cb1x10WNdE7CP_X1bBFqY7ZTJzYcsQcDR07BdalvRTDp-A",
+        "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mB8JhDUWbofzVglNap3rO5i6R7jOQyJAz995dPlkrOiQeOV2jgK-EOf916z8YHi9A42WCTMVfNmHjJliYLccUFzJgsEK3j3cviT2YLlZBMRVN-sC0mfvZz_ZeDgiLzfSChMmNXkRoq6Ymh_F8r8jRAvZTzJOgyX3F7jdw4qcY27tz95Rutrl68W0Z8ntuh3bVoPIDHC5kckF8sSWoyv5j4BfRQCckjyrmaV8F1BM5Cb1x10WNdE7CP_X1bBFqY7ZTJzYcsQcDR07BdalvRTDp-A",
         "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5MS4yNTg",
         "createdBy" : {
             "application" : {
@@ -397,5 +397,214 @@
         "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giM",
         "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21291')/children",
         "size" : 11
+    },
+    "folder_with_more_metadata1": {
+        "children@odata.nextLink": "https://graph.microsoft.com/v1.0/drive/items/F4D50E400DFE7D4E!293/children?$skiptoken=MjAx",
+        "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITI5My42MzYzODU5MzcxMDMzNzAwMDA",
+        "createdBy" : {
+            "application" : {
+                "id" : "44048800",
+                "displayName" : "OneDrive website"
+            },
+            "user" : {
+                "id" : "f4d50e400dfe7d4e",
+                "displayName" : "Fitz Elliott"
+            }
+        },
+        "webUrl" : "https://1drv.ms/f/s!AE59_g1ADtX0giU",
+        "size" : 45,
+        "children@odata.context" : "https://graph.microsoft.com/v1.0/$metadata#drive/items('59AE60802BFA7F5F%293')/children",
+        "name" : "crushers",
+        "parentReference" : {
+            "id" : "F4D50E400DFE7D4E!290",
+            "name" : "teeth",
+            "driveId" : "f4d50e400dfe7d4e",
+            "path" : "/drive/root:/teeth"
+        },
+        "@odata.context" : "https://graph.microsoft.com/v1.0/$metadata#drive/items(children())/$entity",
+        "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+        "id" : "F4D50E400DFE7D4E!293",
+        "children" : [
+            {
+                "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTQuMg",
+                "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+                "parentReference" : {
+                    "id" : "F4D50E400DFE7D4E!293",
+                    "name" : "crushers",
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "path" : "/drive/root:/teeth/crushers"
+                },
+                "name" : "molars1.txt",
+                "createdDateTime" : "2017-08-17T19:08:03.03Z",
+                "fileSystemInfo" : {
+                    "createdDateTime" : "2017-08-17T19:08:03.03Z",
+                    "lastModifiedDateTime" : "2017-08-17T19:08:30.32Z"
+                },
+                "size" : 45,
+                "createdBy" : {
+                    "application" : {
+                        "id" : "481710a4",
+                        "displayName" : "OneDrive"
+                    },
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    }
+                },
+                "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giY",
+                "lastModifiedBy" : {
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    },
+                    "application" : {
+                        "displayName" : "OneDrive",
+                        "id" : "481710a4"
+                    }
+                },
+                "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mO1VUyGkx1jMbvuSh39sB5hHkVtY9jF-z0eEzmmSwz85fwmzQwFA0MKYlJiTFHPuUItQaHbocR-fxLCt4-LAM--20CvEyr4hX6BNtnlhxwg3FRFg_fLYsk8ESqqJbbnxQYLmBpqJZ1ympsnv1U9KxWoW0Fb07HqKxm5bKIWhFmmmFwfSoTe80yE_-9eV9-ATFAuBFkZ8uVODyrgIN-hsrKDWh4CUJs2V3FFEg_6nERUpncQWfsL7HaMJbUD4LsU_tpSLEemayqxcguyUmMdrCmA",
+                "file" : {
+                    "mimeType" : "text/plain",
+                    "hashes" : {
+                        "sha1Hash" : "71E36DE69F693D7DED11A689CEE9779DCCC37928"
+                    }
+                },
+                "id" : "F4D50E400DFE7D4E!294",
+                "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5NC4yNTg"
+            }
+        ],
+        "lastModifiedBy" : {
+            "user" : {
+                "id" : "f4d50e400dfe7d4e",
+                "displayName" : "Fitz Elliott"
+            },
+            "application" : {
+                "displayName" : "OneDrive website",
+                "id" : "44048800"
+            }
+        },
+        "fileSystemInfo" : {
+            "createdDateTime" : "2017-08-17T19:07:47.843Z",
+            "lastModifiedDateTime" : "2017-08-17T19:07:47.843Z"
+        },
+        "createdDateTime" : "2017-08-17T19:07:47.843Z",
+        "folder" : {
+            "folderView" : {
+                "sortBy" : "name",
+                "sortOrder" : "ascending",
+                "viewType" : "thumbnails"
+            },
+            "childCount" : 3
+        },
+        "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTMuMA"
+    },
+    "folder_with_more_metadata2": {
+        "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#drive/items('59AE60802BFA7F5F%293')/children",
+        "@odata.count": 3,
+        "@odata.nextLink": "https://graph.microsoft.com/v1.0/drive/items/F4D50E400DFE7D4E!293/children?$skiptoken=NDAx",
+        "value" : [
+            {
+                "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTQuMg",
+                "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+                "parentReference" : {
+                    "id" : "F4D50E400DFE7D4E!293",
+                    "name" : "crushers",
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "path" : "/drive/root:/teeth/crushers"
+                },
+                "name" : "molars2.txt",
+                "createdDateTime" : "2017-08-17T19:08:03.03Z",
+                "fileSystemInfo" : {
+                    "createdDateTime" : "2017-08-17T19:08:03.03Z",
+                    "lastModifiedDateTime" : "2017-08-17T19:08:30.32Z"
+                },
+                "size" : 45,
+                "createdBy" : {
+                    "application" : {
+                        "id" : "481710a4",
+                        "displayName" : "OneDrive"
+                    },
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    }
+                },
+                "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giY",
+                "lastModifiedBy" : {
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    },
+                    "application" : {
+                        "displayName" : "OneDrive",
+                        "id" : "481710a4"
+                    }
+                },
+                "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mO1VUyGkx1jMbvuSh39sB5hHkVtY9jF-z0eEzmmSwz85fwmzQwFA0MKYlJiTFHPuUItQaHbocR-fxLCt4-LAM--20CvEyr4hX6BNtnlhxwg3FRFg_fLYsk8ESqqJbbnxQYLmBpqJZ1ympsnv1U9KxWoW0Fb07HqKxm5bKIWhFmmmFwfSoTe80yE_-9eV9-ATFAuBFkZ8uVODyrgIN-hsrKDWh4CUJs2V3FFEg_6nERUpncQWfsL7HaMJbUD4LsU_tpSLEemayqxcguyUmMdrCmA",
+                "file" : {
+                    "mimeType" : "text/plain",
+                    "hashes" : {
+                        "sha1Hash" : "71E36DE69F693D7DED11A689CEE9779DCCC37928"
+                    }
+                },
+                "id" : "F4D50E400DFE7D4E!295",
+                "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5NC4yNTg"
+            }
+        ],
+        "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTMuMA"
+    },
+    "folder_with_more_metadata3": {
+        "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#drive/items('59AE60802BFA7F5F%293')/children",
+        "@odata.count": 3,
+        "value" : [
+            {
+                "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTQuMg",
+                "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+                "parentReference" : {
+                    "id" : "F4D50E400DFE7D4E!296",
+                    "name" : "crushers",
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "path" : "/drive/root:/teeth/crushers"
+                },
+                "name" : "molars3.txt",
+                "createdDateTime" : "2017-08-17T19:08:03.03Z",
+                "fileSystemInfo" : {
+                    "createdDateTime" : "2017-08-17T19:08:03.03Z",
+                    "lastModifiedDateTime" : "2017-08-17T19:08:30.32Z"
+                },
+                "size" : 45,
+                "createdBy" : {
+                    "application" : {
+                        "id" : "481710a4",
+                        "displayName" : "OneDrive"
+                    },
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    }
+                },
+                "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giY",
+                "lastModifiedBy" : {
+                    "user" : {
+                        "displayName" : "Fitz Elliott",
+                        "id" : "f4d50e400dfe7d4e"
+                    },
+                    "application" : {
+                        "displayName" : "OneDrive",
+                        "id" : "481710a4"
+                    }
+                },
+                "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mO1VUyGkx1jMbvuSh39sB5hHkVtY9jF-z0eEzmmSwz85fwmzQwFA0MKYlJiTFHPuUItQaHbocR-fxLCt4-LAM--20CvEyr4hX6BNtnlhxwg3FRFg_fLYsk8ESqqJbbnxQYLmBpqJZ1ympsnv1U9KxWoW0Fb07HqKxm5bKIWhFmmmFwfSoTe80yE_-9eV9-ATFAuBFkZ8uVODyrgIN-hsrKDWh4CUJs2V3FFEg_6nERUpncQWfsL7HaMJbUD4LsU_tpSLEemayqxcguyUmMdrCmA",
+                "file" : {
+                    "mimeType" : "text/plain",
+                    "hashes" : {
+                        "sha1Hash" : "71E36DE69F693D7DED11A689CEE9779DCCC37928"
+                    }
+                },
+                "id" : "F4D50E400DFE7D4E!294",
+                "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5NC4yNTg"
+            }
+        ],
+        "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTMuMA"
     }
 }

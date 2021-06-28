@@ -1,4 +1,5 @@
 {
+    "root_id": "F4D50E400DFE7D4E!103",
     "file_id": "F4D50E400DFE7D4E!291",
     "folder_id": "F4D50E400DFE7D4E!290",
     "subfile_id": "F4D50E400DFE7D4E!292",
@@ -6,7 +7,7 @@
         "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21292')/children",
         "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
         "createdDateTime" : "2017-08-17T17:50:26.877Z",
-        "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mSGfK7V7xQl1tZrz7UQTsCKyTXFp0d0H75AQdzM3_GgwUoPdE4-RkkZF3-c14dlj-oPoiCttFqlkMe2Ja-R-rzrcjUKNbl5HaprTkANJe_Nb8Qv0EOJ-ngFTg6-NaIx7tgvPXrBvaDMyyMWfUSuDnfNQVumL9xmQ-CbcpJe-N86sACf1RERKPsAsesO2VWSmevXUK6U1A87Efw1bk3FAGp7bh5RSmZfvpXSGLswPRbmI_xShjMdo8J1DUsTnC6remAtRuUXyZ5yEpJCpiY75kqw",
+        "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mSGfK7V7xQl1tZrz7UQTsCKyTXFp0d0H75AQdzM3_GgwUoPdE4-RkkZF3-c14dlj-oPoiCttFqlkMe2Ja-R-rzrcjUKNbl5HaprTkANJe_Nb8Qv0EOJ-ngFTg6-NaIx7tgvPXrBvaDMyyMWfUSuDnfNQVumL9xmQ-CbcpJe-N86sACf1RERKPsAsesO2VWSmevXUK6U1A87Efw1bk3FAGp7bh5RSmZfvpXSGLswPRbmI_xShjMdo8J1DUsTnC6remAtRuUXyZ5yEpJCpiY75kqw",
         "createdBy" : {
             "application" : {
                 "id" : "481710a4",
@@ -84,7 +85,7 @@
         "name" : "teeth",
         "children" : [
             {
-                "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mBcVOkGovSm5roxVUpCkHMruB1kdSjruzCEgbQ846jlXD6ZDSYLy96yPW5LSXKf6p8C6Qn_-QqXdvXfM9KkPFH7L9BNyaMbSaN6aU_AC2NxQTSL-0VD-9xNA1riqWip9e2rB0FL_iSy7hkGfar_pem_K3bLAcjUEm4tvNMTEEetLvBYbr60LScwGKyky8z-eRt-hsdZNRRaF-hbrcR9j7ZbDquEuFRFk0mX1psLvqU5mseERpL22j3V1UNt-4_CCEwxc4bUmpMIKm8_phvSa2rA",
+                "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mBcVOkGovSm5roxVUpCkHMruB1kdSjruzCEgbQ846jlXD6ZDSYLy96yPW5LSXKf6p8C6Qn_-QqXdvXfM9KkPFH7L9BNyaMbSaN6aU_AC2NxQTSL-0VD-9xNA1riqWip9e2rB0FL_iSy7hkGfar_pem_K3bLAcjUEm4tvNMTEEetLvBYbr60LScwGKyky8z-eRt-hsdZNRRaF-hbrcR9j7ZbDquEuFRFk0mX1psLvqU5mseERpL22j3V1UNt-4_CCEwxc4bUmpMIKm8_phvSa2rA",
                 "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5Mi4yNTg",
                 "file" : {
                     "mimeType" : "text/plain",
@@ -261,7 +262,7 @@
                     }
                 },
                 "size" : 11,
-                "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4meLf1e64kTeaaAjfKRGKi7kSXEGParV630lHnM-0ncCwon4O31FHpZOI69JmlR8Oj6guuE4frl2izAZ4zwEQVir61orFhQi8bg1OHs0pbg1PChGfXEpX6EFy6Qk1jkhezodbGbkGvw9D0FGmuGVSMFkvymvLIDn6H8cqFsCIpkkb6XD5V7eEyGfHVfn4DLogRgir9ys2t87swgfzSJsSu4WpKfHCQdZ_V3cyrcK5ta8madQAvSlIlZuHaBwBn6H_PgDQW9xKo9txcUnwRMMoJeA",
+                "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4meLf1e64kTeaaAjfKRGKi7kSXEGParV630lHnM-0ncCwon4O31FHpZOI69JmlR8Oj6guuE4frl2izAZ4zwEQVir61orFhQi8bg1OHs0pbg1PChGfXEpX6EFy6Qk1jkhezodbGbkGvw9D0FGmuGVSMFkvymvLIDn6H8cqFsCIpkkb6XD5V7eEyGfHVfn4DLogRgir9ys2t87swgfzSJsSu4WpKfHCQdZ_V3cyrcK5ta8madQAvSlIlZuHaBwBn6H_PgDQW9xKo9txcUnwRMMoJeA",
                 "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5MS4yNTg",
                 "file" : {
                     "hashes" : {
@@ -311,7 +312,7 @@
         "children" : [],
         "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
         "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giM",
-        "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mB8JhDUWbofzVglNap3rO5i6R7jOQyJAz995dPlkrOiQeOV2jgK-EOf916z8YHi9A42WCTMVfNmHjJliYLccUFzJgsEK3j3cviT2YLlZBMRVN-sC0mfvZz_ZeDgiLzfSChMmNXkRoq6Ymh_F8r8jRAvZTzJOgyX3F7jdw4qcY27tz95Rutrl68W0Z8ntuh3bVoPIDHC5kckF8sSWoyv5j4BfRQCckjyrmaV8F1BM5Cb1x10WNdE7CP_X1bBFqY7ZTJzYcsQcDR07BdalvRTDp-A",
+        "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mB8JhDUWbofzVglNap3rO5i6R7jOQyJAz995dPlkrOiQeOV2jgK-EOf916z8YHi9A42WCTMVfNmHjJliYLccUFzJgsEK3j3cviT2YLlZBMRVN-sC0mfvZz_ZeDgiLzfSChMmNXkRoq6Ymh_F8r8jRAvZTzJOgyX3F7jdw4qcY27tz95Rutrl68W0Z8ntuh3bVoPIDHC5kckF8sSWoyv5j4BfRQCckjyrmaV8F1BM5Cb1x10WNdE7CP_X1bBFqY7ZTJzYcsQcDR07BdalvRTDp-A",
         "id" : "F4D50E400DFE7D4E!291",
         "size" : 11,
         "createdBy" : {
