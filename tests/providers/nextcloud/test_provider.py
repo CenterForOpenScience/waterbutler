@@ -187,16 +187,17 @@ class TestCRUD:
         assert metadata.name == file_metadata_object.name
         assert metadata.size == file_metadata_object.size
 
-        extra = {
-            'hashes': {
-                provider.NAME: {
-                    'md5': 'b204384c399505d2b82b7172f3494358',
-                    'sha256': '2ddc9cedb34b4e7fb056b7868b1af29af1fe9ee025b8a67c8c63607587baa657',
-                    'sha512': '9157b6864199953e1f06d32325f0789ffc0e3cefbf93bf4fd95fa1b15948d6dfdef2d2ca1836ea43ce8271a1f3ae0a589dd2e259435da822c994d3609bd277ae'
+        if provider.NAME == 'nextcloudinstitutions':
+            extra = {
+                'hashes': {
+                    provider.NAME: {
+                        'md5': 'b204384c399505d2b82b7172f3494358',
+                        'sha256': '2ddc9cedb34b4e7fb056b7868b1af29af1fe9ee025b8a67c8c63607587baa657',
+                        'sha512': '9157b6864199953e1f06d32325f0789ffc0e3cefbf93bf4fd95fa1b15948d6dfdef2d2ca1836ea43ce8271a1f3ae0a589dd2e259435da822c994d3609bd277ae'
+                    }
                 }
             }
-        }
-        assert metadata.extra == extra
+            assert metadata.extra == extra
         assert aiohttpretty.has_call(method='PUT', uri=url)
 
     @pytest.mark.asyncio
@@ -223,16 +224,17 @@ class TestCRUD:
         assert metadata.name == file_metadata_object.name
         assert metadata.size == file_metadata_object.size
 
-        extra = {
-            'hashes': {
-                provider.NAME: {
-                    'md5': 'b204384c399505d2b82b7172f3494358',
-                    'sha256': '2ddc9cedb34b4e7fb056b7868b1af29af1fe9ee025b8a67c8c63607587baa657',
-                    'sha512': '9157b6864199953e1f06d32325f0789ffc0e3cefbf93bf4fd95fa1b15948d6dfdef2d2ca1836ea43ce8271a1f3ae0a589dd2e259435da822c994d3609bd277ae'
+        if provider.NAME == 'nextcloudinstitutions':
+            extra = {
+                'hashes': {
+                    provider.NAME: {
+                        'md5': 'b204384c399505d2b82b7172f3494358',
+                        'sha256': '2ddc9cedb34b4e7fb056b7868b1af29af1fe9ee025b8a67c8c63607587baa657',
+                        'sha512': '9157b6864199953e1f06d32325f0789ffc0e3cefbf93bf4fd95fa1b15948d6dfdef2d2ca1836ea43ce8271a1f3ae0a589dd2e259435da822c994d3609bd277ae'
+                    }
                 }
             }
-        }
-        assert metadata.extra == extra
+            assert metadata.extra == extra
         assert aiohttpretty.has_call(method='PUT', uri=url)
 
     @pytest.mark.asyncio
@@ -367,16 +369,17 @@ class TestIntraMoveCopy:
         assert metadata.name == 'dissertation.aux'
         assert metadata.kind == 'file'
 
-        extra = {
-            'hashes': {
-                provider.NAME: {
-                    'md5': 'b204384c399505d2b82b7172f3494358',
-                    'sha256': '2ddc9cedb34b4e7fb056b7868b1af29af1fe9ee025b8a67c8c63607587baa657',
-                    'sha512': '9157b6864199953e1f06d32325f0789ffc0e3cefbf93bf4fd95fa1b15948d6dfdef2d2ca1836ea43ce8271a1f3ae0a589dd2e259435da822c994d3609bd277ae'
+        if provider.NAME == 'nextcloudinstitutions':
+            extra = {
+                'hashes': {
+                    provider.NAME: {
+                        'md5': 'b204384c399505d2b82b7172f3494358',
+                        'sha256': '2ddc9cedb34b4e7fb056b7868b1af29af1fe9ee025b8a67c8c63607587baa657',
+                        'sha512': '9157b6864199953e1f06d32325f0789ffc0e3cefbf93bf4fd95fa1b15948d6dfdef2d2ca1836ea43ce8271a1f3ae0a589dd2e259435da822c994d3609bd277ae'
+                    }
                 }
             }
-        }
-        assert metadata.extra == extra
+            assert metadata.extra == extra
 
 class TestMetadata:
 
@@ -427,16 +430,17 @@ class TestMetadata:
         assert result[0].content_type == 'application/octet-stream'
         assert result[0].fileid == '7923'
 
-        extra = {
-            'hashes': {
-                provider.NAME: {
-                    'md5': 'b204384c399505d2b82b7172f3494358',
-                    'sha256': '2ddc9cedb34b4e7fb056b7868b1af29af1fe9ee025b8a67c8c63607587baa657',
-                    'sha512': '9157b6864199953e1f06d32325f0789ffc0e3cefbf93bf4fd95fa1b15948d6dfdef2d2ca1836ea43ce8271a1f3ae0a589dd2e259435da822c994d3609bd277ae'
+        if provider.NAME == 'nextcloudinstitutions':
+            extra = {
+                'hashes': {
+                    provider.NAME: {
+                        'md5': 'b204384c399505d2b82b7172f3494358',
+                        'sha256': '2ddc9cedb34b4e7fb056b7868b1af29af1fe9ee025b8a67c8c63607587baa657',
+                        'sha512': '9157b6864199953e1f06d32325f0789ffc0e3cefbf93bf4fd95fa1b15948d6dfdef2d2ca1836ea43ce8271a1f3ae0a589dd2e259435da822c994d3609bd277ae'
+                    }
                 }
             }
-        }
-        assert result[0].extra == extra
+            assert result[0].extra == extra
 
         assert result[1].size == '2983'
         assert result[1].etag == '1591876099'
@@ -445,16 +449,17 @@ class TestMetadata:
         assert result[1].content_type == 'application/octet-stream'
         assert result[1].fileid is None
 
-        extra2 = {
-            'hashes': {
-                provider.NAME: {
-                    'md5': 'f1d2177eda4cc227a230d7e39e3e8d5f',
-                    'sha256': '276d30cd92b0e86ad51614220ab7f1b74fb4e0dfe9ceeabb4935bcc4693ea1cf',
-                    'sha512': '624d95af88516b1c5eb1fe0fd2bbfbcb369ab73057671253233e799cb6666633bf8efb6e2171138ee2566d29365138ff69c6a6681f8563084f0942088d3f78e1'
+        if provider.NAME == 'nextcloudinstitutions':
+            extra2 = {
+                'hashes': {
+                    provider.NAME: {
+                        'md5': 'f1d2177eda4cc227a230d7e39e3e8d5f',
+                        'sha256': '276d30cd92b0e86ad51614220ab7f1b74fb4e0dfe9ceeabb4935bcc4693ea1cf',
+                        'sha512': '624d95af88516b1c5eb1fe0fd2bbfbcb369ab73057671253233e799cb6666633bf8efb6e2171138ee2566d29365138ff69c6a6681f8563084f0942088d3f78e1'
+                    }
                 }
             }
-        }
-        assert result[1].extra == extra2
+            assert result[1].extra == extra2
 
         assert result[2].size == '2514'
         assert result[2].etag == '1591864889'
@@ -463,16 +468,17 @@ class TestMetadata:
         assert result[2].content_type == 'application/octet-stream'
         assert result[2].fileid is None
 
-        extra3 = {
-            'hashes': {
-                provider.NAME: {
-                    'md5': 'ee0558f500468642243e29dc914832e9',
-                    'sha256': 'c9b2543ae9c0a94579fa899dde770af9538d93ce6c58948c86c0a6d8f5d1b014',
-                    'sha512': '45e0920b6d7850fbaf028a1ee1241154a7641f3ee325efb3fe483d86dba5c170a4b1075d7e7fd2ae0c321def6022f3aa2b59e0c1dc5213bf1c50690f5cf0b688'
+        if provider.NAME == 'nextcloudinstitutions':
+            extra3 = {
+                'hashes': {
+                    provider.NAME: {
+                        'md5': 'ee0558f500468642243e29dc914832e9',
+                        'sha256': 'c9b2543ae9c0a94579fa899dde770af9538d93ce6c58948c86c0a6d8f5d1b014',
+                        'sha512': '45e0920b6d7850fbaf028a1ee1241154a7641f3ee325efb3fe483d86dba5c170a4b1075d7e7fd2ae0c321def6022f3aa2b59e0c1dc5213bf1c50690f5cf0b688'
+                    }
                 }
             }
-        }
-        assert result[2].extra == extra3
+            assert result[2].extra == extra3
 
 
         path = WaterButlerPath('/meeting_memo.txt', prepend=provider.folder)
@@ -495,16 +501,17 @@ class TestMetadata:
         assert result[0].content_type == 'text/plain'
         assert result[0].fileid == '8512'
 
-        extra4 = {
-            'hashes': {
-                provider.NAME: {
-                    'md5': 'aaef77b9010107820b58385de45c4a98',
-                    'sha256': 'd85218389da0e5f5b2f7bfce7306dcb3efde2ceb321aafd68266b11fe7162f84',
-                    'sha512': '2f70dbc489cb3bfc29a50798e2301406a7722f696c8ade7411309f7430d690d13fa75a9a3ee4ea194cf351e1bb3738915f97fa76816e3db95b9868b6073a5128'
+        if provider.NAME == 'nextcloudinstitutions':
+            extra4 = {
+                'hashes': {
+                    provider.NAME: {
+                        'md5': 'aaef77b9010107820b58385de45c4a98',
+                        'sha256': 'd85218389da0e5f5b2f7bfce7306dcb3efde2ceb321aafd68266b11fe7162f84',
+                        'sha512': '2f70dbc489cb3bfc29a50798e2301406a7722f696c8ade7411309f7430d690d13fa75a9a3ee4ea194cf351e1bb3738915f97fa76816e3db95b9868b6073a5128'
+                    }
                 }
             }
-        }
-        assert result[0].extra == extra4
+            assert result[0].extra == extra4
 
 
 class TestRevisions:
@@ -537,40 +544,43 @@ class TestRevisions:
         assert result[0].version == 'a3c411808d58977a9ecd7485b5b7958e'
         assert result[0].version_identifier == 'revision'
 
-        extra = {
-            'hashes': {
-                'md5': 'b204384c399505d2b82b7172f3494358',
-                'sha256': '2ddc9cedb34b4e7fb056b7868b1af29af1fe9ee025b8a67c8c63607587baa657'
+        if provider.NAME == 'nextcloudinstitutions':
+            extra = {
+                'hashes': {
+                    'md5': 'b204384c399505d2b82b7172f3494358',
+                    'sha256': '2ddc9cedb34b4e7fb056b7868b1af29af1fe9ee025b8a67c8c63607587baa657'
+                }
             }
-        }
 
-        assert result[0].extra == extra
+            assert result[0].extra == extra
 
         assert result[1].modified == 'Sat, 9 Jul 2016 11:48:19 GMT'
         assert result[1].version == '1591876099'
         assert result[1].version_identifier == 'revision'
 
-        extra2 = {
-            'hashes': {
-                'md5': 'f1d2177eda4cc227a230d7e39e3e8d5f',
-                'sha256': '276d30cd92b0e86ad51614220ab7f1b74fb4e0dfe9ceeabb4935bcc4693ea1cf'
+        if provider.NAME == 'nextcloudinstitutions':
+            extra2 = {
+                'hashes': {
+                    'md5': 'f1d2177eda4cc227a230d7e39e3e8d5f',
+                    'sha256': '276d30cd92b0e86ad51614220ab7f1b74fb4e0dfe9ceeabb4935bcc4693ea1cf'
+                }
             }
-        }
 
-        assert result[1].extra == extra2
+            assert result[1].extra == extra2
 
         assert result[2].modified == 'Wed, 6 Jul 2016 08:41:29 GMT'
         assert result[2].version == '1591864889'
         assert result[2].version_identifier == 'revision'
 
-        extra3 = {
-            'hashes': {
-                'md5': 'ee0558f500468642243e29dc914832e9',
-                'sha256': 'c9b2543ae9c0a94579fa899dde770af9538d93ce6c58948c86c0a6d8f5d1b014'
+        if provider.NAME == 'nextcloudinstitutions':
+            extra3 = {
+                'hashes': {
+                    'md5': 'ee0558f500468642243e29dc914832e9',
+                    'sha256': 'c9b2543ae9c0a94579fa899dde770af9538d93ce6c58948c86c0a6d8f5d1b014'
+                }
             }
-        }
 
-        assert result[2].extra == extra3
+            assert result[2].extra == extra3
 
 
 class TestOperations:
