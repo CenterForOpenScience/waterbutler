@@ -1127,25 +1127,17 @@ class TestCreateFolder:
 
 class TestOperations:
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_duplicate_names(self, provider):
+    def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names() is False
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_shares_storage_root(self, provider, other_provider):
+    def test_shares_storage_root(self, provider, other_provider):
         assert provider.shares_storage_root(other_provider) is False
         assert provider.shares_storage_root(provider) is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_move(self, provider, other_provider):
+    def test_can_intra_move(self, provider, other_provider):
         assert provider.can_intra_move(other_provider) is False
         assert provider.can_intra_move(provider) is True
 
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_can_intra_copy(self, provider, other_provider):
+    def test_can_intra_copy(self, provider, other_provider):
         assert provider.can_intra_copy(other_provider) is False
         assert provider.can_intra_copy(provider) is True

@@ -33,3 +33,9 @@ def download_fixtures():
 def path_fixtures():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/paths.json'), 'r') as fp:
         return json.load(fp)
+
+
+@pytest.fixture
+def readwrite_fixtures():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/readwrite.json'), 'r') as fp:
+        return json.load(fp)

@@ -1,0 +1,768 @@
+{
+   "create_upload_session_response" : {
+      "expirationDateTime" : "2015-01-29T09:21:55.523Z",
+      "nextExpectedRanges" : [
+         "0-"
+      ],
+      "uploadUrl" : "https://any.url/up/fe688"
+   },
+   "file_rename_sub_response" : {
+      "@content.downloadUrl" : "https://public-ch3302.files.1drv.com/y3mnrbLFOgJJ8JQA7Ots0pzvL0xHYJx9NQJylS6IoQqp5G2CIIG5IWCKT_ADdp035kbr3qEmz6Va5j8-NCplk4ZMG_cYipxUfhP-NNl-SjlKocwc7yDplc1qWEynHGm_lME_o98pKSxNg6sKbEphRPufHea_h7LU1XH2qkFEGOIZGHQlw_JmH9fvygq8_XY2iE-",
+      "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+      "cTag" : "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
+      "children" : [],
+      "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('75BFE374EBEB1211%21150')/children",
+      "createdDateTime" : "2015-12-02T20:25:26.51Z",
+      "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
+      "file" : {
+         "hashes" : {
+            "crc32Hash" : "6D98C9D5",
+            "sha1Hash" : "68A4192BF9DEAD103D7E4EA481074745932989F4"
+         },
+         "mimeType" : "image/jpeg"
+      },
+      "fileSystemInfo" : {
+         "createdDateTime" : "2015-12-02T20:25:26.51Z",
+         "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z"
+      },
+      "id" : "66BFE321EBEB1211!150",
+      "image" : {
+         "height" : 431,
+         "width" : 883
+      },
+      "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z",
+      "name" : "elect-a (1).jpg",
+      "parentReference" : {
+         "driveId" : "75bfe374ebeb1211",
+         "id" : "75BFE374EBEB1211!107",
+         "path" : "/drive/root:/ryan-test1"
+      },
+      "photo" : {
+         "takenDateTime" : "2013-04-17T14:32:26Z"
+      },
+      "size" : 83736,
+      "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150"
+   },
+   "file_root_response" : {
+      "@content.downloadUrl" : "https://public-ch3302.files.1drv.com/y3mnrbLFOgJJ8JQA7Ots0pzvL0xHYJx9NQJylS6IoQqp5G2CIIG5IWCKT_ADdp035kbr3qEmz6Va5j8-NCplk4ZMG_cYipxUfhP-NNl-SjlKocwc7yDplc1qWEynHGm_lME_o98pKSxNg6sKbEphRPufHea_h7LU1XH2qkFEGOIZGHQlw_JmH9fvygq8_XY2iE-",
+      "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+      "cTag" : "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
+      "children" : [],
+      "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('75BFE374EBEB1211%21150')/children",
+      "createdDateTime" : "2015-12-02T20:25:26.51Z",
+      "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
+      "file" : {
+         "hashes" : {
+            "crc32Hash" : "6D98C9D5",
+            "sha1Hash" : "68A4192BF9DEAD103D7E4EA481074745932989F4"
+         },
+         "mimeType" : "image/jpeg"
+      },
+      "fileSystemInfo" : {
+         "createdDateTime" : "2015-12-02T20:25:26.51Z",
+         "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z"
+      },
+      "id" : "75BFE374EBEB1211!150",
+      "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z",
+      "name" : "elect-a.jpg",
+      "parentReference" : {
+         "driveId" : "75bfe374ebeb1211",
+         "id" : "75BFE374EBEB1211!107",
+         "path" : "/drive/root:"
+      },
+      "size" : 83736,
+      "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150"
+   },
+   "file_sub_folder_response" : {
+      "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+      "cTag" : "adDo3NUJGRTM3NEVCRUIxMjExITEyOC42MzU4NTYxODI2MDA5MzAwMDA",
+      "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExMjguMA",
+      "file" : {
+         "hashes" : {
+            "crc32Hash" : "6D98C9D5",
+            "sha1Hash" : "68A4192BF9DEAD103D7E4EA481074745932989F4"
+         },
+         "mimeType" : "image/jpeg"
+      },
+      "id" : "75BFE374EBEB1211!128",
+      "name" : "hello.jpg",
+      "parentReference" : {
+         "driveId" : "75bfe374ebeb1211",
+         "id" : "75BFE374EBEB1211!103",
+         "path" : "/drive/root:/ryan-test1"
+      },
+      "size" : 998322,
+      "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!128"
+   },
+   "file_sub_response" : {
+      "@content.downloadUrl" : "https://public-ch3302.files.1drv.com/y3mnrbLFOgJJ8JQA7Ots0pzvL0xHYJx9NQJylS6IoQqp5G2CIIG5IWCKT_ADdp035kbr3qEmz6Va5j8-NCplk4ZMG_cYipxUfhP-NNl-SjlKocwc7yDplc1qWEynHGm_lME_o98pKSxNg6sKbEphRPufHea_h7LU1XH2qkFEGOIZGHQlw_JmH9fvygq8_XY2iE-",
+      "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+      "cTag" : "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
+      "children" : [],
+      "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('75BFE374EBEB1211%21150')/children",
+      "createdDateTime" : "2015-12-02T20:25:26.51Z",
+      "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
+      "file" : {
+         "hashes" : {
+            "crc32Hash" : "6D98C9D5",
+            "sha1Hash" : "68A4192BF9DEAD103D7E4EA481074745932989F4"
+         },
+         "mimeType" : "image/jpeg"
+      },
+      "fileSystemInfo" : {
+         "createdDateTime" : "2015-12-02T20:25:26.51Z",
+         "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z"
+      },
+      "id" : "75BFE374EBEB1211!150",
+      "image" : {
+         "height" : 431,
+         "width" : 883
+      },
+      "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z",
+      "name" : "elect-a.jpg",
+      "parentReference" : {
+         "driveId" : "75bfe374ebeb1211",
+         "id" : "75BFE374EBEB1211!107",
+         "path" : "/drive/root:/ryan-test1"
+      },
+      "photo" : {
+         "takenDateTime" : "2013-04-17T14:32:26Z"
+      },
+      "size" : 83736,
+      "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150"
+   },
+   "folder_root_response" : {
+      "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+      "cTag" : "adDo5QjgzRkY0NUYzMzg2QTEwITEwMy42MzYxNTQxNTIxMzc5NzAwMDA",
+      "children" : [
+         {
+            "cTag" : "adDo5QjgzRkY0NUYzMzg2QTEwITE4My42MzYxNTQwNzc0ODMzMDAwMDA",
+            "createdDateTime" : "2016-11-21T17:57:32.947Z",
+            "eTag" : "aOUI4M0ZGNDVGMzM4NkExMCExODMuMA",
+            "folder" : {
+               "childCount" : 2
+            },
+            "id" : "9B83FF45F3386A10!183",
+            "lastModifiedDateTime" : "2016-11-22T10:35:48.33Z",
+            "name" : "test6",
+            "parentReference" : {
+               "driveId" : "9b83ff45f3386a10",
+               "id" : "9B83FF45F3386A10!103",
+               "path" : "/drive/root:"
+            },
+            "size" : 2632455,
+            "webUrl" : "https://1drv.ms/f/s!ABBqOPNF_4ObgTc"
+         },
+         {
+            "@content.downloadUrl" : "https://public-dm2306.files.1drv.com/y3mxEQECWSCZVCfSRkI0ZcHNeD9VUVLWwJbC1qDHr-WR9eD_Vwi2Cwc-IYx06YSVBNjroUwZYTQmXd6mXRI-Vt-zIQwFsp7EvPi9edvuRisa-p9RMpedZ22V6HjS8qJi88nGebzOC6WG--nweas9HpC4iAxqFQKcgMIPHMmfmC1aVuPxGYiHcbc1Nseg7yAC7Dvh2HxMQ8-Bm4lLVZC92fZs3idbXkk9S_eBitB5RaIQHY",
+            "cTag" : "aYzo5QjgzRkY0NUYzMzg2QTEwITExMy4yNTc",
+            "createdDateTime" : "2016-11-16T11:17:20.957Z",
+            "eTag" : "aOUI4M0ZGNDVGMzM4NkExMCExMTMuMA",
+            "file" : {
+               "hashes" : {
+                  "crc32Hash" : "A2BF6316",
+                  "sha1Hash" : "C8D9E56F12E09FD2630F0D1F315B7AB196C43A05"
+               },
+               "mimeType" : "application/zip"
+            },
+            "id" : "9B83FF45F3386A10!113",
+            "lastModifiedDateTime" : "2016-11-16T11:17:20.957Z",
+            "name" : "googledrive-archive.zip",
+            "parentReference" : {
+               "driveId" : "9b83ff45f3386a10",
+               "id" : "9B83FF45F3386A10!103",
+               "path" : "/drive/root:"
+            },
+            "size" : 98,
+            "webUrl" : "https://1drv.ms/u/s!ABBqOPNF_4ObcQ"
+         }
+      ],
+      "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('9B83FF45F3386A10%21103')/children",
+      "createdDateTime" : "2016-11-16T09:48:07.853Z",
+      "eTag" : "aOUI4M0ZGNDVGMzM4NkExMCExMDMuMA",
+      "folder" : {
+         "childCount" : 3
+      },
+      "id" : "9B83FF45F3386A10!103",
+      "lastModifiedDateTime" : "2016-11-22T12:40:13.797Z",
+      "name" : "root",
+      "root" : {},
+      "size" : 5264812,
+      "webUrl" : "https://onedrive.live.com/?cid=9b83ff45f3386a10"
+   },
+   "folder_sub_response" : {
+      "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+      "cTag" : "adDo3NUJGRTM3NEVCRUIxMjExITEwNy42MzU4NTQ0MTkzNjYwMDAwMDA",
+      "children" : [
+         {
+            "cTag" : "adDo3NUJGRTM3NEVCRUIxMjExITExOC42MzU4NTIyMjUzMjMxMDAwMDA",
+            "createdDateTime" : "2015-11-29T17:21:09.997Z",
+            "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExMTguMw",
+            "fileSystemInfo" : {
+               "createdDateTime" : "2015-11-29T17:21:09.997Z",
+               "lastModifiedDateTime" : "2015-12-07T16:45:28.46Z"
+            },
+            "folder" : {
+               "childCount" : 4
+            },
+            "id" : "75BFE374EBEB1211!118",
+            "lastModifiedDateTime" : "2015-12-09T01:48:52.31Z",
+            "name" : "sub1-b",
+            "parentReference" : {
+               "driveId" : "75bfe374ebeb1211",
+               "id" : "75BFE374EBEB1211!107",
+               "path" : "/drive/root:/ryan-test1"
+            },
+            "size" : 119410,
+            "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!118"
+         },
+         {
+            "cTag" : "adDo3NUJGRTM3NEVCRUIxMjExITE0My42MzU4NTEwNTk2OTQ4MDAwMDA",
+            "createdDateTime" : "2015-12-01T16:52:33.07Z",
+            "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExNDMuMTI",
+            "fileSystemInfo" : {
+               "createdDateTime" : "2015-12-01T16:52:33.07Z",
+               "lastModifiedDateTime" : "2015-12-07T17:26:09.48Z"
+            },
+            "folder" : {
+               "childCount" : 1
+            },
+            "id" : "75BFE374EBEB1211!143",
+            "lastModifiedDateTime" : "2015-12-07T17:26:09.48Z",
+            "name" : "sub1-z",
+            "parentReference" : {
+               "driveId" : "75bfe374ebeb1211",
+               "id" : "75BFE374EBEB1211!107",
+               "path" : "/drive/root:/ryan-test1"
+            },
+            "size" : 0,
+            "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!143"
+         },
+         {
+            "@content.downloadUrl" : "https://public-ch3302.files.1drv.com/y3mgyZqUob4fS1RGIHa8w3tl0ozOlXXiKPMmz3hxZ0KbMqyZmIOnzXL8G9fWREL01mog9XRQn2g2qExRSSFce9ixl7fOlq_yjwOxX-6F2CNzgp3-wE9oThZSrvTix8h7cMD32RHd-__uwGK6Db0ErsGuxorWJKfRlmkpJFn7b8F9ZVvsIsLOmJWVKMyxrQMfves",
+            "cTag" : "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
+            "createdDateTime" : "2015-12-02T20:25:26.51Z",
+            "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
+            "file" : {
+               "hashes" : {
+                  "crc32Hash" : "6D98C9D5",
+                  "sha1Hash" : "68A4192BF9DEAD103D7E4EA481074745932989F4"
+               },
+               "mimeType" : "image/jpeg"
+            },
+            "fileSystemInfo" : {
+               "createdDateTime" : "2015-12-02T20:25:26.51Z",
+               "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z"
+            },
+            "id" : "75BFE374EBEB1211!150",
+            "image" : {
+               "height" : 431,
+               "width" : 883
+            },
+            "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z",
+            "name" : "elect-a.jpg",
+            "parentReference" : {
+               "driveId" : "75bfe374ebeb1211",
+               "id" : "75BFE374EBEB1211!107",
+               "path" : "/drive/root:/ryan-test1"
+            },
+            "photo" : {
+               "takenDateTime" : "2013-04-17T14:32:26Z"
+            },
+            "size" : 83736,
+            "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150"
+         }
+      ],
+      "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('75BFE374EBEB1211%21107')/children",
+      "createdDateTime" : "2015-11-22T14:33:33.57Z",
+      "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExMDcuMA",
+      "fileSystemInfo" : {
+         "createdDateTime" : "2015-11-22T14:33:33.57Z",
+         "lastModifiedDateTime" : "2015-11-22T14:33:33.57Z"
+      },
+      "folder" : {
+         "childCount" : 3
+      },
+      "id" : "75BFE374EBEB1211!107",
+      "lastModifiedDateTime" : "2015-12-11T14:45:36.6Z",
+      "name" : "ryan-test1",
+      "parentReference" : {
+         "driveId" : "75bfe374ebeb1211",
+         "id" : "75BFE374EBEB1211!103",
+         "path" : "/drive/root:"
+      },
+      "size" : 203146,
+      "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!107"
+   },
+   "folder_sub_sub_response" : {
+      "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+      "cTag" : "adDo3NUJGRTM3NEVCRUIxMjExITExOC42MzU4NTEwMzUyODQ2MDAwMDA",
+      "children" : [
+         {
+            "cTag" : "adDo3NUJGRTM3NEVCRUIxMjExITExOC42MzU4NTIyMjUzMjMxMDAwMDA",
+            "createdDateTime" : "2015-11-29T17:21:09.997Z",
+            "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExMTguMw",
+            "fileSystemInfo" : {
+               "createdDateTime" : "2015-11-29T17:21:09.997Z",
+               "lastModifiedDateTime" : "2015-12-07T16:45:28.46Z"
+            },
+            "folder" : {
+               "childCount" : 4
+            },
+            "id" : "75BFE374EBEB1211!118",
+            "lastModifiedDateTime" : "2015-12-09T01:48:52.31Z",
+            "name" : "sub1-b",
+            "parentReference" : {
+               "driveId" : "75bfe374ebeb1211",
+               "id" : "75BFE374EBEB1211!107",
+               "path" : "/drive/root:/ryan-test1/sub1"
+            },
+            "size" : 119410,
+            "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!118"
+         },
+         {
+            "cTag" : "adDo3NUJGRTM3NEVCRUIxMjExITE0My42MzU4NTEwNTk2OTQ4MDAwMDA",
+            "createdDateTime" : "2015-12-01T16:52:33.07Z",
+            "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExNDMuMTI",
+            "fileSystemInfo" : {
+               "createdDateTime" : "2015-12-01T16:52:33.07Z",
+               "lastModifiedDateTime" : "2015-12-07T17:26:09.48Z"
+            },
+            "folder" : {
+               "childCount" : 1
+            },
+            "id" : "75BFE374EBEB1211!143",
+            "lastModifiedDateTime" : "2015-12-07T17:26:09.48Z",
+            "name" : "sub1-z",
+            "parentReference" : {
+               "driveId" : "75bfe374ebeb1211",
+               "id" : "75BFE374EBEB1211!107",
+               "path" : "/drive/root:/ryan-test1/sub1"
+            },
+            "size" : 0,
+            "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!143"
+         },
+         {
+            "@content.downloadUrl" : "https://public-ch3302.files.1drv.com/y3mgyZqUob4fS1RGIHa8w3tl0ozOlXXiKPMmz3hxZ0KbMqyZmIOnzXL8G9fWREL01mog9XRQn2g2qExRSSFce9ixl7fOlq_yjwOxX-6F2CNzgp3-wE9oThZSrvTix8h7cMD32RHd-__uwGK6Db0ErsGuxorWJKfRlmkpJFn7b8F9ZVvsIsLOmJWVKMyxrQMfves",
+            "cTag" : "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
+            "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
+            "file" : {
+               "hashes" : {
+                  "crc32Hash" : "6D98C9D5",
+                  "sha1Hash" : "68A4192BF9DEAD103D7E4EA481074745932989F4"
+               },
+               "mimeType" : "image/jpeg"
+            },
+            "fileSystemInfo" : {
+               "createdDateTime" : "2015-12-02T20:25:26.51Z",
+               "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z"
+            },
+            "id" : "75BFE374EBEB1211!150",
+            "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z",
+            "name" : "elect-a.jpg",
+            "parentReference" : {
+               "driveId" : "75bfe374ebeb1211",
+               "id" : "75BFE374EBEB1211!107",
+               "path" : "/drive/root:/ryan-test1/sub1"
+            },
+            "size" : 83736,
+            "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150"
+         }
+      ],
+      "createdDateTime" : "2015-11-29T17:21:09.997Z",
+      "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExMTguMw",
+      "folder" : {
+         "childCount" : 4
+      },
+      "id" : "75BFE374EBEB1211!118",
+      "lastModifiedDateTime" : "2015-12-07T16:45:28.46Z",
+      "name" : "sub1-b",
+      "parentReference" : {
+         "driveId" : "75bfe374ebeb1211",
+         "id" : "75BFE374EBEB1211!107",
+         "path" : "/drive/root:/ryan-test1"
+      },
+      "size" : 119410,
+      "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!118"
+   },
+   "not_found_error_response" : {
+      "error" : {
+         "code" : "itemNotFound",
+         "message" : "The resource could not be found."
+      }
+   },
+   "revisions_list_metadata" : {},
+   "root_delete_file_metadata" : {
+      "@content.downloadUrl" : "https://public.bn.files.1drv.com/y4mPjyx4ugD4Wy57jdoL-xh_bTjeUIu99_2vMMfbe7YkdFaEJH4s1Iy_059_gIZ7VwEWhrg8TxS2BsbGfjdzhzF-nLc22Btacaol2qmAMSCbUJf0cjy-ZX_bah01pJWxrTtvYLQgN-S3fRD7j2i3DqzdegwyaPFk4CI9x1Ir474PR5IWU3DujV7I2x0cfyePEufN5mqnjcd2Vysg5OFSwR883oWKNrmxfc9ttP6rbmiIAIIwZsPpeOg7Uf7RjriTM1W",
+      "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+      "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITEwNC4yNTc",
+      "createdBy" : {
+         "application" : {
+            "displayName" : "OneDrive website",
+            "id" : "44048800"
+         },
+         "user" : {
+            "displayName" : "Fitz Elliott",
+            "id" : "f4d50e400dfe7d4e"
+         }
+      },
+      "createdDateTime" : "2015-12-17T19:56:11.88Z",
+      "eTag" : "aRjRENTBFNDAwREZFN0Q0RSExMDQuMw",
+      "file" : {
+         "hashes" : {
+            "crc32Hash" : "F8DDF9BE",
+            "sha1Hash" : "A9C4ACF2DA75FC49056976433AC32142D2C71AB1"
+         },
+         "mimeType" : "application/pdf"
+      },
+      "fileSystemInfo" : {
+         "createdDateTime" : "2015-12-17T19:56:11.88Z",
+         "lastModifiedDateTime" : "2015-12-17T19:56:11.88Z"
+      },
+      "id" : "F4D50E400DFE7D4E!104",
+      "lastModifiedBy" : {
+         "application" : {
+            "displayName" : "OneDrive website",
+            "id" : "44048800"
+         },
+         "user" : {
+            "displayName" : "Fitz Elliott",
+            "id" : "f4d50e400dfe7d4e"
+         }
+      },
+      "lastModifiedDateTime" : "2015-12-17T19:56:29.963Z",
+      "name" : "Getting started with OneDrive.pdf",
+      "parentReference" : {
+         "driveId" : "f4d50e400dfe7d4e",
+         "driveType" : "personal",
+         "id" : "F4D50E400DFE7D4E!103",
+         "path" : "/drive/root:"
+      },
+      "reactions" : {
+         "commentCount" : 0
+      },
+      "size" : 1311269,
+      "webUrl" : "https://1drv.ms/b/s!AE59_g1ADtX0aA"
+   },
+   "root_delete_folder_metadata" : {
+      "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+      "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITEzNC42MzYyMzQxMzU0MjkzMDAwMDA",
+      "createdBy" : {
+         "application" : {
+            "displayName" : "local-cosdev",
+            "id" : "44174239"
+         },
+         "user" : {
+            "displayName" : "Fitz Elliott",
+            "id" : "f4d50e400dfe7d4e"
+         }
+      },
+      "createdDateTime" : "2017-02-23T02:25:42.93Z",
+      "eTag" : "aRjRENTBFNDAwREZFN0Q0RSExMzQuMA",
+      "fileSystemInfo" : {
+         "createdDateTime" : "2017-02-23T02:25:42.93Z",
+         "lastModifiedDateTime" : "2017-02-23T02:25:42.93Z"
+      },
+      "folder" : {
+         "childCount" : 0,
+         "folderType" : "document",
+         "folderView" : {
+            "sortBy" : "name",
+            "sortOrder" : "ascending",
+            "viewType" : "thumbnails"
+         }
+      },
+      "id" : "F4D50E400DFE7D4E!134",
+      "lastModifiedBy" : {
+         "application" : {
+            "displayName" : "local-cosdev",
+            "id" : "44174239"
+         },
+         "user" : {
+            "displayName" : "Fitz Elliott",
+            "id" : "f4d50e400dfe7d4e"
+         }
+      },
+      "lastModifiedDateTime" : "2017-02-23T02:25:42.93Z",
+      "name" : "Music",
+      "parentReference" : {
+         "driveId" : "f4d50e400dfe7d4e",
+         "driveType" : "personal",
+         "id" : "F4D50E400DFE7D4E!103",
+         "path" : "/drive/root:"
+      },
+      "size" : 0,
+      "specialFolder" : {
+         "name" : "music"
+      },
+      "webUrl" : "https://1drv.ms/f/s!AE59_g1ADtX0gQY"
+   },
+   "root_delete_root_metadata" : {
+      "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+      "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITEwMy42Mzc1MTk4NDcyNTYyMDAwMDA",
+      "children" : [
+         {
+            "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITEzNC42MzYyMzQxMzU0MjkzMDAwMDA",
+            "createdBy" : {
+               "application" : {
+                  "displayName" : "local-cosdev",
+                  "id" : "44174239"
+               },
+               "user" : {
+                  "displayName" : "Fitz Elliott",
+                  "id" : "f4d50e400dfe7d4e"
+               }
+            },
+            "createdDateTime" : "2017-02-23T02:25:42.93Z",
+            "eTag" : "aRjRENTBFNDAwREZFN0Q0RSExMzQuMA",
+            "fileSystemInfo" : {
+               "createdDateTime" : "2017-02-23T02:25:42.93Z",
+               "lastModifiedDateTime" : "2017-02-23T02:25:42.93Z"
+            },
+            "folder" : {
+               "childCount" : 0,
+               "folderType" : "document",
+               "folderView" : {
+                  "sortBy" : "name",
+                  "sortOrder" : "ascending",
+                  "viewType" : "thumbnails"
+               }
+            },
+            "id" : "F4D50E400DFE7D4E!134",
+            "lastModifiedBy" : {
+               "application" : {
+                  "displayName" : "local-cosdev",
+                  "id" : "44174239"
+               },
+               "user" : {
+                  "displayName" : "Fitz Elliott",
+                  "id" : "f4d50e400dfe7d4e"
+               }
+            },
+            "lastModifiedDateTime" : "2017-02-23T02:25:42.93Z",
+            "name" : "Music",
+            "parentReference" : {
+               "driveId" : "f4d50e400dfe7d4e",
+               "driveType" : "personal",
+               "id" : "F4D50E400DFE7D4E!103",
+               "path" : "/drive/root:"
+            },
+            "reactions" : {
+               "commentCount" : 0
+            },
+            "size" : 0,
+            "specialFolder" : {
+               "name" : "music"
+            },
+            "webUrl" : "https://1drv.ms/f/s!AE59_g1ADtX0gQY"
+         },
+         {
+            "@content.downloadUrl" : "https://public.bn.files.1drv.com/y4mdb4lwpf1Z2k2nwS87TME-d2ycYBr-9CnetwR2J86vCUkCv7_XzZLZxNS-ExEFEATyG2ukwowgYwdOAzH4DWmJIILiOnwboM7lr5EHf_JhpbCItI24xNGQekcyjiJRYcHyc8-B6uq6I1roQLNxro9xdaP_o7KoUk3AtgFudRu8pdrQcQudT6uPuQ_6kpUAtlnpST39v53CTHhVUR631MAUNw6W4VOlWAFUvZ4Wdu7qCjIjVjythxe6XJ5LyENZCzpbQ-2CKm4MGOVu1oI91b32A",
+            "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITEwNC4yNTc",
+            "createdBy" : {
+               "application" : {
+                  "displayName" : "OneDrive website",
+                  "id" : "44048800"
+               },
+               "user" : {
+                  "displayName" : "Fitz Elliott",
+                  "id" : "f4d50e400dfe7d4e"
+               }
+            },
+            "createdDateTime" : "2015-12-17T19:56:11.88Z",
+            "eTag" : "aRjRENTBFNDAwREZFN0Q0RSExMDQuMw",
+            "file" : {
+               "hashes" : {
+                  "crc32Hash" : "F8DDF9BE",
+                  "sha1Hash" : "A9C4ACF2DA75FC49056976433AC32142D2C71AB1"
+               },
+               "mimeType" : "application/pdf"
+            },
+            "fileSystemInfo" : {
+               "createdDateTime" : "2015-12-17T19:56:11.88Z",
+               "lastModifiedDateTime" : "2015-12-17T19:56:11.88Z"
+            },
+            "id" : "F4D50E400DFE7D4E!104",
+            "lastModifiedBy" : {
+               "application" : {
+                  "displayName" : "OneDrive website",
+                  "id" : "44048800"
+               },
+               "user" : {
+                  "displayName" : "Fitz Elliott",
+                  "id" : "f4d50e400dfe7d4e"
+               }
+            },
+            "lastModifiedDateTime" : "2015-12-17T19:56:29.963Z",
+            "name" : "Getting started with OneDrive.pdf",
+            "parentReference" : {
+               "driveId" : "f4d50e400dfe7d4e",
+               "driveType" : "personal",
+               "id" : "F4D50E400DFE7D4E!103",
+               "path" : "/drive/root:"
+            },
+            "reactions" : {
+               "commentCount" : 0
+            },
+            "size" : 1311269,
+            "webUrl" : "https://1drv.ms/b/s!AE59_g1ADtX0aA"
+         }
+      ],
+      "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21103')/children",
+      "children@odata.count" : 2,
+      "createdBy" : {
+         "application" : {
+            "displayName" : "OneDrive website",
+            "id" : "44048800"
+         },
+         "user" : {
+            "displayName" : "Fitz Elliott",
+            "id" : "f4d50e400dfe7d4e"
+         }
+      },
+      "createdDateTime" : "2015-12-17T19:56:08.533Z",
+      "eTag" : "aRjRENTBFNDAwREZFN0Q0RSExMDMuMA",
+      "fileSystemInfo" : {
+         "createdDateTime" : "2015-12-17T19:56:08.533Z",
+         "lastModifiedDateTime" : "2015-12-17T19:56:08.533Z"
+      },
+      "folder" : {
+         "childCount" : 2,
+         "folderType" : "document",
+         "folderView" : {
+            "sortBy" : "name",
+            "sortOrder" : "ascending",
+            "viewType" : "thumbnails"
+         }
+      },
+      "id" : "F4D50E400DFE7D4E!103",
+      "lastModifiedBy" : {
+         "application" : {
+            "displayName" : "OneDrive website",
+            "id" : "44048800"
+         },
+         "user" : {
+            "displayName" : "Fitz Elliott",
+            "id" : "f4d50e400dfe7d4e"
+         }
+      },
+      "lastModifiedDateTime" : "2021-03-22T04:38:45.62Z",
+      "name" : "root",
+      "parentReference" : {
+         "driveId" : "f4d50e400dfe7d4e",
+         "driveType" : "personal"
+      },
+      "reactions" : {
+         "commentCount" : 0
+      },
+      "root" : {},
+      "size" : 320934289,
+      "webUrl" : "https://onedrive.live.com/?cid=f4d50e400dfe7d4e"
+   },
+   "root_folder_id" : "9B83FF45F3386A10!103",
+   "subfolder_children" : {
+      "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('75BFE374EBEB1211!107')/children",
+      "cTag" : "adDo3NUJGRTM3NEVCRUIxMjExITEwNy42MzU4NTQ0MTkzNjYwMDAwMDA",
+      "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('75BFE374EBEB1211%21107')/children",
+      "createdDateTime" : "2015-11-22T14:33:33.57Z",
+      "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExMDcuMA",
+      "fileSystemInfo" : {
+         "createdDateTime" : "2015-11-22T14:33:33.57Z",
+         "lastModifiedDateTime" : "2015-11-22T14:33:33.57Z"
+      },
+      "folder" : {
+         "childCount" : 3
+      },
+      "id" : "75BFE374EBEB1211!107",
+      "lastModifiedDateTime" : "2015-12-11T14:45:36.6Z",
+      "name" : "ryan-test1",
+      "parentReference" : {
+         "driveId" : "75bfe374ebeb1211",
+         "id" : "75BFE374EBEB1211!103",
+         "path" : "/drive/root:"
+      },
+      "size" : 203146,
+      "value" : [
+         {
+            "cTag" : "adDo3NUJGRTM3NEVCRUIxMjExITExOC42MzU4NTIyMjUzMjMxMDAwMDA",
+            "createdDateTime" : "2015-11-29T17:21:09.997Z",
+            "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExMTguMw",
+            "fileSystemInfo" : {
+               "createdDateTime" : "2015-11-29T17:21:09.997Z",
+               "lastModifiedDateTime" : "2015-12-07T16:45:28.46Z"
+            },
+            "folder" : {
+               "childCount" : 4
+            },
+            "id" : "75BFE374EBEB1211!118",
+            "lastModifiedDateTime" : "2015-12-09T01:48:52.31Z",
+            "name" : "sub1-b",
+            "parentReference" : {
+               "driveId" : "75bfe374ebeb1211",
+               "id" : "75BFE374EBEB1211!107",
+               "path" : "/drive/root:/ryan-test1"
+            },
+            "size" : 119410,
+            "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!118"
+         },
+         {
+            "cTag" : "adDo3NUJGRTM3NEVCRUIxMjExITE0My42MzU4NTEwNTk2OTQ4MDAwMDA",
+            "createdDateTime" : "2015-12-01T16:52:33.07Z",
+            "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExNDMuMTI",
+            "fileSystemInfo" : {
+               "createdDateTime" : "2015-12-01T16:52:33.07Z",
+               "lastModifiedDateTime" : "2015-12-07T17:26:09.48Z"
+            },
+            "folder" : {
+               "childCount" : 1
+            },
+            "id" : "75BFE374EBEB1211!143",
+            "lastModifiedDateTime" : "2015-12-07T17:26:09.48Z",
+            "name" : "sub1-z",
+            "parentReference" : {
+               "driveId" : "75bfe374ebeb1211",
+               "id" : "75BFE374EBEB1211!107",
+               "path" : "/drive/root:/ryan-test1"
+            },
+            "size" : 0,
+            "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!143"
+         },
+         {
+            "@content.downloadUrl" : "https://public-ch3302.files.1drv.com/y3mgyZqUob4fS1RGIHa8w3tl0ozOlXXiKPMmz3hxZ0KbMqyZmIOnzXL8G9fWREL01mog9XRQn2g2qExRSSFce9ixl7fOlq_yjwOxX-6F2CNzgp3-wE9oThZSrvTix8h7cMD32RHd-__uwGK6Db0ErsGuxorWJKfRlmkpJFn7b8F9ZVvsIsLOmJWVKMyxrQMfves",
+            "cTag" : "aYzo3NUJGRTM3NEVCRUIxMjExITE1MC4yNTc",
+            "createdDateTime" : "2015-12-02T20:25:26.51Z",
+            "eTag" : "aNzVCRkUzNzRFQkVCMTIxMSExNTAuMTE",
+            "file" : {
+               "hashes" : {
+                  "crc32Hash" : "6D98C9D5",
+                  "sha1Hash" : "68A4192BF9DEAD103D7E4EA481074745932989F4"
+               },
+               "mimeType" : "image/jpeg"
+            },
+            "fileSystemInfo" : {
+               "createdDateTime" : "2015-12-02T20:25:26.51Z",
+               "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z"
+            },
+            "id" : "75BFE374EBEB1211!150",
+            "image" : {
+               "height" : 431,
+               "width" : 883
+            },
+            "lastModifiedDateTime" : "2015-12-08T21:51:15.593Z",
+            "name" : "elect-a.jpg",
+            "parentReference" : {
+               "driveId" : "75bfe374ebeb1211",
+               "id" : "75BFE374EBEB1211!107",
+               "path" : "/drive/root:/ryan-test1"
+            },
+            "photo" : {
+               "takenDateTime" : "2013-04-17T14:32:26Z"
+            },
+            "size" : 83736,
+            "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!150"
+         }
+      ],
+      "webUrl" : "https://onedrive.live.com/redir?resid=75BFE374EBEB1211!107"
+   },
+   "subfolder_id" : "75BFE374EBEB1211!107"
+}
