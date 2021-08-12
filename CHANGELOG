@@ -2,6 +2,16 @@
 ChangeLog
 *********
 
+21.0.0 (2021-08-12)
+===================
+- Feature: Add read/write support to OneDrive provider, adapted from the previous work of
+Ryan Casey (@caseyrygt) & Oleksandr Melnykov (@alexandr-melnikov-dev-pro).
+- Feature: Update OneDrive provider to support both OneDrive Personal and OneDrive for School or
+Business.  Switch the provider to use the MS Graph API and update documentation to follow.
+- Fix: Return a valid empty zip file when downloading a directory with no contents.
+- Code: Remove unneeded `async`s from synchronous Box tests.
+- Code: Pin pip to v18.1 on TravisCI to fix dependency resolution.
+
 20.1.0 (2020-11-03)
 ===================
 - Feature: Support storage limits on osfstorage.  The OSF now enforces storage quotas for OSF
