@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 ZIP64_LIMIT = 0xffffffff - 1
 
 
+# empty zip file
+EMPTY_ZIP_FILE = b'\x50\x4b\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+
+
 # Basic structure of .zip:
 
 # <Local File Header 0>
@@ -313,14 +317,17 @@ class ZipArchiveCentralDirectory(StringStream):
     def build_content(self):
         file_headers = []
         cumulative_offset = 0
+
+        count = len(self.files)
+        if count == 0:
+            return EMPTY_ZIP_FILE
+
         for file in self.files:
             file.zinfo.header_offset = cumulative_offset
             file_headers.append(file.directory_header)
             cumulative_offset += file.total_bytes
 
         file_headers = b''.join(file_headers)
-
-        count = len(self.files)
 
         # Zip64 End of Central Directory, section 4.3.14
         zip64_endrec = struct.pack(

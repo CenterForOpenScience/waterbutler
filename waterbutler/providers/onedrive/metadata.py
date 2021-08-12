@@ -56,17 +56,9 @@ class OneDriveFolderMetadata(BaseOneDriveMetadata, metadata.BaseFolderMetadata):
         """OneDrive provides modified and creation times for folders.  Most providers do not
         so we'll stuff this into the ``extra`` properties."""
 
-        modified = self.raw.get('lastModifiedDateTime', None)
-        if modified is not None:
-            modified = utils.normalize_datetime(modified)
-
-        created = self.raw.get('createdDateTime', None)
-        if created is not None:
-            created = utils.normalize_datetime(created)
-
         return dict(super().extra, **{
-            'modified_utc': modified,
-            'created_utc': created,
+            'modified_utc': utils.normalize_datetime(self.raw.get('lastModifiedDateTime')),
+            'created_utc': utils.normalize_datetime(self.raw.get('createdDateTime')),
         })
 
 
@@ -90,9 +82,10 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
 
     @property
     def content_type(self):
-        if 'file' in self.raw.keys():
-            return self.raw['file'].get('mimeType')
-        return 'application/octet-stream'
+        if not self.raw.get('file'):
+            return 'application/octet-stream'
+
+        return self.raw['file'].get('mimeType', 'application/octet-stream')
 
     @property
     def etag(self):
@@ -100,10 +93,7 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
 
     @property
     def created_utc(self):
-        created = self.raw.get('createdDateTime', None)
-        if created is not None:
-            created = utils.normalize_datetime(created)
-        return created
+        return utils.normalize_datetime(self.raw.get('createdDateTime'))
 
 
 class OneDriveRevisionMetadata(metadata.BaseFileRevisionMetadata):
