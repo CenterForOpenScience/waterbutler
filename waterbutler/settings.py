@@ -179,3 +179,4 @@ KEEN_PUBLIC_PROJECT_ID = keen_public_config.get_nullable('PROJECT_ID', None)
 KEEN_PUBLIC_WRITE_KEY = keen_public_config.get_nullable('WRITE_KEY', None)
 
 OSF_URL = config.get('OSF_URL', 'http://192.168.168.167:5000')
+FILENAME_NORMALIZATION_RULE = config.get('FILENAME_NORMALIZATION_RULE', 'NFC')
