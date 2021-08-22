@@ -1,4 +1,7 @@
+import unicodedata
+
 from waterbutler.core import exceptions
+from waterbutler import settings
 
 
 class CreateMixin:
