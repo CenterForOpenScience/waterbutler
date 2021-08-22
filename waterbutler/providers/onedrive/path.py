@@ -1,7 +1,10 @@
+import logging
 from itertools import repeat
 from urllib import parse as urlparse
 
 from waterbutler.core.path import WaterButlerPath
+
+logger = logging.getLogger(__name__)
 
 
 class OneDrivePath(WaterButlerPath):
@@ -21,15 +24,21 @@ class OneDrivePath(WaterButlerPath):
         :rtype OneDrivePath:
         :return: a new OneDrivePath object representing the entity in `response`
         """
-
         if (
             base_folder_id not in ('root', response['parentReference']['id']) and
             base_folder_metadata is None
         ):
             raise Exception('Need metadata for base folder to built correct OneDrivePath')
 
-        parent_path = urlparse.unquote(
-            response['parentReference']['path'].replace('/drive/root:', ''))
+        parent = response['parentReference']
+
+        absolute_root_path = None
+        if parent['driveType'] == 'business':
+            absolute_root_path = '/drives/{}/root:'.format(parent['driveId'])
+        else:
+            absolute_root_path = '/drive/root:'
+
+        parent_path = urlparse.unquote(parent['path'].replace(absolute_root_path, ''))
         if (len(parent_path) == 0):
             names = ['', response['name']]
         else:
@@ -50,7 +59,7 @@ class OneDrivePath(WaterButlerPath):
             # IS drive root: shouldn't happen
             # etc.
             base_folder_depth = base_folder_metadata['parentReference']['path'].replace(
-                '/drive/root:', ''
+                absolute_root_path, ''
             ).count('/') + 1
             nbr_parts_to_keep = len(names) - base_folder_depth
         elif base_folder_id != 'root':  # immediate parent is base folder. sanitize

@@ -122,33 +122,10 @@ class OneDriveProvider(provider.BaseProvider):
         if implicit_folder != explicit_folder:
             raise exceptions.NotFoundError(path)
 
-        # If base folder isn't root or the immediate parent of the requested path, then we need
-        # to verify that it actually is an ancestor of path.  Otherwise, a malicious user could
-        # try to get access to a file outside of the configured root.
-        base_folder = None
-        if not self.has_real_root() and self.folder != data['parentReference']['id']:
-            base_folder_resp = await self.make_request(
-                'GET', self._build_graph_item_url(self.folder),
-                expects=(HTTPStatus.OK, ),
-                throws=exceptions.MetadataError
-            )
-            base_folder = await base_folder_resp.json()
-            logger.debug('base_folder_data::{}'.format(base_folder))
-
-            base_full_path = urlparse.quote(
-                '{}/{}/'.format(
-                    urlparse.unquote(base_folder['parentReference']['path']),
-                    base_folder['name']
-                ),
-                self.dont_escape_these
-            )
-
-            if not data['parentReference']['path'].startswith(base_full_path):
-                # the requested file is NOT a child of self.folder
-                raise exceptions.NotFoundError(path)
-
+        base_folder = await self._assert_path_is_under_root(path, path_data=data)
         od_path = OneDrivePath.new_from_response(data, self.folder,
                                                  base_folder_metadata=base_folder)
+
         logger.debug('od_path.parts::{}'.format(repr(od_path._parts)))
         return od_path
 
@@ -170,33 +147,10 @@ class OneDriveProvider(provider.BaseProvider):
         data = await resp.json()
         logger.debug('response data::{}'.format(data))
 
-        # If base folder isn't root or the immediate parent of the requested path, then we need
-        # to verify that it actually is an ancestor of path.  Otherwise, a malicious user could
-        # try to get access to a file outside of the configured root.
-        base_folder = None
-        if not self.has_real_root() and self.folder != data['parentReference']['id']:
-            base_folder_resp = await self.make_request(
-                'GET', self._build_graph_item_url(self.folder),
-                expects=(HTTPStatus.OK, ),
-                throws=exceptions.MetadataError
-            )
-            base_folder = await base_folder_resp.json()
-            logger.debug('base_folder_data::{}'.format(base_folder))
-
-            base_full_path = urlparse.quote(
-                '{}/{}/'.format(
-                    urlparse.unquote(base_folder['parentReference']['path']),
-                    base_folder['name']
-                ),
-                self.dont_escape_these
-            )
-
-            if not data['parentReference']['path'].startswith(base_full_path):
-                # the requested file is NOT a child of self.folder
-                raise exceptions.NotFoundError(path)  # TESTME
-
+        base_folder = await self._assert_path_is_under_root(path, path_data=data)
         od_path = OneDrivePath.new_from_response(data, self.folder,
                                                  base_folder_metadata=base_folder)
+
         logger.debug('od_path.parts::{}'.format(repr(od_path._parts)))
         return od_path
 
@@ -511,9 +465,10 @@ class OneDriveProvider(provider.BaseProvider):
                                        "the file to see if the copy has completed",
                                        code=HTTPStatus.ACCEPTED)
 
-        logger.debug('awaited response data::{}'.format(data))
-        logger.debug('dest_parent_id::{}'.format(dest_path.parent.identifier))
-        final_path = OneDrivePath.new_from_response(data, dest_path.parent.identifier)
+        base_folder = await self._assert_path_is_under_root(dest_path, path_data=data)
+        final_path = OneDrivePath.new_from_response(data, self.folder,
+                                                    base_folder_metadata=base_folder)
+
         return self._intra_move_copy_metadata(data, final_path), not dest_exist
 
     async def intra_move(self, dest_provider, src_path, dest_path):
@@ -551,7 +506,10 @@ class OneDriveProvider(provider.BaseProvider):
 
         data = await resp.json()
 
-        final_path = OneDrivePath.new_from_response(data, dest_path.parent.identifier)
+        base_folder = await self._assert_path_is_under_root(dest_path, path_data=data)
+        final_path = OneDrivePath.new_from_response(data, self.folder,
+                                                    base_folder_metadata=base_folder)
+
         return self._intra_move_copy_metadata(data, final_path), not dest_exist
 
     # ========== utility methods ==========
@@ -595,6 +553,37 @@ class OneDriveProvider(provider.BaseProvider):
         folder = OneDriveFileMetadata(data, path)
         folder._children = self._construct_metadata(data, path)  # type: ignore
         return folder
+
+    async def _assert_path_is_under_root(self, path, path_data, **kwargs) -> dict:
+        # If base folder isn't root or the immediate parent of the requested path, then we need
+        # to verify that it actually is an ancestor of path.  Otherwise, a malicious user could
+        # try to get access to a file outside of the configured root.
+        base_folder = None
+        if not self.has_real_root() and self.folder != path_data['parentReference']['id']:
+            base_folder_resp = await self.make_request(
+                'GET', self._build_graph_item_url(self.folder),
+                expects=(HTTPStatus.OK, ),
+                throws=exceptions.MetadataError
+            )
+            base_folder = await base_folder_resp.json()
+
+            base_path_quoted = urlparse.quote(
+                '{}/{}/'.format(
+                    urlparse.unquote(base_folder['parentReference']['path']),
+                    base_folder['name']
+                ),
+                self.dont_escape_these
+            )
+
+            parent_path_quoted = urlparse.quote('{}/'.format(
+                urlparse.unquote(path_data['parentReference']['path'])
+            ), self.dont_escape_these)
+
+            if not parent_path_quoted.startswith(base_path_quoted):
+                # the requested file is NOT a child of self.folder
+                raise exceptions.NotFoundError(path)
+
+        return base_folder
 
     async def _revisions_json(self, path: OneDrivePath, **kwargs) -> dict:
         """Fetch a list of revisions for the file at ``path``.
@@ -669,8 +658,11 @@ class OneDriveProvider(provider.BaseProvider):
             throws=exceptions.UploadError,
         )
         data = await resp.json()
-        logger.debug('upload:: data:{}'.format(data))
-        new_path = OneDrivePath.new_from_response(data, path.parent.identifier)
+
+        base_folder = await self._assert_path_is_under_root(path, path_data=data)
+        new_path = OneDrivePath.new_from_response(data, self.folder,
+                                                  base_folder_metadata=base_folder)
+
         return OneDriveFileMetadata(data, new_path), not exists
 
     async def _chunked_upload(self, stream, path, exists):

@@ -49,7 +49,8 @@
             "id" : "F4D50E400DFE7D4E!290",
             "driveId" : "f4d50e400dfe7d4e",
             "path" : "/drive/root:/teeth",
-            "name" : "teeth"
+            "name" : "teeth",
+            "driveType" : "personal"
         }
     },
     "folder_metadata" : {
@@ -123,7 +124,8 @@
                     "id" : "F4D50E400DFE7D4E!290",
                     "path" : "/drive/root:/teeth",
                     "driveId" : "f4d50e400dfe7d4e",
-                    "name" : "teeth"
+                    "name" : "teeth",
+                    "driveType" : "personal"
                 },
                 "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
                 "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giQ",
@@ -135,7 +137,8 @@
         "parentReference" : {
             "path" : "/drive/root:",
             "driveId" : "f4d50e400dfe7d4e",
-            "id" : "F4D50E400DFE7D4E!103"
+            "id" : "F4D50E400DFE7D4E!103",
+            "driveType" : "personal"
         },
         "folder" : {
             "folderView" : {
@@ -201,7 +204,8 @@
                 "parentReference" : {
                     "path" : "/drive/root:",
                     "driveId" : "f4d50e400dfe7d4e",
-                    "id" : "F4D50E400DFE7D4E!103"
+                    "id" : "F4D50E400DFE7D4E!103",
+                    "driveType" : "personal"
                 },
                 "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITI5MC42MzYzODU4OTIwMTEzMDAwMDA",
                 "lastModifiedBy" : {
@@ -232,7 +236,8 @@
                 "parentReference" : {
                     "id" : "F4D50E400DFE7D4E!103",
                     "path" : "/drive/root:",
-                    "driveId" : "f4d50e400dfe7d4e"
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "driveType" : "personal"
                 },
                 "fileSystemInfo" : {
                     "lastModifiedDateTime" : "2017-08-17T17:49:50.363Z",
@@ -298,7 +303,8 @@
         "parentReference" : {
             "id" : "F4D50E400DFE7D4E!103",
             "path" : "/drive/root:",
-            "driveId" : "f4d50e400dfe7d4e"
+            "driveId" : "f4d50e400dfe7d4e",
+            "driveType" : "personal"
         },
         "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5MS4yNTg",
         "file" : {
@@ -383,7 +389,8 @@
                     "id" : "F4D50E400DFE7D4E!290",
                     "path" : "/drive/root:/teeth",
                     "driveId" : "f4d50e400dfe7d4e",
-                    "name" : "teeth"
+                    "name" : "teeth",
+                    "driveType" : "personal"
                 },
                 "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
                 "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giQ",
@@ -416,7 +423,8 @@
                 "parentReference" : {
                     "path" : "/drive/root:",
                     "driveId" : "f4d50e400dfe7d4e",
-                    "id" : "F4D50E400DFE7D4E!103"
+                    "id" : "F4D50E400DFE7D4E!103",
+                    "driveType" : "personal"
                 },
                 "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITI5MC42MzYzODU4OTIwMTEzMDAwMDA",
                 "lastModifiedBy" : {
@@ -447,7 +455,8 @@
                 "parentReference" : {
                     "id" : "F4D50E400DFE7D4E!103",
                     "path" : "/drive/root:",
-                    "driveId" : "f4d50e400dfe7d4e"
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "driveType" : "personal"
                 },
                 "fileSystemInfo" : {
                     "lastModifiedDateTime" : "2017-08-17T17:49:50.363Z",
