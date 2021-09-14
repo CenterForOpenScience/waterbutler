@@ -41,7 +41,8 @@
                     "id" : "F4D50E400DFE7D4E!103",
                     "name" : "root:",
                     "path" : "/drive/root:",
-                    "driveId" : "f4d50e400dfe7d4e"
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "driveType" : "personal"
                 },
                 "lastModifiedBy" : {
                     "user" : {
@@ -81,7 +82,8 @@
         "parentReference" : {
             "driveId" : "f4d50e400dfe7d4e",
             "path" : "/drive/root:",
-            "id" : "F4D50E400DFE7D4E!103"
+            "id" : "F4D50E400DFE7D4E!103",
+            "driveType": "personal"
         },
         "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
         "@microsoft.graph.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mB8JhDUWbofzVglNap3rO5i6R7jOQyJAz995dPlkrOiQeOV2jgK-EOf916z8YHi9A42WCTMVfNmHjJliYLccUFzJgsEK3j3cviT2YLlZBMRVN-sC0mfvZz_ZeDgiLzfSChMmNXkRoq6Ymh_F8r8jRAvZTzJOgyX3F7jdw4qcY27tz95Rutrl68W0Z8ntuh3bVoPIDHC5kckF8sSWoyv5j4BfRQCckjyrmaV8F1BM5Cb1x10WNdE7CP_X1bBFqY7ZTJzYcsQcDR07BdalvRTDp-A",
@@ -142,7 +144,8 @@
                     "driveId" : "f4d50e400dfe7d4e",
                     "id" : "F4D50E400DFE7D4E!154",
                     "name" : "foo",
-                    "path" : "/drive/root:/onenote/foo"
+                    "path" : "/drive/root:/onenote/foo",
+                    "driveType" : "personal"
                 },
                 "size" : 25474,
                 "webUrl" : "https://1drv.ms/o/s!AE59_g1ADtX0gR0"
@@ -177,7 +180,8 @@
                     "driveId" : "f4d50e400dfe7d4e",
                     "id" : "F4D50E400DFE7D4E!154",
                     "name" : "foo",
-                    "path" : "/drive/root:/onenote/foo"
+                    "path" : "/drive/root:/onenote/foo",
+                    "driveType" : "personal"
                 },
                 "size" : 2885,
                 "webUrl" : "https://1drv.ms/o/s!AE59_g1ADtX0gR4"
@@ -216,7 +220,8 @@
             "driveId" : "f4d50e400dfe7d4e",
             "id" : "F4D50E400DFE7D4E!289",
             "name" : "onenote",
-            "path" : "/drive/root:/onenote"
+            "path" : "/drive/root:/onenote",
+            "driveType" : "personal"
         },
         "size" : 28359,
         "webUrl" : "https://1drv.ms/o/s!AE59_g1ADtX0gRo"
@@ -232,7 +237,8 @@
                     "driveId" : "f4d50e400dfe7d4e",
                     "path" : "/drive/root:/onenote",
                     "id" : "F4D50E400DFE7D4E!289",
-                    "name" : "onenote"
+                    "name" : "onenote",
+                    "driveType" : "personal"
                 },
                 "webUrl" : "https://1drv.ms/o/s!AE59_g1ADtX0gRo",
                 "size" : 28359,
@@ -278,7 +284,8 @@
                     "name" : "foo",
                     "path" : "/drive/root:/onenote/foo",
                     "id" : "F4D50E400DFE7D4E!154",
-                    "driveId" : "f4d50e400dfe7d4e"
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "driveType" : "personal"
                 },
                 "size" : 2885,
                 "createdDateTime" : "2017-02-23T07:28:17.623Z",
@@ -313,7 +320,8 @@
                     "path" : "/drive/root:/onenote/foo",
                     "id" : "F4D50E400DFE7D4E!154",
                     "name" : "foo",
-                    "driveId" : "f4d50e400dfe7d4e"
+                    "driveId" : "f4d50e400dfe7d4e",
+                    "driveType" : "personal"
                 },
                 "size" : 25474,
                 "createdBy" : {

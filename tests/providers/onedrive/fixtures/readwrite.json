@@ -34,6 +34,7 @@
       "name" : "elect-a (1).jpg",
       "parentReference" : {
          "driveId" : "75bfe374ebeb1211",
+         "driveType" : "personal",
          "id" : "75BFE374EBEB1211!107",
          "path" : "/drive/root:/ryan-test1"
       },
@@ -67,6 +68,7 @@
       "name" : "elect-a.jpg",
       "parentReference" : {
          "driveId" : "75bfe374ebeb1211",
+         "driveType" : "personal",
          "id" : "75BFE374EBEB1211!107",
          "path" : "/drive/root:"
       },
@@ -88,6 +90,7 @@
       "name" : "hello.jpg",
       "parentReference" : {
          "driveId" : "75bfe374ebeb1211",
+         "driveType" : "personal",
          "id" : "75BFE374EBEB1211!103",
          "path" : "/drive/root:/ryan-test1"
       },
@@ -122,6 +125,7 @@
       "name" : "elect-a.jpg",
       "parentReference" : {
          "driveId" : "75bfe374ebeb1211",
+         "driveType" : "personal",
          "id" : "75BFE374EBEB1211!107",
          "path" : "/drive/root:/ryan-test1"
       },
@@ -147,6 +151,7 @@
             "name" : "test6",
             "parentReference" : {
                "driveId" : "9b83ff45f3386a10",
+               "driveType" : "personal",
                "id" : "9B83FF45F3386A10!103",
                "path" : "/drive/root:"
             },
@@ -170,6 +175,7 @@
             "name" : "googledrive-archive.zip",
             "parentReference" : {
                "driveId" : "9b83ff45f3386a10",
+               "driveType" : "personal",
                "id" : "9B83FF45F3386A10!103",
                "path" : "/drive/root:"
             },
@@ -210,6 +216,7 @@
             "name" : "sub1-b",
             "parentReference" : {
                "driveId" : "75bfe374ebeb1211",
+               "driveType" : "personal",
                "id" : "75BFE374EBEB1211!107",
                "path" : "/drive/root:/ryan-test1"
             },
@@ -232,6 +239,7 @@
             "name" : "sub1-z",
             "parentReference" : {
                "driveId" : "75bfe374ebeb1211",
+               "driveType" : "personal",
                "id" : "75BFE374EBEB1211!107",
                "path" : "/drive/root:/ryan-test1"
             },
@@ -263,6 +271,7 @@
             "name" : "elect-a.jpg",
             "parentReference" : {
                "driveId" : "75bfe374ebeb1211",
+               "driveType" : "personal",
                "id" : "75BFE374EBEB1211!107",
                "path" : "/drive/root:/ryan-test1"
             },
@@ -288,6 +297,7 @@
       "name" : "ryan-test1",
       "parentReference" : {
          "driveId" : "75bfe374ebeb1211",
+         "driveType" : "personal",
          "id" : "75BFE374EBEB1211!103",
          "path" : "/drive/root:"
       },
@@ -314,6 +324,7 @@
             "name" : "sub1-b",
             "parentReference" : {
                "driveId" : "75bfe374ebeb1211",
+               "driveType" : "personal",
                "id" : "75BFE374EBEB1211!107",
                "path" : "/drive/root:/ryan-test1/sub1"
             },
@@ -336,6 +347,7 @@
             "name" : "sub1-z",
             "parentReference" : {
                "driveId" : "75bfe374ebeb1211",
+               "driveType" : "personal",
                "id" : "75BFE374EBEB1211!107",
                "path" : "/drive/root:/ryan-test1/sub1"
             },
@@ -362,6 +374,7 @@
             "name" : "elect-a.jpg",
             "parentReference" : {
                "driveId" : "75bfe374ebeb1211",
+               "driveType" : "personal",
                "id" : "75BFE374EBEB1211!107",
                "path" : "/drive/root:/ryan-test1/sub1"
             },
@@ -379,6 +392,7 @@
       "name" : "sub1-b",
       "parentReference" : {
          "driveId" : "75bfe374ebeb1211",
+         "driveType" : "personal",
          "id" : "75BFE374EBEB1211!107",
          "path" : "/drive/root:/ryan-test1"
       },

@@ -19,7 +19,8 @@
         "parentReference" : {
             "path" : "/drive/root:",
             "id" : "F4D50E400DFE7D4E!103",
-            "driveId" : "f4d50e400dfe7d4e"
+            "driveId" : "f4d50e400dfe7d4e",
+            "driveType" : "personal"
         },
         "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
         "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21290')/children",
@@ -72,7 +73,8 @@
                     "driveId" : "f4d50e400dfe7d4e",
                     "path" : "/drive/root:/teeth",
                     "id" : "F4D50E400DFE7D4E!290",
-                    "name" : "teeth"
+                    "name" : "teeth",
+                    "driveType" : "personal"
                 },
                 "webUrl" : "https://1drv.ms/f/s!AE59_g1ADtX0giU",
                 "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
@@ -104,7 +106,8 @@
                     "driveId" : "f4d50e400dfe7d4e",
                     "path" : "/drive/root:/teeth",
                     "id" : "F4D50E400DFE7D4E!290",
-                    "name" : "teeth"
+                    "name" : "teeth",
+                    "driveType" : "personal"
                 },
                 "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giQ",
                 "createdBy" : {
@@ -176,7 +179,8 @@
             "driveId" : "f4d50e400dfe7d4e",
             "path" : "/drive/root:/teeth",
             "name" : "teeth",
-            "id" : "F4D50E400DFE7D4E!290"
+            "id" : "F4D50E400DFE7D4E!290",
+            "driveType" : "personal"
         },
         "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
         "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
@@ -220,6 +224,7 @@
             "id" : "F4D50E400DFE7D4E!290",
             "name" : "teeth",
             "driveId" : "f4d50e400dfe7d4e",
+            "driveType" : "personal",
             "path" : "/drive/root:/teeth"
         },
         "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
@@ -233,6 +238,7 @@
                     "id" : "F4D50E400DFE7D4E!293",
                     "name" : "crushers",
                     "driveId" : "f4d50e400dfe7d4e",
+                    "driveType" : "personal",
                     "path" : "/drive/root:/teeth/crushers"
                 },
                 "name" : "molars.txt",
@@ -324,6 +330,7 @@
         "parentReference" : {
             "path" : "/drive/root:/teeth/crushers",
             "driveId" : "f4d50e400dfe7d4e",
+            "driveType" : "personal",
             "name" : "crushers",
             "id" : "F4D50E400DFE7D4E!293"
         },
@@ -371,6 +378,7 @@
         "name" : "toes.txt",
         "parentReference" : {
             "driveId" : "f4d50e400dfe7d4e",
+            "driveType" : "personal",
             "path" : "/drive/root:",
             "id" : "F4D50E400DFE7D4E!103"
         },

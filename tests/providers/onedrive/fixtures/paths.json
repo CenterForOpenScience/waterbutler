@@ -43,11 +43,602 @@
             "path" : "/drive/root:/deep/deeper/deepest/positively%20abyssyal",
             "id" : "F4D50E400DFE7D4E!298",
             "name" : "positively abyssyal",
-            "driveId" : "f4d50e400dfe7d4e"
+            "driveId" : "f4d50e400dfe7d4e",
+            "driveType": "personal"
         },
         "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0gis",
         "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mjtosOcbGBtNxYmp5-H-TYeT7TdFxv_EMev3KEQcOqMc_a6mKODjh0SOew6vLNy12kUopxRF3kihUHYY18zanCHKN3N7Wb28ppZmFGjQ4kA2RVrk7f2QqDpbA5VAxZ4zmqQcsl5aVYEH9_pCBwhhcJzTF-VQSZELL5dG4RdLPqQX4tUo8KEyonlWb0-uuR_7ssfZXTIgu5fIqGvskT882y2H3zOF8P6tSJAVVpvKuOxnXAIITn1ghKu1KlDpzktcPXmDkjY2sE_vRBn_5CM0zzg",
         "children" : [],
         "size" : 33
+    },
+    "od4b_root_provider": {
+        "file_metadata": {"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#drives('b%21aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K')/items/$entity","@microsoft.graph.downloadUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/_layouts/15/download.aspx?UniqueId=411f4306-6ec3-4189-9287-e32fb52e8404&Translate=false&tempauth=eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJhdWQiOiIwMDAwMDAwMy0wMDAwLTBmZjEtY2UwMC0wMDAwMDAwMDAwMDAvY2VudGVyZm9yb3BlbnNjaWVuY2UtbXkuc2hhcmVwb2ludC5jb21AMWQzZTkyM2EtMzI4Ni00YjYzLTg2NzYtZGJjZWIzMjMwZmJmIiwiaXNzIjoiMDAwMDAwMDMtMDAwMC0wZmYxLWNlMDAtMDAwMDAwMDAwMDAwIiwibmJmIjoiMTYyOTY1MjI2NiIsImV4cCI6IjE2Mjk2NTU4NjYiLCJlbmRwb2ludHVybCI6IjlsZ1dXcGIrVEtHcS9acFhBMXFNc2gxSnozM2MzcXFlNytCRU13Q2dUNkE9IiwiZW5kcG9pbnR1cmxMZW5ndGgiOiIxNTUiLCJpc2xvb3BiYWNrIjoiVHJ1ZSIsImNpZCI6IlpqWmhNVEUyWVRJdE4ySmhZaTAwWkRVeExUazBNelF0TVRnMk5HTmtZVGcyT1RneiIsInZlciI6Imhhc2hlZHByb29mdG9rZW4iLCJzaXRlaWQiOiJOMlZtTlRZME5qZ3RNREl5T0MwME9UbGlMVGswWVRNdE56YzRZamt3T1RFM09XRTEiLCJhcHBfZGlzcGxheW5hbWUiOiJGaXR6LUNPUyBMb2NhbGhvc3QgT25lRHJpdmUgVGVzdCBBcHAiLCJnaXZlbl9uYW1lIjoiRml0eiIsImZhbWlseV9uYW1lIjoiRWxsaW90dCIsImFwcGlkIjoiNTBiNzgzZmQtYTA5Ny00N2ZhLWE4YzgtZDkwMWRkYTM2MGM4IiwidGlkIjoiMWQzZTkyM2EtMzI4Ni00YjYzLTg2NzYtZGJjZWIzMjMwZmJmIiwidXBuIjoiZml0ekBjb3MuaW8iLCJwdWlkIjoiMTAwMzIwMDA1RkQ5QkREQiIsImNhY2hla2V5IjoiMGguZnxtZW1iZXJzaGlwfDEwMDMyMDAwNWZkOWJkZGJAbGl2ZS5jb20iLCJzY3AiOiJteWZpbGVzLnJlYWQgYWxsZmlsZXMucmVhZCBteWZpbGVzLndyaXRlIGFsbHByb2ZpbGVzLnJlYWQiLCJ0dCI6IjIiLCJ1c2VQZXJzaXN0ZW50Q29va2llIjpudWxsfQ.NklmT0xiWlAzN3J1QXhCZTltZ3loMUFJVVV0VVFhWE92cmlQSkIrN3BLdz0&ApiVersion=2.0","createdDateTime":"2021-08-19T01:09:02Z","eTag":"\"{411F4306-6EC3-4189-9287-E32FB52E8404},1\"","id":"01AP6G5CYGIMPUDQ3ORFAZFB7DF62S5BAE","lastModifiedDateTime":"2021-08-19T01:09:02Z","name":"302m2.jpeg","webUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/Documents/302m2.jpeg","cTag":"\"c:{411F4306-6EC3-4189-9287-E32FB52E8404},1\"","size":41410,"createdBy":{"application":{"id":"50b783fd-a097-47fa-a8c8-d901dda360c8","displayName":"Fitz-COS Localhost OneDrive Test App"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"lastModifiedBy":{"application":{"id":"50b783fd-a097-47fa-a8c8-d901dda360c8","displayName":"Fitz-COS Localhost OneDrive Test App"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"parentReference":{"driveId":"b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K","driveType":"business","id":"01AP6G5C56Y2GOVW7725BZO354PWSELRRZ","path":"/drives/b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K/root:"},"file":{"mimeType":"image/jpeg","hashes":{"quickXorHash":"81PcK+AchhCwOVOJy+8LxzS3wGM="}},"fileSystemInfo":{"createdDateTime":"2021-08-19T01:09:02Z","lastModifiedDateTime":"2021-08-19T01:09:02Z"},"image":{"height":366,"width":650}},
+        "folder_metadata": {"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#drives('b%21aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K')/items/$entity","createdDateTime":"2021-08-13T06:29:06Z","eTag":"\"{3217E3CA-01B9-42F2-81C2-71E5A5E2932F},1\"","id":"01AP6G5C6K4MLTFOIB6JBIDQTR4WS6FEZP","lastModifiedDateTime":"2021-08-13T06:29:06Z","name":"folder","webUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/Documents/folder","cTag":"\"c:{3217E3CA-01B9-42F2-81C2-71E5A5E2932F},0\"","size":49984519,"createdBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"lastModifiedBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"parentReference":{"driveId":"b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K","driveType":"business","id":"01AP6G5C56Y2GOVW7725BZO354PWSELRRZ","path":"/drives/b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K/root:"},"fileSystemInfo":{"createdDateTime":"2021-08-13T06:29:06Z","lastModifiedDateTime":"2021-08-13T06:29:06Z"},"folder":{"childCount":13}},
+        "subfile_metadata": {"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#drives('b%21aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K')/items/$entity","@microsoft.graph.downloadUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/_layouts/15/download.aspx?UniqueId=ed63e054-e100-44f1-9e3f-4b52f318f209&Translate=false&tempauth=eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJhdWQiOiIwMDAwMDAwMy0wMDAwLTBmZjEtY2UwMC0wMDAwMDAwMDAwMDAvY2VudGVyZm9yb3BlbnNjaWVuY2UtbXkuc2hhcmVwb2ludC5jb21AMWQzZTkyM2EtMzI4Ni00YjYzLTg2NzYtZGJjZWIzMjMwZmJmIiwiaXNzIjoiMDAwMDAwMDMtMDAwMC0wZmYxLWNlMDAtMDAwMDAwMDAwMDAwIiwibmJmIjoiMTYyOTY1MTgyOCIsImV4cCI6IjE2Mjk2NTU0MjgiLCJlbmRwb2ludHVybCI6Im5aYldmYVdwU2ZiSUxoT2haRXgwK1ZxQWhtUWZ2NlhtNmczVGJzTVFOOXc9IiwiZW5kcG9pbnR1cmxMZW5ndGgiOiIxNTUiLCJpc2xvb3BiYWNrIjoiVHJ1ZSIsImNpZCI6IlptWXdPV001WWpjdE1XWTJOaTAwTW1OaUxUa3haVEF0TTJVM1lXWXpNbUk0WldReSIsInZlciI6Imhhc2hlZHByb29mdG9rZW4iLCJzaXRlaWQiOiJOMlZtTlRZME5qZ3RNREl5T0MwME9UbGlMVGswWVRNdE56YzRZamt3T1RFM09XRTEiLCJhcHBfZGlzcGxheW5hbWUiOiJGaXR6LUNPUyBMb2NhbGhvc3QgT25lRHJpdmUgVGVzdCBBcHAiLCJnaXZlbl9uYW1lIjoiRml0eiIsImZhbWlseV9uYW1lIjoiRWxsaW90dCIsImFwcGlkIjoiNTBiNzgzZmQtYTA5Ny00N2ZhLWE4YzgtZDkwMWRkYTM2MGM4IiwidGlkIjoiMWQzZTkyM2EtMzI4Ni00YjYzLTg2NzYtZGJjZWIzMjMwZmJmIiwidXBuIjoiZml0ekBjb3MuaW8iLCJwdWlkIjoiMTAwMzIwMDA1RkQ5QkREQiIsImNhY2hla2V5IjoiMGguZnxtZW1iZXJzaGlwfDEwMDMyMDAwNWZkOWJkZGJAbGl2ZS5jb20iLCJzY3AiOiJteWZpbGVzLnJlYWQgYWxsZmlsZXMucmVhZCBteWZpbGVzLndyaXRlIGFsbHByb2ZpbGVzLnJlYWQiLCJ0dCI6IjIiLCJ1c2VQZXJzaXN0ZW50Q29va2llIjpudWxsfQ.U1g2WlpLVFh2MTZZVEZWOGc4c3R0M003K0tLZU1pWEZ2eUZrelVSNXJFST0&ApiVersion=2.0","createdDateTime":"2021-08-22T15:46:08Z","eTag":"\"{ED63E054-E100-44F1-9E3F-4B52F318F209},1\"","id":"01AP6G5C2U4BR62AHB6FCJ4P2LKLZRR4QJ","lastModifiedDateTime":"2021-08-22T15:46:08Z","name":"8yngNkB.jpg","webUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/Documents/folder/8yngNkB.jpg","cTag":"\"c:{ED63E054-E100-44F1-9E3F-4B52F318F209},1\"","size":96416,"createdBy":{"application":{"id":"50b783fd-a097-47fa-a8c8-d901dda360c8","displayName":"Fitz-COS Localhost OneDrive Test App"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"lastModifiedBy":{"application":{"id":"50b783fd-a097-47fa-a8c8-d901dda360c8","displayName":"Fitz-COS Localhost OneDrive Test App"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"parentReference":{"driveId":"b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K","driveType":"business","id":"01AP6G5C6K4MLTFOIB6JBIDQTR4WS6FEZP","path":"/drives/b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K/root:/folder"},"file":{"mimeType":"image/jpeg","hashes":{"quickXorHash":"LQJAV2hQhS3X4SN9FkDgmIyqBc0="}},"fileSystemInfo":{"createdDateTime":"2021-08-22T15:46:08Z","lastModifiedDateTime":"2021-08-22T15:46:08Z"},"image":{"height":960,"width":720}},
+        "subfolder_metadata": {"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#drives('b%21aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K')/items/$entity","createdDateTime":"2021-08-13T06:32:46Z","eTag":"\"{DD483E42-2350-4EEF-92AF-B7F3590FA7FA},1\"","id":"01AP6G5C2CHZEN2UBD55HJFL5X6NMQ7J72","lastModifiedDateTime":"2021-08-13T06:32:46Z","name":"subfolder","webUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/Documents/folder/subfolder","cTag":"\"c:{DD483E42-2350-4EEF-92AF-B7F3590FA7FA},0\"","size":24641222,"createdBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"lastModifiedBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"parentReference":{"driveId":"b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K","driveType":"business","id":"01AP6G5C6K4MLTFOIB6JBIDQTR4WS6FEZP","path":"/drives/b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K/root:/folder"},"fileSystemInfo":{"createdDateTime":"2021-08-13T06:32:46Z","lastModifiedDateTime":"2021-08-13T06:32:46Z"},"folder":{"childCount":8}},
+        "file_id": "01AP6G5CYGIMPUDQ3ORFAZFB7DF62S5BAE",
+        "folder_id": "01AP6G5C6K4MLTFOIB6JBIDQTR4WS6FEZP",
+        "subfile_id": "01AP6G5C2U4BR62AHB6FCJ4P2LKLZRR4QJ",
+        "subfolder_id": "01AP6G5C2CHZEN2UBD55HJFL5X6NMQ7J72"
+    },
+    "odp_root_provider": {
+        "file_metadata": {
+            "fileSystemInfo" : {
+                "createdDateTime" : "2017-08-17T17:49:39.613Z",
+                "lastModifiedDateTime" : "2017-08-17T17:49:50.363Z"
+            },
+            "parentReference" : {
+                "id" : "F4D50E400DFE7D4E!103",
+                "path" : "/drive/root:",
+                "driveId" : "f4d50e400dfe7d4e",
+                "driveType" : "personal"
+            },
+            "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5MS4yNTg",
+            "file" : {
+                "hashes" : {
+                    "sha1Hash" : "D6FAC576DCF80198874C9C9476F021AF3F12688C"
+                },
+                "mimeType" : "text/plain"
+            },
+            "name" : "toes.txt",
+            "children" : [],
+            "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+            "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giM",
+            "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mB8JhDUWbofzVglNap3rO5i6R7jOQyJAz995dPlkrOiQeOV2jgK-EOf916z8YHi9A42WCTMVfNmHjJliYLccUFzJgsEK3j3cviT2YLlZBMRVN-sC0mfvZz_ZeDgiLzfSChMmNXkRoq6Ymh_F8r8jRAvZTzJOgyX3F7jdw4qcY27tz95Rutrl68W0Z8ntuh3bVoPIDHC5kckF8sSWoyv5j4BfRQCckjyrmaV8F1BM5Cb1x10WNdE7CP_X1bBFqY7ZTJzYcsQcDR07BdalvRTDp-A",
+            "id" : "F4D50E400DFE7D4E!291",
+            "size" : 11,
+            "createdBy" : {
+                "application" : {
+                    "id" : "481710a4",
+                    "displayName" : "OneDrive"
+                },
+                "user" : {
+                    "displayName" : "Fitz Elliott",
+                    "id" : "f4d50e400dfe7d4e"
+                }
+            },
+            "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTEuMg",
+            "lastModifiedBy" : {
+                "application" : {
+                    "id" : "481710a4",
+                    "displayName" : "OneDrive"
+                },
+                "user" : {
+                    "id" : "f4d50e400dfe7d4e",
+                    "displayName" : "Fitz Elliott"
+                }
+            },
+            "createdDateTime" : "2017-08-17T17:49:39.613Z",
+            "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21291')/children",
+            "lastModifiedDateTime" : "2017-08-17T17:49:50.38Z"
+        },
+        "folder_metadata": {
+            "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21290')/children",
+            "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
+            "createdDateTime" : "2017-08-17T17:49:26.74Z",
+            "id" : "F4D50E400DFE7D4E!290",
+            "lastModifiedBy" : {
+                "application" : {
+                    "displayName" : "OneDrive website",
+                    "id" : "44048800"
+                },
+                "user" : {
+                    "id" : "f4d50e400dfe7d4e",
+                    "displayName" : "Fitz Elliott"
+                }
+            },
+            "createdBy" : {
+                "application" : {
+                    "displayName" : "OneDrive website",
+                    "id" : "44048800"
+                },
+                "user" : {
+                    "id" : "f4d50e400dfe7d4e",
+                    "displayName" : "Fitz Elliott"
+                }
+            },
+            "size" : 40,
+            "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTAuMA",
+            "webUrl" : "https://1drv.ms/f/s!AE59_g1ADtX0giI",
+            "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+            "name" : "teeth",
+            "children" : [
+                {
+                    "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mBcVOkGovSm5roxVUpCkHMruB1kdSjruzCEgbQ846jlXD6ZDSYLy96yPW5LSXKf6p8C6Qn_-QqXdvXfM9KkPFH7L9BNyaMbSaN6aU_AC2NxQTSL-0VD-9xNA1riqWip9e2rB0FL_iSy7hkGfar_pem_K3bLAcjUEm4tvNMTEEetLvBYbr60LScwGKyky8z-eRt-hsdZNRRaF-hbrcR9j7ZbDquEuFRFk0mX1psLvqU5mseERpL22j3V1UNt-4_CCEwxc4bUmpMIKm8_phvSa2rA",
+                    "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5Mi4yNTg",
+                    "file" : {
+                        "mimeType" : "text/plain",
+                        "hashes" : {
+                            "sha1Hash" : "A61275F93B2710487CE2C94F9CC256E413EA6871"
+                        }
+                    },
+                    "id" : "F4D50E400DFE7D4E!292",
+                    "lastModifiedBy" : {
+                        "user" : {
+                            "id" : "f4d50e400dfe7d4e",
+                            "displayName" : "Fitz Elliott"
+                        },
+                        "application" : {
+                            "displayName" : "OneDrive",
+                            "id" : "481710a4"
+                        }
+                    },
+                    "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTIuMg",
+                    "createdBy" : {
+                        "user" : {
+                            "displayName" : "Fitz Elliott",
+                            "id" : "f4d50e400dfe7d4e"
+                        },
+                        "application" : {
+                            "displayName" : "OneDrive",
+                            "id" : "481710a4"
+                        }
+                    },
+                    "size" : 40,
+                    "fileSystemInfo" : {
+                        "createdDateTime" : "2017-08-17T17:50:26.876Z",
+                        "lastModifiedDateTime" : "2017-08-17T17:53:21.113Z"
+                    },
+                    "parentReference" : {
+                        "id" : "F4D50E400DFE7D4E!290",
+                        "path" : "/drive/root:/teeth",
+                        "driveId" : "f4d50e400dfe7d4e",
+                        "name" : "teeth",
+                        "driveType" : "personal"
+                    },
+                    "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
+                    "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giQ",
+                    "name" : "bicuspid.txt",
+                    "createdDateTime" : "2017-08-17T17:50:26.877Z"
+                }
+            ],
+            "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITI5MC42MzYzODU4OTIwMTEzMDAwMDA",
+            "parentReference" : {
+                "path" : "/drive/root:",
+                "driveId" : "f4d50e400dfe7d4e",
+                "id" : "F4D50E400DFE7D4E!103",
+                "driveType" : "personal"
+            },
+            "folder" : {
+                "folderView" : {
+                    "viewType" : "thumbnails",
+                    "sortBy" : "name",
+                    "sortOrder" : "ascending"
+                },
+                "childCount" : 1
+            },
+            "fileSystemInfo" : {
+                "lastModifiedDateTime" : "2017-08-17T17:49:26.74Z",
+                "createdDateTime" : "2017-08-17T17:49:26.74Z"
+            }
+        },
+        "subfile_metadata": {
+            "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21292')/children",
+            "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
+            "createdDateTime" : "2017-08-17T17:50:26.877Z",
+            "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mSGfK7V7xQl1tZrz7UQTsCKyTXFp0d0H75AQdzM3_GgwUoPdE4-RkkZF3-c14dlj-oPoiCttFqlkMe2Ja-R-rzrcjUKNbl5HaprTkANJe_Nb8Qv0EOJ-ngFTg6-NaIx7tgvPXrBvaDMyyMWfUSuDnfNQVumL9xmQ-CbcpJe-N86sACf1RERKPsAsesO2VWSmevXUK6U1A87Efw1bk3FAGp7bh5RSmZfvpXSGLswPRbmI_xShjMdo8J1DUsTnC6remAtRuUXyZ5yEpJCpiY75kqw",
+            "createdBy" : {
+                "application" : {
+                    "id" : "481710a4",
+                    "displayName" : "OneDrive"
+                },
+                "user" : {
+                    "id" : "f4d50e400dfe7d4e",
+                    "displayName" : "Fitz Elliott"
+                }
+            },
+            "lastModifiedBy" : {
+                "application" : {
+                    "displayName" : "OneDrive",
+                    "id" : "481710a4"
+                },
+                "user" : {
+                    "id" : "f4d50e400dfe7d4e",
+                    "displayName" : "Fitz Elliott"
+                }
+            },
+            "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTIuMg",
+            "size" : 40,
+            "id" : "F4D50E400DFE7D4E!292",
+            "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+            "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giQ",
+            "children" : [],
+            "name" : "bicuspid.txt",
+            "file" : {
+                "mimeType" : "text/plain",
+                "hashes" : {
+                    "sha1Hash" : "A61275F93B2710487CE2C94F9CC256E413EA6871"
+                }
+            },
+            "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5Mi4yNTg",
+            "fileSystemInfo" : {
+                "lastModifiedDateTime" : "2017-08-17T17:53:21.113Z",
+                "createdDateTime" : "2017-08-17T17:50:26.876Z"
+            },
+            "parentReference" : {
+                "id" : "F4D50E400DFE7D4E!290",
+                "driveId" : "f4d50e400dfe7d4e",
+                "path" : "/drive/root:/teeth",
+                "name" : "teeth",
+                "driveType" : "personal"
+            }
+        },
+        "subfolder_metadata": {},
+        "file_id": "F4D50E400DFE7D4E!291",
+        "folder_id": "F4D50E400DFE7D4E!290",
+        "subfile_id": "F4D50E400DFE7D4E!292",
+        "subfolder_id": ""
+    },
+    "od4b_subfolder_provider": {
+        "root_metadata": {"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#drives('b%21aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K')/items/$entity","createdDateTime":"2021-08-13T06:29:06Z","eTag":"\"{3217E3CA-01B9-42F2-81C2-71E5A5E2932F},1\"","id":"01AP6G5C6K4MLTFOIB6JBIDQTR4WS6FEZP","lastModifiedDateTime":"2021-08-13T06:29:06Z","name":"folder","webUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/Documents/folder","cTag":"\"c:{3217E3CA-01B9-42F2-81C2-71E5A5E2932F},0\"","size":49984519,"createdBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"lastModifiedBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"parentReference":{"driveId":"b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K","driveType":"business","id":"01AP6G5C56Y2GOVW7725BZO354PWSELRRZ","path":"/drives/b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K/root:"},"fileSystemInfo":{"createdDateTime":"2021-08-13T06:29:06Z","lastModifiedDateTime":"2021-08-13T06:29:06Z"},"folder":{"childCount":13}},
+        "file_metadata": {"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#drives('b%21aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K')/items/$entity","@microsoft.graph.downloadUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/_layouts/15/download.aspx?UniqueId=ed63e054-e100-44f1-9e3f-4b52f318f209&Translate=false&tempauth=eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJhdWQiOiIwMDAwMDAwMy0wMDAwLTBmZjEtY2UwMC0wMDAwMDAwMDAwMDAvY2VudGVyZm9yb3BlbnNjaWVuY2UtbXkuc2hhcmVwb2ludC5jb21AMWQzZTkyM2EtMzI4Ni00YjYzLTg2NzYtZGJjZWIzMjMwZmJmIiwiaXNzIjoiMDAwMDAwMDMtMDAwMC0wZmYxLWNlMDAtMDAwMDAwMDAwMDAwIiwibmJmIjoiMTYyOTY1MTgyOCIsImV4cCI6IjE2Mjk2NTU0MjgiLCJlbmRwb2ludHVybCI6Im5aYldmYVdwU2ZiSUxoT2haRXgwK1ZxQWhtUWZ2NlhtNmczVGJzTVFOOXc9IiwiZW5kcG9pbnR1cmxMZW5ndGgiOiIxNTUiLCJpc2xvb3BiYWNrIjoiVHJ1ZSIsImNpZCI6IlptWXdPV001WWpjdE1XWTJOaTAwTW1OaUxUa3haVEF0TTJVM1lXWXpNbUk0WldReSIsInZlciI6Imhhc2hlZHByb29mdG9rZW4iLCJzaXRlaWQiOiJOMlZtTlRZME5qZ3RNREl5T0MwME9UbGlMVGswWVRNdE56YzRZamt3T1RFM09XRTEiLCJhcHBfZGlzcGxheW5hbWUiOiJGaXR6LUNPUyBMb2NhbGhvc3QgT25lRHJpdmUgVGVzdCBBcHAiLCJnaXZlbl9uYW1lIjoiRml0eiIsImZhbWlseV9uYW1lIjoiRWxsaW90dCIsImFwcGlkIjoiNTBiNzgzZmQtYTA5Ny00N2ZhLWE4YzgtZDkwMWRkYTM2MGM4IiwidGlkIjoiMWQzZTkyM2EtMzI4Ni00YjYzLTg2NzYtZGJjZWIzMjMwZmJmIiwidXBuIjoiZml0ekBjb3MuaW8iLCJwdWlkIjoiMTAwMzIwMDA1RkQ5QkREQiIsImNhY2hla2V5IjoiMGguZnxtZW1iZXJzaGlwfDEwMDMyMDAwNWZkOWJkZGJAbGl2ZS5jb20iLCJzY3AiOiJteWZpbGVzLnJlYWQgYWxsZmlsZXMucmVhZCBteWZpbGVzLndyaXRlIGFsbHByb2ZpbGVzLnJlYWQiLCJ0dCI6IjIiLCJ1c2VQZXJzaXN0ZW50Q29va2llIjpudWxsfQ.U1g2WlpLVFh2MTZZVEZWOGc4c3R0M003K0tLZU1pWEZ2eUZrelVSNXJFST0&ApiVersion=2.0","createdDateTime":"2021-08-22T15:46:08Z","eTag":"\"{ED63E054-E100-44F1-9E3F-4B52F318F209},1\"","id":"01AP6G5C2U4BR62AHB6FCJ4P2LKLZRR4QJ","lastModifiedDateTime":"2021-08-22T15:46:08Z","name":"8yngNkB.jpg","webUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/Documents/folder/8yngNkB.jpg","cTag":"\"c:{ED63E054-E100-44F1-9E3F-4B52F318F209},1\"","size":96416,"createdBy":{"application":{"id":"50b783fd-a097-47fa-a8c8-d901dda360c8","displayName":"Fitz-COS Localhost OneDrive Test App"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"lastModifiedBy":{"application":{"id":"50b783fd-a097-47fa-a8c8-d901dda360c8","displayName":"Fitz-COS Localhost OneDrive Test App"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"parentReference":{"driveId":"b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K","driveType":"business","id":"01AP6G5C6K4MLTFOIB6JBIDQTR4WS6FEZP","path":"/drives/b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K/root:/folder"},"file":{"mimeType":"image/jpeg","hashes":{"quickXorHash":"LQJAV2hQhS3X4SN9FkDgmIyqBc0="}},"fileSystemInfo":{"createdDateTime":"2021-08-22T15:46:08Z","lastModifiedDateTime":"2021-08-22T15:46:08Z"},"image":{"height":960,"width":720}},
+        "folder_metadata": {"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#drives('b%21aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K')/items/$entity","createdDateTime":"2021-08-13T06:32:46Z","eTag":"\"{DD483E42-2350-4EEF-92AF-B7F3590FA7FA},1\"","id":"01AP6G5C2CHZEN2UBD55HJFL5X6NMQ7J72","lastModifiedDateTime":"2021-08-13T06:32:46Z","name":"subfolder","webUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/Documents/folder/subfolder","cTag":"\"c:{DD483E42-2350-4EEF-92AF-B7F3590FA7FA},0\"","size":24641222,"createdBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"lastModifiedBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"parentReference":{"driveId":"b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K","driveType":"business","id":"01AP6G5C6K4MLTFOIB6JBIDQTR4WS6FEZP","path":"/drives/b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K/root:/folder"},"fileSystemInfo":{"createdDateTime":"2021-08-13T06:32:46Z","lastModifiedDateTime":"2021-08-13T06:32:46Z"},"folder":{"childCount":8}},
+        "subfile_metadata": {"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#drives('b%21aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K')/items/$entity","@microsoft.graph.downloadUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/_layouts/15/download.aspx?UniqueId=9a26b422-5a7c-4fb4-8eb9-b70da1ce2eb6&Translate=false&tempauth=eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJhdWQiOiIwMDAwMDAwMy0wMDAwLTBmZjEtY2UwMC0wMDAwMDAwMDAwMDAvY2VudGVyZm9yb3BlbnNjaWVuY2UtbXkuc2hhcmVwb2ludC5jb21AMWQzZTkyM2EtMzI4Ni00YjYzLTg2NzYtZGJjZWIzMjMwZmJmIiwiaXNzIjoiMDAwMDAwMDMtMDAwMC0wZmYxLWNlMDAtMDAwMDAwMDAwMDAwIiwibmJmIjoiMTYyOTY1MTc2NCIsImV4cCI6IjE2Mjk2NTUzNjQiLCJlbmRwb2ludHVybCI6IjVnTmRJSlY3ODJrcUhTTGN4VXdqeXFMbGN2SU5hZHlLZ3dycEpqeWpLVnM9IiwiZW5kcG9pbnR1cmxMZW5ndGgiOiIxNTUiLCJpc2xvb3BiYWNrIjoiVHJ1ZSIsImNpZCI6Ill6Z3lZV1JpWXpjdFpUQTJNeTAwWTJFd0xUazBNekl0WW1Ka1pHVXdOREJpTldZNSIsInZlciI6Imhhc2hlZHByb29mdG9rZW4iLCJzaXRlaWQiOiJOMlZtTlRZME5qZ3RNREl5T0MwME9UbGlMVGswWVRNdE56YzRZamt3T1RFM09XRTEiLCJhcHBfZGlzcGxheW5hbWUiOiJGaXR6LUNPUyBMb2NhbGhvc3QgT25lRHJpdmUgVGVzdCBBcHAiLCJnaXZlbl9uYW1lIjoiRml0eiIsImZhbWlseV9uYW1lIjoiRWxsaW90dCIsImFwcGlkIjoiNTBiNzgzZmQtYTA5Ny00N2ZhLWE4YzgtZDkwMWRkYTM2MGM4IiwidGlkIjoiMWQzZTkyM2EtMzI4Ni00YjYzLTg2NzYtZGJjZWIzMjMwZmJmIiwidXBuIjoiZml0ekBjb3MuaW8iLCJwdWlkIjoiMTAwMzIwMDA1RkQ5QkREQiIsImNhY2hla2V5IjoiMGguZnxtZW1iZXJzaGlwfDEwMDMyMDAwNWZkOWJkZGJAbGl2ZS5jb20iLCJzY3AiOiJteWZpbGVzLnJlYWQgYWxsZmlsZXMucmVhZCBteWZpbGVzLndyaXRlIGFsbHByb2ZpbGVzLnJlYWQiLCJ0dCI6IjIiLCJ1c2VQZXJzaXN0ZW50Q29va2llIjpudWxsfQ.ay9tcnU3SHlDN3pUa29IdzFtWjVJZmNGdFJOcDZNV2U4NnFIZEV3WWJvdz0&ApiVersion=2.0","createdDateTime":"2021-08-13T06:38:46Z","eTag":"\"{9A26B422-5A7C-4FB4-8EB9-B70DA1CE2EB6},1\"","id":"01AP6G5CZCWQTJU7C2WRHY5ONXBWQ44LVW","lastModifiedDateTime":"2021-08-13T06:38:46Z","name":"_MG_5788_acr42_1000.jpeg","webUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/Documents/folder/subfolder/_MG_5788_acr42_1000.jpeg","cTag":"\"c:{9A26B422-5A7C-4FB4-8EB9-B70DA1CE2EB6},1\"","size":80004,"createdBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"lastModifiedBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"parentReference":{"driveId":"b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K","driveType":"business","id":"01AP6G5C2CHZEN2UBD55HJFL5X6NMQ7J72","path":"/drives/b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K/root:/folder/subfolder"},"file":{"mimeType":"image/jpeg","hashes":{"quickXorHash":"zasK4Qpb9PwWuH8dkGe7OZW57/U="}},"fileSystemInfo":{"createdDateTime":"2021-08-13T06:38:46Z","lastModifiedDateTime":"2021-08-13T06:38:46Z"},"image":{"height":427,"width":640}},
+        "subfolder_metadata": {"@odata.context":"https://graph.microsoft.com/v1.0/$metadata#drives('b%21aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K')/items/$entity","createdDateTime":"2021-08-13T06:39:33Z","eTag":"\"{53BD2913-7DE9-4A0F-982D-2C229B9DB629},1\"","id":"01AP6G5CYTFG6VH2L5B5FJQLJMEKNZ3NRJ","lastModifiedDateTime":"2021-08-13T06:39:33Z","name":"subsubfolder","webUrl":"https://centerforopenscience-my.sharepoint.com/personal/fitz_cos_io/Documents/folder/subfolder/subsubfolder","cTag":"\"c:{53BD2913-7DE9-4A0F-982D-2C229B9DB629},0\"","size":0,"createdBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"lastModifiedBy":{"application":{"id":"d4453225-1f71-434f-86b4-47b04520510e","displayName":"COS OneDrive for Business (Prod)"},"user":{"email":"Fitz@cos.io","id":"11ee55c7-e709-4cb2-ac0b-42693dc1a57a","displayName":"Fitz Elliott"}},"parentReference":{"driveId":"b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K","driveType":"business","id":"01AP6G5C2CHZEN2UBD55HJFL5X6NMQ7J72","path":"/drives/b!aGT1figCm0mUo3eLkJF5pSUN35z38iVNn3miB2ZWctJ-Dr1WKnOeQ59ZIhpnSq4K/root:/folder/subfolder"},"fileSystemInfo":{"createdDateTime":"2021-08-13T06:39:33Z","lastModifiedDateTime":"2021-08-13T06:39:33Z"},"folder":{"childCount":0}},
+        "root_id": "01AP6G5C6K4MLTFOIB6JBIDQTR4WS6FEZP",
+        "file_id": "01AP6G5C2U4BR62AHB6FCJ4P2LKLZRR4QJ",
+        "folder_id": "01AP6G5C2CHZEN2UBD55HJFL5X6NMQ7J72",
+        "subfile_id": "01AP6G5CZCWQTJU7C2WRHY5ONXBWQ44LVW",
+        "subfolder_id": "01AP6G5CYTFG6VH2L5B5FJQLJMEKNZ3NRJ"
+    },
+    "odp_subfolder_provider": {
+        "root_metadata": {
+            "name" : "teeth",
+            "createdBy" : {
+                "user" : {
+                    "id" : "f4d50e400dfe7d4e",
+                    "displayName" : "Fitz Elliott"
+                },
+                "application" : {
+                    "id" : "44048800",
+                    "displayName" : "OneDrive website"
+                }
+            },
+            "parentReference" : {
+                "path" : "/drive/root:",
+                "id" : "F4D50E400DFE7D4E!103",
+                "driveId" : "f4d50e400dfe7d4e",
+                "driveType" : "personal"
+            },
+            "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+            "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21290')/children",
+            "lastModifiedBy" : {
+                "user" : {
+                    "id" : "f4d50e400dfe7d4e",
+                    "displayName" : "Fitz Elliott"
+                },
+                "application" : {
+                    "id" : "44048800",
+                    "displayName" : "OneDrive website"
+                }
+            },
+            "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTAuMA",
+            "folder" : {
+                "childCount" : 2,
+                "folderView" : {
+                    "viewType" : "thumbnails",
+                    "sortBy" : "name",
+                    "sortOrder" : "ascending"
+                }
+            },
+            "createdDateTime" : "2017-08-17T17:49:26.74Z",
+            "id" : "F4D50E400DFE7D4E!290",
+            "fileSystemInfo" : {
+                "createdDateTime" : "2017-08-17T17:49:26.74Z",
+                "lastModifiedDateTime" : "2017-08-17T17:49:26.74Z"
+            },
+            "webUrl" : "https://1drv.ms/f/s!AE59_g1ADtX0giI",
+            "children" : [
+                {
+                    "createdDateTime" : "2017-08-17T19:07:47.843Z",
+                    "name" : "crushers",
+                    "id" : "F4D50E400DFE7D4E!293",
+                    "createdBy" : {
+                        "user" : {
+                            "displayName" : "Fitz Elliott",
+                            "id" : "f4d50e400dfe7d4e"
+                        },
+                        "application" : {
+                            "id" : "44048800",
+                            "displayName" : "OneDrive website"
+                        }
+                    },
+                    "fileSystemInfo" : {
+                        "lastModifiedDateTime" : "2017-08-17T19:07:47.843Z",
+                        "createdDateTime" : "2017-08-17T19:07:47.843Z"
+                    },
+                    "parentReference" : {
+                        "driveId" : "f4d50e400dfe7d4e",
+                        "path" : "/drive/root:/teeth",
+                        "id" : "F4D50E400DFE7D4E!290",
+                        "name" : "teeth",
+                        "driveType" : "personal"
+                    },
+                    "webUrl" : "https://1drv.ms/f/s!AE59_g1ADtX0giU",
+                    "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+                    "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITI5My42MzYzODU5MzcxMDMzNzAwMDA",
+                    "lastModifiedBy" : {
+                        "user" : {
+                            "displayName" : "Fitz Elliott",
+                            "id" : "f4d50e400dfe7d4e"
+                        },
+                        "application" : {
+                            "displayName" : "OneDrive website",
+                            "id" : "44048800"
+                        }
+                    },
+                    "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTMuMA",
+                    "folder" : {
+                        "childCount" : 1,
+                        "folderView" : {
+                            "sortBy" : "name",
+                            "sortOrder" : "ascending",
+                            "viewType" : "thumbnails"
+                        }
+                    },
+                    "size" : 45
+                },
+                {
+                    "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4m6vJbXfO-fuQZKr11RiBjuRAzM_DcRzU3JtT06HHt17abJkMJBCTuyBDXr18CPjaLPVVB8F02VGPXi2kmJYy4OdCjrIZ72J3FlpKTbSDd-ccQwvXzZNoVZWhLDU5_bx-aR588pIUcxhBMN527kR99PnDgGEhu6nt8xMNF0y4urvxBoT-snnzNfAnqqqlnYmIVHd7CEFihZigJVdKd_Q2BPlNuiVSpGjnHgYyuXtetOEDOfPJiTCZ80drcFr5z1d_ech-sPVbjtgTtdpTm8ZfjEg",
+                    "parentReference" : {
+                        "driveId" : "f4d50e400dfe7d4e",
+                        "path" : "/drive/root:/teeth",
+                        "id" : "F4D50E400DFE7D4E!290",
+                        "name" : "teeth",
+                        "driveType" : "personal"
+                    },
+                    "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giQ",
+                    "createdBy" : {
+                        "application" : {
+                            "id" : "481710a4",
+                            "displayName" : "OneDrive"
+                        },
+                        "user" : {
+                            "displayName" : "Fitz Elliott",
+                            "id" : "f4d50e400dfe7d4e"
+                        }
+                    },
+                    "fileSystemInfo" : {
+                        "lastModifiedDateTime" : "2017-08-17T17:53:21.113Z",
+                        "createdDateTime" : "2017-08-17T17:50:26.876Z"
+                    },
+                    "createdDateTime" : "2017-08-17T17:50:26.877Z",
+                    "name" : "bicuspid.txt",
+                    "id" : "F4D50E400DFE7D4E!292",
+                    "size" : 40,
+                    "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTIuMg",
+                    "file" : {
+                        "mimeType" : "text/plain",
+                        "hashes" : {
+                            "sha1Hash" : "A61275F93B2710487CE2C94F9CC256E413EA6871"
+                        }
+                    },
+                    "lastModifiedBy" : {
+                        "application" : {
+                            "displayName" : "OneDrive",
+                            "id" : "481710a4"
+                        },
+                        "user" : {
+                            "id" : "f4d50e400dfe7d4e",
+                            "displayName" : "Fitz Elliott"
+                        }
+                    },
+                    "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
+                    "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5Mi4yNTg"
+                }
+            ],
+            "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITI5MC42MzYzODU5MzcxMDMzNzAwMDA",
+            "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+            "size" : 85
+        },
+        "file_metadata" : {
+            "createdBy" : {
+                "application" : {
+                    "displayName" : "OneDrive",
+                    "id" : "481710a4"
+                },
+                "user" : {
+                    "id" : "f4d50e400dfe7d4e",
+                    "displayName" : "Fitz Elliott"
+                }
+            },
+            "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giQ",
+            "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21292')/children",
+            "size" : 40,
+            "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mSGfK7V7xQl1tZrz7UQTsCKyTXFp0d0H75AQdzM3_GgwUoPdE4-RkkZF3-c14dlj-oPoiCttFqlkMe2Ja-R-rzrcjUKNbl5HaprTkANJe_Nb8Qv0EOJ-ngFTg6-NaIx7tgvPXrBvaDMyyMWfUSuDnfNQVumL9xmQ-CbcpJe-N86sACf1RERKPsAsesO2VWSmevXUK6U1A87Efw1bk3FAGp7bh5RSmZfvpXSGLswPRbmI_xShjMdo8J1DUsTnC6remAtRuUXyZ5yEpJCpiY75kqw",
+            "file" : {
+                "mimeType" : "text/plain",
+                "hashes" : {
+                    "sha1Hash" : "A61275F93B2710487CE2C94F9CC256E413EA6871"
+                }
+            },
+            "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5Mi4yNTg",
+            "parentReference" : {
+                "driveId" : "f4d50e400dfe7d4e",
+                "path" : "/drive/root:/teeth",
+                "name" : "teeth",
+                "id" : "F4D50E400DFE7D4E!290",
+                "driveType" : "personal"
+            },
+            "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+            "lastModifiedDateTime" : "2017-08-17T17:53:21.13Z",
+            "name" : "bicuspid.txt",
+            "lastModifiedBy" : {
+                "application" : {
+                    "displayName" : "OneDrive",
+                    "id" : "481710a4"
+                },
+                "user" : {
+                    "displayName" : "Fitz Elliott",
+                    "id" : "f4d50e400dfe7d4e"
+                }
+            },
+            "fileSystemInfo" : {
+                "createdDateTime" : "2017-08-17T17:50:26.876Z",
+                "lastModifiedDateTime" : "2017-08-17T17:53:21.113Z"
+            },
+            "id" : "F4D50E400DFE7D4E!292",
+            "children" : [],
+            "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTIuMg",
+            "createdDateTime" : "2017-08-17T17:50:26.877Z"
+        },
+        "folder_metadata" : {
+            "cTag" : "adDpGNEQ1MEU0MDBERkU3RDRFITI5My42MzYzODU5MzcxMDMzNzAwMDA",
+            "createdBy" : {
+                "application" : {
+                    "id" : "44048800",
+                    "displayName" : "OneDrive website"
+                },
+                "user" : {
+                    "id" : "f4d50e400dfe7d4e",
+                    "displayName" : "Fitz Elliott"
+                }
+            },
+            "webUrl" : "https://1drv.ms/f/s!AE59_g1ADtX0giU",
+            "size" : 45,
+            "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21293')/children",
+            "name" : "crushers",
+            "parentReference" : {
+                "id" : "F4D50E400DFE7D4E!290",
+                "name" : "teeth",
+                "driveId" : "f4d50e400dfe7d4e",
+                "driveType" : "personal",
+                "path" : "/drive/root:/teeth"
+            },
+            "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+            "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+            "id" : "F4D50E400DFE7D4E!293",
+            "children" : [
+                {
+                    "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTQuMg",
+                    "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+                    "parentReference" : {
+                        "id" : "F4D50E400DFE7D4E!293",
+                        "name" : "crushers",
+                        "driveId" : "f4d50e400dfe7d4e",
+                        "driveType" : "personal",
+                        "path" : "/drive/root:/teeth/crushers"
+                    },
+                    "name" : "molars.txt",
+                    "createdDateTime" : "2017-08-17T19:08:03.03Z",
+                    "fileSystemInfo" : {
+                        "createdDateTime" : "2017-08-17T19:08:03.03Z",
+                        "lastModifiedDateTime" : "2017-08-17T19:08:30.32Z"
+                    },
+                    "size" : 45,
+                    "createdBy" : {
+                        "application" : {
+                            "id" : "481710a4",
+                            "displayName" : "OneDrive"
+                        },
+                        "user" : {
+                            "displayName" : "Fitz Elliott",
+                            "id" : "f4d50e400dfe7d4e"
+                        }
+                    },
+                    "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giY",
+                    "lastModifiedBy" : {
+                        "user" : {
+                            "displayName" : "Fitz Elliott",
+                            "id" : "f4d50e400dfe7d4e"
+                        },
+                        "application" : {
+                            "displayName" : "OneDrive",
+                            "id" : "481710a4"
+                        }
+                    },
+                    "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4mO1VUyGkx1jMbvuSh39sB5hHkVtY9jF-z0eEzmmSwz85fwmzQwFA0MKYlJiTFHPuUItQaHbocR-fxLCt4-LAM--20CvEyr4hX6BNtnlhxwg3FRFg_fLYsk8ESqqJbbnxQYLmBpqJZ1ympsnv1U9KxWoW0Fb07HqKxm5bKIWhFmmmFwfSoTe80yE_-9eV9-ATFAuBFkZ8uVODyrgIN-hsrKDWh4CUJs2V3FFEg_6nERUpncQWfsL7HaMJbUD4LsU_tpSLEemayqxcguyUmMdrCmA",
+                    "file" : {
+                        "mimeType" : "text/plain",
+                        "hashes" : {
+                            "sha1Hash" : "71E36DE69F693D7DED11A689CEE9779DCCC37928"
+                        }
+                    },
+                    "id" : "F4D50E400DFE7D4E!294",
+                    "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5NC4yNTg"
+                }
+            ],
+            "lastModifiedBy" : {
+                "user" : {
+                    "id" : "f4d50e400dfe7d4e",
+                    "displayName" : "Fitz Elliott"
+                },
+                "application" : {
+                    "displayName" : "OneDrive website",
+                    "id" : "44048800"
+                }
+            },
+            "fileSystemInfo" : {
+                "createdDateTime" : "2017-08-17T19:07:47.843Z",
+                "lastModifiedDateTime" : "2017-08-17T19:07:47.843Z"
+            },
+            "createdDateTime" : "2017-08-17T19:07:47.843Z",
+            "folder" : {
+                "folderView" : {
+                    "sortBy" : "name",
+                    "sortOrder" : "ascending",
+                    "viewType" : "thumbnails"
+                },
+                "childCount" : 1
+            },
+            "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTMuMA"
+        },
+        "subfile_metadata" : {
+            "createdBy" : {
+                "user" : {
+                    "displayName" : "Fitz Elliott",
+                    "id" : "f4d50e400dfe7d4e"
+                },
+                "application" : {
+                    "id" : "481710a4",
+                    "displayName" : "OneDrive"
+                }
+            },
+            "webUrl" : "https://1drv.ms/t/s!AE59_g1ADtX0giY",
+            "children@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items('F4D50E400DFE7D4E%21294')/children",
+            "size" : 45,
+            "file" : {
+                "mimeType" : "text/plain",
+                "hashes" : {
+                    "sha1Hash" : "71E36DE69F693D7DED11A689CEE9779DCCC37928"
+                }
+            },
+            "@content.downloadUrl" : "https://public.bn1303.livefilestore.com/y4msgC4teoghHKiACyXiJoRwNNI0vUf_rsaT6tci9H0d_YRIL7l-z32DkOKQAySqmeNQ2p5-G0thk3CjRmRVllqhVyM7xrHLO_1ybnfNO1IN_31WdLytIjcXUb_G9068o2wClIinh-liGSz3dsm7cGb6I0cOxYwFy8GgqN4X2QfF4VErDCWy7ZCNoUiYh4jlew6ZI9W0-_Xkv09NvToYE4ErnniEnh-_trg1MrtOlD7bUqxBleJHr6h4zeqSyk5M1gC-HUfwKpFGdOq4yEsf36MKQ",
+            "cTag" : "aYzpGNEQ1MEU0MDBERkU3RDRFITI5NC4yNTg",
+            "parentReference" : {
+                "path" : "/drive/root:/teeth/crushers",
+                "driveId" : "f4d50e400dfe7d4e",
+                "driveType" : "personal",
+                "name" : "crushers",
+                "id" : "F4D50E400DFE7D4E!293"
+            },
+            "@odata.context" : "https://api.onedrive.com/v1.0/$metadata#drives('me')/items/$entity",
+            "lastModifiedDateTime" : "2017-08-17T19:08:30.337Z",
+            "name" : "molars.txt",
+            "lastModifiedBy" : {
+                "application" : {
+                    "id" : "481710a4",
+                    "displayName" : "OneDrive"
+                },
+                "user" : {
+                    "id" : "f4d50e400dfe7d4e",
+                    "displayName" : "Fitz Elliott"
+                }
+            },
+            "fileSystemInfo" : {
+                "createdDateTime" : "2017-08-17T19:08:03.03Z",
+                "lastModifiedDateTime" : "2017-08-17T19:08:30.32Z"
+            },
+            "id" : "F4D50E400DFE7D4E!294",
+            "children" : [],
+            "eTag" : "aRjRENTBFNDAwREZFN0Q0RSEyOTQuMg",
+            "createdDateTime" : "2017-08-17T19:08:03.03Z"
+        },
+        "subfolder_metadata": {},
+        "root_id" : "F4D50E400DFE7D4E!290",
+        "file_id" : "F4D50E400DFE7D4E!292",
+        "folder_id" : "F4D50E400DFE7D4E!293",
+        "subfile_id" : "F4D50E400DFE7D4E!294",
+        "subfolder_id": ""
     }
 }
