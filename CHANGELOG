@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+21.0.1 (2021-09-14)
+===================
+- Fix: Properly decode OneDrivePaths for small files uploaded under certain provider root
+configurations.  Some paths were failing to properly decode unicode and url-encoded characters.
+
 21.0.0 (2021-08-12)
 ===================
 - Feature: Add read/write support to OneDrive provider, adapted from the previous work of
