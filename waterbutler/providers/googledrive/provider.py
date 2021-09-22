@@ -234,7 +234,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             throws=exceptions.DownloadError,
         )
 
-        if metadata.size is not None:  # type: ignore
+        if metadata.size is not None and not metadata.is_google_doc:  # type: ignore
             return streams.ResponseStreamReader(download_resp,
                                                 size=metadata.size_as_int)  # type: ignore
 
