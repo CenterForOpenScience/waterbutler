@@ -2,6 +2,15 @@
 ChangeLog
 *********
 
+21.1.0 (2021-09-30)
+===================
+- Fix: Stop breaking Google Doc (.gdoc, .gsheet, .gslide) downloads.  Google Doc files are not
+downloadable in their native format.  Instead they must be exported to an externally-supported
+format (e.g. .gdoc => .docx, .gsheet => .xlsx, .gslide => .pptx).  WB had been assuming that a file
+with an undefined size was a google doc, but recently GDrive has started reporting that Google Docs
+have a size of 1kb.  WB now explictly checks the mime-type of the requested file to determine
+whether to download or export.
+
 21.0.1 (2021-09-14)
 ===================
 - Fix: Properly decode OneDrivePaths for small files uploaded under certain provider root
