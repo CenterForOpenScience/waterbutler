@@ -339,7 +339,13 @@ class S3CompatB3Provider(provider.BaseProvider):
     async def _metadata_file(self, path, revision=None):
         if revision is None or revision == 'Latest':
             revision = 'null'
-        resp = self.connection.s3.meta.client.head_object(Bucket=self.bucket.name, Key=path.full_path)
+        try:
+            resp = self.connection.s3.meta.client.head_object(Bucket=self.bucket.name, Key=path.full_path)
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                raise exceptions.NotFoundError(path.full_path)
+            raise exceptions.MetadataError(str(path.full_path), code=e.response['Error']['Code'])
+
         return S3CompatB3FileMetadataHeaders(self, path.full_path, resp)
 
     async def _metadata_folder(self, path):
