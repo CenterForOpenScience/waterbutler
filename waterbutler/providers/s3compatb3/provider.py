@@ -57,7 +57,7 @@ class S3CompatB3Provider(provider.BaseProvider):
     """
     NAME = 's3compatb3'
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, **kwargs):
         """
         .. note::
 
