@@ -341,7 +341,7 @@ class S3CompatB3Provider(provider.BaseProvider):
             revision = 'null'
         try:
             resp = self.connection.s3.meta.client.head_object(Bucket=self.bucket.name, Key=path.full_path)
-        except botocore.exceptions.ClientError as e:
+        except ClientError as e:
             if e.response['Error']['Code'] == '404':
                 raise exceptions.NotFoundError(path.full_path)
             raise exceptions.MetadataError(str(path.full_path), code=e.response['Error']['Code'])
