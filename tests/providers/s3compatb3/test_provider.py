@@ -759,23 +759,16 @@ class TestMetadata:
         # metadata_url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
         query_parameters = {'Bucket': provider.bucket.name, 'Key': path.full_path}
         url = provider.connection.s3.meta.client.generate_presigned_url('put_object', Params=query_parameters, ExpiresIn=100, HttpMethod='PUT')
-        metadata_url = provider.connection.s3.meta.client.generate_presigned_url('head_object', Params=query_parameters, ExpiresIn=100, HttpMethod='HEAD')
-        aiohttpretty.register_uri(
-            'HEAD',
-            metadata_url,
-            responses=[
-                {'status': 404},
-                {'headers': file_metadata},
-            ],
-        )
         aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"{}"'.format(content_md5)}),
-
-        metadata, created = await provider.upload(file_stream, path)
+        with mock_s3():
+            boto3.DEFAULT_SESSION = None
+            s3client = boto3.client('s3')
+            s3client.create_bucket(Bucket=provider.bucket.name)
+            metadata, created = await provider.upload(file_stream, path)
 
         assert metadata.kind == 'file'
         assert created
         assert aiohttpretty.has_call(method='PUT', uri=url)
-        assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
 
 
 class TestCreateFolder:
