@@ -8,6 +8,7 @@ import base64
 import hashlib
 from http import client
 from unittest import mock
+import asyncio
 
 import boto3
 from moto import mock_s3
