@@ -57,7 +57,7 @@ class S3CompatB3FileMetadataHeaders(S3CompatB3Metadata, metadata.BaseFileMetadat
     def extra(self):
         return {
             'md5': self.raw['ETag'].replace('"', ''),
-            'encryption': self.raw.get('X-AMZ-SERVER-SIDE-ENCRYPTION', '')
+            'encryption': self.raw.get('ServerSideEncryption', '')
         }
 
 
@@ -95,7 +95,8 @@ class S3CompatB3FileMetadata(S3CompatB3Metadata, metadata.BaseFileMetadata):
     @property
     def extra(self):
         return {
-            'md5': self.raw['ETag'].replace('"', '')
+            'md5': self.raw['ETag'].replace('"', ''),
+            'encryption': self.raw.get('ServerSideEncryption', '')
         }
 
 
