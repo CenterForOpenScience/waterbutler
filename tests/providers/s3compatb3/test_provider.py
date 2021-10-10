@@ -726,7 +726,7 @@ class TestMetadata:
             boto3.DEFAULT_SESSION = None
             s3client = boto3.client('s3')
             s3client.create_bucket(Bucket=provider.bucket.name)
-            s3client.put_object(Bucket=provider.bucket.name, Key=path.full_path, body=file_content)
+            s3client.put_object(Bucket=provider.bucket.name, Key=path.full_path, Body=file_content)
             result = await provider.metadata(path)
 
         assert isinstance(result, metadata.BaseFileMetadata)
