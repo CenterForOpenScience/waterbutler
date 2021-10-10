@@ -342,8 +342,6 @@ class S3CompatB3Provider(provider.BaseProvider):
         try:
             resp = self.connection.s3.meta.client.head_object(Bucket=self.bucket.name, Key=path.full_path)
         except ClientError as e:
-            if e.response['Error']['Code'] == '404':
-                raise exceptions.NotFoundError(path.full_path)
             raise exceptions.MetadataError(str(path.full_path), code=e.response['Error']['Code'])
 
         return S3CompatB3FileMetadataHeaders(self, path.full_path, resp)
