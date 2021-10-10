@@ -216,6 +216,17 @@ def file_metadata():
 
 
 @pytest.fixture
+def file_metadata_object():
+    return {
+        'ContentLength': '9001',
+        'LastModified': 'SomeTime',
+        'ContentType': 'binary/octet-stream',
+        'ETag': '"fba9dede5f27731c9771645a39863328"',
+        'ServerSideEncryption': 'AES256'
+    }
+
+
+@pytest.fixture
 def version_metadata():
     return b'''<?xml version="1.0" encoding="UTF-8"?>
 
@@ -752,9 +763,11 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload(self, provider, file_content, file_stream, file_metadata, mock_time):
+    async def test_upload(self, provider, file_content, file_stream, file_metadata, mock_time, file_metadata_object):
         path = WaterButlerPath('/foobah', prepend=provider.prefix)
         content_md5 = hashlib.md5(file_content).hexdigest()
+        mock_metadata = mock.MagicMock(side_effect=[exceptions.MetadataError(str(path.full_path), code='404'), S3CompatB3FileMetadata(provider, file_metadata_object)])
+        provider.metadata = mock_metadata
         # url = provider.bucket.new_key(path.full_path).generate_url(100, 'PUT')
         # metadata_url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
         query_parameters = {'Bucket': provider.bucket.name, 'Key': path.full_path}
