@@ -547,7 +547,7 @@ class TestCRUD:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_encrypted(self, provider, file_content, file_stream, file_metadata, mock_time):
+    async def test_upload_encrypted(self, provider, file_content, file_stream, file_metadata, mock_time, file_metadata_object):
         # Set trigger for encrypt_key=True in s3compatb3.provider.upload
         provider.encrypt_uploads = True
         path = WaterButlerPath('/foobah', prepend=provider.prefix)
