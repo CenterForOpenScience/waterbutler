@@ -218,7 +218,7 @@ def file_metadata():
 @pytest.fixture
 def file_metadata_object():
     return {
-        'Key': 'my-image.jpg',
+        'Key': '/foobah/my-image.jpg',
         'ContentLength': '9001',
         'LastModified': 'SomeTime',
         'ContentType': 'binary/octet-stream',
@@ -767,7 +767,7 @@ class TestMetadata:
     async def test_upload(self, provider, file_content, file_stream, file_metadata, mock_time, file_metadata_object):
         path = WaterButlerPath('/foobah', prepend=provider.prefix)
         content_md5 = hashlib.md5(file_content).hexdigest()
-        mock_metadata = mock.MagicMock(side_effect=[exceptions.MetadataError(str(path.full_path), code='404'), S3CompatB3FileMetadata(provider, file_metadata_object)])
+        mock_metadata = mock.MagicMock(side_effect=[exceptions.MetadataError(str(path.full_path), code=404), S3CompatB3FileMetadata(provider, file_metadata_object)])
         provider.metadata = mock_metadata
         # url = provider.bucket.new_key(path.full_path).generate_url(100, 'PUT')
         # metadata_url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
