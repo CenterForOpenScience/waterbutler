@@ -218,6 +218,7 @@ def file_metadata():
 @pytest.fixture
 def file_metadata_object():
     return {
+        'Key': 'my-image.jpg',
         'ContentLength': '9001',
         'LastModified': 'SomeTime',
         'ContentType': 'binary/octet-stream',
