@@ -8,6 +8,7 @@ import base64
 import hashlib
 from http import client
 from unittest import mock
+import asyncio
 
 import boto3
 from moto import mock_s3
@@ -212,6 +213,18 @@ def file_metadata():
         'Content-Type': 'binary/octet-stream',
         'ETag': '"fba9dede5f27731c9771645a39863328"',
         'X-AMZ-SERVER-SIDE-ENCRYPTION': 'AES256'
+    }
+
+
+@pytest.fixture
+def file_metadata_object():
+    return {
+        'Key': '/foobah/my-image.jpg',
+        'ContentLength': '9001',
+        'LastModified': 'SomeTime',
+        'ContentType': 'binary/octet-stream',
+        'ETag': '"fba9dede5f27731c9771645a39863328"',
+        'ServerSideEncryption': 'AES256'
     }
 
 
@@ -519,37 +532,34 @@ class TestCRUD:
         # metadata_url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
         query_parameters = {'Bucket': provider.bucket.name, 'Key': path.full_path}
         url = provider.connection.s3.meta.client.generate_presigned_url('put_object', Params=query_parameters, ExpiresIn=100, HttpMethod='PUT')
-        metadata_url = provider.connection.s3.meta.client.generate_presigned_url('head_object', Params=query_parameters, ExpiresIn=100, HttpMethod='HEAD')
-        aiohttpretty.register_uri('HEAD', metadata_url, headers=file_metadata)
         aiohttpretty.register_uri('PUT', url, status=201, headers={'ETag': '"{}"'.format(content_md5)})
-
-        metadata, created = await provider.upload(file_stream, path)
+        with mock_s3():
+            boto3.DEFAULT_SESSION = None
+            s3client = boto3.client('s3')
+            s3client.create_bucket(Bucket=provider.bucket.name)
+            s3client.put_object(Bucket=provider.bucket.name, Key=path.full_path)
+            metadata, created = await provider.upload(file_stream, path)
 
         assert metadata.kind == 'file'
         assert not created
         assert aiohttpretty.has_call(method='PUT', uri=url)
-        assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
+
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload_encrypted(self, provider, file_content, file_stream, file_metadata, mock_time):
+    async def test_upload_encrypted(self, provider, file_content, file_stream, file_metadata, mock_time, file_metadata_object):
         # Set trigger for encrypt_key=True in s3compatb3.provider.upload
         provider.encrypt_uploads = True
         path = WaterButlerPath('/foobah', prepend=provider.prefix)
         content_md5 = hashlib.md5(file_content).hexdigest()
+        async_metadata = asyncio.Future()
+        async_metadata.set_result(S3CompatB3FileMetadata(provider, file_metadata_object))
+        mock_metadata = mock.MagicMock(side_effect=[exceptions.MetadataError(str(path.full_path), code=404), async_metadata])
+        provider.metadata = mock_metadata
         # url = provider.bucket.new_key(path.full_path).generate_url(100, 'PUT', encrypt_key=True)
         # metadata_url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
         query_parameters = {'Bucket': provider.bucket.name, 'Key': path.full_path}
         url = provider.connection.s3.meta.client.generate_presigned_url('put_object', Params=query_parameters, ExpiresIn=100, HttpMethod='PUT')
-        metadata_url = provider.connection.s3.meta.client.generate_presigned_url('head_object', Params=query_parameters, ExpiresIn=100, HttpMethod='HEAD')
-        aiohttpretty.register_uri(
-            'HEAD',
-            metadata_url,
-            responses=[
-                {'status': 404},
-                {'headers': file_metadata},
-            ],
-        )
         aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"{}"'.format(content_md5)})
 
         metadata, created = await provider.upload(file_stream, path)
@@ -558,7 +568,6 @@ class TestCRUD:
         assert metadata.extra['encryption'] == 'AES256'
         assert created
         assert aiohttpretty.has_call(method='PUT', uri=url)
-        assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -712,24 +721,25 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_metadata_file(self, provider, file_metadata, mock_time):
+    async def test_metadata_file(self, provider, file_metadata, mock_time, file_content):
         path = WaterButlerPath('/Foo/Bar/my-image.jpg', prepend=provider.prefix)
         # url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
         query_parameters = {'Bucket': provider.bucket.name, 'Key': path.full_path}
         url = provider.connection.s3.meta.client.generate_presigned_url('head_object', Params=query_parameters, ExpiresIn=100, HttpMethod='HEAD')
         aiohttpretty.register_uri('HEAD', url, headers=file_metadata)
+        content_md5 = hashlib.md5(file_content).hexdigest()
 
         with mock_s3():
             boto3.DEFAULT_SESSION = None
             s3client = boto3.client('s3')
             s3client.create_bucket(Bucket=provider.bucket.name)
-            s3client.put_object(Bucket=provider.bucket.name, Key=path.full_path)
+            s3client.put_object(Bucket=provider.bucket.name, Key=path.full_path, Body=file_content)
             result = await provider.metadata(path)
 
         assert isinstance(result, metadata.BaseFileMetadata)
         assert result.path == '/' + path.path
         assert result.name == 'my-image.jpg'
-        assert result.extra['md5'] == 'fba9dede5f27731c9771645a39863328'
+        assert result.extra['md5'] == content_md5
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -749,30 +759,27 @@ class TestMetadata:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_upload(self, provider, file_content, file_stream, file_metadata, mock_time):
+    async def test_upload(self, provider, file_content, file_stream, file_metadata, mock_time, file_metadata_object):
         path = WaterButlerPath('/foobah', prepend=provider.prefix)
         content_md5 = hashlib.md5(file_content).hexdigest()
+        async_metadata = asyncio.Future()
+        async_metadata.set_result(S3CompatB3FileMetadata(provider, file_metadata_object))
+        mock_metadata = mock.MagicMock(side_effect=[exceptions.MetadataError(str(path.full_path), code=404), async_metadata])
+        provider.metadata = mock_metadata
         # url = provider.bucket.new_key(path.full_path).generate_url(100, 'PUT')
         # metadata_url = provider.bucket.new_key(path.full_path).generate_url(100, 'HEAD')
         query_parameters = {'Bucket': provider.bucket.name, 'Key': path.full_path}
         url = provider.connection.s3.meta.client.generate_presigned_url('put_object', Params=query_parameters, ExpiresIn=100, HttpMethod='PUT')
-        metadata_url = provider.connection.s3.meta.client.generate_presigned_url('head_object', Params=query_parameters, ExpiresIn=100, HttpMethod='HEAD')
-        aiohttpretty.register_uri(
-            'HEAD',
-            metadata_url,
-            responses=[
-                {'status': 404},
-                {'headers': file_metadata},
-            ],
-        )
         aiohttpretty.register_uri('PUT', url, status=200, headers={'ETag': '"{}"'.format(content_md5)}),
-
-        metadata, created = await provider.upload(file_stream, path)
+        with mock_s3():
+            boto3.DEFAULT_SESSION = None
+            s3client = boto3.client('s3')
+            s3client.create_bucket(Bucket=provider.bucket.name)
+            metadata, created = await provider.upload(file_stream, path)
 
         assert metadata.kind == 'file'
         assert created
         assert aiohttpretty.has_call(method='PUT', uri=url)
-        assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
 
 
 class TestCreateFolder:

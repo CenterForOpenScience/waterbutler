@@ -57,7 +57,7 @@ class S3CompatB3Provider(provider.BaseProvider):
     """
     NAME = 's3compatb3'
 
-    def __init__(self, auth, credentials, settings):
+    def __init__(self, auth, credentials, settings, **kwargs):
         """
         .. note::
 
@@ -339,17 +339,12 @@ class S3CompatB3Provider(provider.BaseProvider):
     async def _metadata_file(self, path, revision=None):
         if revision is None or revision == 'Latest':
             revision = 'null'
-        logger.info('_metadata_file: {}: {}: {}'.format(self.bucket.name, path.full_path, revision))
-        query_parameters = {'Bucket': self.bucket.name, 'Key': path.full_path}
-        metadata_url = self.connection.generate_presigned_url('head_object', Params=query_parameters, ExpiresIn=settings.TEMP_URL_SECS, HttpMethod='HEAD')
-        resp = await self.make_request(
-            'HEAD',
-            metadata_url,
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
-        await resp.release()
-        return S3CompatB3FileMetadataHeaders(self, path.full_path, resp.headers)
+        try:
+            resp = self.connection.s3.meta.client.head_object(Bucket=self.bucket.name, Key=path.full_path)
+        except ClientError as e:
+            raise exceptions.MetadataError(str(path.full_path), code=e.response['Error']['Code'])
+
+        return S3CompatB3FileMetadataHeaders(self, path.full_path, resp)
 
     async def _metadata_folder(self, path):
         logger.info('_metadata_folder: {}:'.format(path.full_path))
