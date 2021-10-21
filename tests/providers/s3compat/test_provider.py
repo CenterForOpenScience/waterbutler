@@ -198,8 +198,8 @@ def file_metadata():
         'Content-Length': '9001',
         'Last-Modified': 'SomeTime',
         'Content-Type': 'binary/octet-stream',
-        'ETag': '"fba9dede5f27731c9771645a39863328"',
-        'X-AMZ-SERVER-SIDE-ENCRYPTION': 'AES256'
+        'Etag': '"fba9dede5f27731c9771645a39863328"',
+        'x-amz-server-side-encryption': 'AES256'
     }
 
 
