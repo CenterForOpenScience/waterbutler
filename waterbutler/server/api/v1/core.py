@@ -1,3 +1,5 @@
+import logging
+
 import tornado.web
 import tornado.gen
 import tornado.iostream
@@ -7,6 +9,8 @@ import sentry_sdk
 from waterbutler import tasks
 from waterbutler.server import utils
 from waterbutler.core import exceptions
+
+logger = logging.getLogger(__name__)
 
 
 class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler):
@@ -25,7 +29,23 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler):
                     scope.level = 'info'
 
                 self.set_status(int(exc.code))
-                finish_args = [exc.data] if exc.data else [{'code': exc.code, 'message': exc.message}]
+
+                # If the exception has a `data` property then we need to handle that with care.
+                # The expectation is that we need to return a structured response.  For now, assume
+                # that involves setting the response headers to the value of the `headers`
+                # attribute of the `data`, while also serializing the entire `data` data structure.
+                if exc.data:
+                    self.set_header('Content-Type', 'application/json')
+                    headers = exc.data.get('headers', None)
+                    if headers:
+                        for key, value in headers.items():
+                            self.set_header(key, value)
+                    finish_args = [exc.data]
+                    self.write(exc.data)
+                else:
+                    finish_args = [{'code': exc.code, 'message': exc.message}]
+                    self.write(exc.message)
+
             elif issubclass(etype, tasks.WaitTimeOutError):
                 self.set_status(202)
                 scope.level = 'info'

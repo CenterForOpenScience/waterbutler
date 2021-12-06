@@ -30,3 +30,16 @@ HMAC_SECRET = config.get('HMAC_SECRET')
 if not settings.DEBUG:
     assert HMAC_SECRET, 'HMAC_SECRET must be specified when not in debug mode'
 HMAC_SECRET = (HMAC_SECRET or 'changeme').encode('utf-8')
+
+
+# Configs for WB API Rate-limiting with Redis
+ENABLE_RATE_LIMITING = config.get_bool('ENABLE_RATE_LIMITING', False)
+REDIS_HOST = config.get('REDIS_HOST', '192.168.168.167')
+REDIS_PORT = config.get('REDIS_PORT', '6379')
+REDIS_PASSWORD = config.get('REDIS_PASSWORD', None)
+
+# Number of seconds until the redis key expires
+RATE_LIMITING_FIXED_WINDOW_SIZE = int(config.get('RATE_LIMITING_FIXED_WINDOW_SIZE', 3600))
+
+# number of reqests permitted while the redis key is active
+RATE_LIMITING_FIXED_WINDOW_LIMIT = int(config.get('RATE_LIMITING_FIXED_WINDOW_LIMIT', 3600))
