@@ -6,6 +6,10 @@ settings.config['TASKS_CONFIG'] = {
     'CELERY_RESULT_BACKEND': 'redis://'
 }
 
+
+from waterbutler.server import settings as server_settings
+server_settings.ENABLE_RATE_LIMITING = False
+
 import aiohttpretty
 
 

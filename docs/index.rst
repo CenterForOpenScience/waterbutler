@@ -32,6 +32,7 @@ This documentation is also available in `PDF and Epub formats
     api
     providers
     adding-providers
+    rate-limiting
     code
     releases
     testing

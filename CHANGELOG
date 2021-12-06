@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+21.2.0 (2021-12-06)
+===================
+- Feature: Give WaterButler the ability to enforce rate-limits.  This requires a reachable redis
+instance.  See `docs/rate-limiting.rst` for details on setting up and configuring.
+
 21.1.0 (2021-09-30)
 ===================
 - Fix: Stop breaking Google Doc (.gdoc, .gsheet, .gslide) downloads.  Google Doc files are not

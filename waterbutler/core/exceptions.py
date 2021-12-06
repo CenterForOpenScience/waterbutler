@@ -3,6 +3,8 @@ from http import HTTPStatus
 
 from aiohttp.client_exceptions import ContentTypeError
 
+from waterbutler.server import settings
+
 
 DEFAULT_ERROR_MSG = 'An error occurred while making a {response.method} request to {response.url}'
 
@@ -53,6 +55,48 @@ class WaterButlerError(Exception):
 
     def __str__(self):
         return '{}, {}'.format(self.code, self.message)
+
+
+class TooManyRequests(WaterButlerError):
+    """Indicates the user has sent too many requests in a given amount of time and is being
+    rate-limited. Thrown as HTTP 429, ``Too Many Requests``. Exception response includes headers to
+    inform user when to try again. Headers are:
+
+    * ``Retry-After``: Epoch time after which the rate-limit is reset
+    * ``X-Waterbutler-RateLimiting-Window``: The number of seconds after the first request when\
+    the limit resets
+    * ``X-Waterbutler-RateLimiting-Limit``: Total number of requests that may be sent within the\
+    window
+    * ``X-Waterbutler-RateLimiting-Remaining``: How many more requests can be sent during the window
+    * ``X-Waterbutler-RateLimiting-Reset``: Seconds until the rate-limit is reset
+    """
+    def __init__(self, data):
+        if type(data) != dict:
+            message = ('Too many requests issued, but error lacks necessary data to build proper '
+                       'response. Got:({})'.format(data))
+        else:
+            message = {
+                'error': 'API rate-limiting active due to too many requests',
+                'headers': {
+                    'Retry-After': data['retry_after'],
+                    'X-Waterbutler-RateLimiting-Window': settings.RATE_LIMITING_FIXED_WINDOW_SIZE,
+                    'X-Waterbutler-RateLimiting-Limit': settings.RATE_LIMITING_FIXED_WINDOW_LIMIT,
+                    'X-Waterbutler-RateLimiting-Remaining': data['remaining'],
+                    'X-Waterbutler-RateLimiting-Reset': data['reset'],
+                },
+            }
+        super().__init__(message, code=HTTPStatus.TOO_MANY_REQUESTS, is_user_error=True)
+
+
+class WaterButlerRedisError(WaterButlerError):
+    """Indicates the Redis server has returned an error. Thrown as HTTP 503, ``Service Unavailable``
+    """
+    def __init__(self, redis_command):
+
+        message = {
+            'error': 'The Redis server failed when processing command {}'.format(redis_command),
+        }
+        super().__init__(message, code=HTTPStatus.SERVICE_UNAVAILABLE, is_user_error=False)
 
 
 class InvalidParameters(WaterButlerError):
