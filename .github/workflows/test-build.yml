@@ -1,0 +1,63 @@
+name: wb_ci_testing
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-20.04
+    env:
+      GHA_DISTRO: ubuntu-20.04
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    strategy:
+      matrix:
+        python-version: [3.6]
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache Build Requirements
+        id: pip-cache-step
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: ${{ env.GHA_DISTRO }}-${{ env.pythonLocation }}-${{ hashFiles('requirements.txt', 'dev-requirements.txt') }}
+      - name: install dependencies
+        if: steps.pip-cache-step.outputs.cache-hit != 'true'
+        run: |
+          python -m pip install --upgrade pip==18.1
+          pip install -r dev-requirements.txt
+
+  runtests:
+    name: Run unit tests
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      GHA_DISTRO: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.6
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: ${{ env.GHA_DISTRO }}-${{ env.pythonLocation }}-${{ hashFiles('requirements.txt', 'dev-requirements.txt') }}
+      - name: run syntax checks
+        run: |
+          flake8 .
+      - name: build plugins
+        run: |
+          python setup.py develop
+      - name: run unit tests
+        run: |
+          py.test --cov-report term-missing --cov waterbutler tests
+      - name: Upload coverage data to coveralls.io
+        run: coveralls --service=github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
