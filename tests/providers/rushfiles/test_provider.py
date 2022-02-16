@@ -332,7 +332,7 @@ class TestDownload:
         metadata = root_provider_fixtures['file_metadata_resp']
         
         metadata_url = provider._build_clientgateway_url(str(provider.share['id']), 'virtualfiles', path.identifier)
-        aiohttpretty.register_uri('GET', metadata_url, body=json.dumps(metadata))
+        aiohttpretty.register_json_uri('GET', metadata_url, body=metadata, status=200)
 
         url = provider._build_filecache_url(str(provider.share['id']), 'files', metadata['Data']['UploadName'])
         aiohttpretty.register_uri('GET', url, body=body)
@@ -351,7 +351,7 @@ class TestDownload:
         path = WaterButlerPath('/Tasks.xlsx',_ids=(provider.share['id'],'1a8fe2de6a4144a6b1088ffc03fef4c1'))
         
         metadata_url = provider._build_clientgateway_url(str(provider.share['id']), 'virtualfiles', path.identifier, 'history')
-        aiohttpretty.register_uri('GET', metadata_url, body=json.dumps(revision_metadata))
+        aiohttpretty.register_json_uri('GET', metadata_url, body=revision_metadata, status=200)
 
         url = provider._build_filecache_url(str(provider.share['id']), 'files', revision_metadata['Data'][1]['File']['UploadName'])
         aiohttpretty.register_uri('GET', url, body=body)

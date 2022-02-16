@@ -95,7 +95,7 @@ class RushFilesRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def version(self):
-        return self.raw['Tick']
+        return str(self.raw['Tick'])
 
     @property
     def modified(self):

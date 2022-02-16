@@ -11,6 +11,7 @@ from waterbutler.core import provider, streams
 from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
 from waterbutler.core import exceptions
 
+from waterbutler.providers.rushfiles import settings
 from waterbutler.providers.rushfiles.metadata import (RushFilesRevision,
                                                         BaseRushFilesMetadata,
                                                         RushFilesFileMetadata,
@@ -43,6 +44,8 @@ class RushFilesProvider(provider.BaseProvider):
     """Provider for RushFiles cloud storage service.
     """
     NAME = 'rushfiles'
+
+    CHUNK_SIZE = settings.CHUNK_SIZE
 
     def __init__(self, auth: dict, credentials: dict, settings: dict) -> None:
         super().__init__(auth, credentials, settings)
@@ -234,19 +237,7 @@ class RushFilesProvider(provider.BaseProvider):
 
         if stream.size > 0:
             data = await self._upload_request(stream, path, created)
-            response = await self.make_request(
-                'PUT',
-                data['Data']['Url'],
-                headers={
-                    'Content-Type': 'application/octet-stream',
-                    'Content-Range': 'bytes 0-' + str(stream.size - 1) + '/*',
-                    'Content-Length': str(stream.size)
-                },
-                data=stream,
-                expects=(200, 201, 202, ),
-                throws=exceptions.UploadError,
-            )
-            data = await response.json()
+            data = await self._upload_file(stream, data['Data']['Url'])
         else:
             data = await self._upload_request(stream, path, created)
 
@@ -290,6 +281,30 @@ class RushFilesProvider(provider.BaseProvider):
         data = await response.json()
 
         return data
+
+    async def _upload_file(self, stream, uploadUrl):
+        r"""
+        RushFiles has a limit on request's size. File might need to be divided into chunks and uploaded in multiple requests.
+        """
+        position = 0
+        while position < stream.size:
+            end = min(position + self.CHUNK_SIZE, stream.size)
+            response = await self.make_request(
+                'PUT',
+                uploadUrl,
+                headers={
+                    'Content-Type': 'application/octet-stream',
+                    'Content-Range': 'bytes ' + str(position) + '-' + str(end - 1) + '/*',
+                    'Content-Length': str(end - position)
+                },
+                data=await stream.read(end - position),
+                expects=(200, 201, 202),
+                throws=exceptions.UploadError,
+            )
+            position = end
+            print(response.status)
+
+        return await response.json()
 
     async def delete(self,  # type: ignore
                      path: RushFilesPath,
