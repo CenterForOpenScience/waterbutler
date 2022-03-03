@@ -407,34 +407,37 @@ class S3CompatProvider(provider.BaseProvider):
 
         iteration_count = 0
         is_aborted = False
-        while iteration_count <= settings.CHUNKED_UPLOAD_MAX_ABORT_RETRIES:
+        while iteration_count < settings.CHUNKED_UPLOAD_MAX_ABORT_RETRIES:
+            try:
+                # ABORT
+                resp = await self.make_request(
+                    'DELETE',
+                    abort_url,
+                    skip_auto_headers={'CONTENT-TYPE'},
+                    headers=headers,
+                    params=params,
+                    expects=(204,),
+                    throws=exceptions.UploadError,
+                )
+                await resp.release()
 
-            # ABORT
-            resp = await self.make_request(
-                'DELETE',
-                abort_url,
-                skip_auto_headers={'CONTENT-TYPE'},
-                headers=headers,
-                params=params,
-                expects=(204,),
-                throws=exceptions.UploadError,
-            )
-            await resp.release()
+                # LIST PARTS
+                resp_xml, session_deleted = await self._list_uploaded_chunks(path, session_upload_id)
 
-            # LIST PARTS
-            resp_xml, session_deleted = await self._list_uploaded_chunks(path, session_upload_id)
+                if session_deleted:
+                    # Abort is successful if the session has been deleted
+                    is_aborted = True
+                    break
 
-            if session_deleted:
-                # Abort is successful if the session has been deleted
-                is_aborted = True
-                break
-
-            uploaded_chunks_list = xmltodict.parse(resp_xml, strip_whitespace=False)
-            parsed_parts_list = uploaded_chunks_list['ListPartsResult'].get('Part', [])
-            if len(parsed_parts_list) == 0:
-                # Abort is successful when there is no part left
-                is_aborted = True
-                break
+                uploaded_chunks_list = xmltodict.parse(resp_xml, strip_whitespace=False)
+                parsed_parts_list = uploaded_chunks_list['ListPartsResult'].get('Part', [])
+                if len(parsed_parts_list) == 0:
+                    # Abort is successful when there is no part left
+                    is_aborted = True
+                    break
+            except Exception as err:
+                msg = 'An unexpected error has occurred during the aborting a multipart upload.'
+                logger.error('{} upload_id={} error={!r}'.format(msg, session_upload_id, err))
 
             iteration_count += 1
 
