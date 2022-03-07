@@ -10,12 +10,9 @@ from tests.providers.s3compat.test_provider import (
     TestMetadata,
     TestCreateFolder,
     TestOperations,
-    base_prefix,
     auth,
     credentials,
-    settings,
     mock_time,
-    provider,
     file_content,
     file_like,
     file_stream,
@@ -43,7 +40,8 @@ from tests.providers.s3compat.test_provider import (
 
 @pytest.fixture
 def base_prefix():
-    return 'testrootdir/'
+    return ''
+
 
 @pytest.fixture
 def settings(base_prefix):
@@ -53,24 +51,31 @@ def settings(base_prefix):
         'encrypt_uploads': False
     }
 
+
 @pytest.fixture
 def provider(auth, credentials, settings):
     return S3CompatInstitutionsProvider(auth, credentials, settings)
 
+
 class TestProviderConstruction2(TestProviderConstruction):
     pass
+
 
 class TestValidatePath2(TestValidatePath):
     pass
 
+
 class TestCRUD2(TestCRUD):
     pass
+
 
 class TestMetadata2(TestMetadata):
     pass
 
+
 class TestCreateFolder2(TestCreateFolder):
     pass
+
 
 class TestOperations2(TestOperations):
     pass
