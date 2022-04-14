@@ -3,36 +3,42 @@ import asyncio
 import datetime
 import functools
 from uuid import uuid4
+from enum import IntEnum
 from urllib import parse
 from typing import List, Tuple, Union
-
-from aiohttp.client import patch
 
 from waterbutler.core import provider, streams
 from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
 from waterbutler.core import exceptions
-from waterbutler.core.utils import ZipStreamGenerator
 
-from waterbutler.providers.rushfiles import settings as pd_settings
 from waterbutler.providers.rushfiles.metadata import (RushFilesRevision,
                                                         BaseRushFilesMetadata,
                                                         RushFilesFileMetadata,
-                                                        RushFilesFolderMetadata,
-                                                        RushFilesFileRevisionMetadata, )
+                                                        RushFilesFolderMetadata)
 
 
 class RushFilesPathPart(WaterButlerPathPart):
-    #TODO Check decoding/encoding function
     DECODE = parse.unquote
     ENCODE = functools.partial(parse.quote, safe='')  # type: ignore
-    #TODO Override other properties and methods if necessary
+
 
 class RushFilesPath(WaterButlerPath):
     PART_CLASS = RushFilesPathPart
-    #TODO Override other properties and methods if necessary
 
-#TODO Implement file handling methods
-#TODO Check type of parameters and adjust method declaration when appropriate. (WaterButlerPath -> RushFilesPath)
+
+class Attributes(IntEnum):
+    DIRECTORY = 16
+    ARCHIVE = 32
+    NORMAL = 128
+
+
+class ClientJournalEventType(IntEnum):
+    CREATE = 0
+    DELETE = 1
+    UPDATE = 3
+    MOVE = 16
+
+
 class RushFilesProvider(provider.BaseProvider):
     """Provider for RushFiles cloud storage service.
     """
@@ -54,7 +60,7 @@ class RushFilesProvider(provider.BaseProvider):
     async def validate_path(self, path: str, **kwargs) -> RushFilesPath:
         if path == '/':
             return RushFilesPath('/', _ids=[self.share['id']], folder=True)
-        
+
         is_folder = path.endswith('/')
         children_path_list = [parse.unquote(x) for x in path.strip('/').split('/')]
         inter_id_list = [self.share['id']]
@@ -73,19 +79,19 @@ class RushFilesProvider(provider.BaseProvider):
             current_inter_id, index = self._search_inter_id(res, child)
             inter_id_list.append(current_inter_id)
             if not current_inter_id:
-                if i == len(children_path_list)-1:
-                    return RushFilesPath(path,  _ids=inter_id_list)
+                if i == len(children_path_list) - 1:
+                    return RushFilesPath(path, _ids=inter_id_list)
                 raise exceptions.NotFoundError(path)
-            
+
         if res['Data'][index]['IsFile'] == is_folder:
             raise exceptions.NotFoundError(path)
 
-        return RushFilesPath(path, folder= is_folder, _ids=inter_id_list)                    
+        return RushFilesPath(path, folder=is_folder, _ids=inter_id_list)
 
     async def revalidate_path(self,
                               base: WaterButlerPath,
                               name: str,
-                              folder: bool=None) -> WaterButlerPath:
+                              folder: bool = None) -> WaterButlerPath:
         response = await self.make_request(
             'GET',
             self._build_clientgateway_url(str(self.share['id']), 'virtualfiles', base.identifier, 'children'),
@@ -97,7 +103,7 @@ class RushFilesProvider(provider.BaseProvider):
         res = await response.json()
         child_id, index = self._search_inter_id(res, name)
 
-        if not child_id is None:
+        if child_id is not None:
             if res['Data'][index]['IsFile'] == folder:
                 raise exceptions.NotFoundError(name)
 
@@ -110,7 +116,7 @@ class RushFilesProvider(provider.BaseProvider):
     def default_headers(self) -> dict:
         return {'authorization': 'Bearer {}'.format(self.token)}
 
-    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
+    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath = None) -> bool:
         return self == other
 
     def can_intra_copy(self, other: provider.BaseProvider, path=None) -> bool:
@@ -124,7 +130,7 @@ class RushFilesProvider(provider.BaseProvider):
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
 
-        src_metadata = await self._file_metadata(src_path, raw=True)                 
+        src_metadata = await self._file_metadata(src_path, raw=True)
         request_body = json.dumps({
             'RfVirtualFile': {
                 'InternalName': src_path.identifier,
@@ -139,10 +145,10 @@ class RushFilesProvider(provider.BaseProvider):
                 'Attributes': src_metadata['Attributes'],
             },
             'TransmitId': self._generate_uuid(),
-            'ClientJournalEventType': 16,
+            'ClientJournalEventType': ClientJournalEventType.MOVE,
             'DeviceId': 'waterbutler'
         })
-        
+
         async with self.request(
             'PUT',
             self._build_filecache_url(str(self.share['id']), 'files', src_path.identifier),
@@ -153,16 +159,16 @@ class RushFilesProvider(provider.BaseProvider):
         ) as response:
             resp = await response.json()
             data = resp['Data']['ClientJournalEvent']['RfVirtualFile']
-        
+
         created = dest_path.identifier is None
         dest_path.parts[-1]._id = data['InternalName']
         dest_path.rename(data['PublicName'])
-        
+
         if dest_path.is_dir:
             metadata = RushFilesFolderMetadata(data, dest_path)
             metadata.children = await self._folder_metadata(dest_path)
             return metadata, created
-        
+
         return RushFilesFileMetadata(data, dest_path), created
 
     async def intra_copy(self,
@@ -192,15 +198,15 @@ class RushFilesProvider(provider.BaseProvider):
         clone_result_path = dest_path.parent.child(data['PublicName'], _id=data['InternalName'])
         if clone_result_path == dest_path:
             # Cloned file is exactly the same as destination path. Can return right away.
-            return RushFilesFileMetadata(data, clone_result_path ), True
+            return RushFilesFileMetadata(data, clone_result_path), True
         else:
             # Destination does not match (cloned file should be renamed or destination existed and we have a duplicate).
-            return await self.intra_move(dest_provider, clone_result_path , dest_path)
-        
+            return await self.intra_move(dest_provider, clone_result_path, dest_path)
+
     async def download(self,  # type: ignore
                        path: RushFilesPath,
-                       revision: str=None,
-                       range: Tuple[int, int]=None,
+                       revision: str = None,
+                       range: Tuple[int, int] = None,
                        **kwargs) -> streams.BaseStream:
         if path.identifier is None:
             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
@@ -209,7 +215,7 @@ class RushFilesProvider(provider.BaseProvider):
             raise exceptions.DownloadError('Path must be a file', code=404)
 
         metadata = await self.metadata(path, revision=revision)
-            
+
         resp = await self.make_request(
             'GET',
             self._build_filecache_url(str(self.share['id']), 'files', metadata.upload_name),
@@ -233,19 +239,19 @@ class RushFilesProvider(provider.BaseProvider):
                 data['Data']['Url'],
                 headers={
                     'Content-Type': 'application/octet-stream',
-                    'Content-Range': 'bytes 0-' + str(stream.size-1) + '/*',
+                    'Content-Range': 'bytes 0-' + str(stream.size - 1) + '/*',
                     'Content-Length': str(stream.size)
                 },
                 data=stream,
-                expects=(200,201,202,),
+                expects=(200, 201, 202, ),
                 throws=exceptions.UploadError,
             )
             data = await response.json()
         else:
             data = await self._upload_request(stream, path, created)
-            
+
         return RushFilesFileMetadata(data['Data']['ClientJournalEvent']['RfVirtualFile'], path), created
-    
+
     async def _upload_request(self, stream, path, created):
         now = self._get_time_for_sending()
         if not created:
@@ -256,29 +262,29 @@ class RushFilesProvider(provider.BaseProvider):
                 'ShareId': self.share['id'],
                 'ParrentId': path.parent.identifier,
                 'EndOfFile': str(stream.size),
-                'Tick': 0, # Tick is required, but ignored so can be set to any value
+                'Tick': 0,  # Tick is required, but ignored so can be set to any value
                 'PublicName': path.name,
                 'CreationTime': now if created else metadata.created_utc,
                 'LastAccessTime': now,
                 'LastWriteTime': now,
-                'Attributes': 128,
+                'Attributes': Attributes.NORMAL,
             },
             'TransmitId': self._generate_uuid(),
-            'ClientJournalEventType': 0 if created else 3,
+            'ClientJournalEventType': ClientJournalEventType.CREATE if created else ClientJournalEventType.UPDATE,
             'DeviceId': 'waterbutler'
         })
-        
+
         if created:
-            upload_url =  self._build_filecache_url(str(self.share['id']), 'files')
+            upload_url = self._build_filecache_url(str(self.share['id']), 'files')
         else:
-            upload_url =  self._build_filecache_url(str(self.share['id']), 'files', path.internal_name)
+            upload_url = self._build_filecache_url(str(self.share['id']), 'files', path.internal_name)
 
         response = await self.make_request(
             'POST' if created else 'PUT',
             upload_url,
             data=request_body,
             headers={'Content-Type': 'application/json'},
-            expects=(200,202,),
+            expects=(200, 202, ),
             throws=exceptions.UploadError,
         )
         data = await response.json()
@@ -297,24 +303,24 @@ class RushFilesProvider(provider.BaseProvider):
             )
 
         response = await self.make_request(
-                        'DELETE',
-                        self._build_filecache_url(str(self.share['id']), 'files', path.identifier),
-                        data=json.dumps({
-                            "TransmitId": self._generate_uuid(),
-                            "ClientJournalEventType": 1,
-                            "DeviceId": "waterbutler "
-                        }),
-                        headers={'Content-Type': 'application/json'},
-                        expects=(200, 400, 404,),
-                        throws=exceptions.DeleteError,
-                    )
+            'DELETE',
+            self._build_filecache_url(str(self.share['id']), 'files', path.identifier),
+            data=json.dumps({
+                "TransmitId": self._generate_uuid(),
+                "ClientJournalEventType": ClientJournalEventType.DELETE,
+                "DeviceId": "waterbutler "
+            }),
+            headers={'Content-Type': 'application/json'},
+            expects=(200, 400, 404,),
+            throws=exceptions.DeleteError,
+        )
         if response.status == 400 or response.status == 404:
             raise exceptions.NotFoundError(str(path))
         return
 
     async def metadata(self,  # type: ignore
                        path: RushFilesPath,
-                       raw: bool=False,
+                       raw: bool = False,
                        revision=None,
                        **kwargs) -> Union[dict, BaseRushFilesMetadata,
                                           List[Union[BaseRushFilesMetadata, dict]]]:
@@ -328,9 +334,9 @@ class RushFilesProvider(provider.BaseProvider):
 
     async def revisions(self, path: RushFilesPath,  # type: ignore
                         **kwargs) -> List[RushFilesRevision]:
-        
-        if path.identifier == None:
-            raise NotFoundError(str(path))
+
+        if path.identifier is None:
+            raise exceptions.NotFoundError(str(path))
 
         async with self.request(
             'GET',
@@ -341,11 +347,11 @@ class RushFilesProvider(provider.BaseProvider):
             data = await response.json()
             revisions = data['Data']
 
-        return [RushFilesRevision(each['File']) for each in revisions] 
+        return [RushFilesRevision(each['File']) for each in revisions]
 
     async def create_folder(self,
                             path: WaterButlerPath,
-                            folder_precheck: bool=True,
+                            folder_precheck: bool = True,
                             **kwargs) -> RushFilesFolderMetadata:
         RushFilesPath.validate_folder(path)
 
@@ -363,13 +369,13 @@ class RushFilesProvider(provider.BaseProvider):
                 'CreationTime': now,
                 'LastAccessTime': now,
                 'LastWriteTime': now,
-                'Attributes': 16,
+                'Attributes': Attributes.DIRECTORY,
             },
             'TransmitId': self._generate_uuid(),
-            'ClientJournalEventType': 0,
+            'ClientJournalEventType': ClientJournalEventType.CREATE,
             'DeviceId': 'waterbutler'
         })
-        
+
         async with self.request(
             'POST',
             self._build_filecache_url(str(self.share['id']), 'files'),
@@ -384,7 +390,7 @@ class RushFilesProvider(provider.BaseProvider):
     def path_from_metadata(self, parent_path, metadata) -> WaterButlerPath:
         return parent_path.child(metadata.name, _id=metadata.internal_name,
                                  folder=metadata.is_folder)
-    
+
     async def zip(self, path: WaterButlerPath, **kwargs) -> asyncio.StreamReader:
         resp = await self.make_request(
             'GET',
@@ -393,7 +399,7 @@ class RushFilesProvider(provider.BaseProvider):
             throws=exceptions.DownloadError,
         )
         return resp.content
-    
+
     def _build_filecache_url(self, *segments, **query):
         return provider.build_url('https://filecache01.{}'.format(self.share['domain']), 'api', 'shares', *segments, **query)
 
@@ -402,9 +408,9 @@ class RushFilesProvider(provider.BaseProvider):
 
     async def _folder_metadata(self,
                                path: RushFilesPath,
-                               raw: bool=False) -> List[Union[BaseRushFilesMetadata, dict]]:
+                               raw: bool = False) -> List[Union[BaseRushFilesMetadata, dict]]:
         share_id = self.share['id']
-        inter_id =  path.identifier
+        inter_id = path.identifier
 
         response = await self.make_request(
             'GET',
@@ -430,8 +436,8 @@ class RushFilesProvider(provider.BaseProvider):
 
     async def _file_metadata(self,
                              path: RushFilesPath,
-                             revision: str=None,
-                             raw: bool=False) -> Union[dict, BaseRushFilesMetadata]:
+                             revision: str = None,
+                             raw: bool = False) -> Union[dict, BaseRushFilesMetadata]:
         if revision:
             url = self._build_clientgateway_url(str(self.share['id']), 'virtualfiles', path.identifier, 'history')
         else:
@@ -445,7 +451,7 @@ class RushFilesProvider(provider.BaseProvider):
         )
         if response.status == 404:
             raise exceptions.NotFoundError(path)
-        
+
         res = await response.json()
 
         if revision:
@@ -457,14 +463,14 @@ class RushFilesProvider(provider.BaseProvider):
         else:
             return res['Data'] if raw else RushFilesFileMetadata(res['Data'], path)
 
-    def _search_inter_id(self, 
-                        res: dict, 
-                        child: str) -> Union[str,int,None]:
+    def _search_inter_id(self,
+                        res: dict,
+                        child: str) -> Union[str, int, None]:
         for i, data in enumerate(res['Data']):
             if child == data['PublicName']:
                 return data['InternalName'], i
         return None, None
-    
+
     def _generate_uuid(self) -> str:
         uuid = str(uuid4())
         return uuid.replace('-', '')

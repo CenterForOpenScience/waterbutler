@@ -14,12 +14,13 @@ from waterbutler.core.path import WaterButlerPath
 
 from waterbutler.providers.rushfiles import settings as ds
 from waterbutler.providers.rushfiles import RushFilesProvider
-# from waterbutler.providers.rushfiles import utils as drive_utils
-from waterbutler.providers.rushfiles.provider import RushFilesPath
+
+from waterbutler.providers.rushfiles.provider import (RushFilesPath,
+                                                        Attributes,
+                                                        ClientJournalEventType)
 from waterbutler.providers.rushfiles.metadata import (RushFilesRevision,
                                                         RushFilesFileMetadata,
-                                                        RushFilesFolderMetadata,
-                                                        RushFilesFileRevisionMetadata)
+                                                        RushFilesFolderMetadata)
 
 from tests.providers.rushfiles.fixtures import(root_provider_fixtures,
                                                 intra_fixtures,
@@ -72,7 +73,7 @@ def file_metadata_response():
             "LastWriteTime": "2021-11-18T15:44:36.4329227Z",
             "PublicName": "hoge.txt",
             "IsFile": True,
-            "Attributes": 32
+            "Attributes": Attributes.ARCHIVE
         }
     }
 
@@ -100,7 +101,7 @@ def folder_metadata_response():
             "LastWriteTime": "2021-11-18T15:44:36.4329227Z",
             "PublicName": "foo",
             "IsFile": False,
-            "Attributes": 16
+            "Attributes": Attributes.DIRECTORY
         }
     }
 
@@ -284,7 +285,7 @@ class TestDelete:
                         "Data":{
                             "ClientJournalEvent": {
                                 'TransmitId': provider._generate_uuid(),
-                                'ClientJournalEventType': 1,
+                                'ClientJournalEventType': ClientJournalEventType.DELETE,
                                 "RfVirtualFile": {
                                     "FileLock": {
                                         'DeviceId': 'waterbutler'

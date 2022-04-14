@@ -23,7 +23,7 @@ class RushFilesFolderMetadata(BaseRushFilesMetadata, metadata.BaseFolderMetadata
     @property
     def name(self) -> str:
         return self.raw['PublicName']
-    
+
     @property
     def path(self) -> str:
         return '/' + self._path.raw_path
@@ -34,9 +34,10 @@ class RushFilesFolderMetadata(BaseRushFilesMetadata, metadata.BaseFolderMetadata
 
     @property
     def extra(self):
-        return {'internalName': self.raw['InternalName'],
-                'shareId': self.raw['ShareId'],
-                'parentId': self.raw['ParrentId'],
+        return {
+            'internalName': self.raw['InternalName'],
+            'shareId': self.raw['ShareId'],
+            'parentId': self.raw['ParrentId'],
         }
 
 
@@ -44,7 +45,7 @@ class RushFilesFileMetadata(BaseRushFilesMetadata, metadata.BaseFileMetadata):
     @property
     def name(self) -> str:
         return self.raw['PublicName']
-    
+
     @property
     def path(self) -> str:
         return '/' + self._path.raw_path
@@ -56,7 +57,7 @@ class RushFilesFileMetadata(BaseRushFilesMetadata, metadata.BaseFileMetadata):
     @property
     def modified(self) -> str:
         return self.raw['LastWriteTime']
-    
+
     @property
     def etag(self) -> str:
         return self.raw['InternalName'] + '-' + str(self.raw['Tick'])
@@ -72,22 +73,18 @@ class RushFilesFileMetadata(BaseRushFilesMetadata, metadata.BaseFileMetadata):
     @property
     def upload_name(self) -> str:
         return self.raw['UploadName']
-    
+
     @property
     def internal_name(self) -> str:
         return self.raw['InternalName']
-    
+
     @property
     def extra(self):
-        return {'internalName': self.raw['InternalName'],
-                'shareId': self.raw['ShareId'],
-                'parentId': self.raw['ParrentId'],
+        return {
+            'internalName': self.raw['InternalName'],
+            'shareId': self.raw['ShareId'],
+            'parentId': self.raw['ParrentId'],
         }
-
-
-# TODO Remove if not necessary
-class RushFilesFileRevisionMetadata(RushFilesFileMetadata):
-    pass
 
 
 class RushFilesRevision(metadata.BaseFileRevisionMetadata):
@@ -103,7 +100,7 @@ class RushFilesRevision(metadata.BaseFileRevisionMetadata):
     @property
     def modified(self):
         return self.raw['LastWriteTime']
-    
+
     @property
     def upload_name(self):
         return self.raw['UploadName']
