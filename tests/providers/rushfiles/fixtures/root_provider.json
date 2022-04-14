@@ -22,25 +22,120 @@
     "Deleted": false
     },
   "folder_metadata": {
-      "User": "wklonowski@tsukaeru.net",
-      "IsFile": false,
-      "FileLock": {
-        "IsLocked": false,
-        "LockTime": 0
+    "User": "wklonowski@tsukaeru.net",
+    "IsFile": false,
+    "FileLock": {
+      "IsLocked": false,
+      "LockTime": 0
+    },
+    "InternalName": "088e80f914f74290b15ef9cf5d63e06a",
+    "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+    "Tick": 1,
+    "SubShareIds": [],
+    "ShareTick": 48,
+    "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
+    "EndOfFile": 0,
+    "PublicName": "GakuNin RDM",
+    "CreationTime": "2021-10-18T02:33:14.9762501Z",
+    "LastAccessTime": "2021-10-18T02:33:14.9762501Z",
+    "LastWriteTime": "2021-10-18T02:33:14.9762501Z",
+    "Attributes": 16,
+    "Deleted": false
+  },
+  "children_metadata": {
+    "Data": [
+      {
+        "IsSubshare": false,
+        "User": "kmizuno@tsukaeru.net",
+        "IsFile": false,
+        "FileLock": {
+          "IsLocked": false,
+          "LockTime": 0
+        },
+        "InternalName": "8f4026e92bcb4ab58178d12cd3622592",
+        "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+        "Tick": 1,
+        "SubShareIds": [],
+        "ShareTick": 155,
+        "ParrentId": "088e80f914f74290b15ef9cf5d63e06a",
+        "EndOfFile": 0,
+        "PublicName": "Test",
+        "CreationTime": "2021-11-10T02:37:33.542Z",
+        "LastAccessTime": "2021-11-10T02:37:33.542Z",
+        "LastWriteTime": "2021-11-10T02:37:33.542Z",
+        "Attributes": 16,
+        "Deleted": false
       },
-      "InternalName": "088e80f914f74290b15ef9cf5d63e06a",
-      "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
-      "Tick": 1,
-      "SubShareIds": [],
-      "ShareTick": 48,
-      "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
-      "EndOfFile": 0,
-      "PublicName": "GakuNin RDM",
-      "CreationTime": "2021-10-18T02:33:14.9762501Z",
-      "LastAccessTime": "2021-10-18T02:33:14.9762501Z",
-      "LastWriteTime": "2021-10-18T02:33:14.9762501Z",
-      "Attributes": 16,
-      "Deleted": false
+      {
+        "IsSubshare": false,
+        "UploadName": "2b1f951929994770a7e4fea850c370cb",
+        "User": "kmizuno@tsukaeru.net",
+        "IsFile": true,
+        "FileLock": {
+          "IsLocked": false,
+          "LockTime": 0
+        },
+        "InternalName": "d0c13179d2e147c893c0e8a2c68abc7b",
+        "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+        "Tick": 31,
+        "SubShareIds": [],
+        "ShareTick": 158,
+        "ParrentId": "088e80f914f74290b15ef9cf5d63e06a",
+        "EndOfFile": 14084,
+        "PublicName": "Tasks.xlsx",
+        "CreationTime": "2021-11-08T05:44:13.6562327Z",
+        "LastAccessTime": "2021-11-17T11:47:27.8168664Z",
+        "LastWriteTime": "2021-11-17T11:47:27.8168664Z",
+        "Attributes": 32,
+        "Deleted": false
+      },
+      {
+        "IsSubshare": false,
+        "UploadName": "cb2d22dfc5f4493e8a13d52463eb29db",
+        "User": "nchino@tsukaeru.net",
+        "IsFile": true,
+        "FileLock": {
+          "IsLocked": false,
+          "LockTime": 0
+        },
+        "InternalName": "c9852bc6dc464573a27ba48b01638c3f",
+        "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+        "Tick": 1,
+        "SubShareIds": [],
+        "ShareTick": 95,
+        "ParrentId": "088e80f914f74290b15ef9cf5d63e06a",
+        "EndOfFile": 382828,
+        "PublicName": "データ保護11-02 [自動保存済み].pptx",
+        "CreationTime": "2021-11-04T07:56:01.6288802Z",
+        "LastAccessTime": "2021-11-04T07:56:01.7148889Z",
+        "LastWriteTime": "2021-11-04T07:56:01.6238791Z",
+        "Attributes": 32,
+        "Deleted": false
+      },
+      {
+        "IsSubshare": false,
+        "UploadName": "f06a6282c1b146b78ac1de70a45fda08",
+        "User": "wklonowski@tsukaeru.net",
+        "IsFile": true,
+        "FileLock": {
+          "IsLocked": false,
+          "LockTime": 0
+        },
+        "InternalName": "d4adc8f9a1814e3394a8253a25220206",
+        "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+        "Tick": 7,
+        "SubShareIds": [],
+        "ShareTick": 94,
+        "ParrentId": "088e80f914f74290b15ef9cf5d63e06a",
+        "EndOfFile": 382773,
+        "PublicName": "データ保護11-02.pptx",
+        "CreationTime": "2021-11-02T02:30:51.8881003Z",
+        "LastAccessTime": "2021-11-02T06:43:20.3196009Z",
+        "LastWriteTime": "2021-11-02T06:43:20.2893012Z",
+        "Attributes": 32,
+        "Deleted": false
+      }
+    ]
   },
   "create_folder_metadata": {
     "Code": 1,

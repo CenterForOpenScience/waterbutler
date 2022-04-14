@@ -163,88 +163,71 @@ class TestValidatePath:
 
         assert result == expected
 
-    # @pytest.mark.asyncio
-    # @pytest.mark.aiohttpretty
-    # async def test_revalidate_path_file(self, provider, root_provider_fixtures):
-    #     file_name = '/Gear1.stl'
-    #     revalidate_path_metadata = root_provider_fixtures['revalidate_path_file_metadata_1']
-    #     file_id = revalidate_path_metadata['items'][0]['id']
-    #     path = RushFilesPath(file_name, _ids=['0', file_id])
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revalidate_path_file(self, provider, root_provider_fixtures):
+        file_name = 'Tasks.xlsx'
+        revalidate_path_metadata = root_provider_fixtures['file_metadata']
+        file_id = revalidate_path_metadata['InternalName']
+        root_id = str(provider.share['id'])
 
-    #     parts = [[parse.unquote(x), True] for x in file_name.strip('/').split('/')]
-    #     parts[-1][1] = False
+        parent_path = RushFilesPath('/', _ids=[root_id])
+        expected_path = RushFilesPath('/{}'.format(file_name), _ids=[root_id, file_id])
 
-    #     current_part = parts.pop(0)
-    #     part_name, part_is_folder = current_part[0], current_part[1]
-    #     name, ext = os.path.splitext(part_name)
-    #     query = _build_title_search_query(provider, file_name.strip('/'), False)
+        parent_url = provider._build_clientgateway_url(root_id, 'virtualfiles', root_id, 'children')
+        aiohttpretty.register_json_uri('GET', parent_url,
+                                       body=root_provider_fixtures['children_metadata'], status=200)
 
-    #     url = provider.build_url('files', file_id, 'children', q=query, fields='items(id)')
-    #     aiohttpretty.register_json_uri('GET', url, body=revalidate_path_metadata)
+        actual_path = await provider.revalidate_path(parent_path, file_name, False)
+        assert actual_path == expected_path
 
-    #     url = provider.build_url('files', file_id, fields='id,title,mimeType')
-    #     aiohttpretty.register_json_uri('GET', url,
-    #                                    body=root_provider_fixtures['revalidate_path_file_metadata_2'])
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.revalidate_path(parent_path, file_name, True)
 
-    #     result = await provider.revalidate_path(path, file_name)
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revalidate_path_folder(self, provider, root_provider_fixtures):
+        folder_name = 'Test'
+        revalidate_path_metadata = root_provider_fixtures['folder_metadata']
+        folder_id = revalidate_path_metadata['InternalName']
+        root_id = str(provider.share['id'])
 
-    #     assert result.name in path.name
+        parent_path = RushFilesPath('/', _ids=[root_id])
+        expected_path = RushFilesPath('/{}/'.format(folder_name), _ids=[root_id, folder_id])
 
-    # @pytest.mark.asyncio
-    # @pytest.mark.aiohttpretty
-    # async def test_revalidate_path_file_gdoc(self, provider, root_provider_fixtures):
-    #     file_name = '/Gear1.gdoc'
-    #     file_id = root_provider_fixtures['revalidate_path_file_metadata_1']['items'][0]['id']
-    #     path = RushFilesPath(file_name, _ids=['0', file_id])
+        parent_url = provider._build_clientgateway_url(root_id, 'virtualfiles', root_id, 'children')
+        aiohttpretty.register_json_uri('GET', parent_url,
+                                       body=root_provider_fixtures['children_metadata'], status=200)
 
-    #     parts = [[parse.unquote(x), True] for x in file_name.strip('/').split('/')]
-    #     parts[-1][1] = False
+        actual_path = await provider.revalidate_path(parent_path, folder_name, True)
+        assert actual_path == expected_path
 
-    #     current_part = parts.pop(0)
-    #     part_name, part_is_folder = current_part[0], current_part[1]
-    #     name, ext = os.path.splitext(part_name)
-    #     gd_ext = drive_utils.get_mimetype_from_ext(ext)
-    #     query = "title = '{}' " \
-    #             "and trashed = false " \
-    #             "and mimeType = '{}'".format(clean_query(name), gd_ext)
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.revalidate_path(parent_path, folder_name, False)
+    
+    @pytest.mark.aiohttpretty
+    @pytest.mark.asyncio
+    async def test_revalidate_path_subfile(self, provider, root_provider_fixtures):
+        root_id = str(provider.share['id'])
+        parent_id = root_provider_fixtures['folder_metadata']['InternalName']
+        subfile_id = root_provider_fixtures['file_metadata']['InternalName']
 
-    #     url = provider.build_url('files', file_id, 'children', q=query, fields='items(id)')
-    #     aiohttpretty.register_json_uri('GET', url,
-    #                                    body=root_provider_fixtures['revalidate_path_file_metadata_1'])
+        parent_name = 'Test'
+        subfile_name = 'Tasks.xlsx'
 
-    #     url = provider.build_url('files', file_id, fields='id,title,mimeType')
-    #     aiohttpretty.register_json_uri('GET', url,
-    #                                    body=root_provider_fixtures['revalidate_path_gdoc_file_metadata'])
+        parent_path = RushFilesPath('/{}/'.format(parent_name), _ids=[root_id, parent_id])
+        expected_path = RushFilesPath('/{}/{}'.format(parent_name, subfile_name),
+                                     _ids=[root_id, parent_id, subfile_id])
 
-    #     result = await provider.revalidate_path(path, file_name)
+        parent_url = provider._build_clientgateway_url(root_id, 'virtualfiles', parent_id, 'children')
+        aiohttpretty.register_json_uri('GET', parent_url,
+                                       body=root_provider_fixtures['children_metadata'], status=200)
 
-    #     assert result.name in path.name
+        actual_path = await provider.revalidate_path(parent_path, subfile_name, False)
+        assert actual_path == expected_path
 
-    # @pytest.mark.asyncio
-    # @pytest.mark.aiohttpretty
-    # async def test_revalidate_path_folder(self, provider, root_provider_fixtures):
-    #     file_name = "/inception folder yo/"
-    #     file_id = root_provider_fixtures['revalidate_path_folder_metadata_1']['items'][0]['id']
-    #     path = RushFilesPath(file_name, _ids=['0', file_id])
-
-    #     parts = [[parse.unquote(x), True] for x in file_name.strip('/').split('/')]
-    #     parts[-1][1] = False
-
-    #     current_part = parts.pop(0)
-    #     part_name, part_is_folder = current_part[0], current_part[1]
-    #     name, ext = os.path.splitext(part_name)
-    #     query = _build_title_search_query(provider, file_name.strip('/') + '/', True)
-
-    #     folder_one_url = provider.build_url('files', file_id, 'children', q=query, fields='items(id)')
-    #     aiohttpretty.register_json_uri('GET', folder_one_url,
-    #                                    body=root_provider_fixtures['revalidate_path_folder_metadata_1'])
-
-    #     folder_two_url = provider.build_url('files', file_id, fields='id,title,mimeType')
-    #     aiohttpretty.register_json_uri('GET', folder_two_url,
-    #                                    body=root_provider_fixtures['revalidate_path_folder_metadata_2'])
-
-    #     result = await provider.revalidate_path(path, file_name, True)
-    #     assert result.name in path.name
+        with pytest.raises(exceptions.NotFoundError) as exc:
+            await provider.revalidate_path(parent_path, subfile_name, True)
 
 class TestCreateFolder:
 
