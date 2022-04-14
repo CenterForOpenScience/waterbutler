@@ -199,9 +199,8 @@ class RushFilesProvider(provider.BaseProvider):
             return RushFilesFolderMetadata(resp['Data']['ClientJournalEvent']['RfVirtualFile'], path)
 
     def path_from_metadata(self, parent_path, metadata) -> WaterButlerPath:
-        #TODO Check parent implementation and see if it works.
-        # Fix if not, remove override completely if it does.
-        return super().path_from_metadata(parent_path, metadata)
+        return parent_path.child(metadata.name, _id=metadata.extra['internalName'],
+                                 folder=metadata.is_folder)
     
     async def zip(self, path: WaterButlerPath, **kwargs) -> asyncio.StreamReader:
         #TODO RushFiles allows downloading entire folders from web client

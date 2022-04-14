@@ -245,7 +245,6 @@ class TestValidatePath:
     #     result = await provider.revalidate_path(path, file_name, True)
     #     assert result.name in path.name
 
-
 class TestCreateFolder:
 
     @pytest.mark.asyncio
@@ -293,3 +292,15 @@ class TestCreateFolder:
     async def test_must_be_folder(self, provider, monkeypatch):
         with pytest.raises(exceptions.CreateFolderError) as e:
             await provider.create_folder(WaterButlerPath('/hoge.foo', _ids=('this', 'file')))
+    
+class TestOperationsOrMisc:
+
+    def test_path_from_metadata(self, provider, root_provider_fixtures):
+        item = root_provider_fixtures['file_metadata']
+        src_path = RushFilesPath('/Tasks.xlsx', _ids=(provider.share['id'], item['InternalName']))
+
+        metadata = RushFilesFileMetadata(item, src_path)
+        child_path = provider.path_from_metadata(src_path.parent, metadata)
+
+        assert child_path.full_path == src_path.full_path
+        assert child_path == src_path
