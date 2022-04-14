@@ -208,7 +208,7 @@ class RushFilesProvider(provider.BaseProvider):
         if path.is_dir:
             raise exceptions.DownloadError('Path must be a file', code=404)
 
-        metadata = await self.metadata(path)
+        metadata = await self.metadata(path, revision=revision)
             
         resp = await self.make_request(
             'GET',
@@ -324,12 +324,24 @@ class RushFilesProvider(provider.BaseProvider):
         if path.is_dir:
             return await self._folder_metadata(path, raw=raw)
 
-        return await self._file_metadata(path, raw=raw)
+        return await self._file_metadata(path, revision=revision, raw=raw)
 
     async def revisions(self, path: RushFilesPath,  # type: ignore
                         **kwargs) -> List[RushFilesRevision]:
-        # Probably https://clientgateway.rushfiles.com/swagger/ui/index#!/VirtualFile/VirtualFile_GetVirtualFileHistory
-        raise NotImplementedError
+        
+        if path.identifier == None:
+            raise NotFoundError(str(path))
+
+        async with self.request(
+            'GET',
+            self._build_clientgateway_url(str(self.share['id']), 'virtualfiles', path.identifier, 'history'),
+            expects=(200, ),
+            throws=exceptions.RevisionsError
+        ) as response:
+            data = await response.json()
+            revisions = data['Data']
+
+        return [RushFilesRevision(each['File']) for each in revisions] 
 
     async def create_folder(self,
                             path: WaterButlerPath,
@@ -420,19 +432,30 @@ class RushFilesProvider(provider.BaseProvider):
                              path: RushFilesPath,
                              revision: str=None,
                              raw: bool=False) -> Union[dict, BaseRushFilesMetadata]:
+        if revision:
+            url = self._build_clientgateway_url(str(self.share['id']), 'virtualfiles', path.identifier, 'history')
+        else:
+            url = self._build_clientgateway_url(str(self.share['id']), 'virtualfiles', path.identifier)
+
         response = await self.make_request(
             'GET',
-            self._build_clientgateway_url(str(self.share['id']), 'virtualfiles', path.identifier),
+            url,
             expects=(200, 404,),
             throws=exceptions.MetadataError,
         )
-
         if response.status == 404:
             raise exceptions.NotFoundError(path)
-
+        
         res = await response.json()
 
-        return res['Data'] if raw else RushFilesFileMetadata(res['Data'], path)
+        if revision:
+            try:
+                res = next(x for x in res['Data'] if str(x['File']['Tick']) == revision)
+            except StopIteration:
+                raise exceptions.NotFoundError(str(path))
+            return res['File'] if raw else RushFilesFileMetadata(res['File'], path)
+        else:
+            return res['Data'] if raw else RushFilesFileMetadata(res['Data'], path)
 
     def _search_inter_id(self, 
                         res: dict, 

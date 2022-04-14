@@ -94,12 +94,16 @@ class RushFilesRevision(metadata.BaseFileRevisionMetadata):
 
     @property
     def version_identifier(self):
-        raise NotImplementedError
+        return 'revision'
 
     @property
     def version(self):
-        raise NotImplementedError
+        return self.raw['Tick']
 
     @property
     def modified(self):
-        raise NotImplementedError
+        return self.raw['LastWriteTime']
+    
+    @property
+    def upload_name(self):
+        return self.raw['UploadName']

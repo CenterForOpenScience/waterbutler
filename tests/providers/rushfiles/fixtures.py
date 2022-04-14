@@ -14,3 +14,8 @@ def root_provider_fixtures():
 def intra_fixtures():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/intra_fixtures.json'), 'r') as fp:
         return json.load(fp)
+
+@pytest.fixture
+def revision_fixtures():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/revisions.json'), 'r') as fp:
+        return json.load(fp)

@@ -22,7 +22,8 @@ from waterbutler.providers.rushfiles.metadata import (RushFilesRevision,
                                                         RushFilesFileRevisionMetadata)
 
 from tests.providers.rushfiles.fixtures import(root_provider_fixtures,
-                                                intra_fixtures)
+                                                intra_fixtures,
+                                                revision_fixtures)
 
 @pytest.fixture
 def auth():
@@ -326,7 +327,7 @@ class TestDownload:
     @pytest.mark.aiohttpretty
     async def test_download(self, provider, root_provider_fixtures):
         body = b'dearly-beloved'
-        path = WaterButlerPath('/Tasks.xlsx',_ids=(provider.share['id'],'0f04f33f715a4d5890307f114bf24e9c'))
+        path = WaterButlerPath('/Tasks.xlsx',_ids=(provider.share['id'],'1a8fe2de6a4144a6b1088ffc03fef4c1'))
         metadata = root_provider_fixtures['file_metadata_resp']
         
         metadata_url = provider._build_clientgateway_url(str(provider.share['id']), 'virtualfiles', path.identifier)
@@ -336,6 +337,25 @@ class TestDownload:
         aiohttpretty.register_uri('GET', url, body=body)
 
         result = await provider.download(path)
+        content = await result.read()
+
+        assert content == body
+    
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_revision(self, provider, revision_fixtures):
+        revision_metadata = revision_fixtures['revisions_list_metadata']
+        revision = str(revision_metadata['Data'][1]['File']['Tick'])
+        body = b'dearly-beloved'
+        path = WaterButlerPath('/Tasks.xlsx',_ids=(provider.share['id'],'1a8fe2de6a4144a6b1088ffc03fef4c1'))
+        
+        metadata_url = provider._build_clientgateway_url(str(provider.share['id']), 'virtualfiles', path.identifier, 'history')
+        aiohttpretty.register_uri('GET', metadata_url, body=json.dumps(revision_metadata))
+
+        url = provider._build_filecache_url(str(provider.share['id']), 'files', revision_metadata['Data'][1]['File']['UploadName'])
+        aiohttpretty.register_uri('GET', url, body=body)
+
+        result = await provider.download(path, revision)
         content = await result.read()
 
         assert content == body
@@ -551,3 +571,59 @@ class TestIntraCopy:
         expected = RushFilesFileMetadata(duplicated_item, duplicated_path)
 
         assert result == expected
+
+class TestRevision:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_get_revisions(self, provider, root_provider_fixtures, revision_fixtures):
+        item = root_provider_fixtures['file_metadata']
+        revisions_list = revision_fixtures['revisions_list_metadata']
+        path = WaterButlerPath('/Tasks.xlsx', _ids=(provider, item['InternalName']))
+
+        revisions_url = provider._build_clientgateway_url(str(provider.share['id']), 'virtualfiles', path.identifier, 'history')
+        aiohttpretty.register_json_uri('GET', revisions_url, body=revisions_list)
+
+        result = await provider.revisions(path)
+
+        expected = [
+            RushFilesRevision(each['File'])
+            for each in revisions_list['Data']
+        ]
+
+        assert result == expected
+        assert aiohttpretty.has_call(method='GET', uri=revisions_url)
+    
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revision_metadata(self, provider, root_provider_fixtures, revision_fixtures):
+        list_metadata = revision_fixtures['revisions_list_metadata']
+        item = list_metadata['Data'][0]['File']
+
+        path = WaterButlerPath('/Tasks.xlsx', _ids=(provider.share['id'], item['InternalName']))
+        url = provider._build_clientgateway_url(str(provider.share['id']), 'virtualfiles', path.identifier, 'history')
+
+        aiohttpretty.register_json_uri('GET', url, body=list_metadata)
+
+        result = await provider.metadata(path, revision=str(item['Tick']))
+        expected = RushFilesFileMetadata(item, path)
+
+        assert result == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_revision_metadata_error(self, provider, root_provider_fixtures,
+                                           revision_fixtures):
+        list_metadata = revision_fixtures['revisions_list_metadata']
+        item = list_metadata['Data'][0]['File']
+
+        path = WaterButlerPath('/Tasks.xlsx', _ids=(provider.share['id'], item['InternalName']))
+        url = provider._build_clientgateway_url(str(provider.share['id']), 'virtualfiles', path.identifier, 'history')
+
+        aiohttpretty.register_json_uri('GET', url, body=list_metadata)
+
+        with pytest.raises(exceptions.NotFoundError) as e:
+            await provider.metadata(path, revision='this is a bad revision id')
+
+        assert e.value.code == 404
+        assert str(path) in e.value.message
