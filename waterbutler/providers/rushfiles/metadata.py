@@ -29,6 +29,10 @@ class RushFilesFolderMetadata(BaseRushFilesMetadata, metadata.BaseFolderMetadata
         return '/' + self._path.raw_path
 
     @property
+    def internal_name(self) -> str:
+        return self.raw['InternalName']
+
+    @property
     def extra(self):
         return {'internalName': self.raw['InternalName'],
                 'shareId': self.raw['ShareId'],
@@ -68,6 +72,10 @@ class RushFilesFileMetadata(BaseRushFilesMetadata, metadata.BaseFileMetadata):
     @property
     def upload_name(self) -> str:
         return self.raw['UploadName']
+    
+    @property
+    def internal_name(self) -> str:
+        return self.raw['InternalName']
     
     @property
     def extra(self):
