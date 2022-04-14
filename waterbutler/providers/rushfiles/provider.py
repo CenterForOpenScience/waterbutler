@@ -36,12 +36,9 @@ class RushFilesProvider(provider.BaseProvider):
     """Provider for RushFiles cloud storage service.
     """
     NAME = 'rushfiles'
-    # BASE_URL = pd_settings.BASE_URL
-    BASE_URL = 'https://clientgateway.rushfiles.tsukaeru.team/api/shares/'
 
     def __init__(self, auth: dict, credentials: dict, settings: dict) -> None:
         super().__init__(auth, credentials, settings)
-        #TODO Match with RDM-osf.io/addons/rushfiles/models.py:RushFilesProvider::serialize_waterbutler_*
         self.token = self.credentials['token']
         self.share = self.settings['share']
 
@@ -65,7 +62,7 @@ class RushFilesProvider(provider.BaseProvider):
         for i, child in enumerate(children_path_list):
             response = await self.make_request(
                 'GET',
-                self.build_url(str(self.share['id']), 'virtualfiles', str(current_inter_id), 'children'),
+                self._build_clientgateway_url(str(self.share['id']), 'virtualfiles', str(current_inter_id), 'children'),
                 expects=(200, 404,),
                 throws=exceptions.MetadataError,
             )
@@ -209,7 +206,10 @@ class RushFilesProvider(provider.BaseProvider):
         return super().zip(path, kwargs)
     
     def _build_filecache_url(self, *segments, **query):
-        return provider.build_url(pd_settings.BASE_FILECACHE_URL, *segments, **query)
+        return provider.build_url('https://filecache01.{}'.format(self.share['domain']), 'api', 'shares', *segments, **query)
+
+    def _build_clientgateway_url(self, *segments, **query):
+        return provider.build_url('https://clientgateway.{}'.format(self.share['domain']), 'api', 'shares', *segments, **query)
 
     async def _folder_metadata(self,
                                path: RushFilesPath,
@@ -219,7 +219,7 @@ class RushFilesProvider(provider.BaseProvider):
 
         response = await self.make_request(
             'GET',
-            self.build_url(str(share_id), 'virtualfiles', inter_id, 'children'),
+            self._build_clientgateway_url(str(share_id), 'virtualfiles', inter_id, 'children'),
             expects=(200, 404,),
             throws=exceptions.MetadataError,
         )
@@ -245,7 +245,7 @@ class RushFilesProvider(provider.BaseProvider):
                              raw: bool=False) -> Union[dict, BaseRushFilesMetadata]:
         response = await self.make_request(
             'GET',
-            self.build_url(str(self.share['id']), 'virtualfiles', path.identifier),
+            self._build_clientgateway_url(str(self.share['id']), 'virtualfiles', path.identifier),
             expects=(200, 404,),
             throws=exceptions.MetadataError,
         )

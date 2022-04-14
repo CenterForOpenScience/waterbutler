@@ -40,6 +40,7 @@ def settings():
         'share':{
             'name': 'rush',
             'id': '123',
+            'domain': 'rushfiles.com',
         },
         'folder': '1234567890'
 }
@@ -96,11 +97,11 @@ class TestValidatePath:
         file_name = 'files.txt'
         file_inter_id = '0f04f33f715a4d5890307f114bf24e9c' # Tasks.xlsx
 
-        children_of_root_url = provider.build_url(
+        children_of_root_url = provider._build_clientgateway_url(
             str(provider.share['id']), 'virtualfiles', str(provider.share['id']), 'children')
-        good_url = provider.build_url(
+        good_url = provider._build_clientgateway_url(
             str(provider.share['id']), 'virtualfiles', file_inter_id)
-        bad_url = provider.build_url(
+        bad_url = provider._build_clientgateway_url(
             str(provider.share['id']), 'virtualfiles', file_inter_id, 'children')
 
         aiohttpretty.register_json_uri('GET', children_of_root_url, body=search_for_file_response, status=200)
@@ -127,11 +128,11 @@ class TestValidatePath:
         folder_name = 'fooFolder'
         folder_inter_id = '088e80f914f74290b15ef9cf5d63e06a'
 
-        children_of_root_url = provider.build_url(
+        children_of_root_url = provider._build_clientgateway_url(
             str(provider.share['id']), 'virtualfiles', str(provider.share['id']), 'children')
-        good_url = provider.build_url(
+        good_url = provider._build_clientgateway_url(
             str(provider.share['id']), 'virtualfiles', folder_inter_id)
-        bad_url = provider.build_url(
+        bad_url = provider._build_clientgateway_url(
             str(provider.share['id']), 'virtualfiles', folder_inter_id, 'children')
 
         aiohttpretty.register_json_uri('GET', children_of_root_url, body=search_for_folder_response, status=200)
