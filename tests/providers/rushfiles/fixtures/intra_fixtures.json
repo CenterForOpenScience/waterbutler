@@ -1,0 +1,314 @@
+{
+    "intra_move_file_resp_metadata":{
+        "Code": 1,
+        "Data": {
+            "ClientJournalEvent": {
+                "TransmitId": "22222fessddiejijdwddaf",
+                "UserOrigin": "ymiyazaki@tsukaeru.net",
+                "ClientJournalEventType": 16,
+                "ShareTick": 168,
+                "TransmitCounter": 0,
+                "TransmitTimeout": "2021-11-18T15:48:50.95102Z",
+                "RfVirtualFile": {
+                    "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+                    "SubShareIds": [],
+                    "InternalName": "0f04f33f715a4d5890307f114bf24e9c",
+                    "UploadName": "3897409d06204fefbdd6da1a70581654",
+                    "Tick": 5,
+                    "ShareTick": 168,
+                    "UpdateTick": 168,
+                    "CreateTick": 163,
+                    "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
+                    "NoOfChildren": 0,
+                    "EndOfFile": 5,
+                    "AllocationSize": 0,
+                    "CreationTime": "2021-11-18T15:44:36.4329227Z",
+                    "LastAccessTime": "2021-11-14T02:34:18.575Z",
+                    "LastWriteTime": "2021-11-18T15:44:36.4329227Z",
+                    "Attributes": 16,
+                    "Local": false,
+                    "User": "ymiyazaki@tsukaeru.net",
+                    "Deleted": false,
+                    "IsOffline": false,
+                    "HasHistory": false,
+                    "PublicName": "hoge.txt",
+                    "DeleteTimestamp": 0,
+                    "IsFile": true,
+                    "RetensionTimestamp": 0,
+                    "InRetension": false,
+                    "FileLock": {
+                        "IsLocked": false,
+                        "LockTime": 0
+                    }
+                    },
+                    "CreateTick": 163,
+                    "DeviceId": "waterbutler"
+                },
+            "PotentialConflict": true
+        },
+        "Message": "File updated succesfully"
+    },
+    "intra_move_folder_resp_metadata":{
+        "Code": 1,
+        "Data": {
+            "ClientJournalEvent": {
+                "TransmitId": "22222fessddiejijdwddaf",
+                "UserOrigin": "ymiyazaki@tsukaeru.net",
+                "ClientJournalEventType": 16,
+                "ShareTick": 168,
+                "TransmitCounter": 0,
+                "TransmitTimeout": "2021-11-18T15:48:50.95102Z",
+                "RfVirtualFile": {
+                    "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+                    "SubShareIds": [],
+                    "InternalName": "088e80f914f74290b15ef9cf5d63e06a",
+                    "Tick": 5,
+                    "ShareTick": 168,
+                    "UpdateTick": 168,
+                    "CreateTick": 163,
+                    "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
+                    "NoOfChildren": 0,
+                    "EndOfFile": 0,
+                    "AllocationSize": 0,
+                    "CreationTime": "2021-11-18T15:44:36.4329227Z",
+                    "LastAccessTime": "2021-11-14T02:34:18.575Z",
+                    "LastWriteTime": "2021-11-18T15:44:36.4329227Z",
+                    "Attributes": 16,
+                    "Local": false,
+                    "User": "ymiyazaki@tsukaeru.net",
+                    "Deleted": false,
+                    "IsOffline": false,
+                    "HasHistory": false,
+                    "PublicName": "foo",
+                    "DeleteTimestamp": 0,
+                    "IsFile": false,
+                    "RetensionTimestamp": 0,
+                    "InRetension": false,
+                    "FileLock": {
+                        "IsLocked": false,
+                        "LockTime": 0
+                    }
+                    },
+                    "CreateTick": 163,
+                    "DeviceId": "waterbutler"
+                },
+            "PotentialConflict": true
+        },
+        "Message": "File updated succesfully"
+    },
+    "intra_copy_file_resp_metadata":{
+        "Code": 3,
+        "Data": {
+          "ClientJournalEvent": {
+            "TransmitId": "e2682320e62c4186b3de796d5d77bf1b",
+            "UserOrigin": "ymiyazaki@tsukaeru.net",
+            "ClientJournalEventType": 15,
+            "ShareTick": 141,
+            "TransmitCounter": 0,
+            "TransmitTimeout": "2021-11-14T15:34:57.3261204Z",
+            "RfVirtualFile": {
+                "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+                "SubShareIds": [],
+                "InternalName": "0f04f33f715a4d5890307f114bf24e9c",
+                "UploadName": "3897409d06204fefbdd6da1a70581654",
+                "Tick": 5,
+                "ShareTick": 168,
+                "UpdateTick": 168,
+                "CreateTick": 163,
+                "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
+                "NoOfChildren": 0,
+                "EndOfFile": 5,
+                "AllocationSize": 0,
+                "CreationTime": "2021-11-18T15:44:36.4329227Z",
+                "LastAccessTime": "2021-11-14T02:34:18.575Z",
+                "LastWriteTime": "2021-11-18T15:44:36.4329227Z",
+                "Attributes": 16,
+                "Local": false,
+                "User": "ymiyazaki@tsukaeru.net",
+                "Deleted": false,
+                "IsOffline": false,
+                "HasHistory": false,
+                "PublicName": "hoge.txt",
+                "DeleteTimestamp": 0,
+                "IsFile": true,
+                "RetensionTimestamp": 0,
+                "InRetension": false,
+                "FileLock": {
+                    "IsLocked": false,
+                    "LockTime": 0
+                }
+                },
+                "CreateTick": 163,
+                "DeviceId": "waterbutler"
+            }
+        },
+        "Message": "File created succesfully."
+    },
+    "intra_duplicated_file_resp_metadata":{
+        "Code": 3,
+        "Data": {
+          "ClientJournalEvent": {
+            "TransmitId": "e2682320e62c4186b3de796d5d77bf1b",
+            "UserOrigin": "ymiyazaki@tsukaeru.net",
+            "ClientJournalEventType": 15,
+            "ShareTick": 141,
+            "TransmitCounter": 0,
+            "TransmitTimeout": "2021-11-14T15:34:57.3261204Z",
+            "RfVirtualFile": {
+                "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+                "SubShareIds": [],
+                "InternalName": "0f04f33f715a4d5890307f114bf24e9c",
+                "UploadName": "3897409d06204fefbdd6da1a70581654",
+                "Tick": 5,
+                "ShareTick": 168,
+                "UpdateTick": 168,
+                "CreateTick": 163,
+                "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
+                "NoOfChildren": 0,
+                "EndOfFile": 5,
+                "AllocationSize": 0,
+                "CreationTime": "2021-11-18T15:44:36.4329227Z",
+                "LastAccessTime": "2021-11-14T02:34:18.575Z",
+                "LastWriteTime": "2021-11-18T15:44:36.4329227Z",
+                "Attributes": 16,
+                "Local": false,
+                "User": "ymiyazaki@tsukaeru.net",
+                "Deleted": false,
+                "IsOffline": false,
+                "HasHistory": false,
+                "PublicName": "hoge(duplicated 2021-11-18T15:44:36.4329227Z).txt",
+                "DeleteTimestamp": 0,
+                "IsFile": true,
+                "RetensionTimestamp": 0,
+                "InRetension": false,
+                "FileLock": {
+                    "IsLocked": false,
+                    "LockTime": 0
+                }
+                },
+                "CreateTick": 163,
+                "DeviceId": "waterbutler"
+            }
+        },
+        "Message": "File created succesfully."
+    },
+    "intra_duplicated_folder_resp_metadata":{
+        "Code": 1,
+        "Data": {
+            "ClientJournalEvent": {
+                "TransmitId": "22222fessddiejijdwddaf",
+                "UserOrigin": "ymiyazaki@tsukaeru.net",
+                "ClientJournalEventType": 16,
+                "ShareTick": 168,
+                "TransmitCounter": 0,
+                "TransmitTimeout": "2021-11-18T15:48:50.95102Z",
+                "RfVirtualFile": {
+                    "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+                    "SubShareIds": [],
+                    "InternalName": "088e80f914f74290b15ef9cf5d63e06a",
+                    "Tick": 5,
+                    "ShareTick": 168,
+                    "UpdateTick": 168,
+                    "CreateTick": 163,
+                    "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
+                    "NoOfChildren": 0,
+                    "EndOfFile": 0,
+                    "AllocationSize": 0,
+                    "CreationTime": "2021-11-18T15:44:36.4329227Z",
+                    "LastAccessTime": "2021-11-14T02:34:18.575Z",
+                    "LastWriteTime": "2021-11-18T15:44:36.4329227Z",
+                    "Attributes": 16,
+                    "Local": false,
+                    "User": "ymiyazaki@tsukaeru.net",
+                    "Deleted": false,
+                    "IsOffline": false,
+                    "HasHistory": false,
+                    "PublicName": "foo(duplicated 2021-11-18T15:44:36.4329227Z)",
+                    "DeleteTimestamp": 0,
+                    "IsFile": false,
+                    "RetensionTimestamp": 0,
+                    "InRetension": false,
+                    "FileLock": {
+                        "IsLocked": false,
+                        "LockTime": 0
+                    }
+                    },
+                    "CreateTick": 163,
+                    "DeviceId": "waterbutler"
+                },
+            "PotentialConflict": true
+        },
+        "Message": "File updated succesfully"
+    },
+    "intra_folder_children_metadata":{
+        "Data": [
+          {
+            "IsSubshare": false,
+            "User": "wklonowski@tsukaeru.net",
+            "IsFile": true,
+            "FileLock": {
+              "IsLocked": false,
+              "LockTime": 0
+            },
+            "InternalName": "088e80f914f74290b15ef9cf5d63e06a",
+            "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+            "Tick": 1,
+            "SubShareIds": [],
+            "ShareTick": 48,
+            "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
+            "EndOfFile": 5,
+            "PublicName": "foo.txt",
+            "CreationTime": "2021-10-18T02:33:14.9762501Z",
+            "LastAccessTime": "2021-10-18T02:33:14.9762501Z",
+            "LastWriteTime": "2021-10-18T02:33:14.9762501Z",
+            "Attributes": 16,
+            "Deleted": false
+          },
+          {
+            "IsSubshare": false,
+            "User": "wklonowski@tsukaeru.net",
+            "IsFile": true,
+            "FileLock": {
+              "IsLocked": false,
+              "LockTime": 0
+            },
+            "InternalName": "b22d0973c6024a809eae4fa4bdfbe8df",
+            "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+            "Tick": 2,
+            "SubShareIds": [],
+            "ShareTick": 7,
+            "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
+            "EndOfFile": 5,
+            "PublicName": "bar.txt",
+            "CreationTime": "2021-08-03T10:46:27.6023228Z",
+            "LastAccessTime": "2021-08-03T10:46:27.6023228Z",
+            "LastWriteTime": "2021-08-03T10:46:27.6023228Z",
+            "Attributes": 16,
+            "Deleted": false
+          },
+          {
+            "IsSubshare": false,
+            "User": "wklonowski@tsukaeru.net",
+            "IsFile": true,
+            "FileLock": {
+              "IsLocked": false,
+              "LockTime": 0
+            },
+            "InternalName": "b3cca6a483624931a579b08558c8dbe0",
+            "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+            "Tick": 2,
+            "SubShareIds": [],
+            "ShareTick": 2,
+            "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
+            "EndOfFile": 5,
+            "PublicName": "huga.txt",
+            "CreationTime": "2021-06-16T00:21:51.2631288Z",
+            "LastAccessTime": "2021-06-16T00:21:51.2631288Z",
+            "LastWriteTime": "2021-06-16T00:21:51.2631288Z",
+            "Attributes": 16,
+            "Deleted": false
+          }
+        ],
+        "Message": "Ok."
+    }
+}

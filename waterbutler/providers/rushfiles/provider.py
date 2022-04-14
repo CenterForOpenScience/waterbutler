@@ -110,29 +110,92 @@ class RushFilesProvider(provider.BaseProvider):
         return {'authorization': 'Bearer {}'.format(self.token)}
 
     def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
-        #TODO check if really possible. Adjust accordingly
         return self == other
 
     def can_intra_copy(self, other: provider.BaseProvider, path=None) -> bool:
-        #TODO check if really possible. Adjust accordingly
-        return self == other
+        # rushfiles can copy a folder, but do not copy the files inside it.
+        return self == other and (path and path.is_file)
 
     async def intra_move(self,  # type: ignore
                          dest_provider: provider.BaseProvider,
                          src_path: WaterButlerPath,
                          dest_path: WaterButlerPath) -> Tuple[BaseRushFilesMetadata, bool]:
-        #TODO remove if can_intra_move is always false.
-        # Check parent implementation and see if it's optimal.
-        # Implement better solution if not, remove override completely if it is.
-        raise NotImplementedError
+        if dest_path.identifier:
+            await dest_provider.delete(dest_path)
+
+        src_metadata = await self._file_metadata(src_path, raw=True)                 
+        request_body = json.dumps({
+            'RfVirtualFile': {
+                'InternalName': src_path.identifier,
+                'ShareId': self.share['id'],
+                'ParrentId': dest_path.parent.identifier,
+                'EndOfFile': src_metadata['EndOfFile'] if src_path.is_file else 0,
+                'Tick': 0,
+                'PublicName': dest_path.name,
+                'CreationTime': src_metadata['CreationTime'],
+                'LastAccessTime': src_metadata['LastAccessTime'],
+                'LastWriteTime': src_metadata['LastWriteTime'],
+                'Attributes': src_metadata['Attributes'],
+            },
+            'TransmitId': str(self._generate_uuid),
+            'ClientJournalEventType': 16,
+            'DeviceId': 'waterbutler'
+        })
+        
+        async with self.request(
+            'PUT',
+            self._build_filecache_url(str(self.share['id']), 'files', src_path.identifier),
+            data=request_body,
+            headers={'Content-Type': 'application/json'},
+            expects=(200, ),
+            throws=exceptions.IntraMoveError,
+        ) as response:
+            resp = await response.json()
+            data = resp['Data']['ClientJournalEvent']['RfVirtualFile']
+        
+        created = dest_path.identifier is None
+        dest_path.parts[-1]._id = data['InternalName']
+        dest_path.rename(data['PublicName'])
+        
+        if dest_path.is_dir:
+            metadata = RushFilesFolderMetadata(data, dest_path)
+            metadata.children = await self._folder_metadata(dest_path)
+            return metadata, created
+        
+        return RushFilesFileMetadata(data, dest_path), created
 
     async def intra_copy(self,
                          dest_provider: provider.BaseProvider,
                          src_path: WaterButlerPath,
                          dest_path: WaterButlerPath) -> Tuple[RushFilesFileMetadata, bool]:
-        #TODO remove if can_intra_copy is always false
-        raise NotImplementedError
+        if dest_path.identifier:
+            await dest_provider.delete(dest_path)
+            dest_path.identifier = None
 
+        # only file
+        async with self.request(
+            'POST',
+            self._build_filecache_url(str(self.share['id']), 'files', src_path.identifier, 'clone'),
+            data=json.dumps({
+                'DestinationParentId': dest_path.parent.identifier,
+                'DeviceId': "waterbutler",
+                'DestinationShareId': dest_provider.share['id']
+            }),
+            headers={'Content-Type': 'application/json'},
+            expects=(201, ),
+            throws=exceptions.IntraCopyError,
+        ) as response:
+            resp = await response.json()
+            data = resp['Data']['ClientJournalEvent']['RfVirtualFile']
+
+        clone_result_path = dest_path.parent.child(data['PublicName'], _id=data['InternalName'])
+        if clone_result_path == dest_path:
+            # Cloned file is exactly the same as destination path. Can return right away.
+            return RushFilesFileMetadata(data, clone_result_path ), True
+        else:
+            # Destination does not match (cloned file should be renamed or destination existed and we have a duplicate).
+            return await self.intra_move(dest_provider, clone_result_path , dest_path)
+        
     async def download(self,  # type: ignore
                        path: RushFilesPath,
                        revision: str=None,

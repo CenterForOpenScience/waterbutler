@@ -33,7 +33,7 @@ class RushFilesFolderMetadata(BaseRushFilesMetadata, metadata.BaseFolderMetadata
         return {'internalName': self.raw['InternalName'],
                 'shareId': self.raw['ShareId'],
                 'parentId': self.raw['ParrentId'],
-                'deleted': self.raw['Deleted']}
+        }
 
 
 class RushFilesFileMetadata(BaseRushFilesMetadata, metadata.BaseFileMetadata):
@@ -74,7 +74,7 @@ class RushFilesFileMetadata(BaseRushFilesMetadata, metadata.BaseFileMetadata):
         return {'internalName': self.raw['InternalName'],
                 'shareId': self.raw['ShareId'],
                 'parentId': self.raw['ParrentId'],
-                'deleted': self.raw['Deleted']}
+        }
 
 
 # TODO Remove if not necessary

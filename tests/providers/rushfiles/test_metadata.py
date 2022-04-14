@@ -37,7 +37,7 @@ class TestMetadata:
         assert parsed.extra == {'internalName': item['InternalName'],
                                 'shareId': item['ShareId'],
                                 'parentId': item['ParrentId'],
-                                'deleted': item['Deleted']}
+                            }
     
     def test_folder_metadata(self, root_provider_fixtures):
         item = root_provider_fixtures['folder_metadata']
@@ -50,4 +50,4 @@ class TestMetadata:
         assert parsed.extra == {'internalName': item['InternalName'],
                                 'shareId': item['ShareId'],
                                 'parentId': item['ParrentId'],
-                                'deleted': item['Deleted']}
+                            }
