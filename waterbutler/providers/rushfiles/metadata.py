@@ -1,4 +1,6 @@
 import typing
+
+from waterbutler.core import utils
 from waterbutler.core import metadata
 
 
@@ -20,43 +22,56 @@ class RushFilesFolderMetadata(BaseRushFilesMetadata, metadata.BaseFolderMetadata
 
     @property
     def name(self) -> str:
-        raise NotImplementedError
-
+        return self.raw['PublicName']
+    
     @property
     def path(self) -> str:
-        raise NotImplementedError
+        return '/' + self._path.raw_path
+
+    @property
+    def extra(self):
+        return {'internalName': self.raw['InternalName'],
+                'shareId': self.raw['ShareId'],
+                'parentId': self.raw['ParrentId'],
+                'deleted': self.raw['Deleted']}
 
 
 class RushFilesFileMetadata(BaseRushFilesMetadata, metadata.BaseFileMetadata):
     @property
     def name(self) -> str:
-        raise NotImplementedError
-
+        return self.raw['PublicName']
+    
     @property
     def path(self) -> str:
-        raise NotImplementedError
+        return '/' + self._path.raw_path
 
     @property
     def size(self) -> typing.Union[int, str]:
-        raise NotImplementedError
+        return self.raw['EndOfFile']
 
     @property
     def modified(self) -> str:
-        return NotImplementedError
+        return self.raw['LastWriteTime']
+    
+    @property
+    def etag(self) -> str:
+        return self.raw['InternalName'] + '-' + str(self.raw['Tick'])
 
     @property
     def created_utc(self) -> str:
-        raise NotImplementedError
+        return utils.normalize_datetime(self.raw['CreationTime'])
 
     @property
     def content_type(self) -> typing.Union[str, None]:
         return None
-
+    
     @property
-    def etag(self) -> typing.Union[str, None]:
-        #TODO Can we return something? Remove if not
-        raise NotImplementedError
-
+    def extra(self):
+        return {'UploadName': self.raw['UploadName'],
+                'internalName': self.raw['InternalName'],
+                'shareId': self.raw['ShareId'],
+                'parentId': self.raw['ParrentId'],
+                'deleted': self.raw['Deleted']}
 
 
 # TODO Remove if not necessary

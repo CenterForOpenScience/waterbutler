@@ -1,0 +1,45 @@
+{
+  "file_metadata":  {
+    "UploadName": "141fd1d5a59c4f168b2b51f295ec1514",
+    "User": "wklonowski@tsukaeru.net",
+    "IsFile": true,
+    "FileLock": {
+      "IsLocked": false,
+      "LockTime": 0
+    },
+    "InternalName": "0f04f33f715a4d5890307f114bf24e9c",
+    "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+    "Tick": 29,
+    "SubShareIds": [],
+    "ShareTick": 79,
+    "ParrentId": "088e80f914f74290b15ef9cf5d63e06a",
+    "EndOfFile": 13523,
+    "PublicName": "Tasks.xlsx",
+    "CreationTime": "2021-10-18T02:34:27.2096911Z",
+    "LastAccessTime": "2021-10-25T04:22:57.0098806Z",
+    "LastWriteTime": "2021-10-25T04:22:56.9743276Z",
+    "Attributes": 32,
+    "Deleted": false
+    },
+    "folder_metadata": {
+      "User": "wklonowski@tsukaeru.net",
+      "IsFile": false,
+      "FileLock": {
+        "IsLocked": false,
+        "LockTime": 0
+      },
+      "InternalName": "088e80f914f74290b15ef9cf5d63e06a",
+      "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+      "Tick": 1,
+      "SubShareIds": [],
+      "ShareTick": 48,
+      "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
+      "EndOfFile": 0,
+      "PublicName": "GakuNin RDM",
+      "CreationTime": "2021-10-18T02:33:14.9762501Z",
+      "LastAccessTime": "2021-10-18T02:33:14.9762501Z",
+      "LastWriteTime": "2021-10-18T02:33:14.9762501Z",
+      "Attributes": 16,
+      "Deleted": false
+  }
+}

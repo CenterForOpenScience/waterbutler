@@ -3,8 +3,11 @@ import functools
 from urllib import parse
 from typing import List, Tuple, Union
 
+from aiohttp.client import patch
+
 from waterbutler.core import provider, streams
 from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
+from waterbutler.core import exceptions
 
 from waterbutler.providers.rushfiles import settings as pd_settings
 from waterbutler.providers.rushfiles.metadata import (RushFilesRevision,
@@ -30,7 +33,8 @@ class RushFilesProvider(provider.BaseProvider):
     """Provider for RushFiles cloud storage service.
     """
     NAME = 'rushfiles'
-    BASE_URL = pd_settings.BASE_URL
+    # BASE_URL = pd_settings.BASE_URL
+    BASE_URL = "https://clientgateway.rushfiles.tsukaeru.team/api/shares/"
 
     def __init__(self, auth: dict, credentials: dict, settings: dict) -> None:
         super().__init__(auth, credentials, settings)
@@ -39,10 +43,43 @@ class RushFilesProvider(provider.BaseProvider):
         self.share = self.settings['share']
 
     async def validate_v1_path(self, path: str, **kwargs) -> RushFilesPath:
-        raise NotImplementedError
+        rf_path = await self.validate_path(path, **kwargs)
+
+        if not rf_path.identifier:
+            raise exceptions.NotFoundError(str(rf_path))
+
+        return rf_path
 
     async def validate_path(self, path: str, **kwargs) -> RushFilesPath:
-        raise NotImplementedError
+        if path == '/':
+            return RushFilesPath('/', _ids=[self.share['id']], folder=True)
+        
+        is_folder = path.endswith('/')
+        children_path_list = [parse.unquote(x) for x in path.strip('/').split('/')]
+        inter_id_list = [self.share['id']]
+        current_inter_id = self.share['id']
+
+        for i, child in enumerate(children_path_list):
+            response = await self.make_request(
+                'GET',
+                self.build_url(str(self.share['id']), 'virtualfiles', str(current_inter_id), 'children'),
+                expects=(200, 404,),
+                throws=exceptions.MetadataError,
+            )
+            if response.status == 404:
+                raise exceptions.NotFoundError(path)
+            res = await response.json()
+            current_inter_id, index = self._search_inter_id(res, child)
+            inter_id_list.append(current_inter_id)
+            if not current_inter_id:
+                if i == len(children_path_list)-1:
+                    return RushFilesPath(path,  _ids=inter_id_list)
+                raise exceptions.NotFoundError(path)
+            
+        if res['Data'][index]['IsFile'] == is_folder:
+            raise exceptions.NotFoundError(path)
+
+        return RushFilesPath(path, folder= is_folder, _ids=inter_id_list)                    
 
     async def revalidate_path(self,
                               base: WaterButlerPath,
@@ -107,7 +144,13 @@ class RushFilesProvider(provider.BaseProvider):
                        revision=None,
                        **kwargs) -> Union[dict, BaseRushFilesMetadata,
                                           List[Union[BaseRushFilesMetadata, dict]]]:
-        raise NotImplementedError
+        if path.identifier is None:
+            raise exceptions.MetadataError('{} not found'.format(str(path)), code=404)
+
+        if path.is_dir:
+            return await self._folder_metadata(path, raw=raw)
+
+        return await self._file_metadata(path, raw=raw)
 
     async def revisions(self, path: RushFilesPath,  # type: ignore
                         **kwargs) -> List[RushFilesRevision]:
@@ -131,4 +174,56 @@ class RushFilesProvider(provider.BaseProvider):
         # I will check and if there is, it may be more efficient then default behaviour.
         return super().zip(path, kwargs)
 
-    
+    async def _folder_metadata(self,
+                               path: RushFilesPath,
+                               raw: bool=False) -> List[Union[BaseRushFilesMetadata, dict]]:
+        share_id = self.share['id']
+        inter_id =  path.identifier
+
+        response = await self.make_request(
+            'GET',
+            self.build_url(str(share_id), 'virtualfiles', inter_id, 'children'),
+            expects=(200, 404,),
+            throws=exceptions.MetadataError,
+        )
+
+        if response.status == 404:
+            raise exceptions.NotFoundError(path)
+        res = await response.json()
+
+        if raw:
+            return res['Data']
+        else:
+            ret = []
+            for data in res['Data']:
+                if data['IsFile']:
+                    ret.append(RushFilesFileMetadata(data, path.child(data['PublicName'], _id=data['InternalName'], folder=False)))
+                else:
+                    ret.append(RushFilesFolderMetadata(data, path.child(data['PublicName'], _id=data['InternalName'], folder=True)))
+            return ret
+
+    async def _file_metadata(self,
+                             path: RushFilesPath,
+                             revision: str=None,
+                             raw: bool=False) -> Union[dict, BaseRushFilesMetadata]:
+        response = await self.make_request(
+            'GET',
+            self.build_url(str(self.share['id']), 'virtualfiles', path.identifier),
+            expects=(200, 404,),
+            throws=exceptions.MetadataError,
+        )
+
+        if response.status == 404:
+            raise exceptions.NotFoundError(path)
+
+        res = await response.json()
+
+        return res['Data'] if raw else RushFilesFileMetadata(res['Data'], path)
+
+    def _search_inter_id(self, 
+                        res: dict, 
+                        child: str) -> Union[str,int,None]:
+        for i, data in enumerate(res['Data']):
+            if child == data['PublicName']:
+                return data['InternalName'], i
+        return None, None
