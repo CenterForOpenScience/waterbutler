@@ -137,7 +137,7 @@ class RushFilesProvider(provider.BaseProvider):
                 'LastWriteTime': src_metadata['LastWriteTime'],
                 'Attributes': src_metadata['Attributes'],
             },
-            'TransmitId': str(self._generate_uuid),
+            'TransmitId': self._generate_uuid(),
             'ClientJournalEventType': 16,
             'DeviceId': 'waterbutler'
         })
@@ -223,7 +223,66 @@ class RushFilesProvider(provider.BaseProvider):
                      path: WaterButlerPath,
                      *args,
                      **kwargs) -> Tuple[RushFilesFileMetadata, bool]:
-        raise NotImplementedError
+        created = not await self.exists(path)
+
+        if stream.size > 0:
+            data = await self._upload_request(stream, path, created)
+            response = await self.make_request(
+                'PUT',
+                data['Data']['Url'],
+                headers={
+                    'Content-Type': 'application/octet-stream',
+                    'Content-Range': 'bytes 0-' + str(stream.size-1) + '/*',
+                    'Content-Length': str(stream.size)
+                },
+                data=stream,
+                expects=(200,201,202,),
+                throws=exceptions.UploadError,
+            )
+            data = await response.json()
+        else:
+            data = await self._upload_request(stream, path, created)
+            
+        return RushFilesFileMetadata(data['Data']['ClientJournalEvent']['RfVirtualFile'], path), created
+    
+    async def _upload_request(self, stream, path, created):
+        now = self._get_time_for_sending()
+        if not created:
+            metadata = await self.metadata(path)
+        request_body = json.dumps({
+            'RfVirtualFile': {
+                'InternalName': path.identifier if not created else '',
+                'ShareId': self.share['id'],
+                'ParrentId': path.parent.identifier,
+                'EndOfFile': str(stream.size),
+                'Tick': 0, # Tick is required, but ignored so can be set to any value
+                'PublicName': path.name,
+                'CreationTime': now if created else metadata.created_utc,
+                'LastAccessTime': now,
+                'LastWriteTime': now,
+                'Attributes': 128,
+            },
+            'TransmitId': self._generate_uuid(),
+            'ClientJournalEventType': 0 if created else 3,
+            'DeviceId': 'waterbutler'
+        })
+        
+        if created:
+            upload_url =  self._build_filecache_url(str(self.share['id']), 'files')
+        else:
+            upload_url =  self._build_filecache_url(str(self.share['id']), 'files', path.identifier)
+
+        response = await self.make_request(
+            'POST' if created else 'PUT',
+            upload_url,
+            data=request_body,
+            headers={'Content-Type': 'application/json'},
+            expects=(200,202,),
+            throws=exceptions.UploadError,
+        )
+        data = await response.json()
+
+        return data
 
     async def delete(self,  # type: ignore
                      path: RushFilesPath,
@@ -293,7 +352,7 @@ class RushFilesProvider(provider.BaseProvider):
                 'LastWriteTime': now,
                 'Attributes': 16,
             },
-            'TransmitId': str(self._generate_uuid),
+            'TransmitId': self._generate_uuid(),
             'ClientJournalEventType': 0,
             'DeviceId': 'waterbutler'
         })
