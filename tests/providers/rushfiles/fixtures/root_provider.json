@@ -21,7 +21,7 @@
     "Attributes": 32,
     "Deleted": false
     },
-    "folder_metadata": {
+  "folder_metadata": {
       "User": "wklonowski@tsukaeru.net",
       "IsFile": false,
       "FileLock": {
@@ -41,5 +41,52 @@
       "LastWriteTime": "2021-10-18T02:33:14.9762501Z",
       "Attributes": 16,
       "Deleted": false
+  },
+  "create_folder_metadata": {
+    "Code": 1,
+    "Data": {
+      "ClientJournalEvent": {
+        "TransmitId": "sjihai328hhdadddh",
+        "UserOrigin": "ymiyazaki@tsukaeru.net",
+        "ClientJournalEventType": 0,
+        "ShareTick": 124,
+        "TransmitCounter": 0,
+        "TransmitTimeout": "2021-11-14T12:01:13.0836459Z",
+        "RfVirtualFile": {
+          "ShareId": "d0c475011bd24b6dae8a6f890f6b4a93",
+          "SubShareIds": [],
+          "InternalName": "38960c447d9643e395334f46aeeb4188",
+          "Tick": 1,
+          "ShareTick": 124,
+          "UpdateTick": 124,
+          "CreateTick": 124,
+          "ParrentId": "d0c475011bd24b6dae8a6f890f6b4a93",
+          "NoOfChildren": 0,
+          "EndOfFile": 0,
+          "AllocationSize": 0,
+          "CreationTime": "2021-11-14T02:34:18.575Z",
+          "LastAccessTime": "2021-11-14T02:34:18.575Z",
+          "LastWriteTime": "2021-11-14T02:34:18.575Z",
+          "Attributes": 16,
+          "Local": false,
+          "User": "ymiyazaki@tsukaeru.net",
+          "Deleted": false,
+          "IsOffline": false,
+          "HasHistory": false,
+          "PublicName": "hogeTest",
+          "DeleteTimestamp": 0,
+          "IsFile": false,
+          "RetensionTimestamp": 0,
+          "InRetension": false,
+          "FileLock": {
+            "IsLocked": false,
+            "LockTime": 0
+          }
+        },
+        "CreateTick": 124,
+        "DeviceId": "waterbutler"
+      }
+    },
+    "Message": "File created succesfully."
   }
 }
