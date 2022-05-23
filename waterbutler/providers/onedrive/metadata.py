@@ -28,14 +28,6 @@ class BaseOneDriveMetadata(metadata.BaseMetadata):
             'webView': self.raw.get('webUrl'),
         }
 
-    def _json_api_links(self, resource) -> dict:
-        """Update JSON-API links to remove mutation actions"""
-        links = super()._json_api_links(resource)
-        for action in ['delete', 'upload', 'new_folder']:
-            if action in links:
-                links[action] = None
-        return links
-
 
 class OneDriveFolderMetadata(BaseOneDriveMetadata, metadata.BaseFolderMetadata):
 
