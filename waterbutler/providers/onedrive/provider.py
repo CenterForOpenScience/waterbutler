@@ -273,7 +273,7 @@ class OneDriveProvider(provider.BaseProvider):
             for item in items['value']:
                 if item['id'] == revision:
                     try:
-                        download_url = item['@content.downloadUrl']
+                        download_url = item['@microsoft.graph.downloadUrl']
                     except KeyError:
                         raise exceptions.UnexportableFileTypeError(str(path))
                     break
