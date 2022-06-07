@@ -25,17 +25,17 @@ def other_credentials():
 
 @pytest.fixture
 def settings():
-    return {'folder': '/Photos'}
+    return {'folder': '/Photos', 'drive_id': '01234567'}
 
 
 @pytest.fixture
 def root_settings():
-    return {'folder': 'root'}
+    return {'folder': 'root', 'drive_id': 'deadbeef'}
 
 
 @pytest.fixture
 def subfolder_settings(subfolder_provider_fixtures):
-    return {'folder': subfolder_provider_fixtures['root_id']}
+    return {'folder': subfolder_provider_fixtures['root_id'], 'drive_id': '43218765'}
 
 
 @pytest.fixture
