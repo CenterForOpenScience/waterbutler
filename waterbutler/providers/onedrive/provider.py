@@ -799,18 +799,20 @@ class OneDriveProvider(provider.BaseProvider):
             resp = await self.make_request(
                 'GET',
                 url,
+                no_auth_header=True,
                 allow_redirects=False,
             )
             logger.debug('await_job::{} resp::{}'.format(counter, resp))
-            if resp.status == HTTPStatus.SEE_OTHER:
-                new_item_id = resp.headers['Location'].split('/')[-1]
+            if resp.status == HTTPStatus.OK:
+                monitor_data = await resp.json()
+                logger.debug('await_job::{} 200-content::{}'.format(counter, monitor_data))
+                new_item_id = monitor_data['resourceId']
                 followup_url = self._build_graph_item_url(new_item_id)
                 logger.debug('await_job:{} new_item_id::{} '
                              'followup_url::{}'.format(counter, new_item_id, followup_url))
                 followup_resp = await self.make_request(
                     'GET',
                     followup_url,
-                    allow_redirects=False,
                 )
                 logger.debug('await_job::{} followup_resp::{}'.format(counter, followup_resp))
                 return await followup_resp.json()
