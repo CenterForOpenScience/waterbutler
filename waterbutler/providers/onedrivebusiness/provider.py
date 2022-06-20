@@ -14,7 +14,7 @@ class OneDriveBusinessProvider(OneDriveProvider):
     def __init__(self, auth, credentials, settings, **kwargs):
         super().__init__(auth, credentials, settings, **kwargs)
         logger.info('settings: {}'.format(settings))
-        self.drive_id = settings['drive']
+        self.drive_id = settings['drive_id']
 
     def _build_drive_url(self, *segments, **query) -> str:
         base_url = settings.BASE_URL
