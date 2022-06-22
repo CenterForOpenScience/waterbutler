@@ -1,3 +1,4 @@
+import json
 from http import client
 from unittest import mock
 
@@ -48,19 +49,19 @@ class TestValidatePut:
         ])
 
     @pytest.mark.asyncio
-    async def test_postvalidate_put_folder_naming_conflict(self, http_request):
+    async def test_postvalidate_put_folder_naming_conflict(self, http_request, mock_file_metadata):
 
         handler = mock_handler(http_request)
         handler.path = WaterButlerPath('/Folder1/')
         handler.kind = 'folder'
         handler.get_query_argument = mock.Mock(return_value='child!')
-        handler.provider.exists = MockCoroutine(return_value=True)
+        handler.provider.exists = MockCoroutine(return_value=mock_file_metadata)
 
         with pytest.raises(exceptions.NamingConflict) as exc:
             await handler.postvalidate_put()
 
-        assert exc.value.message == 'Cannot complete action: file or folder "child!" already ' \
-                                    'exists in this location'
+        assert json.loads(exc.value.message)['message'] == 'Cannot complete action: file or folder ' \
+                                                           '"child!" already exists in this location'
 
         assert handler.target_path == WaterButlerPath('/Folder1/child!/')
         handler.get_query_argument.assert_called_once_with('name', default=None)
@@ -85,20 +86,21 @@ class TestValidatePut:
         handler.provider.can_duplicate_names.assert_called_once_with()
 
     @pytest.mark.asyncio
-    async def test_postvalidate_put_cant_duplicate_names_and_naming_conflict(self, http_request):
+    async def test_postvalidate_put_cant_duplicate_names_and_naming_conflict(self, http_request,
+                                                                             mock_file_metadata):
 
         handler = mock_handler(http_request)
         handler.path = WaterButlerPath('/Folder1/')
         handler.kind = 'folder'
         handler.provider.can_duplicate_names = mock.Mock(return_value=False)
         handler.get_query_argument = mock.Mock(return_value='child!')
-        handler.provider.exists = MockCoroutine(side_effect=[False, True])
+        handler.provider.exists = MockCoroutine(side_effect=[False, mock_file_metadata])
 
         with pytest.raises(exceptions.NamingConflict) as exc:
             await handler.postvalidate_put()
 
-        assert exc.value.message == 'Cannot complete action: file or folder "child!" already ' \
-                                    'exists in this location'
+        assert json.loads(exc.value.message)['message'] == ('Cannot complete action: file or folder '
+                                                            '"child!" already exists in this location')
 
         handler.provider.can_duplicate_names.assert_called_once_with()
         handler.get_query_argument.assert_called_once_with('name', default=None)

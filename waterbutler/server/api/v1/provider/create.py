@@ -62,7 +62,10 @@ class CreateMixin:
 
             my_type_exists = await self.provider.exists(validated_target_path)
             if not isinstance(my_type_exists, bool) or my_type_exists:
-                raise exceptions.NamingConflict(self.target_path.name)
+                raise exceptions.NamingConflict(
+                    self.target_path.name,
+                    extant=my_type_exists.json_api_serialized(self.resource),
+                )
 
             if not self.provider.can_duplicate_names():
                 target_flipped = self.path.child(self.childs_name, folder=(self.kind != 'folder'))

@@ -221,9 +221,13 @@ class FolderNamingConflict(ProviderError):
 
 
 class NamingConflict(ProviderError):
-    def __init__(self, name):
-        super().__init__('Cannot complete action: file or folder "{}" already exists in this '
-                         'location'.format(name), code=HTTPStatus.CONFLICT, is_user_error=True)
+    def __init__(self, name, extant=None):
+        message = {
+            'message': 'Cannot complete action: file or folder "{}" already exists in this location'.format(name),
+            'data': extant,
+        }
+
+        super().__init__(message, code=HTTPStatus.CONFLICT, is_user_error=True)
 
 
 class ProviderNotFound(ProviderError):
