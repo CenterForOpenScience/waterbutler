@@ -1,4 +1,5 @@
 import io
+import json
 import pytest
 
 import aiohttpretty
@@ -472,7 +473,7 @@ class TestRevisions:
 
         result = await provider.revisions(path)
 
-        assert len(result) == 5
+        assert len(result) == 4
 
 
 class TestDownload:
@@ -701,8 +702,8 @@ class TestUpload:
             file_metadata, created = await provider.upload(file_stream, path, conflict='warn')
 
         assert aiohttpretty.has_call(method='GET', uri=metadata_url)
-        assert e.value.message == ('Cannot complete action: file or folder "{}" '
-                                   'already exists in this location'.format(path.name))
+        assert json.loads(e.value.message)['message'] == ('Cannot complete action: file or folder "{}" '
+                                                          'already exists in this location'.format(path.name))
 
     @pytest.mark.aiohttpretty
     @pytest.mark.asyncio

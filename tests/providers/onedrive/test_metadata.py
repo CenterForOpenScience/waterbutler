@@ -35,8 +35,8 @@ class TestOneDriveMetadata:
         action_url = ('http://localhost:7777/v1/resources/mst3k/providers'
                      '/onedrive/{}'.format(root_provider_fixtures['file_id']))
         assert metadata._json_api_links('mst3k') == {
-            'delete': None,
-            'upload': None,
+            'delete': action_url,
+            'upload': action_url + '?kind=file',
             'move': action_url,
             'download': action_url,
         }
@@ -58,12 +58,13 @@ class TestOneDriveMetadata:
             'created_utc': '2017-08-17T17:49:26+00:00',
         }
 
+        action_url = ('http://localhost:7777/v1/resources/mst3k/providers'
+                     '/onedrive/{}/'.format(root_provider_fixtures['folder_id']))
         assert metadata._json_api_links('mst3k') == {
-            'delete': None,
-            'upload': None,
-            'move': ('http://localhost:7777/v1/resources/mst3k/providers'
-                     '/onedrive/{}/'.format(root_provider_fixtures['folder_id'])),
-            'new_folder': None,
+            'delete': action_url,
+            'upload': action_url + '?kind=file',
+            'move': action_url,
+            'new_folder': action_url + '?kind=folder',
         }
 
     def test_build_revision_metadata(self, revision_fixtures):
@@ -72,7 +73,7 @@ class TestOneDriveMetadata:
         assert metadata.serialized() == {
             'extra': {},
             'version': 'current',
-            'modified': '2017-11-30T15:42:33.447Z',
-            'modified_utc': '2017-11-30T15:42:33+00:00',
+            'modified': '2022-06-01T16:35:22.107Z',
+            'modified_utc': '2022-06-01T16:35:22+00:00',
             'versionIdentifier': 'revision',
         }

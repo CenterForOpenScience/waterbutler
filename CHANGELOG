@@ -2,6 +2,22 @@
 ChangeLog
 *********
 
+22.0.0 (2022-06-22)
+===================
+- Fix: Stop double-reporting certain HTTP errors.  Some error paths were resulting in two error
+bodies being written out by the server.  This could be confusing for free-text errors and
+unparseable for json-formatted errors.
+- Feature: If an upload request is made, but there is already an existing file with that name,
+include metadata about the target file in the 409 Conflict response.  This will save the caller a
+metadata request if they wish to overwrite the existing file. 
+- Fix: Add missing read-write JSON-API links to OneDrive files and folders.  These were overlooked
+when OneDrive was converted from read-only to read-write.
+- Fix: Update the key used to fetch the download url for OneDrive file revisions.
+- Fix: Update the OneDrive intra-copy code to stop sending auth to the monitoring endpoint and to
+expect the 200 OK response that is observed in practice rather than the 303 See Other mentioned in
+the api documentation.
+- Code: Migrate repo CI from TravisCI to GitHub Actions.
+
 21.2.0 (2021-12-06)
 ===================
 - Feature: Give WaterButler the ability to enforce rate-limits.  This requires a reachable redis
