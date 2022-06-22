@@ -653,7 +653,10 @@ class BaseProvider(metaclass=abc.ABCMeta):
         if (not exists and not exists == []) or conflict == 'replace':
             return path, exists  # type: ignore
         if conflict == 'warn':
-            raise exceptions.NamingConflict(path.name)
+            raise exceptions.NamingConflict(
+                path.name,
+                extant={} if type(exists) is list else exists.serialized(),
+            )
 
         while True:
             path.increment_name()
