@@ -41,10 +41,8 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler):
                         for key, value in headers.items():
                             self.set_header(key, value)
                     finish_args = [exc.data]
-                    self.write(exc.data)
                 else:
                     finish_args = [{'code': exc.code, 'message': exc.message}]
-                    self.write(exc.message)
 
             elif issubclass(etype, tasks.WaitTimeOutError):
                 self.set_status(202)
