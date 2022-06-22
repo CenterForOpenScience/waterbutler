@@ -472,7 +472,7 @@ class TestRevisions:
 
         result = await provider.revisions(path)
 
-        assert len(result) == 5
+        assert len(result) == 4
 
 
 class TestDownload:
