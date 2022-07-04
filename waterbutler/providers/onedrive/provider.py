@@ -34,7 +34,7 @@ class OneDriveProvider(provider.BaseProvider):
 
     * credentials: ``{"token": "EWaa932BEN32042094DNFWJ40234=="}``
 
-    * settings: ``{"folder": "/foo/"}``
+    * settings: ``{"folder": "/foo/", "drive_id": "1a2b3c-4d5e-6f"}``
 
     **API:**
 
@@ -71,6 +71,7 @@ class OneDriveProvider(provider.BaseProvider):
         super().__init__(auth, credentials, settings, **kwargs)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
+        self.drive_id = self.settings['drive_id']
 
     # ========== properties ==========
 
@@ -575,11 +576,18 @@ class OneDriveProvider(provider.BaseProvider):
 
     # ========== utility methods ==========
 
+    @property
+    def _drive_url(self):
+        if self.drive_id is not None:
+            return provider.build_url(self.BASE_URL, 'drives', self.drive_id)
+        else:
+            return provider.build_url(self.BASE_URL, 'drive')
+
     def _build_drive_url(self, *segments, **query) -> str:
-        return provider.build_url(settings.BASE_DRIVE_URL, *segments, **query)
+        return provider.build_url(self._drive_url, *segments, **query)
 
     def _build_item_url(self, *segments, **query) -> str:
-        return provider.build_url(settings.BASE_DRIVE_URL, 'items', *segments, **query)
+        return provider.build_url(self._drive_url, 'items', *segments, **query)
 
     def _construct_metadata(self, data: dict, path):
         """Take a file/folder metadata response from OneDrive and a path object representing the
