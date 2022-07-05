@@ -2,6 +2,10 @@
 ChangeLog
 *********
 
+22.0.1 (2022-07-05)
+===================
+- Fix: Don't call `json_api_serialized` on a list when a folder name conflict is detected.
+
 22.0.0 (2022-06-22)
 ===================
 - Fix: Stop double-reporting certain HTTP errors.  Some error paths were resulting in two error
