@@ -62,9 +62,16 @@ class CreateMixin:
 
             my_type_exists = await self.provider.exists(validated_target_path)
             if not isinstance(my_type_exists, bool) or my_type_exists:
+                # If validated_target_path represents a folder, my_type_exists will be a list
+                # of file metadata objects within that folder, rather than the folder metadata
+                # object.
+                extant = {}
+                if type(my_type_exists) is not list:
+                    extant = my_type_exists.json_api_serialized(self.resource)
+
                 raise exceptions.NamingConflict(
                     self.target_path.name,
-                    extant=my_type_exists.json_api_serialized(self.resource),
+                    extant=extant,
                 )
 
             if not self.provider.can_duplicate_names():
