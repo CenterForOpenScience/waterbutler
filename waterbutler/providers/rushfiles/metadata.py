@@ -1,7 +1,19 @@
+import functools
 import typing
+from urllib import parse
 
 from waterbutler.core import utils
 from waterbutler.core import metadata
+from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
+
+
+class RushFilesPathPart(WaterButlerPathPart):
+    DECODE = parse.unquote
+    ENCODE = functools.partial(parse.quote, safe='')  # type: ignore
+
+
+class RushFilesPath(WaterButlerPath):
+    PART_CLASS = RushFilesPathPart
 
 
 class BaseRushFilesMetadata(metadata.BaseMetadata):
@@ -13,12 +25,6 @@ class BaseRushFilesMetadata(metadata.BaseMetadata):
     @property
     def provider(self):
         return 'rushfiles'
-
-
-class RushFilesFolderMetadata(BaseRushFilesMetadata, metadata.BaseFolderMetadata):
-    def __init__(self, raw, path):
-        super().__init__(raw, path)
-        self._path._is_folder = True
 
     @property
     def name(self) -> str:
@@ -33,6 +39,20 @@ class RushFilesFolderMetadata(BaseRushFilesMetadata, metadata.BaseFolderMetadata
         return self.raw['InternalName']
 
     @property
+    def path_obj(self) -> RushFilesPath:
+        return self._path
+
+
+class RushFilesFolderMetadata(BaseRushFilesMetadata, metadata.BaseFolderMetadata):
+    def __init__(self, raw, path):
+        super().__init__(raw, path)
+        self._path._is_folder = True
+
+    @property
+    def materialized_path(self):
+        return str(self._path)
+
+    @property
     def extra(self):
         return {
             'internalName': self.raw['InternalName'],
@@ -42,14 +62,6 @@ class RushFilesFolderMetadata(BaseRushFilesMetadata, metadata.BaseFolderMetadata
 
 
 class RushFilesFileMetadata(BaseRushFilesMetadata, metadata.BaseFileMetadata):
-    @property
-    def name(self) -> str:
-        return self.raw['PublicName']
-
-    @property
-    def path(self) -> str:
-        return '/' + self._path.raw_path
-
     @property
     def size(self) -> typing.Union[int, str]:
         return self.raw['EndOfFile']
@@ -73,10 +85,6 @@ class RushFilesFileMetadata(BaseRushFilesMetadata, metadata.BaseFileMetadata):
     @property
     def upload_name(self) -> str:
         return self.raw['UploadName']
-
-    @property
-    def internal_name(self) -> str:
-        return self.raw['InternalName']
 
     @property
     def extra(self):

@@ -1,14 +1,9 @@
 import pytest
 
 import os
-import json
 
 from waterbutler.core import utils
-from waterbutler.providers.rushfiles.provider import RushFilesPath
-from waterbutler.providers.rushfiles.provider import RushFilesPathPart
-from waterbutler.providers.rushfiles.metadata import RushFilesRevision
-from waterbutler.providers.rushfiles.metadata import RushFilesFileMetadata
-from waterbutler.providers.rushfiles.metadata import RushFilesFolderMetadata
+from waterbutler.providers.rushfiles.metadata import (RushFilesPath, RushFilesFileMetadata, RushFilesFolderMetadata)
 
 from tests.providers.rushfiles.fixtures import(
     root_provider_fixtures,

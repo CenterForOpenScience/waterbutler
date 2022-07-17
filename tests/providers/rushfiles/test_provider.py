@@ -105,8 +105,6 @@ def folder_metadata_response():
         }
     }
 
-
-
 @pytest.fixture
 def provider(auth, credentials, settings):
     return RushFilesProvider(auth, credentials, settings)
@@ -277,10 +275,12 @@ class TestDelete:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_delete_folder_ok(self, provider, root_provider_fixtures):
+    async def test_delete_folder_ok(self, provider, root_provider_fixtures, intra_fixtures):
         item = root_provider_fixtures['folder_metadata_delete_ok']
         path = RushFilesPath('/GakuNin RDM/', _ids=(provider.share['id'], item['InternalName']))
-        url = provider._build_filecache_url(str(provider.share['id']), 'files', item['InternalName'])
+
+        children_url = provider._build_clientgateway_url(str(provider.share['id']), 'virtualfiles', item['InternalName'], 'children')
+        delete_url = provider._build_filecache_url(str(provider.share['id']), 'files', item['InternalName'])
         url_body = json.dumps({
                         "Data":{
                             "ClientJournalEvent": {
@@ -295,11 +295,16 @@ class TestDelete:
                         }   
                     })
 
-        aiohttpretty.register_uri('DELETE', url, body=url_body, status=200)
+        aiohttpretty.register_json_uri('GET', children_url, body=intra_fixtures['intra_folder_children_metadata'], status=200)
+        for child in intra_fixtures['intra_folder_children_metadata']['Data']:
+            aiohttpretty.register_json_uri('DELETE', provider._build_filecache_url(str(provider.share['id']), 'files', child['InternalName']))
+        aiohttpretty.register_uri('DELETE', delete_url, body=url_body, status=200)
 
         await provider.delete(path)
 
-        assert aiohttpretty.has_call(method='DELETE', uri=url)
+        assert aiohttpretty.has_call(method='DELETE', uri=delete_url)
+        for child in intra_fixtures['intra_folder_children_metadata']['Data']:
+            aiohttpretty.has_call('DELETE', provider._build_filecache_url(str(provider.share['id']), 'files', child['InternalName']))
 
     @pytest.mark.asyncio
     async def test_delete_path_does_not_exist(self, provider):
@@ -471,6 +476,8 @@ class TestIntraMove:
         aiohttpretty.register_json_uri('GET', children_url, body=intra_fixtures['intra_folder_children_metadata'])
         aiohttpretty.register_json_uri('PUT', intra_move_url, body=intra_fixtures['intra_move_folder_resp_metadata'])
         aiohttpretty.register_json_uri('DELETE', del_url)
+        for child in intra_fixtures['intra_folder_children_metadata']['Data']:
+            aiohttpretty.register_json_uri('DELETE', provider._build_filecache_url(str(provider.share['id']), 'files', child['InternalName']))
 
         expected = RushFilesFolderMetadata(item, dest_path)
         expected.children = await provider._folder_metadata(dest_path)
@@ -517,6 +524,8 @@ class TestIntraMove:
         aiohttpretty.register_json_uri('GET', children_url, body=intra_fixtures['intra_folder_children_metadata'])
         aiohttpretty.register_json_uri('PUT', intra_move_url, body=intra_fixtures['intra_duplicated_folder_resp_metadata'])
         aiohttpretty.register_json_uri('DELETE', del_url)
+        for child in intra_fixtures['intra_folder_children_metadata']['Data']:
+            aiohttpretty.register_json_uri('DELETE', provider._build_filecache_url(str(provider.share['id']), 'files', child['InternalName']))
 
         duplicated_path =  WaterButlerPath('/super/foo(duplicated 2021-11-18T15:44:36.4329227Z)/', 
                                             _ids=(provider, item['InternalName'], item['InternalName']))
