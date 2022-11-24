@@ -5,16 +5,14 @@ from unittest import mock
 from waterbutler.core import metadata
 from waterbutler.core import exceptions
 
-
-@pytest.fixture
-def provider1():
-    return utils.MockProvider1({'user': 'name'}, {'pass': 'word'}, {})
-
-
-@pytest.fixture
-def provider2():
-    return utils.MockProvider2({'user': 'name'}, {'pass': 'phrase'}, {})
-
+from tests.core.fixtures import (
+    provider1,
+    provider2,
+    src_path,
+    dest_path,
+    folder_children,
+    mock_folder
+)
 
 class TestBaseProvider:
 
@@ -481,3 +479,76 @@ class TestMove:
         assert 'bytes=10-' == provider1._build_range_header((10, None))
         assert 'bytes=10-100' == provider1._build_range_header((10, 100))
         assert 'bytes=-255' == provider1._build_range_header((None, 255))
+
+
+class TestFolderFileOp:
+
+    @pytest.mark.asyncio
+    async def test_folder_file_op_overwrite(self,
+                                            provider1,
+                                            provider2,
+                                            src_path,
+                                            dest_path,
+                                            mock_folder,
+                                            folder_children):
+        provider2.create_folder = utils.MockCoroutine(return_value=mock_folder)
+        provider1.metadata = utils.MockCoroutine(return_value=folder_children)
+        provider1.copy = utils.MockCoroutine(return_value=(utils.MockFolderMetadata(), True))
+
+        folder, created = await provider1._folder_file_op(provider1.copy,
+                                                          provider2,
+                                                          src_path,
+                                                          dest_path)
+
+        provider2.create_folder.assert_called_with(dest_path, folder_precheck=False)
+        provider1.metadata.assert_called_with(src_path)
+
+        assert (folder, created) == (mock_folder, False)
+
+        # The order of these lists does not matter, but they should contain all the same elements.
+        assert all(child for child in folder.children if child in folder_children)
+        assert all(child for child in folder_children if child in folder.children)
+
+    @pytest.mark.asyncio
+    async def test_folder_file_op_new(self,
+                                      provider1,
+                                      provider2,
+                                      src_path,
+                                      dest_path,
+                                      mock_folder,
+                                      folder_children):
+        provider2.create_folder = utils.MockCoroutine(return_value=mock_folder)
+        provider2.delete = utils.MockCoroutine(side_effect=exceptions.ProviderError('test message',
+                                                                                    code=404))
+        provider1.metadata = utils.MockCoroutine(return_value=folder_children)
+        provider1.copy = utils.MockCoroutine(return_value=(utils.MockFolderMetadata(), True))
+
+        folder, created = await provider1._folder_file_op(provider1.copy,
+                                                          provider2,
+                                                          src_path,
+                                                          dest_path)
+        provider2.create_folder.assert_called_with(dest_path, folder_precheck=False)
+        provider1.metadata.assert_called_with(src_path)
+
+        assert (folder, created) == (mock_folder, True)
+
+        # The order of these lists does not matter, but they should contain all the same elements.
+        assert all(child for child in folder.children if child in folder_children)
+        assert all(child for child in folder_children if child in folder.children)
+
+    @pytest.mark.asyncio
+    async def test_folder_file_op_raises(self,
+                                         provider1,
+                                         provider2,
+                                         src_path,
+                                         dest_path,
+                                         mock_folder,
+                                         folder_children):
+        provider2.create_folder = utils.MockCoroutine(return_value=mock_folder)
+        provider2.delete = utils.MockCoroutine(side_effect=exceptions.ProviderError('test message',
+                                                                                    code=500))
+        provider1.metadata = utils.MockCoroutine(return_value=folder_children)
+        provider1.copy = utils.MockCoroutine(return_value=(utils.MockFolderMetadata(), True))
+
+        with pytest.raises(exceptions.ProviderError):
+            await provider1._folder_file_op(provider1.copy, provider2, src_path, dest_path)

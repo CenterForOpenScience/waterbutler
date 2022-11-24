@@ -9,6 +9,14 @@ class BaseCloudFilesMetadata(metadata.BaseMetadata):
     def provider(self):
         return 'cloudfiles'
 
+    # CloudFiles is a path-based provider.  However, it never called ``revalidate_path()`` even when
+    # it was the backend storage provider for OSFStorage.  The provider is no longer active until it
+    # is upgraded to an addon provider for the users.
+    @property
+    def id(self):
+        # TODO: Do we need this ``id`` to be actually set?
+        return self.path
+
 
 class CloudFilesFileMetadata(BaseCloudFilesMetadata, metadata.BaseFileMetadata):
 

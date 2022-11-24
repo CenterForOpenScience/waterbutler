@@ -28,6 +28,11 @@ class BaseBitbucketMetadata(metadata.BaseMetadata):
     def provider(self):
         return 'bitbucket'
 
+    # Bitbucket is a path-based provider and uses the default ``revalidate_path()``.
+    @property
+    def id(self):
+        return self.path
+
     @property
     def path(self):
         return self.build_path()

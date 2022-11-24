@@ -11,6 +11,11 @@ class BaseBoxMetadata(metadata.BaseMetadata):
     def provider(self):
         return 'box'
 
+    # Box is an id-based provider and uses its own ``revalidate_path()``.
+    @property
+    def id(self):
+        return self.raw['id']
+
     @property
     def materialized_path(self):
         return str(self._path_obj)

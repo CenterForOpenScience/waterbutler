@@ -15,6 +15,7 @@ class TestFileMetadataHeaders:
     def test_file_metadata_headers(self, file_metadata_headers_object, file_header_metadata):
         assert not file_metadata_headers_object.is_folder
         assert file_metadata_headers_object.is_file
+        assert file_metadata_headers_object.id == '/test-path'
         assert file_metadata_headers_object.name == 'test-path'
         assert file_metadata_headers_object.path == '/test-path'
         assert file_metadata_headers_object.materialized_path == '/test-path'
@@ -48,6 +49,7 @@ class TestFileMetadata:
         assert file_metadata_object.is_file
         assert file_metadata_object.kind == 'file'
 
+        assert file_metadata_object.id == '/my-image.jpg'
         assert file_metadata_object.name == 'my-image.jpg'
         assert file_metadata_object.path == '/my-image.jpg'
         assert file_metadata_object.materialized_path == '/my-image.jpg'
@@ -85,6 +87,7 @@ class TestFolderMetadata:
         assert not folder_metadata_object.is_file
         assert folder_metadata_object.kind == 'folder'
 
+        assert folder_metadata_object.id == '/photos/'
         assert folder_metadata_object.name == 'photos'
         assert folder_metadata_object.path == '/photos/'
         assert folder_metadata_object.materialized_path == '/photos/'
@@ -107,6 +110,7 @@ class TestFolderKeyMetadata:
         assert not folder_key_metadata_object.is_file
         assert folder_key_metadata_object.kind == 'folder'
 
+        assert folder_key_metadata_object.id == '/naptime/'
         assert folder_key_metadata_object.name == 'naptime'
         assert folder_key_metadata_object.path == '/naptime/'
 

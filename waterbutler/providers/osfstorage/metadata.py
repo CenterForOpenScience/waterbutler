@@ -16,6 +16,12 @@ class BaseOsfStorageItemMetadata(BaseOsfStorageMetadata):
         super().__init__(raw)
         self._materialized = materialized
 
+    # TODO: Is OSFStorage also path-based?
+    # OSFStorage is an id-based provider and uses its own ``revalidate_path()``.
+    @property
+    def id(self):
+        return self.raw['id']
+
     @property
     def name(self):
         return self.raw['name']
