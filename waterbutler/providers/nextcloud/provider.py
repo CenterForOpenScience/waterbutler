@@ -1,6 +1,5 @@
 import logging
 import aiohttp
-import time
 
 from waterbutler.core import streams
 from waterbutler.core import provider
@@ -284,10 +283,9 @@ class NextcloudProvider(provider.BaseProvider):
         if not path.is_dir:
             for i in items:
                 if i.is_file:
-                    start_time = time.time()
                     params = {
                         'path': i._href,
-                        'hash': 'md5,sha256'
+                        'hash': 'md5,sha256,sha512'
                     }
                     response = await self.make_request('GET',
                         self._ocs_url + 'apps/checksum_api/api/checksum',
@@ -305,8 +303,6 @@ class NextcloudProvider(provider.BaseProvider):
                         extra['hashes'] = await utils.parse_checksum_response(content)
                         i.extra = extra
                     await response.release()
-                    res = time.time() - start_time
-                    logger.info(f'Time execute apps/checksum_api/api/checksum in _metadata_folder: {res * 1000}')
 
         return items
 
@@ -331,11 +327,10 @@ class NextcloudProvider(provider.BaseProvider):
         if len(items) != 1:
             return items
 
-        if self.NAME:
-            start_time = time.time()
+        if self.NAME == 'nextcloudinstitutions':
             params = {
                 'path': path.full_path,
-                'hash': 'md5,sha256'
+                'hash': 'md5,sha256,sha512'
             }
             response = await self.make_request('GET',
                 self._ocs_url + 'apps/checksum_api/api/checksum',
@@ -353,8 +348,6 @@ class NextcloudProvider(provider.BaseProvider):
                 extra['hashes'] = await utils.parse_checksum_response(content)
                 items[0].extra = extra
             await response.release()
-            res = time.time() - start_time
-            logger.info(f'Time execute apps/checksum_api/api/checksum in _metadata_revision: {res * 1000}')
 
         fileid = items[0].fileid
 
@@ -372,12 +365,11 @@ class NextcloudProvider(provider.BaseProvider):
             revision_items = await utils.parse_dav_response(self.NAME, content, self.folder, True)
         await response.release()
 
-        if self.NAME:
+        if self.NAME == 'nextcloudinstitutions':
             for rev in revision_items:
-                start_time = time.time()
                 params = {
                     'path': path.full_path,
-                    'hash': 'md5,sha256',
+                    'hash': 'md5,sha256,sha512',
                     'revision': str(rev.etag)
                 }
                 response = await self.make_request('GET',
@@ -396,8 +388,6 @@ class NextcloudProvider(provider.BaseProvider):
                     extra['hashes'] = await utils.parse_checksum_response(content)
                     rev.extra = extra
                 await response.release()
-                res = time.time() - start_time
-                logger.info(f'Time execute apps/checksum_api/api/checksum in _metadata_revision: {res * 1000}')
 
         items.extend(revision_items)
 
