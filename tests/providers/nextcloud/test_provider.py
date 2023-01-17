@@ -603,7 +603,6 @@ class TestOperations:
         assert provider.can_duplicate_names()
 
 
-
 class FilePathFactory:
     def __init__(self, _href):
         self._href = _href
@@ -633,3 +632,4 @@ class TestMetadataFolder:
         with mock.patch('waterbutler.providers.nextcloud.utils.parse_dav_response', return_value=future):
             result = await provider._metadata_folder(path)
             assert isinstance(result, list)
+            assert len(result) > 0
