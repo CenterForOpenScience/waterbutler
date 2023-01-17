@@ -1,4 +1,5 @@
 import io
+import asyncio
 from http import client
 
 import pytest
@@ -11,6 +12,7 @@ from waterbutler.providers.nextcloud import NextcloudProvider
 from waterbutler.providers.nextcloud.metadata import (NextcloudFileMetadata,
                                                      NextcloudFileRevisionMetadata)
 
+from unittest import mock
 from tests import utils
 from tests.providers.nextcloud.fixtures import (
     provider,
@@ -599,3 +601,35 @@ class TestOperations:
 
     def test_can_duplicate_names(self, provider):
         assert provider.can_duplicate_names()
+
+
+
+class FilePathFactory:
+    def __init__(self, _href):
+        self._href = _href
+        self.is_file = True
+
+
+class TestMetadataFolder:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_metadata_folder_path_is_dir(self, provider, file_metadata, file_revision_metadata, file_metadata_object,
+                                     file_metadata_2, file_checksum, file_checksum_2, file_checksum_3):
+
+        path = WaterButlerPath('/dissertation.aux', prepend=provider.folder)
+        url = provider._webdav_url_ + path.full_path
+        aiohttpretty.register_uri('PROPFIND', url, body=file_metadata, auto_length=True, status=207)
+        url = provider._dav_url_ + 'versions/' + provider.credentials['username'] + '/versions/' + file_metadata_object.fileid
+        aiohttpretty.register_uri('PROPFIND', url, body=file_revision_metadata, auto_length=True, status=207)
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512'
+        aiohttpretty.register_uri('GET', checksum_url, body=file_checksum, auto_length=True, status=200)
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512&revision=1591876099'
+        aiohttpretty.register_uri('GET', checksum_url, body=file_checksum_2, auto_length=True, status=200)
+        checksum_url = provider._ocs_url + 'apps/checksum_api/api/checksum?path=/my_folder/dissertation.aux&hash=md5,sha256,sha512&revision=1591864889'
+        aiohttpretty.register_uri('GET', checksum_url, body=file_checksum_3, auto_length=True, status=200)
+        future = asyncio.Future()
+        future.set_result([FilePathFactory('/my_folder/dissertation.aux')])
+        with mock.patch('waterbutler.providers.nextcloud.utils.parse_dav_response', return_value=future):
+            result = await provider._metadata_folder(path)
+            assert isinstance(result, list)
