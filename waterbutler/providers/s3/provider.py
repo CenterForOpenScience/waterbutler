@@ -685,7 +685,11 @@ class S3Provider(provider.BaseProvider):
     async def _metadata_folder(self, path):
         await self._check_region()
 
-        params = {'prefix': path.path, 'delimiter': '/'}
+        if path._orig_path == '/' and self.settings.get('id'):
+            params = {'prefix': self.settings['id'], 'delimiter': '/'}
+        else:
+            params = {'prefix': path.path, 'delimiter': '/'}
+
         resp = await self.make_request(
             'GET',
             functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
@@ -721,11 +725,15 @@ class S3Provider(provider.BaseProvider):
 
         items = [
             S3FolderMetadata(item)
-            for item in prefixes
+            for item in prefixes if item['Prefix'] != path.path
         ]
 
         for content in contents:
             if content['Key'] == path.path:
+                continue
+
+            base_folder = self.settings.get('id')
+            if base_folder and content['Key'] == base_folder:
                 continue
 
             if content['Key'].endswith('/'):
