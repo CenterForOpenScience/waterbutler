@@ -686,8 +686,10 @@ class S3Provider(provider.BaseProvider):
         await self._check_region()
 
         if path._orig_path == '/' and self.settings.get('id'):
-            params = {'prefix': self.settings['id'], 'delimiter': '/'}
+            base_folder = self.settings['id'].split(':/')[1]
+            params = {'prefix': base_folder, 'delimiter': '/'}
         else:
+            base_folder = None
             params = {'prefix': path.path, 'delimiter': '/'}
 
         resp = await self.make_request(
@@ -732,7 +734,6 @@ class S3Provider(provider.BaseProvider):
             if content['Key'] == path.path:
                 continue
 
-            base_folder = self.settings.get('id')
             if base_folder and content['Key'] == base_folder:
                 continue
 
