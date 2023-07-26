@@ -69,7 +69,10 @@ class S3Provider(provider.BaseProvider):
         await self._check_region()
 
         if path == '/':
-            return WaterButlerPath(path)
+            # adjust path using base folder to include the buckets root, so just the `/` translates to just
+            # the `/base_folder/` path
+            base_folder = self.settings.get('id', ':/').split(':/')[1]
+            return WaterButlerPath(f'/{base_folder}')
 
         implicit_folder = path.endswith('/')
 
@@ -685,12 +688,10 @@ class S3Provider(provider.BaseProvider):
     async def _metadata_folder(self, path):
         await self._check_region()
 
-        if path._orig_path == '/' and self.settings.get('id'):
-            base_folder = self.settings['id'].split(':/')[1]
-            params = {'prefix': base_folder, 'delimiter': '/'}
-        else:
-            base_folder = None
-            params = {'prefix': path.path, 'delimiter': '/'}
+        # The user selected base folder, the root of the where that user's node is connected.
+        prefix = self.settings['id'].split(':/')[1] if path == '/' and self.settings.get('id') else path.path
+
+        params = {'prefix': prefix, 'delimiter': '/'}
 
         resp = await self.make_request(
             'GET',
@@ -734,7 +735,7 @@ class S3Provider(provider.BaseProvider):
             if content['Key'] == path.path:
                 continue
 
-            if base_folder and content['Key'] == base_folder:
+            if content['Key'] == params['prefix']:
                 continue
 
             if content['Key'].endswith('/'):
