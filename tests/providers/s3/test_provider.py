@@ -234,6 +234,21 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
+    async def test_validate_v1_path_file_with_subfolder(self, provider, file_header_metadata, mock_time):
+        file_path = '/my-subfolder/foobah'
+        provider.settings['id'] = 'the-bucket:/my-subfolder/'
+
+        good_metadata_url = provider.bucket.new_key(file_path).generate_url(100, 'HEAD')
+        aiohttpretty.register_uri('HEAD', good_metadata_url, headers=file_header_metadata)
+
+        assert WaterButlerPath('/my-subfolder/') == await provider.validate_v1_path('/')
+        wb_path_v1 = await provider.validate_v1_path(file_path)
+        wb_path_v0 = await provider.validate_path(file_path)
+
+        assert wb_path_v1 == wb_path_v0
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
     async def test_validate_v1_path_folder(self, provider, folder_metadata, mock_time):
         folder_path = 'Photos'
 
@@ -382,6 +397,35 @@ class TestCRUD:
         with pytest.raises(exceptions.DownloadError) as e:
             await provider.download(WaterButlerPath('/cool/folder/mom/'))
         assert e.value.code == 400
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_upload_to_subfolder_as_root(self,
+                                               provider,
+                                               file_content,
+                                               file_stream,
+                                               file_header_metadata,
+                                               mock_time
+                                               ):
+
+        provider.settings['id'] = 'the-bucket:/my-subfolder/'
+        path = WaterButlerPath('/my-subfolder/foobah')
+
+        content_md5 = hashlib.md5(file_content).hexdigest()
+
+        url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
+        metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
+        aiohttpretty.register_uri('HEAD', metadata_url, headers=file_header_metadata)
+        header = {'ETag': f'"{content_md5}"'}
+        aiohttpretty.register_uri('PUT', url, status=201, headers=header)
+
+        metadata, created = await provider.upload(file_stream, path)
+
+        assert metadata.kind == 'file'
+        assert metadata.path == '/my-subfolder/foobah'
+        assert not created
+        assert aiohttpretty.has_call(method='PUT', uri=url)
+        assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

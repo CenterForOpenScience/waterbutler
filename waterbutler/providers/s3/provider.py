@@ -732,9 +732,6 @@ class S3Provider(provider.BaseProvider):
         ]
 
         for content in contents:
-            if content['Key'] == path.path:
-                continue
-
             if content['Key'] == params['prefix']:
                 continue
 
