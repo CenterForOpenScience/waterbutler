@@ -98,6 +98,8 @@ class S3Provider(provider.BaseProvider):
         return WaterButlerPath(path)
 
     async def validate_path(self, path, **kwargs):
+        # The user selected base folder, the root of the where that user's node is connected.
+        path = f"/{self.settings.get('id', ':/').split(':/')[1] + path.lstrip('/')}"
         return WaterButlerPath(path)
 
     def can_duplicate_names(self):
