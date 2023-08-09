@@ -68,11 +68,8 @@ class S3Provider(provider.BaseProvider):
     async def validate_v1_path(self, path, **kwargs):
         await self._check_region()
 
-        if path == '/':
-            # adjust path using base folder to include the buckets root, so just the `/` translates to just
-            # the `/base_folder/` path
-            base_folder = self.settings.get('id', ':/').split(':/')[1]
-            return WaterButlerPath(f'/{base_folder}')
+        # The user selected base folder, the root of the where that user's node is connected.
+        path = f"/{self.settings.get('id', ':/').split(':/')[1] + path.lstrip('/')}"
 
         implicit_folder = path.endswith('/')
 
@@ -117,6 +114,9 @@ class S3Provider(provider.BaseProvider):
         `dest_provider` must have read access to `source.bucket`.
         """
         await self._check_region()
+
+        dest_path = WaterButlerPath('/' + self.settings.get('id', ':/').split(':/')[1] + dest_path.path)
+
         exists = await dest_provider.exists(dest_path)
 
         dest_key = dest_provider.bucket.new_key(dest_path.path)
@@ -725,6 +725,13 @@ class S3Provider(provider.BaseProvider):
 
         if isinstance(prefixes, dict):
             prefixes = [prefixes]
+
+        # The user selected base folder, the root of the where that user's node is connected.
+        for item in prefixes:
+            item['base_folder'] = self.settings.get('id', ':/').split(':/')[1]
+
+        for item in contents:
+            item['base_folder'] = self.settings.get('id', ':/').split(':/')[1]
 
         items = [
             S3FolderMetadata(item)

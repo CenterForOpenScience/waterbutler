@@ -210,11 +210,36 @@ class TestValidatePath:
     async def test_validate_v1_path_file(self, provider, file_header_metadata, mock_time):
         file_path = 'foobah'
 
-        params = {'prefix': '/' + file_path + '/', 'delimiter': '/'}
-        good_metadata_url = provider.bucket.new_key('/' + file_path).generate_url(100, 'HEAD')
-        bad_metadata_url = provider.bucket.generate_url(100)
-        aiohttpretty.register_uri('HEAD', good_metadata_url, headers=file_header_metadata)
-        aiohttpretty.register_uri('GET', bad_metadata_url, params=params, status=404)
+        good_metadata_url = provider.bucket.new_key(f'/{file_path}').generate_url(100, 'HEAD')
+        root_metadata_url = provider.bucket.new_key('/').generate_url(100, 'GET')
+        aiohttpretty.register_uri(
+            'HEAD',
+            good_metadata_url,
+            headers=file_header_metadata
+        )
+        aiohttpretty.register_uri(
+            'GET',
+            good_metadata_url,
+            headers=file_header_metadata
+        )
+        aiohttpretty.register_uri(
+            'GET',
+            root_metadata_url,
+            params={
+                'prefix': '/' + file_path + '/',
+                'delimiter': '/'
+            },
+            status=404
+        )
+        aiohttpretty.register_uri(
+            'GET',
+            root_metadata_url,
+            params={
+                'prefix': '/',
+                'delimiter': '/'
+            },
+            headers=file_header_metadata
+        )
 
         assert WaterButlerPath('/') == await provider.validate_v1_path('/')
 
