@@ -117,8 +117,6 @@ class S3Provider(provider.BaseProvider):
         """
         await self._check_region()
 
-        dest_path = WaterButlerPath('/' + self.settings.get('id', ':/').split(':/')[1] + dest_path.path)
-
         exists = await dest_provider.exists(dest_path)
 
         dest_key = dest_provider.bucket.new_key(dest_path.path)
