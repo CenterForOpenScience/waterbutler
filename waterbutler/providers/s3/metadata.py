@@ -30,9 +30,7 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def path(self):
-        if self.raw.get('base_folder'):
-            return '/' + strip_char(self._path, self.raw['base_folder'])
-        return '/' + self._path
+        return '/' + strip_char(self._path, self.raw.get('base_folder', ''))
 
     @property
     def size(self):
@@ -70,9 +68,7 @@ class S3FileMetadata(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def path(self):
-        if self.raw.get('base_folder'):
-            return '/' + strip_char(self.raw['Key'], self.raw['base_folder'])
-        return '/' + self.raw['Key']
+        return '/' + strip_char(self.raw['Key'], self.raw.get('base_folder', ''))
 
     @property
     def size(self):
@@ -113,7 +109,7 @@ class S3FolderKeyMetadata(S3Metadata, metadata.BaseFolderMetadata):
 
     @property
     def path(self):
-        return '/' + self.raw['Key']
+        return '/' + strip_char(self.raw['Key'], self.raw.get('base_folder', ''))
 
 
 class S3FolderMetadata(S3Metadata, metadata.BaseFolderMetadata):
@@ -124,8 +120,8 @@ class S3FolderMetadata(S3Metadata, metadata.BaseFolderMetadata):
 
     @property
     def path(self):
-        if self.raw.get('base_folder'):
-            return '/' + strip_char(self.raw['Prefix'], self.raw['base_folder'])
+        if self.raw.get('base_folder', ''):
+            return '/' + strip_char(self.raw['Prefix'], self.raw.get('base_folder', ''))
         return '/' + self.raw['Prefix']
 
 

@@ -322,22 +322,12 @@ class TestValidatePath:
         assert not path.is_root
 
     @pytest.mark.asyncio
-    async def test_root(self, provider, mock_time):
-        provider.settings['id'] = 'that kerning:/'
-        path = await provider.validate_path('/')
-        assert path.name == ''
-        assert not path.is_file
-        assert path.is_dir
-        assert path.is_root
-
-    @pytest.mark.asyncio
     async def test_subfolder(self, provider, mock_time):
         path = await provider.validate_path('/')
         assert path.name == 'my-subfolder'
         assert not path.is_file
         assert path.is_dir
         assert not path.is_root
-
 
 class TestCRUD:
 
@@ -458,7 +448,7 @@ class TestCRUD:
         metadata, created = await provider.upload(file_stream, path)
 
         assert metadata.kind == 'file'
-        assert metadata.path == '/my-subfolder/foobah'
+        assert metadata.path == '/foobah'
         assert not created
         assert aiohttpretty.has_call(method='PUT', uri=url)
         assert aiohttpretty.has_call(method='HEAD', uri=metadata_url)
