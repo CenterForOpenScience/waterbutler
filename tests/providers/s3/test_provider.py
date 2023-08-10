@@ -207,52 +207,40 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    @pytest.mark.skip('Mocking too complicated')
     async def test_validate_v1_path_file(self, provider, file_header_metadata, mock_time):
         file_path = 'foobah'
 
-        good_metadata_url = provider.bucket.new_key(f'/{file_path}').generate_url(100, 'HEAD')
+        good_metadata_url_head = provider.bucket.new_key(f'/my-subfolder/{file_path}').generate_url(100, 'HEAD')
         root_metadata_url = provider.bucket.new_key('/').generate_url(100, 'GET')
         aiohttpretty.register_uri(
+            'GET',
+            root_metadata_url,
+            headers=file_header_metadata,
+            params={
+                'prefix': '/my-subfolder/',
+                'delimiter': '/'
+            }
+        )
+        aiohttpretty.register_uri(
             'HEAD',
-            good_metadata_url,
-            headers=file_header_metadata
-        )
-        aiohttpretty.register_uri(
-            'GET',
-            good_metadata_url,
-            headers=file_header_metadata
+            good_metadata_url_head,
+            headers=file_header_metadata,
         )
         aiohttpretty.register_uri(
             'GET',
             root_metadata_url,
+            headers=file_header_metadata,
             params={
-                'prefix': '/' + file_path + '/',
+                'prefix': f'/my-subfolder/{file_path}/',
                 'delimiter': '/'
-            },
-            status=404
+            }
         )
-        aiohttpretty.register_uri(
-            'GET',
-            root_metadata_url,
-            params={
-                'prefix': '/',
-                'delimiter': '/'
-            },
-            headers=file_header_metadata
-        )
-
-        assert WaterButlerPath('/') == await provider.validate_v1_path('/')
+        assert WaterButlerPath('/my-subfolder/', prepend=None) == await provider.validate_v1_path('/')
 
         try:
             wb_path_v1 = await provider.validate_v1_path('/' + file_path)
         except Exception as exc:
             pytest.fail(str(exc))
-
-        with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + file_path + '/')
-
-        assert exc.value.code == client.NOT_FOUND
 
         wb_path_v0 = await provider.validate_path('/' + file_path)
 
@@ -260,12 +248,29 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    @pytest.mark.skip('Mocking too complicated')
     async def test_validate_v1_path_file_with_subfolder(self, provider, file_header_metadata, mock_time):
-        file_path = '/my-subfolder/foobah'
+        file_path = '/foobah'
 
-        good_metadata_url = provider.bucket.new_key(file_path).generate_url(100, 'HEAD')
-        aiohttpretty.register_uri('HEAD', good_metadata_url, headers=file_header_metadata)
+        good_metadata_url_root = provider.bucket.new_key('/').generate_url(100, 'GET')
+        good_metadata_url = provider.bucket.new_key(file_path).generate_url(100, 'GET')
+        good_metadata_url_head = provider.bucket.new_key(f'/my-subfolder{file_path}').generate_url(100, 'HEAD')
+        aiohttpretty.register_uri(
+            'GET',
+            good_metadata_url,
+            params={'delimiter': '/', 'prefix': '/my-subfolder/'},
+            headers=file_header_metadata
+        )
+        aiohttpretty.register_uri(
+            'GET',
+            good_metadata_url_root,
+            params={'delimiter': '/', 'prefix': '/my-subfolder/'},
+            headers=file_header_metadata
+        )
+        aiohttpretty.register_uri(
+            'HEAD',
+            good_metadata_url_head,
+            headers=file_header_metadata
+        )
 
         assert WaterButlerPath('/my-subfolder/') == await provider.validate_v1_path('/')
         wb_path_v1 = await provider.validate_v1_path(file_path)
@@ -275,30 +280,31 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    @pytest.mark.skip('Mocking too complicated')
     async def test_validate_v1_path_folder(self, provider, folder_metadata, mock_time):
-        folder_path = 'Photos'
+        folder_path = '/Photos'
 
-        params = {'prefix': '/' + folder_path + '/', 'delimiter': '/'}
-        good_metadata_url = provider.bucket.generate_url(100)
-        bad_metadata_url = provider.bucket.new_key('/' + folder_path).generate_url(100, 'HEAD')
+        good_metadata_url_root = provider.bucket.new_key('/').generate_url(100, 'GET')
+        good_metadata_url = provider.bucket.new_key(folder_path).generate_url(100, 'GET')
+        good_metadata_url_head = provider.bucket.new_key(f'/my-subfolder{folder_path}').generate_url(100, 'HEAD')
         aiohttpretty.register_uri(
-            'GET', good_metadata_url, params=params,
-            body=folder_metadata, headers={'Content-Type': 'application/xml'}
+            'GET',
+            good_metadata_url,
+            params={'delimiter': '/', 'prefix': '/my-subfolder/Photos/'},
+            headers=file_header_metadata
         )
-        aiohttpretty.register_uri('HEAD', bad_metadata_url, status=404)
+        aiohttpretty.register_uri(
+            'GET',
+            good_metadata_url_root,
+            params={'delimiter': '/', 'prefix': '/my-subfolder/Photos/'},
+        )
+        aiohttpretty.register_uri(
+            'HEAD',
+            good_metadata_url_head,
+            headers=file_header_metadata
+        )
 
-        try:
-            wb_path_v1 = await provider.validate_v1_path('/' + folder_path + '/')
-        except Exception as exc:
-            pytest.fail(str(exc))
-
-        with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/' + folder_path)
-
-        assert exc.value.code == client.NOT_FOUND
-
-        wb_path_v0 = await provider.validate_path('/' + folder_path + '/')
+        wb_path_v1 = await provider.validate_v1_path(folder_path + '/')
+        wb_path_v0 = await provider.validate_path(folder_path + '/')
 
         assert wb_path_v1 == wb_path_v0
 
