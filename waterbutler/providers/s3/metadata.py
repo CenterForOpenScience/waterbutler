@@ -3,6 +3,12 @@ import os
 from waterbutler.core import metadata
 
 
+def strip_char(str, chars):
+    if str.startswith(chars):
+        return str[len(chars):]
+    return str
+
+
 class S3Metadata(metadata.BaseMetadata):
 
     @property
@@ -24,7 +30,7 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def path(self):
-        return '/' + self._path
+        return '/' + strip_char(self._path, self.raw.get('base_folder', ''))
 
     @property
     def size(self):
@@ -62,7 +68,7 @@ class S3FileMetadata(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def path(self):
-        return '/' + self.raw['Key']
+        return '/' + strip_char(self.raw['Key'], self.raw.get('base_folder', ''))
 
     @property
     def size(self):
@@ -103,7 +109,7 @@ class S3FolderKeyMetadata(S3Metadata, metadata.BaseFolderMetadata):
 
     @property
     def path(self):
-        return '/' + self.raw['Key']
+        return '/' + strip_char(self.raw['Key'], self.raw.get('base_folder', ''))
 
 
 class S3FolderMetadata(S3Metadata, metadata.BaseFolderMetadata):
@@ -114,6 +120,8 @@ class S3FolderMetadata(S3Metadata, metadata.BaseFolderMetadata):
 
     @property
     def path(self):
+        if self.raw.get('base_folder', ''):
+            return '/' + strip_char(self.raw['Prefix'], self.raw.get('base_folder', ''))
         return '/' + self.raw['Prefix']
 
 

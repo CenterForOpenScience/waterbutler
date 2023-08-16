@@ -62,17 +62,15 @@ class S3Provider(provider.BaseProvider):
         self.connection = S3Connection(credentials['access_key'],
                 credentials['secret_key'], calling_format=OrdinaryCallingFormat())
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
+        self.base_folder = self.settings.get('id', ':/').split(':/')[1]
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
         self.region = None
 
     async def validate_v1_path(self, path, **kwargs):
         await self._check_region()
 
-        if path == '/':
-            # adjust path using base folder to include the buckets root, so just the `/` translates to just
-            # the `/base_folder/` path
-            base_folder = self.settings.get('id', ':/').split(':/')[1]
-            return WaterButlerPath(f'/{base_folder}')
+        # The user selected base folder, the root of the where that user's node is connected.
+        path = f"/{self.base_folder + path.lstrip('/')}"
 
         implicit_folder = path.endswith('/')
 
@@ -101,7 +99,8 @@ class S3Provider(provider.BaseProvider):
         return WaterButlerPath(path)
 
     async def validate_path(self, path, **kwargs):
-        return WaterButlerPath(path)
+        # The user selected base folder, the root of the where that user's node is connected.
+        return WaterButlerPath(f"/{self.base_folder + path.lstrip('/')}")
 
     def can_duplicate_names(self):
         return True
@@ -640,9 +639,14 @@ class S3Provider(provider.BaseProvider):
         await self._check_region()
 
         if path.is_dir:
-            return (await self._metadata_folder(path))
+            metadata = await self._metadata_folder(path)
+            for item in metadata:
+                item.raw['base_folder'] = self.base_folder
+        else:
+            metadata = await self._metadata_file(path, revision=revision)
+            metadata.raw['base_folder'] = self.base_folder
 
-        return (await self._metadata_file(path, revision=revision))
+        return metadata
 
     async def create_folder(self, path, folder_precheck=True, **kwargs):
         """
@@ -664,7 +668,9 @@ class S3Provider(provider.BaseProvider):
             throws=exceptions.CreateFolderError
         )
 
-        return S3FolderMetadata({'Prefix': path.path})
+        metadata = S3FolderMetadata({'Prefix': path.path})
+        metadata.raw['base_folder'] = self.base_folder
+        return metadata
 
     async def _metadata_file(self, path, revision=None):
         await self._check_region()
@@ -688,10 +694,7 @@ class S3Provider(provider.BaseProvider):
     async def _metadata_folder(self, path):
         await self._check_region()
 
-        # The user selected base folder, the root of the where that user's node is connected.
-        prefix = self.settings['id'].split(':/')[1] if path == '/' and self.settings.get('id') else path.path
-
-        params = {'prefix': prefix, 'delimiter': '/'}
+        params = {'prefix': path.path, 'delimiter': '/'}
 
         resp = await self.make_request(
             'GET',
