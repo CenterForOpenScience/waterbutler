@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+23.0.0 (2023-08-17)
+===================
+
+- S3 Improvements: support sub-folder being configured as add-on root
+
 22.0.1 (2022-07-05)
 ===================
 - Fix: Don't call `json_api_serialized` on a list when a folder name conflict is detected.
