@@ -224,6 +224,9 @@ class GitLabProvider(provider.BaseProvider):
 
         logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
 
+        logger.error('gitlab-size-headers: content-length:({}) '
+                     'x-gitlab-size:({})'.format(resp.headers.get('Content-Length'),
+                                                 resp.headers.get('X-Gitlab-Size')))
         # get size from X-Gitlab-Size header, since some responses don't set Content-Length
         return streams.ResponseStreamReader(resp, size=int(resp.headers['X-Gitlab-Size']))
 

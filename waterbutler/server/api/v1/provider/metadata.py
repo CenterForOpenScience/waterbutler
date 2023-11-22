@@ -5,6 +5,7 @@ import logging
 
 import pytz
 from dateutil.parser import parse as datetime_parser
+from tornado import httputil
 
 from waterbutler.server import utils
 from waterbutler.core import mime_types
@@ -103,7 +104,16 @@ class MetadataMixin:
         if ext in mime_types:
             self.set_header('Content-Type', mime_types[ext])
 
-        await self.write_stream(stream)
+        try:
+            await self.write_stream(stream)
+        except httputil.HTTPOutputError as exc:
+            logger.error('Caught HTTPOutputError, checking content-length sizes')
+            logger.error(
+                '*** stream.size:({}) content-length:({})'.format(
+                    stream.size, self._headers.get('Content-Length')
+                )
+            )
+            raise exc
 
         if getattr(stream, 'partial', False) and isinstance(stream, ResponseStreamReader):
             await stream.response.release()
