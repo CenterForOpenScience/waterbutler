@@ -37,7 +37,9 @@ def make_provider(name: str, auth: dict, credentials: dict, settings: dict, **kw
     try:
         manager = driver.DriverManager(
             namespace='waterbutler.providers',
-            name=name,
+            # with gravyvalet active, "name" is opaque id for a specific addon
+            # instance and osf puts the provider name in settings['service']
+            name=settings.pop('service', name),
             invoke_on_load=True,
             invoke_args=(auth, credentials, settings),
             invoke_kwds=kwargs,
