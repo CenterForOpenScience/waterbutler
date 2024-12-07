@@ -23,6 +23,7 @@ class TestOneDriveMetadata:
             'etag': 'aRjRENTBFNDAwREZFN0Q0RSEyOTEuMg',
             'webView': 'https://1drv.ms/t/s!AE59_g1ADtX0giM',
         }
+        assert metadata.id == 'F4D50E400DFE7D4E!291'
         assert metadata.name == 'toes.txt'
         assert metadata.path == '/{}'.format(root_provider_fixtures['file_id'])
         assert metadata.size == 11
@@ -46,6 +47,7 @@ class TestOneDriveMetadata:
 
         metadata = OneDriveFolderMetadata(root_provider_fixtures['folder_metadata'], od_path)
         assert metadata.provider == 'onedrive'
+        assert metadata.id == 'F4D50E400DFE7D4E!290'
         assert metadata.name == 'teeth'
         assert metadata.path == '/F4D50E400DFE7D4E!290/'
         assert metadata.etag == 'aRjRENTBFNDAwREZFN0Q0RSEyOTAuMA'

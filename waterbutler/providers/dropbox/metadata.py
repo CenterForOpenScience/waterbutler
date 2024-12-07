@@ -13,6 +13,12 @@ class BaseDropboxMetadata(metadata.BaseMetadata):
     def provider(self):
         return 'dropbox'
 
+    # TODO: Is Dropbox path-based instead of id-based?
+    # TODO: Dropbox does not have a ``revalidate_path()``, should we use path instead of id?
+    @property
+    def id(self):
+        return self.raw['id']
+
     def build_path(self, path):
         # TODO write a test for this
         if path.lower().startswith(self._folder.lower()):

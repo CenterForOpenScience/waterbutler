@@ -13,14 +13,18 @@ class BaseOwnCloudMetadata(metadata.BaseMetadata):
     def provider(self):
         return 'owncloud'
 
+    # OwnCloud is a path-based provider and uses the default ``revalidate_path()``.
+    @property
+    def id(self):
+        return self.path
+
     @property
     def name(self):
         return self._href.strip('/').split('/')[-1]
 
     @property
     def path(self):
-        path = self._href[len(self._folder) - 1:]
-        return path
+        return self._href[len(self._folder) - 1:]
 
     @property
     def size(self):

@@ -13,6 +13,7 @@ class TestFileMetadata:
     def test_file_metadata(self, file_metadata, file_metadata_object):
 
         assert file_metadata_object.provider == 'osfstorage'
+        assert file_metadata_object.id == '59a9b628b7d1c903ab5a8f52'
         assert file_metadata_object.name == 'doc.rst'
         assert file_metadata_object.path == '/59a9b628b7d1c903ab5a8f52'
         assert str(file_metadata_object.materialized_path) == '/doc.rst'
@@ -70,6 +71,7 @@ class TestFolderMetadata:
     def test_folder_metadata(self, folder_metadata_object):
 
         assert folder_metadata_object.provider == 'osfstorage'
+        assert folder_metadata_object.id == '59c0054cb7d1c90114c456af'
         assert folder_metadata_object.name == 'New Folder'
         assert folder_metadata_object.path == '/59c0054cb7d1c90114c456af/'
         assert str(folder_metadata_object.materialized_path) == '/New Folder/'
