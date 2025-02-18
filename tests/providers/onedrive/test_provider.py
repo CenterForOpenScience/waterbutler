@@ -516,7 +516,6 @@ class TestDownload:
         assert content == b'te'
         assert aiohttpretty.has_call(method='GET', uri=download_url,
                                      headers={'Range': 'bytes=0-1',
-                                              'Authorization': 'bearer wrote harry potter',
                                               'accept-encoding': ''})
 
     @pytest.mark.asyncio
