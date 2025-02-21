@@ -310,6 +310,7 @@ class OneDriveProvider(provider.BaseProvider):
             'GET',
             download_url,
             range=range,
+            no_auth_header=True,  # if download_url is signed, OD will sometimes 401 if auth header is included
             expects=(HTTPStatus.OK, HTTPStatus.PARTIAL_CONTENT),
             headers={'accept-encoding': ''},
             throws=exceptions.DownloadError,
@@ -766,6 +767,7 @@ class OneDriveProvider(provider.BaseProvider):
                                                                      start_range + len(data) - 1,
                                                                      total_size)
             },
+            no_auth_header=True,  # this endpoint will sometimes 401 if the Auth header included
             expects=(HTTPStatus.ACCEPTED, HTTPStatus.CREATED),
             throws=exceptions.UploadError
         )
