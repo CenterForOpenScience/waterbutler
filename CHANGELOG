@@ -2,6 +2,13 @@
 ChangeLog
 *********
 
+25.0.0 (2025-02-21)
+===================
+
+- Fix: Sometimes OneDrive gets mad if we include the `Authorization` header along with a signed
+request. Not every onedrive host server complains, but some do. Ergo, we stop doing it globally.
+- Feature: Support OSF's gravyvalet service by allowing gv to define provider in settings.
+
 23.0.0 (2023-08-17)
 ===================
 
