@@ -578,7 +578,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def _folder_metadata(self,
                                path: WaterButlerPath,
                                raw: bool=False) -> List[Union[BaseGoogleDriveMetadata, dict]]:
-        query = self._build_query(path.identifier)
+        query = self._build_query(path.identifier) if path.identifier != 'root' else {}
         built_url = self.build_url('files', q=query, alt='json', maxResults=1000)
         full_resp = []
         while built_url:
