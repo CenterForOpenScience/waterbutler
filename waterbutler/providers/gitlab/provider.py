@@ -1,3 +1,4 @@
+import asyncio
 import json
 import typing
 import logging
@@ -455,10 +456,48 @@ class GitLabProvider(provider.BaseProvider):
             if page_nbr == 1 and len(data_page) == 0 and not path.is_root:
                 raise exceptions.NotFoundError(path.full_path)
 
+            # Fetch last update of file via its commit dates for all items concurrently to may it possible sorting
+            # on osf side
+            tasks = [self._fetch_file_date(item) for item in data_page]
+            results = await asyncio.gather(*tasks)
+
+            for item, date in zip(data_page, results):
+                item["modified"] = date
+
             data.extend(data_page)
             page_nbr = resp.headers.get('X-Next-Page', None)
 
         return data
+
+    async def _fetch_file_date(self, item):
+        path_args = ['repository', 'commits']
+        path_kwargs = {'path': item["path"], "per_page": 1}
+        url = self._build_repo_url(*path_args, **path_kwargs)
+
+        try:
+            resp = await self.make_request(
+                'GET',
+                url,
+                expects=(200, 404, 500),
+                throws=exceptions.NotFoundError,
+            )
+            raw_data = await resp.read()
+
+            if not raw_data:
+                return None
+
+            try:
+                json_data = json.loads(raw_data.decode("utf-8"))
+                if json_data and isinstance(json_data, list) and "created_at" in json_data[0]:
+                    return json_data[0]["created_at"]
+                else:
+                    return None
+            except json.JSONDecodeError:
+                return None
+        except exceptions.NotFoundError:
+            return None
+        except Exception:
+            return None
 
     async def _fetch_default_branch(self) -> str:
         """Get the default branch configured for the repository.  Uninitialized repos do not have
