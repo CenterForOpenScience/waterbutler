@@ -1,4 +1,4 @@
-FROM python:3.6-slim-buster
+FROM python:3.13-slim
 
 RUN usermod -d /home www-data && chown www-data:www-data /home
 
@@ -14,9 +14,10 @@ RUN apt-get update \
         build-essential \
         libssl-dev \
         libffi-dev \
-        python-dev \
         gnupg2 \
         # grab gosu for easy step-down from root
+        cargo \
+        rustc \
         gosu \
     && apt-get clean \
     && apt-get autoremove -y \
@@ -25,8 +26,8 @@ RUN apt-get update \
 RUN mkdir -p /code
 WORKDIR /code
 
-RUN pip install -U pip==18.1
-RUN pip install setuptools==37.0.0
+RUN pip install -U pip==24.0
+RUN pip install setuptools==69.5.1
 
 COPY ./requirements.txt /code/
 
