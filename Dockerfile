@@ -37,7 +37,7 @@ RUN pip install --no-cache-dir -r /code/requirements.txt
 COPY ./ /code/
 
 ARG GIT_COMMIT=
-ENV GIT_COMMIT ${GIT_COMMIT}
+ENV GIT_COMMIT=${GIT_COMMIT}
 
 RUN python setup.py develop
 
