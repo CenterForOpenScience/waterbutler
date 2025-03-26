@@ -107,7 +107,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def revalidate_path(self,
                               base: WaterButlerPath,
                               name: str,
-                              folder: bool=None) -> WaterButlerPath:
+                              folder: bool = None) -> WaterButlerPath:
         # TODO Redo the logic here folders names ending in /s
         # Will probably break
         if '/' in name.lstrip('/') and '%' not in name:
@@ -133,7 +133,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     def default_headers(self) -> dict:
         return {'authorization': 'Bearer {}'.format(self.token)}
 
-    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
+    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath = None) -> bool:
         return self == other
 
     def can_intra_copy(self, other: provider.BaseProvider, path=None) -> bool:
@@ -204,8 +204,8 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def download(self,  # type: ignore
                        path: GoogleDrivePath,
-                       revision: str=None,
-                       range: Tuple[int, int]=None,
+                       revision: str = None,
+                       range: Tuple[int, int] = None,
                        **kwargs) -> streams.BaseStream:
         """Download the file at `path`.  If `revision` is present, attempt to download that revision
         of the file.  See **Revisions** in the class doctring for an explanation of this provider's
@@ -273,7 +273,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def delete(self,  # type: ignore
                      path: GoogleDrivePath,
-                     confirm_delete: int=0,
+                     confirm_delete: int = 0,
                      **kwargs) -> None:
         """Given a WaterButlerPath, delete that path
         :param GoogleDrivePath path: Path to be deleted
@@ -312,7 +312,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         )
         return
 
-    def _build_query(self, folder_id: str, title: str=None) -> str:
+    def _build_query(self, folder_id: str, title: str = None) -> str:
         queries = [
             "'{}' in parents".format(folder_id),
             'trashed = false',
@@ -325,7 +325,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def metadata(self,  # type: ignore
                        path: GoogleDrivePath,
-                       raw: bool=False,
+                       raw: bool = False,
                        revision=None,
                        **kwargs) -> Union[dict, BaseGoogleDriveMetadata,
                                           List[Union[BaseGoogleDriveMetadata, dict]]]:
@@ -381,7 +381,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def create_folder(self,
                             path: WaterButlerPath,
-                            folder_precheck: bool=True,
+                            folder_precheck: bool = True,
                             **kwargs) -> GoogleDriveFolderMetadata:
         GoogleDrivePath.validate_folder(path)
 
@@ -417,7 +417,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     def _serialize_item(self,
                         path: WaterButlerPath,
                         item: dict,
-                        raw: bool=False) -> Union[BaseGoogleDriveMetadata, dict]:
+                        raw: bool = False) -> Union[BaseGoogleDriveMetadata, dict]:
         if raw:
             return item
         if item['mimeType'] == self.FOLDER_MIME_TYPE:
@@ -535,7 +535,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             ret.append(await resp.json())
         return ret
 
-    async def _handle_docs_versioning(self, path: GoogleDrivePath, item: dict, raw: bool=True):
+    async def _handle_docs_versioning(self, path: GoogleDrivePath, item: dict, raw: bool = True):
         """Sends an extra request to GDrive to fetch revision information for Google Docs. Needed
         because Google Docs use a different versioning system from regular files.
 
@@ -577,7 +577,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def _folder_metadata(self,
                                path: WaterButlerPath,
-                               raw: bool=False) -> List[Union[BaseGoogleDriveMetadata, dict]]:
+                               raw: bool = False) -> List[Union[BaseGoogleDriveMetadata, dict]]:
         query = self._build_query(path.identifier)
         built_url = self.build_url('files', q=query, alt='json', maxResults=1000)
         full_resp = []
@@ -598,8 +598,8 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def _file_metadata(self,
                              path: GoogleDrivePath,
-                             revision: str=None,
-                             raw: bool=False) -> Union[dict, BaseGoogleDriveMetadata]:
+                             revision: str = None,
+                             raw: bool = False) -> Union[dict, BaseGoogleDriveMetadata]:
         """ Returns metadata for the file identified by `path`.  If the `revision` arg is set,
         will attempt to return metadata for the given revision of the file.  If the revision does
         not exist, ``_file_metadata`` will throw a 404.

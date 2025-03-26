@@ -56,7 +56,7 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
 
     if action in ['download_file', 'download_zip']:
         is_mfr_render = (ref_url_domain == settings.MFR_DOMAIN or
-                         settings.MFR_IDENTIFYING_HEADER in request['request']['headers'])
+                         settings.MFR_IDENTIFYING_HEADER in request["request"]["headers"])
         log_payload['action_meta']['is_mfr_render'] = is_mfr_render
 
     resp_status, resp_data = await utils.send_signed_request('PUT', auth['callback_url'], log_payload)

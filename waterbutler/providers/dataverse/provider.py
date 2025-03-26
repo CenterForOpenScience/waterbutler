@@ -166,7 +166,7 @@ class DataverseProvider(provider.BaseProvider):
             return self._metadata_cache[version]
         return sum(self._metadata_cache.values(), [])
 
-    async def download(self, path: WaterButlerPath, revision: str=None,  # type: ignore
+    async def download(self, path: WaterButlerPath, revision: str = None,  # type: ignore
                        range: Tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
         r"""Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from Dataverse is not 200

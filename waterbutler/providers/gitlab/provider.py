@@ -264,7 +264,7 @@ class GitLabProvider(provider.BaseProvider):
         segments = ('projects', self.repo_id) + segments
         return self.build_url(*segments, **query)
 
-    def _build_file_url(self, path: GitLabPath, raw: bool=False) -> str:
+    def _build_file_url(self, path: GitLabPath, raw: bool = False) -> str:
         """Build a url to GitLab's files endpoint.
 
         Quirk 1:
