@@ -5,9 +5,9 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
 
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     env:
-      GHA_DISTRO: ubuntu-20.04
+      GHA_DISTRO: ubuntu-24.04
     if: "!contains(github.event.head_commit.message, 'skip ci')"
     strategy:
       matrix:
@@ -37,9 +37,9 @@ jobs:
   runtests:
     name: Run unit tests
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     env:
-      GHA_DISTRO: ubuntu-20.04
+      GHA_DISTRO: ubuntu-24.04
     strategy:
       matrix:
         python-version: [3.13]
