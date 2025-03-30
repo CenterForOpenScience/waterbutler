@@ -117,7 +117,7 @@ class FileSystemProvider(provider.BaseProvider):
 
     def _metadata_file(self, path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
-        modified = datetime.datetime.utcfromtimestamp(os.path.getmtime(full_path)).replace(tzinfo=datetime.timezone.utc)
+        modified = datetime.datetime.fromtimestamp(os.path.getmtime(full_path), datetime.UTC)
         return {
             'path': full_path,
             'size': os.path.getsize(full_path),

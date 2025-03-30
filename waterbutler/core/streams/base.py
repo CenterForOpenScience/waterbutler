@@ -33,7 +33,7 @@ class BaseStream(asyncio.StreamReader, metaclass=abc.ABCMeta):
             raise StopAsyncIteration
         return chunk
 
-    @abc.abstractproperty
+    @abc.abstractmethod
     def size(self):
         pass
 

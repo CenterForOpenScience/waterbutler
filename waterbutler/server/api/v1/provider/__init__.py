@@ -74,9 +74,9 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
 
-        with sentry_sdk.configure_scope() as scope:
-            scope.set_tag('resource.id', self.resource)
-            scope.set_tag('src_provider', self.path_kwargs['provider'])
+        scope = sentry_sdk.get_current_scope()
+        scope.set_tag('resource.id', self.resource)
+        scope.set_tag('src_provider', self.path_kwargs['provider'])
 
         # pre-validator methods perform validations that can be performed before ensuring that the
         # path given by the url is valid.  An example would be making sure that a particular query

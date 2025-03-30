@@ -38,7 +38,7 @@ class OsfAuthHandler(BaseAuthHandler):
 
         raw_payload = jwe.encrypt(jwt.encode({
             'data': bundle,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+            'exp': datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
         }, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM), JWE_KEY)
 
         # Note: `aiohttp3` uses `yarl` which only supports string parameters

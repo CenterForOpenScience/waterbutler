@@ -82,8 +82,9 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, )):
                     # Logs before all things
                     logger.error('Task {0} failed with exception {1}'.format(func, e))
 
-                    with sentry_sdk.configure_scope() as scope:
-                        scope.set_tag('debug', False)
+                    # Docs: https://docs.sentry.io/platforms/python/migration/1.x-to-2.x#scope-configuring
+                    scope = sentry_sdk.get_current_scope()
+                    scope.set_tag('debug', False)
                     sentry_sdk.capture_exception(e)
 
                     # If anything happens to be listening

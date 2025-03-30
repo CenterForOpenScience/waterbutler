@@ -23,34 +23,34 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler):
         etype, exc, _ = exc_info
 
         finish_args = []
-        with sentry_sdk.configure_scope() as scope:
-            if issubclass(etype, exceptions.WaterButlerError):
-                if exc.is_user_error:
-                    scope.level = 'info'
+        scope = sentry_sdk.get_current_scope()
+        if issubclass(etype, exceptions.WaterButlerError):
+            if exc.is_user_error:
+                scope.set_level('info')
 
-                self.set_status(int(exc.code))
+            self.set_status(int(exc.code))
 
-                # If the exception has a `data` property then we need to handle that with care.
-                # The expectation is that we need to return a structured response.  For now, assume
-                # that involves setting the response headers to the value of the `headers`
-                # attribute of the `data`, while also serializing the entire `data` data structure.
-                if exc.data:
-                    self.set_header('Content-Type', 'application/json')
-                    headers = exc.data.get('headers', None)
-                    if headers:
-                        for key, value in headers.items():
-                            self.set_header(key, value)
-                    finish_args = [exc.data]
-                else:
-                    finish_args = [{'code': exc.code, 'message': exc.message}]
-
-            elif issubclass(etype, tasks.WaitTimeOutError):
-                self.set_status(202)
-                scope.level = 'info'
+            # If the exception has a `data` property then we need to handle that with care.
+            # The expectation is that we need to return a structured response.  For now, assume
+            # that involves setting the response headers to the value of the `headers`
+            # attribute of the `data`, while also serializing the entire `data` data structure.
+            if exc.data:
+                self.set_header('Content-Type', 'application/json')
+                headers = exc.data.get('headers', None)
+                if headers:
+                    for key, value in headers.items():
+                        self.set_header(key, value)
+                finish_args = [exc.data]
             else:
-                finish_args = [{'code': status_code, 'message': self._reason}]
+                finish_args = [{'code': exc.code, 'message': exc.message}]
 
-            sentry_sdk.capture_exception(exc_info)
+        elif issubclass(etype, tasks.WaitTimeOutError):
+            self.set_status(202)
+            scope.set_level('info')
+        else:
+            finish_args = [{'code': status_code, 'message': self._reason}]
+
+        sentry_sdk.capture_exception(exc_info)
 
         self.finish(*finish_args)
 
