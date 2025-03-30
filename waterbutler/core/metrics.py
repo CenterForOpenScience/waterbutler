@@ -96,7 +96,8 @@ class MetricsBase:
         """
         return {self.key: self.serialize()}
 
-    def _get_dotted_key(self, store, key):
+    @staticmethod
+    def _get_dotted_key(store, key):
         """Naive method to get a nested dict values via dot-separated keys. e.g
         ``_get_dotted_keys(self._metrics, 'foo.bar')`` is equivalent to
         ``return self._metrics['foo']['bar']``, but will autovivify any non-existing intermediate
@@ -112,7 +113,8 @@ class MetricsBase:
             current = current[part]
         return current.get(parts[-1], None)
 
-    def _set_dotted_key(self, store, key, value):
+    @staticmethod
+    def _set_dotted_key(store, key, value):
         """Naive method to set nested dict values via dot-separated keys. e.g
         ``_set_dotted_keys(self._metrics, 'foo.bar', 'moo')`` is equivalent to
         ``self._metrics['foo']['bar'] = 'moo'``.  This method is neither resilient nor intelligent

@@ -582,7 +582,8 @@ class DropboxProvider(provider.BaseProvider):
                        path: WaterButlerPath = None) -> bool:
         return self == dest_provider  # dropbox can only intra move on same account
 
-    def _build_content_url(self, *segments, **query):
+    @staticmethod
+    def _build_content_url(*segments, **query):
         return provider.build_url(pd_settings.BASE_CONTENT_URL, *segments, **query)
 
     async def _delete_folder_contents(self, path: WaterButlerPath, **kwargs) -> None:

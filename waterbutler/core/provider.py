@@ -837,7 +837,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         raise exceptions.ProviderError({'message': 'Folder creation not supported.'}, code=405)
 
-    def _build_range_header(self, slice_tup: typing.Tuple[int, int]) -> str:
+    @staticmethod
+    def _build_range_header(slice_tup: typing.Tuple[int, int]) -> str:
         start, end = slice_tup
         return 'bytes={}-{}'.format(
             '' if start is None else start,

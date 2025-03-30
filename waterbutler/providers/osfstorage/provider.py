@@ -173,7 +173,8 @@ class OSFStorageProvider(provider.BaseProvider):
         overrides this method with its own ``.copy()`` implementation."""
         return await self._do_intra_move_or_copy('copy', dest_provider, src_path, dest_path)
 
-    def build_signed_url(self, method, url, data=None, params=None, ttl=100, **kwargs):
+    @staticmethod
+    def build_signed_url(method, url, data=None, params=None, ttl=100, **kwargs):
         signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
         if method.upper() in QUERY_METHODS:
             signed = signing.sign_data(signer, params or {}, ttl=ttl)

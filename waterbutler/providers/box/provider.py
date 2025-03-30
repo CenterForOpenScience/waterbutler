@@ -462,7 +462,8 @@ class BoxProvider(provider.BaseProvider):
         self.metrics.add('metadata.folder.pages', page_total)
         return full_resp
 
-    def _serialize_item(self, item: dict,
+    @staticmethod
+    def _serialize_item(item: dict,
                         path: WaterButlerPath) -> Union[BoxFileMetadata, BoxFolderMetadata]:
         if item['type'] == 'folder':
             serializer = BoxFolderMetadata  # type: ignore
@@ -470,7 +471,8 @@ class BoxProvider(provider.BaseProvider):
             serializer = BoxFileMetadata  # type: ignore
         return serializer(item, path)
 
-    def _build_upload_url(self, *segments, **query):
+    @staticmethod
+    def _build_upload_url(*segments, **query):
         return provider.build_url(pd_settings.BASE_UPLOAD_URL, *segments, **query)
 
     async def _delete_folder_contents(self, path: WaterButlerPath, **kwargs) -> None:

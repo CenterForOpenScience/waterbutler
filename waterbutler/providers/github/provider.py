@@ -1035,7 +1035,8 @@ class GitHubProvider(provider.BaseProvider):
 
         return tree, head
 
-    def _path_exists_in_tree(self, tree, path):
+    @staticmethod
+    def _path_exists_in_tree(tree, path):
         """Search through a tree and return true if the given path is found.
 
         :param list tree: A list of blobs in a git tree.
@@ -1044,7 +1045,8 @@ class GitHubProvider(provider.BaseProvider):
         """
         return any(x['path'] == path.path.rstrip('/') for x in tree)
 
-    def _remove_path_from_tree(self, tree, path):
+    @staticmethod
+    def _remove_path_from_tree(tree, path):
         """Search through a tree and remove any blobs or trees that match ``path`` or are a child of
         ``path``.
 
@@ -1061,6 +1063,7 @@ class GitHubProvider(provider.BaseProvider):
               (item['type'] == 'tree' and item['path'] == path.path.rstrip('/'))))  # folder != path
         ]
 
+    @staticmethod
     def _reparent_blobs(self, blobs, src_path, dest_path):
         """Take a list of blobs and replace the source path with the dest path.
 
@@ -1089,6 +1092,7 @@ class GitHubProvider(provider.BaseProvider):
                 blob['path'] = blob['path'].replace(src_path.path, dest_path.path, 1)
         return
 
+    @staticmethod
     def _prune_subtrees(self, tree):
         """Takes in a list representing a git tree and remove all the entries that are also trees.
         Only blobs should remain. GitHub infers tree structure from blob paths.  Deleting a blob
@@ -1227,7 +1231,8 @@ class GitHubProvider(provider.BaseProvider):
 
         return inferred_ref, 'branch_name', ref_from
 
-    def _looks_like_sha(self, ref):
+    @staticmethod
+    def _looks_like_sha(ref):
         """Returns `True` if ``ref`` could be a valid SHA (i.e. is a valid hex number).  If ``True``
         also checks to make sure ``ref`` is a valid number of characters, as GH doesn't like
         abbreviated refs.  Currently only check for 40 characters (length of a sha1-name), but a

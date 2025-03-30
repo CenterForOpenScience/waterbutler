@@ -375,7 +375,8 @@ class CloudFilesProvider(provider.BaseProvider):
             for item in data
         ]
 
-    def _serialize_folder_metadata(self, data):
+    @staticmethod
+    def _serialize_folder_metadata(data):
         if data.get('subdir'):
             return CloudFilesFolderMetadata(data)
         elif data['content_type'] == 'application/directory':

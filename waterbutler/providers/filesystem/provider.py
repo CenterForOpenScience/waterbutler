@@ -115,7 +115,8 @@ class FileSystemProvider(provider.BaseProvider):
             metadata = self._metadata_file(path)
             return FileSystemFileMetadata(metadata, self.folder)
 
-    def _metadata_file(self, path, file_name=''):
+    @staticmethod
+    def _metadata_file(path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
         modified = datetime.datetime.fromtimestamp(os.path.getmtime(full_path), datetime.UTC)
         return {
@@ -126,7 +127,8 @@ class FileSystemProvider(provider.BaseProvider):
             'mime_type': mimetypes.guess_type(full_path)[0],
         }
 
-    def _metadata_folder(self, path, folder_name):
+    @staticmethod
+    def _metadata_folder(path, folder_name):
         return {
             'path': os.path.join(path.path, folder_name),
         }

@@ -175,7 +175,8 @@ class BaseFigshareProvider(provider.BaseProvider):
         response = await super().make_request('GET', url, expects=(200, ))
         return await response.json()
 
-    def _path_split(self, path):
+    @staticmethod
+    def _path_split(path):
         """Strip trailing slash from path string, then split on remaining slashes.
 
         :param str path: url path string to be split.

@@ -26,7 +26,8 @@ class OsfAuthHandler(BaseAuthHandler):
         'delete': 'delete',
     }
 
-    def build_payload(self, bundle, view_only=None, cookie=None):
+    @staticmethod
+    def build_payload(bundle, view_only=None, cookie=None):
         query_params = {}
 
         if cookie:
@@ -46,7 +47,8 @@ class OsfAuthHandler(BaseAuthHandler):
 
         return query_params
 
-    async def make_request(self, params, headers, cookies):
+    @staticmethod
+    async def make_request(params, headers, cookies):
         try:
             # Note: with simple request whose response is handled right afterwards without "being passed
             #       further along", use the context manager so WB doesn't need to handle the sessions.

@@ -515,7 +515,8 @@ class OneDriveProvider(provider.BaseProvider):
 
     # ========== utility methods ==========
 
-    def _build_graph_url(self, *segments, **query) -> str:
+    @staticmethod
+    def _build_graph_url(*segments, **query) -> str:
         return provider.build_url(settings.BASE_GRAPH_URL, *segments, **query)
 
     def _build_graph_drive_url(self, *segments, **query) -> str:
@@ -524,7 +525,8 @@ class OneDriveProvider(provider.BaseProvider):
     def _build_graph_item_url(self, *segments, **query) -> str:
         return self._build_graph_drive_url('items', *segments, **query)
 
-    def _construct_metadata(self, data: dict, path):
+    @staticmethod
+    def _construct_metadata(data: dict, path):
         """Take a file/folder metadata response from OneDrive and a path object representing the
         queried path and return a `OneDriveFileMetadata` object if the repsonse represents a file
         or a list of `OneDriveFileMetadata` and `OneDriveFolderMetadata` objects if the response
@@ -776,7 +778,8 @@ class OneDriveProvider(provider.BaseProvider):
             return None, data
         return data.get('nextExpectedRanges'), None
 
-    def _build_range_header_for_upload(self, start, end, total):
+    @staticmethod
+    def _build_range_header_for_upload(start, end, total):
         if end >= total:
             end = None
         return 'bytes {}-{}/{}'.format(

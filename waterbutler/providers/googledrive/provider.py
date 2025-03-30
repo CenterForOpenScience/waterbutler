@@ -312,7 +312,8 @@ class GoogleDriveProvider(provider.BaseProvider):
         )
         return
 
-    def _build_query(self, folder_id: str, title: str = None) -> str:
+    @staticmethod
+    def _build_query(folder_id: str, title: str = None) -> str:
         queries = [
             "'{}' in parents".format(folder_id),
             'trashed = false',
@@ -411,7 +412,8 @@ class GoogleDriveProvider(provider.BaseProvider):
         """ Unfortunately-named method, currently only used to get path name for zip archives. """
         return parent_path.child(metadata.export_name, _id=metadata.id, folder=metadata.is_folder)
 
-    def _build_upload_url(self, *segments, **query):
+    @staticmethod
+    def _build_upload_url(*segments, **query):
         return provider.build_url(pd_settings.BASE_UPLOAD_URL, *segments, **query)
 
     def _serialize_item(self,
@@ -424,7 +426,8 @@ class GoogleDriveProvider(provider.BaseProvider):
             return GoogleDriveFolderMetadata(item, path)
         return GoogleDriveFileMetadata(item, path)
 
-    def _build_upload_metadata(self, folder_id: str, name: str) -> dict:
+    @staticmethod
+    def _build_upload_metadata(folder_id: str, name: str) -> dict:
         return {
             'parents': [
                 {
