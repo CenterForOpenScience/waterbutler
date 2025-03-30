@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 
-def parse_requirements(requirements):
-    with open(requirements) as items:
+def parse_requirements(requirements_txt):
+    with open(requirements_txt) as items:
         return [item.strip('\n') for item in items if item.strip('\n') and not item.startswith('#')]
 
 

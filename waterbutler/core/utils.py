@@ -61,7 +61,7 @@ def as_task(func):
     return wrapped
 
 
-def async_retry(retries=5, backoff=1, exceptions=(Exception, )):
+def async_retry(retries=5, backoff=1, exceptions_tuple=(Exception, )):
 
     def _async_retry(func):
 
@@ -70,7 +70,7 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, )):
         async def wrapped(*args, __retries=0, **kwargs):
             try:
                 return await asyncio.coroutine(func)(*args, **kwargs)
-            except exceptions as e:
+            except exceptions_tuple as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
                     logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting '

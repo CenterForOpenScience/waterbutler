@@ -56,9 +56,9 @@ class OneDriveProvider(provider.BaseProvider):
 
     # ========== __init__ ==========
 
-    def __init__(self, auth, credentials, settings, **kwargs):
-        logger.debug('__init__ auth::{} settings::{}'.format(auth, settings))
-        super().__init__(auth, credentials, settings, **kwargs)
+    def __init__(self, auth, credentials, settings_data, **kwargs):
+        logger.debug('__init__ auth::{} settings::{}'.format(auth, settings_data))
+        super().__init__(auth, credentials, settings_data, **kwargs)
         self.token = self.credentials['token']
         self.folder = self.settings['folder']
         self.drive_id = self.settings['drive_id']

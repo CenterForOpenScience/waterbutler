@@ -41,9 +41,9 @@ class SettingsDict(dict):
     def get(self, key, default=None):
         """Fetch a config value for ``key`` from the settings.  First checks the env, then the
         on-disk config.  If neither exists, returns ``default``."""
-        env = self.full_key(key)
-        if env in os.environ:
-            return os.environ.get(env)
+        environ = self.full_key(key)
+        if environ in os.environ:
+            return os.environ.get(environ)
         return super().get(key, default)
 
     def get_bool(self, key, default=None):

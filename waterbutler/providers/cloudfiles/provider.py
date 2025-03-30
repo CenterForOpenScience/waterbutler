@@ -34,8 +34,8 @@ class CloudFilesProvider(provider.BaseProvider):
     """
     NAME = 'cloudfiles'
 
-    def __init__(self, auth, credentials, settings, **kwargs):
-        super().__init__(auth, credentials, settings, **kwargs)
+    def __init__(self, auth, credentials, settings_data, **kwargs):
+        super().__init__(auth, credentials, settings_data, **kwargs)
         self.token = None
         self.endpoint = None
         self.public_endpoint = None

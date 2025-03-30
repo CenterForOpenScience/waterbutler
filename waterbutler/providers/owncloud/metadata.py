@@ -66,8 +66,8 @@ class OwnCloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
         super().__init__({'modified': modified})
 
     @classmethod
-    def from_metadata(cls, metadata):
-        return OwnCloudFileRevisionMetadata(modified=metadata.modified)
+    def from_metadata(cls, file_metadata_object):
+        return OwnCloudFileRevisionMetadata(modified=file_metadata_object.modified)
 
     @property
     def version_identifier(self):
