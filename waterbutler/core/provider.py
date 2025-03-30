@@ -54,7 +54,7 @@ def throttle(concurrency=10, interval=1):
 
 
 def build_url(base, *segments, **query):
-    url = furl.furl(base)
+    url = furl.furl(base, args=query)
     # Filters return generators
     # Cast to list to force "spin" it
     url.path.segments = list(filter(
@@ -67,7 +67,6 @@ def build_url(base, *segments, **query):
             itertools.chain(url.path.segments, segments)
         )
     ))
-    url.args = query
     return url.url
 
 
