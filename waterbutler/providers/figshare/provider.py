@@ -613,6 +613,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
             if not parent_json['defined_type'] in pd_settings.FOLDER_TYPES:
                 del path._parts[1]
 
+        article_id = ''
         # Create article or retrieve article_id from existing article
         if not path.parent.is_root:
             article_id = path.parent.identifier
