@@ -170,7 +170,7 @@ class GitLabProvider(provider.BaseProvider):
         Note: ``path`` is not a documented parameter of the above GL endpoint, but seems to work.
 
         :param GitLabPath path: The file to fetch revision history for
-        :param dict \*\*kwargs: ignored
+        :param dict kwargs: ignored
         :rtype: `list` of :class:`GitLabRevision`
         :raises: :class:`waterbutler.core.exceptions.RevisionsError`
         """
@@ -208,7 +208,7 @@ class GitLabProvider(provider.BaseProvider):
         endpoint does not currently respect it.
 
         :param str path: The path to the file on GitLab
-        :param dict \*\*kwargs: Ignored
+        :param dict kwargs: Ignored
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 

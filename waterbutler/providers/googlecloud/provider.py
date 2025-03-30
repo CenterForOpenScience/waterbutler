@@ -121,7 +121,7 @@ class GoogleCloudProvider(BaseProvider):
 
         :param path: the WaterButlerPath to the file or folder
         :type path: :class:`.WaterButlerPath`
-        :param dict \*\*kwargs: additional kwargs are ignored
+        :param dict kwargs: additional kwargs are ignored
         :rtype: :class:`.GoogleCloudFileMetadata` (for file)
         :rtype: List<:class:`.BaseGoogleCloudMetadata`> (for folder)
         """
@@ -258,8 +258,8 @@ class GoogleCloudProvider(BaseProvider):
 
         :param path: the WaterButlerPath of the object to delete
         :type path: :class:`.WaterButlerPath`
-        :param list \*args: additional args are ignored
-        :param dict \*\*kwargs: additional kwargs are ignored
+        :param list args: additional args are ignored
+        :param dict kwargs: additional kwargs are ignored
         :rtype: None
         """
 

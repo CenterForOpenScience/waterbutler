@@ -73,7 +73,7 @@ class MetricsBase():
         key is undefined.  Type homogeneity of list members is not enforced.
 
         :param str key: the key to store ``value`` under
-        :param value: the value to store, type unrestricted
+        :param new_value: the value to store, type unrestricted
         """
         old_value = self._get_dotted_key(self._metrics, key)
         self._set_dotted_key(self._metrics, key, ([] if old_value is None else old_value) + [new_value])

@@ -94,7 +94,7 @@ class OneDriveProvider(provider.BaseProvider):
 
         :param str path: A string representing the requested path. This will be everthing after
                          the provider name in the url.
-        :param dict \*\*kwargs: Query parameters and other parameters splatted into the call.
+        :param dict kwargs: Query parameters and other parameters splatted into the call.
         :raises: NotFoundError
         :rtype: OneDrivePath
         :return: a OneDrivePath object representing the new path.
@@ -255,7 +255,7 @@ class OneDriveProvider(provider.BaseProvider):
 
         :param str path: The path to the file on OneDrive
         :param str revision: The revision of the file to download. If ``None``, download latest.
-        :param dict \*\*kwargs: Ignored
+        :param dict kwargs: Ignored
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         :rtype: waterbutler.core.streams.ResponseStreamReader
         :return: a stream of the contents of the file

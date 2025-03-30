@@ -30,7 +30,7 @@ def make_provider(name: str, auth: dict, credentials: dict, settings: dict, **kw
     :param dict auth:
     :param dict credentials:
     :param dict settings:
-    :param dict \*\*kwargs: currently there to absorb ``callback_url``
+    :param dict kwargs: currently there to absorb ``callback_url``
 
     :rtype: :class:`waterbutler.core.provider.BaseProvider`
     """

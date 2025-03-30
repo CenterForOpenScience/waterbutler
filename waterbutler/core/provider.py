@@ -165,8 +165,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def build_url(self, *segments, **query) -> str:
         r"""A nice wrapper around furl, builds urls based on self.BASE_URL
 
-        :param \*segments: ( :class:`tuple` ) A tuple of strings joined into /foo/bar/..
-        :param \*\*query: ( :class:`dict` ) A dictionary that will be turned into query parameters
+        :param segments: ( :class:`tuple` ) A tuple of strings joined into /foo/bar/..
+        :param query: ( :class:`dict` ) A dictionary that will be turned into query parameters
         :rtype: :class:`str`
         """
         return build_url(self.BASE_URL, *segments, **query)
@@ -251,8 +251,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param url: The URL or URL-to-be to send the request to
         :type url: :class:`str` for the built URL or a :class:`functools.partial` object that will
             be build when it is called
-        :param \*args: args passed to methods of :class:`aiohttp.ClientSession`
-        :param \*\*kwargs: kwargs passed to methods of :class:`aiohttp.ClientSession` except the
+        :param args: args passed to methods of :class:`aiohttp.ClientSession`
+        :param kwargs: kwargs passed to methods of :class:`aiohttp.ClientSession` except the
             following ones that will be popped and used for Waterbutler specific purposes
         :keyword no_auth_header: ( :class:`bool` ) An optional boolean flag that determines whether
             to drop the default authorization header provided by the provider
@@ -589,7 +589,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         file (``False``).
 
         :param  dest_provider: ( :class:`.BaseProvider` )  a provider instance for the destination
-        :param  src_path: ( :class:`.WaterButlerPath` )  the Path of the entity being copied
+        :param  source_path: ( :class:`.WaterButlerPath` )  the Path of the entity being copied
         :param  dest_path: ( :class:`.WaterButlerPath` ) the Path of the destination being copied to
         :rtype: (:class:`.BaseFileMetadata`, :class:`bool`)
         """
@@ -721,7 +721,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         r"""Download a file from this provider.
 
         :param src_path: ( :class:`.WaterButlerPath` ) Path to the file to be downloaded
-        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        :param kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
         :rtype: :class:`.ResponseStreamReader`
         :raises: :class:`.DownloadError`
         """
@@ -736,7 +736,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         :param path: ( :class:`.WaterButlerPath` ) Where to upload the file to
         :param  stream: ( :class:`.BaseStream` ) The content to be uploaded
-        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        :param kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
         :rtype: (:class:`.BaseFileMetadata`, :class:`bool`)
         :raises: :class:`.DeleteError`
         """
@@ -746,7 +746,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def delete(self, src_path: wb_path.WaterButlerPath, **kwargs) -> None:
         r"""
         :param src_path: ( :class:`.WaterButlerPath` ) Path to be deleted
-        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        :param kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
         :rtype: :class:`None`
         :raises: :class:`.DeleteError`
         """
@@ -764,7 +764,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             thing. See: https://github.com/python/mypy/issues/1693
 
         :param path: ( :class:`.WaterButlerPath` ) The path to a file or folder
-        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        :param kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
         :rtype: :class:`.BaseMetadata`
         :rtype: :class:`list` of :class:`.BaseMetadata`
         :raises: :class:`.MetadataError`
