@@ -260,7 +260,7 @@ class BaseFigshareProvider(provider.BaseProvider):
     async def revisions(self, path, **kwargs):
         # Public articles have revisions, but projects, collections, and private articles do not.
         # For now, return a single Revision labeled "latest".
-        return [FigshareFileRevisionMetadata()]
+        return [FigshareFileRevisionMetadata({})]
 
     async def _upload_file(self, article_id, name, stream):
         """Uploads a file to Figshare and returns the file id.
