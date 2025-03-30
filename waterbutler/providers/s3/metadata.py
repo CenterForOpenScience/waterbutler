@@ -3,10 +3,10 @@ import os
 from waterbutler.core import metadata
 
 
-def strip_char(str, chars):
-    if str.startswith(chars):
-        return str[len(chars):]
-    return str
+def strip_char(string, chars):
+    if string.startswith(chars):
+        return string[len(chars):]
+    return string
 
 
 class S3Metadata(metadata.BaseMetadata):
