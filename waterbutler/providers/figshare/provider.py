@@ -531,7 +531,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         # Return for v0 folder creation
         return FigsharePath(path, _ids=('', ''), folder=True, is_public=False)
 
-    async def revalidate_path(self, parent_path, child_name, folder):
+    async def revalidate_path(self, parent_path, child_name, folder: bool = False):
         """Look for file or folder named ``child_name`` under ``parent_path``. If it finds a match,
         it returns a FigsharePath object with the appropriate ids set.  Otherwise, it returns a
         FigsharePath where the ids are set to ``None``.

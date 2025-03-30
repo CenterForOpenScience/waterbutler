@@ -51,7 +51,7 @@ class BaseBitbucketMetadata(metadata.BaseMetadata):
             'branch': self.branch_name,  # may be None if revision id is a sha
         }
 
-    def build_path(self):
+    def build_path(self, path):
         return super().build_path(self._path_obj.raw_path)
 
     def _json_api_links(self, resource):
