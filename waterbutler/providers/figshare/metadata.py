@@ -170,9 +170,6 @@ class FigshareFolderMetadata(BaseFigshareMetadata, metadata.BaseFolderMetadata):
 
 class FigshareFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
 
-    def __init__(self):
-        pass
-
     @property
     def modified(self):
         return None
