@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 @utils.async_retry(retries=5, backoff=5)
-async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[],
-                          request={}):
+async def log_to_callback(action, source=None, destination=None, start_time=None, errors=None,
+                          request=None):
     """PUT a logging payload back to the callback given by the auth provider."""
-
+    errors = errors or []
+    request = request or {}
     auth = getattr(destination, 'auth', source.auth)
     ref_url_domain = ''
     log_payload = {
@@ -215,9 +216,10 @@ async def _send_to_keen(payload, collection, project_id, write_key, action, doma
         return
 
 
-def log_file_action(action, source, api_version, destination=None, request={},
+def log_file_action(action, source, api_version, destination=None, request=None,
                     start_time=None, errors=None, bytes_downloaded=None, bytes_uploaded=None):
     """Kick off logging actions in the background. Returns array of asyncio.Tasks."""
+    request = request or {}
     return [
         log_to_callback(action, source=source, destination=destination,
                         start_time=start_time, errors=errors, request=request,),

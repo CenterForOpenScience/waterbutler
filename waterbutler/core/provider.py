@@ -87,7 +87,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def __init__(self, auth: dict,
                  credentials: dict,
                  settings: dict,
-                 retry_on: typing.Set[int] = {408, 502, 503, 504},
+                 retry_on: typing.Optional[typing.Set[int]] = None,
                  is_celery_task: bool = False) -> None:
         """
         :param auth: ( :class:`dict` ) Information about the user this provider will act on the behalf of
@@ -97,6 +97,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             often folder or repo
         :param is_celery_task: ( :class:`bool` ) Was this provider built inside a celery task?
         """
+        retry_on = retry_on or {408, 502, 503, 504}
         self._retry_on = retry_on
         self.auth = auth
         self.credentials = credentials
