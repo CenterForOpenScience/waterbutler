@@ -209,9 +209,9 @@ class OwnCloudProvider(provider.BaseProvider):
         :raises: `waterbutler.core.exceptions.MetadataError`
         """
         if path.is_dir:
-            return (await self._metadata_folder(path, **kwargs))
+            return await self._metadata_folder(path, **kwargs)
         else:
-            return (await self._metadata_file(path, **kwargs))
+            return await self._metadata_file(path, **kwargs)
 
     async def _metadata_file(self, path, **kwargs):
         items = await self._metadata_folder(path, skip_first=False, **kwargs)

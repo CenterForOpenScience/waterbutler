@@ -23,7 +23,7 @@ def ensure_connection(func):
     @functools.wraps(func)
     async def wrapped(self, *args, **kwargs):
         await self._ensure_connection()
-        return (await func(self, *args, **kwargs))
+        return await func(self, *args, **kwargs)
     return wrapped
 
 
@@ -191,9 +191,9 @@ class CloudFilesProvider(provider.BaseProvider):
         :rtype list:
         """
         if path.is_dir:
-            return (await self._metadata_folder(path, recursive=recursive, **kwargs))
+            return await self._metadata_folder(path, recursive=recursive, **kwargs)
         else:
-            return (await self._metadata_file(path, **kwargs))
+            return await self._metadata_file(path, **kwargs)
 
     def build_url(self, path, _endpoint=None, **query):
         """Build the url for the specified object
@@ -236,12 +236,12 @@ class CloudFilesProvider(provider.BaseProvider):
 
     async def make_request(self, *args, **kwargs):
         try:
-            return (await super().make_request(*args, **kwargs))
+            return await super().make_request(*args, **kwargs)
         except exceptions.ProviderError as e:
             if e.code != 408:
                 raise
             await asyncio.sleep(1)
-            return (await super().make_request(*args, **kwargs))
+            return await super().make_request(*args, **kwargs)
 
     async def _ensure_connection(self):
         """Defines token, endpoint and temp_url_key if they are not already defined
@@ -322,7 +322,7 @@ class CloudFilesProvider(provider.BaseProvider):
 
         await resp.release()
 
-        if (resp.headers['Content-Type'] == 'application/directory' and not is_folder):
+        if resp.headers['Content-Type'] == 'application/directory' and not is_folder:
             raise exceptions.MetadataError(
                 'Could not retrieve file \'{0}\''.format(str(path)),
                 code=404,

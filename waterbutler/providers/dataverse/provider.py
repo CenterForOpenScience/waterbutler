@@ -160,7 +160,8 @@ class DataverseProvider(provider.BaseProvider):
 
     async def _maybe_fetch_metadata(self, version=None, refresh=False):
         if refresh or self._metadata_cache.get(version) is None:
-            for v in ((version, ) or ('latest', 'latest-published')):
+            versions = (version,) if version else ('latest', 'latest-published')
+            for v in versions:
                 self._metadata_cache[v] = await self._get_data(v)
         if version:
             return self._metadata_cache[version]
@@ -277,7 +278,7 @@ class DataverseProvider(provider.BaseProvider):
         version = version or path.revision
 
         if path.is_root:
-            return (await self._maybe_fetch_metadata(version=version))
+            return await self._maybe_fetch_metadata(version=version)
 
         try:
             return next(
@@ -317,7 +318,7 @@ class DataverseProvider(provider.BaseProvider):
         """
 
         if not version:
-            return (await self._get_all_data())
+            return await self._get_all_data()
 
         # TODO: use the auth header "X-Dataverse-key" instead of query param (2/2)
         url = self.build_url(

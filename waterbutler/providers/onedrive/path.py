@@ -39,13 +39,13 @@ class OneDrivePath(WaterButlerPath):
             absolute_root_path = '/drive/root:'
 
         parent_path = urlparse.unquote(parent['path'].replace(absolute_root_path, ''))
-        if (len(parent_path) == 0):
+        if len(parent_path) == 0:
             names = ['', response['name']]
         else:
             names = parent_path.split('/') + [response['name']]
 
         ids = [response['parentReference']['id'], response['id']]
-        if (len(ids) < len(names)):
+        if len(ids) < len(names):
             for x in repeat(None, len(names) - len(ids)):
                 ids.insert(0, x)
 

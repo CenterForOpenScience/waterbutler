@@ -17,7 +17,7 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler):
 
     @classmethod
     def as_entry(cls):
-        return (cls.PATTERN, cls)
+        return cls.PATTERN, cls
 
     def write_error(self, status_code, exc_info):
         # TODO: maybe it is needed to change there too somehow

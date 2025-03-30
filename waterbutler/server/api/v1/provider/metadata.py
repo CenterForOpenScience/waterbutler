@@ -37,7 +37,7 @@ class MetadataMixin:
 
     async def get_folder(self):
         if 'zip' in self.request.query_arguments:
-            return (await self.download_folder_as_zip())
+            return await self.download_folder_as_zip()
 
         version = self.requested_version
         data = await self.provider.metadata(self.path, version=version, revision=version)
@@ -45,14 +45,14 @@ class MetadataMixin:
 
     async def get_file(self):
         if 'meta' in self.request.query_arguments:
-            return (await self.file_metadata())
+            return await self.file_metadata()
 
         if 'versions' in self.request.query_arguments or 'revisions' in self.request.query_arguments:
             # Going with versions as its the most correct term
             # TODO Change all references of revision to version @chrisseto
-            return (await self.get_file_revisions())
+            return await self.get_file_revisions()
 
-        return (await self.download_file())
+        return await self.download_file()
 
     async def download_file(self):
         if 'Range' not in self.request.headers:

@@ -117,7 +117,7 @@ class MultiStream(asyncio.StreamReader):
 
     async def read(self, n=-1):
         if n < 0:
-            return (await super().read(n))
+            return await super().read(n)
 
         chunk = b''
 
@@ -217,7 +217,7 @@ class StringStream(BaseStream):
         return self._size
 
     async def _read(self, n=-1):
-        return (await asyncio.StreamReader.read(self, n))
+        return await asyncio.StreamReader.read(self, n)
 
 
 class EmptyStream(BaseStream):

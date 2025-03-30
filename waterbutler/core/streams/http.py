@@ -86,7 +86,7 @@ class FormDataStream(MultiStream):
     async def read(self, n=-1):
         if self.can_add_more:
             self.finalize()
-        return (await super().read(n=n))
+        return await super().read(n=n)
 
     def finalize(self):
         assert self.stream, 'Must add at least one stream to finalize'
@@ -191,8 +191,8 @@ class RequestStreamReader(BaseStream):
         if self.inner.at_eof():
             return b''
         if size < 0:
-            return (await self.inner.read(size))
+            return await self.inner.read(size)
         try:
-            return (await self.inner.readexactly(size))
+            return await self.inner.readexactly(size)
         except asyncio.IncompleteReadError as e:
             return e.partial

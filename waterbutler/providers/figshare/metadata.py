@@ -104,7 +104,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
     @property
     def can_delete(self):
         """Files can be deleted if not public."""
-        return (not self.is_public)
+        return not self.is_public
 
     @property
     def extra(self):

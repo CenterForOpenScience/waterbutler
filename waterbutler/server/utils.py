@@ -69,7 +69,7 @@ def parse_request_range(range_header):
         if end < start:
             return None
 
-    return (start, end)
+    return start, end
 
 
 class CORsMixin:

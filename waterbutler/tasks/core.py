@@ -55,7 +55,7 @@ async def backgrounded(func, *args, **kwargs):
 def backgroundify(func):
     @functools.wraps(func)
     async def wrapped(*args, **kwargs):
-        return (await backgrounded(func, *args, **kwargs))
+        return await backgrounded(func, *args, **kwargs)
     return wrapped
 
 

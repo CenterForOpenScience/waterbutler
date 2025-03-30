@@ -22,7 +22,7 @@ def _merge_dicts(a, b, path=None):
     return a
 
 
-class MetricsBase():
+class MetricsBase:
     """Lightweight wrapper around a dict to make keeping track of metrics a little easier.
 
     Current functionality is limited, but may be extended later.  To do:

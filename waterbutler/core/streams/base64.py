@@ -43,7 +43,7 @@ class Base64EncodeStream(asyncio.StreamReader):
 
     async def read(self, n=-1):
         if n < 0:
-            return (await super().read(n))
+            return await super().read(n)
 
         nog = n
         padding = n % 3

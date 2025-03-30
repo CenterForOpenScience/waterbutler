@@ -321,10 +321,10 @@ class GitHubProvider(provider.BaseProvider):
 
     # do these need async?
     async def intra_copy(self, dest_provider, src_path, dest_path):
-        return (await self._do_intra_move_or_copy(src_path, dest_path, True))
+        return await self._do_intra_move_or_copy(src_path, dest_path, True)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
-        return (await self._do_intra_move_or_copy(src_path, dest_path, False))
+        return await self._do_intra_move_or_copy(src_path, dest_path, False)
 
     async def download(self, path: GitHubPath, range: Tuple[int, int] = None,  # type: ignore
                        **kwargs) -> streams.ResponseStreamReader:
@@ -447,9 +447,9 @@ class GitHubProvider(provider.BaseProvider):
         :rtype list: if folder, array of metadata objects describing contents
         """
         if path.is_dir:
-            return (await self._metadata_folder(path, **kwargs))
+            return await self._metadata_folder(path, **kwargs)
         else:
-            return (await self._metadata_file(path, **kwargs))
+            return await self._metadata_file(path, **kwargs)
 
     async def revisions(self, path, **kwargs):
         resp = await self.make_request(
@@ -766,7 +766,7 @@ class GitHubProvider(provider.BaseProvider):
             expects=(201, ),
             throws=exceptions.ProviderError,
         )
-        return (await resp.json())
+        return await resp.json()
 
     async def _create_commit(self, commit):
         resp = await self.make_request(
@@ -777,7 +777,7 @@ class GitHubProvider(provider.BaseProvider):
             expects=(201, ),
             throws=exceptions.ProviderError,
         )
-        return (await resp.json())
+        return await resp.json()
 
     async def _create_blob(self, stream):
         blob_stream = streams.JSONStream({
@@ -889,7 +889,7 @@ class GitHubProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.ProviderError
         )
-        return (await resp.json())
+        return await resp.json()
 
     async def _do_intra_move_or_copy(self, src_path, dest_path, is_copy):
 

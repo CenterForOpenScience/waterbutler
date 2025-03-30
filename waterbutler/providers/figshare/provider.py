@@ -117,7 +117,7 @@ class BaseFigshareProvider(provider.BaseProvider):
 
     @property
     def root_path_parts(self):
-        return (self.container_type + 's', self.container_id)
+        return self.container_type + 's', self.container_id
 
     @property
     def default_headers(self):
@@ -149,7 +149,7 @@ class BaseFigshareProvider(provider.BaseProvider):
             logger.debug('figshare provider is yet to build the public API URL correctly. '
                          'Switch back to use the private one instead')
         segments = ('account', *segments)
-        return (super().build_url(*segments, **query))
+        return super().build_url(*segments, **query)
 
     async def make_request(self, method, url, *args, **kwargs):
         r"""JSONifies ``data`` kwarg, if present and a ``dict``.
@@ -952,7 +952,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
                     '{} is not a valid parent path of folder={}. Folders can only exist at the '
                     'root level.'.format(parent_path.identifier_path, str(folder)))
             else:
-                urn_parts = (*urn_parts, (parent_path.identifier))
+                urn_parts = (*urn_parts, parent_path.identifier)
 
         list_children_response = await self.make_request(
             'GET',

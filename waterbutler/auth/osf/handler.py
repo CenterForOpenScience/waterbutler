@@ -240,4 +240,4 @@ class OsfAuthHandler(BaseAuthHandler):
                 raise exceptions.UnsupportedHTTPMethodError(method,
                                                             supported=self.ACTION_MAP.keys())
 
-        return (osf_action, intended_action)
+        return osf_action, intended_action

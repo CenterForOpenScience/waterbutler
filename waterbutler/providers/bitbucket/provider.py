@@ -155,9 +155,9 @@ class BitbucketProvider(provider.BaseProvider):
         :rtype list:
         """
         if path.is_dir:
-            return (await self._metadata_folder(path, **kwargs))
+            return await self._metadata_folder(path, **kwargs)
         else:
-            return (await self._metadata_file(path, **kwargs))
+            return await self._metadata_file(path, **kwargs)
 
     async def revisions(self, path: BitbucketPath, **kwargs) -> list:  # type: ignore
         """Returns a list of revisions for a file.  As a VCS, Bitbucket doesn't have a single
