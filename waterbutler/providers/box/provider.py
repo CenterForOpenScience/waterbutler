@@ -550,6 +550,7 @@ class BoxProvider(provider.BaseProvider):
         logger.debug('chunked upload session data: {}'.format(json.dumps(session_data)))
 
         metadata = None
+        data_sha = ''
         try:
             # Step 3. Split the data into parts and upload them to box.
             parts_manifest = await self._upload_parts(stream, session_data)

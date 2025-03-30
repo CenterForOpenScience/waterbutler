@@ -352,7 +352,8 @@ class GitHubProvider(provider.BaseProvider):
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
         assert self.name is not None
         assert self.email is not None
-
+        exists = False
+        latest_sha = ''
         try:
             exists = await self.exists(path)
         except exceptions.ProviderError as e:
