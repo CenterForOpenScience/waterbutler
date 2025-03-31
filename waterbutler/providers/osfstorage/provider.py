@@ -48,6 +48,9 @@ class OSFStorageProvider(provider.BaseProvider):
         self.BASE_URL = settings_data['baseUrl']
         self.provider_name = settings_data['storage'].get('provider')
 
+        # self._inner_provider will be initialized later
+        self._inner_provider = None
+
     async def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
         url, data, params = self.build_signed_url(
             method,

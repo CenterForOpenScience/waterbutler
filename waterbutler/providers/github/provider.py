@@ -109,7 +109,12 @@ class GitHubProvider(provider.BaseProvider):
         self.email = self.auth.get('email', None)
         self.token = self.credentials['token']
         self.owner = self.settings['owner']
+        # self.repo is the repo name, not the repo metadata
         self.repo = self.settings['repo']
+        # self._repo is the repo metadata. Must be fetched from github.
+        self._repo = None
+        # self.default_branch will be set by reading repo metadata
+        self.default_branch = None
         self.metrics.add('repo', {'repo': self.repo, 'owner': self.owner})
 
         # debugging parameters
@@ -230,6 +235,7 @@ class GitHubProvider(provider.BaseProvider):
 
         """
         if not getattr(self, '_repo', None):
+            # TODO: is it needed to add _repo attribute or use repo attribute that already exists
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
@@ -264,6 +270,7 @@ class GitHubProvider(provider.BaseProvider):
     async def validate_path(self, path, **kwargs):
         """See ``validate_v1_path`` docstring for details on supported query parameters."""
         if not getattr(self, '_repo', None):
+            # TODO: is it needed to add _repo attribute or use repo attribute that already exists
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
