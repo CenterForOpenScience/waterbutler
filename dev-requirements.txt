@@ -1,16 +1,16 @@
 -r requirements.txt
 
 git+https://github.com/CenterForOpenScience/aiohttpretty.git@develop
-colorlog==6.8.0
-coveralls
-flake8==6.1.0
+colorlog==6.9.0
+coveralls==3.3.1
+flake8==7.1.2
 ipdb==0.13.13
-ipython==8.20.0
-mypy==1.9.0
+ipython==8.32.0
+mypy==1.15.0
 mccabe==0.7.0
-pycodestyle==2.11.1
+pycodestyle==2.12.1
 pydevd==3.3.0
-pyflakes==3.1.0
+pyflakes==3.2.0
 pytest==8.1.1
 pytest-asyncio==0.23.5
 pytest-cov==4.1.0
