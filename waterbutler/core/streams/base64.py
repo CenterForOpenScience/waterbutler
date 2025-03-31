@@ -50,7 +50,7 @@ class Base64EncodeStream(asyncio.StreamReader):
         if padding:
             n += (3 - padding)
 
-        chunk = self.extra + base64.b64encode((await self.stream.read(n)))
+        chunk = self.extra + base64.b64encode(await self.stream.read(n))
 
         if len(chunk) <= nog:
             self.extra = b''

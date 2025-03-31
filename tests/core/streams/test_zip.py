@@ -91,7 +91,7 @@ class TestZipStreamReader:
     async def test_multiple_large_files(self, temp_files):
         files = []
         for index in range(5):
-            filename = 'file{}.ext'.format(index)
+            filename = f'file{index}.ext'
             path = temp_files.add_file(filename)
             contents = os.urandom(2 ** 18)
 

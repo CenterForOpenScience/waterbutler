@@ -174,7 +174,7 @@ class MetricsSubRecord(MetricsRecord):
     @property
     def key(self):
         """ID string for this subrecord: '{category}_{name}'"""
-        return '{}_{}'.format(self.category, self.name)
+        return f'{self.category}_{self.name}'
 
     def new_subrecord(self, name):
         """Creates and saves a new subrecord.  The new subrecord will have its category set to the

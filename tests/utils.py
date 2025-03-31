@@ -81,7 +81,7 @@ class MockRequestBody(asyncio.Future):
         yield None
 
 
-class MockWriter(object):
+class MockWriter:
     write = mock.Mock()
     drain = MockCoroutine()
 

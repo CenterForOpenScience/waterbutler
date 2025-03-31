@@ -60,7 +60,7 @@ class MetadataMixin:
         else:
             logger.debug('Range header is: {}'.format(self.request.headers['Range']))
             request_range = utils.parse_request_range(self.request.headers['Range'])
-            logger.debug('Range header parsed as: {}'.format(request_range))
+            logger.debug(f'Range header parsed as: {request_range}')
 
         version = self.requested_version
         stream = await self.provider.download(
@@ -84,7 +84,7 @@ class MetadataMixin:
         if stream.content_type is not None:
             self.set_header('Content-Type', stream.content_type)
 
-        logger.debug('stream size is: {}'.format(stream.size))
+        logger.debug(f'stream size is: {stream.size}')
         if stream.size is not None:
             self.set_header('Content-Length', str(stream.size))
 
@@ -108,7 +108,7 @@ class MetadataMixin:
         if getattr(stream, 'partial', False) and isinstance(stream, ResponseStreamReader):
             await stream.response.release()
 
-        logger.debug('bytes received is: {}'.format(self.bytes_downloaded))
+        logger.debug(f'bytes received is: {self.bytes_downloaded}')
 
     async def file_metadata(self):
         version = self.requested_version
@@ -127,7 +127,7 @@ class MetadataMixin:
         return self.write({'data': [r.json_api_serialized() for r in result]})
 
     async def download_folder_as_zip(self):
-        zipfile_name = self.path.name or '{}-archive'.format(self.provider.NAME)
+        zipfile_name = self.path.name or f'{self.provider.NAME}-archive'
         self.set_header('Content-Type', 'application/zip')
         self.set_header('Content-Disposition', make_disposition(zipfile_name + '.zip'))
 

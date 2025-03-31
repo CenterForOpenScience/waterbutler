@@ -34,8 +34,8 @@ class WaterButlerPathPart:
     @property
     def value(self) -> str:
         if self._count:
-            return '{} ({}){}'.format(self._name, self._count, self._ext)
-        return '{}{}'.format(self._name, self._ext)
+            return f'{self._name} ({self._count}){self._ext}'
+        return f'{self._name}{self._ext}'
 
     @property
     def raw(self) -> str:
@@ -63,7 +63,7 @@ class WaterButlerPathPart:
         return self.__class__(self.__class__.ENCODE(name), _id=self._id)  # type: ignore
 
     def __repr__(self):
-        return '{}({!r}, count={})'.format(self.__class__.__name__, self._orig_part, self._count)
+        return f'{self.__class__.__name__}({self._orig_part!r}, count={self._count})'
 
 
 class WaterButlerPath:
@@ -111,15 +111,15 @@ class WaterButlerPath:
         if not path:
             raise exceptions.InvalidPathError('Must specify path')
         if not path.startswith('/'):
-            raise exceptions.InvalidPathError('Invalid path \'{}\' specified'.format(path))
+            raise exceptions.InvalidPathError(f'Invalid path \'{path}\' specified')
         if '//' in path:
-            raise exceptions.InvalidPathError('Invalid path \'{}\' specified'.format(path))
+            raise exceptions.InvalidPathError(f'Invalid path \'{path}\' specified')
         # Do not allow path manipulation via shortcuts, e.g. '..'
         absolute_path = os.path.abspath(path)
         if not path == '/' and path.endswith('/'):
             absolute_path += '/'
         if not path == absolute_path:
-            raise exceptions.InvalidPathError('Invalid path \'{}\' specified'.format(absolute_path))
+            raise exceptions.InvalidPathError(f'Invalid path \'{absolute_path}\' specified')
 
     @classmethod
     def validate_folder(cls, path: 'WaterButlerPath') -> None:
@@ -306,4 +306,4 @@ class WaterButlerPath:
         return self.materialized_path
 
     def __repr__(self):
-        return '{}({!r}, prepend={!r})'.format(self.__class__.__name__, self._orig_path, self._prepend)
+        return f'{self.__class__.__name__}({self._orig_path!r}, prepend={self._prepend!r})'

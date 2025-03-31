@@ -97,7 +97,7 @@ def celery_task(func, *args, **kwargs):
         )
         kwargs['bind'] = True
 
-    logger.debug('celery_task: task_func:({})'.format(task_func))
+    logger.debug(f'celery_task: task_func:({task_func})')
 
     task = app.task(task_func, **kwargs)
     task.adelay = backgroundify(task.delay)

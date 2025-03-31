@@ -318,7 +318,7 @@ class OSFStorageProvider(provider.BaseProvider):
 
     async def metadata(self, path, **kwargs):
         if path.identifier is None:
-            raise exceptions.MetadataError('{} not found'.format(str(path)), code=404)
+            raise exceptions.MetadataError(f'{str(path)} not found', code=404)
 
         if not path.is_dir:
             return await self._item_metadata(path)
@@ -363,7 +363,7 @@ class OSFStorageProvider(provider.BaseProvider):
                    dest_path: WaterButlerPath,
                    rename: str = None,
                    conflict: str = 'replace',
-                   handle_naming: bool = True) -> typing.Tuple[BaseMetadata, bool]:
+                   handle_naming: bool = True) -> tuple[BaseMetadata, bool]:
         """Override parent's move to support cross-region osfstorage moves while preserving guids
         and versions. Delegates to :meth:`.BaseProvider.move` when destination is not osfstorage.
         If both providers are in the same region (i.e. `.can_intra_move` is true), then calls that.
@@ -441,7 +441,7 @@ class OSFStorageProvider(provider.BaseProvider):
                    dest_path: WaterButlerPath,
                    rename: str = None,
                    conflict: str = 'replace',
-                   handle_naming: bool = True) -> typing.Tuple[BaseMetadata, bool]:
+                   handle_naming: bool = True) -> tuple[BaseMetadata, bool]:
         """Override parent's copy to support cross-region osfstorage copies. Delegates to
         :meth:`.BaseProvider.copy` when destination is not osfstorage. If both providers are in the
         same region (i.e. `.can_intra_copy` is true), call `.intra_copy`. Otherwise, grab a
@@ -639,7 +639,7 @@ class OSFStorageProvider(provider.BaseProvider):
         pending_name = str(uuid.uuid4())
         storage_provider = self.make_provider(self.settings)
         remote_pending_path = await storage_provider.validate_path('/' + pending_name)
-        logger.debug('upload: remote_pending_path::{}'.format(remote_pending_path))
+        logger.debug(f'upload: remote_pending_path::{remote_pending_path}')
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))

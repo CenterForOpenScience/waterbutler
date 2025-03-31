@@ -74,28 +74,28 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     async def test_validate_v1_path_file(self, mock_provider, file_wb_path):
-        file_path = '/{}'.format(file_wb_path.path)
+        file_path = f'/{file_wb_path.path}'
         assert file_path.startswith('/') and not file_path.endswith('/')
         wb_path = await mock_provider.validate_v1_path(file_path)
         assert wb_path == file_wb_path
 
     @pytest.mark.asyncio
     async def test_validate_v1_path_folder(self, mock_provider, folder_wb_path):
-        folder_path = '/{}'.format(folder_wb_path.path)
+        folder_path = f'/{folder_wb_path.path}'
         assert folder_path.startswith('/') and folder_path.endswith('/')
         wb_path = await mock_provider.validate_v1_path(folder_path)
         assert wb_path == folder_wb_path
 
     @pytest.mark.asyncio
     async def test_validate_path_file(self, mock_provider, file_wb_path):
-        file_path = '/{}'.format(file_wb_path.path)
+        file_path = f'/{file_wb_path.path}'
         assert file_path.startswith('/') and not file_path.endswith('/')
         wb_path = await mock_provider.validate_path(file_path)
         assert wb_path == file_wb_path
 
     @pytest.mark.asyncio
     async def test_validate_path_folder(self, mock_provider, folder_wb_path):
-        folder_path = '/{}'.format(folder_wb_path.path)
+        folder_path = f'/{folder_wb_path.path}'
         assert folder_path.startswith('/') and folder_path.endswith('/')
         wb_path = await mock_provider.validate_path(folder_path)
         assert wb_path == folder_wb_path
@@ -382,7 +382,7 @@ class TestCRUD:
         src_file_obj_name = utils.get_obj_name(src_file_path, is_folder=False)
         dest_file_obj_name = utils.get_obj_name(dest_file_path, is_folder=False)
 
-        object_name_with_bucket = '{}/{}'.format(mock_provider.bucket, src_file_obj_name)
+        object_name_with_bucket = f'{mock_provider.bucket}/{src_file_obj_name}'
         canonical_ext_headers = {'x-goog-copy-source': object_name_with_bucket}
         signed_url_intra_copy = mock_provider._build_and_sign_url(
             'PUT',
@@ -425,7 +425,7 @@ class TestCRUD:
         src_file_obj_name = utils.get_obj_name(src_file_path, is_folder=False)
         dest_file_obj_name = utils.get_obj_name(dest_file_path, is_folder=False)
 
-        object_name_with_bucket = '{}/{}'.format(mock_provider.bucket, src_file_obj_name)
+        object_name_with_bucket = f'{mock_provider.bucket}/{src_file_obj_name}'
         canonical_ext_headers = {'x-goog-copy-source': object_name_with_bucket}
         signed_url_intra_copy = mock_provider._build_and_sign_url(
             'PUT',

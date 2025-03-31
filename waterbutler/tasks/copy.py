@@ -28,7 +28,7 @@ async def copy(src_bundle, dest_bundle, request=None, start_time=None, **kwargs)
     try:
         metadata, created = await src_provider.copy(dest_provider, src_path, dest_path, **kwargs)
     except Exception as e:
-        logger.error('Copy failed with error {!r}'.format(e))
+        logger.error(f'Copy failed with error {e!r}')
         errors = [e.__repr__()]
         raise  # Ensure sentry sees this
     else:

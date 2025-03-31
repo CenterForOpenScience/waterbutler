@@ -110,7 +110,7 @@ class TestProjectV1ValidatePath:
     async def test_validate_v1_path_folder_article(self, project_provider, root_provider_fixtures):
         item = root_provider_fixtures['folder_article_metadata']
         file_id = str(item['id'])
-        path = '/{}/'.format(file_id)
+        path = f'/{file_id}/'
         article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
                                                       'articles')
         article_segments = (*project_provider.root_path_parts, 'articles', str(item['id']))
@@ -137,7 +137,7 @@ class TestProjectV1ValidatePath:
                                                             root_provider_fixtures):
         item = root_provider_fixtures['folder_article_metadata']
         file_id = str(item['id'])
-        path = '/{}'.format(file_id)
+        path = f'/{file_id}'
         article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
                                                       'articles')
         article_segments = (*project_provider.root_path_parts, 'articles', str(item['id']))
@@ -162,7 +162,7 @@ class TestProjectV1ValidatePath:
                                                             root_provider_fixtures):
         item = root_provider_fixtures['folder_article_metadata']
         file_id = str(item['id'])
-        path = '/{}/'.format(file_id)
+        path = f'/{file_id}/'
         item['defined_type'] = 5
         article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
                                                       'articles')
@@ -219,7 +219,7 @@ class TestProjectV1ValidatePath:
         item = root_provider_fixtures['file_article_metadata']
         file_id = str(item['files'][0]['id'])
         article_id = str(item['id'])
-        path = '/{}/{}'.format(article_id, file_id)
+        path = f'/{article_id}/{file_id}'
         article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
                                                       'articles')
         article_segments = (*project_provider.root_path_parts, 'articles', str(item['id']))
@@ -249,7 +249,7 @@ class TestProjectV1ValidatePath:
         item = root_provider_fixtures['file_article_metadata']
         file_id = str(file_item['id'])
         article_id = str(item['id'])
-        path = '/{}/{}'.format(article_id, file_id)
+        path = f'/{article_id}/{file_id}'
         article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
                                                       'articles')
         article_segments = (*project_provider.root_path_parts, 'articles', str(item['id']))
@@ -279,7 +279,7 @@ class TestProjectV1ValidatePath:
         item = root_provider_fixtures['file_article_metadata']
         file_id = str(item['files'][0]['id'])
         article_id = str(item['id'])
-        path = '/{}/{}/'.format(article_id, file_id)
+        path = f'/{article_id}/{file_id}/'
         article_list_url = project_provider.build_url(False,
                                     *project_provider.root_path_parts, 'articles')
         article_segments = (*project_provider.root_path_parts, 'articles', str(item['id']))
@@ -337,7 +337,7 @@ class TestProjectV0ValidatePath:
     async def test_validate_v0_path_folder_article(self, project_provider, root_provider_fixtures):
         item = root_provider_fixtures['folder_article_metadata']
         file_id = str(item['id'])
-        path = '/{}/'.format(file_id)
+        path = f'/{file_id}/'
         article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
                                                       'articles')
         article_segments = (*project_provider.root_path_parts, 'articles', str(item['id']))
@@ -363,7 +363,7 @@ class TestProjectV0ValidatePath:
     async def test_validate_v0_path_folder_article_bad_path(self, project_provider,
                                                             root_provider_fixtures):
         bad_article_id = '000000000'
-        path = '/{}'.format(bad_article_id)
+        path = f'/{bad_article_id}'
 
         article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
                                                       'articles')
@@ -417,7 +417,7 @@ class TestProjectV0ValidatePath:
         item = root_provider_fixtures['file_article_metadata']
         file_id = str(item['files'][0]['id'])
         article_id = str(item['id'])
-        path = '/{}/{}'.format(article_id, file_id)
+        path = f'/{article_id}/{file_id}'
         article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
                                                       'articles')
         article_segments = (*project_provider.root_path_parts, 'articles', str(item['id']))
@@ -447,7 +447,7 @@ class TestProjectV0ValidatePath:
         item = root_provider_fixtures['file_article_metadata']
         file_id = str(file_item['id'])
         article_id = str(item['id'])
-        path = '/{}/{}'.format(article_id, file_id)
+        path = f'/{article_id}/{file_id}'
         article_list_url = project_provider.build_url(False, *project_provider.root_path_parts,
                                                       'articles')
         article_segments = (*project_provider.root_path_parts, 'articles', str(item['id']))
@@ -625,7 +625,7 @@ class TestProjectMetadata:
         article_meta_url = project_provider_2.build_url(False, *root_parts, 'articles', article_id)
         aiohttpretty.register_json_uri('GET', article_meta_url, body=article_meta_json)
 
-        path = FigsharePath('/{}/{}'.format(article_name, file_name),
+        path = FigsharePath(f'/{article_name}/{file_name}',
                             _ids=('', article_id, file_id), folder=False, is_public=False)
         result = await project_provider_2.metadata(path)
         expected = metadata.FigshareFileMetadata(article_meta_json, file_meta_json)
@@ -634,8 +634,8 @@ class TestProjectMetadata:
         assert result == expected
         assert str(result.id) == file_id
         assert result.name == file_name
-        assert result.path == '/{}/{}'.format(article_id, file_id)
-        assert result.materialized_path == '/{}/{}'.format(article_name, file_name)
+        assert result.path == f'/{article_id}/{file_id}'
+        assert result.materialized_path == f'/{article_name}/{file_name}'
         assert str(result.article_id) == article_id
         assert result.article_name == article_name
         assert result.size == file_meta_json['size']
@@ -661,7 +661,7 @@ class TestProjectMetadata:
         article_meta_url = project_provider_2.build_url(False, *root_parts, 'articles', article_id)
         aiohttpretty.register_json_uri('GET', article_meta_url, body=article_meta_json)
 
-        path = FigsharePath('/{}/{}'.format(article_name, file_name),
+        path = FigsharePath(f'/{article_name}/{file_name}',
                             _ids=('', article_id, file_id), folder=False, is_public=False)
         with pytest.raises(exceptions.NotFoundError) as e:
             await project_provider_2.metadata(path)
@@ -686,7 +686,7 @@ class TestProjectMetadata:
         article_meta_url = project_provider.build_url(False, *root_parts, 'articles', article_id)
         aiohttpretty.register_json_uri('GET', article_meta_url, body=article_meta_json)
 
-        path = FigsharePath('/{}'.format(article_name),
+        path = FigsharePath(f'/{article_name}',
                             _ids=('', article_id), folder=True, is_public=False)
         with pytest.raises(exceptions.NotFoundError) as e:
             await project_provider.metadata(path)
@@ -710,7 +710,7 @@ class TestProjectMetadata:
         article_meta_url = project_provider_2.build_url(False, *root_parts, 'articles', article_id)
         aiohttpretty.register_json_uri('GET', article_meta_url, body=article_meta_json)
 
-        path = FigsharePath('/{}'.format(article_name), _ids=('', article_id), folder=True,
+        path = FigsharePath(f'/{article_name}', _ids=('', article_id), folder=True,
                             is_public=False)
         result = (await project_provider_2.metadata(path)).sort(key=lambda x: x.path)
         expected = ([
@@ -743,7 +743,7 @@ class TestProjectMetadata:
         article_meta_url = project_provider_2.build_url(False, *root_parts, 'articles', article_id)
         aiohttpretty.register_json_uri('GET', article_meta_url, body=article_meta_json)
 
-        path = FigsharePath('/{}/{}'.format(article_name, file_name),
+        path = FigsharePath(f'/{article_name}/{file_name}',
                             _ids=('', article_id, file_id), folder=False, is_public=False)
         result = await project_provider_2.metadata(path)
 
@@ -752,8 +752,8 @@ class TestProjectMetadata:
         assert result == expected
         assert str(result.id) == file_id
         assert result.name == file_name
-        assert result.path == '/{}/{}'.format(article_id, file_id)
-        assert result.materialized_path == '/{}/{}'.format(article_name, file_name)
+        assert result.path == f'/{article_id}/{file_id}'
+        assert result.materialized_path == f'/{article_name}/{file_name}'
         assert str(result.article_id) == article_id
         assert result.article_name == article_name
         assert result.size == file_meta_json['size']
@@ -780,7 +780,7 @@ class TestArticleMetadata:
 
         aiohttpretty.register_json_uri('GET', folder_article_metadata_url, body=article_metadata)
 
-        path = FigsharePath('/{}'.format(file_name), _ids=('', file_id), folder=False,
+        path = FigsharePath(f'/{file_name}', _ids=('', file_id), folder=False,
                             is_public=False)
 
         result = await article_provider.metadata(path)
@@ -792,8 +792,8 @@ class TestArticleMetadata:
 
         assert str(result.id) == file_id
         assert result.name == file_name
-        assert result.path == '/{}/{}'.format(article_id, file_id)
-        assert result.materialized_path == '/{}/{}'.format(article_name, file_name)
+        assert result.path == f'/{article_id}/{file_id}'
+        assert result.materialized_path == f'/{article_name}/{file_name}'
         assert result.article_name == article_name
         assert result.size == file_metadata['size']
         assert result.is_public is False
@@ -853,7 +853,7 @@ class TestProjectCRUD:
                                        body=file_metadata)
         aiohttpretty.register_json_uri('GET', upload_url,
                                        body=root_provider_fixtures['get_upload_metadata'])
-        aiohttpretty.register_uri('PUT', '{}/1'.format(upload_url), status=200)
+        aiohttpretty.register_uri('PUT', f'{upload_url}/1', status=200)
         aiohttpretty.register_uri('POST', file_url, status=202)
         aiohttpretty.register_json_uri('GET', get_article_url,
                                        body=crud_fixtures['upload_article_metadata'])
@@ -871,7 +871,7 @@ class TestProjectCRUD:
                 'title': 'barricade.gif',
             })
         )
-        assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
+        assert aiohttpretty.has_call(method='PUT', uri=f'{upload_url}/1')
         assert aiohttpretty.has_call(method='POST', uri=create_file_url)
         assert result == expected
 
@@ -901,7 +901,7 @@ class TestProjectCRUD:
         aiohttpretty.register_json_uri('GET', file_url, body=item)
         aiohttpretty.register_json_uri('GET', upload_url,
                                        body=root_provider_fixtures['get_upload_metadata'])
-        aiohttpretty.register_uri('PUT', '{}/1'.format(upload_url), status=200)
+        aiohttpretty.register_uri('PUT', f'{upload_url}/1', status=200)
         aiohttpretty.register_uri('POST', file_url, status=202)
         aiohttpretty.register_json_uri('GET', get_article_url,
                                        body=crud_fixtures['checksum_mismatch_article_metadata'])
@@ -919,7 +919,7 @@ class TestProjectCRUD:
         assert aiohttpretty.has_call(method='POST', uri=create_file_url)
         assert aiohttpretty.has_call(method='GET', uri=file_url)
         assert aiohttpretty.has_call(method='GET', uri=upload_url)
-        assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
+        assert aiohttpretty.has_call(method='PUT', uri=f'{upload_url}/1')
         assert aiohttpretty.has_call(method='POST', uri=file_url)
         assert aiohttpretty.has_call(method='GET', uri=get_article_url)
 
@@ -934,7 +934,7 @@ class TestProjectCRUD:
         article_name = root_provider_fixtures['list_project_articles'][1]['title']
         root_parts = project_provider.root_path_parts
 
-        path = FigsharePath('/{}/{}'.format(article_name, file_name),
+        path = FigsharePath(f'/{article_name}/{file_name}',
                             _ids=('', article_id, ''), folder=False, is_public=False)
 
         file_metadata = root_provider_fixtures['get_file_metadata']
@@ -949,7 +949,7 @@ class TestProjectCRUD:
         aiohttpretty.register_json_uri('GET', file_url, body=file_metadata)
         aiohttpretty.register_json_uri('GET', upload_url,
                                        body=root_provider_fixtures['get_upload_metadata'])
-        aiohttpretty.register_uri('PUT', '{}/1'.format(upload_url), status=200)
+        aiohttpretty.register_uri('PUT', f'{upload_url}/1', status=200)
         aiohttpretty.register_uri('POST', file_url, status=202)
         aiohttpretty.register_json_uri('GET', get_article_url,
                                        body=crud_fixtures['upload_folder_article_metadata'])
@@ -960,7 +960,7 @@ class TestProjectCRUD:
             crud_fixtures['upload_folder_article_metadata'],
             crud_fixtures['upload_folder_article_metadata']['files'][0],
         )
-        assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
+        assert aiohttpretty.has_call(method='PUT', uri=f'{upload_url}/1')
         assert aiohttpretty.has_call(method='POST', uri=create_file_url)
         assert result == expected
 
@@ -982,7 +982,7 @@ class TestProjectCRUD:
         aiohttpretty.register_json_uri('POST', list_articles_url, status=201,
                                        body=crud_fixtures['create_upload_article_metadata'])
 
-        path = FigsharePath('/{}/{}'.format(article_name, file_name), _ids=('', article_id, ''),
+        path = FigsharePath(f'/{article_name}/{file_name}', _ids=('', article_id, ''),
                             folder=False, is_public=False)
 
         file_metadata = root_provider_fixtures['get_file_metadata']
@@ -997,7 +997,7 @@ class TestProjectCRUD:
         aiohttpretty.register_json_uri('GET', file_url, body=file_metadata)
         aiohttpretty.register_json_uri('GET', upload_url,
                                        body=root_provider_fixtures['get_upload_metadata'])
-        aiohttpretty.register_uri('PUT', '{}/1'.format(upload_url), status=200)
+        aiohttpretty.register_uri('PUT', f'{upload_url}/1', status=200)
         aiohttpretty.register_uri('POST', file_url, status=202)
         aiohttpretty.register_json_uri('GET', get_article_url, body=changed_metadata)
 
@@ -1006,7 +1006,7 @@ class TestProjectCRUD:
             crud_fixtures['upload_folder_article_metadata'],
             crud_fixtures['upload_folder_article_metadata']['files'][0],
         )
-        assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
+        assert aiohttpretty.has_call(method='PUT', uri=f'{upload_url}/1')
         assert aiohttpretty.has_call(method='POST', uri=create_file_url)
         assert result == expected
 
@@ -1046,7 +1046,7 @@ class TestProjectCRUD:
                                   params={'token': project_provider.token},
                                   body=body, auto_length=True)
 
-        path = FigsharePath('/{}/{}'.format(article_name, file_name),
+        path = FigsharePath(f'/{article_name}/{file_name}',
                             _ids=('', article_id, file_id),
                             folder=False, is_public=False)
 
@@ -1074,7 +1074,7 @@ class TestProjectCRUD:
                                        body=root_provider_fixtures['file_article_metadata'])
         aiohttpretty.register_uri('DELETE', file_article_url, status=204)
 
-        path = FigsharePath('/{}/{}'.format(article_name, file_name),
+        path = FigsharePath(f'/{article_name}/{file_name}',
                             _ids=('', article_id, file_id),
                             folder=False, is_public=False)
 
@@ -1091,7 +1091,7 @@ class TestProjectCRUD:
         file_id = str(root_provider_fixtures['file_metadata']['id'])
         article_id = str(root_provider_fixtures['list_project_articles'][0]['id'])
         root_parts = project_provider.root_path_parts
-        path = FigsharePath('/{}/{}'.format(article_id, file_id),
+        path = FigsharePath(f'/{article_id}/{file_id}',
                             _ids=('', article_id, file_id), folder=False)
 
         list_articles_url = project_provider.build_url(False, *root_parts, 'articles')
@@ -1118,7 +1118,7 @@ class TestProjectCRUD:
     async def test_project_file_delete_bad_path(self, project_provider, root_provider_fixtures):
         file_name = str(root_provider_fixtures['file_metadata']['name'])
         article_name = str(root_provider_fixtures['list_project_articles'][0]['title'])
-        path = FigsharePath('/{}/{}'.format(article_name, file_name), _ids=('',), folder=False)
+        path = FigsharePath(f'/{article_name}/{file_name}', _ids=('',), folder=False)
 
         with pytest.raises(exceptions.NotFoundError) as e:
             await project_provider.delete(path)
@@ -1143,7 +1143,7 @@ class TestProjectCRUD:
                                        body=root_provider_fixtures['folder_article_metadata'])
         aiohttpretty.register_uri('DELETE', folder_article_url, status=204)
 
-        path = FigsharePath('/{}'.format(article_id), _ids=('', article_id), folder=True)
+        path = FigsharePath(f'/{article_id}', _ids=('', article_id), folder=True)
 
         result = await project_provider.delete(path)
 
@@ -1262,7 +1262,7 @@ class TestArticleCRUD:
         aiohttpretty.register_json_uri('GET',
                                        root_provider_fixtures['get_file_metadata']['upload_url'],
                                        body=root_provider_fixtures['get_upload_metadata'])
-        aiohttpretty.register_uri('PUT', '{}/1'.format(upload_url), status=200)
+        aiohttpretty.register_uri('PUT', f'{upload_url}/1', status=200)
         aiohttpretty.register_uri('POST', file_url, status=202)
         aiohttpretty.register_json_uri('GET', get_article_url,
                                        body=crud_fixtures['upload_folder_article_metadata'])
@@ -1273,7 +1273,7 @@ class TestArticleCRUD:
             crud_fixtures['upload_folder_article_metadata'],
             crud_fixtures['upload_folder_article_metadata']['files'][0],
         )
-        assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
+        assert aiohttpretty.has_call(method='PUT', uri=f'{upload_url}/1')
         assert aiohttpretty.has_call(method='POST', uri=create_file_url)
         assert result == expected
 
@@ -1294,7 +1294,7 @@ class TestArticleCRUD:
         aiohttpretty.register_uri('GET', download_url, params={'token': article_provider.token},
                                   body=body, auto_length=True)
 
-        path = FigsharePath('/{}'.format(file_name), _ids=('', file_id),
+        path = FigsharePath(f'/{file_name}', _ids=('', file_id),
                             folder=False, is_public=False)
 
         result = await article_provider.download(path)
@@ -1318,7 +1318,7 @@ class TestArticleCRUD:
         aiohttpretty.register_uri('GET', download_url, params={'token': article_provider.token},
                                   body=body[0:2], auto_length=True, status=206)
 
-        path = FigsharePath('/{}'.format(file_name), _ids=('', file_id),
+        path = FigsharePath(f'/{file_name}', _ids=('', file_id),
                             folder=False, is_public=False)
 
         result = await article_provider.download(path, range=(0, 1))
@@ -1339,14 +1339,14 @@ class TestArticleCRUD:
         with pytest.raises(exceptions.NotFoundError) as e:
             await article_provider.download(path)
         assert e.value.code == 404
-        assert e.value.message == 'Could not retrieve file or directory /{}'.format(path.path)
+        assert e.value.message == f'Could not retrieve file or directory /{path.path}'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     async def test_article_download_no_downloadurl(self, article_provider, error_fixtures):
         item = error_fixtures['file_metadata_missing_download_url']
         file_id = str(item['id'])
-        path = FigsharePath('/{}'.format(file_id), _ids=('', file_id), folder=False)
+        path = FigsharePath(f'/{file_id}', _ids=('', file_id), folder=False)
         root_parts = article_provider.root_path_parts
 
         file_metadata_url = article_provider.build_url(False, *root_parts, 'files', file_id)
@@ -1386,7 +1386,7 @@ class TestArticleCRUD:
         aiohttpretty.register_json_uri('GET', file_url, body=item)
         aiohttpretty.register_json_uri('GET', item['upload_url'],
                                        body=root_provider_fixtures['get_upload_metadata'])
-        aiohttpretty.register_uri('PUT', '{}/1'.format(upload_url), status=200)
+        aiohttpretty.register_uri('PUT', f'{upload_url}/1', status=200)
         aiohttpretty.register_uri('POST', file_url, status=202)
         aiohttpretty.register_json_uri('GET', get_article_url,
                                        body=crud_fixtures['checksum_mismatch_folder_article_metadata'])
@@ -1397,7 +1397,7 @@ class TestArticleCRUD:
         assert aiohttpretty.has_call(method='POST', uri=create_file_url)
         assert aiohttpretty.has_call(method='GET', uri=file_url)
         assert aiohttpretty.has_call(method='GET', uri=item['upload_url'])
-        assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
+        assert aiohttpretty.has_call(method='PUT', uri=f'{upload_url}/1')
         assert aiohttpretty.has_call(method='POST', uri=file_url)
         assert aiohttpretty.has_call(method='GET', uri=get_article_url)
 
@@ -1447,7 +1447,7 @@ class TestArticleCRUD:
 
         aiohttpretty.register_uri('DELETE', file_url, status=204)
 
-        path = FigsharePath('/{}'.format(file_name), _ids=('', file_id), folder=False)
+        path = FigsharePath(f'/{file_name}', _ids=('', file_id), folder=False)
 
         result = await article_provider.delete(path)
 
@@ -1459,7 +1459,7 @@ class TestArticleCRUD:
     async def test_article_download_404(self, article_provider, root_provider_fixtures):
         item = root_provider_fixtures['file_metadata']
         file_id = str(item['id'])
-        path = FigsharePath('/{}'.format(file_id), _ids=('', file_id), folder=False)
+        path = FigsharePath(f'/{file_id}', _ids=('', file_id), folder=False)
 
         root_parts = article_provider.root_path_parts
 
@@ -1508,7 +1508,7 @@ class TestArticleCRUD:
         aiohttpretty.register_json_uri('GET',
                                        root_provider_fixtures['get_file_metadata']['upload_url'],
                                        body=root_provider_fixtures['get_upload_metadata'])
-        aiohttpretty.register_uri('PUT', '{}/1'.format(upload_url), status=200)
+        aiohttpretty.register_uri('PUT', f'{upload_url}/1', status=200)
         aiohttpretty.register_uri('POST', file_url, status=202)
         aiohttpretty.register_json_uri('GET', get_article_url,
                                        body=crud_fixtures['upload_folder_article_metadata'])
@@ -1518,7 +1518,7 @@ class TestArticleCRUD:
             crud_fixtures['upload_folder_article_metadata'],
             crud_fixtures['upload_folder_article_metadata']['files'][0],
         )
-        assert aiohttpretty.has_call(method='PUT', uri='{}/1'.format(upload_url))
+        assert aiohttpretty.has_call(method='PUT', uri=f'{upload_url}/1')
         assert aiohttpretty.has_call(method='POST', uri=create_file_url)
         assert result == expected
 
@@ -1734,5 +1734,5 @@ class TestMisc:
         with pytest.raises(exceptions.ProviderError) as e:
             provider.FigshareProvider(auth, credentials, bad_settings)
 
-        assert e.value.message == 'Invalid "container_type" {0}'.format(
+        assert e.value.message == 'Invalid "container_type" {}'.format(
             bad_settings['container_type'])

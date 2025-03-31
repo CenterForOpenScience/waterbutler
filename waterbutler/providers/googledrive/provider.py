@@ -4,7 +4,8 @@ import hashlib
 import functools
 from urllib import parse
 from http import HTTPStatus
-from typing import List, Sequence, Tuple, Union
+from typing import List, Tuple, Union
+from collections.abc import Sequence
 
 import furl
 
@@ -131,7 +132,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     @property
     def default_headers(self) -> dict:
-        return {'authorization': 'Bearer {}'.format(self.token)}
+        return {'authorization': f'Bearer {self.token}'}
 
     def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath = None) -> bool:
         return self == other
@@ -143,7 +144,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def intra_move(self,  # type: ignore
                          dest_provider: provider.BaseProvider,
                          src_path: WaterButlerPath,
-                         dest_path: WaterButlerPath) -> Tuple[BaseGoogleDriveMetadata, bool]:
+                         dest_path: WaterButlerPath) -> tuple[BaseGoogleDriveMetadata, bool]:
         self.metrics.add('intra_move.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -178,7 +179,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def intra_copy(self,
                          dest_provider: provider.BaseProvider,
                          src_path: WaterButlerPath,
-                         dest_path: WaterButlerPath) -> Tuple[GoogleDriveFileMetadata, bool]:
+                         dest_path: WaterButlerPath) -> tuple[GoogleDriveFileMetadata, bool]:
         self.metrics.add('intra_copy.destination_exists', dest_path.identifier is not None)
         if dest_path.identifier:
             await dest_provider.delete(dest_path)
@@ -205,7 +206,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def download(self,  # type: ignore
                        path: GoogleDrivePath,
                        revision: str = None,
-                       range: Tuple[int, int] = None,
+                       range: tuple[int, int] = None,
                        **kwargs) -> streams.BaseStream:
         """Download the file at `path`.  If `revision` is present, attempt to download that revision
         of the file.  See **Revisions** in the class doctring for an explanation of this provider's
@@ -251,7 +252,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                      stream,
                      path: WaterButlerPath,
                      *args,
-                     **kwargs) -> Tuple[GoogleDriveFileMetadata, bool]:
+                     **kwargs) -> tuple[GoogleDriveFileMetadata, bool]:
         assert path.is_file
 
         if path.identifier:
@@ -315,23 +316,23 @@ class GoogleDriveProvider(provider.BaseProvider):
     @staticmethod
     def _build_query(folder_id: str, title: str = None) -> str:
         queries = [
-            "'{}' in parents".format(folder_id),
+            f"'{folder_id}' in parents",
             'trashed = false',
             "mimeType != 'application/vnd.google-apps.form'",
             "mimeType != 'application/vnd.google-apps.map'",
         ]
         if title:
-            queries.append("title = '{}'".format(clean_query(title)))
+            queries.append(f"title = '{clean_query(title)}'")
         return ' and '.join(queries)
 
     async def metadata(self,  # type: ignore
                        path: GoogleDrivePath,
                        raw: bool = False,
                        revision=None,
-                       **kwargs) -> Union[dict, BaseGoogleDriveMetadata,
-                                          List[Union[BaseGoogleDriveMetadata, dict]]]:
+                       **kwargs) -> (dict | BaseGoogleDriveMetadata |
+                                          list[BaseGoogleDriveMetadata | dict]):
         if path.identifier is None:
-            raise exceptions.MetadataError('{} not found'.format(str(path)), code=404)
+            raise exceptions.MetadataError(f'{str(path)} not found', code=404)
 
         if path.is_dir:
             return await self._folder_metadata(path, raw=raw)
@@ -339,7 +340,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         return await self._file_metadata(path, revision=revision, raw=raw)
 
     async def revisions(self, path: GoogleDrivePath,  # type: ignore
-                        **kwargs) -> List[GoogleDriveRevision]:
+                        **kwargs) -> list[GoogleDriveRevision]:
         """Returns list of revisions for the file at ``path``.
 
         Google Drive will not allow a user to view the revision list of a file if they only have
@@ -419,7 +420,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     def _serialize_item(self,
                         path: WaterButlerPath,
                         item: dict,
-                        raw: bool = False) -> Union[BaseGoogleDriveMetadata, dict]:
+                        raw: bool = False) -> BaseGoogleDriveMetadata | dict:
         if raw:
             return item
         if item['mimeType'] == self.FOLDER_MIME_TYPE:
@@ -521,7 +522,7 @@ class GoogleDriveProvider(provider.BaseProvider):
             except (KeyError, IndexError):
                 if parts:
                     # if we can't find an intermediate path part, that's an error
-                    raise exceptions.MetadataError('{} not found'.format(str(path)),
+                    raise exceptions.MetadataError(f'{str(path)} not found',
                                                    code=HTTPStatus.NOT_FOUND)
                 return ret + [{
                     'id': None,
@@ -580,7 +581,7 @@ class GoogleDriveProvider(provider.BaseProvider):
 
     async def _folder_metadata(self,
                                path: WaterButlerPath,
-                               raw: bool = False) -> List[Union[BaseGoogleDriveMetadata, dict]]:
+                               raw: bool = False) -> list[BaseGoogleDriveMetadata | dict]:
         query = self._build_query(path.identifier)
         built_url = self.build_url('files', q=query, alt='json', maxResults=1000)
         full_resp = []
@@ -602,7 +603,7 @@ class GoogleDriveProvider(provider.BaseProvider):
     async def _file_metadata(self,
                              path: GoogleDrivePath,
                              revision: str = None,
-                             raw: bool = False) -> Union[dict, BaseGoogleDriveMetadata]:
+                             raw: bool = False) -> dict | BaseGoogleDriveMetadata:
         """ Returns metadata for the file identified by `path`.  If the `revision` arg is set,
         will attempt to return metadata for the given revision of the file.  If the revision does
         not exist, ``_file_metadata`` will throw a 404.
@@ -688,7 +689,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         resp = await self.make_request(
             'GET',
             self.build_url('files',
-                           q="'{}' in parents".format(file_id),
+                           q=f"'{file_id}' in parents",
                            fields='items(id)'),
             expects=(200, ),
             throws=exceptions.MetadataError)
@@ -696,7 +697,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         try:
             child_ids = (await resp.json())['items']
         except (KeyError, IndexError):
-            raise exceptions.MetadataError('{} not found'.format(str(path)),
+            raise exceptions.MetadataError(f'{str(path)} not found',
                                            code=HTTPStatus.NOT_FOUND)
 
         for child in child_ids:

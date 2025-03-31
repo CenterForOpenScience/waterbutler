@@ -161,7 +161,7 @@ class GitLabProvider(provider.BaseProvider):
             return await self._metadata_file(path)
 
     async def revisions(self,  # type: ignore
-                        path: GitLabPath, **kwargs) -> typing.List[GitLabRevision]:
+                        path: GitLabPath, **kwargs) -> list[GitLabRevision]:
         r"""Get the revision history for the file at ``path``.  Returns a list of `GitLabRevision`
         objects representing each version of the file where the file was modified.
 
@@ -212,7 +212,7 @@ class GitLabProvider(provider.BaseProvider):
         :raises: :class:`waterbutler.core.exceptions.DownloadError`
         """
 
-        logger.debug('requested-range:: {}'.format(range))
+        logger.debug(f'requested-range:: {range}')
 
         url = self._build_file_url(path, raw=True)
         resp = await self.make_request(
@@ -222,7 +222,7 @@ class GitLabProvider(provider.BaseProvider):
             throws=exceptions.DownloadError,
         )
 
-        logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
+        logger.debug(f'download-headers:: {[(x, resp.headers[x]) for x in resp.headers]}')
 
         # get size from X-Gitlab-Size header, since some responses don't set Content-Length
         return streams.ResponseStreamReader(resp, size=int(resp.headers['X-Gitlab-Size']))
@@ -309,7 +309,7 @@ class GitLabProvider(provider.BaseProvider):
         return '{}/{}{}?ref={}'.format(file_base, path.raw_path.replace('/', '%2F'), suffix,
                                        path.ref)
 
-    async def _metadata_folder(self, path: GitLabPath) -> typing.List[BaseGitLabMetadata]:
+    async def _metadata_folder(self, path: GitLabPath) -> list[BaseGitLabMetadata]:
         """Fetch metadata for the contents of the folder at ``path`` and return a `list` of
         `GitLabFileMetadata` and `GitLabFolderMetadata` objects.
 
@@ -350,7 +350,7 @@ class GitLabProvider(provider.BaseProvider):
             url = self._build_repo_url('repository', 'commits', path=path.path,
                                        ref_name=path.ref, page=page_nbr,
                                        per_page=self.MAX_PAGE_SIZE)
-            logger.debug('file metadata commit history url: {}'.format(url))
+            logger.debug(f'file metadata commit history url: {url}')
             resp = await self.make_request(
                 'GET',
                 url,
@@ -404,7 +404,7 @@ class GitLabProvider(provider.BaseProvider):
         :return: file metadata from the GitLab endpoint
         """
         url = self._build_file_url(path)
-        logger.debug('_fetch_file_contents url: {}'.format(url))
+        logger.debug(f'_fetch_file_contents url: {url}')
         resp = await self.make_request(
             'GET',
             url,
@@ -436,7 +436,7 @@ class GitLabProvider(provider.BaseProvider):
                 path_kwargs['path'] = path.full_path
 
             url = self._build_repo_url(*path_args, **path_kwargs)
-            logger.debug('_fetch_tree_contents url: {}'.format(url))
+            logger.debug(f'_fetch_tree_contents url: {url}')
             resp = await self.make_request(
                 'GET',
                 url,
@@ -479,7 +479,7 @@ class GitLabProvider(provider.BaseProvider):
         data = await resp.json()
 
         if data['default_branch'] is None:
-            raise exceptions.UninitializedRepositoryError('{}/{}'.format(self.owner, self.repo))
+            raise exceptions.UninitializedRepositoryError(f'{self.owner}/{self.repo}')
 
         return data['default_branch']
 

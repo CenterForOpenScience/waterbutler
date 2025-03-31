@@ -22,37 +22,37 @@ def file_obj_name():
 
 @pytest.fixture()
 def meta_file_raw():
-    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-raw.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-raw.json')) as fp:
         return fp.read()
 
 
 @pytest.fixture()
 def meta_file_parsed():
-    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-parsed.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-parsed.json')) as fp:
         return fp.read()
 
 
 @pytest.fixture()
 def meta_file_upload_raw():
-    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-upload-raw.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-upload-raw.json')) as fp:
         return fp.read()
 
 
 @pytest.fixture()
 def meta_file_copy_raw():
-    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-copy-raw.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-copy-raw.json')) as fp:
         return fp.read()
 
 
 @pytest.fixture()
 def meta_file_extra():
-    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-extra.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'metadata/file-extra.json')) as fp:
         return fp.read()
 
 
 @pytest.fixture()
 def meta_file_resp_headers_raw():
-    with open(os.path.join(os.path.dirname(__file__), 'resp_headers/file-raw.txt'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'resp_headers/file-raw.txt')) as fp:
         return fp.read()
 
 

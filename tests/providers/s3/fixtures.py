@@ -43,49 +43,49 @@ def file_content():
 
 @pytest.fixture
 def folder_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/folder_metadata.xml'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/folder_metadata.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def folder_single_item_metadata():
     with open(os.path.join(os.path.dirname(__file__),
-                           'fixtures/folder_single_item_metadata.xml'), 'r') as fp:
+                           'fixtures/folder_single_item_metadata.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def folder_item_metadata():
     with open(os.path.join(os.path.dirname(__file__),
-                           'fixtures/folder_item_metadata.xml'), 'r') as fp:
+                           'fixtures/folder_item_metadata.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def folder_and_contents():
     with open(os.path.join(os.path.dirname(__file__),
-                           'fixtures/folder_and_contents.xml'), 'r') as fp:
+                           'fixtures/folder_and_contents.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def version_metadata():
     with open(os.path.join(os.path.dirname(__file__),
-                           'fixtures/version_metadata.xml'), 'r') as fp:
+                           'fixtures/version_metadata.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def single_version_metadata():
     with open(os.path.join(os.path.dirname(__file__),
-                           'fixtures/single_version_metadata.xml'), 'r') as fp:
+                           'fixtures/single_version_metadata.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def folder_empty_metadata():
     with open(os.path.join(os.path.dirname(__file__),
-                           'fixtures/folder_empty_metadata.xml'), 'r') as fp:
+                           'fixtures/folder_empty_metadata.xml')) as fp:
         return fp.read()
 
 
@@ -155,47 +155,47 @@ def revision_metadata_object():
 @pytest.fixture
 def create_session_resp():
     file_path = 'fixtures/chunked_uploads/create_session_resp.xml'
-    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), file_path)) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def generic_http_404_resp():
     file_path = 'fixtures/chunked_uploads/generic_http_404_resp.xml'
-    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), file_path)) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def generic_http_403_resp():
     file_path = 'fixtures/chunked_uploads/generic_http_403_resp.xml'
-    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), file_path)) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def list_parts_resp_empty():
     file_path = 'fixtures/chunked_uploads/list_parts_resp_empty.xml'
-    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), file_path)) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def list_parts_resp_not_empty():
     file_path = 'fixtures/chunked_uploads/list_parts_resp_not_empty.xml'
-    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), file_path)) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def complete_upload_resp():
     file_path = 'fixtures/chunked_uploads/complete_upload_resp.xml'
-    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), file_path)) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def upload_parts_headers_list():
     file_path = 'fixtures/chunked_uploads/upload_parts_headers_list.json'
-    with open(os.path.join(os.path.dirname(__file__), file_path), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), file_path)) as fp:
         return fp.read()

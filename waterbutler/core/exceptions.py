@@ -51,10 +51,10 @@ class WaterButlerError(Exception):
             self.message = message
 
     def __repr__(self):
-        return '<{}({}, {})>'.format(self.__class__.__name__, self.code, self.message)
+        return f'<{self.__class__.__name__}({self.code}, {self.message})>'
 
     def __str__(self):
-        return '{}, {}'.format(self.code, self.message)
+        return f'{self.code}, {self.message}'
 
 
 class TooManyRequests(WaterButlerError):
@@ -94,7 +94,7 @@ class WaterButlerRedisError(WaterButlerError):
     def __init__(self, redis_command):
 
         message = {
-            'error': 'The Redis server failed when processing command {}'.format(redis_command),
+            'error': f'The Redis server failed when processing command {redis_command}',
         }
         super().__init__(message, code=HTTPStatus.SERVICE_UNAVAILABLE, is_user_error=False)
 
@@ -223,7 +223,7 @@ class FolderNamingConflict(ProviderError):
 class NamingConflict(ProviderError):
     def __init__(self, name, extant=None):
         message = {
-            'message': 'Cannot complete action: file or folder "{}" already exists in this location'.format(name),
+            'message': f'Cannot complete action: file or folder "{name}" already exists in this location',
             'data': extant,
         }
 
@@ -232,7 +232,7 @@ class NamingConflict(ProviderError):
 
 class ProviderNotFound(ProviderError):
     def __init__(self, provider):
-        super().__init__('Provider "{}" not found'.format(provider), code=HTTPStatus.NOT_FOUND)
+        super().__init__(f'Provider "{provider}" not found', code=HTTPStatus.NOT_FOUND)
 
 
 class UploadChecksumMismatchError(ProviderError):
@@ -252,7 +252,7 @@ class UploadFailedError(ProviderError):
 class NotFoundError(ProviderError):
     def __init__(self, path, code=HTTPStatus.NOT_FOUND, is_user_error=True):
         super().__init__(
-            'Could not retrieve file or directory {}'.format(path),
+            f'Could not retrieve file or directory {path}',
             code=code,
             is_user_error=is_user_error,
         )
@@ -278,7 +278,7 @@ class UnsupportedOperationError(ProviderError):
 
 class ReadOnlyProviderError(ProviderError):
     def __init__(self, provider, code=501):
-        super().__init__('Provider "{}" is read-only'.format(provider), code=code)
+        super().__init__(f'Provider "{provider}" is read-only', code=code)
 
 
 class UninitializedRepositoryError(ProviderError):
@@ -295,18 +295,18 @@ class UninitializedRepositoryError(ProviderError):
 class UnexportableFileTypeError(DownloadError):
     def __init__(self, path, message=None, is_user_error=True):
         if not message:
-            message = 'The file "{}" is not exportable'.format(path)
+            message = f'The file "{path}" is not exportable'
         super().__init__(message, code=HTTPStatus.BAD_REQUEST, is_user_error=is_user_error)
 
 
 class InvalidProviderConfigError(ProviderError):
     """Error for provider init failure due to invalid (include missing) settings and credentials"""
     def __init__(self, provider_name, message=None):
-        base_message = 'Invalid provider configuration for {}'.format(provider_name)
+        base_message = f'Invalid provider configuration for {provider_name}'
         if not message:
             message = base_message
         else:
-            message = '{}: {}'.format(base_message, message)
+            message = f'{base_message}: {message}'
         super().__init__(message, code=HTTPStatus.BAD_REQUEST, is_user_error=False)
 
 

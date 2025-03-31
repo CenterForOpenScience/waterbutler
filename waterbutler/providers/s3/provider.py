@@ -250,7 +250,7 @@ class S3Provider(provider.BaseProvider):
             await self._complete_multipart_upload(path, session_upload_id, parts_metadata)
         except Exception as err:
             msg = 'An unexpected error has occurred during the multi-part upload.'
-            logger.error('{} upload_id={} error={!r}'.format(msg, session_upload_id, err))
+            logger.error(f'{msg} upload_id={session_upload_id} error={err!r}')
             aborted = await self._abort_chunked_upload(path, session_upload_id)
             if aborted:
                 msg += '  The abort action failed to clean up the temporary file parts generated ' \
@@ -300,9 +300,9 @@ class S3Provider(provider.BaseProvider):
         parts = [self.CHUNK_SIZE for i in range(0, stream.size // self.CHUNK_SIZE)]
         if stream.size % self.CHUNK_SIZE:
             parts.append(stream.size - (len(parts) * self.CHUNK_SIZE))
-        logger.debug('Multipart upload segment sizes: {}'.format(parts))
+        logger.debug(f'Multipart upload segment sizes: {parts}')
         for chunk_number, chunk_size in enumerate(parts):
-            logger.debug('  uploading part {} with size {}'.format(chunk_number + 1, chunk_size))
+            logger.debug(f'  uploading part {chunk_number + 1} with size {chunk_size}')
             metadata.append(await self._upload_part(stream, path, session_upload_id,
                                                     chunk_number + 1, chunk_size))
         return metadata
@@ -567,7 +567,7 @@ class S3Provider(provider.BaseProvider):
             payload = '<?xml version="1.0" encoding="UTF-8"?>'
             payload += '<Delete>'
             payload += ''.join(map(
-                lambda x: '<Object><Key>{}</Key></Object>'.format(xml.sax.saxutils.escape(x)),
+                lambda x: f'<Object><Key>{xml.sax.saxutils.escape(x)}</Key></Object>',
                 key_batch
             ))
             payload += '</Delete>'

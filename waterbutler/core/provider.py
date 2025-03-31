@@ -87,7 +87,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def __init__(self, auth: dict,
                  credentials: dict,
                  settings: dict,
-                 retry_on: typing.Optional[typing.Set[int]] = None,
+                 retry_on: set[int] | None = None,
                  is_celery_task: bool = False) -> None:
         """
         :param auth: ( :class:`dict` ) Information about the user this provider will act on the behalf of
@@ -341,7 +341,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                    dest_path: wb_path.WaterButlerPath,
                    rename: str = None,
                    conflict: str = 'replace',
-                   handle_naming: bool = True) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+                   handle_naming: bool = True) -> tuple[wb_metadata.BaseMetadata, bool]:
         """Moves a file or folder from the current provider to the specified one
         Performs a copy and then a delete.
         Calls :func:`BaseProvider.intra_move` if possible.
@@ -399,7 +399,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                    dest_path: wb_path.WaterButlerPath,
                    rename: str = None, conflict: str = 'replace',
                    handle_naming: bool = True) \
-            -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+            -> tuple[wb_metadata.BaseMetadata, bool]:
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
 
@@ -445,7 +445,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                               dest_provider: 'BaseProvider',
                               src_path: wb_path.WaterButlerPath,
                               dest_path: wb_path.WaterButlerPath,
-                              **kwargs) -> typing.Tuple[wb_metadata.BaseFolderMetadata, bool]:
+                              **kwargs) -> tuple[wb_metadata.BaseFolderMetadata, bool]:
         """Recursively apply func to src/dest path.
 
         Called from: func: copy and move if src_path.is_dir.
@@ -580,7 +580,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def intra_copy(self,
                          dest_provider: 'BaseProvider',
                          source_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
+                         dest_path: wb_path.WaterButlerPath) -> tuple[wb_metadata.BaseFileMetadata, bool]:
         """If the provider supports copying files and/or folders within itself by some means other
         than download/upload, then ``can_intra_copy`` should return ``True``.  This method will
         implement the copy.  It accepts the destination provider, a source path, and the
@@ -598,7 +598,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def intra_move(self,
                          dest_provider: 'BaseProvider',
                          src_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
+                         dest_path: wb_path.WaterButlerPath) -> tuple[wb_metadata.BaseFileMetadata, bool]:
         """If the provider supports moving files and/or folders within itself by some means other
         than download/upload/delete, then ``can_intra_move`` should return ``True``.  This method
         will implement the move.  It accepts the destination provider, a source path, and the
@@ -616,7 +616,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return data, created
 
     async def exists(self, path: wb_path.WaterButlerPath, **kwargs) \
-            -> typing.Union[bool, wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
+            -> bool | wb_metadata.BaseMetadata | list[wb_metadata.BaseMetadata]:
         """Check for existence of WaterButlerPath
 
         Attempt to retrieve provider metadata to determine existence of a WaterButlerPath.  If
@@ -638,7 +638,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def handle_name_conflict(self,
                                    path: wb_path.WaterButlerPath,
                                    conflict: str = 'replace',
-                                   **kwargs) -> typing.Tuple[wb_path.WaterButlerPath, bool]:
+                                   **kwargs) -> tuple[wb_path.WaterButlerPath, bool]:
         """Check WaterButlerPath and resolve conflicts
 
         Given a WaterButlerPath and a conflict resolution pattern determine
@@ -729,7 +729,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def upload(self, stream: streams.BaseStream, path: wb_path.WaterButlerPath, *args,
-                     **kwargs) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
+                     **kwargs) -> tuple[wb_metadata.BaseFileMetadata, bool]:
         r"""Uploads the given stream to the provider.  Returns the metadata for the newly created
         file and a boolean indicating whether the file is completely new (``True``) or overwrote
         a previously-existing file (``False``)
@@ -754,7 +754,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def metadata(self, path: wb_path.WaterButlerPath, **kwargs) \
-            -> typing.Union[wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
+            -> wb_metadata.BaseMetadata | list[wb_metadata.BaseMetadata]:
         r"""Get metadata about the specified resource from this provider. Will be a :class:`list`
         if the resource is a directory otherwise an instance of
         :class:`.BaseFileMetadata`
@@ -838,7 +838,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         raise exceptions.ProviderError({'message': 'Folder creation not supported.'}, code=405)
 
     @staticmethod
-    def _build_range_header(slice_tup: typing.Tuple[int, int]) -> str:
+    def _build_range_header(slice_tup: tuple[int, int]) -> str:
         start, end = slice_tup
         return 'bytes={}-{}'.format(
             '' if start is None else start,
@@ -847,4 +847,4 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     def __repr__(self):
         # Note: credentials are not included on purpose.
-        return '<{}({}, {})>'.format(self.__class__.__name__, self.auth, self.settings)
+        return f'<{self.__class__.__name__}({self.auth}, {self.settings})>'

@@ -152,8 +152,8 @@ class GitHubProvider(provider.BaseProvider):
 
         self._request_count += 1
 
-        logger.debug('P({}):{}: '.format(self._my_id, self._request_count))
-        logger.debug('P({}):{}:make_request: begin!'.format(self._my_id, self._request_count))
+        logger.debug(f'P({self._my_id}):{self._request_count}: ')
+        logger.debug(f'P({self._my_id}):{self._request_count}:make_request: begin!')
 
         # Only update `expects` when it exists in the original request
         expects = kwargs.get('expects', None)
@@ -303,7 +303,7 @@ class GitHubProvider(provider.BaseProvider):
 
     @property
     def default_headers(self):
-        return {'Authorization': 'token {}'.format(self.token)}
+        return {'Authorization': f'token {self.token}'}
 
     @property
     def committer(self):
@@ -333,7 +333,7 @@ class GitHubProvider(provider.BaseProvider):
     async def intra_move(self, dest_provider, src_path, dest_path):
         return await self._do_intra_move_or_copy(src_path, dest_path, False)
 
-    async def download(self, path: GitHubPath, range: Tuple[int, int] = None,  # type: ignore
+    async def download(self, path: GitHubPath, range: tuple[int, int] = None,  # type: ignore
                        **kwargs) -> streams.ResponseStreamReader:
         """Get the stream to the specified file on github
         :param GitHubPath path: The path to the file on github
@@ -344,7 +344,7 @@ class GitHubProvider(provider.BaseProvider):
         data = await self.metadata(path)
         file_sha = path.file_sha or data.extra['fileSha']
 
-        logger.debug('requested-range:: {}'.format(range))
+        logger.debug(f'requested-range:: {range}')
         resp = await self.make_request(
             'GET',
             self.build_repo_url('git', 'blobs', file_sha),
@@ -571,7 +571,7 @@ class GitHubProvider(provider.BaseProvider):
                 tree_sha = next(x for x in trees[-1]['tree'] if x['path'] == tree_path.value)['sha']
             except StopIteration:
                 raise exceptions.MetadataError(
-                    'Could not delete folder \'{0}\''.format(path),
+                    f'Could not delete folder \'{path}\'',
                     code=404,
                 )
             trees.append({
@@ -688,7 +688,7 @@ class GitHubProvider(provider.BaseProvider):
         resp = await self.make_request('GET', self.build_repo_url('branches', branch))
         if resp.status == 404:
             await resp.release()
-            raise exceptions.NotFoundError('. No such branch \'{}\''.format(branch))
+            raise exceptions.NotFoundError(f'. No such branch \'{branch}\'')
 
         return await resp.json()
 
@@ -794,7 +794,7 @@ class GitHubProvider(provider.BaseProvider):
 
         sha1_calculator = streams.HashStreamWriter(hashlib.sha1)
         stream.add_writer('sha1', sha1_calculator)
-        git_blob_header = 'blob {}\0'.format(str(stream.size))
+        git_blob_header = f'blob {str(stream.size)}\0'
         sha1_calculator.write(git_blob_header.encode('utf-8'))
 
         resp = await self.make_request(
@@ -834,7 +834,7 @@ class GitHubProvider(provider.BaseProvider):
 
         if isinstance(data, dict):
             raise exceptions.MetadataError(
-                'Could not retrieve folder "{0}"'.format(str(path)),
+                f'Could not retrieve folder "{str(path)}"',
                 code=404,
             )
 
@@ -1005,7 +1005,7 @@ class GitHubProvider(provider.BaseProvider):
 
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('git', 'trees') + '/{}:?recursive=99999'.format(branch_ref),
+            self.build_repo_url('git', 'trees') + f'/{branch_ref}:?recursive=99999',
             expects=(200,)
         )
         return await resp.json()
@@ -1143,7 +1143,7 @@ class GitHubProvider(provider.BaseProvider):
 
         return new_head
 
-    def _interpret_query_parameters(self, **kwargs) -> Tuple[str, str, str]:
+    def _interpret_query_parameters(self, **kwargs) -> tuple[str, str, str]:
         """This one hurts.
 
         Over the life of WB, the github provider has accepted the following parameters to identify
@@ -1208,7 +1208,7 @@ class GitHubProvider(provider.BaseProvider):
 
             if v is not None and self._looks_like_sha(v):
                 inferred_ref = v
-                ref_from = 'query_{}'.format(param)
+                ref_from = f'query_{param}'
                 break
 
         if inferred_ref is not None:
@@ -1225,7 +1225,7 @@ class GitHubProvider(provider.BaseProvider):
 
             if v is not None:
                 inferred_ref = v
-                ref_from = 'query_{}'.format(param)
+                ref_from = f'query_{param}'
                 break
 
         if inferred_ref is None:

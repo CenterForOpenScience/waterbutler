@@ -61,7 +61,7 @@ class BitbucketProvider(provider.BaseProvider):
 
     @property
     def default_headers(self) -> dict:
-        return {'Authorization': 'Bearer {}'.format(self.token)}
+        return {'Authorization': f'Bearer {self.token}'}
 
     async def validate_v1_path(self, path: str, **kwargs) -> BitbucketPath:
         commit_sha = kwargs.get('commitSha')
@@ -199,7 +199,7 @@ class BitbucketProvider(provider.BaseProvider):
         return [BitbucketRevisionMetadata(item) for item in valid_revisions]
 
     async def download(self, path: BitbucketPath,  # type: ignore
-                       range: Tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
+                       range: tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
         """Get the stream to the specified file on Bitbucket
 
         In BB API 2.0, the ``repo/username/repo_slug/src/node/path`` endpoint is used for download.
@@ -218,7 +218,7 @@ class BitbucketProvider(provider.BaseProvider):
         :param range: the range header
         """
         metadata = await self.metadata(path)
-        logger.debug('requested-range:: {}'.format(range))
+        logger.debug(f'requested-range:: {range}')
         resp = await self.make_request(
             'GET',
             self._build_v2_repo_url('src', path.commit_sha, *path.path_tuple()),
@@ -226,7 +226,7 @@ class BitbucketProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.DownloadError,
         )
-        logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
+        logger.debug(f'download-headers:: {[(x, resp.headers[x]) for x in resp.headers]}')
         return streams.ResponseStreamReader(resp, size=metadata.size)
 
     def can_duplicate_names(self):
@@ -425,7 +425,7 @@ class BitbucketProvider(provider.BaseProvider):
         path_meta_url = self._build_v2_repo_url('src', path.ref, *path.path_tuple())
         resp = await self.make_request(
             'GET',
-            '{}/?{}'.format(path_meta_url, urlencode(query_params)),
+            f'{path_meta_url}/?{urlencode(query_params)}',
             expects=(200,),
             throws=exceptions.ProviderError,
         )
@@ -488,7 +488,7 @@ class BitbucketProvider(provider.BaseProvider):
                        'values.size,values.path,values.type,next'),
         }
 
-        next_url = '{}?{}'.format(history_url, urlencode(query_params))
+        next_url = f'{history_url}?{urlencode(query_params)}'
         commit_history = []  # type: ignore
         while next_url:
             resp = await self.make_request(

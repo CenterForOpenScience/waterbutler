@@ -206,7 +206,7 @@ class StringStream(BaseStream):
         if isinstance(data, str):
             data = data.encode('UTF-8')
         elif not isinstance(data, bytes):
-            raise TypeError('Data must be either str or bytes, found {!r}'.format(type(data)))
+            raise TypeError(f'Data must be either str or bytes, found {type(data)!r}')
 
         self._size = len(data)
         self.feed_data(data)

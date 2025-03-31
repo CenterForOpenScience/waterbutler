@@ -95,7 +95,7 @@ class BitbucketFileMetadata(BaseBitbucketMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return '{}::{}'.format(self.path, self.commit_sha)  # FIXME: maybe last_commit_sha?
+        return f'{self.path}::{self.commit_sha}'  # FIXME: maybe last_commit_sha?
 
     @property
     def extra(self):

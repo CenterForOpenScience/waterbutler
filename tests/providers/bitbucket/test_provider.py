@@ -92,7 +92,7 @@ class TestValidatePath:
         assert wb_path_v1.branch_name == repo_metadata['mainbranch']['name']
         assert wb_path_v1.commit_sha == parent_folder_metadata['commit']['hash'][:12]
 
-        bad_path = '{}/'.format(file_path)
+        bad_path = f'{file_path}/'
         with pytest.raises(exceptions.NotFoundError):
             await provider.validate_v1_path(bad_path)
 
@@ -302,7 +302,7 @@ class TestMetadata:
             'fields': 'values.path,values.size,values.type,next',
         }
         dir_list_base_url = provider._build_v2_repo_url('src', COMMIT_SHA, *path.path_tuple())
-        dir_list_first_url = '{}/?{}'.format(dir_list_base_url, urlencode(query_params))
+        dir_list_first_url = f'{dir_list_base_url}/?{urlencode(query_params)}'
         aiohttpretty.register_json_uri('GET', dir_list_first_url, body=dir_contents_first_page)
 
         dir_contents_next_page = json.loads(folder_contents_page_2)
@@ -441,7 +441,7 @@ class TestMisc:
     def test_path_from_metadata(self, provider, file_metadata, owner, repo):
         name = 'file0002.20bytes.txt'
         subdir = 'folder2-lvl1/folder1-lvl2/folder1-lvl3'
-        full_path = '/{}/{}'.format(subdir, name)
+        full_path = f'/{subdir}/{name}'
 
         # Note: When building Bitbucket Path, the length of ``_ids`` array must be equal to the
         #       number of path segments, including the root.

@@ -78,17 +78,17 @@ class TestBuildAndSignURL:
 
     def test_build_canonical_ext_headers_str(self, mock_provider, file_2_obj_name):
 
-        object_name_with_bucket = '{}/{}'.format(mock_provider.bucket, file_2_obj_name)
+        object_name_with_bucket = f'{mock_provider.bucket}/{file_2_obj_name}'
         canonical_ext_headers = {'x-goog-copy-source': object_name_with_bucket}
         canonical_ext_headers_str = utils.build_canonical_ext_headers_str(canonical_ext_headers)
-        expected = 'x-goog-copy-source:{}\n'.format(object_name_with_bucket)
+        expected = f'x-goog-copy-source:{object_name_with_bucket}\n'
         assert canonical_ext_headers_str == expected
 
     def test_build_and_sign_metadata_url(self, mock_time, expires, mock_provider, file_2_obj_name):
         signed_url = mock_provider._build_and_sign_url('HEAD', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
-        assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
+        assert f'{url.scheme}://{url.host}' == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
         assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
@@ -104,7 +104,7 @@ class TestBuildAndSignURL:
         signed_url = mock_provider._build_and_sign_url('PUT', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
-        assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
+        assert f'{url.scheme}://{url.host}' == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
         assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
@@ -120,7 +120,7 @@ class TestBuildAndSignURL:
         signed_url = mock_provider._build_and_sign_url('GET', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
-        assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
+        assert f'{url.scheme}://{url.host}' == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
         assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
@@ -136,7 +136,7 @@ class TestBuildAndSignURL:
         signed_url = mock_provider._build_and_sign_url('DELETE', file_2_obj_name, **{})
         url = furl.furl(signed_url)
 
-        assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
+        assert f'{url.scheme}://{url.host}' == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_obj_name, safe=''))
         assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email
@@ -150,7 +150,7 @@ class TestBuildAndSignURL:
 
     def test_build_and_sign_copy_url(self, mock_time, expires, mock_provider, file_2_obj_name,
                                      file_2_copy_obj_name):
-        object_name_with_bucket = '{}/{}'.format(mock_provider.bucket, file_2_obj_name)
+        object_name_with_bucket = f'{mock_provider.bucket}/{file_2_obj_name}'
         canonical_ext_headers = {'x-goog-copy-source': object_name_with_bucket}
         signed_url = mock_provider._build_and_sign_url(
             'PUT',
@@ -160,7 +160,7 @@ class TestBuildAndSignURL:
         )
         url = furl.furl(signed_url)
 
-        assert '{}://{}'.format(url.scheme, url.host) == mock_provider.BASE_URL
+        assert f'{url.scheme}://{url.host}' == mock_provider.BASE_URL
         assert url.path == '/{}/{}'.format(mock_provider.bucket, quote(file_2_copy_obj_name, safe=''))
         assert int(url.args.get('Expires')) == expires
         assert url.args.get('GoogleAccessId') == mock_provider.creds.service_account_email

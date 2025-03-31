@@ -80,7 +80,7 @@ class SettingsDict(dict):
 
     def full_key(self, key):
         """The name of the envvar which corresponds to this key."""
-        return '{}_{}'.format(self.parent, key) if self.parent else key
+        return f'{self.parent}_{key}' if self.parent else key
 
     def child(self, key):
         """Fetch a sub-dict of the current dict."""
@@ -135,16 +135,16 @@ DEFAULT_LOGGING_CONFIG = {
 
 
 try:
-    config_path = os.environ['{}_CONFIG'.format(PROJECT_NAME.upper())]
+    config_path = os.environ[f'{PROJECT_NAME.upper()}_CONFIG']
 except KeyError:
     env = os.environ.get('ENV', 'test')
-    config_path = '{}/{}-{}.json'.format(PROJECT_CONFIG_PATH, PROJECT_NAME, env)
+    config_path = f'{PROJECT_CONFIG_PATH}/{PROJECT_NAME}-{env}.json'
 
 
 config = SettingsDict()
 config_path = os.path.expanduser(config_path)
 if not os.path.exists(config_path):
-    logging.warning('No \'{}\' configuration file found'.format(config_path))
+    logging.warning(f'No \'{config_path}\' configuration file found')
 else:
     with open(os.path.expanduser(config_path)) as fp:
         config = SettingsDict(json.load(fp))

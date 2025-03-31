@@ -94,7 +94,7 @@ class DataverseProvider(provider.BaseProvider):
             - Other
         """
         super().__init__(auth, credentials, settings, **kwargs)
-        self.BASE_URL = 'https://{0}'.format(self.settings['host'])
+        self.BASE_URL = 'https://{}'.format(self.settings['host'])
 
         self.token = self.credentials['token']
         self.doi = self.settings['doi']
@@ -168,7 +168,7 @@ class DataverseProvider(provider.BaseProvider):
         return sum(self._metadata_cache.values(), [])
 
     async def download(self, path: WaterButlerPath, revision: str = None,  # type: ignore
-                       range: Tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
+                       range: tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
         r"""Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from Dataverse is not 200
 
@@ -185,7 +185,7 @@ class DataverseProvider(provider.BaseProvider):
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
-        logger.debug('request-range:: {}'.format(range))
+        logger.debug(f'request-range:: {range}')
         # TODO: use the auth header "X-Dataverse-key" instead of query param (1/2)
         resp = await self.make_request(
             'GET',
@@ -289,7 +289,7 @@ class DataverseProvider(provider.BaseProvider):
             )
         except StopIteration:
             raise exceptions.MetadataError(
-                "Could not retrieve file '{}'".format(path),
+                f"Could not retrieve file '{path}'",
                 code=HTTPStatus.NOT_FOUND,
             )
 

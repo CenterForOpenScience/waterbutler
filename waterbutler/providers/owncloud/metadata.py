@@ -4,7 +4,7 @@ from waterbutler.core import metadata
 class BaseOwnCloudMetadata(metadata.BaseMetadata):
 
     def __init__(self, href, folder, attributes=None):
-        super(BaseOwnCloudMetadata, self).__init__(None)
+        super().__init__(None)
         self.attributes = attributes or {}
         self._folder = folder
         self._href = href

@@ -56,12 +56,12 @@ class FileSystemProvider(provider.BaseProvider):
         shutil.move(src_path.full_path, dest_path.full_path)
         return (await dest_provider.metadata(dest_path)), not exists
 
-    async def download(self, path: WaterButlerPath, range: Tuple[int, int] = None,   # type: ignore
-                       **kwargs) -> Union[FileStreamReader, PartialFileStreamReader]:
+    async def download(self, path: WaterButlerPath, range: tuple[int, int] = None,   # type: ignore
+                       **kwargs) -> FileStreamReader | PartialFileStreamReader:
         if not os.path.exists(path.full_path):
-            raise exceptions.DownloadError('Could not retrieve file \'{0}\''.format(path), code=404)
+            raise exceptions.DownloadError(f'Could not retrieve file \'{path}\'', code=404)
         file_pointer = open(path.full_path, 'rb')
-        logger.debug('requested-range:: {}'.format(range))
+        logger.debug(f'requested-range:: {range}')
         if range is not None and range[1] is not None:
             return PartialFileStreamReader(file_pointer, range)
         return FileStreamReader(file_pointer)
@@ -92,7 +92,7 @@ class FileSystemProvider(provider.BaseProvider):
         if path.is_dir:
             if not os.path.exists(path.full_path) or not os.path.isdir(path.full_path):
                 raise exceptions.MetadataError(
-                    'Could not retrieve folder \'{0}\''.format(path),
+                    f'Could not retrieve folder \'{path}\'',
                     code=404,
                 )
 
@@ -108,7 +108,7 @@ class FileSystemProvider(provider.BaseProvider):
         else:
             if not os.path.exists(path.full_path) or os.path.isdir(path.full_path):
                 raise exceptions.MetadataError(
-                    'Could not retrieve file \'{0}\''.format(path),
+                    f'Could not retrieve file \'{path}\'',
                     code=404,
                 )
 

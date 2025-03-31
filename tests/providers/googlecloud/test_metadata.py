@@ -84,7 +84,7 @@ class TestGoogleCloudFileMetadata:
 
         assert isinstance(metadata, BaseGoogleCloudMetadata)
         assert metadata.provider == 'googlecloud'
-        assert metadata.path == '/{}'.format(file_obj_name)
+        assert metadata.path == f'/{file_obj_name}'
         assert metadata.name == file_name
         assert metadata.kind == 'file'
         assert metadata.content_type == 'text/plain'
@@ -117,6 +117,6 @@ class TestGoogleCloudFolderMetadata:
 
         assert isinstance(metadata, BaseGoogleCloudMetadata)
         assert metadata.provider == 'googlecloud'
-        assert metadata.path == '/{}'.format(folder_obj_name)
+        assert metadata.path == f'/{folder_obj_name}'
         assert metadata.name == folder_name
         assert metadata.kind == 'folder'

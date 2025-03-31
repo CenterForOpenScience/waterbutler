@@ -324,7 +324,7 @@ class CloudFilesProvider(provider.BaseProvider):
 
         if resp.headers['Content-Type'] == 'application/directory' and not is_folder:
             raise exceptions.MetadataError(
-                'Could not retrieve file \'{0}\''.format(str(path)),
+                f'Could not retrieve file \'{str(path)}\'',
                 code=404,
             )
 
@@ -356,7 +356,7 @@ class CloudFilesProvider(provider.BaseProvider):
             metadata = await self._metadata_file(dir_marker, is_folder=True, **kwargs)
             if not metadata:
                 raise exceptions.MetadataError(
-                    'Could not retrieve folder \'{0}\''.format(str(path)),
+                    f'Could not retrieve folder \'{str(path)}\'',
                     code=404,
                 )
 

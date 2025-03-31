@@ -87,7 +87,7 @@ class FigshareProvider:
             )
 
         raise exceptions.ProviderError(
-            'Invalid "container_type" {0}'.format(settings['container_type'])
+            'Invalid "container_type" {}'.format(settings['container_type'])
         )
 
 
@@ -105,7 +105,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         self.token = self.credentials['token']
         self.container_type = self.settings['container_type']
         if self.container_type not in self.VALID_CONTAINER_TYPES:
-            raise exceptions.ProviderError('{} is not a valid container type.'.format(self.container_type))
+            raise exceptions.ProviderError(f'{self.container_type} is not a valid container type.')
         # Normalize all article container types to "article"
         if self.container_type in self.ARTICLE_CONTAINER_TYPES:
             self.container_type = 'article'
@@ -122,7 +122,7 @@ class BaseFigshareProvider(provider.BaseProvider):
     @property
     def default_headers(self):
         return {
-            'Authorization': 'token {}'.format(self.token),
+            'Authorization': f'token {self.token}',
         }
 
     def build_url(self, is_public: bool, *segments, **query) -> str:  # type: ignore
@@ -184,7 +184,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         return path.rstrip('/').split('/')
 
     async def download(self, path: FigsharePath,  # type: ignore
-                       range: Tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
+                       range: tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
         """Download the file identified by ``path`` from this project.
 
         :param FigsharePath path: FigsharePath to file you want to download
@@ -206,7 +206,7 @@ class BaseFigshareProvider(provider.BaseProvider):
         if download_url is None:
             raise exceptions.DownloadError('Download not available', code=HTTPStatus.FORBIDDEN)
 
-        logger.debug('requested-range:: {}'.format(range))
+        logger.debug(f'requested-range:: {range}')
         params = {} if file_metadata.is_public else {'token': self.token}  # type: ignore
         resp = await self.make_request(
             'GET',
@@ -399,7 +399,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
         # Step 0: Preprocess the string path.
         path_parts = self._path_split(path)
         if len(path_parts) not in (2, 3):
-            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+            raise exceptions.InvalidPathError(f'{path} is not a valid Figshare path.')
         article_id = path_parts[1]
         file_id = path_parts[2] if len(path_parts) == 3 else None
 
@@ -473,7 +473,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
 
         path_parts = self._path_split(path)
         if len(path_parts) not in (2, 3):
-            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+            raise exceptions.InvalidPathError(f'{path} is not a valid Figshare path.')
         article_id = path_parts[1]
         file_id = path_parts[2] if len(path_parts) == 3 else None
 
@@ -776,7 +776,7 @@ class FigshareProjectProvider(BaseFigshareProvider):
                     return FigshareFileMetadata(article_json, raw_file=file)
             raise exceptions.NotFoundError(path.path)
         else:
-            raise exceptions.NotFoundError('{} is not a valid path.'.format(path))
+            raise exceptions.NotFoundError(f'{path} is not a valid path.')
 
     async def _get_article_metadata(self, article_id, is_public: bool):
         """Return Figshare*Metadata object for given article_id. Returns a FolderMetadata object
@@ -876,7 +876,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
         path_parts = self._path_split(path)
         if len(path_parts) != 2:
-            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+            raise exceptions.InvalidPathError(f'{path} is not a valid Figshare path.')
 
         file_id = path_parts[1]
 
@@ -909,7 +909,7 @@ class FigshareArticleProvider(BaseFigshareProvider):
 
         path_parts = self._path_split(path)
         if len(path_parts) != 2:
-            raise exceptions.InvalidPathError('{} is not a valid Figshare path.'.format(path))
+            raise exceptions.InvalidPathError(f'{path} is not a valid Figshare path.')
 
         file_id = path_parts[1]
 

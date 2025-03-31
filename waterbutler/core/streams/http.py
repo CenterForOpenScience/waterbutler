@@ -33,15 +33,15 @@ class FormDataStream(MultiStream):
     @classmethod
     def make_header(cls, name, disposition='form-data', additional_headers=None, **extra):
         additional_headers = additional_headers or {}
-        header = 'Content-Disposition: {}; name="{}"'.format(disposition, name)
+        header = f'Content-Disposition: {disposition}; name="{name}"'
 
         header += ''.join([
-            '; {}="{}"'.format(key, value)
+            f'; {key}="{value}"'
             for key, value in extra.items() if value is not None
         ])
 
         additional = '\r\n'.join([
-            '{}: {}'.format(key, value)
+            f'{key}: {value}'
             for key, value in additional_headers.items() if value is not None
         ])
 
@@ -69,7 +69,7 @@ class FormDataStream(MultiStream):
 
     @property
     def end_boundary(self):
-        return StringStream('--{}--\r\n'.format(self.boundary))
+        return StringStream(f'--{self.boundary}--\r\n')
 
     @property
     def headers(self):
@@ -80,7 +80,7 @@ class FormDataStream(MultiStream):
 
         return {
             'Content-Length': str(self.size),
-            'Content-Type': 'multipart/form-data; boundary={}'.format(self.boundary)
+            'Content-Type': f'multipart/form-data; boundary={self.boundary}'
         }
 
     async def read(self, n=-1):
@@ -129,7 +129,7 @@ class FormDataStream(MultiStream):
         )
 
     def _make_boundary_stream(self):
-        return StringStream('--{}\r\n'.format(self.boundary))
+        return StringStream(f'--{self.boundary}\r\n')
 
 
 class ResponseStreamReader(BaseStream):

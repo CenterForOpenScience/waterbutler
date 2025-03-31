@@ -18,10 +18,10 @@ def wheelhouse(ctx, develop=False, pty=True):
 def install(ctx, develop=False, pty=True):
     ctx.run('python setup.py develop')
     req_file = 'dev-requirements.txt' if develop else 'requirements.txt'
-    cmd = 'pip install --upgrade -r {}'.format(req_file)
+    cmd = f'pip install --upgrade -r {req_file}'
 
     if WHEELHOUSE_PATH:
-        cmd += ' --no-index --find-links={}'.format(WHEELHOUSE_PATH)
+        cmd += f' --no-index --find-links={WHEELHOUSE_PATH}'
     ctx.run(cmd, pty=pty)
 
 
@@ -63,16 +63,16 @@ def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None)
     # `--provider=` and `--path=` are mutually exclusive options
     assert not (provider and path)
     if path:
-        path = '/{}'.format(path) if path else ''
+        path = f'/{path}' if path else ''
     elif provider:
-        path = '/providers/{}/'.format(provider) if provider else ''
+        path = f'/providers/{provider}/' if provider else ''
     else:
         path = ''
 
     coverage = ' --cov-report term-missing --cov waterbutler' if not nocov else ''
     verbose = '-v' if verbose else ''
 
-    cmd = 'py.test{} tests{} {}'.format(coverage, path, verbose)
+    cmd = f'py.test{coverage} tests{path} {verbose}'
     ctx.run(cmd, pty=True)
 
 
@@ -134,7 +134,7 @@ def newrelic_server(ctx, config='newrelic.ini', verbose=False):
         sys.exit("Couldn't find config file '{}'.  Check path or run `invoke newrelic_init` "
                  "to generate it.".format(config))
 
-    cmd = 'NEW_RELIC_CONFIG_FILE={} newrelic-admin run-program invoke server'.format(config)
+    cmd = f'NEW_RELIC_CONFIG_FILE={config} newrelic-admin run-program invoke server'
     if verbose:
         print(cmd)
     ctx.run(cmd, pty=True)

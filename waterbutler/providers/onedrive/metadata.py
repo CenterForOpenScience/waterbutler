@@ -62,7 +62,7 @@ class OneDriveFileMetadata(BaseOneDriveMetadata, metadata.BaseFileMetadata):
 
     @property
     def path(self):
-        return '/{0}'.format(self.raw['id'])
+        return '/{}'.format(self.raw['id'])
 
     @property
     def size(self):

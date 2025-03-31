@@ -221,17 +221,17 @@ def celery_dest_copy_params_root():
 
 @pytest.fixture
 def handler_auth():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json')) as fp:
         return json.load(fp)['hander_auth']
 
 
 @pytest.fixture
 def serialized_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json')) as fp:
         return json.load(fp)['serialized_metadata']
 
 
 @pytest.fixture
 def serialized_request():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/fixtures.json')) as fp:
         return json.load(fp)['serialized_request']

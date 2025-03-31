@@ -56,7 +56,7 @@ class TestDropboxMetadata:
         assert data._json_api_links('jverwz') == {
             'delete': link_url,
             'download': link_url,
-            'upload': '{}?kind=file'.format(link_url),
+            'upload': f'{link_url}?kind=file',
             'move': link_url,
         }
         assert data.json_api_serialized('jverwz') == {
@@ -84,7 +84,7 @@ class TestDropboxMetadata:
             },
             'links': {
                 'move': link_url,
-                'upload': '{}?kind=file'.format(link_url),
+                'upload': f'{link_url}?kind=file',
                 'delete': link_url,
                 'download': link_url,
             }
@@ -124,16 +124,16 @@ class TestDropboxMetadata:
             },
             'links': {
                 'move': link_url,
-                'upload': '{}?kind=file'.format(link_url),
+                'upload': f'{link_url}?kind=file',
                 'delete': link_url,
-                'new_folder': '{}?kind=folder'.format(link_url),
+                'new_folder': f'{link_url}?kind=folder',
             }
         }
         assert data._json_api_links('mucuew') == {
             'move': link_url,
-            'upload': '{}?kind=file'.format(link_url),
+            'upload': f'{link_url}?kind=file',
             'delete': link_url,
-            'new_folder': '{}?kind=folder'.format(link_url),
+            'new_folder': f'{link_url}?kind=folder',
         }
         assert data.children is None
         assert data._entity_url('mucuew') == link_url
