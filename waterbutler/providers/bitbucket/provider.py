@@ -1,5 +1,4 @@
 import logging
-from typing import Tuple
 from urllib.parse import urlencode
 
 from waterbutler.core import exceptions, provider, streams

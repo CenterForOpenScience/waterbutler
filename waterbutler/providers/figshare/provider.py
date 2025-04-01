@@ -2,7 +2,6 @@ import json
 import asyncio
 import hashlib
 import logging
-from typing import Tuple
 from http import HTTPStatus
 
 from waterbutler.core.streams import CutoffStream

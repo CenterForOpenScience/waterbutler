@@ -1,6 +1,5 @@
 import time
 import base64
-import typing
 import hashlib
 import logging
 import functools
@@ -271,8 +270,7 @@ class GoogleCloudProvider(BaseProvider):
     async def intra_copy(self, dest_provider: BaseProvider,  # type: ignore
                          source_path: WaterButlerPath,
                          dest_path: WaterButlerPath) -> \
-                         tuple[(GoogleCloudFileMetadata |
-                                                   GoogleCloudFolderMetadata),
+                         tuple[(GoogleCloudFileMetadata | GoogleCloudFolderMetadata),
                                       bool]:
         """Copy file objects within the same Google Cloud Storage Provider.
 

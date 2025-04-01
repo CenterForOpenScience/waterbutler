@@ -1,7 +1,6 @@
 import os
 import re
 import abc
-import typing
 import logging
 
 from multidict import MultiDict, MultiDictProxy

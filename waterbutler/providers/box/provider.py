@@ -5,7 +5,6 @@ import logging
 import tempfile
 from asyncio import sleep
 from http import HTTPStatus
-from typing import List, Tuple, Union
 
 import aiohttp
 

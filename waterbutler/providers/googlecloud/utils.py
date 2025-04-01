@@ -1,6 +1,5 @@
 import re
 import base64
-import typing
 import binascii
 from urllib.parse import urlparse, quote
 

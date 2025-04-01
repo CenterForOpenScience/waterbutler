@@ -1,5 +1,4 @@
 import json
-import typing
 import logging
 import mimetypes
 
@@ -318,7 +317,7 @@ class GitLabProvider(provider.BaseProvider):
         """
         data = await self._fetch_tree_contents(path)
 
-        ret = []  # type: typing.List[BaseGitLabMetadata]
+        ret = []  # type: list[BaseGitLabMetadata]
         for item in data:
             name = item['name']
             if item['type'] == 'tree':

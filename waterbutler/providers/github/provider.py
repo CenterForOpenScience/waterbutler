@@ -5,7 +5,6 @@ import uuid
 import asyncio
 import hashlib
 import logging
-from typing import Tuple
 from http import HTTPStatus
 
 import furl

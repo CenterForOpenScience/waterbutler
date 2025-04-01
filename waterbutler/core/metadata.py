@@ -1,5 +1,4 @@
 import abc
-import typing
 import hashlib
 
 import furl

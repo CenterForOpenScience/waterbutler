@@ -1,7 +1,6 @@
 import hashlib
 import logging
 import tempfile
-from typing import Tuple
 from http import HTTPStatus
 
 from aiohttp.helpers import BasicAuth
@@ -177,7 +176,7 @@ class DataverseProvider(provider.BaseProvider):
                 - 'latest' to check draft files
                 - 'latest-published' to check published files
                 - None to check all data
-        :param Tuple[int, int] range: the range header
+        :param tuple[int, int] range: the range header
         :param dict \*\*kwargs: Additional arguments that are ignored
         :rtype: :class:`waterbutler.core.streams.ResponseStreamReader`
         :raises: :class:`waterbutler.core.exceptions.DownloadError`

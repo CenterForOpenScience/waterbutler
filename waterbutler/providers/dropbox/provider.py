@@ -1,5 +1,4 @@
 import json
-import typing
 import logging
 from http import HTTPStatus
 
@@ -508,7 +507,7 @@ class DropboxProvider(provider.BaseProvider):
             url = self.build_url('files', 'list_folder')
 
         if path.is_folder:
-            ret = []  # type: typing.List[BaseDropboxMetadata]
+            ret = []  # type: list[BaseDropboxMetadata]
             has_more = True
             page_count = 0
             while has_more:

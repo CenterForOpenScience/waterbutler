@@ -4,7 +4,6 @@ import hashlib
 import functools
 from urllib import parse
 from http import HTTPStatus
-from typing import List, Tuple, Union
 from collections.abc import Sequence
 
 import furl
@@ -329,8 +328,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                        path: GoogleDrivePath,
                        raw: bool = False,
                        revision=None,
-                       **kwargs) -> (dict | BaseGoogleDriveMetadata |
-                                          list[BaseGoogleDriveMetadata | dict]):
+                       **kwargs) -> (dict | BaseGoogleDriveMetadata | list[BaseGoogleDriveMetadata | dict]):
         if path.identifier is None:
             raise exceptions.MetadataError(f'{str(path)} not found', code=404)
 

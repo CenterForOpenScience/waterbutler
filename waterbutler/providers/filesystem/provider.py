@@ -3,7 +3,6 @@ import shutil
 import logging
 import datetime
 import mimetypes
-from typing import Tuple, Union
 
 from waterbutler.core import exceptions, provider
 from waterbutler.core.path import WaterButlerPath
