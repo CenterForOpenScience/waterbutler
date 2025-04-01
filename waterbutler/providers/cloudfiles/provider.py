@@ -208,10 +208,10 @@ class CloudFilesProvider(provider.BaseProvider):
         return False
 
     def can_intra_copy(self, dest_provider, path=None):
-        return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
+        return isinstance(self, type(dest_provider)) and not getattr(path, 'is_dir', False)
 
     def can_intra_move(self, dest_provider, path=None):
-        return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
+        return isinstance(self, type(dest_provider)) and not getattr(path, 'is_dir', False)
 
     def sign_url(self, path, method='GET', endpoint=None, seconds=settings.TEMP_URL_SECS):
         """Sign a temp url for the specified stream

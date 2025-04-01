@@ -59,8 +59,7 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler):
         if isinstance(value, tornado.web.HTTPError):
             if value.log_message:
                 format = "%d %s: " + value.log_message
-                args = ([value.status_code, self._request_summary()] +
-                        list(value.args))
+                args = ([value.status_code, self._request_summary()] + list(value.args))
                 tornado.web.gen_log.warning(format, *args)
         else:
             tornado.web.app_log.error("Uncaught exception %s\n", self._request_summary(),

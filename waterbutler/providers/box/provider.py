@@ -151,7 +151,7 @@ class BoxProvider(provider.BaseProvider):
         return ret
 
     async def revalidate_path(self, base: WaterButlerPath, path: str,
-                              folder: bool=None) -> WaterButlerPath:
+                              folder: bool = None) -> WaterButlerPath:
         # TODO Research the search api endpoint
         response = await self.make_request(
             'GET',
@@ -180,7 +180,7 @@ class BoxProvider(provider.BaseProvider):
 
         return base.child(name, _id=_id, folder=folder)
 
-    def can_duplicate_names(self)-> bool:
+    def can_duplicate_names(self) -> bool:
         return False
 
     def shares_storage_root(self, other: provider.BaseProvider) -> bool:
@@ -190,10 +190,10 @@ class BoxProvider(provider.BaseProvider):
         Add a comparison of credentials to avoid this."""
         return super().shares_storage_root(other) and self.credentials == other.credentials
 
-    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
+    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath = None) -> bool:
         return self == other
 
-    def can_intra_copy(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
+    def can_intra_copy(self, other: provider.BaseProvider, path: WaterButlerPath = None) -> bool:
         return self == other
 
     async def intra_copy(self,  # type: ignore
@@ -261,7 +261,7 @@ class BoxProvider(provider.BaseProvider):
         return await super().make_request(method, url, *args, **kwargs)
 
     async def download(self,  # type: ignore
-                       path: WaterButlerPath, revision: str=None, range: Tuple[int, int]=None,
+                       path: WaterButlerPath, revision: str = None, range: Tuple[int, int] = None,
                        **kwargs) -> streams.ResponseStreamReader:
         if path.identifier is None:
             raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
@@ -284,7 +284,7 @@ class BoxProvider(provider.BaseProvider):
         return streams.ResponseStreamReader(resp)
 
     async def upload(self,  # type: ignore
-                     stream: streams.BaseStream, path: WaterButlerPath, conflict: str='replace',
+                     stream: streams.BaseStream, path: WaterButlerPath, conflict: str = 'replace',
                      **kwargs) -> Tuple[BoxFileMetadata, bool]:
         """Upload a file to Box.  If the file is less than ``NONCHUNKED_UPLOAD_LIMIT``, upload in
         a single request.  Otherwise, use Box's chunked upload interface to send it across multiple
@@ -306,7 +306,7 @@ class BoxProvider(provider.BaseProvider):
         return BoxFileMetadata(entry, path), created
 
     async def delete(self,  # type: ignore
-                     path: WaterButlerPath, confirm_delete: int=0, **kwargs) -> None:
+                     path: WaterButlerPath, confirm_delete: int = 0, **kwargs) -> None:
         """Delete file, folder, or provider root contents
 
         :param BoxPath path: BoxPath path object for folder
@@ -341,7 +341,7 @@ class BoxProvider(provider.BaseProvider):
         return  # Ensures the response is properly released
 
     async def metadata(self,  # type: ignore
-                       path: WaterButlerPath, raw: bool=False, folder=False, revision=None,
+                       path: WaterButlerPath, raw: bool = False, folder=False, revision=None,
                        **kwargs) -> Union[dict, BoxFileMetadata, List[BoxFolderMetadata]]:
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
@@ -367,7 +367,7 @@ class BoxProvider(provider.BaseProvider):
 
         return [BoxRevision(each) for each in [curr] + revisions]
 
-    async def create_folder(self, path: WaterButlerPath, folder_precheck: bool=True,
+    async def create_folder(self, path: WaterButlerPath, folder_precheck: bool = True,
                             **kwargs) -> BoxFolderMetadata:
         WaterButlerPath.validate_folder(path)
 
@@ -393,8 +393,8 @@ class BoxProvider(provider.BaseProvider):
         path._parts[-1]._id = resp_json['id']
         return BoxFolderMetadata(resp_json, path)
 
-    async def _get_file_meta(self, path: WaterButlerPath, raw: bool=False,
-                             revision: str=None) -> Union[dict, BoxFileMetadata]:
+    async def _get_file_meta(self, path: WaterButlerPath, raw: bool = False,
+                             revision: str = None) -> Union[dict, BoxFileMetadata]:
         if revision:
             url = self.build_url('files', path.identifier, 'versions')
         else:
@@ -419,8 +419,8 @@ class BoxProvider(provider.BaseProvider):
 
         return data if raw else BoxFileMetadata(data, path)
 
-    async def _get_folder_meta(self, path: WaterButlerPath, raw: bool=False,
-                               folder: bool=False) -> Union[dict, List[BoxFolderMetadata]]:
+    async def _get_folder_meta(self, path: WaterButlerPath, raw: bool = False,
+                               folder: bool = False) -> Union[dict, List[BoxFolderMetadata]]:
         if folder:
             response = await self.make_request(
                 'GET',

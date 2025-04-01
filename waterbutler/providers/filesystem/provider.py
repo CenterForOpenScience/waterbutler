@@ -56,7 +56,7 @@ class FileSystemProvider(provider.BaseProvider):
         shutil.move(src_path.full_path, dest_path.full_path)
         return (await dest_provider.metadata(dest_path)), not exists
 
-    async def download(self, path: WaterButlerPath, range: Tuple[int, int]=None,   # type: ignore
+    async def download(self, path: WaterButlerPath, range: Tuple[int, int] = None,   # type: ignore
                        **kwargs) -> Union[FileStreamReader, PartialFileStreamReader]:
         if not os.path.exists(path.full_path):
             raise exceptions.DownloadError('Could not retrieve file \'{0}\''.format(path), code=404)
@@ -132,7 +132,7 @@ class FileSystemProvider(provider.BaseProvider):
         }
 
     def can_intra_copy(self, dest_provider, path=None):
-        return type(self) == type(dest_provider)
+        return isinstance(self, type(dest_provider))
 
     def can_intra_move(self, dest_provider, path=None):
         return self.can_intra_copy(dest_provider)

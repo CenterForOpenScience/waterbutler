@@ -157,7 +157,7 @@ class OneDriveProvider(provider.BaseProvider):
     async def revalidate_path(self,  # type: ignore
                               base: OneDrivePath,
                               path: str,
-                              folder: bool=None) -> OneDrivePath:
+                              folder: bool = None) -> OneDrivePath:
         """Take a string file/folder name ``path`` and return a OneDrivePath object
         representing this file under ``base``.
 
@@ -245,8 +245,8 @@ class OneDriveProvider(provider.BaseProvider):
 
     async def download(self,  # type: ignore
                        path: OneDrivePath,
-                       revision: str=None,
-                       range: typing.Tuple[int, int]=None,
+                       revision: str = None,
+                       range: typing.Tuple[int, int] = None,
                        **kwargs) -> streams.ResponseStreamReader:
         r"""Download the file identified by ``path``.  If ``revision`` is not ``None``, get
         the file at the version identified by ``revision``.
@@ -344,7 +344,7 @@ class OneDriveProvider(provider.BaseProvider):
 
         return await self._contiguous_upload(stream, path, exists)
 
-    async def create_folder(self, path: OneDrivePath, folder_precheck: bool=True,
+    async def create_folder(self, path: OneDrivePath, folder_precheck: bool = True,
                             **kwargs) -> OneDriveFolderMetadata:
         """Create the folder defined by ``path``.
 

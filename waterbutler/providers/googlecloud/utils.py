@@ -10,7 +10,7 @@ from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.exceptions import WaterButlerError
 
 
-def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:
+def get_obj_name(path: WaterButlerPath, is_folder: bool = False) -> str:
     """Get the object name of the file or folder with the given Waterbutler Path.
 
     .. note::
@@ -28,7 +28,7 @@ def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:
     return validate_path_or_name(path.path.lstrip('/'), is_folder=is_folder)
 
 
-def build_path(obj_name: str, is_folder: bool=False) -> str:
+def build_path(obj_name: str, is_folder: bool = False) -> str:
     """Convert the object name to a path string which can pass WaterButler path validation.
 
     :param str obj_name: the object name of the object
@@ -42,7 +42,7 @@ def build_path(obj_name: str, is_folder: bool=False) -> str:
     )
 
 
-def validate_path_or_name(path_or_name: str, is_folder: bool=False) -> str:
+def validate_path_or_name(path_or_name: str, is_folder: bool = False) -> str:
     """Validate that path or object name.
 
     :param str path_or_name: the path or the object name

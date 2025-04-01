@@ -88,8 +88,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def __init__(self, auth: dict,
                  credentials: dict,
                  settings: dict,
-                 retry_on: typing.Set[int]={408, 502, 503, 504},
-                 is_celery_task: bool=False) -> None:
+                 retry_on: typing.Set[int] = {408, 502, 503, 504},
+                 is_celery_task: bool = False) -> None:
         """
         :param auth: ( :class:`dict` ) Information about the user this provider will act on the behalf of
         :param credentials: ( :class:`dict` ) The credentials used to authenticate with the provider,
@@ -148,7 +148,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def __eq__(self, other):
         try:
             return (
-                type(self) == type(other) and
+                isinstance(self, type(other)) and
                 self.credentials == other.credentials
             )
         except AttributeError:
@@ -339,9 +339,9 @@ class BaseProvider(metaclass=abc.ABCMeta):
                    dest_provider: 'BaseProvider',
                    src_path: wb_path.WaterButlerPath,
                    dest_path: wb_path.WaterButlerPath,
-                   rename: str=None,
-                   conflict: str='replace',
-                   handle_naming: bool=True) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+                   rename: str = None,
+                   conflict: str = 'replace',
+                   handle_naming: bool = True) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
         """Moves a file or folder from the current provider to the specified one
         Performs a copy and then a delete.
         Calls :func:`BaseProvider.intra_move` if possible.
@@ -397,8 +397,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
                    dest_provider: 'BaseProvider',
                    src_path: wb_path.WaterButlerPath,
                    dest_path: wb_path.WaterButlerPath,
-                   rename: str=None, conflict: str='replace',
-                   handle_naming: bool=True) \
+                   rename: str = None, conflict: str = 'replace',
+                   handle_naming: bool = True) \
             -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
@@ -510,8 +510,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def handle_naming(self,
                             src_path: wb_path.WaterButlerPath,
                             dest_path: wb_path.WaterButlerPath,
-                            rename: str=None,
-                            conflict: str='replace') -> wb_path.WaterButlerPath:
+                            rename: str = None,
+                            conflict: str = 'replace') -> wb_path.WaterButlerPath:
         """Given a :class:`.WaterButlerPath` and the desired name, handle any potential naming issues.
 
         i.e.:
@@ -551,7 +551,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     def can_intra_copy(self,
                        other: 'BaseProvider',
-                       path: wb_path.WaterButlerPath=None) -> bool:
+                       path: wb_path.WaterButlerPath = None) -> bool:
         """Indicates if a quick copy can be performed between the current provider and `other`.
 
         .. note::
@@ -565,7 +565,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     def can_intra_move(self,
                        other: 'BaseProvider',
-                       path: wb_path.WaterButlerPath=None) -> bool:
+                       path: wb_path.WaterButlerPath = None) -> bool:
         """Indicates if a quick move can be performed between the current provider and `other`.
 
         .. note::
@@ -637,7 +637,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     async def handle_name_conflict(self,
                                    path: wb_path.WaterButlerPath,
-                                   conflict: str='replace',
+                                   conflict: str = 'replace',
                                    **kwargs) -> typing.Tuple[wb_path.WaterButlerPath, bool]:
         """Check WaterButlerPath and resolve conflicts
 
@@ -675,7 +675,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def revalidate_path(self,
                               base: wb_path.WaterButlerPath,
                               path: str,
-                              folder: bool=False) -> wb_path.WaterButlerPath:
+                              folder: bool = False) -> wb_path.WaterButlerPath:
         """Take a path and a base path and build a WaterButlerPath representing `/base/path`.  For
         id-based providers, this will need to lookup the id of the new child object.
 

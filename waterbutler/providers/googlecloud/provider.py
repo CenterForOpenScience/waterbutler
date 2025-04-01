@@ -303,7 +303,7 @@ class GoogleCloudProvider(BaseProvider):
 
         raise CopyError('Cannot copy between a file and a folder')
 
-    def can_intra_copy(self, other: BaseProvider, path: WaterButlerPath=None) -> bool:
+    def can_intra_copy(self, other: BaseProvider, path: WaterButlerPath = None) -> bool:
         """Google Cloud Storage XML API supports intra-copy for files.
 
         .. note::
@@ -316,7 +316,7 @@ class GoogleCloudProvider(BaseProvider):
 
         return self == other and not getattr(path, 'is_folder', False)
 
-    def can_intra_move(self, other: BaseProvider, path: WaterButlerPath=None) -> bool:
+    def can_intra_move(self, other: BaseProvider, path: WaterButlerPath = None) -> bool:
         """Google Cloud Storage XML API supports intra move for files.  It is simply a combination
         of intra-copy and delete. Please refer to :meth:`.GoogleCloudProvider.can_intra_copy()`
         for more information.
@@ -359,7 +359,7 @@ class GoogleCloudProvider(BaseProvider):
         return True
 
     async def _metadata_object(self, path: WaterButlerPath,
-                               is_folder: bool=False) \
+                               is_folder: bool = False) \
                                -> typing.Union[GoogleCloudFileMetadata, GoogleCloudFolderMetadata]:
         """Get the metadata about the object with the given WaterButlerPath.
 
@@ -493,8 +493,8 @@ class GoogleCloudProvider(BaseProvider):
 
         return metadata, created  # type: ignore
 
-    def _build_and_sign_url(self, http_method: str, obj_name: str, content_md5: str='',
-                            content_type: str='', canonical_ext_headers: dict=None,
+    def _build_and_sign_url(self, http_method: str, obj_name: str, content_md5: str = '',
+                            content_type: str = '', canonical_ext_headers: dict = None,
                             **queries) -> str:
         r"""Build and sign the request URL for various actions.
 

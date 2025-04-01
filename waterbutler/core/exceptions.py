@@ -71,7 +71,7 @@ class TooManyRequests(WaterButlerError):
     * ``X-Waterbutler-RateLimiting-Reset``: Seconds until the rate-limit is reset
     """
     def __init__(self, data):
-        if type(data) != dict:
+        if not isinstance(data, dict):
             message = ('Too many requests issued, but error lacks necessary data to build proper '
                        'response. Got:({})'.format(data))
         else:

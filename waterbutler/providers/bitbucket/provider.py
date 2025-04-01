@@ -199,7 +199,7 @@ class BitbucketProvider(provider.BaseProvider):
         return [BitbucketRevisionMetadata(item) for item in valid_revisions]
 
     async def download(self, path: BitbucketPath,  # type: ignore
-                       range: Tuple[int, int]=None, **kwargs) -> streams.ResponseStreamReader:
+                       range: Tuple[int, int] = None, **kwargs) -> streams.ResponseStreamReader:
         """Get the stream to the specified file on Bitbucket
 
         In BB API 2.0, the ``repo/username/repo_slug/src/node/path`` endpoint is used for download.
