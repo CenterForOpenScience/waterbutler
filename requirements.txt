@@ -19,7 +19,7 @@ python-dateutil==2.9.0
 pytz==2025.1
 sentry-sdk==2.22.0
 redis==5.2.1
-setuptools==75.8.0
+setuptools==78.1.0
 stevedore==5.4.1
 tornado==6.4.2
 xmltodict==0.14.2
