@@ -11,7 +11,7 @@ google-auth==2.38.0
 humanfriendly==10.0
 invoke==2.2.0
 multidict==4.5.2
-newrelic==10.6.0
+newrelic==10.8.1
 oauthlib==3.2.2
 pyjwe==1.0.0
 pyjwt==2.10.1
