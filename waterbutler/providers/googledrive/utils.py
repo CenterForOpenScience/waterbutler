@@ -37,28 +37,28 @@ def is_docs_file(metadata):
 
 
 def get_mimetype_from_ext(ext):
-    for format in DOCS_FORMATS:
-        if format['ext'] == ext:
-            return format['mime_type']
+    for docs_format in DOCS_FORMATS:
+        if docs_format['ext'] == ext:
+            return docs_format['mime_type']
 
 
 def get_format(metadata):
-    for format in DOCS_FORMATS:
-        if format['mime_type'] == metadata['mimeType']:
-            return format
+    for docs_format in DOCS_FORMATS:
+        if docs_format['mime_type'] == metadata['mimeType']:
+            return docs_format
     return DOCS_DEFAULT_FORMAT
 
 
 def get_extension(metadata):
-    format = get_format(metadata)
-    return format['ext']
+    metadata_format = get_format(metadata)
+    return metadata_format['ext']
 
 
 def get_download_extension(metadata):
-    format = get_format(metadata)
-    return format['download_ext']
+    metadata_format = get_format(metadata)
+    return metadata_format['download_ext']
 
 
 def get_export_link(metadata):
-    format = get_format(metadata)
-    return metadata['exportLinks'][format['type']]
+    metadata_format = get_format(metadata)
+    return metadata['exportLinks'][metadata_format['type']]

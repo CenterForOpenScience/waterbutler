@@ -151,7 +151,7 @@ def make_unauthorized_file_access_error(file_id):
 
 
 def make_no_such_revision_error(revision_id):
-    message = 'Revision not found: {}'.format(revision_id)
+    message = f'Revision not found: {revision_id}'
     return json.dumps({
         "error": {
             "errors": [
@@ -384,7 +384,7 @@ class TestUpload:
 
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+                                  headers={'LOCATION': f'http://waterbutler.io?upload_id={upload_id}'})
 
         result, created = await provider.upload(file_stream, path)
 
@@ -408,7 +408,7 @@ class TestUpload:
 
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+                                  headers={'LOCATION': f'http://waterbutler.io?upload_id={upload_id}'})
 
         result, created = await provider.upload(file_stream, path)
 
@@ -433,7 +433,7 @@ class TestUpload:
 
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         aiohttpretty.register_uri('PUT', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+                                  headers={'LOCATION': f'http://waterbutler.io?upload_id={upload_id}'})
         result, created = await provider.upload(file_stream, path)
 
         assert aiohttpretty.has_call(method='PUT', uri=start_upload_url)
@@ -456,7 +456,7 @@ class TestUpload:
         finish_upload_url = provider._build_upload_url('files', uploadType='resumable',
                                                        upload_id=upload_id)
         aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+                                  headers={'LOCATION': f'http://waterbutler.io?upload_id={upload_id}'})
         aiohttpretty.register_json_uri('PUT', finish_upload_url, body=item)
         result, created = await provider.upload(file_stream, path)
 
@@ -479,7 +479,7 @@ class TestUpload:
         aiohttpretty.register_json_uri('PUT', finish_upload_url,
                                        body=root_provider_fixtures['checksum_mismatch_metadata'])
         aiohttpretty.register_uri('POST', start_upload_url,
-                                  headers={'LOCATION': 'http://waterbutler.io?upload_id={}'.format(upload_id)})
+                                  headers={'LOCATION': f'http://waterbutler.io?upload_id={upload_id}'})
 
         with pytest.raises(exceptions.UploadChecksumMismatchError):
             await provider.upload(file_stream, path)
@@ -1060,7 +1060,7 @@ class TestMetadata:
 
         query = provider._build_query(path.identifier)
         url = provider.build_url('files', q=query, alt='json', maxResults=1000)
-        url_children = provider.build_url('files', q="'{}' in parents".format(path.identifier))
+        url_children = provider.build_url('files', q=f"'{path.identifier}' in parents")
 
         aiohttpretty.register_json_uri('GET', url, body=body)
         aiohttpretty.register_json_uri('GET', url_children, body={'items': []})
@@ -1654,5 +1654,5 @@ class TestOperationsOrMisc:
         with pytest.raises(exceptions.MetadataError) as e:
             _ = await provider._resolve_path_to_ids(file_name)
 
-        assert e.value.message == '{} not found'.format(str(path))
+        assert e.value.message == f'{str(path)} not found'
         assert e.value.code == 404

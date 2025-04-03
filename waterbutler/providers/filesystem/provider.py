@@ -3,7 +3,6 @@ import shutil
 import logging
 import datetime
 import mimetypes
-from typing import Tuple, Union
 
 from waterbutler.core import exceptions, provider
 from waterbutler.core.path import WaterButlerPath
@@ -56,12 +55,12 @@ class FileSystemProvider(provider.BaseProvider):
         shutil.move(src_path.full_path, dest_path.full_path)
         return (await dest_provider.metadata(dest_path)), not exists
 
-    async def download(self, path: WaterButlerPath, range: Tuple[int, int] = None,   # type: ignore
-                       **kwargs) -> Union[FileStreamReader, PartialFileStreamReader]:
+    async def download(self, path: WaterButlerPath, range: tuple[int, int] = None,   # type: ignore
+                       **kwargs) -> FileStreamReader | PartialFileStreamReader:
         if not os.path.exists(path.full_path):
-            raise exceptions.DownloadError('Could not retrieve file \'{0}\''.format(path), code=404)
+            raise exceptions.DownloadError(f'Could not retrieve file \'{path}\'', code=404)
         file_pointer = open(path.full_path, 'rb')
-        logger.debug('requested-range:: {}'.format(range))
+        logger.debug(f'requested-range:: {range}')
         if range is not None and range[1] is not None:
             return PartialFileStreamReader(file_pointer, range)
         return FileStreamReader(file_pointer)
@@ -92,7 +91,7 @@ class FileSystemProvider(provider.BaseProvider):
         if path.is_dir:
             if not os.path.exists(path.full_path) or not os.path.isdir(path.full_path):
                 raise exceptions.MetadataError(
-                    'Could not retrieve folder \'{0}\''.format(path),
+                    f'Could not retrieve folder \'{path}\'',
                     code=404,
                 )
 
@@ -108,16 +107,17 @@ class FileSystemProvider(provider.BaseProvider):
         else:
             if not os.path.exists(path.full_path) or os.path.isdir(path.full_path):
                 raise exceptions.MetadataError(
-                    'Could not retrieve file \'{0}\''.format(path),
+                    f'Could not retrieve file \'{path}\'',
                     code=404,
                 )
 
             metadata = self._metadata_file(path)
             return FileSystemFileMetadata(metadata, self.folder)
 
-    def _metadata_file(self, path, file_name=''):
+    @staticmethod
+    def _metadata_file(path, file_name=''):
         full_path = path.full_path if file_name == '' else os.path.join(path.full_path, file_name)
-        modified = datetime.datetime.utcfromtimestamp(os.path.getmtime(full_path)).replace(tzinfo=datetime.timezone.utc)
+        modified = datetime.datetime.fromtimestamp(os.path.getmtime(full_path), datetime.UTC)
         return {
             'path': full_path,
             'size': os.path.getsize(full_path),
@@ -126,7 +126,8 @@ class FileSystemProvider(provider.BaseProvider):
             'mime_type': mimetypes.guess_type(full_path)[0],
         }
 
-    def _metadata_folder(self, path, folder_name):
+    @staticmethod
+    def _metadata_folder(path, folder_name):
         return {
             'path': os.path.join(path.path, folder_name),
         }

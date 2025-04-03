@@ -39,17 +39,17 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
     @property
     def path(self):
         if settings.ARTICLE_TYPE_IDENTIFIER in self.raw['url']:
-            return '/{0}'.format(self.id)
-        return '/{0}/{1}'.format(self.article_id, self.id)
+            return f'/{self.id}'
+        return f'/{self.article_id}/{self.id}'
 
     @property
     def materialized_path(self):
         if settings.ARTICLE_TYPE_IDENTIFIER in self.raw['url']:
-            return '/{0}'.format(self.name)
+            return f'/{self.name}'
         # if self.raw['defined_type'] in settings.FOLDER_TYPES:
         #     return '/{0}/{1}'.format(self.article_name, self.name)
         # return '/{0}'.format(self.name)
-        return '/{0}/{1}'.format(self.article_name, self.name)
+        return f'/{self.article_name}/{self.name}'
 
     @property
     def upload_path(self):
@@ -104,7 +104,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
     @property
     def can_delete(self):
         """Files can be deleted if not public."""
-        return (not self.is_public)
+        return not self.is_public
 
     @property
     def extra(self):
@@ -137,11 +137,11 @@ class FigshareFolderMetadata(BaseFigshareMetadata, metadata.BaseFolderMetadata):
 
     @property
     def path(self):
-        return '/{0}/'.format(self.raw.get('id'))
+        return '/{}/'.format(self.raw.get('id'))
 
     @property
     def materialized_path(self):
-        return '/{0}/'.format(self.name)
+        return f'/{self.name}/'
 
     @property
     def size(self):
@@ -169,9 +169,6 @@ class FigshareFolderMetadata(BaseFigshareMetadata, metadata.BaseFolderMetadata):
 
 
 class FigshareFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
-
-    def __init__(self):
-        pass
 
     @property
     def modified(self):

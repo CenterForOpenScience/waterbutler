@@ -74,9 +74,9 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
 
-        with sentry_sdk.configure_scope() as scope:
-            scope.set_tag('resource.id', self.resource)
-            scope.set_tag('src_provider', self.path_kwargs['provider'])
+        scope = sentry_sdk.get_current_scope()
+        scope.set_tag('resource.id', self.resource)
+        scope.set_tag('src_provider', self.path_kwargs['provider'])
 
         # pre-validator methods perform validations that can be performed before ensuring that the
         # path given by the url is valid.  An example would be making sure that a particular query
@@ -116,7 +116,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         """
         if self.path.is_dir:  # Metadata on the folder itself TODO
             return self.set_status(int(HTTPStatus.NOT_IMPLEMENTED))
-        return (await self.header_file_metadata())
+        return await self.header_file_metadata()
 
     async def get(self, **_):
         """Download a file
@@ -124,17 +124,17 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         :raises: MustBeFileError if path is not a file
         """
         if self.path.is_dir:
-            return (await self.get_folder())
-        return (await self.get_file())
+            return await self.get_folder()
+        return await self.get_file()
 
     async def put(self, **_):
         """Defined in CreateMixin"""
         if self.target_path.is_file:
-            return (await self.upload_file())
-        return (await self.create_folder())
+            return await self.upload_file()
+        return await self.create_folder()
 
     async def post(self, **_):
-        return (await self.move_or_copy())
+        return await self.move_or_copy()
 
     async def delete(self, **_):
         self.confirm_delete = int(self.get_query_argument('confirm_delete', default=0))

@@ -1,6 +1,5 @@
 import time
 import base64
-import typing
 import hashlib
 import logging
 import functools
@@ -96,7 +95,7 @@ class GoogleCloudProvider(BaseProvider):
         except ValueError as exc:
             raise InvalidProviderConfigError(
                 self.NAME,
-                message='Invalid or mal-formed service account credentials: {}'.format(str(exc))
+                message=f'Invalid or mal-formed service account credentials: {str(exc)}'
             )
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
@@ -108,7 +107,7 @@ class GoogleCloudProvider(BaseProvider):
     async def metadata(self,  # type: ignore
                        path: WaterButlerPath,
                        **kwargs) \
-                       -> typing.Union[GoogleCloudFileMetadata, typing.List[BaseGoogleCloudMetadata]]:
+                       -> GoogleCloudFileMetadata | list[BaseGoogleCloudMetadata]:
         r"""Get the metadata about the object with the given WaterButlerPath.
 
         .. note::
@@ -121,7 +120,7 @@ class GoogleCloudProvider(BaseProvider):
 
         :param path: the WaterButlerPath to the file or folder
         :type path: :class:`.WaterButlerPath`
-        :param dict \*\*kwargs: additional kwargs are ignored
+        :param dict kwargs: additional kwargs are ignored
         :rtype: :class:`.GoogleCloudFileMetadata` (for file)
         :rtype: List<:class:`.BaseGoogleCloudMetadata`> (for folder)
         """
@@ -132,7 +131,7 @@ class GoogleCloudProvider(BaseProvider):
             return await self._metadata_object(path, is_folder=False)  # type: ignore
 
     async def upload(self, stream: BaseStream, path: WaterButlerPath, *args,
-                     **kwargs) -> typing.Tuple[GoogleCloudFileMetadata, bool]:
+                     **kwargs) -> tuple[GoogleCloudFileMetadata, bool]:
         """Upload a file stream to the given WaterButlerPath.
 
         API docs:
@@ -196,7 +195,7 @@ class GoogleCloudProvider(BaseProvider):
         return metadata, created  # type: ignore
 
     async def download(self, path: WaterButlerPath, accept_url=False, range=None,  # type: ignore
-                       **kwargs) -> typing.Union[str, ResponseStreamReader]:
+                       **kwargs) -> str | ResponseStreamReader:
         """Download the object with the given path.
 
 
@@ -258,8 +257,8 @@ class GoogleCloudProvider(BaseProvider):
 
         :param path: the WaterButlerPath of the object to delete
         :type path: :class:`.WaterButlerPath`
-        :param list \*args: additional args are ignored
-        :param dict \*\*kwargs: additional kwargs are ignored
+        :param list args: additional args are ignored
+        :param dict kwargs: additional kwargs are ignored
         :rtype: None
         """
 
@@ -271,8 +270,7 @@ class GoogleCloudProvider(BaseProvider):
     async def intra_copy(self, dest_provider: BaseProvider,  # type: ignore
                          source_path: WaterButlerPath,
                          dest_path: WaterButlerPath) -> \
-                         typing.Tuple[typing.Union[GoogleCloudFileMetadata,
-                                                   GoogleCloudFolderMetadata],
+                         tuple[(GoogleCloudFileMetadata | GoogleCloudFolderMetadata),
                                       bool]:
         """Copy file objects within the same Google Cloud Storage Provider.
 
@@ -360,7 +358,7 @@ class GoogleCloudProvider(BaseProvider):
 
     async def _metadata_object(self, path: WaterButlerPath,
                                is_folder: bool = False) \
-                               -> typing.Union[GoogleCloudFileMetadata, GoogleCloudFolderMetadata]:
+                               -> GoogleCloudFileMetadata | GoogleCloudFolderMetadata:
         """Get the metadata about the object with the given WaterButlerPath.
 
         API docs:
@@ -434,7 +432,7 @@ class GoogleCloudProvider(BaseProvider):
         await resp.release()
 
     async def _intra_copy_file(self, dest_provider: BaseProvider, source_path: WaterButlerPath,
-                               dest_path: WaterButlerPath) -> typing.Tuple[GoogleCloudFileMetadata, bool]:  # noqa
+                               dest_path: WaterButlerPath) -> tuple[GoogleCloudFileMetadata, bool]:  # noqa
         """Copy files within the same Google Cloud Storage provider, overwrite existing ones if
         there are any.  Return the metadata of the destination file and a flag indicating if the
         file was created (new) or overwritten (existing).
@@ -467,7 +465,7 @@ class GoogleCloudProvider(BaseProvider):
         headers = {'Content-Length': '0', 'Content-Type': ''}
 
         src_obj_name = utils.get_obj_name(source_path, is_folder=False)
-        canonical_ext_headers = {'x-goog-copy-source': '{}/{}'.format(self.bucket, src_obj_name)}
+        canonical_ext_headers = {'x-goog-copy-source': f'{self.bucket}/{src_obj_name}'}
         headers.update(canonical_ext_headers)
 
         dest_obj_name = utils.get_obj_name(dest_path, is_folder=False)

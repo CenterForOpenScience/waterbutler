@@ -16,7 +16,7 @@ class CreateMixin:
         self.kind = self.get_query_argument('kind', default='file')
 
         if self.kind not in ('file', 'folder'):
-            raise exceptions.InvalidParameters('Kind must be file, folder or unspecified (interpreted as file), not {}'.format(self.kind))
+            raise exceptions.InvalidParameters(f'Kind must be file, folder or unspecified (interpreted as file), not {self.kind}')
 
         length = self.request.headers.get('Content-Length')
 

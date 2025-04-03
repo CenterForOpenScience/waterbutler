@@ -22,7 +22,7 @@ def _merge_dicts(a, b, path=None):
     return a
 
 
-class MetricsBase():
+class MetricsBase:
     """Lightweight wrapper around a dict to make keeping track of metrics a little easier.
 
     Current functionality is limited, but may be extended later.  To do:
@@ -73,7 +73,7 @@ class MetricsBase():
         key is undefined.  Type homogeneity of list members is not enforced.
 
         :param str key: the key to store ``value`` under
-        :param value: the value to store, type unrestricted
+        :param new_value: the value to store, type unrestricted
         """
         old_value = self._get_dotted_key(self._metrics, key)
         self._set_dotted_key(self._metrics, key, ([] if old_value is None else old_value) + [new_value])
@@ -96,7 +96,8 @@ class MetricsBase():
         """
         return {self.key: self.serialize()}
 
-    def _get_dotted_key(self, store, key):
+    @staticmethod
+    def _get_dotted_key(store, key):
         """Naive method to get a nested dict values via dot-separated keys. e.g
         ``_get_dotted_keys(self._metrics, 'foo.bar')`` is equivalent to
         ``return self._metrics['foo']['bar']``, but will autovivify any non-existing intermediate
@@ -112,7 +113,8 @@ class MetricsBase():
             current = current[part]
         return current.get(parts[-1], None)
 
-    def _set_dotted_key(self, store, key, value):
+    @staticmethod
+    def _set_dotted_key(store, key, value):
         """Naive method to set nested dict values via dot-separated keys. e.g
         ``_set_dotted_keys(self._metrics, 'foo.bar', 'moo')`` is equivalent to
         ``self._metrics['foo']['bar'] = 'moo'``.  This method is neither resilient nor intelligent
@@ -172,7 +174,7 @@ class MetricsSubRecord(MetricsRecord):
     @property
     def key(self):
         """ID string for this subrecord: '{category}_{name}'"""
-        return '{}_{}'.format(self.category, self.name)
+        return f'{self.category}_{self.name}'
 
     def new_subrecord(self, name):
         """Creates and saves a new subrecord.  The new subrecord will have its category set to the

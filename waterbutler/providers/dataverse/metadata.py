@@ -52,7 +52,7 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return '{}::{}'.format(self.dataset_version, self.file_id)
+        return f'{self.dataset_version}::{self.file_id}'
 
     @property
     def extra(self):

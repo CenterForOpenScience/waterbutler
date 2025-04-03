@@ -110,7 +110,7 @@ class TestRootProviderValidatePath:
         item_url = root_provider._build_graph_item_url(file_id)
         aiohttpretty.register_json_uri('GET', item_url, body=file_metadata, status=200)
 
-        file_path = '/{}'.format(file_id)
+        file_path = f'/{file_id}'
         try:
             wb_path_v1 = await root_provider.validate_v1_path(file_path)
         except Exception as exc:
@@ -137,7 +137,7 @@ class TestRootProviderValidatePath:
         item_url = root_provider._build_graph_item_url(folder_id)
         aiohttpretty.register_json_uri('GET', item_url, body=folder_metadata, status=200)
 
-        folder_path = '/{}/'.format(folder_id)
+        folder_path = f'/{folder_id}/'
         folder_name = '/{}/'.format(folder_metadata['name'])
         try:
             wb_path_v1 = await root_provider.validate_v1_path(folder_path)
@@ -180,7 +180,7 @@ class TestSubfolderProviderValidatePath:
         item_url = subfolder_provider._build_graph_item_url(folder_id)
         aiohttpretty.register_json_uri('GET', item_url, body=folder_metadata, status=200)
 
-        folder_path = '/{}/'.format(folder_id)
+        folder_path = f'/{folder_id}/'
         folder_name = '/{}/'.format(folder_metadata['name'])
         try:
             wb_path_v1 = await subfolder_provider.validate_v1_path(folder_path)
@@ -209,7 +209,7 @@ class TestSubfolderProviderValidatePath:
         item_url = subfolder_provider._build_graph_item_url(file_id)
         aiohttpretty.register_json_uri('GET', item_url, body=file_metadata, status=200)
 
-        file_path = '/{}'.format(file_id)
+        file_path = f'/{file_id}'
         file_name = '/{}'.format(file_metadata['name'])
         try:
             wb_path_v1 = await subfolder_provider.validate_v1_path(file_path)
@@ -243,7 +243,7 @@ class TestSubfolderProviderValidatePath:
                                        body=subfolder_provider_fixtures['root_metadata'],
                                        status=200)
 
-        subfile_path = '/{}'.format(subfile_id)
+        subfile_path = f'/{subfile_id}'
         subfile_name = '/{}/{}'.format(subfolder_provider_fixtures['folder_metadata']['name'],
                                        subfile_metadata['name'])
         try:
@@ -273,7 +273,7 @@ class TestSubfolderProviderValidatePath:
                                        body=subfolder_provider_fixtures['root_metadata'],
                                        status=200)
 
-        file_path = '/{}'.format(file_id)
+        file_path = f'/{file_id}'
         with pytest.raises(exceptions.NotFoundError):
             await subfolder_provider.validate_v1_path(file_path)
 
@@ -291,7 +291,7 @@ class TestRevalidatePath:
         root_id = 'root'
 
         parent_path = OneDrivePath('/', _ids=[root_id])
-        expected_path = OneDrivePath('/{}'.format(file_name), _ids=[root_id, file_id])
+        expected_path = OneDrivePath(f'/{file_name}', _ids=[root_id, file_id])
 
         parent_url = root_provider._build_graph_item_url(parent_path.identifier, 'children')
         aiohttpretty.register_json_uri('GET', parent_url,
@@ -302,7 +302,7 @@ class TestRevalidatePath:
         assert actual_path == expected_path
 
         potential_name = 'this-should-not-exist'
-        potential_expected_path = OneDrivePath('/{}'.format(potential_name), _ids=[root_id])
+        potential_expected_path = OneDrivePath(f'/{potential_name}', _ids=[root_id])
         potential_returned_path = await root_provider.revalidate_path(parent_path, potential_name,
                                                                       False)
         assert potential_returned_path == potential_expected_path
@@ -315,7 +315,7 @@ class TestRevalidatePath:
         root_id = 'root'
 
         parent_path = OneDrivePath('/', _ids=[root_id])
-        expected_path = OneDrivePath('/{}/'.format(folder_name), _ids=[root_id, folder_id])
+        expected_path = OneDrivePath(f'/{folder_name}/', _ids=[root_id, folder_id])
 
         parent_url = root_provider._build_graph_item_url(parent_path.identifier, 'children')
         aiohttpretty.register_json_uri('GET', parent_url,
@@ -326,7 +326,7 @@ class TestRevalidatePath:
         assert actual_path == expected_path
 
         potential_name = 'this-should-not-exist'
-        potential_expected_path = OneDrivePath('/{}/'.format(potential_name), _ids=[root_id])
+        potential_expected_path = OneDrivePath(f'/{potential_name}/', _ids=[root_id])
         potential_returned_path = await root_provider.revalidate_path(parent_path, potential_name,
                                                                       True)
         assert potential_returned_path == potential_expected_path
@@ -341,8 +341,8 @@ class TestRevalidatePath:
         parent_name = 'teeth'
         subfile_name = 'bicuspid.txt'
 
-        parent_path = OneDrivePath('/{}/'.format(parent_name), _ids=[root_id, parent_id])
-        expected_path = OneDrivePath('/{}/{}'.format(parent_name, subfile_name),
+        parent_path = OneDrivePath(f'/{parent_name}/', _ids=[root_id, parent_id])
+        expected_path = OneDrivePath(f'/{parent_name}/{subfile_name}',
                                      _ids=[root_id, parent_id, subfile_id])
 
         parent_url = root_provider._build_graph_item_url(parent_path.identifier, 'children')
@@ -354,9 +354,9 @@ class TestRevalidatePath:
         assert actual_path == expected_path
 
         potential_name = 'this-should-not-exist'
-        potential_expected_path = OneDrivePath('/{}/{}'.format(parent_name, potential_name),
+        potential_expected_path = OneDrivePath(f'/{parent_name}/{potential_name}',
                                                _ids=[root_id, parent_id])
-        expected_path           = OneDrivePath('/{}/{}'.format(parent_name, subfile_name),
+        expected_path           = OneDrivePath(f'/{parent_name}/{subfile_name}',
                                              _ids=[root_id, parent_id, subfile_id])
         potential_returned_path = await root_provider.revalidate_path(parent_path, potential_name,
                                                                       False)
@@ -369,7 +369,7 @@ class TestRevalidatePath:
         root_id = '12345'
 
         parent_path = OneDrivePath('/', _ids=[root_id])
-        expected_path = OneDrivePath('/{}'.format(file_name), _ids=[root_id, None])
+        expected_path = OneDrivePath(f'/{file_name}', _ids=[root_id, None])
 
         parent_url = root_provider._build_graph_item_url(parent_path.identifier, 'children')
         aiohttpretty.register_json_uri('GET', parent_url, status=404)
@@ -409,7 +409,7 @@ class TestMetadata:
         folder_id = subfolder_provider_fixtures['folder_id']
         folder_metadata = subfolder_provider_fixtures['folder_metadata']
         folder_name = folder_metadata['name']
-        path = OneDrivePath('/{}/'.format(folder_name),
+        path = OneDrivePath(f'/{folder_name}/',
                             _ids=(subfolder_provider_fixtures['root_id'], folder_id, ))
 
         list_url = subfolder_provider._build_graph_item_url(path.identifier, expand='children')
@@ -429,7 +429,7 @@ class TestMetadata:
         file_id = subfolder_provider_fixtures['file_id']
         file_metadata = subfolder_provider_fixtures['file_metadata']
         file_name = file_metadata['name']
-        path = OneDrivePath('/{}'.format(file_name),
+        path = OneDrivePath(f'/{file_name}',
                             _ids=(subfolder_provider_fixtures['root_id'], file_id, ))
 
         list_url = subfolder_provider._build_graph_item_url(path.identifier, expand='children')
@@ -726,7 +726,7 @@ class TestUpload:
         aiohttpretty.register_json_uri('GET', base_metadata_url, body=subfolder_children,
                                        status=200)
 
-        new_file_upload_url = provider._build_graph_item_url('{}:'.format(base_folder_id),
+        new_file_upload_url = provider._build_graph_item_url(f'{base_folder_id}:',
                                                              'elect-a (1).jpg:', 'content')
         aiohttpretty.register_json_uri('PUT', new_file_upload_url, body=file_rename_sub_response,
                                        status=201)
@@ -765,8 +765,8 @@ class TestUpload:
         chunk_upload_mock.return_value = (None, file_root_response)
         monkeypatch.setattr(provider, '_chunked_upload_stream_by_range', chunk_upload_mock)
 
-        create_session_url = provider._build_graph_item_url('{}:'.format(parent_path.identifier),
-                                                            '{}:'.format(upload_path.name),
+        create_session_url = provider._build_graph_item_url(f'{parent_path.identifier}:',
+                                                            f'{upload_path.name}:',
                                                             'createUploadSession')
         aiohttpretty.register_json_uri('POST', create_session_url,
                                        body=create_upload_session_response)
@@ -799,8 +799,8 @@ class TestUpload:
             fragment_size
         )
 
-        create_session_url = provider._build_graph_item_url('{}:'.format(parent_path.identifier),
-                                                            '{}:'.format(upload_path.name),
+        create_session_url = provider._build_graph_item_url(f'{parent_path.identifier}:',
+                                                            f'{upload_path.name}:',
                                                             'createUploadSession')
         aiohttpretty.register_json_uri('POST', create_session_url,
                                        body=create_upload_session_response)
@@ -830,7 +830,7 @@ class TestDelete:
             await provider.delete(path)
 
         assert e.value.code == 404
-        assert e.value.message == 'Could not retrieve file or directory {}'.format(path)
+        assert e.value.message == f'Could not retrieve file or directory {path}'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

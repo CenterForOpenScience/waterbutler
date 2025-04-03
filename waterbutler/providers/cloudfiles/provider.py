@@ -23,7 +23,7 @@ def ensure_connection(func):
     @functools.wraps(func)
     async def wrapped(self, *args, **kwargs):
         await self._ensure_connection()
-        return (await func(self, *args, **kwargs))
+        return await func(self, *args, **kwargs)
     return wrapped
 
 
@@ -34,8 +34,8 @@ class CloudFilesProvider(provider.BaseProvider):
     """
     NAME = 'cloudfiles'
 
-    def __init__(self, auth, credentials, settings, **kwargs):
-        super().__init__(auth, credentials, settings, **kwargs)
+    def __init__(self, auth, credentials, settings_data, **kwargs):
+        super().__init__(auth, credentials, settings_data, **kwargs)
         self.token = None
         self.endpoint = None
         self.public_endpoint = None
@@ -92,7 +92,7 @@ class CloudFilesProvider(provider.BaseProvider):
     async def download(self, path, accept_url=False, range=None, **kwargs):
         r"""Returns a ResponseStreamReader (Stream) for the specified path
         :param str path: Path to the object you want to download
-        :param dict \*\*kwargs: Additional arguments that are ignored
+        :param dict kwargs: Additional arguments that are ignored
         :rtype str:
         :rtype ResponseStreamReader:
         :raises: exceptions.DownloadError
@@ -191,9 +191,9 @@ class CloudFilesProvider(provider.BaseProvider):
         :rtype list:
         """
         if path.is_dir:
-            return (await self._metadata_folder(path, recursive=recursive, **kwargs))
+            return await self._metadata_folder(path, recursive=recursive, **kwargs)
         else:
-            return (await self._metadata_file(path, **kwargs))
+            return await self._metadata_file(path, **kwargs)
 
     def build_url(self, path, _endpoint=None, **query):
         """Build the url for the specified object
@@ -236,12 +236,12 @@ class CloudFilesProvider(provider.BaseProvider):
 
     async def make_request(self, *args, **kwargs):
         try:
-            return (await super().make_request(*args, **kwargs))
+            return await super().make_request(*args, **kwargs)
         except exceptions.ProviderError as e:
             if e.code != 408:
                 raise
             await asyncio.sleep(1)
-            return (await super().make_request(*args, **kwargs))
+            return await super().make_request(*args, **kwargs)
 
     async def _ensure_connection(self):
         """Defines token, endpoint and temp_url_key if they are not already defined
@@ -322,9 +322,9 @@ class CloudFilesProvider(provider.BaseProvider):
 
         await resp.release()
 
-        if (resp.headers['Content-Type'] == 'application/directory' and not is_folder):
+        if resp.headers['Content-Type'] == 'application/directory' and not is_folder:
             raise exceptions.MetadataError(
-                'Could not retrieve file \'{0}\''.format(str(path)),
+                f'Could not retrieve file \'{str(path)}\'',
                 code=404,
             )
 
@@ -356,7 +356,7 @@ class CloudFilesProvider(provider.BaseProvider):
             metadata = await self._metadata_file(dir_marker, is_folder=True, **kwargs)
             if not metadata:
                 raise exceptions.MetadataError(
-                    'Could not retrieve folder \'{0}\''.format(str(path)),
+                    f'Could not retrieve folder \'{str(path)}\'',
                     code=404,
                 )
 
@@ -375,7 +375,8 @@ class CloudFilesProvider(provider.BaseProvider):
             for item in data
         ]
 
-    def _serialize_folder_metadata(self, data):
+    @staticmethod
+    def _serialize_folder_metadata(data):
         if data.get('subdir'):
             return CloudFilesFolderMetadata(data)
         elif data['content_type'] == 'application/directory':

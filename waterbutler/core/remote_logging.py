@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 @utils.async_retry(retries=5, backoff=5)
-async def log_to_callback(action, source=None, destination=None, start_time=None, errors=[],
-                          request={}):
+async def log_to_callback(action, source=None, destination=None, start_time=None, errors=None,
+                          request=None):
     """PUT a logging payload back to the callback given by the auth provider."""
-
+    errors = errors or []
+    request = request or {}
     auth = getattr(destination, 'auth', source.auth)
     ref_url_domain = ''
     log_payload = {
@@ -41,8 +42,8 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         referrer = request['referrer']['url']
         if referrer:
             ref_url = furl.furl(request['referrer']['url'])
-            ref_url_port = ':{}'.format(ref_url.port) if ref_url.port else ''
-            ref_url_domain = '{}://{}{}'.format(ref_url.scheme, ref_url.host, ref_url_port)
+            ref_url_port = f':{ref_url.port}' if ref_url.port else ''
+            ref_url_domain = f'{ref_url.scheme}://{ref_url.host}{ref_url_port}'
 
     if start_time:
         log_payload['email'] = time.time() - start_time > task_settings.WAIT_TIMEOUT
@@ -144,7 +145,7 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
         keen_payload['action']['is_mfr_render'] = True
 
     if request['referrer']['url'] is not None:
-        if request['referrer']['url'].startswith('{}'.format(settings.MFR_DOMAIN)):
+        if request['referrer']['url'].startswith(f'{settings.MFR_DOMAIN}'):
             keen_payload['action']['is_mfr_render'] = True
 
         keen_payload['referrer'] = request['referrer']  # .info added via keen addons
@@ -196,18 +197,18 @@ async def _send_to_keen(payload, collection, project_id, write_key, action, doma
     Will raise an excpetion if the event cannot be sent."""
 
     serialized = json.dumps(payload).encode('UTF-8')
-    logger.debug("Serialized payload: {}".format(serialized))
+    logger.debug(f"Serialized payload: {serialized}")
     headers = {
         'Content-Type': 'application/json',
         'Authorization': write_key,
     }
-    url = '{0}/{1}/projects/{2}/events/{3}'.format(settings.KEEN_API_BASE_URL,
+    url = '{}/{}/projects/{}/events/{}'.format(settings.KEEN_API_BASE_URL,
                                                    settings.KEEN_API_VERSION,
                                                    project_id, collection)
 
     async with aiohttp.request('POST', url, headers=headers, data=serialized) as resp:
         if resp.status == 201:
-            logger.info('Successfully logged {} to {} collection in {} Keen'.format(action, collection, domain))
+            logger.info(f'Successfully logged {action} to {collection} collection in {domain} Keen')
         else:
             raise Exception('Failed to log {} to {} collection in {} Keen. Status: {} Error: {}'.format(
                 action, collection, domain, str(int(resp.status)), await resp.read()
@@ -215,9 +216,10 @@ async def _send_to_keen(payload, collection, project_id, write_key, action, doma
         return
 
 
-def log_file_action(action, source, api_version, destination=None, request={},
+def log_file_action(action, source, api_version, destination=None, request=None,
                     start_time=None, errors=None, bytes_downloaded=None, bytes_uploaded=None):
     """Kick off logging actions in the background. Returns array of asyncio.Tasks."""
+    request = request or {}
     return [
         log_to_callback(action, source=source, destination=destination,
                         start_time=start_time, errors=errors, request=request,),
@@ -328,7 +330,7 @@ def _scrub_headers_for_keen(payload, MAX_ITERATIONS=10):
         # if our new scrubbed key is already in the payload, we need to increment it
         if scrubbed_key in scrubbed_payload:
             for i in range(1, MAX_ITERATIONS + 1):  # try MAX_ITERATION times, then give up & drop it
-                incremented_key = '{}-{}'.format(scrubbed_key, i)
+                incremented_key = f'{scrubbed_key}-{i}'
                 if incremented_key not in scrubbed_payload:  # we found an unused key!
                     scrubbed_payload[incremented_key] = payload[key]
                     break

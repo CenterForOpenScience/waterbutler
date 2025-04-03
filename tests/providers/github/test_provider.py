@@ -150,7 +150,7 @@ class TestValidatePath:
                                        body=provider_fixtures['repo_tree_metadata_root'])
 
         blob_name = 'file.txt'
-        blob_path = '/{}'.format(blob_name)
+        blob_path = f'/{blob_name}'
 
         result = await provider.validate_v1_path(blob_path)
         expected = GitHubPath(blob_path, _ids=[(branch_name, ''), (branch_name, '')])
@@ -158,7 +158,7 @@ class TestValidatePath:
         assert result.identifier[0] == expected.identifier[0]
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/{}/'.format(blob_path))
+            await provider.validate_v1_path(f'/{blob_path}/')
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
 
@@ -191,7 +191,7 @@ class TestValidatePath:
                                        body=provider_fixtures['repo_tree_metadata_root'])
 
         tree_name = 'level1'
-        tree_path = '/{}/'.format(tree_name)
+        tree_path = f'/{tree_name}/'
         result = await provider.validate_v1_path(tree_path)
         expected = GitHubPath(tree_path, _ids=[(branch_name, ''), (branch_name, None)])
 
@@ -200,7 +200,7 @@ class TestValidatePath:
         assert result.identifier[0] == expected.identifier[0]
 
         with pytest.raises(exceptions.NotFoundError) as exc:
-            await provider.validate_v1_path('/{}'.format(tree_name))
+            await provider.validate_v1_path(f'/{tree_name}')
 
         assert exc.value.code == HTTPStatus.NOT_FOUND
 
@@ -417,7 +417,7 @@ class TestCRUD:
         blob_url = provider.build_repo_url('git', 'blobs')
         create_tree_url = provider.build_repo_url('git', 'trees')
         blob_tree_url = provider.build_repo_url(
-            'git', 'trees') + '/{}:?recursive=99999'.format(path.branch_ref)
+            'git', 'trees') + f'/{path.branch_ref}:?recursive=99999'
 
         aiohttpretty.register_json_uri(
             'GET', commit_url, body=crud_fixtures['all_commits_metadata'], status=200
@@ -816,7 +816,7 @@ class TestCRUD:
             await provider.delete(path, sha, message, branch=branch)
 
         assert e.value.code == 404
-        assert e.value.message == 'Could not delete folder \'{0}\''.format(path)
+        assert e.value.message == f'Could not delete folder \'{path}\''
 
 
 class TestMetadata:
@@ -875,7 +875,7 @@ class TestMetadata:
             await provider.metadata(path)
 
         assert e.value.code == 404
-        assert e.value.message == 'Could not retrieve file or directory {0}'.format(str(path))
+        assert e.value.message == f'Could not retrieve file or directory {str(path)}'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
@@ -989,7 +989,7 @@ class TestMetadata:
             await provider.metadata(path)
 
         assert e.value.code == 404
-        assert e.value.message == 'Could not retrieve folder "{0}"'.format(str(path))
+        assert e.value.message == f'Could not retrieve folder "{str(path)}"'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty

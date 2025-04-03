@@ -88,7 +88,7 @@ def list_objects_response(keys, truncated=False):
 
     response += '<IsTruncated>' + str(truncated).lower() + '</IsTruncated>'
     response += ''.join(map(
-        lambda x: '<Contents><Key>{}</Key></Contents>'.format(x),
+        lambda x: f'<Contents><Key>{x}</Key></Contents>',
         keys
     ))
 
@@ -101,7 +101,7 @@ def bulk_delete_body(keys):
     payload = '<?xml version="1.0" encoding="UTF-8"?>'
     payload += '<Delete>'
     payload += ''.join(map(
-        lambda x: '<Object><Key>{}</Key></Object>'.format(x),
+        lambda x: f'<Object><Key>{x}</Key></Object>',
         keys
     ))
     payload += '</Delete>'
@@ -118,7 +118,7 @@ def bulk_delete_body(keys):
 
 
 def list_upload_chunks_body(parts_metadata):
-    payload = '''<?xml version="1.0" encoding="UTF-8"?>
+    payload = b'''<?xml version="1.0" encoding="UTF-8"?>
         <ListPartsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
             <Bucket>example-bucket</Bucket>
             <Key>example-object</Key>
@@ -149,7 +149,7 @@ def list_upload_chunks_body(parts_metadata):
                 <Size>10485760</Size>
             </Part>
         </ListPartsResult>
-    '''.encode('utf-8')
+    '''
 
     md5 = compute_md5(BytesIO(payload))
 
@@ -473,7 +473,7 @@ class TestCRUD:
         url = provider.bucket.new_key(path.path).generate_url(100, 'PUT')
         metadata_url = provider.bucket.new_key(path.path).generate_url(100, 'HEAD')
         aiohttpretty.register_uri('HEAD', metadata_url, headers=file_header_metadata)
-        header = {'ETag': '"{}"'.format(content_md5)}
+        header = {'ETag': f'"{content_md5}"'}
         aiohttpretty.register_uri('PUT', url, status=201, headers=header)
 
         metadata, created = await provider.upload(file_stream, path)
@@ -506,7 +506,7 @@ class TestCRUD:
                 {'headers': file_header_metadata},
             ],
         )
-        headers={'ETag': '"{}"'.format(content_md5)}
+        headers={'ETag': f'"{content_md5}"'}
         aiohttpretty.register_uri('PUT', url, status=200, headers=headers)
 
         metadata, created = await provider.upload(file_stream, path)
@@ -710,7 +710,7 @@ class TestCRUD:
         headers_list = [{k.upper(): v for k, v in headers.items()} for headers in headers_list]
         for i, part in enumerate(headers_list):
             payload += '<Part>'
-            payload += '<PartNumber>{}</PartNumber>'.format(i+1)  # part number must be >= 1
+            payload += f'<PartNumber>{i+1}</PartNumber>'  # part number must be >= 1
             payload += '<ETag>{}</ETag>'.format(xml.sax.saxutils.escape(part['ETAG']))
             payload += '</Part>'
         payload += '</CompleteMultipartUpload>'
@@ -1218,7 +1218,7 @@ class TestMetadata:
                 {'headers': file_header_metadata},
             ],
         )
-        headers = {'ETag': '"{}"'.format(content_md5)}
+        headers = {'ETag': f'"{content_md5}"'}
         aiohttpretty.register_uri('PUT', url, status=200, headers=headers),
 
         metadata, created = await provider.upload(file_stream, path)

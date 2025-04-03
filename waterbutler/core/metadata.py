@@ -1,5 +1,4 @@
 import abc
-import typing
 import hashlib
 
 import furl
@@ -46,7 +45,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
             'path': self.path,
             'provider': self.provider,
             'materialized': self.materialized_path,
-            'etag': hashlib.sha256('{}::{}'.format(self.provider, self.etag).encode('utf-8')).hexdigest(),
+            'etag': hashlib.sha256(f'{self.provider}::{self.etag}'.encode('utf-8')).hexdigest(),
         }
 
     def json_api_serialized(self, resource: str) -> dict:
@@ -262,7 +261,7 @@ class BaseFileMetadata(BaseMetadata):
 
     @property
     @abc.abstractmethod
-    def size(self) -> typing.Union[int, str]:
+    def size(self) -> int | str:
         """ Size of the file in bytes. Should be a int, but some providers return a string and WB
         never casted it.  The `size_as_int` property was added to enforce this without breaking
         exisiting code and workarounds.
@@ -382,7 +381,7 @@ class BaseFolderMetadata(BaseMetadata):
         return ret
 
     @property
-    def children(self) -> typing.List[BaseMetadata]:
+    def children(self) -> list[BaseMetadata]:
         """ (Optional) A list of child entities of the folder.  Each entity should be either a
         file or folder metadata object.  Will be `None` if the presence of children is unknown.
 
@@ -391,7 +390,7 @@ class BaseFolderMetadata(BaseMetadata):
         return self._children
 
     @children.setter
-    def children(self, kids: typing.List[BaseMetadata]):
+    def children(self, kids: list[BaseMetadata]):
         """ Assigns the given list to the children property.  The affirmative absence of child
         entities should be indicated by passing an empty list.
 
@@ -405,6 +404,6 @@ class BaseFolderMetadata(BaseMetadata):
         return 'folder'
 
     @property
-    def etag(self) -> typing.Union[str, None]:
+    def etag(self) -> str | None:
         """ FIXME: An etag? """
         return None

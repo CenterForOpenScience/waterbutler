@@ -54,7 +54,7 @@ def throttle(concurrency=10, interval=1):
 
 
 def build_url(base, *segments, **query):
-    url = furl.furl(base)
+    url = furl.furl(base, args=query)
     # Filters return generators
     # Cast to list to force "spin" it
     url.path.segments = list(filter(
@@ -67,7 +67,6 @@ def build_url(base, *segments, **query):
             itertools.chain(url.path.segments, segments)
         )
     ))
-    url.args = query
     return url.url
 
 
@@ -88,7 +87,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def __init__(self, auth: dict,
                  credentials: dict,
                  settings: dict,
-                 retry_on: typing.Set[int] = {408, 502, 503, 504},
+                 retry_on: set[int] | None = None,
                  is_celery_task: bool = False) -> None:
         """
         :param auth: ( :class:`dict` ) Information about the user this provider will act on the behalf of
@@ -98,6 +97,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             often folder or repo
         :param is_celery_task: ( :class:`bool` ) Was this provider built inside a celery task?
         """
+        retry_on = retry_on or {408, 502, 503, 504}
         self._retry_on = retry_on
         self.auth = auth
         self.credentials = credentials
@@ -165,8 +165,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def build_url(self, *segments, **query) -> str:
         r"""A nice wrapper around furl, builds urls based on self.BASE_URL
 
-        :param \*segments: ( :class:`tuple` ) A tuple of strings joined into /foo/bar/..
-        :param \*\*query: ( :class:`dict` ) A dictionary that will be turned into query parameters
+        :param segments: ( :class:`tuple` ) A tuple of strings joined into /foo/bar/..
+        :param query: ( :class:`dict` ) A dictionary that will be turned into query parameters
         :rtype: :class:`str`
         """
         return build_url(self.BASE_URL, *segments, **query)
@@ -251,8 +251,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param url: The URL or URL-to-be to send the request to
         :type url: :class:`str` for the built URL or a :class:`functools.partial` object that will
             be build when it is called
-        :param \*args: args passed to methods of :class:`aiohttp.ClientSession`
-        :param \*\*kwargs: kwargs passed to methods of :class:`aiohttp.ClientSession` except the
+        :param args: args passed to methods of :class:`aiohttp.ClientSession`
+        :param kwargs: kwargs passed to methods of :class:`aiohttp.ClientSession` except the
             following ones that will be popped and used for Waterbutler specific purposes
         :keyword no_auth_header: ( :class:`bool` ) An optional boolean flag that determines whether
             to drop the default authorization header provided by the provider
@@ -341,7 +341,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                    dest_path: wb_path.WaterButlerPath,
                    rename: str = None,
                    conflict: str = 'replace',
-                   handle_naming: bool = True) -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+                   handle_naming: bool = True) -> tuple[wb_metadata.BaseMetadata, bool]:
         """Moves a file or folder from the current provider to the specified one
         Performs a copy and then a delete.
         Calls :func:`BaseProvider.intra_move` if possible.
@@ -399,7 +399,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                    dest_path: wb_path.WaterButlerPath,
                    rename: str = None, conflict: str = 'replace',
                    handle_naming: bool = True) \
-            -> typing.Tuple[wb_metadata.BaseMetadata, bool]:
+            -> tuple[wb_metadata.BaseMetadata, bool]:
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
 
@@ -445,7 +445,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
                               dest_provider: 'BaseProvider',
                               src_path: wb_path.WaterButlerPath,
                               dest_path: wb_path.WaterButlerPath,
-                              **kwargs) -> typing.Tuple[wb_metadata.BaseFolderMetadata, bool]:
+                              **kwargs) -> tuple[wb_metadata.BaseFolderMetadata, bool]:
         """Recursively apply func to src/dest path.
 
         Called from: func: copy and move if src_path.is_dir.
@@ -580,7 +580,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def intra_copy(self,
                          dest_provider: 'BaseProvider',
                          source_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
+                         dest_path: wb_path.WaterButlerPath) -> tuple[wb_metadata.BaseFileMetadata, bool]:
         """If the provider supports copying files and/or folders within itself by some means other
         than download/upload, then ``can_intra_copy`` should return ``True``.  This method will
         implement the copy.  It accepts the destination provider, a source path, and the
@@ -589,7 +589,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         file (``False``).
 
         :param  dest_provider: ( :class:`.BaseProvider` )  a provider instance for the destination
-        :param  src_path: ( :class:`.WaterButlerPath` )  the Path of the entity being copied
+        :param  source_path: ( :class:`.WaterButlerPath` )  the Path of the entity being copied
         :param  dest_path: ( :class:`.WaterButlerPath` ) the Path of the destination being copied to
         :rtype: (:class:`.BaseFileMetadata`, :class:`bool`)
         """
@@ -598,7 +598,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def intra_move(self,
                          dest_provider: 'BaseProvider',
                          src_path: wb_path.WaterButlerPath,
-                         dest_path: wb_path.WaterButlerPath) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
+                         dest_path: wb_path.WaterButlerPath) -> tuple[wb_metadata.BaseFileMetadata, bool]:
         """If the provider supports moving files and/or folders within itself by some means other
         than download/upload/delete, then ``can_intra_move`` should return ``True``.  This method
         will implement the move.  It accepts the destination provider, a source path, and the
@@ -616,7 +616,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         return data, created
 
     async def exists(self, path: wb_path.WaterButlerPath, **kwargs) \
-            -> typing.Union[bool, wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
+            -> bool | wb_metadata.BaseMetadata | list[wb_metadata.BaseMetadata]:
         """Check for existence of WaterButlerPath
 
         Attempt to retrieve provider metadata to determine existence of a WaterButlerPath.  If
@@ -638,7 +638,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def handle_name_conflict(self,
                                    path: wb_path.WaterButlerPath,
                                    conflict: str = 'replace',
-                                   **kwargs) -> typing.Tuple[wb_path.WaterButlerPath, bool]:
+                                   **kwargs) -> tuple[wb_path.WaterButlerPath, bool]:
         """Check WaterButlerPath and resolve conflicts
 
         Given a WaterButlerPath and a conflict resolution pattern determine
@@ -721,7 +721,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         r"""Download a file from this provider.
 
         :param src_path: ( :class:`.WaterButlerPath` ) Path to the file to be downloaded
-        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        :param kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
         :rtype: :class:`.ResponseStreamReader`
         :raises: :class:`.DownloadError`
         """
@@ -729,14 +729,14 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def upload(self, stream: streams.BaseStream, path: wb_path.WaterButlerPath, *args,
-                     **kwargs) -> typing.Tuple[wb_metadata.BaseFileMetadata, bool]:
+                     **kwargs) -> tuple[wb_metadata.BaseFileMetadata, bool]:
         r"""Uploads the given stream to the provider.  Returns the metadata for the newly created
         file and a boolean indicating whether the file is completely new (``True``) or overwrote
         a previously-existing file (``False``)
 
         :param path: ( :class:`.WaterButlerPath` ) Where to upload the file to
         :param  stream: ( :class:`.BaseStream` ) The content to be uploaded
-        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        :param kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
         :rtype: (:class:`.BaseFileMetadata`, :class:`bool`)
         :raises: :class:`.DeleteError`
         """
@@ -746,7 +746,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
     async def delete(self, src_path: wb_path.WaterButlerPath, **kwargs) -> None:
         r"""
         :param src_path: ( :class:`.WaterButlerPath` ) Path to be deleted
-        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        :param kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
         :rtype: :class:`None`
         :raises: :class:`.DeleteError`
         """
@@ -754,7 +754,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def metadata(self, path: wb_path.WaterButlerPath, **kwargs) \
-            -> typing.Union[wb_metadata.BaseMetadata, typing.List[wb_metadata.BaseMetadata]]:
+            -> wb_metadata.BaseMetadata | list[wb_metadata.BaseMetadata]:
         r"""Get metadata about the specified resource from this provider. Will be a :class:`list`
         if the resource is a directory otherwise an instance of
         :class:`.BaseFileMetadata`
@@ -764,7 +764,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             thing. See: https://github.com/python/mypy/issues/1693
 
         :param path: ( :class:`.WaterButlerPath` ) The path to a file or folder
-        :param \*\*kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        :param kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
         :rtype: :class:`.BaseMetadata`
         :rtype: :class:`list` of :class:`.BaseMetadata`
         :raises: :class:`.MetadataError`
@@ -837,7 +837,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         raise exceptions.ProviderError({'message': 'Folder creation not supported.'}, code=405)
 
-    def _build_range_header(self, slice_tup: typing.Tuple[int, int]) -> str:
+    @staticmethod
+    def _build_range_header(slice_tup: tuple[int, int]) -> str:
         start, end = slice_tup
         return 'bytes={}-{}'.format(
             '' if start is None else start,
@@ -846,4 +847,4 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     def __repr__(self):
         # Note: credentials are not included on purpose.
-        return '<{}({}, {})>'.format(self.__class__.__name__, self.auth, self.settings)
+        return f'<{self.__class__.__name__}({self.auth}, {self.settings})>'

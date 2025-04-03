@@ -4,7 +4,7 @@ from waterbutler.core import metadata
 class BaseOwnCloudMetadata(metadata.BaseMetadata):
 
     def __init__(self, href, folder, attributes=None):
-        super(BaseOwnCloudMetadata, self).__init__(None)
+        super().__init__(None)
         self.attributes = attributes or {}
         self._folder = folder
         self._href = href
@@ -63,10 +63,11 @@ class OwnCloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
 
     def __init__(self, modified):
         self._modified = modified
+        super().__init__({'modified': modified})
 
     @classmethod
-    def from_metadata(cls, metadata):
-        return OwnCloudFileRevisionMetadata(modified=metadata.modified)
+    def from_metadata(cls, file_metadata_object):
+        return OwnCloudFileRevisionMetadata(modified=file_metadata_object.modified)
 
     @property
     def version_identifier(self):

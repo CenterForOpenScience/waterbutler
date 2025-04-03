@@ -80,7 +80,7 @@ def serve():
         ssl_options=ssl_options,
     )
 
-    logger.info("Listening on {0}:{1}".format(server_settings.ADDRESS, server_settings.PORT))
+    logger.info(f"Listening on {server_settings.ADDRESS}:{server_settings.PORT}")
 
     signal.signal(signal.SIGTERM, partial(sig_handler))
     asyncio.get_event_loop().set_debug(server_settings.DEBUG)

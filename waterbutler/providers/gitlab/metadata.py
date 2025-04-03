@@ -106,7 +106,7 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self) -> str:
-        return '{}::{}'.format(self.path, self.commit_sha or self.branch_name)
+        return f'{self.path}::{self.commit_sha or self.branch_name}'
 
     @property
     def extra(self) -> dict:

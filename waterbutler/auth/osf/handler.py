@@ -26,7 +26,8 @@ class OsfAuthHandler(BaseAuthHandler):
         'delete': 'delete',
     }
 
-    def build_payload(self, bundle, view_only=None, cookie=None):
+    @staticmethod
+    def build_payload(bundle, view_only=None, cookie=None):
         query_params = {}
 
         if cookie:
@@ -38,7 +39,7 @@ class OsfAuthHandler(BaseAuthHandler):
 
         raw_payload = jwe.encrypt(jwt.encode({
             'data': bundle,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+            'exp': datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
         }, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM), JWE_KEY)
 
         # Note: `aiohttp3` uses `yarl` which only supports string parameters
@@ -46,7 +47,8 @@ class OsfAuthHandler(BaseAuthHandler):
 
         return query_params
 
-    async def make_request(self, params, headers, cookies):
+    @staticmethod
+    async def make_request(params, headers, cookies):
         try:
             # Note: with simple request whose response is handled right afterwards without "being passed
             #       further along", use the context manager so WB doesn't need to handle the sessions.
@@ -240,4 +242,4 @@ class OsfAuthHandler(BaseAuthHandler):
                 raise exceptions.UnsupportedHTTPMethodError(method,
                                                             supported=self.ACTION_MAP.keys())
 
-        return (osf_action, intended_action)
+        return osf_action, intended_action

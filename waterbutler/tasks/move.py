@@ -28,7 +28,7 @@ async def move(src_bundle, dest_bundle, request=None, start_time=None, **kwargs)
     try:
         metadata, created = await src_provider.move(dest_provider, src_path, dest_path, **kwargs)
     except Exception as e:
-        logger.error('Move failed with error {!r}'.format(e))
+        logger.error(f'Move failed with error {e!r}')
         errors = [e.__repr__()]
         raise  # Ensure sentry sees this
     else:

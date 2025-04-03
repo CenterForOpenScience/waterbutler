@@ -22,17 +22,17 @@ def folder_obj_name():
 
 @pytest.fixture()
 def meta_folder_raw():
-    with open(os.path.join(os.path.dirname(__file__), 'metadata/folder-raw.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'metadata/folder-raw.json')) as fp:
         return fp.read()
 
 
 @pytest.fixture()
 def meta_folder_parsed():
-    with open(os.path.join(os.path.dirname(__file__), 'metadata/folder-parsed.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'metadata/folder-parsed.json')) as fp:
         return fp.read()
 
 
 @pytest.fixture()
 def meta_folder_resp_headers_raw():
-    with open(os.path.join(os.path.dirname(__file__), 'resp_headers/folder-raw.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'resp_headers/folder-raw.json')) as fp:
         return fp.read()

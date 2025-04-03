@@ -126,7 +126,7 @@ def test_return_values(providers, bundles, callback, src_path, dest_path, mock_t
         'kind': 'file',
         'contentType': metadata.content_type,
         'etag': hashlib.sha256(
-            '{}::{}'.format(metadata.provider, metadata.etag)
+            f'{metadata.provider}::{metadata.etag}'
             .encode('utf-8')
         ).hexdigest(),
         'extra': metadata.extra,

@@ -33,31 +33,31 @@ def settings():
 
 @pytest.fixture
 def native_file_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['native_file_metadata']
 
 
 @pytest.fixture
 def native_dataset_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['native_dataset_metadata']
 
 
 @pytest.fixture
 def empty_native_dataset_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['empty_native_dataset_metadata']
 
 
 @pytest.fixture
 def checksum_mismatch_dataset_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['checksum_mismatch_dataset_metadata']
 
 
 @pytest.fixture
 def dataset_metadata_object():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return DataverseDatasetMetadata(
             json.load(fp)['native_dataset_metadata']['data'],
             'Dataset Test Name',
@@ -67,7 +67,7 @@ def dataset_metadata_object():
 
 @pytest.fixture
 def file_metadata_object():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return DataverseFileMetadata(json.load(fp)['native_file_metadata']['datafile'], 'latest')
 
 

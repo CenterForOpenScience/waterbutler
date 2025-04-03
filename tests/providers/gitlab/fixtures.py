@@ -166,5 +166,5 @@ def revisions_for_file():
 # fixtures for testing file revision metadata
 @pytest.fixture()
 def default_branches():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/default-branch.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/default-branch.json')) as fp:
         return json.load(fp)

@@ -51,7 +51,7 @@ class BaseBitbucketMetadata(metadata.BaseMetadata):
             'branch': self.branch_name,  # may be None if revision id is a sha
         }
 
-    def build_path(self):
+    def build_path(self, path):
         return super().build_path(self._path_obj.raw_path)
 
     def _json_api_links(self, resource):
@@ -95,7 +95,7 @@ class BitbucketFileMetadata(BaseBitbucketMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return '{}::{}'.format(self.path, self.commit_sha)  # FIXME: maybe last_commit_sha?
+        return f'{self.path}::{self.commit_sha}'  # FIXME: maybe last_commit_sha?
 
     @property
     def extra(self):

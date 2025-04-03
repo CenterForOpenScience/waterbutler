@@ -75,7 +75,7 @@ class PartialFileStreamReader(FileStreamReader):
 
     @property
     def content_range(self):
-        return 'bytes {}-{}/{}'.format(self.start, self.end, self.total_size)
+        return f'bytes {self.start}-{self.end}/{self.total_size}'
 
     async def chunk_reader(self):
         self.file_pointer.seek(self.start)
