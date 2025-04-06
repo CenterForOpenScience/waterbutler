@@ -16,6 +16,7 @@ class TestFileMetadata:
 
     def test_file_metadata(self, file_metadata_object):
         assert file_metadata_object.provider == 'owncloud'
+        assert file_metadata_object.id == '/Documents/dissertation.aux'
         assert file_metadata_object.name == 'dissertation.aux'
         assert file_metadata_object.path == '/Documents/dissertation.aux'
         assert file_metadata_object.materialized_path == '/Documents/dissertation.aux'
@@ -44,6 +45,7 @@ class TestFileMetadata:
 
     def test_file_metadata_less_info(self, file_metadata_object_less_info):
         assert file_metadata_object_less_info.provider == 'owncloud'
+        assert file_metadata_object_less_info.id == '/Documents/dissertation.aux'
         assert file_metadata_object_less_info.name == 'dissertation.aux'
         assert file_metadata_object_less_info.path == '/Documents/dissertation.aux'
         assert file_metadata_object_less_info.materialized_path == '/Documents/dissertation.aux'
@@ -73,6 +75,7 @@ class TestFolderMetadata:
 
     def test_folder_metadata(self, folder_metadata_object):
         assert folder_metadata_object.provider == 'owncloud'
+        assert folder_metadata_object.id == '/'
         assert folder_metadata_object.name == 'Documents'
         assert folder_metadata_object.path == '/'
         assert folder_metadata_object.materialized_path == '/'
@@ -95,6 +98,7 @@ class TestFolderMetadata:
     def test_folder_metadata_less_info(self, folder_metadata_object_less_info):
 
         assert folder_metadata_object_less_info.provider == 'owncloud'
+        assert folder_metadata_object_less_info.id == '/'
         assert folder_metadata_object_less_info.name == 'Documents'
         assert folder_metadata_object_less_info.path == '/'
         assert folder_metadata_object_less_info.materialized_path == '/'

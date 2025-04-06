@@ -32,6 +32,7 @@ class GoogleDriveFolderMetadata(BaseGoogleDriveMetadata, metadata.BaseFolderMeta
         super().__init__(raw, path)
         self._path._is_folder = True
 
+    # GoogleDrive is an id-based provider and uses its own ``revalidate_path()``.
     @property
     def id(self):
         return self.raw['id']
@@ -61,6 +62,7 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
     [2] https://developers.google.com/drive/v2/reference/files/get
     """
 
+    # GoogleDrive is an id-based provider and uses its own ``revalidate_path()``.
     @property
     def id(self):
         return self.raw['id']

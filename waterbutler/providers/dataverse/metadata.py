@@ -7,6 +7,14 @@ class BaseDataverseMetadata(metadata.BaseMetadata):
     def provider(self):
         return 'dataverse'
 
+    # TODO: Should this be in ``DataverseFileMetadata``?
+    # TODO: Does ``self.raw['id']`` exists for ``DataverseDatasetMetadata``?
+    # TODO: DataVerse's ``revalidate_path()`` looks very different. Is this an issue?
+    # DataVerse is an id-based provider and has its own ``revalidate_path()``.
+    @property
+    def id(self):
+        return str(self.raw['id'])
+
 
 class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
 

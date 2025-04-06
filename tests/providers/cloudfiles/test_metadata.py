@@ -39,6 +39,7 @@ class TestCloudfilesMetadata:
 
         path = WaterButlerPath('/file.txt')
         data = CloudFilesHeaderMetadata(file_header_metadata_txt, path.path)
+        assert data.id == '/file.txt'
         assert data.name == 'file.txt'
         assert data.path == '/file.txt'
         assert data.provider == 'cloudfiles'

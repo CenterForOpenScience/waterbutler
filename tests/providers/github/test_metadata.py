@@ -20,6 +20,7 @@ class TestGitHubMetadata:
         except Exception as exc:
             pytest.fail(str(exc))
 
+        assert metadata.id == '/README.md'
         assert metadata.name == 'README.md'
         assert metadata.path == '/README.md'
         assert metadata.modified is None
@@ -47,6 +48,7 @@ class TestGitHubMetadata:
         except Exception as exc:
             pytest.fail(str(exc))
 
+        assert metadata.id == '/epsilon'
         assert metadata.name == 'epsilon'
         assert metadata.path == '/epsilon'
         assert metadata.modified is None
@@ -74,6 +76,7 @@ class TestGitHubMetadata:
         except Exception as exc:
             pytest.fail(str(exc))
 
+        assert metadata.id == '/foldera/folderb/lorch/'
         assert metadata.name == 'lorch'
         assert metadata.path == '/foldera/folderb/lorch/'
         assert metadata.extra == {}
@@ -88,6 +91,7 @@ class TestGitHubMetadata:
         except Exception as exc:
             pytest.fail(str(exc))
 
+        assert metadata.id == '/manyfiles/'
         assert metadata.name == 'manyfiles'
         assert metadata.path == '/manyfiles/'
         assert metadata.extra == {}
@@ -102,6 +106,7 @@ class TestGitHubMetadata:
         except Exception as exc:
             pytest.fail(str(exc))
 
+        assert metadata.id == '/README.md'
         assert metadata.name == 'README.md'
         assert metadata.path == '/README.md'
         assert metadata.modified is None

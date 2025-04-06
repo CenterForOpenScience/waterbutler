@@ -27,6 +27,13 @@ class BaseGoogleCloudMetadata(metadata.BaseMetadata, metaclass=abc.ABCMeta):
     def provider(self) -> str:
         return 'googlecloud'
 
+    # GoogleCloud is a path-based provider.  However, it never calls ``revalidate_path()`` since it
+    # is the backend storage provider for OSFStorage.
+    @property
+    def id(self) -> str:
+        # TODO: Do we need this ``id`` to be actually set?
+        return self.path
+
     @property
     def path(self) -> str:
         return self.build_path(self.raw.get('object_name', None))

@@ -473,7 +473,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
         folder = await dest_provider.create_folder(dest_path, folder_precheck=False)
 
-        dest_path = await dest_provider.revalidate_path(dest_path.parent, dest_path.name, folder=dest_path.is_dir)
+        folder_path = dest_provider.path_from_metadata(dest_path.parent, folder)
 
         folder.children = []
         items = await self.metadata(src_path)  # type: ignore
@@ -487,18 +487,14 @@ class BaseProvider(metaclass=abc.ABCMeta):
                 futures.append(asyncio.ensure_future(
                     func(
                         dest_provider,
-                        # TODO figure out a way to cut down on all the requests made here
-                        (await self.revalidate_path(src_path, item.name, folder=item.is_folder)),
-                        (await dest_provider.revalidate_path(dest_path, item.name, folder=item.is_folder)),
+                        self.path_from_metadata(src_path, item),
+                        folder_path.child(item.name, None, folder=item.is_folder),
                         handle_naming=False,
                     )
                 ))
 
                 if item.is_folder:
                     await futures[-1]
-
-            if not futures:
-                continue
 
             done, _ = await asyncio.wait(futures, return_when=asyncio.FIRST_EXCEPTION)
 
@@ -816,9 +812,8 @@ class BaseProvider(metaclass=abc.ABCMeta):
 
     def path_from_metadata(self,
                            parent_path: wb_path.WaterButlerPath,
-                           meta_data: wb_metadata.BaseMetadata) -> wb_path.WaterButlerPath:
-        return parent_path.child(meta_data.name, _id=meta_data.path.strip('/'),
-                                 folder=meta_data.is_folder)
+                           metadata: wb_metadata.BaseMetadata) -> wb_path.WaterButlerPath:
+        return parent_path.child(metadata.name, _id=metadata.id, folder=metadata.is_folder)
 
     async def revisions(self, path: wb_path.WaterButlerPath, **kwargs):
         """Return a list of :class:`.BaseFileRevisionMetadata` objects representing the revisions

@@ -12,6 +12,7 @@ class TestDropboxMetadata:
     def test_file_metadata(self, provider_fixtures):
         data = DropboxFileMetadata(provider_fixtures['file_metadata'], '/Photos')
 
+        assert data.id == 'id:8y8sAJlrhuAAAAAAAAAAAQ'
         assert data.name == 'Getting_Started.pdf'
         assert data.path == '/Getting_Started.pdf'
         assert data.size == 124778
@@ -93,6 +94,7 @@ class TestDropboxMetadata:
     def test_folder_metadata(self, provider_fixtures):
         data = DropboxFolderMetadata(provider_fixtures['folder_metadata'], '/Photos')
 
+        assert data.id == 'id:67BLXqRKo-gAAAAAAAADZg'
         assert data.name == 'newfolder'
         assert data.path == '/newfolder/'
         assert data.etag is None

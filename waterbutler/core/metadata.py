@@ -135,6 +135,16 @@ class BaseMetadata(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
+    def id(self) -> str:
+        """ This property consolidates path-based and id-based file/folder/object identity under a
+        single one: ``id``, which makes inter provider move/copy actions easier.  For path-based
+        providers, the value is identical to ``path`` property.  For id-based providers, it is the
+        raw identity by definition (``self.raw['id']`` for most providers).
+        """
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
     def name(self) -> str:
         """ The user-facing name of the entity, excluding parent folder(s).
         ::

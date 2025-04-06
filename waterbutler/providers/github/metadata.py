@@ -23,6 +23,12 @@ class BaseGitHubMetadata(metadata.BaseMetadata):
     def provider(self):
         return 'github'
 
+    # GitHub is a path-based provider. However, it has its own ``revalidate_path()``.
+    # TODO: Investigate if this is an issue.
+    @property
+    def id(self):
+        return self.path
+
     @property
     def extra(self):
         ret = {}
