@@ -90,6 +90,32 @@ class S3Provider(provider.BaseProvider):
                 HttpMethod=http_method
             )
             return url
+            # url = url.replace('//', '/')
+            # urls = url.split(':/')
+            # return f"{urls[0]}://{urls[1]}"
+
+    # def generate_presigned_url_v3(self, bucket_name, object_key, http_method='GET', params=None):
+    #     s3_client = boto3.client(
+    #         's3',
+    #         region_name=self.region,
+    #         aws_access_key_id=self.access_key,
+    #         aws_secret_access_key=self.secret_key,
+    #         # config=Config(signature_version='s3v4')
+    #     )
+    #
+    #     url = s3_client.generate_presigned_url(
+    #         ClientMethod='get_object',
+    #         Params={
+    #             'Bucket': bucket_name,
+    #             'Key': object_key,
+    #             **(params or {})
+    #         },
+    #         ExpiresIn=settings.TEMP_URL_SECS,
+    #         HttpMethod=http_method
+    #     )
+    #
+    #     return url
+
 
     async def validate_v1_path(self, path, **kwargs):
         await self._check_region()
@@ -110,8 +136,8 @@ class S3Provider(provider.BaseProvider):
                 throws=exceptions.MetadataError,
             )
         else:
+            path = path[1:]
             url = await self.generate_presigned_url(self.bucket_name, path, http_method='HEAD')
-            # breakpoint()
             resp = await self.make_request(
                 'HEAD',
                 url,
