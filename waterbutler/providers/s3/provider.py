@@ -70,7 +70,7 @@ class S3Provider(provider.BaseProvider):
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
         self.region = None
 
-    async def generate_presigned_url1(self, bucket_name, object_key, params=None, http_method='GET'):
+    async def generate_presigned_url(self, bucket_name, object_key, params=None, http_method='GET'):
         session = get_session()
         async with session.create_client(
                 's3',
