@@ -30,7 +30,7 @@ def credentials():
 @pytest.fixture
 def settings():
     return {
-        'id': 'that kerning:/my-subfolder/',
+        'id': 'that-kerning:/my-subfolder/',
         'bucket': 'that-kerning',
         'encrypt_uploads': False
     }
