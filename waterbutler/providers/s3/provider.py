@@ -6,6 +6,7 @@ from urllib import parse
 
 import xmltodict
 import xml.sax.saxutils
+from aiobotocore.session import get_session
 from boto.compat import BytesIO  # type: ignore
 from boto.utils import compute_md5
 from boto.auth import get_auth_handler
@@ -61,10 +62,34 @@ class S3Provider(provider.BaseProvider):
 
         self.connection = S3Connection(credentials['access_key'],
                 credentials['secret_key'], calling_format=OrdinaryCallingFormat())
+        self.access_key = credentials['access_key']
+        self.secret_key = credentials['secret_key']
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
+        self.bucket_name = settings['bucket']
         self.base_folder = self.settings.get('id', ':/').split(':/')[1]
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
         self.region = None
+
+    async def generate_presigned_url1(self, bucket_name, object_key, params=None, http_method='GET'):
+        session = get_session()
+        async with session.create_client(
+                's3',
+                region_name=self.region,
+                aws_secret_access_key=self.secret_key,
+                aws_access_key_id=self.access_key
+        ) as s3_client:
+            # breakpoint()
+            url = await s3_client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': bucket_name,
+                    'Key': object_key
+                    # **(params or {})
+                },
+                ExpiresIn=settings.TEMP_URL_SECS,
+                HttpMethod=http_method
+            )
+            return url
 
     async def validate_v1_path(self, path, **kwargs):
         await self._check_region()
@@ -76,6 +101,7 @@ class S3Provider(provider.BaseProvider):
 
         if implicit_folder:
             params = {'prefix': path, 'delimiter': '/'}
+            # url = await self.generate_presigned_url1(self.bucket_name, )
             resp = await self.make_request(
                 'GET',
                 functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
@@ -84,9 +110,12 @@ class S3Provider(provider.BaseProvider):
                 throws=exceptions.MetadataError,
             )
         else:
+            url = await self.generate_presigned_url(self.bucket_name, path, http_method='HEAD')
+            # breakpoint()
             resp = await self.make_request(
                 'HEAD',
-                functools.partial(self.bucket.new_key(path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
+                url,
+                # functools.partial(self.bucket.new_key(path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
                 expects=(200, 404, ),
                 throws=exceptions.MetadataError,
             )
@@ -106,10 +135,10 @@ class S3Provider(provider.BaseProvider):
         return True
 
     def can_intra_copy(self, dest_provider, path=None):
-        return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
+        return isinstance(self, type(dest_provider)) and not getattr(path, 'is_dir', False)
 
     def can_intra_move(self, dest_provider, path=None):
-        return type(self) == type(dest_provider) and not getattr(path, 'is_dir', False)
+        return isinstance(self, type(dest_provider)) and not getattr(path, 'is_dir', False)
 
     async def intra_copy(self, dest_provider, source_path, dest_path):
         """Copy key from one S3 bucket to another. The credentials specified in
@@ -250,7 +279,7 @@ class S3Provider(provider.BaseProvider):
             await self._complete_multipart_upload(path, session_upload_id, parts_metadata)
         except Exception as err:
             msg = 'An unexpected error has occurred during the multi-part upload.'
-            logger.error('{} upload_id={} error={!r}'.format(msg, session_upload_id, err))
+            logger.error(f'{msg} upload_id={session_upload_id} error={err!r}')
             aborted = await self._abort_chunked_upload(path, session_upload_id)
             if aborted:
                 msg += '  The abort action failed to clean up the temporary file parts generated ' \
@@ -300,9 +329,9 @@ class S3Provider(provider.BaseProvider):
         parts = [self.CHUNK_SIZE for i in range(0, stream.size // self.CHUNK_SIZE)]
         if stream.size % self.CHUNK_SIZE:
             parts.append(stream.size - (len(parts) * self.CHUNK_SIZE))
-        logger.debug('Multipart upload segment sizes: {}'.format(parts))
+        logger.debug(f'Multipart upload segment sizes: {parts}')
         for chunk_number, chunk_size in enumerate(parts):
-            logger.debug('  uploading part {} with size {}'.format(chunk_number + 1, chunk_size))
+            logger.debug(f'  uploading part {chunk_number + 1} with size {chunk_size}')
             metadata.append(await self._upload_part(stream, path, session_upload_id,
                                                     chunk_number + 1, chunk_size))
         return metadata
@@ -567,7 +596,7 @@ class S3Provider(provider.BaseProvider):
             payload = '<?xml version="1.0" encoding="UTF-8"?>'
             payload += '<Delete>'
             payload += ''.join(map(
-                lambda x: '<Object><Key>{}</Key></Object>'.format(xml.sax.saxutils.escape(x)),
+                lambda x: f'<Object><Key>{xml.sax.saxutils.escape(x)}</Key></Object>',
                 key_batch
             ))
             payload += '</Delete>'
