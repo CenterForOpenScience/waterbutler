@@ -76,6 +76,8 @@ class S3Provider(provider.BaseProvider):
 
         if implicit_folder:
             params = {'prefix': path, 'delimiter': '/'}
+            import pydevd_pycharm
+            pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
             resp = await self.make_request(
                 'GET',
                 functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),

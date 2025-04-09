@@ -28,6 +28,8 @@ class OsfAuthHandler(BaseAuthHandler):
 
     @staticmethod
     def build_payload(bundle, view_only=None, cookie=None):
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         query_params = {}
 
         if cookie:
@@ -36,11 +38,12 @@ class OsfAuthHandler(BaseAuthHandler):
         if view_only:
             # View only must go outside of the jwt
             query_params['view_only'] = view_only
-
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         raw_payload = jwe.encrypt(jwt.encode({
             'data': bundle,
             'exp': datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
-        }, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM), JWE_KEY)
+        }, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM).encode('utf-8'), JWE_KEY)
 
         # Note: `aiohttp3` uses `yarl` which only supports string parameters
         query_params['payload'] = raw_payload.decode("utf-8")
@@ -59,6 +62,8 @@ class OsfAuthHandler(BaseAuthHandler):
                 headers=headers,
                 cookies=cookies,
             ) as response:
+                # import pydevd_pycharm
+                # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
                 if response.status != 200:
                     try:
                         data = await response.json()
@@ -70,12 +75,17 @@ class OsfAuthHandler(BaseAuthHandler):
                     raw = await response.json()
                     signed_jwt = jwe.decrypt(raw['payload'].encode(), JWE_KEY)
                     data = jwt.decode(signed_jwt, settings.JWT_SECRET,
-                                      algorithm=settings.JWT_ALGORITHM,
+                                      algorithms=settings.JWT_ALGORITHM,
                                       options={'require_exp': True})
+                    # data = jwt.decode(signed_jwt, settings.JWT_SECRET,
+                    #                   algorithm=settings.JWT_ALGORITHM,
+                    #                   options={'require_exp': True})
                     return data['data']
                 except (jwt.InvalidTokenError, KeyError):
                     raise exceptions.AuthError(data, code=response.status)
         except ClientError:
+            # import pydevd_pycharm
+            # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
             raise exceptions.AuthError('Unable to connect to auth sever', code=503)
 
     async def fetch(self, request, bundle):
@@ -104,6 +114,8 @@ class OsfAuthHandler(BaseAuthHandler):
 
     async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE,
                   path='', version=None):
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         """Used for v1.  Requests credentials and configuration from the OSF for the given resource
         (project) and provider.  Auth credentials sent by the user to WB are passed onto the OSF so
         it can determine the user.  Auth payload also includes some metrics and metadata to help
@@ -129,9 +141,9 @@ class OsfAuthHandler(BaseAuthHandler):
         if view_only:
             # View only must go outside of the jwt
             view_only = view_only[0].decode()
-
-        payload = await self.make_request(
-            self.build_payload({
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+        body = {
                 'nid': resource,
                 'provider': provider,
                 'action': permissions_req,  # what permissions does the user need?
@@ -144,7 +156,12 @@ class OsfAuthHandler(BaseAuthHandler):
                     'origin': request.headers.get('Origin'),
                     'uri': request.uri,
                 }
-            }, cookie=cookie, view_only=view_only),
+        }
+        url = self.build_payload(body, cookie=cookie, view_only=view_only)
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+        payload = await self.make_request(
+            url,
             headers,
             dict(request.cookies)
         )
