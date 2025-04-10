@@ -71,9 +71,6 @@ class OsfAuthHandler(BaseAuthHandler):
                     data = jwt.decode(signed_jwt, settings.JWT_SECRET,
                                       algorithms=settings.JWT_ALGORITHM,
                                       options={'require_exp': True})
-                    # data = jwt.decode(signed_jwt, settings.JWT_SECRET,
-                    #                   algorithm=settings.JWT_ALGORITHM,
-                    #                   options={'require_exp': True})
                     return data['data']
                 except (jwt.InvalidTokenError, KeyError):
                     raise exceptions.AuthError(data, code=response.status)
@@ -131,7 +128,8 @@ class OsfAuthHandler(BaseAuthHandler):
         if view_only:
             # View only must go outside of the jwt
             view_only = view_only[0].decode()
-        body = {
+        payload = await self.make_request(
+            self.build_payload({
                 'nid': resource,
                 'provider': provider,
                 'action': permissions_req,  # what permissions does the user need?
@@ -144,10 +142,7 @@ class OsfAuthHandler(BaseAuthHandler):
                     'origin': request.headers.get('Origin'),
                     'uri': request.uri,
                 }
-        }
-        url = self.build_payload(body, cookie=cookie, view_only=view_only)
-        payload = await self.make_request(
-            url,
+        }, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)
         )
