@@ -70,35 +70,66 @@ class S3Provider(provider.BaseProvider):
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
         self.region = None
 
+    async def check_key_existence(self, path, query_parameters=None):
+        try:
+            session = get_session()
+            region_name = {"region_name": self.region} if self.region else {}
+            query_parameters = query_parameters or {}
+            async with session.create_client(
+                    's3',
+                    aws_secret_access_key=self.aws_secret_access_key,
+                    aws_access_key_id=self.aws_access_key_id,
+                    **region_name
+            ) as s3_client:
+                await s3_client.head_object(
+                    Bucket=self.bucket_name,
+                    Key=path,
+                    **query_parameters
+                )
+        except s3_client.exceptions.ClientError as e:
+            if e.get('Error', {}).get('Code') == '404':
+                raise exceptions.NotFoundError(str(path))
+
+    async def get_folder_metadata(self, path, params):
+        try:
+            contents, prefixes = [], []
+            session = get_session()
+            region_name = {"region_name": self.region} if self.region else {}
+            async with session.create_client(
+                    's3',
+                    aws_secret_access_key=self.aws_secret_access_key,
+                    aws_access_key_id=self.aws_access_key_id,
+                    **region_name
+            ) as s3_client:
+                logger.error(f"s3_client {s3_client}")
+
+                paginator = s3_client.get_paginator('list_objects_v2')
+                pages = paginator.paginate(
+                    Bucket=self.bucket_name,
+                    **params
+                )
+
+                async for page in pages:
+                    contents.extend(page.get('Contents', []))
+                    prefixes.extend(page.get('CommonPrefixes', []))
+
+            return contents, prefixes
+        except s3_client.exceptions.ClientError as e:
+            if e.get('Error', {}).get('Code') == '404':
+                raise exceptions.NotFoundError(str(path))
+
     async def validate_v1_path(self, path, **kwargs):
         await self._check_region()
 
-        # The user selected base folder, the root of the where that user's node is connected.
         path = f"/{self.base_folder + path.lstrip('/')}"
 
         implicit_folder = path.endswith('/')
 
         if implicit_folder:
-            params = {'prefix': path, 'delimiter': '/'}
-            resp = await self.make_request(
-                'GET',
-                functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
-                params=params,
-                expects=(200, 404, ),
-                throws=exceptions.MetadataError,
-            )
+            params = {'Prefix': path, 'Delimiter': '/'}
+            await self.get_folder_metadata(path,params)
         else:
-            resp = await self.make_request(
-                'HEAD',
-                functools.partial(self.bucket.new_key(path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
-                expects=(200, 404, ),
-                throws=exceptions.MetadataError,
-            )
-
-        await resp.release()
-
-        if resp.status == 404:
-            raise exceptions.NotFoundError(str(path))
+            await self.check_key_existence(path)
 
         return WaterButlerPath(path)
 
@@ -681,19 +712,8 @@ class S3Provider(provider.BaseProvider):
 
         if revision == 'Latest':
             revision = None
-        resp = await self.make_request(
-            'HEAD',
-            functools.partial(
-                self.bucket.new_key(path.path).generate_url,
-                settings.TEMP_URL_SECS,
-                'HEAD',
-                query_parameters={'versionId': revision} if revision else None
-            ),
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
-        await resp.release()
-        return S3FileMetadataHeaders(path.path, resp.headers)
+        resp = await self.check_key_existence(path.path, query_parameters={'VersionId': revision} if revision else {})
+        return S3FileMetadataHeaders(path.path, resp.get('ResponseMetadata', {}).get('HTTPHeaders'))
 
     async def _metadata_folder(self, path):
         await self._check_region()
@@ -701,43 +721,13 @@ class S3Provider(provider.BaseProvider):
 
         params = {'Prefix': path.path, 'Delimiter': '/'}
 
-        session = get_session()
-        contents = []
-        prefixes = []
-        region_name = {"region_name": self.region} if self.region else {}
-        logger.error(f"params_params {params} {self.region} {self.bucket_name} {self.aws_secret_access_key} {self.aws_access_key_id}")
-        async with session.create_client(
-                's3',
-                aws_secret_access_key=self.aws_secret_access_key,
-                aws_access_key_id=self.aws_access_key_id,
-                **region_name
-        ) as s3_client:
-            logger.error(f"s3_client {s3_client}")
-            try:
-                paginator = s3_client.get_paginator('list_objects_v2')
-                pages = paginator.paginate(
-                    Bucket=self.bucket_name,
-                    **params
-                )
-
-                async for page in pages:
-                    contents.extend(page.get('Contents', []))
-                    prefixes.extend(page.get('CommonPrefixes', []))
-
-            except Exception as e:
-                raise Exception(str(e))
+        contents, prefixes = await self.get_folder_metadata(path.path, params)
 
         if not contents and not prefixes and not path.is_root:
             # If contents and prefixes are empty then this "folder"
             # must exist as a key with a / at the end of the name
             # if the path is root there is no need to test if it exists
-            resp = await self.make_request(
-                'HEAD',
-                functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'HEAD'),
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            )
-            await resp.release()
+            await self.check_key_existence(path.path)
 
         if isinstance(contents, dict):
             contents = [contents]
