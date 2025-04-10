@@ -213,9 +213,9 @@ class BaseFileMetadata(BaseMetadata):
         """
         return dict(super().serialized(), **{
             'contentType': self.content_type,
-            'modified': self.modified,
-            'modified_utc': self.modified_utc,
-            'created_utc': self.created_utc,
+            'modified': str(self.modified),
+            'modified_utc': str(self.modified_utc),
+            'created_utc': str(self.created_utc),
             'size': self.size,
             'sizeInt': self.size_as_int,
         })
@@ -251,7 +251,7 @@ class BaseFileMetadata(BaseMetadata):
     def modified_utc(self) -> str:
         """ Date the file was last modified, as reported by the provider,
         converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
-        return utils.normalize_datetime(self.modified)
+        return utils.normalize_datetime(str(self.modified))
 
     @property
     def created_utc(self) -> str:
@@ -289,8 +289,8 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
         return {
             'extra': self.extra,
             'version': self.version,
-            'modified': self.modified,
-            'modified_utc': self.modified_utc,
+            'modified': str(self.modified),
+            'modified_utc': str(self.modified_utc),
             'versionIdentifier': self.version_identifier,
         }
 
@@ -316,7 +316,7 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
     def modified_utc(self) -> str:
         """ Date the revision was last modified, as reported by the provider,
         converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
-        return utils.normalize_datetime(self.modified)
+        return utils.normalize_datetime(str(self.modified))
 
     @property
     @abc.abstractmethod
