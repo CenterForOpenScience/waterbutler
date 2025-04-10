@@ -6,6 +6,7 @@ from urllib import parse
 
 import xmltodict
 import xml.sax.saxutils
+from aiobotocore.session import get_session
 from boto.compat import BytesIO  # type: ignore
 from boto.utils import compute_md5
 from boto.auth import get_auth_handler
@@ -59,9 +60,12 @@ class S3Provider(provider.BaseProvider):
         """
         super().__init__(auth, credentials, settings, **kwargs)
 
-        self.connection = S3Connection(credentials['access_key'],
-                credentials['secret_key'], calling_format=OrdinaryCallingFormat())
+        self.aws_secret_access_key = credentials['secret_key']
+        self.aws_access_key_id = credentials['access_key']
+        self.connection = S3Connection(self.aws_access_key_id,
+                                       self.aws_secret_access_key, calling_format=OrdinaryCallingFormat())
         self.bucket = self.connection.get_bucket(settings['bucket'], validate=False)
+        self.bucket_name = settings['bucket']
         self.base_folder = self.settings.get('id', ':/').split(':/')[1]
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
         self.region = None
@@ -694,22 +698,34 @@ class S3Provider(provider.BaseProvider):
     async def _metadata_folder(self, path):
         await self._check_region()
 
-        params = {'prefix': path.path, 'delimiter': '/'}
 
-        resp = await self.make_request(
-            'GET',
-            functools.partial(self.bucket.generate_url, settings.TEMP_URL_SECS, 'GET', query_parameters=params),
-            params=params,
-            expects=(200, ),
-            throws=exceptions.MetadataError,
-        )
+        params = {'Prefix': path.path, 'Delimiter': '/'}
 
-        contents = await resp.read()
+        session = get_session()
+        contents = []
+        prefixes = []
+        region_name = {"region_name": self.region} if self.region else {}
+        logger.error(f"params_params {params} {self.region} {self.bucket_name} {self.aws_secret_access_key} {self.aws_access_key_id}")
+        async with session.create_client(
+                's3',
+                aws_secret_access_key=self.aws_secret_access_key,
+                aws_access_key_id=self.aws_access_key_id,
+                **region_name
+        ) as s3_client:
+            logger.error(f"s3_client {s3_client}")
+            try:
+                paginator = s3_client.get_paginator('list_objects_v2')
+                pages = paginator.paginate(
+                    Bucket=self.bucket_name,
+                    **params
+                )
 
-        parsed = xmltodict.parse(contents, strip_whitespace=False)['ListBucketResult']
+                async for page in pages:
+                    contents.extend(page.get('Contents', []))
+                    prefixes.extend(page.get('CommonPrefixes', []))
 
-        contents = parsed.get('Contents', [])
-        prefixes = parsed.get('CommonPrefixes', [])
+            except Exception as e:
+                raise Exception(str(e))
 
         if not contents and not prefixes and not path.is_root:
             # If contents and prefixes are empty then this "folder"
@@ -735,7 +751,7 @@ class S3Provider(provider.BaseProvider):
         ]
 
         for content in contents:
-            if content['Key'] == params['prefix']:
+            if content['Key'] == params['Prefix']:
                 continue
 
             if content['Key'].endswith('/'):
