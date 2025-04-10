@@ -1,6 +1,6 @@
 aiocontextvars==0.2.2  # recommended for sentry-sdk
 aiohttp==3.10.5
-git+https://github.com/felliott/boto.git@feature/gen-url-query-params-6#egg=boto
+git+https://github.com/mkovalua/boto.git@feature/gen-url-query-params-6#egg=boto
 celery==5.4.0
 certifi==2025.1.31
 # Building wheel for cryptography 3.4.0 requires a Rust version incompatible with Docker base image.
@@ -24,7 +24,6 @@ stevedore==5.4.1
 tornado==6.4.2
 xmltodict==0.14.2
 yarl==1.3.0
-six==1.17.0
 # https://stackoverflow.com/questions/77401730/modulenotfounderror-no-module-named-imp
 cement==2.10.14
 pydevd-pycharm==242.20224.347
