@@ -120,6 +120,26 @@ class S3Provider(provider.BaseProvider):
             if e.response.get('Error', {}).get('Code') == '404':
                 raise exceptions.NotFoundError(str(path))
 
+    async def create_s3_bucket_object(self, path, query_parameters=None):
+        try:
+            # logger.error(f'check_key_existence {path} {query_parameters} {raise_exception}')
+            session = get_session()
+            region_name = {"region_name": self.region} if self.region else {}
+            query_parameters = query_parameters or {}
+            async with session.create_client(
+                    's3',
+                    aws_secret_access_key=self.aws_secret_access_key,
+                    aws_access_key_id=self.aws_access_key_id,
+                    **region_name
+            ) as s3_client:
+                await s3_client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=path,
+                    **query_parameters
+                )
+        except Exception as e:
+            raise exceptions.UploadFailedError(str(path))
+
     async def validate_v1_path(self, path, **kwargs):
         await self._check_region()
 
@@ -696,16 +716,12 @@ class S3Provider(provider.BaseProvider):
         if folder_precheck:
             if (await self.exists(path)):
                 raise exceptions.FolderNamingConflict(path.name)
-        logger.error(f"path {path.path} folder_precheck {folder_precheck}")
-        await self.make_request(
-            'PUT',
-            functools.partial(self.bucket.new_key(path.path).generate_url, settings.TEMP_URL_SECS, 'PUT'),
-            skip_auto_headers={'CONTENT-TYPE'},
-            expects=(200, 201, ),
-            throws=exceptions.CreateFolderError
-        )
+        path_prefix = path.path
+        logger.error(f"path {path_prefix} folder_precheck {folder_precheck}")
 
-        metadata = S3FolderMetadata({'Prefix': path.path})
+        await self.create_s3_bucket_object(path_prefix)
+
+        metadata = S3FolderMetadata({'Prefix': path_prefix})
         metadata.raw['base_folder'] = self.base_folder
         return metadata
 
