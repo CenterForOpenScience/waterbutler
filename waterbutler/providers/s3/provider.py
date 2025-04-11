@@ -82,14 +82,16 @@ class S3Provider(provider.BaseProvider):
                     aws_access_key_id=self.aws_access_key_id,
                     **region_name
             ) as s3_client:
-                await s3_client.head_object(
+                return (await s3_client.head_object(
                     Bucket=self.bucket_name,
                     Key=path,
                     **query_parameters
-                )
+                ))
         except s3_client.exceptions.ClientError as e:
             if raise_exception and e.response.get('Error', {}).get('Code') == '404':
                 raise exceptions.NotFoundError(str(path))
+            if not raise_exception:
+                return e.response
 
     async def get_folder_metadata(self, path, params):
         try:
@@ -139,6 +141,25 @@ class S3Provider(provider.BaseProvider):
                 )
         except Exception as e:
             raise exceptions.UploadFailedError(str(path))
+
+
+    async def delete_s3_bucket_object(self, path):
+        try:
+            session = get_session()
+            region_name = {"region_name": self.region} if self.region else {}
+            async with session.create_client(
+                    's3',
+                    aws_secret_access_key=self.aws_secret_access_key,
+                    aws_access_key_id=self.aws_access_key_id,
+                    **region_name
+            ) as s3_client:
+                await s3_client.delete_object(
+                    Bucket=self.bucket_name,
+                    Key=path
+                )
+        except Exception as e:
+            raise exceptions.DeleteError(str(path))
+
 
     async def validate_v1_path(self, path, **kwargs):
         await self._check_region()
@@ -555,13 +576,7 @@ class S3Provider(provider.BaseProvider):
                 )
 
         if path.is_file:
-            resp = await self.make_request(
-                'DELETE',
-                self.bucket.new_key(path.path).generate_url(settings.TEMP_URL_SECS, 'DELETE'),
-                expects=(200, 204, ),
-                throws=exceptions.DeleteError,
-            )
-            await resp.release()
+            await self.delete_s3_bucket_object(path.path)
         else:
             await self._delete_folder(path, **kwargs)
 
