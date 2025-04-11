@@ -1,3 +1,4 @@
+import base64
 import os
 import hashlib
 import logging
@@ -134,11 +135,11 @@ class S3Provider(provider.BaseProvider):
                     aws_access_key_id=self.aws_access_key_id,
                     **region_name
             ) as s3_client:
-                await s3_client.put_object(
+                return (await s3_client.put_object(
                     Bucket=self.bucket_name,
                     Key=path,
                     **query_parameters
-                )
+                ))
         except Exception as e:
             raise exceptions.UploadFailedError(str(path))
 
@@ -286,32 +287,34 @@ class S3Provider(provider.BaseProvider):
         """
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
+        data = await stream.read()
+        logger.error(f"data {data}")
+        content_length = len(data)
+        logger.error(f"content_length {content_length}")
+        md5_digest = stream.writers['md5'].hexdigest
+        logger.error(f"md5_digest {md5_digest}")
+        content_md5 = base64.b64encode(bytes.fromhex(md5_digest)).decode('utf-8')
+        logger.error(f"content_md5 {content_md5}")
 
-        headers = {'Content-Length': str(stream.size)}
+        query_parameters = {
+            'ContentLength': content_length,
+            'Body': data,
+            'ContentMD5': content_md5,
+        }
         # this is usually set in boto.s3.key.generate_url, but do it here
         # do be explicit about our header payloads for signing purposes
         if self.encrypt_uploads:
-            headers['x-amz-server-side-encryption'] = 'AES256'
-        upload_url = functools.partial(
-            self.bucket.new_key(path.path).generate_url,
-            settings.TEMP_URL_SECS,
-            'PUT',
-            headers=headers,
-        )
+            query_parameters['ServerSideEncryption'] = 'AES256'
 
-        resp = await self.make_request(
-            'PUT',
-            upload_url,
-            data=stream,
-            skip_auto_headers={'CONTENT-TYPE'},
-            headers=headers,
-            expects=(200, 201, ),
-            throws=exceptions.UploadError,
-        )
-        await resp.release()
+        logger.error(f"query_parameters {query_parameters}")
+
+        resp = await self.create_s3_bucket_object(path.path, query_parameters=query_parameters)
+
+        logger.error(f"_contiguous_upload {resp}")
+
 
         # md5 is returned as ETag header as long as server side encryption is not used.
-        if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
+        if md5_digest != resp.get('ETag', '').replace('"', ''):
             raise exceptions.UploadChecksumMismatchError()
 
     async def _chunked_upload(self, stream, path):
