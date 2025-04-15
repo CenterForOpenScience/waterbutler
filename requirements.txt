@@ -1,6 +1,5 @@
 aiocontextvars==0.2.2  # recommended for sentry-sdk
 aiohttp==3.10.5
-git+https://github.com/mkovalua/boto.git@feature/gen-url-query-params-6#egg=boto
 celery==5.4.0
 certifi==2025.1.31
 # Building wheel for cryptography 3.4.0 requires a Rust version incompatible with Docker base image.

@@ -7,13 +7,7 @@ from urllib import parse
 
 import xmltodict
 import xml.sax.saxutils
-from aiobotocore.session import get_session
-from boto.compat import BytesIO  # type: ignore
-from boto.utils import compute_md5
-from boto.auth import get_auth_handler
-from boto import config as boto_config
-from boto.s3.connection import S3Connection, OrdinaryCallingFormat
-
+from aiobotocore.session import get_session # type: ignore
 from waterbutler.providers.s3 import settings
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.utils import make_disposition
@@ -305,6 +299,9 @@ class S3Provider(provider.BaseProvider):
         await self._check_region()
         exists = await dest_provider.exists(dest_path)
 
+        import pydevd_pycharm
+        pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+        return
         # ensure no left slash when joining paths
 
         # TODO: need to find UI option for testing it out
@@ -371,8 +368,8 @@ class S3Provider(provider.BaseProvider):
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
 
         if stream.size < self.CONTIGUOUS_UPLOAD_SIZE_LIMIT:
-            await self._contiguous_upload(stream, path)
-        else:
+        #     await self._contiguous_upload(stream, path)
+        # else:
             await self._chunked_upload(stream, path)
 
         return (await self.metadata(path, **kwargs)), not exists
@@ -437,6 +434,8 @@ class S3Provider(provider.BaseProvider):
 
         Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadInitiate.html
         """
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         query_parameters = {'Key': path.path}
         # "Initiate Multipart Upload" supports AWS server-side encryption
         if self.encrypt_uploads:
@@ -495,6 +494,7 @@ class S3Provider(provider.BaseProvider):
         except Exception as e:
             raise Exception(f"Failed to fetch versions: {e}")
 
+        logger.error(f'resp {resp}')
         return resp
 
     async def _abort_chunked_upload(self, path, session_upload_id):
@@ -616,7 +616,6 @@ class S3Provider(provider.BaseProvider):
         Called from: func: delete if not path.is_file
 
         Calls: func: self._check_region
-               func: self.make_request
 
         :param *ProviderPath path: Path to be deleted
 
@@ -628,6 +627,7 @@ class S3Provider(provider.BaseProvider):
         # docs https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/delete_objects.html#delete-objects
         """
         await self._check_region()
+        logger.error(f"path.path {path.path}")
         await self.delete_s3_bucket_folder_objects(path.path)
 
     async def revisions(self, path, **kwargs):
