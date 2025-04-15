@@ -213,9 +213,9 @@ class BaseFileMetadata(BaseMetadata):
         """
         return dict(super().serialized(), **{
             'contentType': self.content_type,
-            'modified': str(self.modified),
-            'modified_utc': str(self.modified_utc),
-            'created_utc': str(self.created_utc),
+            'modified': self.modified,
+            'modified_utc': self.modified_utc,
+            'created_utc': self.created_utc,
             'size': self.size,
             'sizeInt': self.size_as_int,
         })
@@ -289,8 +289,8 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
         return {
             'extra': self.extra,
             'version': self.version,
-            'modified': str(self.modified),
-            'modified_utc': str(self.modified_utc),
+            'modified': self.modified,
+            'modified_utc': self.modified_utc,
             'versionIdentifier': self.version_identifier,
         }
 

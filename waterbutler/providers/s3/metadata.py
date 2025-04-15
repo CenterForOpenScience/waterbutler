@@ -51,9 +51,9 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
     @property
     def modified(self):
         if 'LastModified' in self.raw:
-            return self.raw['LastModified']
+            return str(self.raw['LastModified'])
         elif 'Last-Modified' in self.raw:
-            return self.raw['Last-Modified']
+            return str(self.raw['Last-Modified'])
         return None
 
     @property
@@ -104,7 +104,7 @@ class S3FileMetadata(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def modified(self):
-        return self.raw['LastModified']
+        return str(self.raw['LastModified'])
 
     @property
     def created_utc(self):
@@ -169,7 +169,7 @@ class S3Revision(metadata.BaseFileRevisionMetadata):
 
     @property
     def modified(self):
-        return self.raw['LastModified']
+        return str(self.raw['LastModified'])
 
     @property
     def extra(self):
