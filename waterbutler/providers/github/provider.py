@@ -1070,7 +1070,7 @@ class GitHubProvider(provider.BaseProvider):
         ]
 
     @staticmethod
-    def _reparent_blobs(self, blobs, src_path, dest_path):
+    def _reparent_blobs(blobs, src_path, dest_path):
         """Take a list of blobs and replace the source path with the dest path.
 
         Two caveats:
@@ -1099,7 +1099,7 @@ class GitHubProvider(provider.BaseProvider):
         return
 
     @staticmethod
-    def _prune_subtrees(self, tree):
+    def _prune_subtrees(tree):
         """Takes in a list representing a git tree and remove all the entries that are also trees.
         Only blobs should remain. GitHub infers tree structure from blob paths.  Deleting a blob
         without removing its parent tree will result in the blob *NOT* being deleted. See:

@@ -1,6 +1,6 @@
 aiocontextvars==0.2.2  # recommended for sentry-sdk
 aiohttp==3.10.5
-celery==5.4.0
+celery==5.5.0
 certifi==2025.1.31
 # Building wheel for cryptography 3.4.0 requires a Rust version incompatible with Docker base image.
 # Required by pyjwe and ndg-httpsclient
@@ -10,7 +10,7 @@ google-auth==2.38.0
 humanfriendly==10.0
 invoke==2.2.0
 multidict==4.5.2
-newrelic==10.6.0
+newrelic==10.8.1
 oauthlib==3.2.2
 pyjwe==1.0.0
 pyjwt==2.10.1
@@ -18,7 +18,7 @@ python-dateutil==2.9.0
 pytz==2025.1
 sentry-sdk==2.22.0
 redis==5.2.1
-setuptools==75.8.0
+setuptools==78.1.0
 stevedore==5.4.1
 tornado==6.4.2
 xmltodict==0.14.2
