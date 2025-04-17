@@ -251,7 +251,7 @@ class BaseFileMetadata(BaseMetadata):
     def modified_utc(self) -> str:
         """ Date the file was last modified, as reported by the provider,
         converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
-        return utils.normalize_datetime(str(self.modified))
+        return utils.normalize_datetime(self.modified)
 
     @property
     def created_utc(self) -> str:
@@ -316,7 +316,7 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
     def modified_utc(self) -> str:
         """ Date the revision was last modified, as reported by the provider,
         converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
-        return utils.normalize_datetime(str(self.modified))
+        return utils.normalize_datetime(self.modified)
 
     @property
     @abc.abstractmethod

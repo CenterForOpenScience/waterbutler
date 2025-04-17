@@ -299,9 +299,6 @@ class S3Provider(provider.BaseProvider):
         await self._check_region()
         exists = await dest_provider.exists(dest_path)
 
-        import pydevd_pycharm
-        pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
-        return
         # ensure no left slash when joining paths
 
         # TODO: need to find UI option for testing it out
@@ -368,8 +365,8 @@ class S3Provider(provider.BaseProvider):
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
 
         if stream.size < self.CONTIGUOUS_UPLOAD_SIZE_LIMIT:
-        #     await self._contiguous_upload(stream, path)
-        # else:
+            await self._contiguous_upload(stream, path)
+        else:
             await self._chunked_upload(stream, path)
 
         return (await self.metadata(path, **kwargs)), not exists
@@ -627,7 +624,6 @@ class S3Provider(provider.BaseProvider):
         # docs https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/delete_objects.html#delete-objects
         """
         await self._check_region()
-        logger.error(f"path.path {path.path}")
         await self.delete_s3_bucket_folder_objects(path.path)
 
     async def revisions(self, path, **kwargs):
