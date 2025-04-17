@@ -109,6 +109,9 @@ class CreateMixin:
         self.metadata, created = await self.uploader
         self.writer.close()
         self.wsock.close()
+        self.rsock.close()
+        self.rfd.close()
+        self.wfd.close()
         if created:
             self.set_status(201)
 
