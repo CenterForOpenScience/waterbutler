@@ -1,6 +1,5 @@
 -r requirements.txt
 
-git+https://github.com/CenterForOpenScience/aiohttpretty.git@develop
 colorlog==6.9.0
 coveralls==3.3.1
 flake8==7.1.2
