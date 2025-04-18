@@ -303,6 +303,7 @@ class S3Provider(provider.BaseProvider):
 
         # TODO: need to find UI option for testing it out
         region_name = {"region_name": self.region} if self.region else {}
+        session = get_session()
         async with session.create_client(
                 's3',
                 aws_secret_access_key=self.aws_secret_access_key,
@@ -311,12 +312,12 @@ class S3Provider(provider.BaseProvider):
         ) as s3_client:
             copy_source = {
                 'Bucket': self.bucket_name,
-                'Key': source_path,
+                'Key': source_path.path,
             }
             try:
                 await s3_client.copy_object(
                     Bucket=dest_provider.bucket_name,
-                    Key=dest_path,
+                    Key=dest_path.path,
                     CopySource=copy_source,
                 )
             except Exception as e:
