@@ -109,7 +109,7 @@ class CreateMixin:
         self.metadata, created = await self.uploader
         self.writer.close()
         # Docs: https://docs.python.org/3/library/asyncio-stream.html#asyncio.StreamWriter.wait_closed
-        await writer.wait_closed()
+        await self.writer.wait_closed()
         self.wsock.close()
         self.rsock.close()
         self.rfd.close()
