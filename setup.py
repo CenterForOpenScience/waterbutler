@@ -30,7 +30,7 @@ setup(
         'Natural Language :: English',
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.13',
         'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: Apache Software License',
     ],

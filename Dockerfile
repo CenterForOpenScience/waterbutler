@@ -26,18 +26,17 @@ RUN apt-get update \
 RUN mkdir -p /code
 WORKDIR /code
 
-RUN pip install -U pip==24.0
-RUN pip install setuptools==69.5.1
-
-COPY ./requirements.txt /code/
-
-RUN pip install --no-cache-dir -r /code/requirements.txt
+COPY pyproject.toml poetry.lock* /code/
+RUN pip install poetry==1.8.2
+RUN poetry install --no-root --without=docs
 
 # Copy the rest of the code over
 COPY ./ /code/
 
 ARG GIT_COMMIT=
 ENV GIT_COMMIT=${GIT_COMMIT}
+ENV POETRY_NO_INTERACTION=1
+ENV POETRY_VIRTUALENVS_CREATE=0
 
 RUN python setup.py develop
 
