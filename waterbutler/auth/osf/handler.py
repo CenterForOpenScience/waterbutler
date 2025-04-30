@@ -68,9 +68,12 @@ class OsfAuthHandler(BaseAuthHandler):
                 try:
                     raw = await response.json()
                     signed_jwt = jwe.decrypt(raw['payload'].encode(), JWE_KEY)
-                    data = jwt.decode(signed_jwt, settings.JWT_SECRET,
-                                      algorithms=settings.JWT_ALGORITHM,
-                                      options={'require_exp': True})
+                    algorithms = settings.JWT_ALGORITHM if isinstance(settings.JWT_ALGORITHM, list) else [settings.JWT_ALGORITHM]
+                    # Docs: https://pyjwt.readthedocs.io/en/stable/api.html#jwt.decode
+                    data = jwt.decode(
+                        signed_jwt, settings.JWT_SECRET, algorithms=algorithms, options={'require_exp': True}
+                    )
+
                     return data['data']
                 except (jwt.InvalidTokenError, KeyError):
                     raise exceptions.AuthError(data, code=response.status)

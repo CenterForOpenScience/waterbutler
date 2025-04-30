@@ -3,6 +3,7 @@ import socket
 import asyncio
 import logging
 from http import HTTPStatus
+import os
 
 import tornado.gen
 
@@ -43,7 +44,6 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     PATTERN = r'/resources/(?P<resource>(?:\w|\d)+)/providers/(?P<provider>(?:\w|\d)+)(?P<path>/.*/?)'
 
     async def prepare(self, *args, **kwargs):
-
         if ENABLE_RATE_LIMITING:
             logger.debug('>>> checking for rate-limiting')
             limit_hit, data = self.rate_limit()
@@ -145,8 +145,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         """Note: Only called during uploads."""
         self.bytes_uploaded += len(chunk)
         if self.stream:
-            self.writer.write(chunk)
-            await self.writer.drain()
+            try:
+                self.writer.write(chunk)
+                await self.writer.drain()
+            except Exception as e:
+                logger.error(f"Upload stream reset: possible early EOF or cancellation. {e}")
+                if self.uploader and not self.uploader.done():
+                    self.uploader.cancel()
         else:
             self.body += chunk
 
@@ -155,9 +160,23 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         Only called on PUT when path is to a file
         """
         self.rsock, self.wsock = socket.socketpair()
+        # Docs: https://docs.python.org/3/library/socket.html#socket.socket.setblocking
+        self.rsock.setblocking(False)
+        self.wsock.setblocking(False)
 
-        self.reader, _ = await asyncio.open_unix_connection(sock=self.rsock)
-        _, self.writer = await asyncio.open_unix_connection(sock=self.wsock)
+        # Docs: https://docs.python.org/3/library/os.html#os.fdopen
+        self.rfd = os.fdopen(self.rsock.detach(), 'rb', 0)
+        self.wfd = os.fdopen(self.wsock.detach(), 'wb', 0)
+
+        self.reader = asyncio.StreamReader()
+        reader_protocol = asyncio.StreamReaderProtocol(self.reader)
+        loop = asyncio.get_running_loop()
+        # Docs:  https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.connect_read_pipe
+        await loop.connect_read_pipe(lambda: reader_protocol, self.rfd)
+
+        # Docs:   https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.connect_write_pipe
+        writer_transport, _ = await loop.connect_write_pipe(asyncio.Protocol, self.wfd)
+        self.writer = asyncio.StreamWriter(writer_transport, reader_protocol, self.reader, loop)
 
         self.stream = RequestStreamReader(self.request, self.reader)
         self.uploader = asyncio.ensure_future(self.provider.upload(self.stream, self.target_path))

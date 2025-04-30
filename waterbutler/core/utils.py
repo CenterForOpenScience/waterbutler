@@ -69,7 +69,7 @@ def async_retry(retries=5, backoff=1, exceptions_tuple=(Exception, )):
         @functools.wraps(func)
         async def wrapped(*args, __retries=0, **kwargs):
             try:
-                return await asyncio.coroutine(func)(*args, **kwargs)
+                return await func(*args, **kwargs)
             except exceptions_tuple as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
