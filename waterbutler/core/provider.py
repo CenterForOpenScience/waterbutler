@@ -335,10 +335,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
     def request(self, *args, **kwargs):
         return RequestHandlerContext(self.make_request(*args, **kwargs))
 
-    @staticmethod
-    def convert_to_waterbutlerpath(path):
-        return  wb_path.WaterButlerPath(f'/{path}') if isinstance(path, str) else path
-
     async def move(self,
                    dest_provider: 'BaseProvider',
                    src_path: wb_path.WaterButlerPath,
@@ -357,8 +353,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param conflict: ( :class:`str` ) What to do in the event of a name conflict, ``replace`` or ``keep``
         :param handle_naming: ( :class:`bool` ) If a naming conflict is detected, should it be automatically handled?
         """
-        src_path = self.convert_to_waterbutlerpath(src_path)
-        dest_path = self.convert_to_waterbutlerpath(dest_path)
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict}
 
@@ -406,8 +400,6 @@ class BaseProvider(metaclass=abc.ABCMeta):
                    rename: str = None, conflict: str = 'replace',
                    handle_naming: bool = True) \
             -> tuple[wb_metadata.BaseMetadata, bool]:
-        src_path = self.convert_to_waterbutlerpath(src_path)
-        dest_path = self.convert_to_waterbutlerpath(dest_path)
         args = (dest_provider, src_path, dest_path)
         kwargs = {'rename': rename, 'conflict': conflict, 'handle_naming': handle_naming}
 

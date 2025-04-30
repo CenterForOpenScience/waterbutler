@@ -41,3 +41,11 @@ CELERY_IMPORTS.extend([
 CELERY_ACKS_LATE = True
 CELERYD_HIJACK_ROOT_LOGGER = False
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+# Serialize request and response celery data
+# https://stackoverflow.com/questions/49373825/kombu-exceptions-encodeerror-user-is-not-json-serializable
+CELERY_TASK_SERIALIZER = 'pickle'
+CELERY_RESULT_SERIALIZER = 'pickle'
+CELERY_ACCEPT_CONTENT = ['pickle', 'json']
+
+
+
