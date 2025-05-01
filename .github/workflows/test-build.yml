@@ -63,16 +63,16 @@ jobs:
           poetry install --no-root --without=docs --with=dev
 
       - name: Run flake8
-        run: flake8 .
+        run: poetry run flake8 .
 
       - name: Build plugins
-        run: python3 setup.py develop
+        run: poetry run python3 setup.py develop
 
       - name: Run unit tests
         run: |
-          pytest --cov-report term-missing --cov waterbutler tests
+          poetry run pytest --cov-report term-missing --cov waterbutler tests
 
       - name: Upload coverage to Coveralls
-        run: coveralls --service=github
+        run: poetry run coveralls --service=github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
