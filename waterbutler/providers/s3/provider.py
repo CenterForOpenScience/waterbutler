@@ -18,7 +18,7 @@ from waterbutler.providers.s3.metadata import (S3Revision,
                                                S3FolderKeyMetadata,
                                                S3FileMetadataHeaders,
                                                )
-
+import datetime
 logger = logging.getLogger(__name__)
 
 
@@ -80,9 +80,9 @@ class S3Provider(provider.BaseProvider):
                     Key=path,
                     **query_parameters
                 ))
-        except s3_client.exceptions.ClientError as e:
-            if e.response.get('Error', {}).get('Code') == '404':
-                raise exceptions.NotFoundError(str(path))
+        except Exception as e:
+            logger.error(f"check_key_existence {path} {datetime.datetime.now()} {e}")
+            raise exceptions.NotFoundError(f"{path} {e}")
 
     async def get_s3_bucket_object(self, path, query_parameters=None):
         try:
@@ -101,9 +101,8 @@ class S3Provider(provider.BaseProvider):
                     Key=path,
                     **query_parameters
                 ))
-        except s3_client.exceptions.ClientError as e:
-            if e.response.get('Error', {}).get('Code') == '404':
-                raise exceptions.NotFoundError(str(path))
+        except Exception as e:
+            raise exceptions.NotFoundError(f"{path} {e}")
 
     async def get_s3_bucket_object_location(self):
         try:
@@ -117,9 +116,8 @@ class S3Provider(provider.BaseProvider):
                 return (await s3_client.get_bucket_location(
                     Bucket=self.bucket_name
                 ))
-        except s3_client.exceptions.ClientError as e:
-            if e.response.get('Error', {}).get('Code') == '404':
-                raise exceptions.NotFoundError(str(path))
+        except Exception as e:
+            raise exceptions.NotFoundError(f"{self.bucket_name} {e}")
 
     async def get_folder_metadata(self, path, params):
         try:
@@ -145,9 +143,8 @@ class S3Provider(provider.BaseProvider):
                     prefixes.extend(page.get('CommonPrefixes', []))
 
             return contents, prefixes
-        except s3_client.exceptions.ClientError as e:
-            if e.response.get('Error', {}).get('Code') == '404':
-                raise exceptions.NotFoundError(str(path))
+        except Exception as e:
+            raise exceptions.NotFoundError(f"{path} {e}")
 
     async def create_s3_bucket_object(self, path, query_parameters=None):
         try:
@@ -167,7 +164,7 @@ class S3Provider(provider.BaseProvider):
                     **query_parameters
                 ))
         except Exception as e:
-            raise exceptions.UploadFailedError(str(path))
+            raise exceptions.UploadFailedError(f"{path} {e}")
 
 
     async def delete_s3_bucket_object(self, path):
@@ -185,11 +182,13 @@ class S3Provider(provider.BaseProvider):
                     Bucket=self.bucket_name,
                     Key=path
                 )
+                logger.error(f"delete_s3_bucket_object {path} {datetime.datetime.now()} ")
         except Exception as e:
-            raise exceptions.DeleteError(str(path))
+            raise exceptions.DeleteError(f"{path} {e}")
 
     async def delete_s3_bucket_folder_objects(self, path):
         try:
+            logger.error(f"delete_s3_bucket_folder_objects {path} {datetime.datetime.now()} ")
             session = get_session()
             region_name = {"region_name": self.region} if self.region else {}
             async with session.create_client(
@@ -222,7 +221,8 @@ class S3Provider(provider.BaseProvider):
                             Delete={"Objects": chunk}
                         )
         except Exception as e:
-            raise exceptions.DeleteError(str(path))
+            logger.error(f"delete_s3_bucket_folder_objects {path} {datetime.datetime.now()} ")
+            raise exceptions.DeleteError(f"{path} {e}")
 
     async def get_object_versions(self, query_parameters):
         try:
@@ -244,7 +244,7 @@ class S3Provider(provider.BaseProvider):
                     all_versions.extend(page.get('Versions', []))
                 return all_versions
         except Exception as e:
-            raise Exception(f"Failed to fetch versions: {e}")
+            raise exceptions.NotFoundError(f"Failed to fetch versions: {e}")
 
     async def create_multipart_upload(self,query_parameters):
         try:
@@ -262,7 +262,7 @@ class S3Provider(provider.BaseProvider):
                     **query_parameters
                 )
         except Exception as e:
-            raise Exception(f"Failed to fetch versions: {e}")
+            raise exceptions.NotFoundError(f"Failed to fetch versions: {e}")
 
     async def validate_v1_path(self, path, **kwargs):
         await self._check_region()
@@ -544,7 +544,6 @@ class S3Provider(provider.BaseProvider):
 
         Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.list_parts
         """
-        session = get_session()
 
         try:
             response = await s3_client.list_parts(
@@ -682,6 +681,9 @@ class S3Provider(provider.BaseProvider):
 
         metadata = S3FolderMetadata({'Prefix': path_prefix})
         metadata.raw['base_folder'] = self.base_folder
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+        # {'raw': {'Prefix': 'qwerty2026/qwerty/qwerty444469/', 'base_folder': ''}, '_children': None}
         return metadata
 
     async def _metadata_file(self, path, revision=None):
@@ -705,6 +707,7 @@ class S3Provider(provider.BaseProvider):
             # If contents and prefixes are empty then this "folder"
             # must exist as a key with a / at the end of the name
             # if the path is root there is no need to test if it exists
+            logger.error(f'path_prefix {path_prefix}')
             await self.check_key_existence(path_prefix)
 
         if isinstance(contents, dict):
@@ -726,7 +729,8 @@ class S3Provider(provider.BaseProvider):
                 items.append(S3FolderKeyMetadata(content))
             else:
                 items.append(S3FileMetadata(content))
-
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         return items
 
     async def _check_region(self):
