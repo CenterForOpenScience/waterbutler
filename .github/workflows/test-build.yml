@@ -26,13 +26,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ env.GHA_DISTRO }}-${{ matrix.python-version }}-${{ hashFiles('requirements.txt', 'dev-requirements.txt') }}
+          key: ${{ env.GHA_DISTRO }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'poetry.lock') }}
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip==24.0
-          pip install setuptools==69.5.1
-          pip install -r dev-requirements.txt
+          python3 -m pip install poetry==2.1.2
+          poetry install --no-root --without=docs --with=dev
 
   runtests:
     name: Run unit tests
@@ -55,25 +54,25 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ env.GHA_DISTRO }}-${{ matrix.python-version }}-${{ hashFiles('requirements.txt', 'dev-requirements.txt') }}
+          key: ${{ env.GHA_DISTRO }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'poetry.lock') }}
 
       - name: Install test dependencies
         run: |
-          python -m pip install --upgrade pip==24.0
-          pip install setuptools==69.5.1
-          pip install -r dev-requirements.txt
+          python3 -m pip install poetry==2.1.2
+          python3 -m pip install setuptools==80.1.0
+          poetry install --no-root --without=docs --with=dev
 
       - name: Run flake8
-        run: flake8 .
+        run: poetry run flake8 .
 
       - name: Build plugins
-        run: python setup.py develop
+        run: poetry run python3 setup.py develop
 
       - name: Run unit tests
         run: |
-          pytest --cov-report term-missing --cov waterbutler tests
+          poetry run pytest --cov-report term-missing --cov waterbutler tests
 
       - name: Upload coverage to Coveralls
-        run: coveralls --service=github
+        run: poetry run coveralls --service=github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
