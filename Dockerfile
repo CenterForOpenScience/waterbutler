@@ -27,7 +27,8 @@ RUN mkdir -p /code
 WORKDIR /code
 
 COPY pyproject.toml poetry.lock* /code/
-RUN pip install poetry==1.8.2
+RUN pip install poetry==2.1.2
+RUN pip install setuptools==80.1.0
 RUN poetry install --no-root --without=docs
 
 # Copy the rest of the code over
@@ -37,9 +38,10 @@ ARG GIT_COMMIT=
 ENV GIT_COMMIT=${GIT_COMMIT}
 ENV POETRY_NO_INTERACTION=1
 ENV POETRY_VIRTUALENVS_CREATE=0
+ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 
-RUN python setup.py develop
+RUN python3 setup.py develop
 
 EXPOSE 7777
 
-CMD ["gosu", "www-data", "invoke", "server"]
+CMD ["gosu", "www-data", "python3", "-m", "invoke", "server"]
