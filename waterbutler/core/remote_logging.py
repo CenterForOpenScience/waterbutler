@@ -76,7 +76,7 @@ async def log_to_keen(action, api_version, request, source, destination=None, er
                       bytes_downloaded=0, bytes_uploaded=0):
     """Send events to Keen describing the action that occurred.  A scrubbed version of the payload
     suitable for public display is also sent."""
-    if not settings.KEEN_ENABLE_LOGGING:
+    if not settings.KEEN_ENABLE_LOGGING or not settings.KEEN_PRIVATE_PROJECT_ID or not settings.KEEN_PRIVATE_WRITE_KEY:
         return
 
     keen_payload = {
