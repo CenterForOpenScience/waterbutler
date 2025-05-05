@@ -104,16 +104,13 @@ class CreateMixin:
         self.write({'data': self.metadata.json_api_serialized(self.resource)})
 
     async def upload_file(self):
-        self.writer.write_eof()
+        await self.writer.write_eof()
 
         self.metadata, created = await self.uploader
         self.writer.close()
         # Docs: https://docs.python.org/3/library/asyncio-stream.html#asyncio.StreamWriter.wait_closed
         await self.writer.wait_closed()
-        self.wsock.close()
-        self.rsock.close()
-        self.rfd.close()
-        self.wfd.close()
+        # Socket-related cleanup is no longer needed with the Queue-based implementation
         if created:
             self.set_status(201)
 

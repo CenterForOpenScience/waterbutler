@@ -150,38 +150,137 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                 await self.writer.drain()
             except Exception as e:
                 logger.error(f"Upload stream reset: possible early EOF or cancellation. {e}")
-                if self.uploader and not self.uploader.done():
+                # Cancel the uploader task if it exists and is not done
+                if hasattr(self, 'uploader') and not self.uploader.done():
                     self.uploader.cancel()
+                    # Wait a bit for the cancellation to take effect
+                    await asyncio.sleep(0.1)
+
+                # Clean up the feed_reader task
+                if hasattr(self, 'feed_task') and not self.feed_task.done():
+                    # Signal the feed_reader task to stop
+                    if hasattr(self, 'queue'):
+                        try:
+                            await self.queue.put(None)
+                            # Give the feed_reader task a chance to process the None
+                            await asyncio.sleep(0.1)
+                        except Exception as queue_error:
+                            logger.error(f"Error putting None in queue during error handling: {queue_error}")
+
+                    # If the feed_reader task is still not done, cancel it
+                    if not self.feed_task.done():
+                        try:
+                            self.feed_task.cancel()
+                        except Exception as cancel_error:
+                            logger.error(f"Error cancelling feed_task during error handling: {cancel_error}")
         else:
             self.body += chunk
 
     async def prepare_stream(self):
         """Sets up an asyncio pipe from client to server
         Only called on PUT when path is to a file
+
+        This implementation uses asyncio.Queue instead of socket pairs to be compatible with uvloop.
         """
-        self.rsock, self.wsock = socket.socketpair()
-        # Docs: https://docs.python.org/3/library/socket.html#socket.socket.setblocking
-        self.rsock.setblocking(False)
-        self.wsock.setblocking(False)
-
-        # Docs: https://docs.python.org/3/library/os.html#os.fdopen
-        self.rfd = os.fdopen(self.rsock.detach(), 'rb', 0)
-        self.wfd = os.fdopen(self.wsock.detach(), 'wb', 0)
-
+        # Create a custom stream reader that will read from our queue
         self.reader = asyncio.StreamReader()
-        reader_protocol = asyncio.StreamReaderProtocol(self.reader)
-        loop = asyncio.get_running_loop()
-        # Docs:  https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.connect_read_pipe
-        await loop.connect_read_pipe(lambda: reader_protocol, self.rfd)
+        self.queue = asyncio.Queue()
 
-        # Docs:   https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.connect_write_pipe
-        writer_transport, _ = await loop.connect_write_pipe(asyncio.Protocol, self.wfd)
-        self.writer = asyncio.StreamWriter(writer_transport, reader_protocol, self.reader, loop)
+        # Create a task that reads from the queue and feeds the reader
+        async def feed_reader():
+            try:
+                while True:
+                    chunk = await self.queue.get()
+                    if chunk is None:  # None is our EOF marker
+                        self.queue.task_done()  # Mark the None chunk as done
+                        break
+                    self.reader.feed_data(chunk)
+                    self.queue.task_done()
+            finally:
+                self.reader.feed_eof()
+
+        self.feed_task = asyncio.create_task(feed_reader())
+
+        # Create a writer that puts data into the queue
+        class QueueWriter:
+            def __init__(self, queue):
+                self.queue = queue
+                self._closed = False
+                self._pending_writes = []
+
+            def write(self, data):
+                # Create a task and track it so we can wait for it in drain
+                task = asyncio.create_task(self.queue.put(data))
+                self._pending_writes.append(task)
+
+            async def write_eof(self):
+                # Signal EOF by putting None in the queue
+                # Put None directly and wait for it to be processed
+                await self.queue.put(None)
+                # No need to track this as a pending write since we've already awaited it
+
+            def close(self):
+                self._closed = True
+
+            async def wait_closed(self):
+                # Wait for all pending writes to complete
+                if self._pending_writes:
+                    await asyncio.gather(*self._pending_writes)
+                # Wait for the queue to be empty
+                await self.queue.join()
+
+            async def drain(self):
+                # Wait for all pending writes to complete
+                if self._pending_writes:
+                    await asyncio.gather(*self._pending_writes)
+                    self._pending_writes = []
+
+        self.writer = QueueWriter(self.queue)
 
         self.stream = RequestStreamReader(self.request, self.reader)
         self.uploader = asyncio.ensure_future(self.provider.upload(self.stream, self.target_path))
 
+    async def _cleanup_feed_task(self):
+        """Clean up the feed_reader task and any pending writes."""
+        try:
+            # Only signal the feed_reader task to stop if it's not already done
+            if hasattr(self, 'feed_task') and not self.feed_task.done():
+                # Signal the feed_reader task to stop by putting None in the queue
+                await self.queue.put(None)
+
+                # Wait for the feed_reader task to complete
+                try:
+                    # Use a shorter timeout to avoid blocking for too long
+                    await asyncio.wait_for(asyncio.shield(self.feed_task), 0.5)
+                except asyncio.TimeoutError:
+                    # If it doesn't complete in time, cancel it
+                    self.feed_task.cancel()
+                    # Wait a bit for the cancellation to take effect
+                    await asyncio.sleep(0.1)
+
+            # Wait for any pending writes to complete
+            if hasattr(self, 'writer') and hasattr(self.writer, '_pending_writes') and self.writer._pending_writes:
+                # Wait for all pending writes with a timeout
+                try:
+                    await asyncio.wait_for(asyncio.gather(*self.writer._pending_writes, return_exceptions=True), 0.5)
+                except asyncio.TimeoutError:
+                    # If timeout occurs, log it but continue
+                    logger.warning("Timeout waiting for pending writes to complete during cleanup")
+        except Exception as e:
+            logger.error(f"Error cleaning up feed task: {e}")
+
     def on_finish(self):
+        # Clean up the feed_reader task if it exists
+        if hasattr(self, 'queue') and hasattr(self, 'feed_task'):
+            # Signal the feed_reader task to stop by putting None in the queue
+            # Use create_task to avoid blocking in on_finish
+            # Store a reference to the task to prevent it from being garbage collected
+            self._cleanup_task = asyncio.create_task(self._cleanup_feed_task())
+            # Add a done callback to handle any exceptions
+            self._cleanup_task.add_done_callback(
+                lambda task: logger.error(f"Cleanup task error: {task.exception()}") if task.exception() else None
+            )
+
         status, method = self.get_status(), self.request.method.upper()
 
         # If the response code is not within the 200-302 range, the request was a HEAD or OPTIONS,

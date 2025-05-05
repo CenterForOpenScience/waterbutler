@@ -8,6 +8,7 @@ import tornado.web
 import tornado.platform.asyncio
 
 import sentry_sdk
+import uvloop
 from sentry_sdk.integrations.tornado import TornadoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 
@@ -63,6 +64,7 @@ def make_app(debug):
 
 
 def serve():
+     uvloop.install()
     app = make_app(server_settings.DEBUG)
 
     ssl_options = None
@@ -85,3 +87,6 @@ def serve():
     signal.signal(signal.SIGTERM, partial(sig_handler))
     asyncio.get_event_loop().set_debug(server_settings.DEBUG)
     asyncio.get_event_loop().run_forever()
+
+if __name__ == '__main__':
+    serve()
