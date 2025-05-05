@@ -64,7 +64,7 @@ def make_app(debug):
 
 
 def serve():
-     uvloop.install()
+    uvloop.install()
     app = make_app(server_settings.DEBUG)
 
     ssl_options = None
