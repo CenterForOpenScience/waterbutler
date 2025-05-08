@@ -124,57 +124,20 @@ class UtilMixin:
         return super().set_status(code, reason or HTTP_REASONS.get(code))
 
     async def write_stream(self, stream):
-        logger.error(f"scope start")
         try:
-            from waterbutler.core.utils import ZipStreamGenerator
-            # import pydevd_pycharm
-            # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
-            is_s3_provider = self.path_kwargs['provider'] == 's3'
-            if not is_s3_provider or (is_s3_provider and hasattr(stream, 'streams') and isinstance(stream.streams, ZipStreamGenerator)):
-                try:
-                    while True:
-                        chunk = await stream.read(settings.CHUNK_SIZE)
-                        if not chunk:
-                            break
-                        # Temp fix, write does not accept bytearrays currently
-                        if isinstance(chunk, bytearray):
-                            chunk = bytes(chunk)
-                        self.write(chunk)
-                        self.bytes_downloaded += len(chunk)
-                        del chunk
-                        await self.flush()
-                except tornado.iostream.StreamClosedError:
-                    # Client has disconnected early.
-                    # No need for any exception to be raised
-                    return
-            else:
 
-                import datetime
-                logger.error("write_stream")
-                logger.error(f"Response closed: {stream.response.closed}")
-
-                async def async_chunk_gen():
-                    iterator = stream.response.iter_chunks(settings.CHUNK_SIZE)
-                    loop = asyncio.get_event_loop()
-
-                    while True:
-                        try:
-                            chunk = await loop.run_in_executor(None, next, iterator)
-                        except StopIteration:
-                            break
-
-                        if chunk:
-                            if isinstance(chunk, bytearray):
-                                chunk = bytes(chunk)
-                            yield chunk
-
-                async for chunk in async_chunk_gen():
-                    logger.error(f"{len(chunk)} {self.bytes_downloaded} {datetime.datetime.now()}")
-                    self.write(chunk)
-                    self.bytes_downloaded += len(chunk)
-                    del chunk
-                    await self.flush()
-
-        except (tornado.iostream.StreamClosedError, Exception) as exc:
-            logger.error(f"exc {exc}")
-        logger.error(f"scope end")
+            while True:
+                chunk = await stream.read(settings.CHUNK_SIZE)
+                if not chunk:
+                    break
+                # Temp fix, write does not accept bytearrays currently
+                if isinstance(chunk, bytearray):
+                    chunk = bytes(chunk)
+                self.write(chunk)
+                self.bytes_downloaded += len(chunk)
+                del chunk
+                await self.flush()
+        except tornado.iostream.StreamClosedError:
+            # Client has disconnected early.
+            # No need for any exception to be raised
+            return

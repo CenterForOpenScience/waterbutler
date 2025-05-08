@@ -173,6 +173,16 @@ class ResponseStreamReader(BaseStream):
         return chunk
 
 
+class S3ResponseStreamReader(ResponseStreamReader):
+    async def _read(self, size):
+
+        chunk = await asyncio.to_thread(self.response.read,size)
+
+        if not chunk:
+            self.feed_eof()
+
+        return chunk
+
 class RequestStreamReader(BaseStream):
 
     def __init__(self, request, inner):

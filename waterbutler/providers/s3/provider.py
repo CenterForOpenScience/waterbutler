@@ -370,7 +370,7 @@ class S3Provider(provider.BaseProvider):
         resp = await self.get_s3_bucket_object(path.path, query_parameters)
 
         resp['Body'].headers = CIMultiDict(resp['ResponseMetadata']['HTTPHeaders'])
-        return streams.ResponseStreamReader(resp['Body'])
+        return streams.S3ResponseStreamReader(resp['Body'])
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
         """Uploads the given stream to S3
