@@ -1,3 +1,6 @@
+import asyncio
+import boto3
+from multidict import CIMultiDict
 import base64
 import os
 import hashlib
@@ -84,25 +87,40 @@ class S3Provider(provider.BaseProvider):
             logger.error(f"check_key_existence {path} {datetime.datetime.now()} {e}")
             raise exceptions.NotFoundError(f"{path} {e}")
 
+    async def _get_boto3_s3_client(self):
+        # Use asyncio.to_thread to run boto3 in a separate thread
+        return await asyncio.to_thread(self.create_boto3_client)
+
+    def create_boto3_client(self):
+        # Blocking boto3 client creation in the main thread
+        region_name = {"region_name": self.region} if self.region else {}
+        client = boto3.client(
+            's3',
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key,
+            **region_name
+        )
+        return client
+
     async def get_s3_bucket_object(self, path, query_parameters=None):
         try:
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            query_parameters = query_parameters or {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/get_object.html
-                return (await s3_client.get_object(
-                    Bucket=self.bucket_name,
-                    Key=path,
-                    **query_parameters
-                ))
+            # Get the s3 client using asyncio.to_thread
+            s3_client = await self._get_boto3_s3_client()
+
+            # Call the get_object method in the thread
+            response = await asyncio.to_thread(self.get_object, s3_client, path, query_parameters)
+
+            return response
         except Exception as e:
-            raise exceptions.NotFoundError(f"{path} {e}")
+            raise Exception(f"Failed to fetch object {path}: {e}")
+
+    def get_object(self, s3_client, path, query_parameters):
+        # Synchronous blocking operation - we use a thread to handle this
+        return s3_client.get_object(
+            Bucket=self.bucket_name,
+            Key=path,
+            **(query_parameters or {})
+        )
 
     async def get_s3_bucket_object_location(self):
         try:
@@ -349,8 +367,9 @@ class S3Provider(provider.BaseProvider):
         if revision and revision.lower() != 'latest':
             query_parameters = {'VersionId': revision}
 
-
         resp = await self.get_s3_bucket_object(path.path, query_parameters)
+
+        resp['Body'].headers = CIMultiDict(resp['ResponseMetadata']['HTTPHeaders'])
         return streams.ResponseStreamReader(resp['Body'])
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
@@ -391,11 +410,8 @@ class S3Provider(provider.BaseProvider):
         if self.encrypt_uploads:
             query_parameters['ServerSideEncryption'] = 'AES256'
 
-        logger.error(f"query_parameters {query_parameters}")
-
         resp = await self.create_s3_bucket_object(path.path, query_parameters=query_parameters)
 
-        logger.error(f"_contiguous_upload {resp}")
 
         # md5 is returned as ETag header as long as server side encryption is not used.
         if md5_digest != resp.get('ETag', '').replace('"', ''):
