@@ -1,7 +1,5 @@
-import asyncio
 import tornado.iostream
 
-from waterbutler.auth.osf.handler import logger
 from waterbutler.server import settings
 
 CORS_ACCEPT_HEADERS = [

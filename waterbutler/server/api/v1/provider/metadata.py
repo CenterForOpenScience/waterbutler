@@ -103,8 +103,6 @@ class MetadataMixin:
         if ext in mime_types:
             self.set_header('Content-Type', mime_types[ext])
 
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         await self.write_stream(stream)
 
         if getattr(stream, 'partial', False) and isinstance(stream, ResponseStreamReader):

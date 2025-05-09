@@ -176,6 +176,8 @@ class ResponseStreamReader(BaseStream):
 class S3ResponseStreamReader(ResponseStreamReader):
     async def _read(self, size):
 
+        # botocore is sync use asyncio.to_thread to not block another workflow, aiobotocore==2.15.2 stream does not
+        # allow to read big s3 files, maybe it will fixed in future
         chunk = await asyncio.to_thread(self.response.read,size)
 
         if not chunk:
