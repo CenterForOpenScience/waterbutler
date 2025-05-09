@@ -84,7 +84,6 @@ class S3Provider(provider.BaseProvider):
                     **query_parameters
                 ))
         except Exception as e:
-            logger.error(f"check_key_existence {path} {datetime.datetime.now()} {e}")
             raise exceptions.NotFoundError(f"{path} {e}")
 
     async def _get_boto3_s3_client(self):
@@ -200,13 +199,11 @@ class S3Provider(provider.BaseProvider):
                     Bucket=self.bucket_name,
                     Key=path
                 )
-                logger.error(f"delete_s3_bucket_object {path} {datetime.datetime.now()} ")
         except Exception as e:
             raise exceptions.DeleteError(f"{path} {e}")
 
     async def delete_s3_bucket_folder_objects(self, path):
         try:
-            logger.error(f"delete_s3_bucket_folder_objects {path} {datetime.datetime.now()} ")
             session = get_session()
             region_name = {"region_name": self.region} if self.region else {}
             async with session.create_client(
@@ -239,7 +236,6 @@ class S3Provider(provider.BaseProvider):
                             Delete={"Objects": chunk}
                         )
         except Exception as e:
-            logger.error(f"delete_s3_bucket_folder_objects {path} {datetime.datetime.now()} ")
             raise exceptions.DeleteError(f"{path} {e}")
 
     async def get_object_versions(self, query_parameters):
@@ -508,7 +504,6 @@ class S3Provider(provider.BaseProvider):
         except Exception as e:
             raise Exception(f"Failed to fetch versions: {e}")
 
-        logger.error(f'resp {resp}')
         return resp
 
     async def _abort_chunked_upload(self, path, session_upload_id):
@@ -527,14 +522,12 @@ class S3Provider(provider.BaseProvider):
 
             while retries <= settings.CHUNKED_UPLOAD_MAX_ABORT_RETRIES:
                 try:
-                    logger.error(f"bucket_name {self.bucket_name} path.path {path.path} s3_client {s3_client}")
                     # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/abort_multipart_upload.html
                     await s3_client.abort_multipart_upload(
                         Bucket=self.bucket_name,
                         Key=path.path,
                         UploadId=session_upload_id,
                     )
-                    logger.error('end')
                 except s3_client.exceptions.NoSuchUpload:
                     is_aborted = True
                     break
@@ -691,15 +684,11 @@ class S3Provider(provider.BaseProvider):
             if (await self.exists(path)):
                 raise exceptions.FolderNamingConflict(path.name)
         path_prefix = path.path
-        logger.error(f"path {path_prefix} folder_precheck {folder_precheck}")
 
         await self.create_s3_bucket_object(path_prefix)
 
         metadata = S3FolderMetadata({'Prefix': path_prefix})
         metadata.raw['base_folder'] = self.base_folder
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
-        # {'raw': {'Prefix': 'qwerty2026/qwerty/qwerty444469/', 'base_folder': ''}, '_children': None}
         return metadata
 
     async def _metadata_file(self, path, revision=None):
@@ -718,12 +707,11 @@ class S3Provider(provider.BaseProvider):
         params = {'Prefix': path_prefix, 'Delimiter': '/'}
 
         contents, prefixes = await self.get_folder_metadata(path_prefix, params)
-        logger.error(f"contents {contents} prefixes {prefixes}")
+
         if not contents and not prefixes and not path.is_root:
             # If contents and prefixes are empty then this "folder"
             # must exist as a key with a / at the end of the name
             # if the path is root there is no need to test if it exists
-            logger.error(f'path_prefix {path_prefix}')
             await self.check_key_existence(path_prefix)
 
         if isinstance(contents, dict):
