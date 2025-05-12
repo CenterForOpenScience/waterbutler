@@ -123,6 +123,7 @@ class UtilMixin:
 
     async def write_stream(self, stream):
         try:
+
             while True:
                 chunk = await stream.read(settings.CHUNK_SIZE)
                 if not chunk:

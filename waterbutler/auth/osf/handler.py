@@ -36,7 +36,6 @@ class OsfAuthHandler(BaseAuthHandler):
         if view_only:
             # View only must go outside of the jwt
             query_params['view_only'] = view_only
-
         raw_payload = jwe.encrypt(jwt.encode({
             'data': bundle,
             'exp': datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
@@ -74,6 +73,7 @@ class OsfAuthHandler(BaseAuthHandler):
                     data = jwt.decode(
                         signed_jwt, settings.JWT_SECRET, algorithms=algorithms, options={'require_exp': True}
                     )
+
                     return data['data']
                 except (jwt.InvalidTokenError, KeyError):
                     raise exceptions.AuthError(data, code=response.status)
@@ -131,7 +131,6 @@ class OsfAuthHandler(BaseAuthHandler):
         if view_only:
             # View only must go outside of the jwt
             view_only = view_only[0].decode()
-
         payload = await self.make_request(
             self.build_payload({
                 'nid': resource,
@@ -146,7 +145,7 @@ class OsfAuthHandler(BaseAuthHandler):
                     'origin': request.headers.get('Origin'),
                     'uri': request.uri,
                 }
-            }, cookie=cookie, view_only=view_only),
+        }, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)
         )

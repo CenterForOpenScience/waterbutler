@@ -1,6 +1,6 @@
 import os
 
-from waterbutler.core import metadata
+from waterbutler.core import metadata, utils
 
 
 def strip_char(string, chars):
@@ -34,27 +34,55 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def size(self):
-        return self.raw['Content-Length']
+        if 'ContentLength' in self.raw:
+            return self.raw['ContentLength']
+        elif 'Content-Length' in self.raw:
+            return self.raw['Content-Length']
+        return None
 
     @property
     def content_type(self):
-        return self.raw['Content-Type']
+        if 'ContentType' in self.raw:
+            return self.raw['ContentType']
+        elif 'Content-Type' in self.raw:
+            return self.raw['Content-Type']
+        return ''
 
     @property
     def modified(self):
-        return self.raw['Last-Modified']
+        if 'LastModified' in self.raw:
+            return str(self.raw['LastModified'])
+        elif 'Last-Modified' in self.raw:
+            return str(self.raw['Last-Modified'])
+        return None
 
     @property
     def created_utc(self):
         return None
 
     @property
+    def modified_utc(self) -> str:
+        """ Date the file was last modified, as reported by the provider,
+        converted to UTC, in format (YYYY-MM-DDTHH:MM:SS+00:00). """
+        last_modified = self.modified
+        return utils.normalize_datetime(str(last_modified)) if last_modified else last_modified
+
+    @property
     def etag(self):
-        return self.raw['Etag'].replace('"', '')
+        # ETag is used in boto3/aiobotocore, Etag is used in boto
+        if 'ETag' in self.raw:
+            return self.raw['ETag']
+        elif 'Etag' in self.raw:
+            return self.raw['Etag']
+        return ''
 
     @property
     def extra(self):
-        md5 = self.raw['Etag'].replace('"', '')
+        md5 = ''
+        if 'ETag' in self.raw:
+            md5 = self.raw['ETag']
+        elif 'Etag' in self.raw:
+            md5 = self.raw['Etag']
         return {
             'md5': md5,
             'encryption': self.raw.get('x-amz-server-side-encryption', ''),
@@ -76,7 +104,7 @@ class S3FileMetadata(S3Metadata, metadata.BaseFileMetadata):
 
     @property
     def modified(self):
-        return self.raw['LastModified']
+        return str(self.raw['LastModified'])
 
     @property
     def created_utc(self):
@@ -134,13 +162,14 @@ class S3Revision(metadata.BaseFileRevisionMetadata):
 
     @property
     def version(self):
-        if self.raw['IsLatest'] == 'true':
+        is_latest = self.raw['IsLatest']
+        if is_latest == True or is_latest == 'true':
             return 'Latest'
         return self.raw['VersionId']
 
     @property
     def modified(self):
-        return self.raw['LastModified']
+        return str(self.raw['LastModified'])
 
     @property
     def extra(self):

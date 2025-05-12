@@ -43,11 +43,11 @@ class MoveCopyMixin:
     def build_args(self):
         return ({
             'nid': self.resource,  # TODO rename to anything but nid
-            'path': self.path,
+            'path': self.path.path,
             'provider': self.provider.serialized()
         }, {
             'nid': self.dest_resource,
-            'path': self.dest_path,
+            'path': self.dest_path.path,
             'provider': self.dest_provider.serialized()
         })
 
@@ -164,3 +164,4 @@ class MoveCopyMixin:
             self.set_status(int(HTTPStatus.OK))
 
         self.write({'data': metadata.json_api_serialized(self.dest_resource)})
+
