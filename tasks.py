@@ -8,38 +8,25 @@ WHEELHOUSE_PATH = os.environ.get('WHEELHOUSE')
 
 @task
 def wheelhouse(ctx, develop=False, pty=True):
-    req_file = 'dev-requirements.txt' if develop else 'requirements.txt'
-    cmd = 'pip wheel --find-links={} -r {} --wheel-dir={}'.format(WHEELHOUSE_PATH, req_file,
-                                                                  WHEELHOUSE_PATH)
+    extras = '--with dev' if develop else ''
+    cmd = f'poetry export --format=requirements.txt {extras} | pip wheel --find-links={WHEELHOUSE_PATH} -r /dev/stdin --wheel-dir={WHEELHOUSE_PATH}'
     ctx.run(cmd, pty=pty)
 
 
 @task
 def install(ctx, develop=False, pty=True):
-    ctx.run('python setup.py develop')
-    req_file = 'dev-requirements.txt' if develop else 'requirements.txt'
-    cmd = f'pip install --upgrade -r {req_file}'
-
-    if WHEELHOUSE_PATH:
-        cmd += f' --no-index --find-links={WHEELHOUSE_PATH}'
-    ctx.run(cmd, pty=pty)
+    extras = '--with dev' if develop else ''
+    ctx.run(f'poetry install {extras}', pty=pty)
 
 
 @task
 def flake(ctx):
-    """
-    Run style and syntax checker. Follows options defined in setup.cfg
-    """
-    ctx.run('flake8 .', pty=True)
+    ctx.run('poetry run flake8 .', pty=True)
 
 
 @task
 def mypy(ctx):
-    """
-    Check python types using mypy (additional level of linting). Follows options defined in
-    setup.cfg
-    """
-    ctx.run('mypy waterbutler/', pty=True)
+    ctx.run('poetry run mypy waterbutler/', pty=True)
 
 
 @task
@@ -52,33 +39,31 @@ def test(ctx, verbose=False, types=False, nocov=False, provider=None, path=None)
     :param nocov: the flag to disable coverage
     :param provider: limit the tests to the given provider only
     :param path: limit the tests to the given path only
+
     :return: None
     """
 
     flake(ctx)
-
     if types:
         mypy(ctx)
 
     # `--provider=` and `--path=` are mutually exclusive options
     assert not (provider and path)
     if path:
-        path = f'/{path}' if path else ''
+        path = f'/{path}'
     elif provider:
-        path = f'/providers/{provider}/' if provider else ''
+        path = f'/providers/{provider}/'
     else:
         path = ''
 
     coverage = ' --cov-report term-missing --cov waterbutler' if not nocov else ''
-    verbose = '-v' if verbose else ''
-
-    cmd = f'py.test{coverage} tests{path} {verbose}'
+    verbosity = '-v' if verbose else ''
+    cmd = f'poetry run pytest{coverage} tests{path} {verbosity}'
     ctx.run(cmd, pty=True)
 
 
 @task
 def celery(ctx, loglevel='INFO', hostname='%h'):
-
     from waterbutler.tasks.app import app
     command = ['worker']
     if loglevel:
@@ -95,10 +80,8 @@ def rabbitmq(ctx):
 
 @task
 def server(ctx):
-
     if os.environ.get('REMOTE_DEBUG', None):
         import pydevd
-        # e.g. '127.0.0.1:5678'
         remote_parts = os.environ.get('REMOTE_DEBUG').split(':')
         pydevd.settrace(remote_parts[0], port=int(remote_parts[1]), suspend=False,
                         stdoutToServer=True, stderrToServer=True)
@@ -134,7 +117,7 @@ def newrelic_server(ctx, config='newrelic.ini', verbose=False):
         sys.exit("Couldn't find config file '{}'.  Check path or run `invoke newrelic_init` "
                  "to generate it.".format(config))
 
-    cmd = f'NEW_RELIC_CONFIG_FILE={config} newrelic-admin run-program invoke server'
+    cmd = f'poetry run env NEW_RELIC_CONFIG_FILE={config} newrelic-admin run-program invoke server'
     if verbose:
         print(cmd)
     ctx.run(cmd, pty=True)
