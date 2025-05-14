@@ -28,4 +28,4 @@ yarl===1.17.0
 aiobotocore==2.15.2
 celery-amqp-backend==1.2.0
 boto3==1.35.16
-
+pydevd-pycharm~=242.20224.347
