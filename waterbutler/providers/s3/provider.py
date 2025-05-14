@@ -1,16 +1,12 @@
-import asyncio
-import boto3
-from multidict import CIMultiDict
-import base64
-import os
 import hashlib
 import logging
-import functools
-from urllib import parse
 
+from urllib.parse import unquote
 import xmltodict
 import xml.sax.saxutils
+from aiobotocore.config import AioConfig
 from aiobotocore.session import get_session # type: ignore
+
 from waterbutler.providers.s3 import settings
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.utils import make_disposition
@@ -21,7 +17,7 @@ from waterbutler.providers.s3.metadata import (S3Revision,
                                                S3FolderKeyMetadata,
                                                S3FileMetadataHeaders,
                                                )
-import datetime
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,218 +61,339 @@ class S3Provider(provider.BaseProvider):
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
         self.region = None
 
-
-    async def check_key_existence(self, path, query_parameters=None):
+    async def generate_generic_presigned_url(self, path, method='head_object', query_parameters=None, default_params=True):
         try:
             session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            query_parameters = query_parameters or {}
+            region_name = {'region_name': self.region} if self.region else {}
+            config = AioConfig(signature_version='s3v4')
+
             async with session.create_client(
                     's3',
                     aws_secret_access_key=self.aws_secret_access_key,
                     aws_access_key_id=self.aws_access_key_id,
+                    config=config,
                     **region_name
             ) as s3_client:
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/head_object.html#
-                return (await s3_client.head_object(
-                    Bucket=self.bucket_name,
-                    Key=path,
-                    **query_parameters
-                ))
+                params = {'Bucket': self.bucket_name, 'Key': path} if default_params else {}
+                if query_parameters:
+                    params.update(query_parameters)
+                resp = await s3_client.generate_presigned_url(method,  Params=params,  ExpiresIn=settings.TEMP_URL_SECS)
+                return resp
+        except Exception as exc:
+            res = exc
+            raise exceptions.NotFoundError(f"{path} {exc}")
+
+    async def check_key_existence(self, path, expects=(200, ), query_parameters=None):
+        try:
+            session = get_session()
+            region_name = {"region_name": self.region} if self.region else {}
+            config = AioConfig(signature_version='s3v4')
+            query_parameters = query_parameters or {}
+
+            async with (session.create_client(
+                    's3',
+                    aws_secret_access_key=self.aws_secret_access_key,
+                    aws_access_key_id=self.aws_access_key_id,
+                    config=config,
+                    **region_name
+            ) as s3_client):
+                params = {'Bucket': self.bucket_name, 'Key': path}
+                if query_parameters:
+                    params.update(query_parameters)
+
+                url = await s3_client.generate_presigned_url('head_object',  Params=params,  ExpiresIn=settings.TEMP_URL_SECS)
+
+                return await self.make_request(
+                    'HEAD',
+                    url,
+                    expects=expects,
+                    throws=exceptions.MetadataError,
+                )
         except Exception as e:
             raise exceptions.NotFoundError(f"{path} {e}")
-
-    async def _get_boto3_s3_client(self):
-        # Use asyncio.to_thread to run boto3 in a separate thread
-        return await asyncio.to_thread(self.create_boto3_client)
-
-    def create_boto3_client(self):
-        # Blocking boto3 client creation in the main thread
-        region_name = {"region_name": self.region} if self.region else {}
-        client = boto3.client(
-            's3',
-            aws_access_key_id=self.aws_access_key_id,
-            aws_secret_access_key=self.aws_secret_access_key,
-            **region_name
-        )
-        return client
-
-    async def get_s3_bucket_object(self, path, query_parameters=None):
-        try:
-            # Get the s3 client using asyncio.to_thread
-            s3_client = await self._get_boto3_s3_client()
-
-            # Call the get_object method in the thread
-            response = await asyncio.to_thread(self.get_object, s3_client, path, query_parameters)
-
-            return response
-        except Exception as e:
-            raise Exception(f"Failed to fetch object {path}: {e}")
-
-    def get_object(self, s3_client, path, query_parameters):
-        # Synchronous blocking operation - we use a thread to handle this
-        return s3_client.get_object(
-            Bucket=self.bucket_name,
-            Key=path,
-            **(query_parameters or {})
-        )
 
     async def get_s3_bucket_object_location(self):
-        try:
-            session = get_session()
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-            ) as s3_client:
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_bucket_location.html#
-                return (await s3_client.get_bucket_location(
-                    Bucket=self.bucket_name
-                ))
-        except Exception as e:
-            raise exceptions.NotFoundError(f"{self.bucket_name} {e}")
+        session = get_session()
+        config = AioConfig(signature_version='s3v4')
+        async with session.create_client(
+                's3',
+                aws_secret_access_key=self.aws_secret_access_key,
+                aws_access_key_id=self.aws_access_key_id,
+                config=config
+        ) as s3_client:
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_bucket_location.html#
+            url = await s3_client.generate_presigned_url('get_bucket_location',  Params={'Bucket': self.bucket_name},  ExpiresIn=settings.TEMP_URL_SECS)
+            resp = None
+            try:
+                resp = await self.make_request(
+                    'GET',
+                    url,
+                    is_async=True,
+                    expects=(200, ),
+                    throws=exceptions.MetadataError,
+                )
+            except Exception as exc:
+                res = exc
+            return resp
+
+    # Todo:  the commented solution may be more stable than not commented
+    # async def get_folder_metadata(self, path, params):
+    #     try:
+    #         contents, prefixes = [], []
+    #         session = get_session()
+    #         region_name = {"region_name": self.region} if self.region else {}
+    #         async with session.create_client(
+    #                 's3',
+    #                 aws_secret_access_key=self.aws_secret_access_key,
+    #                 aws_access_key_id=self.aws_access_key_id,
+    #                 **region_name
+    #         ) as s3_client:
+    #             # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_paginator.html
+    #             # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html#list-objects-v2
+    #             paginator = s3_client.get_paginator('list_objects_v2')
+    #             pages = paginator.paginate(
+    #                 Bucket=self.bucket_name,
+    #                 **params
+    #             )
+    #
+    #             # it may be added there some logic from make_request to be it similar f.e. self.provider_metrics.incr('requests.tally.ok')
+    #             async for page in pages:
+    #                 contents.extend(page.get('Contents', []))
+    #                 prefixes.extend(page.get('CommonPrefixes', []))
+    #
+    #         return contents, prefixes
+    #     except Exception as e:
+    #         raise exceptions.NotFoundError(f"{path} {e}")
 
     async def get_folder_metadata(self, path, params):
-        try:
-            contents, prefixes = [], []
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_paginator.html
-                # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html#list-objects-v2
-                paginator = s3_client.get_paginator('list_objects_v2')
-                pages = paginator.paginate(
-                    Bucket=self.bucket_name,
-                    **params
-                )
 
-                async for page in pages:
-                    contents.extend(page.get('Contents', []))
-                    prefixes.extend(page.get('CommonPrefixes', []))
+        contents, prefixes, response_contents, response_prefixes = [], [], [], []
+        continuation_token = None
 
-            return contents, prefixes
-        except Exception as e:
-            raise exceptions.NotFoundError(f"{path} {e}")
+        while True:
+            if continuation_token:
+                params['ContinuationToken'] = continuation_token
 
-    async def create_s3_bucket_object(self, path, query_parameters=None):
-        try:
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            query_parameters = query_parameters or {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/put_object.html
-                return (await s3_client.put_object(
-                    Bucket=self.bucket_name,
-                    Key=path,
-                    **query_parameters
-                ))
-        except Exception as e:
-            raise exceptions.UploadFailedError(f"{path} {e}")
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_paginator.html
+            # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html#list-objects-v2
+            list_url = await self.generate_generic_presigned_url(
+                '', 'list_objects_v2', query_parameters=params, default_params=False
+            )
 
+            resp = await self.make_request(
+                'GET', list_url,
+                expects=(200, 206),
+                throws=exceptions.DownloadError
+            )
+            xml_body = await resp.text()
+            doc = xmltodict.parse(xml_body)
+            result = doc.get('ListBucketResult', {})
 
-    async def delete_s3_bucket_object(self, path):
-        try:
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/delete_object.html
-                await s3_client.delete_object(
-                    Bucket=self.bucket_name,
-                    Key=path
-                )
-        except Exception as e:
-            raise exceptions.DeleteError(f"{path} {e}")
+            contents = result.get('Contents') or []
+            common_prefixes = result.get('CommonPrefixes') or []
+
+            if isinstance(contents, dict):
+                contents = [contents]
+            if isinstance(common_prefixes, dict):
+                common_prefixes = [common_prefixes]
+
+            for content in contents:
+                key = content.get('Key')
+                if key:
+                    # cast xml string encoding to display the name user downloaded (to be it compatable with make_requests),
+                    # have tried yarl and furl but not see it to be helpful
+                    # Todo: maybe there is a better approach (not confident all encoding is casted)
+                    #  or use commented 'get_folder_metadata' above where no cast is needed
+                    key = key.replace('+', ' ')
+                    content['Key'] = unquote(key)
+                    response_contents.append(content)
+
+            for common_prefix in common_prefixes:
+                prefix = common_prefix.get('Prefix')
+                if prefix:
+                    prefix = prefix.replace('+', ' ')
+                    common_prefix['Prefix'] = unquote(prefix)
+                    response_prefixes.append(common_prefix)
+
+            # handle pagination
+            if result.get('IsTruncated') == 'true':
+                continuation_token = result.get('NextContinuationToken')
+            else:
+                break
+
+        return response_contents, response_prefixes
+
 
     async def delete_s3_bucket_folder_objects(self, path):
-        try:
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                params = {'Prefix': path}
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_paginator.html
-                # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html#list-objects-v2
-                paginator = s3_client.get_paginator('list_objects_v2')
+        continuation_token = None
+        delete_requests = []
+        while True:
+            list_params = {
+                'Bucket': self.bucket_name,
+                'Prefix': path,
+            }
+            if continuation_token:
+                list_params['ContinuationToken'] = continuation_token
 
-                pages = paginator.paginate(
-                    Bucket=self.bucket_name,
-                    **params
-                )
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html
+            list_url = await self.generate_generic_presigned_url(
+                '', 'list_objects_v2',query_parameters=list_params, default_params=False
+            )
 
-                contents = []
-                prefixes = []
+            resp = await self.make_request(
+                'GET', list_url,
+                expects=(200, 206),
+                throws=exceptions.DownloadError
+            )
+            xml_body = await resp.text()
+            doc = xmltodict.parse(xml_body)
+            result = doc.get('ListBucketResult', {})
 
-                async for page in pages:
-                    contents = page.get('Contents', [])
-                    delete_requests = [{"Key": obj["Key"]} for obj in contents]
+            contents = result.get('Contents') or []
 
-                    for index in range(0, len(delete_requests), 1000):
-                        chunk = delete_requests[index:index + 1000]
-                        await s3_client.delete_objects(
-                            Bucket=self.bucket_name,
-                            Delete={"Objects": chunk}
-                        )
-        except Exception as e:
-            raise exceptions.DeleteError(f"{path} {e}")
+            if isinstance(contents, dict):
+                contents = [contents]
+            for content in contents:
+                key = content['Key']
+                if key:
+                    # on testing it was seen that folders with name xml encoding are not deleted (though files are)
+                    # so casting is needed on using xml approach with aiobotocore
+                    key = key.replace('+', ' ')
+                    content['Key'] = unquote(key)
+                    delete_requests.append({"Key":content['Key']})
+
+            # handle pagination
+            if result.get('IsTruncated') == 'true':
+                continuation_token = result.get('NextContinuationToken')
+            else:
+                break
+
+        session = get_session()
+        region_name = {"region_name": self.region} if self.region else {}
+        async with session.create_client(
+                's3',
+                aws_secret_access_key=self.aws_secret_access_key,
+                aws_access_key_id=self.aws_access_key_id,
+                **region_name
+        ) as s3_client:
+            for index in range(0, len(delete_requests), 1000):
+                chunk = delete_requests[index:index + 1000]
+                try:
+                    # Todo: maybe it is good idea to add the some logic from make_request f.e. to keep it similar
+                    # self.provider_metrics.incr('requests.tally.ok')
+                    await s3_client.delete_objects(
+                        Bucket=self.bucket_name,
+                        Delete={"Objects": chunk}
+                    )
+                except Exception as e:
+                    raise exceptions.DeleteError(f"{path} {e}")
+
+        # TODO: maybe there is a workaround for 'delete_objects' usage got the following for code below
+        # json.decoder.JSONDecodeError: Expecting value: line 1 column 1  on resp = await self.make_request call
+
+        # for index in range(0, len(delete_requests), 1000):
+        #     chunk = delete_requests[index:index + 1000]
+        #
+        #     async with session.create_client(
+        #             's3',
+        #             aws_access_key_id=self.aws_access_key_id,
+        #             aws_secret_access_key=self.aws_secret_access_key,
+        #             config=config,
+        #             **region_kwargs
+        #     ) as s3:
+        #         list_url = await s3.generate_presigned_url(
+        #             ClientMethod='delete_objects',
+        #             Params={'Bucket': self.bucket_name, 'Delete':{"Objects": chunk}},
+        #             ExpiresIn=settings.TEMP_URL_SECS
+        #         )
+        #
+        #         def _make_delete_xml(chunk):
+        #             items = "".join(f"<Object><Key>{o['Key']}</Key></Object>" for o in chunk)
+        #             return f"<?xml version='1.0' encoding='UTF-8'?><Delete>{items}</Delete>"
+        #
+        #         xml_body = _make_delete_xml(chunk)
+        #
+        #         resp = await self.make_request(
+        #             'POST',
+        #             list_url,
+        #             data=xml_body,
+        #             headers={'Content-Type': 'application/xml'},
+        #             expects=(200, 204,),
+        #             throws=exceptions.DeleteError,
+        #         )
+        #         await resp.release()
+
 
     async def get_object_versions(self, query_parameters):
-        try:
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                paginator = s3_client.get_paginator('list_object_versions')
-                pages = paginator.paginate(
-                    Bucket=self.bucket_name,
-                    **query_parameters
-                )
-                all_versions = []
-                async for page in pages:
-                    all_versions.extend(page.get('Versions', []))
-                return all_versions
-        except Exception as e:
-            raise exceptions.NotFoundError(f"Failed to fetch versions: {e}")
 
-    async def create_multipart_upload(self,query_parameters):
-        try:
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                # https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/create_multipart_upload.html
-                return await s3_client.create_multipart_upload(
-                    Bucket=self.bucket_name,
-                    **query_parameters
-                )
-        except Exception as e:
-            raise exceptions.NotFoundError(f"Failed to fetch versions: {e}")
+        continuation_token = None
+
+        versions_result = []
+        while True:
+
+
+            if continuation_token:
+                query_parameters['ContinuationToken'] = continuation_token
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html
+            list_url = await self.generate_generic_presigned_url(
+                '', 'list_object_versions', query_parameters=query_parameters, default_params=False
+            )
+
+            resp = await self.make_request(
+                'GET', list_url,
+                expects=(200, 206),
+                throws=exceptions.DownloadError
+            )
+            xml_body = await resp.text()
+            doc = xmltodict.parse(xml_body)
+
+            result = doc.get('ListVersionsResult', {})
+
+            versions = result.get('Version') or []
+
+            if isinstance(versions, dict):
+                versions = [versions]
+            # import pydevd_pycharm
+            # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+            for version in versions:
+                key = version.get('Key')
+                if key:
+                    # cast xml string encoding to display the name user downloaded (to be it compatable with make_requests),
+                    # have tried yarl and furl but not see it to be helpful
+                    # Todo: maybe there is a better approach (not confident all encoding is casted)
+                    #  or use commented 'get_folder_metadata' above where no cast is needed
+                    key = key.replace('+', ' ')
+                    version['Key'] = unquote(key)
+                    versions_result.append(version)
+
+            # handle pagination
+            if result.get('IsTruncated') == 'true':
+                continuation_token = result.get('NextContinuationToken')
+            else:
+                break
+
+        return versions_result
+
+        # try:
+        #     session = get_session()
+        #     region_name = {"region_name": self.region} if self.region else {}
+        #     async with session.create_client(
+        #             's3',
+        #             aws_secret_access_key=self.aws_secret_access_key,
+        #             aws_access_key_id=self.aws_access_key_id,
+        #             **region_name
+        #     ) as s3_client:
+        #         paginator = s3_client.get_paginator('list_object_versions')
+        #         pages = paginator.paginate(
+        #             Bucket=self.bucket_name,
+        #             **query_parameters
+        #         )
+        #         all_versions = []
+        #         async for page in pages:
+        #             all_versions.extend(page.get('Versions', []))
+        #         return all_versions
+        # except Exception as e:
+        #     raise exceptions.NotFoundError(f"Failed to fetch versions: {e}")
 
     async def validate_v1_path(self, path, **kwargs):
         await self._check_region()
@@ -286,10 +403,20 @@ class S3Provider(provider.BaseProvider):
         implicit_folder = path.endswith('/')
 
         if implicit_folder:
-            params = {'Prefix': path, 'Delimiter': '/'}
-            await self.get_folder_metadata(path,params)
+
+            query_parameters = {'Bucket': self.bucket_name, 'Prefix': path, 'Delimiter': '/', 'MaxKeys': 1}
+
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html
+            url = await self.generate_generic_presigned_url(path, method='list_objects_v2',
+                                                            query_parameters=query_parameters, default_params=False)
+            await self.make_request(
+                'GET',
+                url,
+                expects=(200, 206,),
+                throws=exceptions.NotFoundError,
+            )
         else:
-            await self.check_key_existence(path[1:])
+            await self.check_key_existence(path[1:], expects=(200, ))
 
         return WaterButlerPath(path)
 
@@ -312,11 +439,8 @@ class S3Provider(provider.BaseProvider):
         """
         await self._check_region()
         exists = await dest_provider.exists(dest_path)
-
-        # ensure no left slash when joining paths
-
-        # TODO: need to find UI option for testing it out
         region_name = {"region_name": self.region} if self.region else {}
+
         session = get_session()
         async with session.create_client(
                 's3',
@@ -340,6 +464,37 @@ class S3Provider(provider.BaseProvider):
         return (await dest_provider.metadata(dest_path)), not exists
 
 
+
+        #
+        # # ensure no left slash when joining paths
+        #
+
+        # TODO:         # # TODO: 403, {"response": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+        #  \n<Error><Code>SignatureDoesNotMatch</Code><Message>The request signature we calculated does
+        # query_parameters = {'CopySource': f"{self.bucket_name}/{source_path.path}"
+        #
+        #     # {
+        #     #         'Bucket': self.bucket_name,
+        #     #         'Key': source_path.path,
+        #     # }
+        # }
+        #
+        # url = await self.generate_generic_presigned_url(dest_path.path, 'copy_object', query_parameters=query_parameters)
+        #
+        # resp = await self.make_request(
+        #     'PUT',
+        #     url,
+        #     headers={
+        #         # this must match exactly what you passed into generate_presigned_url
+        #         'x-amz-copy-source': f"/{self.bucket_name}/{source_path.path}"
+        #     },
+        #     skip_auto_headers={'CONTENT-TYPE'},
+        #     expects=(200, ),
+        #     throws=exceptions.DownloadError,
+        # )
+        # await resp.release()
+
+
     async def download(self, path, accept_url=False, revision=None, range=None, **kwargs):
         r"""Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from S3 is not 200
@@ -355,18 +510,29 @@ class S3Provider(provider.BaseProvider):
         if not path.is_file:
             raise exceptions.DownloadError('No file specified for download', code=400)
 
+        query_parameters = {}
+
+        # Todo: don't see where it may be set from front end side
+        if not revision or revision.lower() == 'latest':
+            query_parameters = {}
+        else:
+            query_parameters['VersionId'] = revision
+
         display_name = kwargs.get('display_name') or path.name
-        query_parameters = {
-            'ResponseContentDisposition': make_disposition(display_name)
-        }
+        query_parameters['ResponseContentDisposition'] = make_disposition(display_name)
 
-        if revision and revision.lower() != 'latest':
-            query_parameters = {'VersionId': revision}
 
-        resp = await self.get_s3_bucket_object(path.path, query_parameters)
+        url = await self.generate_generic_presigned_url(path.path, 'get_object', query_parameters=query_parameters)
 
-        resp['Body'].headers = CIMultiDict(resp['ResponseMetadata']['HTTPHeaders'])
-        return streams.S3ResponseStreamReader(resp['Body'])
+        resp = await self.make_request(
+            'GET',
+            url,
+            range=range,
+            expects=(200, 206,),
+            throws=exceptions.DownloadError,
+        )
+
+        return streams.ResponseStreamReader(resp)
 
     async def upload(self, stream, path, conflict='replace', **kwargs):
         """Uploads the given stream to S3
@@ -392,34 +558,39 @@ class S3Provider(provider.BaseProvider):
         """
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
-        data = await stream.read()
-        md5_digest = stream.writers['md5'].hexdigest
-        content_md5 = base64.b64encode(bytes.fromhex(md5_digest)).decode('utf-8')
 
-        query_parameters = {
-            'ContentLength': len(data),
-            'Body': data,
-            'ContentMD5': content_md5,
-        }
+        headers = {'Content-Length': str(stream.size)}
+        query_parameters = {}
         # this is usually set in boto.s3.key.generate_url, but do it here
         # do be explicit about our header payloads for signing purposes
         if self.encrypt_uploads:
+            headers['x-amz-server-side-encryption'] = 'AES256'
             query_parameters['ServerSideEncryption'] = 'AES256'
 
-        resp = await self.create_s3_bucket_object(path.path, query_parameters=query_parameters)
+        # Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/put_object.html
+        upload_url = await self.generate_generic_presigned_url(path.path, method='put_object', query_parameters=query_parameters)
 
+        resp = await self.make_request(
+            'PUT',
+            upload_url,
+            data=stream,
+            skip_auto_headers={'CONTENT-TYPE'},
+            headers=headers,
+            expects=(200, 201,),
+            throws=exceptions.UploadError,
+        )
+        await resp.release()
 
         # md5 is returned as ETag header as long as server side encryption is not used.
-        if md5_digest != resp.get('ETag', '').replace('"', ''):
+        if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
             raise exceptions.UploadChecksumMismatchError()
+
 
     async def _chunked_upload(self, stream, path):
         """Uploads the given stream to S3 over multiple chunks
         """
-
         # Step 1. Create a multi-part upload session
         session_upload_id = await self._create_upload_session(path)
-
         try:
             # Step 2. Break stream into chunks and upload them one by one
             parts_metadata = await self._upload_parts(stream, path, session_upload_id)
@@ -444,30 +615,43 @@ class S3Provider(provider.BaseProvider):
 
         Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadInitiate.html
         """
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
-        query_parameters = {'Key': path.path}
+
+        headers = {}
+        kwargs = {}
         # "Initiate Multipart Upload" supports AWS server-side encryption
         if self.encrypt_uploads:
-            query_parameters['ServerSideEncryption'] = 'AES256'
+            headers = {'x-amz-server-side-encryption': 'AES256'}
+            kwargs["ServerSideEncryption"] = "AES256"
 
-        resp = await self.create_multipart_upload(query_parameters)
+        # Docs: # https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/create_multipart_upload.html
+        upload_session_url = await self.generate_generic_presigned_url(path.path, method='create_multipart_upload', query_parameters=kwargs)
+        resp = await self.make_request(
+            'POST',
+            upload_session_url,
+            headers=headers,
+            skip_auto_headers={'CONTENT-TYPE'},
+            throws=exceptions.UploadError,
+        )
+        upload_session_metadata = await resp.read()
+        session_data = xmltodict.parse(upload_session_metadata, strip_whitespace=False)
+        # Session upload id is the only info we need
+        return session_data['InitiateMultipartUploadResult']['UploadId']
 
-        return resp['UploadId']
 
     async def _upload_parts(self, stream, path, session_upload_id):
         """Uploads all parts/chunks of the given stream to S3 one by one.
         """
-
+        logger.error('_upload_parts')
         metadata = []
         parts = [self.CHUNK_SIZE for i in range(0, stream.size // self.CHUNK_SIZE)]
         if stream.size % self.CHUNK_SIZE:
             parts.append(stream.size - (len(parts) * self.CHUNK_SIZE))
-        logger.debug(f'Multipart upload segment sizes: {parts}')
+        logger.info(f'Multipart upload segment sizes: {parts}')
+
         for chunk_number, chunk_size in enumerate(parts):
-            logger.debug(f'  uploading part {chunk_number + 1} with size {chunk_size}')
             metadata.append(await self._upload_part(stream, path, session_upload_id,
                                                     chunk_number + 1, chunk_size))
+
         return metadata
 
     async def _upload_part(self, stream, path, session_upload_id, chunk_number, chunk_size):
@@ -475,128 +659,163 @@ class S3Provider(provider.BaseProvider):
 
         :param int chunk_number: sequence number of chunk. 1-indexed.
         """
+
         cutoff_stream = streams.CutoffStream(stream, cutoff=chunk_size)
-        body = await cutoff_stream.read()
 
-        params = {
-            'ContentLength': chunk_size,
-            'PartNumber': chunk_number,
-            'UploadId': session_upload_id,
-            "Key": path.path,
-            'Body': body,
-        }
+        # Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/upload_part.html
+        upload_part_url = await self.generate_generic_presigned_url(
+            path.path, method='upload_part',
+            query_parameters={'ContentLength': chunk_size, 'PartNumber': chunk_number, 'UploadId': session_upload_id}
+        )
 
-        resp = None
-        try:
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/upload_part.html
-                resp = await s3_client.upload_part(
-                    Bucket=self.bucket_name,
-                    **params
-                )
-        except Exception as e:
-            raise Exception(f"Failed to fetch versions: {e}")
 
-        return resp
+        resp = await self.make_request(
+            'PUT',
+            upload_part_url,
+            data=cutoff_stream,
+            skip_auto_headers={'CONTENT-TYPE'},
+            headers={'Content-Length': str(chunk_size)},
+            params={'partNumber': str(chunk_number), 'uploadId': session_upload_id},
+            expects=(200, 201,),
+            throws=exceptions.UploadError,
+        )
+
+        await resp.release()
+        return resp.headers
 
     async def _abort_chunked_upload(self, path, session_upload_id):
-        """Abort a multipart upload and verify it with retries."""
-        session = get_session()
-        region_name = {"region_name": self.region} if self.region else {}
+        """This operation aborts a multipart upload. After a multipart upload is aborted, no
+        additional parts can be uploaded using that upload ID. The storage consumed by any
+        previously uploaded parts will be freed. However, if any part uploads are currently in
+        progress, those part uploads might or might not succeed. As a result, it might be necessary
+        to abort a given multipart upload multiple times in order to completely free all storage
+        consumed by all parts. To verify that all parts have been removed, so you don't get charged
+        for the part storage, you should call the List Parts operation and ensure the parts list is
+        empty.
 
-        async with session.create_client(
-                's3',
-                aws_secret_access_key=self.aws_secret_access_key,
-                aws_access_key_id=self.aws_access_key_id,
-                **region_name
-        ) as s3_client:
-            is_aborted = False
-            retries = 0
+        Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadAbort.html
 
-            while retries <= settings.CHUNKED_UPLOAD_MAX_ABORT_RETRIES:
-                try:
-                    # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/abort_multipart_upload.html
-                    await s3_client.abort_multipart_upload(
-                        Bucket=self.bucket_name,
-                        Key=path.path,
-                        UploadId=session_upload_id,
-                    )
-                except s3_client.exceptions.NoSuchUpload:
-                    is_aborted = True
-                    break
-                except Exception as e:
-                    logger.error(f"Abort attempt {retries} failed: {e}")
+        Quirks:
 
-                parts, is_aborted = await self._list_uploaded_chunks(s3_client, path, session_upload_id, retries)
-
-                if is_aborted:
-                    break
-
-                retries += 1
-
-            if is_aborted:
-                logger.error(f"Multipart upload successfully aborted after {retries} retries: {session_upload_id}")
-                return True
-
-            logger.error(f"Failed to abort multipart upload after {retries} retries: {session_upload_id}")
-            return False
-
-    async def _list_uploaded_chunks(self, s3_client, path, session_upload_id, retries):
-        """Lists the parts that have been uploaded for a specific multipart upload using boto3 S3 client.
-
-        Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.list_parts
+        If the ABORT request is successful, the session may be deleted when the LIST PARTS request
+        is made.  The criteria for successful abort thus is ether LIST PARTS request returns 404 or
+        returns 200 with an empty parts list.
         """
 
-        try:
-            response = await s3_client.list_parts(
-                Bucket=self.bucket_name,
-                Key=path.path,
-                UploadId=session_upload_id
+        headers = {}
+        params = {'UploadId': session_upload_id}
+
+
+        abort_url = await self.generate_generic_presigned_url(path.path, method='abort_multipart_upload', query_parameters=params)
+
+        iteration_count = 0
+        is_aborted = False
+
+        while iteration_count <= settings.CHUNKED_UPLOAD_MAX_ABORT_RETRIES:
+
+            # ABORT
+            resp = await self.make_request(
+                'DELETE',
+                abort_url,
+                skip_auto_headers={'CONTENT-TYPE'},
+                headers=headers,
+                params=headers,
+                expects=(204,),
+                throws=exceptions.UploadError,
             )
-            return  response.get("Parts", []), False
-        except s3_client.exceptions.NoSuchUpload:
-            return [], True
-        except Exception as e:
-            logger.error(f"List parts attempt {retries} failed: {e}")
+
+            await resp.release()
+
+            # LIST PARTS
+            resp_xml, session_deleted = await self._list_uploaded_chunks(path, session_upload_id)
+
+            if session_deleted:
+                # Abort is successful if the session has been deleted
+                is_aborted = True
+                break
+
+            uploaded_chunks_list = xmltodict.parse(resp_xml, strip_whitespace=False)
+            parsed_parts_list = uploaded_chunks_list['ListPartsResult'].get('Part', [])
+            if len(parsed_parts_list) == 0:
+                # Abort is successful when there is no part left
+                is_aborted = True
+                break
+
+            iteration_count += 1
+
+        if is_aborted:
+            logger.debug('Multi-part upload has been successfully aborted: retries={} '
+                         'upload_id={}'.format(iteration_count, session_upload_id))
+            return True
+
+        logger.error('Multi-part upload has failed to abort: retries={} '
+                     'upload_id={}'.format(iteration_count, session_upload_id))
+        return False
+
+    async def _list_uploaded_chunks(self, path, session_upload_id):
+        """This operation lists the parts that have been uploaded for a specific multipart upload.
+
+        Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadListParts.html
+        """
+
+        headers = {}
+        params = {'UploadId': session_upload_id}
+        list_url = await self.generate_generic_presigned_url(path.path, method='list_parts', query_parameters=params)
+
+        resp = await self.make_request(
+            'GET',
+            list_url,
+            skip_auto_headers={'CONTENT-TYPE'},
+            headers=headers,
+            params=headers,
+            expects=(200, 201, 404,),
+            throws=exceptions.UploadError
+        )
+        session_deleted = resp.status == 404
+        resp_xml = await resp.read()
+
+        return resp_xml, session_deleted
 
     async def _complete_multipart_upload(self, path, session_upload_id, parts_metadata):
+
         """This operation completes a multipart upload by assembling previously uploaded parts.
 
         Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
         """
-        session = get_session()
-        region_name = {"region_name": self.region} if self.region else {}
 
-        # boto3 requires part numbers to be ints and ETags to be strings
-        parts = [
-            {'PartNumber': i + 1, 'ETag': part['ETag']}
-            for i, part in enumerate(parts_metadata)
-        ]
+        payload = ''.join([
+            '<?xml version="1.0" encoding="UTF-8"?><CompleteMultipartUpload>',
+            ''.join(
+                ['<Part><PartNumber>{}</PartNumber><ETag>{}</ETag></Part>'.format(
+                    i + 1,
+                    xml.sax.saxutils.escape(part['ETAG'])
+                ) for i, part in enumerate(parts_metadata)]
+            ),
+            '</CompleteMultipartUpload>',
+        ]).encode('utf-8')
 
-        try:
-            async with session.create_client(
-                's3',
-                aws_secret_access_key=self.aws_secret_access_key,
-                aws_access_key_id=self.aws_access_key_id,
-                **region_name
-            ) as s3_client:
-                await s3_client.complete_multipart_upload(
-                    Bucket=self.bucket_name,
-                    Key=path.path,
-                    UploadId=session_upload_id,
-                    MultipartUpload={'Parts': parts}
-                )
-        except Exception as e:
-            raise exceptions.UploadError(f"Failed to complete multipart upload: {e}")
+        complete_url = await self.generate_generic_presigned_url(
+            path.path, method='complete_multipart_upload', query_parameters={'UploadId': session_upload_id}
+        )
+
+
+        resp = await self.make_request(
+            'POST',
+            complete_url,
+            data=payload,
+            headers={
+                'Content-Type': 'application/xml',
+                'Content-Length': str(len(payload)),
+            },
+            expects=(200, 201,),
+            throws=exceptions.UploadError,
+        )
+        await resp.release()
 
     async def delete(self, path, confirm_delete=0, **kwargs):
+
+        await self.get_s3_bucket_object_location()
+        return
         """Deletes the key at the specified path
 
         :param str path: The path of the key to delete
@@ -612,7 +831,17 @@ class S3Provider(provider.BaseProvider):
                 )
 
         if path.is_file:
-            await self.delete_s3_bucket_object(path.path)
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/delete_object.html
+            delete_url = await self.generate_generic_presigned_url(path.path, method='delete_object')
+
+            resp = await self.make_request(
+                'DELETE',
+                delete_url,
+                expects=(200, 204,),
+                throws=exceptions.DeleteError,
+            )
+
+            await resp.release()
         else:
             await self._delete_folder(path, **kwargs)
 
@@ -685,7 +914,16 @@ class S3Provider(provider.BaseProvider):
                 raise exceptions.FolderNamingConflict(path.name)
         path_prefix = path.path
 
-        await self.create_s3_bucket_object(path_prefix)
+        # Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/put_object.html
+        folder_url = await self.generate_generic_presigned_url(path_prefix, method='put_object')
+
+        await self.make_request(
+            'PUT',
+            folder_url,
+            skip_auto_headers={'CONTENT-TYPE'},
+            expects=(200, 201,),
+            throws=exceptions.CreateFolderError
+        )
 
         metadata = S3FolderMetadata({'Prefix': path_prefix})
         metadata.raw['base_folder'] = self.base_folder
@@ -697,14 +935,16 @@ class S3Provider(provider.BaseProvider):
         if revision == 'Latest':
             revision = None
         path_prefix = path.path
+
         resp = await self.check_key_existence(path_prefix, query_parameters={'VersionId': revision} if revision else {})
-        return S3FileMetadataHeaders(path_prefix, resp.get('ResponseMetadata', {}).get('HTTPHeaders'))
+        await resp.release()
+        return S3FileMetadataHeaders(path.path, resp.headers)
 
     async def _metadata_folder(self, path):
         await self._check_region()
 
         path_prefix = path.path
-        params = {'Prefix': path_prefix, 'Delimiter': '/'}
+        params = {'Prefix': path_prefix, 'Delimiter': '/', 'Bucket': self.bucket_name}
 
         contents, prefixes = await self.get_folder_metadata(path_prefix, params)
 
@@ -733,15 +973,13 @@ class S3Provider(provider.BaseProvider):
                 items.append(S3FolderKeyMetadata(content))
             else:
                 items.append(S3FileMetadata(content))
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+
         return items
 
     async def _check_region(self):
         """
         Lookup the region via bucket name, then update the host to match.
         """
-
         if self.region is None:
             self.region = await self._get_bucket_region()
             if self.region == 'EU':
@@ -756,4 +994,6 @@ class S3Provider(provider.BaseProvider):
         https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_bucket_location.html
         """
         resp = await self.get_s3_bucket_object_location()
-        return resp.get('LocationConstraint')
+        contents = await resp.read()
+        parsed = xmltodict.parse(contents, strip_whitespace=False)
+        return parsed['LocationConstraint'].get('#text', '')
