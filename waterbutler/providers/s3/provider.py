@@ -22,6 +22,9 @@ from waterbutler.providers.s3.metadata import (S3Revision,
                                                S3FolderKeyMetadata,
                                                S3FileMetadataHeaders,
                                                )
+from aiobotocore.config import AioConfig
+
+
 import datetime
 logger = logging.getLogger(__name__)
 
@@ -88,12 +91,14 @@ class S3Provider(provider.BaseProvider):
             session = get_session()
             region_name = {"region_name": self.region} if self.region else {}
             query_parameters = query_parameters or {}
+            config = AioConfig(signature_version='s3v4')
             # import pydevd_pycharm
             # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
             async with session.create_client(
                     's3',
                     aws_secret_access_key=self.aws_secret_access_key,
                     aws_access_key_id=self.aws_access_key_id,
+                    config=config,
                     **region_name
             ) as s3_client:
                 params = {'Bucket': self.bucket_name, 'Key': path}
@@ -488,6 +493,7 @@ class S3Provider(provider.BaseProvider):
             # Step 2. Break stream into chunks and upload them one by one
             parts_metadata = await self._upload_parts(stream, path, session_upload_id)
             logger.error(f"{parts_metadata} self._complete_multipart_upload")
+            1 / 0
             # Step 3. Commit the parts and end the upload session
             await self._complete_multipart_upload(path, session_upload_id, parts_metadata)
         except Exception as err:
@@ -588,94 +594,214 @@ class S3Provider(provider.BaseProvider):
         return resp.headers
 
     async def _abort_chunked_upload(self, path, session_upload_id):
-        """Abort a multipart upload and verify it with retries."""
-        session = get_session()
-        region_name = {"region_name": self.region} if self.region else {}
+        """This operation aborts a multipart upload. After a multipart upload is aborted, no
+        additional parts can be uploaded using that upload ID. The storage consumed by any
+        previously uploaded parts will be freed. However, if any part uploads are currently in
+        progress, those part uploads might or might not succeed. As a result, it might be necessary
+        to abort a given multipart upload multiple times in order to completely free all storage
+        consumed by all parts. To verify that all parts have been removed, so you don't get charged
+        for the part storage, you should call the List Parts operation and ensure the parts list is
+        empty.
 
-        async with session.create_client(
-                's3',
-                aws_secret_access_key=self.aws_secret_access_key,
-                aws_access_key_id=self.aws_access_key_id,
-                **region_name
-        ) as s3_client:
-            is_aborted = False
-            retries = 0
-            # import pydevd_pycharm
-            # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
-            while retries <= settings.CHUNKED_UPLOAD_MAX_ABORT_RETRIES:
-                try:
-                    # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/abort_multipart_upload.html
-                    await s3_client.abort_multipart_upload(
-                        Bucket=self.bucket_name,
-                        Key=path.path,
-                        UploadId=session_upload_id,
-                    )
-                except s3_client.exceptions.NoSuchUpload:
-                    is_aborted = True
-                    break
-                except Exception as e:
-                    logger.error(f"Abort attempt {retries} failed: {e}")
+        Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadAbort.html
 
-                parts, is_aborted = await self._list_uploaded_chunks(s3_client, path, session_upload_id, retries)
+        Quirks:
 
-                if is_aborted:
-                    break
-
-                retries += 1
-
-            if is_aborted:
-                logger.error(f"Multipart upload successfully aborted after {retries} retries: {session_upload_id}")
-                return True
-
-            logger.error(f"Failed to abort multipart upload after {retries} retries: {session_upload_id}")
-            return False
-
-    async def _list_uploaded_chunks(self, s3_client, path, session_upload_id, retries):
-        """Lists the parts that have been uploaded for a specific multipart upload using boto3 S3 client.
-
-        Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.list_parts
+        If the ABORT request is successful, the session may be deleted when the LIST PARTS request
+        is made.  The criteria for successful abort thus is ether LIST PARTS request returns 404 or
+        returns 200 with an empty parts list.
         """
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+
+        headers = {}
+        params = {'UploadId': session_upload_id}
+
+        # headers = {}
+        # params = {'uploadId': session_upload_id}
+        abort_url = await self.generic_generate_presigned_url(path.path, method='abort_multipart_upload', query_parameters=params)
+        # abort_url = functools.partial(
+        #     self.bucket.new_key(path.path).generate_url,
+        #     settings.TEMP_URL_SECS,
+        #     'DELETE',
+        #     query_parameters=params,
+        #     headers=headers,
+        # )
+
+        iteration_count = 0
+        is_aborted = False
+
+        while iteration_count <= settings.CHUNKED_UPLOAD_MAX_ABORT_RETRIES:
+
+            # ABORT
+            resp = await self.make_request(
+                'DELETE',
+                abort_url,
+                skip_auto_headers={'CONTENT-TYPE'},
+                headers=headers,
+                params=params,
+                expects=(204,),
+                throws=exceptions.UploadError,
+            )
+            import pydevd_pycharm
+            pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+            await resp.release()
+
+            # LIST PARTS
+            resp_xml, session_deleted = await self._list_uploaded_chunks(path, session_upload_id)
+
+            if session_deleted:
+                # Abort is successful if the session has been deleted
+                is_aborted = True
+                break
+
+            uploaded_chunks_list = xmltodict.parse(resp_xml, strip_whitespace=False)
+            parsed_parts_list = uploaded_chunks_list['ListPartsResult'].get('Part', [])
+            if len(parsed_parts_list) == 0:
+                # Abort is successful when there is no part left
+                is_aborted = True
+                break
+
+            iteration_count += 1
+
+        if is_aborted:
+            logger.debug('Multi-part upload has been successfully aborted: retries={} '
+                         'upload_id={}'.format(iteration_count, session_upload_id))
+            return True
+
+        logger.error('Multi-part upload has failed to abort: retries={} '
+                     'upload_id={}'.format(iteration_count, session_upload_id))
+        return False
+
+    # async def _abort_chunked_upload(self, path, session_upload_id):
+    #     """Abort a multipart upload and verify it with retries."""
+    #     session = get_session()
+    #     region_name = {"region_name": self.region} if self.region else {}
+    #
+    #
+    #
+    #     async with session.create_client(
+    #             's3',
+    #             aws_secret_access_key=self.aws_secret_access_key,
+    #             aws_access_key_id=self.aws_access_key_id,
+    #             **region_name
+    #     ) as s3_client:
+    #         is_aborted = False
+    #         retries = 0
+    #         # import pydevd_pycharm
+    #         # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+    #         while retries <= settings.CHUNKED_UPLOAD_MAX_ABORT_RETRIES:
+    #             try:
+    #                 # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/abort_multipart_upload.html
+    #                 await s3_client.abort_multipart_upload(
+    #                     Bucket=self.bucket_name,
+    #                     Key=path.path,
+    #                     UploadId=session_upload_id,
+    #                 )
+    #             except s3_client.exceptions.NoSuchUpload:
+    #                 is_aborted = True
+    #                 break
+    #             except Exception as e:
+    #                 logger.error(f"Abort attempt {retries} failed: {e}")
+    #
+    #             parts, is_aborted = await self._list_uploaded_chunks(s3_client, path, session_upload_id, retries)
+    #
+    #             if is_aborted:
+    #                 break
+    #
+    #             retries += 1
+    #
+    #         if is_aborted:
+    #             logger.error(f"Multipart upload successfully aborted after {retries} retries: {session_upload_id}")
+    #             return True
+    #
+    #         logger.error(f"Failed to abort multipart upload after {retries} retries: {session_upload_id}")
+    #         return False
+
+    async def _list_uploaded_chunks(self, path, session_upload_id):
+        """This operation lists the parts that have been uploaded for a specific multipart upload.
+
+        Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadListParts.html
+        """
+
         headers = {}
         params = {'uploadId': session_upload_id}
-        # list_url = functools.partial(
+        list_url = await self.generic_generate_presigned_url(path.path, method='get_object', query_parameters=params)
+
+
+
+        # functools.partial(
         #     self.bucket.new_key(path.path).generate_url,
         #     settings.TEMP_URL_SECS,
         #     'GET',
         #     query_parameters=params,
         #     headers=headers
         # )
-        paths =  path.path
-        list_url = self.boto3_s3_client.generate_presigned_url(  # Method to presign
-            'get_object',  # The client method (PUT object in this case)
-            Params={
-                'Bucket': self.bucket_name,  # S3 bucket name
-                'Key': paths,  # S3 object key (file name)
-            },
-            ExpiresIn=settings.TEMP_URL_SECS,  # URL expiration time (seconds)
-            HttpMethod='GET'  # HTTP method (PUT for uploading)
+
+        resp = await self.make_request(
+            'GET',
+            list_url,
+            skip_auto_headers={'CONTENT-TYPE'},
+            headers=headers,
+            params=params,
+            expects=(200, 201, 404,),
+            throws=exceptions.UploadError
         )
-        res = None
-        try:
-            resp2 = await self.get_s3_bucket_object_location()
-            resp = await self.make_request(
-                'GET',
-                list_url,
-                skip_auto_headers={'CONTENT-TYPE'},
-                headers=headers,
-                params=params,
-                expects=(200, 201, 404,),
-                throws=exceptions.UploadError
-            )
-        except Exception as exc:
-            res = exc
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         session_deleted = resp.status == 404
         resp_xml = await resp.read()
 
         return resp_xml, session_deleted
+
+    # async def _list_uploaded_chunks(self, s3_client, path, session_upload_id, retries):
+    #     """Lists the parts that have been uploaded for a specific multipart upload using boto3 S3 client.
+    #
+    #     Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.list_parts
+    #     """
+    #     # import pydevd_pycharm
+    #     # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+    #
+    #
+    #     headers = {}
+    #     params = {'uploadId': session_upload_id}
+    #     # list_url = functools.partial(
+    #     #     self.bucket.new_key(path.path).generate_url,
+    #     #     settings.TEMP_URL_SECS,
+    #     #     'GET',
+    #     #     query_parameters=params,
+    #     #     headers=headers
+    #     # )
+    #     paths =  path.path
+    #     list_url = self.boto3_s3_client.generate_presigned_url(  # Method to presign
+    #         'get_object',  # The client method (PUT object in this case)
+    #         Params={
+    #             'Bucket': self.bucket_name,  # S3 bucket name
+    #             'Key': paths,  # S3 object key (file name)
+    #         },
+    #         ExpiresIn=settings.TEMP_URL_SECS,  # URL expiration time (seconds)
+    #         HttpMethod='GET'  # HTTP method (PUT for uploading)
+    #     )
+    #     res = None
+    #     resp = None
+    #     try:
+    #         resp2 = await self.get_s3_bucket_object_location()
+    #         resp = await self.make_request(
+    #             'GET',
+    #             list_url,
+    #             skip_auto_headers={'CONTENT-TYPE'},
+    #             headers=headers,
+    #             params=params,
+    #             expects=(200, 201, 404,),
+    #             throws=exceptions.UploadError
+    #         )
+    #     except Exception as exc:
+    #         res = exc
+    #
+    #     import pydevd_pycharm
+    #     pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+    #     # import pydevd_pycharm
+    #     # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+    #     session_deleted = resp.status == 404
+    #     resp_xml = await resp.read()
+    #
+    #     return resp_xml, session_deleted
 
         # try:
         #     response = await s3_client.list_parts(
@@ -741,8 +867,8 @@ class S3Provider(provider.BaseProvider):
         sha1 = compute_sha1_base64(payload)
         headers = {
             'Content-Length': str(len(payload)),
-            'ChecksumSHA256': sha1,
-            'Content-Type': 'text/xml',
+            # 'ChecksumSHA256': sha1,
+            # 'Content-Type': 'text/xml',
         }
         params = {'uploadId': session_upload_id}
 
@@ -750,8 +876,8 @@ class S3Provider(provider.BaseProvider):
             'UploadId': session_upload_id,
             # 'ContentType': 'text/xml',
             # 'ContentLength': str(len(payload)),
-            'ChecksumAlgorithm': 'SHA256',
-            'ChecksumSHA256': sha1,
+            # 'ChecksumAlgorithm': 'SHA256',
+            # 'ChecksumSHA256': sha1,
         }
 
         complete_url = await self.generic_generate_presigned_url(path.path, method='complete_multipart_upload', query_parameters=params1)
