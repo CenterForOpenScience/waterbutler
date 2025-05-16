@@ -43,11 +43,11 @@ class MoveCopyMixin:
     def build_args(self):
         return ({
             'nid': self.resource,  # TODO rename to anything but nid
-            'path': self.path.path,
+            'path': self.path,
             'provider': self.provider.serialized()
         }, {
             'nid': self.dest_resource,
-            'path': self.dest_path.path,
+            'path': self.dest_path,
             'provider': self.dest_provider.serialized()
         })
 
