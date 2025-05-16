@@ -65,23 +65,6 @@ class S3Provider(provider.BaseProvider):
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
         self.region = None
 
-        # Initialize a session using your AWS credentials
-
-        self.boto3_s3_client = boto3.client(
-            's3',
-            aws_access_key_id=self.aws_secret_access_key,
-            aws_secret_access_key=self.aws_access_key_id
-        )
-
-        # resp = await self.get_s3_bucket_object_location()
-        # self.boto3_s3_client.list_objects(Bucket= self.bucket_name)
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
-        #
-        # # Get the bucket
-        # self.bucket = s3_client.get_bucket(settings['bucket'])
-
-
     async def generic_generate_presigned_url(self, path, method='head_object', query_parameters=None, default_params=True):
         try:
             session = get_session()
@@ -213,26 +196,6 @@ class S3Provider(provider.BaseProvider):
             return contents, prefixes
         except Exception as e:
             raise exceptions.NotFoundError(f"{path} {e}")
-
-    async def create_s3_bucket_object(self, path, query_parameters=None):
-        try:
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            query_parameters = query_parameters or {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/put_object.html
-                return (await s3_client.put_object(
-                    Bucket=self.bucket_name,
-                    Key=path,
-                    **query_parameters
-                ))
-        except Exception as e:
-            raise exceptions.UploadFailedError(f"{path} {e}")
 
     async def delete_s3_bucket_folder_objects(self, path):
 
@@ -392,8 +355,6 @@ class S3Provider(provider.BaseProvider):
         """Copy key from one S3 bucket to another. The credentials specified in
         `dest_provider` must have read access to `source.bucket`.
         """
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         await self._check_region()
         exists = await dest_provider.exists(dest_path)
         region_name = {"region_name": self.region} if self.region else {}
@@ -502,9 +463,6 @@ class S3Provider(provider.BaseProvider):
 
         path, exists = await self.handle_name_conflict(path, conflict=conflict)
 
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
-
         if stream.size < self.CONTIGUOUS_UPLOAD_SIZE_LIMIT:
             await self._contiguous_upload(stream, path)
         else:
@@ -575,16 +533,6 @@ class S3Provider(provider.BaseProvider):
 
         Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadInitiate.html
         """
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
-        # query_parameters = {'Key': path.path}
-        # # "Initiate Multipart Upload" supports AWS server-side encryption
-        # if self.encrypt_uploads:
-        #     query_parameters['ServerSideEncryption'] = 'AES256'
-        #
-        # resp = await self.create_multipart_upload(query_parameters)
-        #
-        # return resp['UploadId']
 
         headers = {}
         kwargs = {}
@@ -593,16 +541,11 @@ class S3Provider(provider.BaseProvider):
             headers = {'x-amz-server-side-encryption': 'AES256'}
             kwargs["ServerSideEncryption"] = "AES256"
 
-        # params = {'uploads': ''}
         # Docs: # https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/create_multipart_upload.html
-
-        upload_url = await self.generic_generate_presigned_url(path.path, method='create_multipart_upload', query_parameters=kwargs)
-
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+        upload_session_url = await self.generic_generate_presigned_url(path.path, method='create_multipart_upload', query_parameters=kwargs)
         resp = await self.make_request(
             'POST',
-            upload_url,
+            upload_session_url,
             headers=headers,
             skip_auto_headers={'CONTENT-TYPE'},
             throws=exceptions.UploadError,
@@ -610,9 +553,6 @@ class S3Provider(provider.BaseProvider):
         upload_session_metadata = await resp.read()
         session_data = xmltodict.parse(upload_session_metadata, strip_whitespace=False)
         # Session upload id is the only info we need
-
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         return session_data['InitiateMultipartUploadResult']['UploadId']
 
 
@@ -625,17 +565,11 @@ class S3Provider(provider.BaseProvider):
         if stream.size % self.CHUNK_SIZE:
             parts.append(stream.size - (len(parts) * self.CHUNK_SIZE))
         logger.info(f'Multipart upload segment sizes: {parts}')
-        import datetime
-
-        tasks = []
 
         for chunk_number, chunk_size in enumerate(parts):
-            logger.error(f'start uploading part {chunk_number + 1} with size {chunk_size} {datetime.datetime.now()}')
             metadata.append(await self._upload_part(stream, path, session_upload_id,
                                                     chunk_number + 1, chunk_size))
-            logger.error(f'end uploading part {chunk_number + 1} with size {chunk_size} {datetime.datetime.now()}')
 
-        logger.error('metadata')
         return metadata
 
     async def _upload_part(self, stream, path, session_upload_id, chunk_number, chunk_size):
@@ -643,43 +577,27 @@ class S3Provider(provider.BaseProvider):
 
         :param int chunk_number: sequence number of chunk. 1-indexed.
         """
-        logger.error(f'start reading part {chunk_number + 1} with size {chunk_size} {datetime.datetime.now()}')
+
         cutoff_stream = streams.CutoffStream(stream, cutoff=chunk_size)
 
-        headers = {'Content-Length': str(chunk_size)}
-        params1 = {
-            'partNumber': str(chunk_number),
-            'uploadId': session_upload_id,
-        }
-
-        params = {
-            'ContentLength': chunk_size,
-            'PartNumber': chunk_number,
-            'UploadId': session_upload_id
-        }
-
         # Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/upload_part.html
-        upload_url = await self.generic_generate_presigned_url(path.path, method='upload_part', query_parameters=params)
+        upload_part_url = await self.generic_generate_presigned_url(
+            path.path, method='upload_part',
+            query_parameters={'ContentLength': chunk_size, 'PartNumber': chunk_number, 'UploadId': session_upload_id}
+        )
 
-        # upload_url = functools.partial(
-        #     self.bucket.new_key(path.path).generate_url,
-        #     settings.TEMP_URL_SECS,
-        #     'PUT',
-        #     query_parameters=params,
-        #     headers=headers
-        # )
+
         resp = await self.make_request(
             'PUT',
-            upload_url,
+            upload_part_url,
             data=cutoff_stream,
             skip_auto_headers={'CONTENT-TYPE'},
-            headers=headers,
-            params=params1,
+            headers={'Content-Length': str(chunk_size)},
+            params={'partNumber': str(chunk_number), 'uploadId': session_upload_id},
             expects=(200, 201,),
             throws=exceptions.UploadError,
         )
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+
         await resp.release()
         return resp.headers
 
@@ -783,10 +701,6 @@ class S3Provider(provider.BaseProvider):
         Docs: https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
         """
 
-        def compute_sha1_base64(data: bytes) -> str:
-            sha1_digest = hashlib.sha256(data).digest()
-            return base64.b64encode(sha1_digest).decode('utf-8')
-
         payload = ''.join([
             '<?xml version="1.0" encoding="UTF-8"?><CompleteMultipartUpload>',
             ''.join(
@@ -797,22 +711,10 @@ class S3Provider(provider.BaseProvider):
             ),
             '</CompleteMultipartUpload>',
         ]).encode('utf-8')
-        sha1 = compute_sha1_base64(payload)
-        headers = {
-            'Content-Length': str(len(payload)),
-            # 'ChecksumSHA256': sha1,
-            # 'Content-Type': 'text/xml',
-        }
-        params = {'uploadId': session_upload_id}
 
-        params1 = {
-            'UploadId': session_upload_id,
-        }
-
-        complete_url = await self.generic_generate_presigned_url(path.path, method='complete_multipart_upload', query_parameters=params1)
-        logger.error(f"headers {headers}")
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+        complete_url = await self.generic_generate_presigned_url(
+            path.path, method='complete_multipart_upload', query_parameters={'UploadId': session_upload_id}
+        )
 
 
         resp = await self.make_request(
@@ -826,8 +728,6 @@ class S3Provider(provider.BaseProvider):
             expects=(200, 201,),
             throws=exceptions.UploadError,
         )
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         await resp.release()
 
     async def delete(self, path, confirm_delete=0, **kwargs):
@@ -988,8 +888,7 @@ class S3Provider(provider.BaseProvider):
                 items.append(S3FolderKeyMetadata(content))
             else:
                 items.append(S3FileMetadata(content))
-        # import pydevd_pycharm
-        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+
         return items
 
     async def _check_region(self):
