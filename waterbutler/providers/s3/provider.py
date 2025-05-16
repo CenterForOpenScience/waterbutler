@@ -1,11 +1,11 @@
 import asyncio
 import boto3
-import base64
 import hashlib
 import logging
 
 import xmltodict
 import xml.sax.saxutils
+from aiobotocore.config import AioConfig
 from aiobotocore.session import get_session # type: ignore
 
 from waterbutler.providers.s3 import settings
@@ -18,10 +18,7 @@ from waterbutler.providers.s3.metadata import (S3Revision,
                                                S3FolderKeyMetadata,
                                                S3FileMetadataHeaders,
                                                )
-from aiobotocore.config import AioConfig
 
-
-import datetime
 logger = logging.getLogger(__name__)
 
 
@@ -68,10 +65,9 @@ class S3Provider(provider.BaseProvider):
     async def generic_generate_presigned_url(self, path, method='head_object', query_parameters=None, default_params=True):
         try:
             session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
+            region_name = {'region_name': self.region} if self.region else {}
             config = AioConfig(signature_version='s3v4')
-            # import pydevd_pycharm
-            # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+
             async with session.create_client(
                     's3',
                     aws_secret_access_key=self.aws_secret_access_key,
@@ -84,7 +80,6 @@ class S3Provider(provider.BaseProvider):
                     params.update(query_parameters)
 
                 return await s3_client.generate_presigned_url(method,  Params=params,  ExpiresIn=settings.TEMP_URL_SECS)
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/head_object.html#
         except Exception as e:
             raise exceptions.NotFoundError(f"{path} {e}")
 
@@ -93,8 +88,7 @@ class S3Provider(provider.BaseProvider):
             session = get_session()
             region_name = {"region_name": self.region} if self.region else {}
             query_parameters = query_parameters or {}
-            # import pydevd_pycharm
-            # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+
             async with (session.create_client(
                     's3',
                     aws_secret_access_key=self.aws_secret_access_key,
@@ -106,54 +100,16 @@ class S3Provider(provider.BaseProvider):
                     params.update(query_parameters)
 
                 url = await s3_client.generate_presigned_url('head_object',  Params=params,  ExpiresIn=settings.TEMP_URL_SECS)
-                # functools.partial(s3_client.generate_presigned_url, 'head_object',  Params=params,  ExpiresIn=settings.TEMP_URL_SECS)
 
-                res =  await self.make_request(
+                return await self.make_request(
                     'HEAD',
                     url,
                     is_async=True,
                     expects=expects,
                     throws=exceptions.MetadataError,
                 )
-                return res
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/head_object.html#
         except Exception as e:
             raise exceptions.NotFoundError(f"{path} {e}")
-
-    async def _get_boto3_s3_client(self):
-        # Use asyncio.to_thread to run boto3 in a separate thread
-        return await asyncio.to_thread(self.create_boto3_client)
-
-    def create_boto3_client(self):
-        # Blocking boto3 client creation in the main thread
-        region_name = {"region_name": self.region} if self.region else {}
-        client = boto3.client(
-            's3',
-            aws_access_key_id=self.aws_access_key_id,
-            aws_secret_access_key=self.aws_secret_access_key,
-            **region_name
-        )
-        return client
-
-    async def get_s3_bucket_object(self, path, query_parameters=None):
-        try:
-            # Get the s3 client using asyncio.to_thread
-            s3_client = await self._get_boto3_s3_client()
-
-            # Call the get_object method in the thread
-            response = await asyncio.to_thread(self.get_object, s3_client, path, query_parameters)
-
-            return response
-        except Exception as e:
-            raise Exception(f"Failed to fetch object {path}: {e}")
-
-    def get_object(self, s3_client, path, query_parameters):
-        # Synchronous blocking operation - we use a thread to handle this
-        return s3_client.get_object(
-            Bucket=self.bucket_name,
-            Key=path,
-            **(query_parameters or {})
-        )
 
     async def get_s3_bucket_object_location(self):
         try:
