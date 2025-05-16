@@ -1,5 +1,3 @@
-import asyncio
-import boto3
 import hashlib
 import logging
 
@@ -62,7 +60,7 @@ class S3Provider(provider.BaseProvider):
         self.encrypt_uploads = self.settings.get('encrypt_uploads', False)
         self.region = None
 
-    async def generic_generate_presigned_url(self, path, method='head_object', query_parameters=None, default_params=True):
+    async def generate_generic_presigned_url(self, path, method='head_object', query_parameters=None, default_params=True):
         try:
             session = get_session()
             region_name = {'region_name': self.region} if self.region else {}
@@ -112,19 +110,23 @@ class S3Provider(provider.BaseProvider):
             raise exceptions.NotFoundError(f"{path} {e}")
 
     async def get_s3_bucket_object_location(self):
-        try:
-            session = get_session()
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-            ) as s3_client:
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_bucket_location.html#
-                return (await s3_client.get_bucket_location(
-                    Bucket=self.bucket_name
-                ))
-        except Exception as e:
-            raise exceptions.NotFoundError(f"{self.bucket_name} {e}")
+        session = get_session()
+        config = AioConfig(signature_version='s3v4')
+        async with session.create_client(
+                's3',
+                aws_secret_access_key=self.aws_secret_access_key,
+                aws_access_key_id=self.aws_access_key_id,
+                config=config
+        ) as s3_client:
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_bucket_location.html#
+            url = await s3_client.generate_presigned_url('get_bucket_location',  Params={'Bucket': self.bucket_name},  ExpiresIn=settings.TEMP_URL_SECS)
+            return await self.make_request(
+                'GET',
+                url,
+                is_async=True,
+                expects=(200, ),
+                throws=exceptions.MetadataError,
+            )
 
     async def get_folder_metadata(self, path, params):
         try:
@@ -154,97 +156,95 @@ class S3Provider(provider.BaseProvider):
             raise exceptions.NotFoundError(f"{path} {e}")
 
     async def delete_s3_bucket_folder_objects(self, path):
+        continuation_token = None
+        delete_requests = []
+        while True:
+            list_params = {
+                'Bucket': self.bucket_name,
+                'Prefix': path,
+            }
+            if continuation_token:
+                list_params['ContinuationToken'] = continuation_token
 
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html
+            list_url = await self.generate_generic_presigned_url(
+                '', 'list_objects_v2',query_parameters=list_params, default_params=False
+            )
 
-            continuation_token = None
-            delete_requests = []
-            while True:
-                list_params = {
-                    'Bucket': self.bucket_name,
-                    'Prefix': path,
-                }
-                if continuation_token:
-                    list_params['ContinuationToken'] = continuation_token
+            resp = await self.make_request(
+                'GET', list_url,
+                expects=(200, 206),
+                throws=exceptions.DownloadError
+            )
+            xml_body = await resp.text()
+            doc = xmltodict.parse(xml_body)
+            result = doc.get('ListBucketResult', {})
 
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html
-                list_url = await self.generic_generate_presigned_url(
-                    '', 'list_objects_v2',query_parameters=list_params, default_params=False
-                )
+            contents = result.get('Contents') or []
 
-                resp = await self.make_request(
-                    'GET', list_url,
-                    expects=(200, 206),
-                    throws=exceptions.DownloadError
-                )
-                xml_body = await resp.text()
-                doc = xmltodict.parse(xml_body)
-                result = doc.get('ListBucketResult', {})
+            if isinstance(contents, dict):
+                contents = [contents]
+            for o in contents:
+                delete_requests.append({"Key":o['Key']})
 
-                contents = result.get('Contents') or []
+            # handle pagination
+            if result.get('IsTruncated') == 'true':
+                continuation_token = result.get('NextContinuationToken')
+            else:
+                break
 
-                if isinstance(contents, dict):
-                    contents = [contents]
-                for o in contents:
-                    delete_requests.append({"Key":o['Key']})
+        session = get_session()
+        region_name = {"region_name": self.region} if self.region else {}
+        async with session.create_client(
+                's3',
+                aws_secret_access_key=self.aws_secret_access_key,
+                aws_access_key_id=self.aws_access_key_id,
+                **region_name
+        ) as s3_client:
+            for index in range(0, len(delete_requests), 1000):
+                chunk = delete_requests[index:index + 1000]
+                try:
+                    await s3_client.delete_objects(
+                        Bucket=self.bucket_name,
+                        Delete={"Objects": chunk}
+                    )
+                except Exception as e:
+                    raise exceptions.DeleteError(f"{path} {e}")
 
-                # handle pagination
-                if result.get('IsTruncated') == 'true':
-                    continuation_token = result.get('NextContinuationToken')
-                else:
-                    break
+        # TODO: maybe there is a workaround for 'delete_objects' usage got the following for code below
+        # json.decoder.JSONDecodeError: Expecting value: line 1 column 1  on resp = await self.make_request call
 
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                for index in range(0, len(delete_requests), 1000):
-                    chunk = delete_requests[index:index + 1000]
-                    try:
-                        await s3_client.delete_objects(
-                            Bucket=self.bucket_name,
-                            Delete={"Objects": chunk}
-                        )
-                    except Exception as e:
-                        raise exceptions.DeleteError(f"{path} {e}")
-
-            # TODO: maybe there is a workaround for 'delete_objects' usage got the following for code below
-            # json.decoder.JSONDecodeError: Expecting value: line 1 column 1  on resp = await self.make_request call
-
-            # for index in range(0, len(delete_requests), 1000):
-            #     chunk = delete_requests[index:index + 1000]
-            #
-            #     async with session.create_client(
-            #             's3',
-            #             aws_access_key_id=self.aws_access_key_id,
-            #             aws_secret_access_key=self.aws_secret_access_key,
-            #             config=config,
-            #             **region_kwargs
-            #     ) as s3:
-            #         list_url = await s3.generate_presigned_url(
-            #             ClientMethod='delete_objects',
-            #             Params={'Bucket': self.bucket_name, 'Delete':{"Objects": chunk}},
-            #             ExpiresIn=settings.TEMP_URL_SECS
-            #         )
-            #
-            #         def _make_delete_xml(chunk):
-            #             items = "".join(f"<Object><Key>{o['Key']}</Key></Object>" for o in chunk)
-            #             return f"<?xml version='1.0' encoding='UTF-8'?><Delete>{items}</Delete>"
-            #
-            #         xml_body = _make_delete_xml(chunk)
-            #
-            #         resp = await self.make_request(
-            #             'POST',
-            #             list_url,
-            #             data=xml_body,
-            #             headers={'Content-Type': 'application/xml'},
-            #             expects=(200, 204,),
-            #             throws=exceptions.DeleteError,
-            #         )
-            #         await resp.release()
+        # for index in range(0, len(delete_requests), 1000):
+        #     chunk = delete_requests[index:index + 1000]
+        #
+        #     async with session.create_client(
+        #             's3',
+        #             aws_access_key_id=self.aws_access_key_id,
+        #             aws_secret_access_key=self.aws_secret_access_key,
+        #             config=config,
+        #             **region_kwargs
+        #     ) as s3:
+        #         list_url = await s3.generate_presigned_url(
+        #             ClientMethod='delete_objects',
+        #             Params={'Bucket': self.bucket_name, 'Delete':{"Objects": chunk}},
+        #             ExpiresIn=settings.TEMP_URL_SECS
+        #         )
+        #
+        #         def _make_delete_xml(chunk):
+        #             items = "".join(f"<Object><Key>{o['Key']}</Key></Object>" for o in chunk)
+        #             return f"<?xml version='1.0' encoding='UTF-8'?><Delete>{items}</Delete>"
+        #
+        #         xml_body = _make_delete_xml(chunk)
+        #
+        #         resp = await self.make_request(
+        #             'POST',
+        #             list_url,
+        #             data=xml_body,
+        #             headers={'Content-Type': 'application/xml'},
+        #             expects=(200, 204,),
+        #             throws=exceptions.DeleteError,
+        #         )
+        #         await resp.release()
 
 
     async def get_object_versions(self, query_parameters):
@@ -281,7 +281,7 @@ class S3Provider(provider.BaseProvider):
             query_parameters = {'Bucket': self.bucket_name, 'Prefix': path, 'Delimiter': '/', 'MaxKeys': 1}
 
             # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html
-            url = await self.generic_generate_presigned_url(path, method='list_objects_v2',
+            url = await self.generate_generic_presigned_url(path, method='list_objects_v2',
                                                             query_parameters=query_parameters, default_params=False)
             await self.make_request(
                 'GET',
@@ -330,7 +330,7 @@ class S3Provider(provider.BaseProvider):
         #     # }
         # }
         #
-        # url = await self.generic_generate_presigned_url(dest_path.path, 'copy_object', query_parameters=query_parameters)
+        # url = await self.generate_generic_presigned_url(dest_path.path, 'copy_object', query_parameters=query_parameters)
         #
         # resp = await self.make_request(
         #     'PUT',
@@ -395,7 +395,7 @@ class S3Provider(provider.BaseProvider):
         query_parameters['ResponseContentDisposition'] = make_disposition(display_name)
 
 
-        url = await self.generic_generate_presigned_url(path.path, 'get_object', query_parameters=query_parameters)
+        url = await self.generate_generic_presigned_url(path.path, 'get_object', query_parameters=query_parameters)
 
         resp = await self.make_request(
             'GET',
@@ -442,7 +442,7 @@ class S3Provider(provider.BaseProvider):
             query_parameters['ServerSideEncryption'] = 'AES256'
 
         # Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/put_object.html
-        upload_url = await self.generic_generate_presigned_url(path.path, method='put_object', query_parameters=query_parameters)
+        upload_url = await self.generate_generic_presigned_url(path.path, method='put_object', query_parameters=query_parameters)
 
         resp = await self.make_request(
             'PUT',
@@ -498,7 +498,7 @@ class S3Provider(provider.BaseProvider):
             kwargs["ServerSideEncryption"] = "AES256"
 
         # Docs: # https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/create_multipart_upload.html
-        upload_session_url = await self.generic_generate_presigned_url(path.path, method='create_multipart_upload', query_parameters=kwargs)
+        upload_session_url = await self.generate_generic_presigned_url(path.path, method='create_multipart_upload', query_parameters=kwargs)
         resp = await self.make_request(
             'POST',
             upload_session_url,
@@ -537,7 +537,7 @@ class S3Provider(provider.BaseProvider):
         cutoff_stream = streams.CutoffStream(stream, cutoff=chunk_size)
 
         # Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/upload_part.html
-        upload_part_url = await self.generic_generate_presigned_url(
+        upload_part_url = await self.generate_generic_presigned_url(
             path.path, method='upload_part',
             query_parameters={'ContentLength': chunk_size, 'PartNumber': chunk_number, 'UploadId': session_upload_id}
         )
@@ -580,7 +580,7 @@ class S3Provider(provider.BaseProvider):
         params = {'UploadId': session_upload_id}
 
 
-        abort_url = await self.generic_generate_presigned_url(path.path, method='abort_multipart_upload', query_parameters=params)
+        abort_url = await self.generate_generic_presigned_url(path.path, method='abort_multipart_upload', query_parameters=params)
 
         iteration_count = 0
         is_aborted = False
@@ -634,7 +634,7 @@ class S3Provider(provider.BaseProvider):
 
         headers = {}
         params = {'UploadId': session_upload_id}
-        list_url = await self.generic_generate_presigned_url(path.path, method='list_parts', query_parameters=params)
+        list_url = await self.generate_generic_presigned_url(path.path, method='list_parts', query_parameters=params)
 
         resp = await self.make_request(
             'GET',
@@ -668,7 +668,7 @@ class S3Provider(provider.BaseProvider):
             '</CompleteMultipartUpload>',
         ]).encode('utf-8')
 
-        complete_url = await self.generic_generate_presigned_url(
+        complete_url = await self.generate_generic_presigned_url(
             path.path, method='complete_multipart_upload', query_parameters={'UploadId': session_upload_id}
         )
 
@@ -703,7 +703,7 @@ class S3Provider(provider.BaseProvider):
 
         if path.is_file:
             # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/delete_object.html
-            delete_url = await self.generic_generate_presigned_url(path.path, method='delete_object')
+            delete_url = await self.generate_generic_presigned_url(path.path, method='delete_object')
 
             resp = await self.make_request(
                 'DELETE',
@@ -786,7 +786,7 @@ class S3Provider(provider.BaseProvider):
         path_prefix = path.path
 
         # Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/put_object.html
-        folder_url = await self.generic_generate_presigned_url(path_prefix, method='put_object')
+        folder_url = await self.generate_generic_presigned_url(path_prefix, method='put_object')
 
         await self.make_request(
             'PUT',
@@ -866,5 +866,7 @@ class S3Provider(provider.BaseProvider):
         https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_bucket_location.html
         """
         resp = await self.get_s3_bucket_object_location()
-        return resp.get('LocationConstraint')
+        contents = await resp.read()
+        parsed = xmltodict.parse(contents, strip_whitespace=False)
+        return parsed['LocationConstraint'].get('#text', '')
 
