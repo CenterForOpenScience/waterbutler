@@ -1,17 +1,13 @@
 import asyncio
 import boto3
-import hashlib
-from multidict import CIMultiDict
 import base64
-import os
 import hashlib
 import logging
-import functools
-from urllib import parse
 
 import xmltodict
 import xml.sax.saxutils
 from aiobotocore.session import get_session # type: ignore
+
 from waterbutler.providers.s3 import settings
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.utils import make_disposition
@@ -251,12 +247,11 @@ class S3Provider(provider.BaseProvider):
                 if continuation_token:
                     list_params['ContinuationToken'] = continuation_token
 
-                # generate presigned URL for this page
+                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html
                 list_url = await self.generic_generate_presigned_url(
                     '', 'list_objects_v2',query_parameters=list_params, default_params=False
                 )
 
-                # fetch & parse XML
                 resp = await self.make_request(
                     'GET', list_url,
                     expects=(200, 206),
@@ -363,8 +358,18 @@ class S3Provider(provider.BaseProvider):
         implicit_folder = path.endswith('/')
 
         if implicit_folder:
-            params = {'Prefix': path, 'Delimiter': '/'}
-            await self.get_folder_metadata(path,params)
+
+            query_parameters = {'Bucket': self.bucket_name, 'Prefix': path, 'Delimiter': '/', 'MaxKeys': 1}
+
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html
+            url = await self.generic_generate_presigned_url(path, method='list_objects_v2',
+                                                            query_parameters=query_parameters, default_params=False)
+            await self.make_request(
+                'GET',
+                url,
+                expects=(200, 206,),
+                throws=exceptions.NotFoundError,
+            )
         else:
             await self.check_key_existence(path[1:], expects=(200, ))
 
