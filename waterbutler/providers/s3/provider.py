@@ -129,31 +129,47 @@ class S3Provider(provider.BaseProvider):
             )
 
     async def get_folder_metadata(self, path, params):
-        try:
-            contents, prefixes = [], []
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_paginator.html
-                # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html#list-objects-v2
-                paginator = s3_client.get_paginator('list_objects_v2')
-                pages = paginator.paginate(
-                    Bucket=self.bucket_name,
-                    **params
-                )
 
-                async for page in pages:
-                    contents.extend(page.get('Contents', []))
-                    prefixes.extend(page.get('CommonPrefixes', []))
+        contents, prefixes, response_contents, response_prefixes = [], [], [], []
+        continuation_token = None
 
-            return contents, prefixes
-        except Exception as e:
-            raise exceptions.NotFoundError(f"{path} {e}")
+        while True:
+            if continuation_token:
+                params['ContinuationToken'] = continuation_token
+
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_paginator.html
+            # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html#list-objects-v2
+            list_url = await self.generate_generic_presigned_url(
+                '', 'list_objects_v2', query_parameters=params, default_params=False
+            )
+
+            resp = await self.make_request(
+                'GET', list_url,
+                expects=(200, 206),
+                throws=exceptions.DownloadError
+            )
+            xml_body = await resp.text()
+            doc = xmltodict.parse(xml_body)
+            result = doc.get('ListBucketResult', {})
+
+            contents = result.get('Contents') or []
+            common_prefixes = result.get('CommonPrefixes') or []
+
+            if isinstance(contents, dict):
+                contents = [contents]
+            if isinstance(common_prefixes, dict):
+                common_prefixes = [common_prefixes]
+
+            response_contents.extend(contents)
+            response_prefixes.extend(common_prefixes)
+
+            # handle pagination
+            if result.get('IsTruncated') == 'true':
+                continuation_token = result.get('NextContinuationToken')
+            else:
+                break
+
+        return response_contents, response_prefixes
 
     async def delete_s3_bucket_folder_objects(self, path):
         continuation_token = None
@@ -184,8 +200,8 @@ class S3Provider(provider.BaseProvider):
 
             if isinstance(contents, dict):
                 contents = [contents]
-            for o in contents:
-                delete_requests.append({"Key":o['Key']})
+            for content in contents:
+                delete_requests.append({"Key":content['Key']})
 
             # handle pagination
             if result.get('IsTruncated') == 'true':
@@ -815,7 +831,7 @@ class S3Provider(provider.BaseProvider):
         await self._check_region()
 
         path_prefix = path.path
-        params = {'Prefix': path_prefix, 'Delimiter': '/'}
+        params = {'Prefix': path_prefix, 'Delimiter': '/', 'Bucket': self.bucket_name}
 
         contents, prefixes = await self.get_folder_metadata(path_prefix, params)
 
