@@ -85,12 +85,14 @@ class S3Provider(provider.BaseProvider):
         try:
             session = get_session()
             region_name = {"region_name": self.region} if self.region else {}
+            config = AioConfig(signature_version='s3v4')
             query_parameters = query_parameters or {}
 
             async with (session.create_client(
                     's3',
                     aws_secret_access_key=self.aws_secret_access_key,
                     aws_access_key_id=self.aws_access_key_id,
+                    config=config,
                     **region_name
             ) as s3_client):
                 params = {'Bucket': self.bucket_name, 'Key': path}
@@ -128,81 +130,94 @@ class S3Provider(provider.BaseProvider):
                 throws=exceptions.MetadataError,
             )
 
-    async def get_folder_metadata(self, path, params):
-        try:
-            contents, prefixes = [], []
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_paginator.html
-                # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html#list-objects-v2
-                paginator = s3_client.get_paginator('list_objects_v2')
-                pages = paginator.paginate(
-                    Bucket=self.bucket_name,
-                    **params
-                )
-
-                # it may be added there some logic from make_request to be it similar f.e. self.provider_metrics.incr('requests.tally.ok')
-                async for page in pages:
-                    contents.extend(page.get('Contents', []))
-                    prefixes.extend(page.get('CommonPrefixes', []))
-
-            return contents, prefixes
-        except Exception as e:
-            raise exceptions.NotFoundError(f"{path} {e}")
-
-    # Todo: have tried how to handle 'Key' 'qwerty2026/qwerty111/qwerty5/FF13/ewrw2253673/qwerty12/4423++++24+423.png and
-    # qwerty2026/qwerty111/qwerty5/FF13/ewrw2253673/qwerty12/4423%2B%2B24+423.png for the logic commented below
-    # ( #have tried yarl and furl but not see it to be helpful helps -> .replace('+', ' ').replace('%2B', '+') looks bad because it is needed
-    # to be more generic and handle different chars I suppose )
+    # Todo:  the commented solution may be more stable than not commented
     # async def get_folder_metadata(self, path, params):
+    #     try:
+    #         contents, prefixes = [], []
+    #         session = get_session()
+    #         region_name = {"region_name": self.region} if self.region else {}
+    #         async with session.create_client(
+    #                 's3',
+    #                 aws_secret_access_key=self.aws_secret_access_key,
+    #                 aws_access_key_id=self.aws_access_key_id,
+    #                 **region_name
+    #         ) as s3_client:
+    #             # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_paginator.html
+    #             # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html#list-objects-v2
+    #             paginator = s3_client.get_paginator('list_objects_v2')
+    #             pages = paginator.paginate(
+    #                 Bucket=self.bucket_name,
+    #                 **params
+    #             )
     #
-    #     contents, prefixes, response_contents, response_prefixes = [], [], [], []
-    #     continuation_token = None
+    #             # it may be added there some logic from make_request to be it similar f.e. self.provider_metrics.incr('requests.tally.ok')
+    #             async for page in pages:
+    #                 contents.extend(page.get('Contents', []))
+    #                 prefixes.extend(page.get('CommonPrefixes', []))
     #
-    #     while True:
-    #         if continuation_token:
-    #             params['ContinuationToken'] = continuation_token
-    #
-    #         # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_paginator.html
-    #         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html#list-objects-v2
-    #         list_url = await self.generate_generic_presigned_url(
-    #             '', 'list_objects_v2', query_parameters=params, default_params=False
-    #         )
-    #
-    #         resp = await self.make_request(
-    #             'GET', list_url,
-    #             expects=(200, 206),
-    #             throws=exceptions.DownloadError
-    #         )
-    #         xml_body = await resp.text()
-    #         doc = xmltodict.parse(xml_body)
-    #         result = doc.get('ListBucketResult', {})
-    #
-    #         contents = result.get('Contents') or []
-    #         common_prefixes = result.get('CommonPrefixes') or []
-    #
-    #         if isinstance(contents, dict):
-    #             contents = [contents]
-    #         if isinstance(common_prefixes, dict):
-    #             common_prefixes = [common_prefixes]
-    #
-    #         response_contents.extend(contents)
-    #         response_prefixes.extend(common_prefixes)
-    #
-    #         # handle pagination
-    #         if result.get('IsTruncated') == 'true':
-    #             continuation_token = result.get('NextContinuationToken')
-    #         else:
-    #             break
-    #     import pydevd_pycharm
-    #     pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
-    #     return response_contents, response_prefixes
+    #         return contents, prefixes
+    #     except Exception as e:
+    #         raise exceptions.NotFoundError(f"{path} {e}")
+
+    async def get_folder_metadata(self, path, params):
+
+        contents, prefixes, response_contents, response_prefixes = [], [], [], []
+        continuation_token = None
+
+        from urllib.parse import quote, unquote
+
+        while True:
+            if continuation_token:
+                params['ContinuationToken'] = continuation_token
+
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_paginator.html
+            # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html#list-objects-v2
+            list_url = await self.generate_generic_presigned_url(
+                '', 'list_objects_v2', query_parameters=params, default_params=False
+            )
+
+            resp = await self.make_request(
+                'GET', list_url,
+                expects=(200, 206),
+                throws=exceptions.DownloadError
+            )
+            xml_body = await resp.text()
+            doc = xmltodict.parse(xml_body)
+            result = doc.get('ListBucketResult', {})
+
+            contents = result.get('Contents') or []
+            common_prefixes = result.get('CommonPrefixes') or []
+
+            if isinstance(contents, dict):
+                contents = [contents]
+            if isinstance(common_prefixes, dict):
+                common_prefixes = [common_prefixes]
+
+            for content in contents:
+                key = content.get('Key')
+                if key:
+                    # cast xml string encoding to display the name user downloaded (to be it compatable with make_requests),
+                    # have tried yarl and furl but not see it to be helpful
+                    # Todo: maybe there is a better approach (not confident all encoding is casted)
+                    #  or use commented 'get_folder_metadata' above where no cast is needed
+                    key = key.replace('+', ' ')
+                    content['Key'] = unquote(key)
+                    response_contents.append(content)
+
+            for common_prefix in common_prefixes:
+                prefix = common_prefix.get('Prefix')
+                if prefix:
+                    prefix = prefix.replace('+', ' ')
+                    common_prefix['Prefix'] = unquote(prefix)
+                    response_prefixes.append(common_prefix)
+
+            # handle pagination
+            if result.get('IsTruncated') == 'true':
+                continuation_token = result.get('NextContinuationToken')
+            else:
+                break
+
+        return response_contents, response_prefixes
 
 
     async def delete_s3_bucket_folder_objects(self, path):
@@ -254,6 +269,8 @@ class S3Provider(provider.BaseProvider):
             for index in range(0, len(delete_requests), 1000):
                 chunk = delete_requests[index:index + 1000]
                 try:
+                    # Todo: maybe it is good idea to add the some logic from make_request f.e. to keep it similar
+                    # self.provider_metrics.incr('requests.tally.ok')
                     await s3_client.delete_objects(
                         Bucket=self.bucket_name,
                         Delete={"Objects": chunk}
@@ -365,6 +382,29 @@ class S3Provider(provider.BaseProvider):
         exists = await dest_provider.exists(dest_path)
         region_name = {"region_name": self.region} if self.region else {}
 
+        session = get_session()
+        async with session.create_client(
+                's3',
+                aws_secret_access_key=self.aws_secret_access_key,
+                aws_access_key_id=self.aws_access_key_id,
+                **region_name
+        ) as s3_client:
+            copy_source = {
+                'Bucket': self.bucket_name,
+                'Key': source_path.path,
+            }
+            try:
+                await s3_client.copy_object(
+                    Bucket=dest_provider.bucket_name,
+                    Key=dest_path.path,
+                    CopySource=copy_source,
+                )
+            except Exception as e:
+                raise exceptions.IntraCopyError(f"IntraCopyError {e}")
+
+        return (await dest_provider.metadata(dest_path)), not exists
+
+
 
         #
         # # ensure no left slash when joining paths
@@ -394,28 +434,6 @@ class S3Provider(provider.BaseProvider):
         #     throws=exceptions.DownloadError,
         # )
         # await resp.release()
-
-        session = get_session()
-        async with session.create_client(
-                's3',
-                aws_secret_access_key=self.aws_secret_access_key,
-                aws_access_key_id=self.aws_access_key_id,
-                **region_name
-        ) as s3_client:
-            copy_source = {
-                'Bucket': self.bucket_name,
-                'Key': source_path.path,
-            }
-            try:
-                await s3_client.copy_object(
-                    Bucket=dest_provider.bucket_name,
-                    Key=dest_path.path,
-                    CopySource=copy_source,
-                )
-            except Exception as e:
-                raise exceptions.IntraCopyError(f"IntraCopyError {e}")
-
-        return (await dest_provider.metadata(dest_path)), not exists
 
 
     async def download(self, path, accept_url=False, revision=None, range=None, **kwargs):
@@ -865,9 +883,9 @@ class S3Provider(provider.BaseProvider):
         await self._check_region()
 
         path_prefix = path.path
-        # params = {'Prefix': path_prefix, 'Delimiter': '/', 'Bucket': self.bucket_name}
+        params = {'Prefix': path_prefix, 'Delimiter': '/', 'Bucket': self.bucket_name}
 
-        params = {'Prefix': path_prefix, 'Delimiter': '/'}
+        # params = {'Prefix': path_prefix, 'Delimiter': '/'}
 
         contents, prefixes = await self.get_folder_metadata(path_prefix, params)
 
@@ -883,6 +901,8 @@ class S3Provider(provider.BaseProvider):
         if isinstance(prefixes, dict):
             prefixes = [prefixes]
 
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         items = [
             S3FolderMetadata(item)
             for item in prefixes if item['Prefix'] != path_prefix
