@@ -1,6 +1,7 @@
 import hashlib
 import logging
 
+from urllib.parse import unquote
 import xmltodict
 import xml.sax.saxutils
 from aiobotocore.config import AioConfig
@@ -164,8 +165,6 @@ class S3Provider(provider.BaseProvider):
         contents, prefixes, response_contents, response_prefixes = [], [], [], []
         continuation_token = None
 
-        from urllib.parse import quote, unquote
-
         while True:
             if continuation_token:
                 params['ContinuationToken'] = continuation_token
@@ -250,7 +249,13 @@ class S3Provider(provider.BaseProvider):
             if isinstance(contents, dict):
                 contents = [contents]
             for content in contents:
-                delete_requests.append({"Key":content['Key']})
+                key = content['Key']
+                if key:
+                    # on testing it was seen that folders with name xml encoding are not deleted (though files are)
+                    # so casting is needed on using xml approach with aiobotocore
+                    key = key.replace('+', ' ')
+                    content['Key'] = unquote(key)
+                    delete_requests.append({"Key":content['Key']})
 
             # handle pagination
             if result.get('IsTruncated') == 'true':
@@ -315,26 +320,75 @@ class S3Provider(provider.BaseProvider):
 
 
     async def get_object_versions(self, query_parameters):
-        try:
-            session = get_session()
-            region_name = {"region_name": self.region} if self.region else {}
-            async with session.create_client(
-                    's3',
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_access_key_id=self.aws_access_key_id,
-                    **region_name
-            ) as s3_client:
-                paginator = s3_client.get_paginator('list_object_versions')
-                pages = paginator.paginate(
-                    Bucket=self.bucket_name,
-                    **query_parameters
-                )
-                all_versions = []
-                async for page in pages:
-                    all_versions.extend(page.get('Versions', []))
-                return all_versions
-        except Exception as e:
-            raise exceptions.NotFoundError(f"Failed to fetch versions: {e}")
+
+        continuation_token = None
+
+        versions_result = []
+        while True:
+
+
+            if continuation_token:
+                query_parameters['ContinuationToken'] = continuation_token
+            # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html
+            list_url = await self.generate_generic_presigned_url(
+                '', 'list_object_versions', query_parameters=query_parameters, default_params=False
+            )
+
+            resp = await self.make_request(
+                'GET', list_url,
+                expects=(200, 206),
+                throws=exceptions.DownloadError
+            )
+            xml_body = await resp.text()
+            doc = xmltodict.parse(xml_body)
+
+            result = doc.get('ListVersionsResult', {})
+
+            versions = result.get('Version') or []
+
+            if isinstance(versions, dict):
+                versions = [versions]
+            # import pydevd_pycharm
+            # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+            for version in versions:
+                key = version.get('Key')
+                if key:
+                    # cast xml string encoding to display the name user downloaded (to be it compatable with make_requests),
+                    # have tried yarl and furl but not see it to be helpful
+                    # Todo: maybe there is a better approach (not confident all encoding is casted)
+                    #  or use commented 'get_folder_metadata' above where no cast is needed
+                    key = key.replace('+', ' ')
+                    version['Key'] = unquote(key)
+                    versions_result.append(version)
+
+            # handle pagination
+            if result.get('IsTruncated') == 'true':
+                continuation_token = result.get('NextContinuationToken')
+            else:
+                break
+
+        return versions_result
+
+        # try:
+        #     session = get_session()
+        #     region_name = {"region_name": self.region} if self.region else {}
+        #     async with session.create_client(
+        #             's3',
+        #             aws_secret_access_key=self.aws_secret_access_key,
+        #             aws_access_key_id=self.aws_access_key_id,
+        #             **region_name
+        #     ) as s3_client:
+        #         paginator = s3_client.get_paginator('list_object_versions')
+        #         pages = paginator.paginate(
+        #             Bucket=self.bucket_name,
+        #             **query_parameters
+        #         )
+        #         all_versions = []
+        #         async for page in pages:
+        #             all_versions.extend(page.get('Versions', []))
+        #         return all_versions
+        # except Exception as e:
+        #     raise exceptions.NotFoundError(f"Failed to fetch versions: {e}")
 
     async def validate_v1_path(self, path, **kwargs):
         await self._check_region()
