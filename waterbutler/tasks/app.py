@@ -10,10 +10,16 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from waterbutler.settings import config
 from waterbutler.version import __version__
 from waterbutler.tasks import settings as tasks_settings
+from waterbutler.tasks import serialization
 
 logger = logging.getLogger(__name__)
 
 app = Celery()
+app.conf.update(
+    task_serializer="wb_json",
+    result_serializer="wb_json",
+    accept_content=["wb_json"],
+)
 app.config_from_object(tasks_settings)
 
 

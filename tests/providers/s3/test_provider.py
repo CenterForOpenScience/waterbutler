@@ -11,8 +11,8 @@ from urllib import parse
 from unittest import mock
 
 import pytest
-from boto.compat import BytesIO
-from boto.utils import compute_md5
+# from boto.compat import BytesIO
+# from boto.utils import compute_md5
 
 from waterbutler.providers.s3 import S3Provider
 from waterbutler.core.path import WaterButlerPath
@@ -151,11 +151,13 @@ def list_upload_chunks_body(parts_metadata):
         </ListPartsResult>
     '''
 
-    md5 = compute_md5(BytesIO(payload))
+    # md5 = compute_md5(BytesIO(payload))
+    # md5 = compute_md5(payload)
+    md5 = hashlib.md5(payload)
 
     headers = {
         'Content-Length': str(len(payload)),
-        'Content-MD5': md5[1],
+        'Content-MD5': md5.hexdigest(),
         'Content-Type': 'text/xml',
     }
 
@@ -718,7 +720,7 @@ class TestCRUD:
 
         headers = {
             'Content-Length': str(len(payload)),
-            'Content-MD5': compute_md5(BytesIO(payload))[1],
+            'Content-MD5': hashlib.md5(payload).hexdigest(),
             'Content-Type': 'text/xml',
         }
 
