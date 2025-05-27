@@ -1697,7 +1697,7 @@ class TestMisc:
     @pytest.mark.asyncio
     async def test_revisions(self, project_provider):
         result = await project_provider.revisions('/')
-        expected = [metadata.FigshareFileRevisionMetadata()]
+        expected = [metadata.FigshareFileRevisionMetadata({})]
         assert result == expected
 
     def test_can_duplicate_names(self, project_provider):

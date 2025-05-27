@@ -219,7 +219,7 @@ class TestFigshareFileMetadata:
         assert data.extra.get('status') == 'public'
 
     def test_revision_metadata(self):
-        data = FigshareFileRevisionMetadata()
+        data = FigshareFileRevisionMetadata({})
 
         assert data.modified is None
         assert data.modified_utc is None
