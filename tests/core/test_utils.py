@@ -12,7 +12,7 @@ class TestAsyncRetry:
     async def test_returns_success(self):
         """Test the scenario where a function succeeds on first attempt.
         """
-        mock_func = mock.Mock(return_value='Foo')
+        mock_func = mock.AsyncMock(return_value='Foo')
         retryable = utils.async_retry(5, 0)(mock_func)
 
         x = await retryable()
