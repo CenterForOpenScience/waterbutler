@@ -497,7 +497,8 @@ class TestMetadata:
         aiohttpretty.register_json_uri('GET', draft_url, status=200, body=native_dataset_metadata)
 
         path = await provider.validate_path('/')
-        result = await provider.metadata(path)
+
+        result = await provider.metadata(path, version='latest')
 
         assert len(result) == 3
 
@@ -511,7 +512,8 @@ class TestMetadata:
 
         path = await provider.validate_path('/')
         with pytest.raises(exceptions.MetadataError) as e:
-            _ = await provider.metadata(path)
+            _ = await provider.metadata(path, version='latest-published'
+                                        )
 
         assert e.value.code == 400
 
