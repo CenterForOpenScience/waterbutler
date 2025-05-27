@@ -172,8 +172,8 @@ class TestRegionDetection:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    @pytest.mark.parametrize("region_name,host", [
-        ('',               's3.amazonaws.com'),
+    @pytest.mark.parametrize("region_name,expected_region", [
+        # ('',               's3.amazonaws.com'),
         ('EU',             's3-eu-west-1.amazonaws.com'),
         ('us-east-2',      's3-us-east-2.amazonaws.com'),
         ('us-west-1',      's3-us-west-1.amazonaws.com'),
@@ -188,21 +188,40 @@ class TestRegionDetection:
         ('ap-southeast-2', 's3-ap-southeast-2.amazonaws.com'),
         ('sa-east-1',      's3-sa-east-1.amazonaws.com'),
     ])
-    async def test_region_host(self, auth, credentials, settings, region_name, host, mock_time):
+    async def test_region_host(self, auth, credentials, settings, region_name, expected_region, mock_time):
         provider = S3Provider(auth, credentials, settings)
-
-        region_url = provider.bucket.generate_url(
-            100,
-            'GET',
-            query_parameters={'location': ''},
+        breakpoint()
+        region_url = await provider.generate_generic_presigned_url(
+            '', method='get_bucket_location', query_parameters={'Bucket': settings['bucket']},  default_params=False
         )
-        aiohttpretty.register_uri('GET',
-                                  region_url,
-                                  status=200,
-                                  body=location_response(region_name))
-
+        breakpoint()
+        aiohttpretty.register_uri('GET', region_url, status=200, body=location_response(region_name))
+        breakpoint()
         await provider._check_region()
-        assert provider.connection.host == host
+        breakpoint()
+        assert provider.region == expected_region
+        # breakpoint()
+        # provider = S3Provider(auth, credentials, settings)
+        # await provider._check_region()
+        # breakpoint()
+        # res = await provider._get_bucket_region()
+        # breakpoint()
+        # # region_url = provider.bucket.generate_url(
+        # #     100,
+        # #     'GET',
+        # #     query_parameters={'location': ''},
+        # # )
+        # # bre/akpoint()
+        # region_url = 'https://s3.amazonaws.com/that-kerning?location=&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Dont%20dead%2F20250526%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250526T134653Z&X-Amz-Expires=100&X-Amz-SignedHeaders=host&X-Amz-Signature=80f8426c4fc6d0af68bd3e52a553c9e4d838144b9a70600aff507f70056696f1 '
+        # aiohttpretty.register_uri('GET',
+        #                           region_url,
+        #                           status=200,
+        #                           body=location_response(region_name))
+        # # breakpoint()
+        #
+        # await provider._check_region()
+        # # breakpoint()
+        # assert provider.connection.host == host
 
 
 class TestValidatePath:

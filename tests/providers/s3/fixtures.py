@@ -25,13 +25,17 @@ def credentials():
         'access_key': 'Dont dead',
         'secret_key': 'open inside',
     }
+    # return {
+    #     'access_key': 'Dont dead',
+    #     'secret_key': 'open inside',
+    # }
 
 
 @pytest.fixture
 def settings():
     return {
-        'id': 'that kerning:/my-subfolder/',
-        'bucket': 'that kerning',
+        'id': 'that-kerning:/my-subfolder/',
+        'bucket': 'that-kerning',
         'encrypt_uploads': False
     }
 

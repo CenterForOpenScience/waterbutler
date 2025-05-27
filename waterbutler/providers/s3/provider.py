@@ -62,6 +62,8 @@ class S3Provider(provider.BaseProvider):
         self.region = None
 
     async def generate_generic_presigned_url(self, path, method='head_object', query_parameters=None, default_params=True):
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         try:
             session = get_session()
             region_name = {'region_name': self.region} if self.region else {}
@@ -74,13 +76,18 @@ class S3Provider(provider.BaseProvider):
                     config=config,
                     **region_name
             ) as s3_client:
+                # breakpoint()
                 params = {'Bucket': self.bucket_name, 'Key': path} if default_params else {}
                 if query_parameters:
                     params.update(query_parameters)
-
-                return await s3_client.generate_presigned_url(method,  Params=params,  ExpiresIn=settings.TEMP_URL_SECS)
-        except Exception as e:
-            raise exceptions.NotFoundError(f"{path} {e}")
+                # breakpoint()
+                resp = await s3_client.generate_presigned_url(method,  Params=params,  ExpiresIn=settings.TEMP_URL_SECS)
+                breakpoint()
+                return resp
+        except Exception as exc:
+            res = exc
+            breakpoint()
+            raise exceptions.NotFoundError(f"{path} {exc}")
 
     async def check_key_existence(self, path, expects=(200, ), query_parameters=None):
         try:
@@ -105,7 +112,6 @@ class S3Provider(provider.BaseProvider):
                 return await self.make_request(
                     'HEAD',
                     url,
-                    is_async=True,
                     expects=expects,
                     throws=exceptions.MetadataError,
                 )
@@ -115,6 +121,8 @@ class S3Provider(provider.BaseProvider):
     async def get_s3_bucket_object_location(self):
         session = get_session()
         config = AioConfig(signature_version='s3v4')
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
         async with session.create_client(
                 's3',
                 aws_secret_access_key=self.aws_secret_access_key,
@@ -123,13 +131,20 @@ class S3Provider(provider.BaseProvider):
         ) as s3_client:
             # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_bucket_location.html#
             url = await s3_client.generate_presigned_url('get_bucket_location',  Params={'Bucket': self.bucket_name},  ExpiresIn=settings.TEMP_URL_SECS)
-            return await self.make_request(
-                'GET',
-                url,
-                is_async=True,
-                expects=(200, ),
-                throws=exceptions.MetadataError,
-            )
+            breakpoint()
+            resp = None
+            try:
+                resp = await self.make_request(
+                    'GET',
+                    url,
+                    is_async=True,
+                    expects=(200, ),
+                    throws=exceptions.MetadataError,
+                )
+            except Exception as exc:
+                res = exc
+            breakpoint()
+            return resp
 
     # Todo:  the commented solution may be more stable than not commented
     # async def get_folder_metadata(self, path, params):
@@ -809,6 +824,9 @@ class S3Provider(provider.BaseProvider):
         await resp.release()
 
     async def delete(self, path, confirm_delete=0, **kwargs):
+
+        await self.get_s3_bucket_object_location()
+        return
         """Deletes the key at the specified path
 
         :param str path: The path of the key to delete
@@ -962,6 +980,9 @@ class S3Provider(provider.BaseProvider):
             for item in prefixes if item['Prefix'] != path_prefix
         ]
 
+        # import pydevd_pycharm
+        # pydevd_pycharm.settrace('host.docker.internal', port=1236, stdoutToServer=True, stderrToServer=True)
+
         for content in contents:
             if content['Key'] == params['Prefix']:
                 continue
@@ -977,12 +998,14 @@ class S3Provider(provider.BaseProvider):
         """
         Lookup the region via bucket name, then update the host to match.
         """
-
+        # breakpoint()
         if self.region is None:
             self.region = await self._get_bucket_region()
+            # breakpoint()
             if self.region == 'EU':
                 self.region = 'eu-west-1'
 
+        # breakpoint()
         self.metrics.add('region', self.region)
 
     async def _get_bucket_region(self):
@@ -995,4 +1018,5 @@ class S3Provider(provider.BaseProvider):
         contents = await resp.read()
         parsed = xmltodict.parse(contents, strip_whitespace=False)
         return parsed['LocationConstraint'].get('#text', '')
+
 
