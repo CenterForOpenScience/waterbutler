@@ -190,15 +190,17 @@ class TestRegionDetection:
     ])
     async def test_region_host(self, auth, credentials, settings, region_name, expected_region, mock_time):
         provider = S3Provider(auth, credentials, settings)
-        breakpoint()
+        # breakpoint()
         region_url = await provider.generate_generic_presigned_url(
             '', method='get_bucket_location', query_parameters={'Bucket': settings['bucket']},  default_params=False
         )
-        breakpoint()
+        # breakpoint()
         aiohttpretty.register_uri('GET', region_url, status=200, body=location_response(region_name))
-        breakpoint()
+        # 'https://s3.amazonaws.com/that-kerning?location=&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Dont%20dead%2F20250527%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250527T133700Z&X-Amz-Expires=100&X-Amz-SignedHeaders=host&X-Amz-Signature=7c0c5e8277d7dcf9c660839bba8f7cdaf116f091df2a16661de2cf19e62f173c'
+        # https://s3.amazonaws.com/that-kerning?location=&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Dont%20dead%2F20250527%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250527T133807Z&X-Amz-Expires=100&X-Amz-SignedHeaders=host&X-Amz-Signature=e4f1e704d478a6a7990bb407a499d3d793a5f2251223417698a1939eebed1026'
+        # breakpoint()
         await provider._check_region()
-        breakpoint()
+        # breakpoint()
         assert provider.region == expected_region
         # breakpoint()
         # provider = S3Provider(auth, credentials, settings)

@@ -99,7 +99,7 @@ def file_header_metadata():
         'Content-Length': '9001',
         'Last-Modified': 'SomeTime',
         'Content-Type': 'binary/octet-stream',
-        'Etag': '"fba9dede5f27731c9771645a39863328"',
+        'Etag': 'fba9dede5f27731c9771645a39863328',
         'x-amz-server-side-encryption': 'AES256'
     }
 
