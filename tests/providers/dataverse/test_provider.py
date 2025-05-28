@@ -512,7 +512,8 @@ class TestMetadata:
 
         path = await provider.validate_path('/')
         with pytest.raises(exceptions.MetadataError) as e:
-            _ = await provider.metadata(path)
+            _ = await provider.metadata(path, version='latest-published'
+                                        )
 
         assert e.value.code == 400
 
