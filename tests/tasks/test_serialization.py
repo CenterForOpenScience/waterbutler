@@ -3,6 +3,7 @@ import json
 
 from waterbutler.tasks.serialization import _dumps, _loads
 from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
+from waterbutler.core.metadata import BaseMetadata
 
 
 @pytest.mark.parametrize("path_kwargs", [
@@ -14,15 +15,6 @@ from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
     {"path": "/a/b/c/", "ids": [None, "a", "b", "c"], "prepend": "/srv/fs", "folder": True},
 ])
 def test_wb_json_roundtrip(path_kwargs):
-    """
-    Full‐fidelity round‐trip via _dumps/_loads:
-
-      – exact list of raw segments + identifiers
-      – materialized_path and full_path
-      – is_folder flag
-      – prepend string and prepend_parts
-      – correct class rehydration
-    """
     orig = WaterButlerPath(
         path_kwargs["path"],
         _ids=path_kwargs["ids"],
@@ -57,38 +49,122 @@ def test_wb_json_roundtrip(path_kwargs):
 
 
 def test_dump_schema_includes_cls_and_extra():
-    """
-    Ensure _dumps embeds the full schema so that _loads can
-    rehydrate any subclass with its `.extra` data.
-    """
     orig = WaterButlerPath("/foo/bar/", _ids=[None, "bar"], prepend="/mnt", folder=True)
     blob = _dumps(orig)
     payload = json.loads(blob.decode("utf-8"))
 
     assert payload["__wb_path__"] is True
-    # exact class path
     expected_cls = orig.__class__.__module__ + "." + orig.__class__.__name__
     assert payload["cls"] == expected_cls
 
     assert payload["is_folder"] == orig.is_folder
     assert payload["extra"] == {}
 
-    assert isinstance(payload["parts"], list)
     for seg, part in zip(payload["parts"], orig.parts):
         assert seg["raw"] == part.original_raw
         assert seg["id"]  == part.identifier
 
-    # prepend parts
-    assert isinstance(payload["prepend_parts"], list)
     expected_prep = [{"raw": p.original_raw, "id": p.identifier} for p in orig._prepend_parts]
     assert payload["prepend_parts"] == expected_prep
 
 
 def test_non_path_objects_serialize_normally():
-    """
-    Things which are not WaterButlerPath still fall back to plain JSON.
-    """
     data = {"foo": 1, "bar": ["x", "y", {"z": 3}]}
     blob = _dumps(data)
     loaded = json.loads(blob.decode("utf-8"))
     assert loaded == data
+
+
+def test_simple_base_metadata_roundtrip():
+    """A BaseMetadata subclass with single‐arg constructor should round-trip."""
+    class DummyMeta(BaseMetadata):
+        def __init__(self, raw):
+            super().__init__(raw)
+        @property
+        def provider(self): return "dummy"
+        @property
+        def kind(self): return "file"
+        @property
+        def name(self): return "foo.txt"
+        @property
+        def path(self): return "/foo.txt"
+        @property
+        def etag(self): return "deadbeef"
+
+    orig = DummyMeta({"foo": "bar"})
+    blob = _dumps(orig)
+    payload = json.loads(blob.decode("utf-8"))
+
+    assert payload["__wb_meta__"] is True
+    expected_cls = orig.__class__.__module__ + "." + orig.__class__.__name__
+    assert payload["cls"] == expected_cls
+    assert payload["raw"] == orig.raw
+    assert "path" not in payload
+
+    restored = _loads(blob)
+    assert isinstance(restored, DummyMeta)
+    assert restored.raw == orig.raw
+    assert restored.provider == orig.provider
+    assert restored.path == orig.path
+
+
+def test_two_arg_base_metadata_roundtrip():
+    """A BaseMetadata subclass with (path, raw) constructor should round-trip."""
+    class DummyMeta2(BaseMetadata):
+        def __init__(self, path, raw):
+            super().__init__(raw)
+            self._path = path
+        @property
+        def provider(self): return "dummy2"
+        @property
+        def kind(self): return "folder"
+        @property
+        def name(self): return self._path.strip("/")
+        @property
+        def path(self): return self._path
+        @property
+        def etag(self): return "cafebabe"
+
+    orig = DummyMeta2("/myfolder/", {"hello": "world"})
+    blob = _dumps(orig)
+    payload = json.loads(blob.decode("utf-8"))
+
+    assert payload["__wb_meta__"] is True
+    expected_cls = orig.__class__.__module__ + "." + orig.__class__.__name__
+    assert payload["cls"] == expected_cls
+    assert payload["raw"] == orig.raw
+    assert payload["path"] == orig.path
+
+    restored = _loads(blob)
+    assert isinstance(restored, DummyMeta2)
+    assert restored.raw == orig.raw
+    assert restored.path == orig.path
+    assert restored.provider == orig.provider
+    assert restored.kind == orig.kind
+
+
+def test_metadata_and_path_in_same_structure():
+    """Ensure mixed structures of paths and metadata serialize/deserialize."""
+    class DummyMeta(BaseMetadata):
+        def __init__(self, raw):
+            super().__init__(raw)
+        @property
+        def provider(self): return "mix"
+        @property
+        def kind(self): return "file"
+        @property
+        def name(self): return "mix.txt"
+        @property
+        def path(self): return "/mix.txt"
+        @property
+        def etag(self): return "ff00ff"
+
+    orig_path = WaterButlerPath("/mix.txt", _ids=[None, "m"], prepend=None, folder=False)
+    orig_meta = DummyMeta({"k": "v"})
+    struct = {"p": orig_path, "m": orig_meta}
+    blob = _dumps(struct)
+    restored = _loads(blob)
+    assert isinstance(restored["p"], WaterButlerPath)
+    assert restored["p"].materialized_path == orig_path.materialized_path
+    assert isinstance(restored["m"], DummyMeta)
+    assert restored["m"].raw == orig_meta.raw

@@ -2,10 +2,13 @@ import json
 import importlib
 from kombu.serialization import register
 from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.metadata import BaseMetadata
+
+_META_REGISTRY: dict[tuple[str, str], type[BaseMetadata]] = {}
 
 
 class _WBJSONEncoder(json.JSONEncoder):
-    """Encode WaterButlerPath (and its subclasses) with full fidelity."""
+    """Encode WaterButlerPath and BaseMetadata (and their subclasses) with full fidelity."""
     def default(self, obj):
         if isinstance(obj, WaterButlerPath):
             # Build a list of all raw segments + their IDs
@@ -28,7 +31,21 @@ class _WBJSONEncoder(json.JSONEncoder):
                 # Any provider-specific bits exposed via `.extra`
                 "extra": obj.extra or {},
             }
-        # Fall back to normal JSON behavior
+
+        if isinstance(obj, BaseMetadata):
+            module_name = obj.__class__.__module__
+            class_name = obj.__class__.__name__
+            _META_REGISTRY[(module_name, class_name)] = obj.__class__
+
+            data: dict[str, object] = {
+                "__wb_meta__": True,
+                "cls": f"{module_name}.{class_name}",
+                "raw": obj.raw,
+            }
+            if hasattr(obj, "_path"):
+                data["path"] = getattr(obj, "_path")
+            return data
+
         return super().default(obj)
 
 
@@ -62,6 +79,21 @@ def _loads(s, **_kw):
                 prepend=prepend,
                 **item.get("extra", {})
             )
+
+        if item.get("__wb_meta__"):
+            module_name, class_name = item["cls"].rsplit(".", 1)
+            key = (module_name, class_name)
+
+            if key in _META_REGISTRY:
+                meta_cls = _META_REGISTRY[key]
+            else:
+                module = importlib.import_module(module_name)
+                meta_cls = getattr(module, class_name)
+
+            raw_dict = item["raw"]
+            if "path" in item:
+                return meta_cls(item["path"], raw_dict)  # type: ignore
+            return meta_cls(raw_dict)  # type: ignore
 
         return item
 
