@@ -277,6 +277,12 @@ class DataverseProvider(provider.BaseProvider):
         version = version or path.revision
 
         if path.is_root:
+            # Todo: maybe it is needed to use the commented code below instead
+            # if it is ok in terms of business logic and
+            # if the previous 'test_metadata_never_published_raises_errors' is good
+            # if version:
+            #     return await self._maybe_fetch_metadata(version=version)
+            # return await self._get_all_data()
             return await self._maybe_fetch_metadata(version=version)
 
         try:
