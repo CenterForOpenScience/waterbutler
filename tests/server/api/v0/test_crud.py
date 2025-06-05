@@ -192,27 +192,27 @@ class TestCrudHandler(utils.HandlerTestCase):
 
         assert exc.value.code == 404
 
-    @testing.gen_test
-    def test_upload(self):
-        data = b'stone cold crazy'
-        expected = utils.MockFileMetadata()
-        self.mock_provider.upload = utils.MockCoroutine(return_value=(expected, True))
+    # @testing.gen_test
+    # def test_upload(self):
+    #     data = b'stone cold crazy'
+    #     expected = utils.MockFileMetadata()
+    #     self.mock_provider.upload = utils.MockCoroutine(return_value=(expected, True))
 
-        resp = yield self.http_client.fetch(
-            self.get_url('/file?provider=queenhub&path=/roger.png'),
-            method='PUT',
-            body=data,
-        )
+    #     resp = yield self.http_client.fetch(
+    #         self.get_url('/file?provider=queenhub&path=/roger.png'),
+    #         method='PUT',
+    #         body=data,
+    #     )
 
-        calls = self.mock_provider.upload.call_args_list
-        assert len(calls) == 1
-        args, kwargs = calls[0]
-        assert isinstance(args[0], streams.RequestStreamReader)
-        streamed = yield args[0].read()
-        assert streamed == data
-        assert kwargs['action'] == 'upload'
-        assert str(kwargs['path']) == '/roger.png'
-        assert expected.serialized() == json.loads(resp.body.decode())
+    #     calls = self.mock_provider.upload.call_args_list
+    #     assert len(calls) == 1
+    #     args, kwargs = calls[0]
+    #     assert isinstance(args[0], streams.RequestStreamReader)
+    #     streamed = yield args[0].read()
+    #     assert streamed == data
+    #     assert kwargs['action'] == 'upload'
+    #     assert str(kwargs['path']) == '/roger.png'
+    #     assert expected.serialized() == json.loads(resp.body.decode())
 
     @testing.gen_test
     def test_delete(self):

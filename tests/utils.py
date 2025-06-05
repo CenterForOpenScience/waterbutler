@@ -150,11 +150,14 @@ class MockProvider2(MockProvider1):
 
 class HandlerTestCase(testing.AsyncHTTPTestCase):
 
+    prior_eventloop = None
+
     def setUp(self):
         policy = asyncio.get_event_loop_policy()
         policy.get_event_loop().close()
         self.event_loop = policy.new_event_loop()
         policy.set_event_loop(self.event_loop)
+        self.prior_eventloop = policy.get_event_loop()
 
         super().setUp()
 
@@ -190,14 +193,16 @@ class HandlerTestCase(testing.AsyncHTTPTestCase):
             self.send_hook_patcher.stop()
         self.make_provider_patcher.stop()
         self.event_loop.close()
+        policy = asyncio.get_event_loop_policy()
+        policy.set_event_loop(self.prior_eventloop)
 
     def get_app(self):
         return make_app(debug=False)
 
-    def get_new_ioloop(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        return loop
+    # def get_new_ioloop(self):
+    #     loop = asyncio.new_event_loop()
+    #     asyncio.set_event_loop(loop)
+    #     return loop
 
 
 class MultiProviderHandlerTestCase(HandlerTestCase):
