@@ -1,6 +1,6 @@
 import os
 import asyncio
-from unittest.mock import Mock
+from unittest.mock import Mock, AsyncMock
 
 from tornado import testing
 
@@ -58,7 +58,7 @@ def mock_handler(http_request):
     handler.write = Mock()
     handler.write_stream = MockCoroutine()
     handler.redirect = Mock()
-    handler.uploader = asyncio.Future()
+    handler.uploader = AsyncMock()
     handler.wsock = Mock()
     handler.writer = Mock()
     return handler
