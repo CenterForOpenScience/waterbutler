@@ -256,7 +256,7 @@ class TempFilesContext:
         shutil.rmtree(self._dir)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def temp_files():
     context = TempFilesContext()
     yield context
