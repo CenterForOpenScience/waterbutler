@@ -13,13 +13,6 @@ server_settings.ENABLE_RATE_LIMITING = False
 import aiohttpretty
 
 
-def pytest_configure(config):
-    config.addinivalue_line(
-        'markers',
-        'aiohttpretty: mark tests to activate aiohttpretty'
-    )
-
-
 def pytest_runtest_setup(item):
     if 'aiohttpretty' in item.keywords:
         aiohttpretty.clear()
