@@ -240,9 +240,9 @@ class TestUploadFile:
     @pytest.mark.asyncio
     async def test_created(self, http_request, mock_file_metadata):
 
-        handler = mock_handler(http_request)
+        handler = mock_handler(http_request, upload_retval=(mock_file_metadata, True))
         handler.resource = '3rqws'
-        handler.uploader.set_result((mock_file_metadata, True))
+        # handler.uploader.return_value = (mock_file_metadata, True)
         handler.set_status = mock.Mock()
 
         await handler.upload_file()
@@ -257,9 +257,11 @@ class TestUploadFile:
     @pytest.mark.asyncio
     async def test_not_created(self, http_request, mock_file_metadata):
 
-        handler = mock_handler(http_request)
+        # handler = mock_handler(http_request)
+        handler = mock_handler(http_request, upload_retval=(mock_file_metadata, False,))
         handler.resource = '3rqws'
-        handler.uploader.set_result((mock_file_metadata, False))
+        # handler.uploader.set_result((mock_file_metadata, False))
+        # handler.uploader.return_value = (mock_file_metadata, False,)
         handler.set_status = mock.Mock()
 
         await handler.upload_file()

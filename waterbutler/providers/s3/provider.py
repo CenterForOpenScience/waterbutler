@@ -82,7 +82,7 @@ class S3Provider(provider.BaseProvider):
                     params.update(query_parameters)
                 # breakpoint()
                 resp = await s3_client.generate_presigned_url(method,  Params=params,  ExpiresIn=settings.TEMP_URL_SECS)
-                breakpoint()
+                # breakpoint()
                 return resp
         except Exception as exc:
             res = exc
@@ -131,7 +131,7 @@ class S3Provider(provider.BaseProvider):
         ) as s3_client:
             # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_bucket_location.html#
             url = await s3_client.generate_presigned_url('get_bucket_location',  Params={'Bucket': self.bucket_name},  ExpiresIn=settings.TEMP_URL_SECS)
-            breakpoint()
+            # breakpoint()
             resp = None
             try:
                 resp = await self.make_request(
@@ -143,7 +143,7 @@ class S3Provider(provider.BaseProvider):
                 )
             except Exception as exc:
                 res = exc
-            breakpoint()
+            # breakpoint()
             return resp
 
     # Todo:  the commented solution may be more stable than not commented

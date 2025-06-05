@@ -16,11 +16,6 @@ import tests.utils as test_utils
 move = sys.modules['waterbutler.tasks.move']
 
 
-@pytest.fixture(autouse=True)
-def patch_backend(monkeypatch):
-    monkeypatch.setattr(move.core.app, 'backend', None)
-
-
 @pytest.fixture
 def src_provider():
     p = test_utils.MockProvider()
@@ -49,6 +44,7 @@ def providers(monkeypatch, src_provider, dest_provider):
     return src_provider, dest_provider
 
 
+@pytest.mark.celery(result_backend=None)
 def test_move_calls_move(providers, bundles, callback):
     src, dest = providers
     src_bundle, dest_bundle = bundles
@@ -59,6 +55,7 @@ def test_move_calls_move(providers, bundles, callback):
     src.move.assert_called_once_with(dest, src_bundle['path'], dest_bundle['path'])
 
 
+@pytest.mark.celery(result_backend=None)
 def test_is_task():
     assert callable(move.move)
     assert isinstance(move.move, celery.Task)
@@ -66,6 +63,7 @@ def test_is_task():
     assert asyncio.iscoroutinefunction(move.move.adelay)
 
 
+@pytest.mark.celery(result_backend=None)
 def test_imputes_exceptions(providers, bundles, callback):
     src, dest = providers
     src_bundle, dest_bundle = bundles
@@ -81,10 +79,11 @@ def test_imputes_exceptions(providers, bundles, callback):
     src.move.assert_called_once_with(dest, src_bundle['path'], dest_bundle['path'])
 
     assert method == 'PUT'
-    assert data['errors'] == ["Exception('This is a string',)"]
+    assert data['errors'] == ["Exception('This is a string')"]
     assert url == 'dest_callback'
 
 
+@pytest.mark.celery(result_backend=None)
 def test_return_values(providers, bundles, callback, src_path, dest_path, mock_time, FAKE_TIME):
     src, dest = providers
     src_bundle, dest_bundle = bundles
@@ -138,6 +137,7 @@ def test_return_values(providers, bundles, callback, src_path, dest_path, mock_t
     }
 
 
+@pytest.mark.celery(result_backend=None)
 def test_starttime_override(providers, bundles, callback, mock_time, FAKE_TIME):
     src, dest = providers
     src_bundle, dest_bundle = bundles

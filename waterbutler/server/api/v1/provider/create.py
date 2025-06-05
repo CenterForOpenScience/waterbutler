@@ -1,5 +1,8 @@
 from waterbutler.core import exceptions
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class CreateMixin:
 
@@ -104,9 +107,12 @@ class CreateMixin:
         self.write({'data': self.metadata.json_api_serialized(self.resource)})
 
     async def upload_file(self):
+        logger.error(f'&&& damn this gibberish')
         self.writer.write_eof()
 
+        logger.error(f'&&&    up the blaspheme: {self.uploader}')
         self.metadata, created = await self.uploader
+        logger.error(f'&&&    response meta: {self.metadata}  created: {created}')
         self.writer.close()
         # Docs: https://docs.python.org/3/library/asyncio-stream.html#asyncio.StreamWriter.wait_closed
         await self.writer.wait_closed()
