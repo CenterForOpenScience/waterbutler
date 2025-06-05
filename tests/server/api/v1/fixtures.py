@@ -13,7 +13,7 @@ from waterbutler.core.path import WaterButlerPath
 from waterbutler.tasks.exceptions import WaitTimeOutError
 from waterbutler.server.api.v1.provider import ProviderHandler
 from tests.utils import (MockProvider, MockFileMetadata, MockFolderMetadata,
-                         MockFileRevisionMetadata, MockCoroutine, MockRequestBody, MockStream)
+                         MockFileRevisionMetadata, MockCoroutine, MockStream)
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def http_request():
     mocked_http_request.connection = HTTP1ConnectionParameters()
     mocked_http_request.connection.set_close_callback = mock.Mock()
     mocked_http_request.request_time = mock.Mock(return_value=10)
-    mocked_http_request.body = MockRequestBody()
+    mocked_http_request.body = mock.AsyncMock(return_value=None)
     return mocked_http_request
 
 

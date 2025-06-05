@@ -75,12 +75,6 @@ class MockStream(FileStreamReader):
         super().__init__(tempfile.TemporaryFile())
 
 
-class MockRequestBody(asyncio.Future):
-
-    def __await__(self):
-        yield None
-
-
 class MockWriter:
     write = mock.Mock()
     drain = MockCoroutine()
