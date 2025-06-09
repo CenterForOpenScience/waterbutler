@@ -13,16 +13,21 @@ from tests.utils import MockProvider, MockFileMetadata, MockCoroutine
 
 class ServerTestCase(testing.AsyncHTTPTestCase):
 
-    # def setUp(self):
-    #     policy = asyncio.get_event_loop_policy()
-    #     policy.get_event_loop().close()
-    #     self.event_loop = policy.new_event_loop()
-    #     policy.set_event_loop(self.event_loop)
-    #     super().setUp()
+    prior_eventloop = None
 
-    # def tearDown(self):
-    #     super().tearDown()
-    #     self.event_loop.close()
+    def setUp(self):
+        policy = asyncio.get_event_loop_policy()
+        policy.get_event_loop().close()
+        self.event_loop = policy.new_event_loop()
+        policy.set_event_loop(self.event_loop)
+        self.prior_eventloop = policy.get_event_loop()
+        super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+        self.event_loop.close()
+        policy = asyncio.get_event_loop_policy()
+        policy.set_event_loop(self.prior_eventloop)
 
     def get_url(self, path):
         return super().get_url(os.path.join('/v1', path.lstrip('/')))
