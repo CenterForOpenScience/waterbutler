@@ -44,9 +44,8 @@ def providers(monkeypatch, src_provider, dest_provider):
     return src_provider, dest_provider
 
 
-@pytest.mark.asyncio
 @pytest.mark.celery(result_backend=None)
-async def test_copy_calls_copy(providers, bundles, callback):
+def test_copy_calls_copy(providers, bundles, callback):
     src, dest = providers
     src_bundle, dest_bundle = bundles
 
