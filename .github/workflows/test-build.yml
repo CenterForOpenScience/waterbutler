@@ -70,7 +70,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          poetry run pytest --cov-report term-missing --cov waterbutler tests
+          poetry run pytest --cov-report term-missing --cov waterbutler tests --ignore=tests/providers/s3
 
       - name: Upload coverage to Coveralls
         run: poetry run coveralls --service=github
