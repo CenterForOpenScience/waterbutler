@@ -25,7 +25,7 @@ class TestAsyncRetry:
     async def test_retries_success(self):
         """Test a scenario where a function fails first but succeeds after retrying.
         """
-        mock_func = mock.Mock(side_effect=[Exception(), Exception(), 'Foo'])
+        mock_func = mock.AsyncMock(side_effect=[Exception(), Exception(), 'Foo'])
         retryable = utils.async_retry(5, 0)(mock_func)
 
         x = await retryable()
