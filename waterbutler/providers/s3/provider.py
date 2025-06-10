@@ -5,7 +5,7 @@ from urllib.parse import unquote
 import xmltodict
 import xml.sax.saxutils
 from aiobotocore.config import AioConfig
-from aiobotocore.session import get_session # type: ignore
+from aiobotocore.session import get_session  # type: ignore
 
 from waterbutler.providers.s3 import settings
 from waterbutler.core.path import WaterButlerPath
@@ -81,12 +81,10 @@ class S3Provider(provider.BaseProvider):
                 if query_parameters:
                     params.update(query_parameters)
                 # breakpoint()
-                resp = await s3_client.generate_presigned_url(method,  Params=params,  ExpiresIn=settings.TEMP_URL_SECS)
+                resp = await s3_client.generate_presigned_url(method, Params=params, ExpiresIn=settings.TEMP_URL_SECS)
                 # breakpoint()
                 return resp
         except Exception as exc:
-            res = exc
-            breakpoint()
             raise exceptions.NotFoundError(f"{path} {exc}")
 
     async def check_key_existence(self, path, expects=(200, ), query_parameters=None):
@@ -107,7 +105,7 @@ class S3Provider(provider.BaseProvider):
                 if query_parameters:
                     params.update(query_parameters)
 
-                url = await s3_client.generate_presigned_url('head_object',  Params=params,  ExpiresIn=settings.TEMP_URL_SECS)
+                url = await s3_client.generate_presigned_url('head_object', Params=params, ExpiresIn=settings.TEMP_URL_SECS)
 
                 return await self.make_request(
                     'HEAD',
@@ -130,20 +128,15 @@ class S3Provider(provider.BaseProvider):
                 config=config
         ) as s3_client:
             # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/get_bucket_location.html#
-            url = await s3_client.generate_presigned_url('get_bucket_location',  Params={'Bucket': self.bucket_name},  ExpiresIn=settings.TEMP_URL_SECS)
+            url = await s3_client.generate_presigned_url('get_bucket_location', Params={'Bucket': self.bucket_name}, ExpiresIn=settings.TEMP_URL_SECS)
             # breakpoint()
-            resp = None
-            try:
-                resp = await self.make_request(
+            resp = await self.make_request(
                     'GET',
                     url,
                     is_async=True,
                     expects=(200, ),
                     throws=exceptions.MetadataError,
-                )
-            except Exception as exc:
-                res = exc
-            # breakpoint()
+            )
             return resp
 
     # Todo:  the commented solution may be more stable than not commented
@@ -177,7 +170,7 @@ class S3Provider(provider.BaseProvider):
 
     async def get_folder_metadata(self, path, params):
 
-        contents, prefixes, response_contents, response_prefixes = [], [], [], []
+        contents, response_contents, response_prefixes = [], [], []
         continuation_token = None
 
         while True:
@@ -233,7 +226,6 @@ class S3Provider(provider.BaseProvider):
 
         return response_contents, response_prefixes
 
-
     async def delete_s3_bucket_folder_objects(self, path):
         continuation_token = None
         delete_requests = []
@@ -247,7 +239,7 @@ class S3Provider(provider.BaseProvider):
 
             # Docs: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html
             list_url = await self.generate_generic_presigned_url(
-                '', 'list_objects_v2',query_parameters=list_params, default_params=False
+                '', 'list_objects_v2', query_parameters=list_params, default_params=False
             )
 
             resp = await self.make_request(
@@ -270,7 +262,7 @@ class S3Provider(provider.BaseProvider):
                     # so casting is needed on using xml approach with aiobotocore
                     key = key.replace('+', ' ')
                     content['Key'] = unquote(key)
-                    delete_requests.append({"Key":content['Key']})
+                    delete_requests.append({"Key": content['Key']})
 
             # handle pagination
             if result.get('IsTruncated') == 'true':
@@ -332,15 +324,12 @@ class S3Provider(provider.BaseProvider):
         #             throws=exceptions.DeleteError,
         #         )
         #         await resp.release()
-
-
     async def get_object_versions(self, query_parameters):
 
         continuation_token = None
 
         versions_result = []
         while True:
-
 
             if continuation_token:
                 query_parameters['ContinuationToken'] = continuation_token
@@ -473,8 +462,6 @@ class S3Provider(provider.BaseProvider):
 
         return (await dest_provider.metadata(dest_path)), not exists
 
-
-
         #
         # # ensure no left slash when joining paths
         #
@@ -504,7 +491,6 @@ class S3Provider(provider.BaseProvider):
         # )
         # await resp.release()
 
-
     async def download(self, path, accept_url=False, revision=None, range=None, **kwargs):
         r"""Returns a ResponseWrapper (Stream) for the specified path
         raises FileNotFoundError if the status from S3 is not 200
@@ -530,7 +516,6 @@ class S3Provider(provider.BaseProvider):
 
         display_name = kwargs.get('display_name') or path.name
         query_parameters['ResponseContentDisposition'] = make_disposition(display_name)
-
 
         url = await self.generate_generic_presigned_url(path.path, 'get_object', query_parameters=query_parameters)
 
@@ -596,7 +581,6 @@ class S3Provider(provider.BaseProvider):
         if stream.writers['md5'].hexdigest != resp.headers['ETag'].replace('"', ''):
             raise exceptions.UploadChecksumMismatchError()
 
-
     async def _chunked_upload(self, stream, path):
         """Uploads the given stream to S3 over multiple chunks
         """
@@ -648,7 +632,6 @@ class S3Provider(provider.BaseProvider):
         # Session upload id is the only info we need
         return session_data['InitiateMultipartUploadResult']['UploadId']
 
-
     async def _upload_parts(self, stream, path, session_upload_id):
         """Uploads all parts/chunks of the given stream to S3 one by one.
         """
@@ -678,7 +661,6 @@ class S3Provider(provider.BaseProvider):
             path.path, method='upload_part',
             query_parameters={'ContentLength': chunk_size, 'PartNumber': chunk_number, 'UploadId': session_upload_id}
         )
-
 
         resp = await self.make_request(
             'PUT',
@@ -715,7 +697,6 @@ class S3Provider(provider.BaseProvider):
 
         headers = {}
         params = {'UploadId': session_upload_id}
-
 
         abort_url = await self.generate_generic_presigned_url(path.path, method='abort_multipart_upload', query_parameters=params)
 
@@ -808,7 +789,6 @@ class S3Provider(provider.BaseProvider):
         complete_url = await self.generate_generic_presigned_url(
             path.path, method='complete_multipart_upload', query_parameters={'UploadId': session_upload_id}
         )
-
 
         resp = await self.make_request(
             'POST',

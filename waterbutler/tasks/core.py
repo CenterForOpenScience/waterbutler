@@ -23,7 +23,7 @@ def ensure_event_loop():
     try:
         return asyncio.get_event_loop()
     except (AssertionError, RuntimeError) as exc:
-        logger.error('%%% error is {exc}')
+        logger.error(f'%%% error is {exc}')
         asyncio.set_event_loop(asyncio.new_event_loop())
 
     # Note: No clever tricks are used here to dry up code

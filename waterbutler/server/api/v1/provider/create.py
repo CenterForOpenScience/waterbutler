@@ -107,7 +107,7 @@ class CreateMixin:
         self.write({'data': self.metadata.json_api_serialized(self.resource)})
 
     async def upload_file(self):
-        logger.error(f'&&& damn this gibberish')
+        logger.error('&&& damn this gibberish')
         self.writer.write_eof()
 
         logger.error(f'&&&    up the blaspheme: {self.uploader}')
