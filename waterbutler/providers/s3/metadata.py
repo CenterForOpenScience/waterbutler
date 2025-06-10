@@ -163,7 +163,7 @@ class S3Revision(metadata.BaseFileRevisionMetadata):
     @property
     def version(self):
         is_latest = self.raw['IsLatest']
-        if is_latest == True or is_latest == 'true':
+        if is_latest in [True, 'true']:
             return 'Latest'
         return self.raw['VersionId']
 

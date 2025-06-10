@@ -145,7 +145,7 @@ class OsfAuthHandler(BaseAuthHandler):
                     'origin': request.headers.get('Origin'),
                     'uri': request.uri,
                 }
-        }, cookie=cookie, view_only=view_only),
+            }, cookie=cookie, view_only=view_only),
             headers,
             dict(request.cookies)
         )
