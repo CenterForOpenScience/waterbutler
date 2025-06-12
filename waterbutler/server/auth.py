@@ -27,6 +27,8 @@ class AuthHandler:
 
     async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE,
                   path='', version=None):
+        logger.error(f'@@@@ in get befor extenstions')
+        logger.error(f'@@@@    extensions are {self.manager.extensions}')
         for extension in self.manager.extensions:
             logger.error(f'@@@ checking extension {extension} to see if we can get a cred')
             credential = await extension.obj.get(resource, provider, request,
