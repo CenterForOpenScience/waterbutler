@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 class AuthHandler:
 
     def __init__(self, names):
+        logger.error(f'@@@@  __init__ names are: {names}')
         self.manager = driver.NamedExtensionManager(
             namespace='waterbutler.auth',
             names=names,
