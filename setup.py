@@ -17,13 +17,13 @@ setup(
     package_dir={'waterbutler': 'waterbutler'},
     include_package_data=True,
     zip_safe=False,
+    license='Apache-2.0',
     classifiers=[
         'Natural Language :: English',
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.13',
         'Development Status :: 5 - Production/Stable',
-        'License :: OSI Approved :: Apache Software License',
     ],
     provides=[
         'waterbutler.auth',
