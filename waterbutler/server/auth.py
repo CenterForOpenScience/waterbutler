@@ -9,8 +9,11 @@ logger = logging.getLogger(__name__)
 
 class AuthHandler:
 
+    gorbums = None
+
     def __init__(self, names):
         logger.error(f'@@@@  __init__ names are: {names}')
+        self.gorbums = names
         self.manager = driver.NamedExtensionManager(
             namespace='waterbutler.auth',
             names=names,
@@ -29,6 +32,7 @@ class AuthHandler:
     async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE,
                   path='', version=None):
         logger.error('@@@@ in get befor extenstions')
+        logger.error(f'@@@@    gorbums are {self.gorbums}')
         logger.error(f'@@@@    extensions are {self.manager.extensions}')
         for extension in self.manager.extensions:
             logger.error(f'@@@ checking extension {extension} to see if we can get a cred')
