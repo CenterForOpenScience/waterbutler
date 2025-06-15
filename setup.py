@@ -9,7 +9,6 @@ with open('waterbutler/version.py') as fp:
 setup(
     name='waterbutler',
     version=version['__version__'],
-    namespace_packages=['waterbutler', 'waterbutler.auth', 'waterbutler.providers'],
     description='WaterButler Storage Server',
     author='Center for Open Science',
     author_email='contact@cos.io',
