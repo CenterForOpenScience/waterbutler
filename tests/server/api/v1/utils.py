@@ -36,7 +36,7 @@ class ServerTestCase(testing.AsyncHTTPTestCase):
         return make_app(debug=False)
 
 
-def mock_handler(http_request, upload_retval=None):
+def mock_handler(http_request):
     """
     Mock WB Provider Handler.
 
@@ -63,8 +63,6 @@ def mock_handler(http_request, upload_retval=None):
     handler.write = Mock()
     handler.write_stream = MockCoroutine()
     handler.redirect = Mock()
-    upload_mock = AsyncMock(return_value=upload_retval)
-    handler.uploader = upload_mock()
     handler.wsock = Mock()
     handler.writer = Mock()
     return handler

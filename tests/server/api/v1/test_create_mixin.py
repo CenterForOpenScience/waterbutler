@@ -235,7 +235,9 @@ class TestCreateFolder:
         handler.provider.create_folder.assert_called_once_with(WaterButlerPath('/apath/'))
 
 def create_upload_handler(http_request, mock_file_metadata, created):
-    obj = mock_handler(http_request, upload_retval=(mock_file_metadata, created))
+    obj = mock_handler(http_request)
+    upload_mock = mock.AsyncMock(return_value=(mock_file_metadata, created))
+    obj.uploader = upload_mock()
     obj.rsock = mock.Mock()
     obj.rfd = mock.Mock()
     obj.wfd = mock.Mock()
