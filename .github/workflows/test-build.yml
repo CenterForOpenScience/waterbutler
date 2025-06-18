@@ -66,7 +66,9 @@ jobs:
         run: poetry run flake8 .
 
       - name: Build plugins
-        run: poetry run pip install .
+        run: |
+          python3 setup.py egg_info
+          poetry run pip install .
 
       - name: Run unit tests
         run: |
