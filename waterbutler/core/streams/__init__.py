@@ -10,7 +10,7 @@ from waterbutler.core.streams.file import PartialFileStreamReader  # noqa
 
 from waterbutler.core.streams.http import FormDataStream  # noqa
 from waterbutler.core.streams.http import RequestStreamReader  # noqa
-from waterbutler.core.streams.http import ResponseStreamReader, S3ResponseStreamReader  # noqa
+from waterbutler.core.streams.http import ResponseStreamReader  # noqa
 
 from waterbutler.core.streams.metadata import HashStreamWriter  # noqa
 
