@@ -53,6 +53,9 @@ pyflakes = "3.2.0"
 pytest = "8.3.5"
 pytest-asyncio = "0.26.0"
 pytest-cov = "4.1.0"
+black = "^25.1.0"
+isort = "^6.0.1"
+ruff = { version = "^0.11.10", extras = [] }
 aiohttpretty = {git = "https://github.com/CenterForOpenScience/aiohttpretty.git", branch = "release/ahp-25.0.0"}
 pytest-celery = "^1.2.0"
 
@@ -73,4 +76,51 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "celery: marks tests needing celery mods",
     "aiohttpretty: mark tests to activate aiohttpretty",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+include = '\.pyi?$'
+exclude = '''
+/(
+  \.venv
+ |\.eggs
+ |_build
+ |build
+ |dist
+ |waterbutler\.egg-info
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["waterbutler", "tests"]
+default_section = "THIRDPARTY"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+combine_as_imports = true
+skip = ["waterbutler.egg-info", ".venv"]
+
+[tool.ruff]
+line-length = 88
+extend-select = [
+  "E",
+  "F",
+  "C90",
+  "I",
+  "B",
+  "BLK",
+]
+extend-ignore = [
+  "E203",
+  "W503",
+]
+exclude = [
+  "waterbutler.egg-info",
+  ".venv",
+  "build",
+  "dist",
 ]
