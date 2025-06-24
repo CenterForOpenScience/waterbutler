@@ -40,7 +40,8 @@ ENV POETRY_NO_INTERACTION=1
 ENV POETRY_VIRTUALENVS_CREATE=0
 ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 
-RUN python3 setup.py develop
+RUN python3 setup.py egg_info
+RUN python3 -m pip install .
 
 EXPOSE 7777
 

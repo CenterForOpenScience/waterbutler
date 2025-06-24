@@ -1,6 +1,5 @@
 import os
 
-from pkg_resources import iter_entry_points
 from kombu import Queue, Exchange
 
 from waterbutler import settings
@@ -36,9 +35,6 @@ worker_hijack_root_logger = False
 task_eager_propagates = True
 
 imports = [
-    entry.module_name
-    for entry in iter_entry_points(group='waterbutler.providers.tasks', name=None)
+    'waterbutler.tasks.move',
+    'waterbutler.tasks.copy',
 ]
-imports.extend([
-    'waterbutler.tasks.move'
-])
