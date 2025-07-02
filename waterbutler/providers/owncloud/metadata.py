@@ -9,6 +9,19 @@ class BaseOwnCloudMetadata(metadata.BaseMetadata):
         self._folder = folder
         self._href = href
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['attributes'] = self.attributes
+        payload['_folder'] = self._folder
+        payload['_href'] = self._href
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(payload['_href'], payload['_folder'], attributes=payload['attributes'])
+        return args
+
     @property
     def provider(self):
         return 'owncloud'
@@ -64,6 +77,17 @@ class OwnCloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
     def __init__(self, modified):
         self._modified = modified
         super().__init__({'modified': modified})
+
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_modified'] = self._modified
+        return payload
+
+    @staticmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(payload['_modified'])
+        return args
 
     @classmethod
     def from_metadata(cls, file_metadata_object):

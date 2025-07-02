@@ -15,11 +15,6 @@ from waterbutler.tasks import serialization
 logger = logging.getLogger(__name__)
 
 app = Celery()
-app.conf.update(
-    task_serializer="wb_json",
-    result_serializer="wb_json",
-    accept_content=["wb_json"],
-)
 app.config_from_object(tasks_settings)
 
 

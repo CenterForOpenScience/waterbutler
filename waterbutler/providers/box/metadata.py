@@ -7,6 +7,17 @@ class BaseBoxMetadata(metadata.BaseMetadata):
         super().__init__(raw)
         self._path_obj = path_obj
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_path_obj'] = self._path_obj
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(payload['_path_obj'])
+        return args
+
     @property
     def provider(self):
         return 'box'
