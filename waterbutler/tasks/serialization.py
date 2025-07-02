@@ -6,11 +6,11 @@ from kombu.utils.json import register_type
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.metadata import BaseMetadata, BaseFileRevisionMetadata
 
-_META_REGISTRY: dict[tuple[str, str], type[BaseMetadata]] = {}
-_REV_META_REGISTRY: dict[tuple[str, str], type[BaseFileRevisionMetadata]] = {}
-
 import logging
 logger = logging.getLogger(__name__)
+
+_META_REGISTRY: dict[tuple[str, str], type[BaseMetadata]] = {}
+_REV_META_REGISTRY: dict[tuple[str, str], type[BaseFileRevisionMetadata]] = {}
 
 
 def dehydrate_path(obj):
@@ -34,6 +34,7 @@ def dehydrate_path(obj):
         # Any provider-specific bits exposed via `.extra`
         "extra": obj.extra or {},
     }
+
 
 def rehydrate_path(payload):
     module_name, class_name = payload["cls"].rsplit(".", 1)
@@ -62,6 +63,7 @@ def rehydrate_path(payload):
 def dehydrate_metadata(obj):
     return obj.dehydrate()
 
+
 def rehydrate_metadata(payload):
     module_name, class_name = payload["cls"].rsplit(".", 1)
     key = (module_name, class_name)
@@ -77,6 +79,7 @@ def rehydrate_metadata(payload):
 
 def dehydrate_file_revision_metadata(obj):
     return obj.dehydrate()
+
 
 def rehydrate_file_revision_metadata(payload):
     module_name, class_name = payload["cls"].rsplit(".", 1)

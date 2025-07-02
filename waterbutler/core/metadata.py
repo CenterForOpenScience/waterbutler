@@ -122,8 +122,6 @@ class BaseMetadata(metaclass=abc.ABCMeta):
     @classmethod
     def rehydrate(cls, payload) -> dict:
         module_name, class_name = payload["cls"].rsplit(".", 1)
-        key = (module_name, class_name)
-
         module = importlib.import_module(module_name)
         meta_cls = getattr(module, class_name)
 
@@ -318,7 +316,6 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
     def __init__(self, raw: dict) -> None:
         self.raw = raw
 
-
     def dehydrate(self) -> dict:
         return self._dehydrate()
 
@@ -336,8 +333,6 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
     @classmethod
     def rehydrate(cls, payload) -> dict:
         module_name, class_name = payload["cls"].rsplit(".", 1)
-        key = (module_name, class_name)
-
         module = importlib.import_module(module_name)
         meta_cls = getattr(module, class_name)
 

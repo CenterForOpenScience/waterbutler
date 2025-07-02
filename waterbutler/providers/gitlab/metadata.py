@@ -96,7 +96,6 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
         self.owner = owner
         self.repo = repo
 
-
     def _dehydrate(self):
         payload = super()._dehydrate()
         payload['_path_obj'] = self._path_obj
