@@ -1,7 +1,13 @@
 import pytest
 import json
+import sys
 
-from waterbutler.tasks.serialization import _dumps, _loads
+from waterbutler.tasks.serialization import (
+    dehydrate_path,
+    rehydrate_path,
+    dehydrate_metadata,
+    rehydrate_metadata,
+)
 from waterbutler.core.path import WaterButlerPath, WaterButlerPathPart
 from waterbutler.core.metadata import BaseMetadata
 
@@ -21,10 +27,10 @@ def test_wb_json_roundtrip(path_kwargs):
         prepend=path_kwargs["prepend"],
         folder=path_kwargs["folder"],
     )
-    blob = _dumps(orig)
-    assert isinstance(blob, (bytes, bytearray))
+    blob = json.dumps(dehydrate_path(orig))
+    payload = json.loads(blob)
+    restored = rehydrate_path(payload)
 
-    restored = _loads(blob)
     assert type(restored) is type(orig)
 
     assert restored.materialized_path == orig.materialized_path
@@ -36,22 +42,21 @@ def test_wb_json_roundtrip(path_kwargs):
     for rp, op in zip(restored.parts, orig.parts):
         assert isinstance(rp, WaterButlerPathPart)
         assert rp.original_raw == op.original_raw
-        assert rp.identifier   == op.identifier
+        assert rp.identifier == op.identifier
 
     assert getattr(restored, "_prepend", None) == getattr(orig, "_prepend", None)
 
     orig_p = getattr(orig, "_prepend_parts", [])
-    res_p  = getattr(restored, "_prepend_parts", [])
+    res_p = getattr(restored, "_prepend_parts", [])
     assert len(res_p) == len(orig_p)
     for rp, op in zip(res_p, orig_p):
         assert rp.original_raw == op.original_raw
-        assert rp.identifier   == op.identifier
+        assert rp.identifier == op.identifier
 
 
 def test_dump_schema_includes_cls_and_extra():
     orig = WaterButlerPath("/foo/bar/", _ids=[None, "bar"], prepend="/mnt", folder=True)
-    blob = _dumps(orig)
-    payload = json.loads(blob.decode("utf-8"))
+    payload = dehydrate_path(orig)
 
     assert payload["__wb_path__"] is True
     expected_cls = orig.__class__.__module__ + "." + orig.__class__.__name__
@@ -62,17 +67,10 @@ def test_dump_schema_includes_cls_and_extra():
 
     for seg, part in zip(payload["parts"], orig.parts):
         assert seg["raw"] == part.original_raw
-        assert seg["id"]  == part.identifier
+        assert seg["id"] == part.identifier
 
     expected_prep = [{"raw": p.original_raw, "id": p.identifier} for p in orig._prepend_parts]
     assert payload["prepend_parts"] == expected_prep
-
-
-def test_non_path_objects_serialize_normally():
-    data = {"foo": 1, "bar": ["x", "y", {"z": 3}]}
-    blob = _dumps(data)
-    loaded = json.loads(blob.decode("utf-8"))
-    assert loaded == data
 
 
 def test_simple_base_metadata_roundtrip():
@@ -91,9 +89,11 @@ def test_simple_base_metadata_roundtrip():
         @property
         def etag(self): return "deadbeef"
 
+    # Make class discoverable for rehydrate()
+    setattr(sys.modules[__name__], "DummyMeta", DummyMeta)
+
     orig = DummyMeta({"foo": "bar"})
-    blob = _dumps(orig)
-    payload = json.loads(blob.decode("utf-8"))
+    payload = dehydrate_metadata(orig)
 
     assert payload["__wb_meta__"] is True
     expected_cls = orig.__class__.__module__ + "." + orig.__class__.__name__
@@ -101,7 +101,7 @@ def test_simple_base_metadata_roundtrip():
     assert payload["raw"] == orig.raw
     assert "path" not in payload
 
-    restored = _loads(blob)
+    restored = rehydrate_metadata(payload)
     assert isinstance(restored, DummyMeta)
     assert restored.raw == orig.raw
     assert restored.provider == orig.provider
@@ -125,9 +125,24 @@ def test_two_arg_base_metadata_roundtrip():
         @property
         def etag(self): return "cafebabe"
 
+        # Ensure path is serialized
+        def dehydrate(self):
+            return {
+                "__wb_meta__": True,
+                "cls": self.__class__.__module__ + "." + self.__class__.__name__,
+                "raw": self.raw,
+                "path": self.path,
+            }
+
+        @classmethod
+        def rehydrate(cls, data):
+            return cls(data["path"], data["raw"])
+
+    # Make class discoverable for rehydrate()
+    setattr(sys.modules[__name__], "DummyMeta2", DummyMeta2)
+
     orig = DummyMeta2("/myfolder/", {"hello": "world"})
-    blob = _dumps(orig)
-    payload = json.loads(blob.decode("utf-8"))
+    payload = dehydrate_metadata(orig)
 
     assert payload["__wb_meta__"] is True
     expected_cls = orig.__class__.__module__ + "." + orig.__class__.__name__
@@ -135,7 +150,7 @@ def test_two_arg_base_metadata_roundtrip():
     assert payload["raw"] == orig.raw
     assert payload["path"] == orig.path
 
-    restored = _loads(blob)
+    restored = rehydrate_metadata(payload)
     assert isinstance(restored, DummyMeta2)
     assert restored.raw == orig.raw
     assert restored.path == orig.path
@@ -159,12 +174,20 @@ def test_metadata_and_path_in_same_structure():
         @property
         def etag(self): return "ff00ff"
 
+    # Make class discoverable for rehydrate()
+    setattr(sys.modules[__name__], "DummyMeta", DummyMeta)
+
     orig_path = WaterButlerPath("/mix.txt", _ids=[None, "m"], prepend=None, folder=False)
     orig_meta = DummyMeta({"k": "v"})
-    struct = {"p": orig_path, "m": orig_meta}
-    blob = _dumps(struct)
-    restored = _loads(blob)
-    assert isinstance(restored["p"], WaterButlerPath)
-    assert restored["p"].materialized_path == orig_path.materialized_path
-    assert isinstance(restored["m"], DummyMeta)
-    assert restored["m"].raw == orig_meta.raw
+
+    struct = {"p": dehydrate_path(orig_path), "m": dehydrate_metadata(orig_meta)}
+    blob = json.dumps(struct)
+    payload = json.loads(blob)
+
+    restored_path = rehydrate_path(payload["p"])
+    restored_meta = rehydrate_metadata(payload["m"])
+
+    assert isinstance(restored_path, WaterButlerPath)
+    assert restored_path.materialized_path == orig_path.materialized_path
+    assert isinstance(restored_meta, DummyMeta)
+    assert restored_meta.raw == orig_meta.raw
