@@ -44,7 +44,6 @@ def providers(monkeypatch, src_provider, dest_provider):
     return src_provider, dest_provider
 
 
-@pytest.mark.skip('TODO: test fails sometimes')
 @pytest.mark.celery(result_backend=None)
 def test_copy_calls_copy(providers, bundles, callback):
     src, dest = providers
@@ -62,7 +61,6 @@ def test_is_task():
     assert not asyncio.iscoroutine(copy.copy)
     assert asyncio.iscoroutinefunction(copy.copy.adelay)
 
-@pytest.mark.skip('TODO: test fails sometimes')
 @pytest.mark.celery(result_backend=None)
 def test_imputes_exceptions(providers, bundles, callback):
     src, dest = providers
@@ -82,7 +80,6 @@ def test_imputes_exceptions(providers, bundles, callback):
     assert method == 'PUT'
     assert data['errors'] == ["Exception('This is a string')"]
 
-@pytest.mark.skip('TODO: test fails sometimes')
 @pytest.mark.celery(result_backend=None)
 def test_return_values(providers, bundles, callback, src_path, dest_path, mock_time, FAKE_TIME):
     src, dest = providers
@@ -136,7 +133,6 @@ def test_return_values(providers, bundles, callback, src_path, dest_path, mock_t
         'sizeInt': metadata.size_as_int,
     }
 
-@pytest.mark.skip('TODO: test fails sometimes')
 @pytest.mark.celery(result_backend=None)
 def test_starttime_override(providers, bundles, callback, mock_time, FAKE_TIME):
     src, dest = providers
