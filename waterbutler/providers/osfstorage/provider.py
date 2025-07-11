@@ -441,7 +441,7 @@ class OSFStorageProvider(provider.BaseProvider):
                    rename: str = None,
                    conflict: str = 'replace',
                    handle_naming: bool = True,
-                   test_debug: bool = False) -> tuple[BaseMetadata, bool]: # TODO: MAKE SURE TO REMOVE THIS LATER
+                   test_debug: bool = False) -> tuple[BaseMetadata, bool]:  # TODO: MAKE SURE TO REMOVE THIS LATER
         """Override parent's copy to support cross-region osfstorage copies. Delegates to
         :meth:`.BaseProvider.copy` when destination is not osfstorage. If both providers are in the
         same region (i.e. `.can_intra_copy` is true), call `.intra_copy`. Otherwise, grab a
