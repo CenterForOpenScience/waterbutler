@@ -440,7 +440,8 @@ class OSFStorageProvider(provider.BaseProvider):
                    dest_path: WaterButlerPath,
                    rename: str = None,
                    conflict: str = 'replace',
-                   handle_naming: bool = True) -> tuple[BaseMetadata, bool]:
+                   handle_naming: bool = True,
+                   test_debug: bool = False) -> tuple[BaseMetadata, bool]:  # TODO: MAKE SURE TO REMOVE THIS LATER
         """Override parent's copy to support cross-region osfstorage copies. Delegates to
         :meth:`.BaseProvider.copy` when destination is not osfstorage. If both providers are in the
         same region (i.e. `.can_intra_copy` is true), call `.intra_copy`. Otherwise, grab a
@@ -450,6 +451,14 @@ class OSFStorageProvider(provider.BaseProvider):
         This is needed because a same-region osfstorage copy will duplicate *all* the versions of
         the file, but `.BaseProvider.copy` will only copy the most recent version.
         """
+        if test_debug:
+            print('**********OSFStorageProvider.copy called with:**********')
+            print('dest_provider:', dest_provider.NAME)
+            print('src_path:', src_path)
+            print('dest_path:', dest_path)
+            print('rename:', rename)
+            print('conflict:', conflict)
+            print('handle_naming:', handle_naming)
 
         # when moving to non-osfstorage, default move is fine
         if dest_provider.NAME != 'osfstorage':
