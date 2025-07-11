@@ -1104,11 +1104,14 @@ class TestCrossRegionCopy:
         dest_path = WaterButlerPath('/', _ids=('Test',))
 
         quota_url, quota_params = build_signed_url_without_auth(dst_provider, 'GET', 'quota_status')
+        print('********** Registerting quota url **********')
+        print('quota_url:', quota_url)
+        print('quota_params:', quota_params)
         aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
                                        body={'over_quota': False})
 
         metadata, created = await src_provider.copy(dst_provider, src_path, dest_path,
-                                                    handle_naming=False);
+                                                    handle_naming=False, test_debug=True);
 
         assert metadata is not None
         assert created is True
