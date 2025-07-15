@@ -18,6 +18,17 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
         else:
             self.raw_file = self.raw['files'][0]
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['raw_file'] = self.raw_file
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(raw_file=payload['raw_file'])
+        return args
+
     @property
     def id(self):
         return self.raw_file['id']

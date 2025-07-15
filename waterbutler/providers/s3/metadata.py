@@ -28,6 +28,17 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
         # be destroyed when the request leaves scope
         super().__init__(dict(headers))
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_path'] = self._path
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(payload['_path'])
+        return args
+
     @property
     def path(self):
         return '/' + strip_char(self._path, self.raw.get('base_folder', ''))

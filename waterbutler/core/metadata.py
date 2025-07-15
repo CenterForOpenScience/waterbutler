@@ -1,5 +1,6 @@
 import abc
 import hashlib
+import importlib
 
 import furl
 
@@ -103,6 +104,36 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         if self.kind == 'folder' and not path.endswith('/'):
             path += '/'
         return path
+
+    def dehydrate(self) -> dict:
+        return self._dehydrate()
+
+    def _dehydrate(self) -> dict:
+        module_name = self.__class__.__module__
+        class_name = self.__class__.__name__
+
+        payload: dict[str, object] = {
+            "__wb_meta__": True,
+            "cls": f"{module_name}.{class_name}",
+            "raw": self.raw,
+        }
+        return payload
+
+    @classmethod
+    def rehydrate(cls, payload) -> dict:
+        module_name, class_name = payload["cls"].rsplit(".", 1)
+        module = importlib.import_module(module_name)
+        meta_cls = getattr(module, class_name)
+
+        args = cls._rehydrate(payload)
+        return meta_cls(*args)  # type: ignore
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = [payload["raw"]]
+        if "path" in payload:
+            args.insert(0, payload["path"])
+        return args
 
     @property
     def is_folder(self) -> bool:
@@ -285,6 +316,34 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
     def __init__(self, raw: dict) -> None:
         self.raw = raw
 
+    def dehydrate(self) -> dict:
+        return self._dehydrate()
+
+    def _dehydrate(self) -> dict:
+        module_name = obj.__class__.__module__
+        class_name = obj.__class__.__name__
+
+        payload: dict[str, object] = {
+            "__wb_meta__": True,
+            "cls": f"{module_name}.{class_name}",
+            "raw": obj.raw,
+        }
+        return payload
+
+    @classmethod
+    def rehydrate(cls, payload) -> dict:
+        module_name, class_name = payload["cls"].rsplit(".", 1)
+        module = importlib.import_module(module_name)
+        meta_cls = getattr(module, class_name)
+
+        args = cls._rehydrate(payload)
+        return meta_cls(*args)  # type: ignore
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = [payload["raw"]]
+        return args
+
     def serialized(self) -> dict:
         return {
             'extra': self.extra,
@@ -347,6 +406,24 @@ class BaseFolderMetadata(BaseMetadata):
     def __init__(self, raw: dict) -> None:
         super().__init__(raw)
         self._children = None  # type: list
+
+    def _dehydrate(self) -> dict:
+        payload = super()._dehydrate()
+        payload['_children'] = None
+        if self._children is not None:
+            payload['_children'] = [child._dehydrate() for child in self._children]
+        return payload
+
+    @classmethod
+    def rehydrate(cls, payload):
+        built_obj = super().rehydrate(payload)
+        if payload['_children'] is not None:
+            children = []
+            for child in payload['_children']:
+                children.append(utils.rehydrate(child))
+            built_obj.children(children)
+
+        return built_obj
 
     def serialized(self) -> dict:
         """ Returns a dict representing the folder's metadata suitable to be serialized

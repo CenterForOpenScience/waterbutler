@@ -19,6 +19,18 @@ class BaseGitHubMetadata(metadata.BaseMetadata):
         self.commit = commit
         self.ref = ref
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['commit'] = self.commit
+        payload['ref'] = self.ref
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(commit=payload['commit'], ref=payload['ref'])
+        return args
+
     @property
     def provider(self):
         return 'github'
@@ -59,6 +71,17 @@ class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
     def __init__(self, raw, commit=None, web_view=None, ref=None):
         super().__init__(raw, commit=commit, ref=ref)
         self.web_view = web_view
+
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['web_view'] = self.web_view
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(web_view=payload['web_view'])
+        return args
 
     @property
     def path(self):

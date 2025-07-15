@@ -24,6 +24,19 @@ class BaseBitbucketMetadata(metadata.BaseMetadata):
         self.owner = owner
         self.repo = repo
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_path_obj'] = self._path_obj
+        payload['owner'] = self.owner
+        payload['repo'] = self.repo
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(payload['_path_obj'], owner=payload['owner'], repo=payload['repo'])
+        return args
+
     @property
     def provider(self):
         return 'bitbucket'
