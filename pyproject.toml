@@ -71,6 +71,23 @@ sphinx-rtd-theme = ">=3.0.2"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.poetry.plugins."waterbutler.providers"]
+cloudfiles = "waterbutler.providers.cloudfiles:CloudFilesProvider"
+dropbox = "waterbutler.providers.dropbox:DropboxProvider"
+figshare = "waterbutler.providers.figshare:FigshareProvider"
+filesystem = "waterbutler.providers.filesystem:FileSystemProvider"
+github = "waterbutler.providers.github:GitHubProvider"
+gitlab = "waterbutler.providers.gitlab:GitLabProvider"
+bitbucket = "waterbutler.providers.bitbucket:BitbucketProvider"
+osfstorage = "waterbutler.providers.osfstorage:OSFStorageProvider"
+owncloud = "waterbutler.providers.owncloud:OwnCloudProvider"
+s3 = "waterbutler.providers.s3:S3Provider"
+dataverse = "waterbutler.providers.dataverse:DataverseProvider"
+box = "waterbutler.providers.box:BoxProvider"
+googledrive = "waterbutler.providers.googledrive:GoogleDriveProvider"
+onedrive = "waterbutler.providers.onedrive:OneDriveProvider"
+googlecloud = "waterbutler.providers.googlecloud:GoogleCloudProvider"
+
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 markers = [
