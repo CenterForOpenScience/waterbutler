@@ -60,15 +60,10 @@ jobs:
         run: |
           python3 -m pip install poetry==2.1.2
           python3 -m pip install setuptools==80.1.0
-          poetry install --no-root --without=docs --with=dev
+          poetry install --without=docs --with=dev
 
       - name: Run flake8
         run: poetry run flake8 .
-
-      - name: Build plugins
-        run: |
-          python3 setup.py egg_info
-          poetry run pip install .
 
       - name: Run unit tests
         run: |
