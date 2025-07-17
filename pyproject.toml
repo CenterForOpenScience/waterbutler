@@ -71,6 +71,9 @@ sphinx-rtd-theme = ">=3.0.2"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.poetry.plugins."waterbutler.auth"]
+osf = "waterbutler.auth.osf:OsfAuthHandler"
+
 [tool.poetry.plugins."waterbutler.providers"]
 cloudfiles = "waterbutler.providers.cloudfiles:CloudFilesProvider"
 dropbox = "waterbutler.providers.dropbox:DropboxProvider"
