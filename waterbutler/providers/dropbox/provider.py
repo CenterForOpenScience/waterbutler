@@ -302,7 +302,9 @@ class DropboxProvider(provider.BaseProvider):
         :return: A dictionary of the metadata about the file just uploaded
         """
 
-        path_arg = {"path": path.full_path}
+        path_full_path = path.full_path
+        path_arg = {"path": path_full_path if path_full_path.startswith('/') else f'/{path_full_path}'}
+
         if conflict == 'replace':
             path_arg['mode'] = 'overwrite'
 
@@ -526,6 +528,8 @@ class DropboxProvider(provider.BaseProvider):
             self.metrics.add('metadata.folder.pages', page_count)
             return ret
 
+        if not body['path'].startswith('/'):
+            body['path'] = f'/{body['path']}'
         data = await self.dropbox_request(url, body, throws=core_exceptions.MetadataError)
         # Dropbox v2 API will not indicate file/folder if path "deleted"
         if data['.tag'] == 'deleted':
