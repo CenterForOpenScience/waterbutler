@@ -324,7 +324,7 @@ class DataverseProvider(provider.BaseProvider):
             return await self._get_all_data()
 
         # TODO: use the auth header "X-Dataverse-key" instead of query param (2/2)
-        url = pd_settings.JSON_BASE_URL.format(self._id, version)
+        url = f'{self.BASE_URL}/{pd_settings.JSON_BASE_URL.format(self._id, version)}'
         resp = await self.make_request(
             'GET',
             url,
