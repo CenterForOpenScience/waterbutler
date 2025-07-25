@@ -646,7 +646,6 @@ class OneDriveProvider(provider.BaseProvider):
             upload_url = self._build_graph_item_url(path.identifier, 'content')
             expects = (HTTPStatus.OK,)
         else:
-            # The default build_url function encodes colons, which is incorrect for this endpoint
             upload_url = (
                 f'{settings.BASE_GRAPH_URL}drives/{self.drive_id}/items/'
                 f'{path.parent.identifier}:/{urlparse.quote(path.name)}:/content'
@@ -701,7 +700,6 @@ class OneDriveProvider(provider.BaseProvider):
             create_session_url = self._build_graph_item_url(path.identifier,
                                                             'createUploadSession')
         else:
-            # The default build_url function encodes colons, which is incorrect for this endpoint
             create_session_url = (
                 f'{settings.BASE_GRAPH_URL}drives/{self.drive_id}/items/'
                 f'{path.parent.identifier}:/{urlparse.quote(path.name)}:/createUploadSession'
