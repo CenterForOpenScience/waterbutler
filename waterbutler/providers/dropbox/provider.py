@@ -531,8 +531,6 @@ class DropboxProvider(provider.BaseProvider):
             self.metrics.add('metadata.folder.pages', page_count)
             return ret
 
-        if not body['path'].startswith('/'):
-            body['path'] = f'/{body['path']}'
         data = await self.dropbox_request(url, body, throws=core_exceptions.MetadataError)
         # Dropbox v2 API will not indicate file/folder if path "deleted"
         if data['.tag'] == 'deleted':
