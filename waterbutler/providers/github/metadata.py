@@ -28,7 +28,7 @@ class BaseGitHubMetadata(metadata.BaseMetadata):
     @classmethod
     def _rehydrate(cls, payload):
         args = super()._rehydrate(payload)
-        args.append(commit=payload['commit'], ref=payload['ref'])
+        args += [payload.get('commit'), payload.get('ref')]
         return args
 
     @property
@@ -80,7 +80,7 @@ class BaseGitHubFileMetadata(BaseGitHubMetadata, metadata.BaseFileMetadata):
     @classmethod
     def _rehydrate(cls, payload):
         args = super()._rehydrate(payload)
-        args.append(web_view=payload['web_view'])
+        args.insert(-1, payload['web_view'])
         return args
 
     @property

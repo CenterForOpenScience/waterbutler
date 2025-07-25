@@ -320,13 +320,13 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
         return self._dehydrate()
 
     def _dehydrate(self) -> dict:
-        module_name = obj.__class__.__module__
-        class_name = obj.__class__.__name__
+        module_name = self.__class__.__module__
+        class_name = self.__class__.__name__
 
         payload: dict[str, object] = {
             "__wb_meta__": True,
             "cls": f"{module_name}.{class_name}",
-            "raw": obj.raw,
+            "raw": self.raw,
         }
         return payload
 

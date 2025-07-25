@@ -26,7 +26,7 @@ class FigshareFileMetadata(BaseFigshareMetadata, metadata.BaseFileMetadata):
     @classmethod
     def _rehydrate(cls, payload):
         args = super()._rehydrate(payload)
-        args.append(raw_file=payload['raw_file'])
+        args.append(payload['raw_file'])
         return args
 
     @property

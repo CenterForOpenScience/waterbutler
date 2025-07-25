@@ -107,8 +107,8 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
     @classmethod
     def _rehydrate(cls, payload):
         args = super()._rehydrate(payload)
-        args.append(payload['_path_obj'], host=payload['host'],
-                    owner=payload['owner'], repo=payload['repo'])
+        args += [payload['_path_obj'], payload['host'], payload['owner'], payload['repo']]
+        args.append()
         return args
 
     @property
