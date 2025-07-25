@@ -18,6 +18,10 @@ from waterbutler.core.signing import Signer
 from waterbutler.core.streams import EmptyStream
 from waterbutler.server import settings as server_settings
 
+def rehydrate(payload):
+    from waterbutler.core.metadata import BaseMetadata  # local import to break cycles
+    return BaseMetadata.rehydrate(payload)
+
 logger = logging.getLogger(__name__)
 
 signer = Signer(server_settings.HMAC_SECRET, server_settings.HMAC_ALGORITHM)
