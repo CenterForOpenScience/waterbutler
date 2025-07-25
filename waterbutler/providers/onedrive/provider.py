@@ -646,8 +646,11 @@ class OneDriveProvider(provider.BaseProvider):
             upload_url = self._build_graph_item_url(path.identifier, 'content')
             expects = (HTTPStatus.OK,)
         else:
-            upload_url = self._build_graph_item_url(f'{path.parent.identifier}:',
-                                                    f'{path.name}:', 'content')
+            # The default build_url function encodes colons, which is incorrect for this endpoint
+            upload_url = (
+                f'{settings.BASE_GRAPH_URL}drives/{self.drive_id}/items/'
+                f'{path.parent.identifier}:/{urlparse.quote(path.name)}:/content'
+            )
             expects = (HTTPStatus.CREATED,)
 
         logger.debug(f'upload url::{upload_url}')
@@ -675,7 +678,7 @@ class OneDriveProvider(provider.BaseProvider):
 
         Process: create a new upload session, then upload chunks of file until stream is exhausted
         """
-        upload_url = await self._chunked_upload_create_session(path)
+        upload_url = await self._chunked_upload_create_session(path, exists)
         logger.debug(f'upload_url::{upload_url}')
         try:
             data = await self._chunked_upload_stream(upload_url, stream)
@@ -688,15 +691,22 @@ class OneDriveProvider(provider.BaseProvider):
             raise exc
         return OneDriveFileMetadata(data, path), not exists
 
-    async def _chunked_upload_create_session(self, path):
+    async def _chunked_upload_create_session(self, path, exists):
         """Start an upload session to create a temp storage location to save data over multiple
         requests. Returns a body that includes a url to upload chunks to and an expiration time.
 
         API docs: https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_createuploadsession#create-an-upload-session
         """
-        create_session_url = self._build_graph_item_url(f'{path.parent.identifier}:',
-                                                        f'{path.name}:',
-                                                        'createUploadSession')
+        if exists:
+            create_session_url = self._build_graph_item_url(path.identifier,
+                                                            'createUploadSession')
+        else:
+            # The default build_url function encodes colons, which is incorrect for this endpoint
+            create_session_url = (
+                f'{settings.BASE_GRAPH_URL}drives/{self.drive_id}/items/'
+                f'{path.parent.identifier}:/{urlparse.quote(path.name)}:/createUploadSession'
+            )
+
         logger.debug(f'create_session_url::{create_session_url}')
         payload = {
             'item': {
@@ -769,11 +779,11 @@ class OneDriveProvider(provider.BaseProvider):
                                                                      total_size)
             },
             no_auth_header=True,  # this endpoint will sometimes 401 if the Auth header included
-            expects=(HTTPStatus.ACCEPTED, HTTPStatus.CREATED),
+            expects=(HTTPStatus.ACCEPTED, HTTPStatus.CREATED, HTTPStatus.OK),
             throws=exceptions.UploadError
         )
         data = await resp.json()
-        if resp.status == HTTPStatus.CREATED:
+        if resp.status == HTTPStatus.CREATED or resp.status == HTTPStatus.OK:
             return None, data
         return data.get('nextExpectedRanges'), None
 
