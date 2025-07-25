@@ -89,6 +89,9 @@ class DropboxProvider(provider.BaseProvider):
         :param tuple \*args: passed through to BaseProvider.make_request()
         :param dict \*\*kwargs: passed through to BaseProvider.make_request()
         """
+        path = body.get('path')
+        if path and not path.startswith('/') and not path.startswith('rev:'):
+            body['path'] = f'/{path}'
         resp = await self.make_request(
             'POST',
             url,
