@@ -417,7 +417,7 @@ class BaseFolderMetadata(BaseMetadata):
     @classmethod
     def rehydrate(cls, payload):
         built_obj = super().rehydrate(payload)
-        if payload['_children'] is not None:
+        if payload.get('_children') is not None:
             kids = [utils.rehydrate(c) for c in payload['_children']]
             built_obj.children = kids
         return built_obj
