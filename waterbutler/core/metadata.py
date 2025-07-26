@@ -125,7 +125,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         module = importlib.import_module(module_name)
         meta_cls = getattr(module, class_name)
 
-        args = cls._rehydrate(payload)
+        args = meta_cls._rehydrate(payload)
         return meta_cls(*args)  # type: ignore
 
     @classmethod
@@ -417,12 +417,9 @@ class BaseFolderMetadata(BaseMetadata):
     @classmethod
     def rehydrate(cls, payload):
         built_obj = super().rehydrate(payload)
-        if payload['_children'] is not None:
-            children = []
-            for child in payload['_children']:
-                children.append(utils.rehydrate(child))
-            built_obj.children(children)
-
+        if payload.get('_children') is not None:
+            kids = [utils.rehydrate(c) for c in payload['_children']]
+            built_obj.children = kids
         return built_obj
 
     def serialized(self) -> dict:
