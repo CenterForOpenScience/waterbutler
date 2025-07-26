@@ -188,7 +188,7 @@ class DataverseProvider(provider.BaseProvider):
         # TODO: use the auth header "X-Dataverse-key" instead of query param (1/2)
         resp = await self.make_request(
             'GET',
-            self.build_url(pd_settings.DOWN_BASE_URL, path.identifier, key=self.token),
+            self.build_url(pd_settings.DOWN_BASE_URL, path.identifier),
             range=range,
             expects=(200, 206),
             throws=exceptions.DownloadError,
@@ -232,7 +232,6 @@ class DataverseProvider(provider.BaseProvider):
             'POST',
             self.build_url(pd_settings.EDIT_MEDIA_BASE_URL, 'study', self.doi),
             headers=dv_headers,
-            auth=BasicAuth(self.token),
             data=file_stream,
             expects=(201, ),
             throws=exceptions.UploadError
@@ -260,7 +259,6 @@ class DataverseProvider(provider.BaseProvider):
         resp = await self.make_request(
             'DELETE',
             self.build_url(pd_settings.EDIT_MEDIA_BASE_URL, 'file', path.identifier),
-            auth=BasicAuth(self.token),
             expects=(204, ),
             throws=exceptions.DeleteError,
         )
@@ -326,10 +324,7 @@ class DataverseProvider(provider.BaseProvider):
             return await self._get_all_data()
 
         # TODO: use the auth header "X-Dataverse-key" instead of query param (2/2)
-        url = self.build_url(
-            pd_settings.JSON_BASE_URL.format(self._id, version),
-            key=self.token,
-        )
+        url = f'{self.BASE_URL}/{pd_settings.JSON_BASE_URL.format(self._id, version)}'
         resp = await self.make_request(
             'GET',
             url,
@@ -345,6 +340,11 @@ class DataverseProvider(provider.BaseProvider):
         )
 
         return [item for item in dataset_metadata.contents]
+
+    async def make_request(self, method, url, *args, **kwargs):
+        return await super().make_request(method, url, *args, headers=(kwargs.pop('headers', {}) or {}) | {
+            'X-Dataverse-Key': self.token
+        }, **kwargs)
 
     async def _get_all_data(self):
         """Get list of file metadata for all dataset versions"""
