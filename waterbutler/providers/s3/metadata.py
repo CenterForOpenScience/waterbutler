@@ -36,7 +36,7 @@ class S3FileMetadataHeaders(S3Metadata, metadata.BaseFileMetadata):
     @classmethod
     def _rehydrate(cls, payload):
         args = super()._rehydrate(payload)
-        args.append(payload['_path'])
+        args.insert(0, payload['_path'])
         return args
 
     @property

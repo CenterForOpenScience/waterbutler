@@ -34,7 +34,7 @@ class BaseBitbucketMetadata(metadata.BaseMetadata):
     @classmethod
     def _rehydrate(cls, payload):
         args = super()._rehydrate(payload)
-        args.append(payload['_path_obj'], owner=payload['owner'], repo=payload['repo'])
+        args += [payload['_path_obj'], payload.get('owner'), payload.get('repo')]
         return args
 
     @property

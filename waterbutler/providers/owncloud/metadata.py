@@ -19,7 +19,8 @@ class BaseOwnCloudMetadata(metadata.BaseMetadata):
     @classmethod
     def _rehydrate(cls, payload):
         args = super()._rehydrate(payload)
-        args.append(payload['_href'], payload['_folder'], attributes=payload['attributes'])
+        args.pop(0)
+        args += [payload['_href'], payload['_folder'], payload['attributes']]
         return args
 
     @property
@@ -83,9 +84,10 @@ class OwnCloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
         payload['_modified'] = self._modified
         return payload
 
-    @staticmethod
+    @classmethod
     def _rehydrate(cls, payload):
         args = super()._rehydrate(payload)
+        args.pop(0)
         args.append(payload['_modified'])
         return args
 
