@@ -89,6 +89,9 @@ class DropboxProvider(provider.BaseProvider):
         :param tuple \*args: passed through to BaseProvider.make_request()
         :param dict \*\*kwargs: passed through to BaseProvider.make_request()
         """
+        path = body.get('path')
+        if path and not path.startswith('/') and not path.startswith('rev:'):
+            body['path'] = f'/{path}'
         resp = await self.make_request(
             'POST',
             url,
@@ -302,7 +305,9 @@ class DropboxProvider(provider.BaseProvider):
         :return: A dictionary of the metadata about the file just uploaded
         """
 
-        path_arg = {"path": path.full_path}
+        full_path = path.full_path
+        path_arg = {"path": full_path if full_path.startswith('/') or full_path.startswith('rev:') else f'/{full_path}'}
+
         if conflict == 'replace':
             path_arg['mode'] = 'overwrite'
 
