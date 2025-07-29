@@ -1128,6 +1128,8 @@ class TestCrossRegionCopy:
 
         # aliased for clarity
         src_provider, dst_provider = provider_one, provider_two
+        
+        dst_provider.BASE_URL = 'https://waterbutler.io'
 
         src_provider.download = utils.MockCoroutine()
         src_provider.intra_copy = utils.MockCoroutine()
