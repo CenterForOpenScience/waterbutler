@@ -125,7 +125,6 @@ class S3Provider(provider.BaseProvider):
             resp = await self.make_request(
                     'GET',
                     url,
-                    is_async=True,
                     expects=(200, ),
                     throws=exceptions.MetadataError,
             )
