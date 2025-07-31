@@ -255,7 +255,11 @@ class DropboxProvider(provider.BaseProvider):
         concerned, the header contains the size (in bytes) of the file that ``ResponseStreamReader``
         needs if the "Content-Length" header is not provided.
         """
-        path_arg = {"path": ("rev:" + revision if revision else path.full_path)}
+        raw_path = "rev:" + revision if revision else path.full_path
+        if path and not raw_path.startswith('/') and not raw_path.startswith('rev:'):
+            raw_path = f'/{raw_path}'
+
+        path_arg = {'path': raw_path}
         resp = await self.make_request(
             'POST',
             self._build_content_url('files', 'download'),
