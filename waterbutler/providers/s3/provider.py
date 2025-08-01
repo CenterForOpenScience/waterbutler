@@ -794,9 +794,6 @@ class S3Provider(provider.BaseProvider):
         await resp.release()
 
     async def delete(self, path, confirm_delete=0, **kwargs):
-
-        await self.get_s3_bucket_object_location()
-        return
         """Deletes the key at the specified path
 
         :param str path: The path of the key to delete
