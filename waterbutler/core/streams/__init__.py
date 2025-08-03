@@ -4,7 +4,7 @@ from waterbutler.core.streams.base import MultiStream  # noqa
 from waterbutler.core.streams.base import CutoffStream  # noqa
 from waterbutler.core.streams.base import StringStream  # noqa
 from waterbutler.core.streams.base import EmptyStream  # noqa
-
+from waterbutler.core.streams.base import ByteStream  # noqa
 from waterbutler.core.streams.file import FileStreamReader  # noqa
 from waterbutler.core.streams.file import PartialFileStreamReader  # noqa
 

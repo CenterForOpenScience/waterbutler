@@ -1,0 +1,20 @@
+{
+  "Accept-Ranges": "bytes",
+  "Content-Length": "1048576",
+  "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "Content-MD5": "Q2h1Y2sgTm9ycmlzIGFwcHJvdmVz",
+  "Last-Modified": "Mon, 15 Jul 2025 09:45:00 GMT",
+  "ETag": "\"0x8D1A2B3C4D5E702\"",
+  "x-ms-blob-type": "BlockBlob",
+  "x-ms-lease-status": "unlocked",
+  "x-ms-lease-state": "available",
+  "x-ms-access-tier": "Hot",
+  "x-ms-access-tier-inferred": "true",
+  "x-ms-server-encrypted": "true",
+  "x-ms-version-id": "2025-07-15T09:45:00.5555555Z",
+  "x-ms-is-current-version": "true",
+  "x-ms-creation-time": "Mon, 15 Jul 2025 09:45:00 GMT",
+  "x-ms-meta-author": "Data Science Team",
+  "x-ms-meta-project": "Q3-Analysis",
+  "x-ms-meta-tags": "quarterly,financial,2025"
+}
