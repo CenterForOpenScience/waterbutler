@@ -11,7 +11,7 @@
 
 ### Compatibility
 
-WaterButler is compatible with Python 3.6.
+WaterButler is compatible with Python 3.13.
 
 ### Documentation
 
@@ -19,29 +19,29 @@ Documentation available at https://waterbutler.readthedocs.io/en/latest/
 
 ### Setting up
 
-In order to run WaterButler, you must create a Python 3.6-based virtualenv for it.
+In order to run WaterButler, you must create a Python 3.13-based virtualenv for it.
 
-For MacOSX, you can install the latest version of Python3 using:
+For MacOSX, you can install the latest version of Python3.13 using:
 
 ```bash
-brew install python3
+brew install python@3.13
 ```
 
 For Ubuntu users:
 
 ```bash
-apt-get install python3.6
+apt-get install python3.13
 ```
 
-After completing the installation of Python 3.6, you must create a virtual environment. This can be done with the following commands:
+After completing the installation of Python 3.13, you must create a virtual environment. This can be done with the following commands:
 
 ```bash
-pip install virtualenv
+poetry install virtualenv
 pip install virtualenvwrapper
-mkvirtualenv --python=python3.6 waterbutler
+mkvirtualenv --python=python3.13 waterbutler
 
-pip install setuptools=37.0.0
-pip install invoke==0.13.0
+poetry install setuptools=80.4.0
+poetry install invoke==2.2.0
 
 invoke install
 invoke server
@@ -120,7 +120,7 @@ invoke test
 
 ### License
 
-Copyright 2013-2018 Center for Open Science
+Copyright 2013-2025 Center for Open Science
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
