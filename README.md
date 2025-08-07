@@ -36,22 +36,15 @@ apt-get install python3.13
 After completing the installation of Python 3.13, you must create a virtual environment. This can be done with the following commands:
 
 ```bash
-poetry install virtualenv
-pip install virtualenvwrapper
-mkvirtualenv --python=python3.13 waterbutler
-
-poetry install setuptools=80.4.0
-poetry install invoke==2.2.0
-
-invoke install
-invoke server
+poetry env use python3.13
+poetry install
+poetry run invoke install
 ```
 
 The above code will get the virtualenv up and running for the first time.  After the initial setup, you can run waterbutler by running:
 
 ```bash
-workon waterbutler
-invoke server
+poetry run invoke server
 ```
 
 Some tasks also require a running celery worker.  You will need to install `rabbitmq` and run a server:
@@ -66,7 +59,7 @@ rabbitmq-server
 Then in your WaterButler virtualenv:
 
 ```bash
-invoke celery
+poetry run invoke celery
 ```
 
 ### Configuring
