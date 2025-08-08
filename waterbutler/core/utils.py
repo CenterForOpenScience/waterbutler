@@ -18,6 +18,12 @@ from waterbutler.core.signing import Signer
 from waterbutler.core.streams import EmptyStream
 from waterbutler.server import settings as server_settings
 
+
+def rehydrate(payload):
+    from waterbutler.core.metadata import BaseMetadata  # local import to break cycles
+    return BaseMetadata.rehydrate(payload)
+
+
 logger = logging.getLogger(__name__)
 
 signer = Signer(server_settings.HMAC_SECRET, server_settings.HMAC_ALGORITHM)
@@ -30,7 +36,7 @@ def make_provider(name: str, auth: dict, credentials: dict, settings: dict, **kw
     :param dict auth:
     :param dict credentials:
     :param dict settings:
-    :param dict \*\*kwargs: currently there to absorb ``callback_url``
+    :param dict kwargs: currently there to absorb ``callback_url``
 
     :rtype: :class:`waterbutler.core.provider.BaseProvider`
     """
@@ -61,7 +67,7 @@ def as_task(func):
     return wrapped
 
 
-def async_retry(retries=5, backoff=1, exceptions=(Exception, )):
+def async_retry(retries=5, backoff=1, exceptions_tuple=(Exception, )):
 
     def _async_retry(func):
 
@@ -69,21 +75,22 @@ def async_retry(retries=5, backoff=1, exceptions=(Exception, )):
         @functools.wraps(func)
         async def wrapped(*args, __retries=0, **kwargs):
             try:
-                return await asyncio.coroutine(func)(*args, **kwargs)
-            except exceptions as e:
+                return await func(*args, **kwargs)
+            except exceptions_tuple as e:
                 if __retries < retries:
                     wait_time = backoff * __retries
-                    logger.warning('Task {0} failed with {1!r}, {2} / {3} retries. Waiting '
-                                   '{4} seconds before retrying'.format(func, e, __retries,
+                    logger.warning('Task {} failed with {!r}, {} / {} retries. Waiting '
+                                   '{} seconds before retrying'.format(func, e, __retries,
                                                                         retries, wait_time))
                     await asyncio.sleep(wait_time)
                     return await wrapped(*args, __retries=__retries + 1, **kwargs)
                 else:
                     # Logs before all things
-                    logger.error('Task {0} failed with exception {1}'.format(func, e))
+                    logger.error(f'Task {func} failed with exception {e}')
 
-                    with sentry_sdk.configure_scope() as scope:
-                        scope.set_tag('debug', False)
+                    # Docs: https://docs.sentry.io/platforms/python/migration/1.x-to-2.x#scope-configuring
+                    scope = sentry_sdk.get_current_scope()
+                    scope.set_tag('debug', False)
                     sentry_sdk.capture_exception(e)
 
                     # If anything happens to be listening

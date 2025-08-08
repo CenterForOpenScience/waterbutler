@@ -16,6 +16,17 @@ class BaseOsfStorageItemMetadata(BaseOsfStorageMetadata):
         super().__init__(raw)
         self._materialized = materialized
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_materialized'] = self._materialized
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(payload['_materialized'])
+        return args
+
     @property
     def name(self):
         return self.raw['name']

@@ -1,6 +1,5 @@
 import re
 import base64
-import typing
 import binascii
 from urllib.parse import urlparse, quote
 
@@ -10,7 +9,7 @@ from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.exceptions import WaterButlerError
 
 
-def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:
+def get_obj_name(path: WaterButlerPath, is_folder: bool = False) -> str:
     """Get the object name of the file or folder with the given Waterbutler Path.
 
     .. note::
@@ -28,7 +27,7 @@ def get_obj_name(path: WaterButlerPath, is_folder: bool=False) -> str:
     return validate_path_or_name(path.path.lstrip('/'), is_folder=is_folder)
 
 
-def build_path(obj_name: str, is_folder: bool=False) -> str:
+def build_path(obj_name: str, is_folder: bool = False) -> str:
     """Convert the object name to a path string which can pass WaterButler path validation.
 
     :param str obj_name: the object name of the object
@@ -37,12 +36,12 @@ def build_path(obj_name: str, is_folder: bool=False) -> str:
     """
 
     return validate_path_or_name(
-        obj_name if obj_name.startswith('/') else '/{}'.format(obj_name),
+        obj_name if obj_name.startswith('/') else f'/{obj_name}',
         is_folder=is_folder
     )
 
 
-def validate_path_or_name(path_or_name: str, is_folder: bool=False) -> str:
+def validate_path_or_name(path_or_name: str, is_folder: bool = False) -> str:
     """Validate that path or object name.
 
     :param str path_or_name: the path or the object name
@@ -95,7 +94,7 @@ def build_url(base: str, *segments, **query) -> str:
     return ''.join([parsed_base, path, queries])
 
 
-def decode_and_hexlify_hashes(hash_str: str) -> typing.Union[str, None]:
+def decode_and_hexlify_hashes(hash_str: str) -> str | None:
     """Decode a Base64-encoded string and return a hexlified string.
 
      This helper function inputs and outputs string.  However, both :func:`base64.b64decode()` and
@@ -137,7 +136,7 @@ def build_canonical_ext_headers_str(headers: dict) -> str:
 
     headers_str = ''
     for key, value in headers.items():
-        headers_str += '{}:{}\n'.format(key.strip().lower(), value.strip())
+        headers_str += f'{key.strip().lower()}:{value.strip()}\n'
 
     return headers_str
 

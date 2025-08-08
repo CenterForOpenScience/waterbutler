@@ -530,7 +530,7 @@ class TestUpload:
         )
 
         session_metadata = root_provider_fixtures['create_session_metadata']
-        stream = streams.StringStream('tenbytestr'.encode() * 2)
+        stream = streams.StringStream(b'tenbytestr' * 2)
         parts_metadata = await provider._upload_parts(stream, session_metadata)
 
         expected_response = [

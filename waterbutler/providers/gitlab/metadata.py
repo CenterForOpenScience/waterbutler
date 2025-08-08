@@ -15,6 +15,17 @@ class BaseGitLabMetadata(metadata.BaseMetadata):
         super().__init__(raw)
         self._path_obj = path
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_path_obj'] = self._path_obj
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(payload['_path_obj'])
+        return args
+
     @property
     def provider(self) -> str:
         return 'gitlab'
@@ -85,6 +96,21 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
         self.owner = owner
         self.repo = repo
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_path_obj'] = self._path_obj
+        payload['host'] = self.host
+        payload['owner'] = self.owner
+        payload['repo'] = self.repo
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args += [payload['_path_obj'], payload['host'], payload['owner'], payload['repo']]
+        args.append()
+        return args
+
     @property
     def modified(self) -> str:
         return self.raw.get('modified', None)
@@ -106,7 +132,7 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self) -> str:
-        return '{}::{}'.format(self.path, self.commit_sha or self.branch_name)
+        return f'{self.path}::{self.commit_sha or self.branch_name}'
 
     @property
     def extra(self) -> dict:

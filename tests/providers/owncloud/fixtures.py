@@ -103,45 +103,45 @@ def file_content():
 @pytest.fixture
 def moved_parent_folder_metadata():
     with open(os.path.join(os.path.dirname(__file__),
-                           'fixtures/moved_parent_folder_metadata.xml'), 'r') as fp:
+                           'fixtures/moved_parent_folder_metadata.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def moved_folder_metadata():
     with open(os.path.join(os.path.dirname(__file__),
-                           'fixtures/moved_folder_metadata.xml'), 'r') as fp:
+                           'fixtures/moved_folder_metadata.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def folder_list():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/folder_list.xml'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/folder_list.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def folder_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/folder_metadata.xml'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/folder_metadata.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def folder_contents_metadata():
     with open(os.path.join(os.path.dirname(__file__),
-                           'fixtures/folder_contents_metadata.xml'), 'r') as fp:
+                           'fixtures/folder_contents_metadata.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def file_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_metadata.xml'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/file_metadata.xml')) as fp:
         return fp.read()
 
 
 @pytest.fixture
 def file_metadata_unparsable_response():
     with open(os.path.join(os.path.dirname(__file__),
-                           'fixtures/file_metadata_unparsable_response.xml'), 'r') as fp:
+                           'fixtures/file_metadata_unparsable_response.xml')) as fp:
         return fp.read()
 

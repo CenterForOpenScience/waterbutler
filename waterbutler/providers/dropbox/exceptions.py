@@ -12,5 +12,5 @@ class DropboxUnhandledConflictError(ProviderError):
 
 class DropboxNamingConflictError(ProviderError):
     def __init__(self, path):
-        super().__init__('Cannot complete action: file or folder already exists at {}'.format(path),
+        super().__init__(f'Cannot complete action: file or folder already exists at {path}',
                          code=HTTPStatus.CONFLICT)

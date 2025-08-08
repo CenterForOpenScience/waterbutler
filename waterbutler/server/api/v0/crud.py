@@ -1,11 +1,8 @@
 import os
-import socket
 import asyncio
 from http import HTTPStatus
 
 import tornado.web
-import tornado.gen
-import tornado.platform.asyncio
 
 from waterbutler.core import mime_types
 from waterbutler.server import utils
@@ -32,42 +29,35 @@ class CRUDHandler(core.BaseProviderHandler):
 
     async def prepare(self):
         await super().prepare()
-        await self.prepare_stream()
+        await self._prep_stream()
 
-    async def prepare_stream(self):
-        if self.request.method in self.STREAM_METHODS:
-            self.rsock, self.wsock = socket.socketpair()
-
-            self.reader, _ = await asyncio.open_unix_connection(sock=self.rsock)
-            _, self.writer = await asyncio.open_unix_connection(sock=self.wsock)
-
-            self.stream = RequestStreamReader(self.request, self.reader)
-
-            self.uploader = asyncio.ensure_future(self.provider.upload(self.stream,
-                                                 **self.arguments))
-        else:
+    async def _prep_stream(self):
+        if self.request.method not in self.STREAM_METHODS:
             self.stream = None
+            return
 
-    async def data_received(self, chunk):
+        self.reader = asyncio.StreamReader()
+        self.stream = RequestStreamReader(self.request, self.reader)
+
+    async def data_received(self, chunk: bytes):
         """Note: Only called during uploads."""
         self.bytes_uploaded += len(chunk)
         if self.stream:
-            self.writer.write(chunk)
-            await self.writer.drain()
+            self.reader.feed_data(chunk)
 
     async def get(self):
         """Download a file."""
         try:
-            self.arguments['accept_url'] = TRUTH_MAP[self.arguments.get('accept_url', 'true').lower()]
+            self.arguments['accept_url'] = TRUTH_MAP[
+                self.arguments.get('accept_url', 'true').lower()
+            ]
         except KeyError:
             raise tornado.web.HTTPError(status_code=400)
 
-        if 'Range' in self.request.headers:
-            request_range = utils.parse_request_range(self.request.headers['Range'])
-        else:
-            request_range = None
+        req_range = utils.parse_request_range(
+            self.request.headers['Range']) if 'Range' in self.request.headers else None
 
-        result = await self.provider.download(range=request_range, **self.arguments)
+        result = await self.provider.download(range=req_range, **self.arguments)
 
         if isinstance(result, str):
             self.redirect(result)
@@ -79,8 +69,7 @@ class CRUDHandler(core.BaseProviderHandler):
             # Plus it fixes tests
             self.set_status(206)
             self.set_header('Content-Range', result.content_range)
-
-        if result.content_type is not None:
+        if result.content_type:
             self.set_header('Content-Type', result.content_type)
 
         if result.size is not None:
@@ -110,17 +99,14 @@ class CRUDHandler(core.BaseProviderHandler):
         self._send_hook('create_folder', metadata)
 
     async def put(self):
-        """Upload a file."""
-        self.writer.write_eof()
+        """Handle upload once body is complete."""
+        self.reader.feed_eof()
 
-        metadata, created = await self.uploader
+        metadata, created = await self.provider.upload(self.stream, **self.arguments)
 
         if created:
             self.set_status(201)
         self.write(metadata.serialized())
-
-        self.writer.close()
-        self.wsock.close()
 
         self._send_hook(
             'create' if created else 'update',

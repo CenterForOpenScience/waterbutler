@@ -12,7 +12,8 @@ class HashStreamWriter:
     def hexdigest(self):
         return self.hash.hexdigest()
 
-    def can_write_eof(self):
+    @staticmethod
+    def can_write_eof():
         return False
 
     def write(self, data):

@@ -1,4 +1,4 @@
-FROM python:3.6-slim-buster
+FROM python:3.13-slim
 
 RUN usermod -d /home www-data && chown www-data:www-data /home
 
@@ -14,9 +14,10 @@ RUN apt-get update \
         build-essential \
         libssl-dev \
         libffi-dev \
-        python-dev \
         gnupg2 \
         # grab gosu for easy step-down from root
+        cargo \
+        rustc \
         gosu \
     && apt-get clean \
     && apt-get autoremove -y \
@@ -25,21 +26,22 @@ RUN apt-get update \
 RUN mkdir -p /code
 WORKDIR /code
 
-RUN pip install -U pip==18.1
-RUN pip install setuptools==37.0.0
-
-COPY ./requirements.txt /code/
-
-RUN pip install --no-cache-dir -r /code/requirements.txt
+COPY pyproject.toml poetry.lock* /code/
+RUN pip install poetry==2.1.2
+RUN pip install setuptools==80.1.0
+RUN poetry install --no-root --without=docs
 
 # Copy the rest of the code over
 COPY ./ /code/
 
 ARG GIT_COMMIT=
-ENV GIT_COMMIT ${GIT_COMMIT}
+ENV GIT_COMMIT=${GIT_COMMIT}
+ENV POETRY_NO_INTERACTION=1
+ENV POETRY_VIRTUALENVS_CREATE=0
+ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 
-RUN python setup.py develop
+RUN poetry install --without docs
 
 EXPOSE 7777
 
-CMD ["gosu", "www-data", "invoke", "server"]
+CMD ["gosu", "www-data", "python3", "-m", "invoke", "server"]

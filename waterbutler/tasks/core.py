@@ -55,7 +55,7 @@ async def backgrounded(func, *args, **kwargs):
 def backgroundify(func):
     @functools.wraps(func)
     async def wrapped(*args, **kwargs):
-        return (await backgrounded(func, *args, **kwargs))
+        return await backgrounded(func, *args, **kwargs)
     return wrapped
 
 
@@ -97,7 +97,7 @@ def celery_task(func, *args, **kwargs):
         )
         kwargs['bind'] = True
 
-    logger.debug('celery_task: task_func:({})'.format(task_func))
+    logger.debug(f'celery_task: task_func:({task_func})')
 
     task = app.task(task_func, **kwargs)
     task.adelay = backgroundify(task.delay)

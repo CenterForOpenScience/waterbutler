@@ -24,13 +24,26 @@ class BaseBitbucketMetadata(metadata.BaseMetadata):
         self.owner = owner
         self.repo = repo
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_path_obj'] = self._path_obj
+        payload['owner'] = self.owner
+        payload['repo'] = self.repo
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args += [payload['_path_obj'], payload.get('owner'), payload.get('repo')]
+        return args
+
     @property
     def provider(self):
         return 'bitbucket'
 
     @property
     def path(self):
-        return self.build_path()
+        return self.build_path(self._path_obj.raw_path)
 
     @property
     def name(self):
@@ -51,8 +64,8 @@ class BaseBitbucketMetadata(metadata.BaseMetadata):
             'branch': self.branch_name,  # may be None if revision id is a sha
         }
 
-    def build_path(self):
-        return super().build_path(self._path_obj.raw_path)
+    def build_path(self, path):
+        return super().build_path(path)
 
     def _json_api_links(self, resource):
         """Update JSON-API links to add commitSha or branch, if available"""
@@ -95,7 +108,7 @@ class BitbucketFileMetadata(BaseBitbucketMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return '{}::{}'.format(self.path, self.commit_sha)  # FIXME: maybe last_commit_sha?
+        return f'{self.path}::{self.commit_sha}'  # FIXME: maybe last_commit_sha?
 
     @property
     def extra(self):

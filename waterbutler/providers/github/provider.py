@@ -5,7 +5,6 @@ import uuid
 import asyncio
 import hashlib
 import logging
-from typing import Tuple
 from http import HTTPStatus
 
 import furl
@@ -109,7 +108,12 @@ class GitHubProvider(provider.BaseProvider):
         self.email = self.auth.get('email', None)
         self.token = self.credentials['token']
         self.owner = self.settings['owner']
+        # self.repo is the repo name, not the repo metadata
         self.repo = self.settings['repo']
+        # self._repo is the repo metadata. Must be fetched from github.
+        self._repo = None
+        # self.default_branch will be set by reading repo metadata
+        self.default_branch = None
         self.metrics.add('repo', {'repo': self.repo, 'owner': self.owner})
 
         # debugging parameters
@@ -147,8 +151,8 @@ class GitHubProvider(provider.BaseProvider):
 
         self._request_count += 1
 
-        logger.debug('P({}):{}: '.format(self._my_id, self._request_count))
-        logger.debug('P({}):{}:make_request: begin!'.format(self._my_id, self._request_count))
+        logger.debug(f'P({self._my_id}):{self._request_count}: ')
+        logger.debug(f'P({self._my_id}):{self._request_count}:make_request: begin!')
 
         # Only update `expects` when it exists in the original request
         expects = kwargs.get('expects', None)
@@ -230,6 +234,7 @@ class GitHubProvider(provider.BaseProvider):
 
         """
         if not getattr(self, '_repo', None):
+            # TODO: is it needed to add _repo attribute or use repo attribute that already exists
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
@@ -264,6 +269,7 @@ class GitHubProvider(provider.BaseProvider):
     async def validate_path(self, path, **kwargs):
         """See ``validate_v1_path`` docstring for details on supported query parameters."""
         if not getattr(self, '_repo', None):
+            # TODO: is it needed to add _repo attribute or use repo attribute that already exists
             self._repo = await self._fetch_repo()
             self.default_branch = self._repo['default_branch']
 
@@ -296,7 +302,7 @@ class GitHubProvider(provider.BaseProvider):
 
     @property
     def default_headers(self):
-        return {'Authorization': 'token {}'.format(self.token)}
+        return {'Authorization': f'token {self.token}'}
 
     @property
     def committer(self):
@@ -314,19 +320,19 @@ class GitHubProvider(provider.BaseProvider):
 
     def can_intra_copy(self, other, path=None):
         return (
-            type(self) == type(other) and
+            isinstance(self, type(other)) and
             self.repo == other.repo and
             self.owner == other.owner
         )
 
     # do these need async?
     async def intra_copy(self, dest_provider, src_path, dest_path):
-        return (await self._do_intra_move_or_copy(src_path, dest_path, True))
+        return await self._do_intra_move_or_copy(src_path, dest_path, True)
 
     async def intra_move(self, dest_provider, src_path, dest_path):
-        return (await self._do_intra_move_or_copy(src_path, dest_path, False))
+        return await self._do_intra_move_or_copy(src_path, dest_path, False)
 
-    async def download(self, path: GitHubPath, range: Tuple[int, int]=None,  # type: ignore
+    async def download(self, path: GitHubPath, range: tuple[int, int] = None,  # type: ignore
                        **kwargs) -> streams.ResponseStreamReader:
         """Get the stream to the specified file on github
         :param GitHubPath path: The path to the file on github
@@ -337,7 +343,7 @@ class GitHubProvider(provider.BaseProvider):
         data = await self.metadata(path)
         file_sha = path.file_sha or data.extra['fileSha']
 
-        logger.debug('requested-range:: {}'.format(range))
+        logger.debug(f'requested-range:: {range}')
         resp = await self.make_request(
             'GET',
             self.build_repo_url('git', 'blobs', file_sha),
@@ -352,7 +358,8 @@ class GitHubProvider(provider.BaseProvider):
     async def upload(self, stream, path, message=None, branch=None, **kwargs):
         assert self.name is not None
         assert self.email is not None
-
+        exists = False
+        latest_sha = ''
         try:
             exists = await self.exists(path)
         except exceptions.ProviderError as e:
@@ -446,9 +453,9 @@ class GitHubProvider(provider.BaseProvider):
         :rtype list: if folder, array of metadata objects describing contents
         """
         if path.is_dir:
-            return (await self._metadata_folder(path, **kwargs))
+            return await self._metadata_folder(path, **kwargs)
         else:
-            return (await self._metadata_file(path, **kwargs))
+            return await self._metadata_file(path, **kwargs)
 
     async def revisions(self, path, **kwargs):
         resp = await self.make_request(
@@ -563,7 +570,7 @@ class GitHubProvider(provider.BaseProvider):
                 tree_sha = next(x for x in trees[-1]['tree'] if x['path'] == tree_path.value)['sha']
             except StopIteration:
                 raise exceptions.MetadataError(
-                    'Could not delete folder \'{0}\''.format(path),
+                    f'Could not delete folder \'{path}\'',
                     code=404,
                 )
             trees.append({
@@ -680,7 +687,7 @@ class GitHubProvider(provider.BaseProvider):
         resp = await self.make_request('GET', self.build_repo_url('branches', branch))
         if resp.status == 404:
             await resp.release()
-            raise exceptions.NotFoundError('. No such branch \'{}\''.format(branch))
+            raise exceptions.NotFoundError(f'. No such branch \'{branch}\'')
 
         return await resp.json()
 
@@ -765,7 +772,7 @@ class GitHubProvider(provider.BaseProvider):
             expects=(201, ),
             throws=exceptions.ProviderError,
         )
-        return (await resp.json())
+        return await resp.json()
 
     async def _create_commit(self, commit):
         resp = await self.make_request(
@@ -776,7 +783,7 @@ class GitHubProvider(provider.BaseProvider):
             expects=(201, ),
             throws=exceptions.ProviderError,
         )
-        return (await resp.json())
+        return await resp.json()
 
     async def _create_blob(self, stream):
         blob_stream = streams.JSONStream({
@@ -786,7 +793,7 @@ class GitHubProvider(provider.BaseProvider):
 
         sha1_calculator = streams.HashStreamWriter(hashlib.sha1)
         stream.add_writer('sha1', sha1_calculator)
-        git_blob_header = 'blob {}\0'.format(str(stream.size))
+        git_blob_header = f'blob {str(stream.size)}\0'
         sha1_calculator.write(git_blob_header.encode('utf-8'))
 
         resp = await self.make_request(
@@ -826,7 +833,7 @@ class GitHubProvider(provider.BaseProvider):
 
         if isinstance(data, dict):
             raise exceptions.MetadataError(
-                'Could not retrieve folder "{0}"'.format(str(path)),
+                f'Could not retrieve folder "{str(path)}"',
                 code=404,
             )
 
@@ -888,7 +895,7 @@ class GitHubProvider(provider.BaseProvider):
             expects=(200, ),
             throws=exceptions.ProviderError
         )
-        return (await resp.json())
+        return await resp.json()
 
     async def _do_intra_move_or_copy(self, src_path, dest_path, is_copy):
 
@@ -997,7 +1004,7 @@ class GitHubProvider(provider.BaseProvider):
 
         resp = await self.make_request(
             'GET',
-            self.build_repo_url('git', 'trees') + '/{}:?recursive=99999'.format(branch_ref),
+            self.build_repo_url('git', 'trees') + f'/{branch_ref}:?recursive=99999',
             expects=(200,)
         )
         return await resp.json()
@@ -1034,7 +1041,8 @@ class GitHubProvider(provider.BaseProvider):
 
         return tree, head
 
-    def _path_exists_in_tree(self, tree, path):
+    @staticmethod
+    def _path_exists_in_tree(tree, path):
         """Search through a tree and return true if the given path is found.
 
         :param list tree: A list of blobs in a git tree.
@@ -1043,7 +1051,8 @@ class GitHubProvider(provider.BaseProvider):
         """
         return any(x['path'] == path.path.rstrip('/') for x in tree)
 
-    def _remove_path_from_tree(self, tree, path):
+    @staticmethod
+    def _remove_path_from_tree(tree, path):
         """Search through a tree and remove any blobs or trees that match ``path`` or are a child of
         ``path``.
 
@@ -1058,10 +1067,10 @@ class GitHubProvider(provider.BaseProvider):
             (path.is_dir and not
              (item['path'].startswith(path.path) or  # file/folder != child of path
               (item['type'] == 'tree' and item['path'] == path.path.rstrip('/'))))  # folder != path
-
         ]
 
-    def _reparent_blobs(self, blobs, src_path, dest_path):
+    @staticmethod
+    def _reparent_blobs(blobs, src_path, dest_path):
         """Take a list of blobs and replace the source path with the dest path.
 
         Two caveats:
@@ -1089,7 +1098,8 @@ class GitHubProvider(provider.BaseProvider):
                 blob['path'] = blob['path'].replace(src_path.path, dest_path.path, 1)
         return
 
-    def _prune_subtrees(self, tree):
+    @staticmethod
+    def _prune_subtrees(tree):
         """Takes in a list representing a git tree and remove all the entries that are also trees.
         Only blobs should remain. GitHub infers tree structure from blob paths.  Deleting a blob
         without removing its parent tree will result in the blob *NOT* being deleted. See:
@@ -1132,7 +1142,7 @@ class GitHubProvider(provider.BaseProvider):
 
         return new_head
 
-    def _interpret_query_parameters(self, **kwargs) -> Tuple[str, str, str]:
+    def _interpret_query_parameters(self, **kwargs) -> tuple[str, str, str]:
         """This one hurts.
 
         Over the life of WB, the github provider has accepted the following parameters to identify
@@ -1197,7 +1207,7 @@ class GitHubProvider(provider.BaseProvider):
 
             if v is not None and self._looks_like_sha(v):
                 inferred_ref = v
-                ref_from = 'query_{}'.format(param)
+                ref_from = f'query_{param}'
                 break
 
         if inferred_ref is not None:
@@ -1214,7 +1224,7 @@ class GitHubProvider(provider.BaseProvider):
 
             if v is not None:
                 inferred_ref = v
-                ref_from = 'query_{}'.format(param)
+                ref_from = f'query_{param}'
                 break
 
         if inferred_ref is None:
@@ -1227,7 +1237,8 @@ class GitHubProvider(provider.BaseProvider):
 
         return inferred_ref, 'branch_name', ref_from
 
-    def _looks_like_sha(self, ref):
+    @staticmethod
+    def _looks_like_sha(ref):
         """Returns `True` if ``ref`` could be a valid SHA (i.e. is a valid hex number).  If ``True``
         also checks to make sure ``ref`` is a valid number of characters, as GH doesn't like
         abbreviated refs.  Currently only check for 40 characters (length of a sha1-name), but a

@@ -556,7 +556,7 @@ class TestUtils:
     def test_is_same_region_error(self, provider_one):
 
         with pytest.raises(AssertionError) as exc:
-            provider_one.is_same_region(str())
+            provider_one.is_same_region('')
         assert str(exc.value) == 'Cannot compare region for providers of different provider ' \
                                  'classes.'
 
@@ -569,8 +569,8 @@ class TestUtils:
         assert not provider_one.can_intra_move(provider_two)
 
     def test_can_intra_move_copy_false_class_mismatch(self, provider_one):
-        assert not provider_one.can_intra_copy(str())
-        assert not provider_one.can_intra_move(str())
+        assert not provider_one.can_intra_copy('')
+        assert not provider_one.can_intra_move('')
 
     def test_can_duplicate_names(self, provider_one):
         assert provider_one.can_duplicate_names()
@@ -785,7 +785,7 @@ class TestUploads:
                               upload_response, upload_path, mock_time):
         self.patch_uuid(monkeypatch)
 
-        url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
+        url = f'https://waterbutler.io/{upload_path.parent.identifier}/children/'
         aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
 
         provider, inner_provider = provider_and_mock_one
@@ -818,7 +818,7 @@ class TestUploads:
         self.patch_uuid(monkeypatch)
         provider, inner_provider = provider_and_mock_one
 
-        url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
+        url = f'https://waterbutler.io/{upload_path.parent.identifier}/children/'
 
         quota_url, quota_params = build_signed_url_without_auth(provider, 'GET', 'quota_status')
         aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
@@ -860,7 +860,7 @@ class TestUploads:
         aiohttpretty.register_json_uri('GET', quota_url, params=quota_params, status=200,
                                        body={'over_quota': False})
 
-        url = 'https://waterbutler.io/{}/children/'.format(upload_path.parent.identifier)
+        url = f'https://waterbutler.io/{upload_path.parent.identifier}/children/'
 
         inner_provider.metadata.side_effect = exceptions.MetadataError('Boom!', code=500)
         aiohttpretty.register_json_uri('POST', url, status=500)
@@ -876,7 +876,7 @@ class TestUploads:
         provider, inner_provider = provider_and_mock_one
         path = WaterButlerPath('/{}'.format(upload_response['data']['name']),
                                _ids=('Test', upload_response['data']['id']))
-        url = 'https://waterbutler.io/{}/children/'.format(path.parent.identifier)
+        url = f'https://waterbutler.io/{path.parent.identifier}/children/'
 
         aiohttpretty.register_json_uri('POST', url, status=201, body=upload_response)
         inner_provider.metadata = utils.MockCoroutine(return_value=utils.MockFileMetadata())

@@ -92,13 +92,13 @@ def mock_inner_provider():
 
 @pytest.fixture
 def folder_children_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['folder_children_metadata']
 
 
 @pytest.fixture
 def download_response():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['download_response']
 
 
@@ -110,7 +110,7 @@ def download_path(download_response):
 
 @pytest.fixture
 def upload_response():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['upload_response']
 
 
@@ -122,13 +122,13 @@ def upload_path(upload_response):
 
 @pytest.fixture
 def folder_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['folder_metadata']
 
 
 @pytest.fixture
 def folder_lineage():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['folder_lineage']
 
 
@@ -141,13 +141,13 @@ def folder_path(folder_lineage):
 
 @pytest.fixture
 def file_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['file_metadata']
 
 
 @pytest.fixture
 def file_lineage():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['file_lineage']
 
 
@@ -159,7 +159,7 @@ def file_path(file_lineage):
 
 @pytest.fixture
 def revisions_metadata():
-    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json'), 'r') as fp:
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['revisions_metadata']
 
 

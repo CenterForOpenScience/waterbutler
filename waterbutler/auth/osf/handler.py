@@ -26,7 +26,8 @@ class OsfAuthHandler(BaseAuthHandler):
         'delete': 'delete',
     }
 
-    def build_payload(self, bundle, view_only=None, cookie=None):
+    @staticmethod
+    def build_payload(bundle, view_only=None, cookie=None):
         query_params = {}
 
         if cookie:
@@ -35,18 +36,18 @@ class OsfAuthHandler(BaseAuthHandler):
         if view_only:
             # View only must go outside of the jwt
             query_params['view_only'] = view_only
-
         raw_payload = jwe.encrypt(jwt.encode({
             'data': bundle,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
-        }, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM), JWE_KEY)
+            'exp': datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=settings.JWT_EXPIRATION)
+        }, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM).encode('utf-8'), JWE_KEY)
 
         # Note: `aiohttp3` uses `yarl` which only supports string parameters
         query_params['payload'] = raw_payload.decode("utf-8")
 
         return query_params
 
-    async def make_request(self, params, headers, cookies):
+    @staticmethod
+    async def make_request(params, headers, cookies):
         try:
             # Note: with simple request whose response is handled right afterwards without "being passed
             #       further along", use the context manager so WB doesn't need to handle the sessions.
@@ -67,9 +68,12 @@ class OsfAuthHandler(BaseAuthHandler):
                 try:
                     raw = await response.json()
                     signed_jwt = jwe.decrypt(raw['payload'].encode(), JWE_KEY)
-                    data = jwt.decode(signed_jwt, settings.JWT_SECRET,
-                                      algorithm=settings.JWT_ALGORITHM,
-                                      options={'require_exp': True})
+                    algorithms = settings.JWT_ALGORITHM if isinstance(settings.JWT_ALGORITHM, list) else [settings.JWT_ALGORITHM]
+                    # Docs: https://pyjwt.readthedocs.io/en/stable/api.html#jwt.decode
+                    data = jwt.decode(
+                        signed_jwt, settings.JWT_SECRET, algorithms=algorithms, options={'require_exp': True}
+                    )
+
                     return data['data']
                 except (jwt.InvalidTokenError, KeyError):
                     raise exceptions.AuthError(data, code=response.status)
@@ -127,7 +131,6 @@ class OsfAuthHandler(BaseAuthHandler):
         if view_only:
             # View only must go outside of the jwt
             view_only = view_only[0].decode()
-
         payload = await self.make_request(
             self.build_payload({
                 'nid': resource,
@@ -240,4 +243,4 @@ class OsfAuthHandler(BaseAuthHandler):
                 raise exceptions.UnsupportedHTTPMethodError(method,
                                                             supported=self.ACTION_MAP.keys())
 
-        return (osf_action, intended_action)
+        return osf_action, intended_action

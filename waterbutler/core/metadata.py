@@ -1,6 +1,6 @@
 import abc
-import typing
 import hashlib
+import importlib
 
 import furl
 
@@ -46,7 +46,7 @@ class BaseMetadata(metaclass=abc.ABCMeta):
             'path': self.path,
             'provider': self.provider,
             'materialized': self.materialized_path,
-            'etag': hashlib.sha256('{}::{}'.format(self.provider, self.etag).encode('utf-8')).hexdigest(),
+            'etag': hashlib.sha256(f'{self.provider}::{self.etag}'.encode('utf-8')).hexdigest(),
         }
 
     def json_api_serialized(self, resource: str) -> dict:
@@ -104,6 +104,36 @@ class BaseMetadata(metaclass=abc.ABCMeta):
         if self.kind == 'folder' and not path.endswith('/'):
             path += '/'
         return path
+
+    def dehydrate(self) -> dict:
+        return self._dehydrate()
+
+    def _dehydrate(self) -> dict:
+        module_name = self.__class__.__module__
+        class_name = self.__class__.__name__
+
+        payload: dict[str, object] = {
+            "__wb_meta__": True,
+            "cls": f"{module_name}.{class_name}",
+            "raw": self.raw,
+        }
+        return payload
+
+    @classmethod
+    def rehydrate(cls, payload) -> dict:
+        module_name, class_name = payload["cls"].rsplit(".", 1)
+        module = importlib.import_module(module_name)
+        meta_cls = getattr(module, class_name)
+
+        args = meta_cls._rehydrate(payload)
+        return meta_cls(*args)  # type: ignore
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = [payload["raw"]]
+        if "path" in payload:
+            args.insert(0, payload["path"])
+        return args
 
     @property
     def is_folder(self) -> bool:
@@ -262,7 +292,7 @@ class BaseFileMetadata(BaseMetadata):
 
     @property
     @abc.abstractmethod
-    def size(self) -> typing.Union[int, str]:
+    def size(self) -> int | str:
         """ Size of the file in bytes. Should be a int, but some providers return a string and WB
         never casted it.  The `size_as_int` property was added to enforce this without breaking
         exisiting code and workarounds.
@@ -285,6 +315,34 @@ class BaseFileRevisionMetadata(metaclass=abc.ABCMeta):
 
     def __init__(self, raw: dict) -> None:
         self.raw = raw
+
+    def dehydrate(self) -> dict:
+        return self._dehydrate()
+
+    def _dehydrate(self) -> dict:
+        module_name = self.__class__.__module__
+        class_name = self.__class__.__name__
+
+        payload: dict[str, object] = {
+            "__wb_meta__": True,
+            "cls": f"{module_name}.{class_name}",
+            "raw": self.raw,
+        }
+        return payload
+
+    @classmethod
+    def rehydrate(cls, payload) -> dict:
+        module_name, class_name = payload["cls"].rsplit(".", 1)
+        module = importlib.import_module(module_name)
+        meta_cls = getattr(module, class_name)
+
+        args = cls._rehydrate(payload)
+        return meta_cls(*args)  # type: ignore
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = [payload["raw"]]
+        return args
 
     def serialized(self) -> dict:
         return {
@@ -349,6 +407,21 @@ class BaseFolderMetadata(BaseMetadata):
         super().__init__(raw)
         self._children = None  # type: list
 
+    def _dehydrate(self) -> dict:
+        payload = super()._dehydrate()
+        payload['_children'] = None
+        if self._children is not None:
+            payload['_children'] = [child._dehydrate() for child in self._children]
+        return payload
+
+    @classmethod
+    def rehydrate(cls, payload):
+        built_obj = super().rehydrate(payload)
+        if payload.get('_children') is not None:
+            kids = [utils.rehydrate(c) for c in payload['_children']]
+            built_obj.children = kids
+        return built_obj
+
     def serialized(self) -> dict:
         """ Returns a dict representing the folder's metadata suitable to be serialized
         into JSON. If the `children` property has not been set, it will be excluded from
@@ -382,7 +455,7 @@ class BaseFolderMetadata(BaseMetadata):
         return ret
 
     @property
-    def children(self) -> typing.List[BaseMetadata]:
+    def children(self) -> list[BaseMetadata]:
         """ (Optional) A list of child entities of the folder.  Each entity should be either a
         file or folder metadata object.  Will be `None` if the presence of children is unknown.
 
@@ -391,7 +464,7 @@ class BaseFolderMetadata(BaseMetadata):
         return self._children
 
     @children.setter
-    def children(self, kids: typing.List[BaseMetadata]):
+    def children(self, kids: list[BaseMetadata]):
         """ Assigns the given list to the children property.  The affirmative absence of child
         entities should be indicated by passing an empty list.
 
@@ -405,6 +478,6 @@ class BaseFolderMetadata(BaseMetadata):
         return 'folder'
 
     @property
-    def etag(self) -> typing.Union[str, None]:
+    def etag(self) -> str | None:
         """ FIXME: An etag? """
         return None

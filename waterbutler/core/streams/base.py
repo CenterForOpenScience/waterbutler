@@ -33,7 +33,7 @@ class BaseStream(asyncio.StreamReader, metaclass=abc.ABCMeta):
             raise StopAsyncIteration
         return chunk
 
-    @abc.abstractproperty
+    @abc.abstractmethod
     def size(self):
         pass
 
@@ -117,7 +117,7 @@ class MultiStream(asyncio.StreamReader):
 
     async def read(self, n=-1):
         if n < 0:
-            return (await super().read(n))
+            return await super().read(n)
 
         chunk = b''
 
@@ -206,7 +206,7 @@ class StringStream(BaseStream):
         if isinstance(data, str):
             data = data.encode('UTF-8')
         elif not isinstance(data, bytes):
-            raise TypeError('Data must be either str or bytes, found {!r}'.format(type(data)))
+            raise TypeError(f'Data must be either str or bytes, found {type(data)!r}')
 
         self._size = len(data)
         self.feed_data(data)
@@ -217,7 +217,7 @@ class StringStream(BaseStream):
         return self._size
 
     async def _read(self, n=-1):
-        return (await asyncio.StreamReader.read(self, n))
+        return await asyncio.StreamReader.read(self, n)
 
 
 class EmptyStream(BaseStream):

@@ -30,21 +30,21 @@ class RateLimitingMixin:
         """
 
         limit_check, redis_key = self.get_auth_naive()
-        logger.debug('>>> RATE LIMITING >>> check={} key={}'.format(limit_check, redis_key))
+        logger.debug(f'>>> RATE LIMITING >>> check={limit_check} key={redis_key}')
         if not limit_check:
             return False, None
 
         try:
             counter = self.redis_conn.incr(redis_key)
         except RedisError:
-            raise WaterButlerRedisError('INCR {}'.format(redis_key))
+            raise WaterButlerRedisError(f'INCR {redis_key}')
 
         if counter > self.WINDOW_LIMIT:
             # The key exists and the limit has been reached.
             try:
                 retry_after = self.redis_conn.ttl(redis_key)
             except RedisError:
-                raise WaterButlerRedisError('TTL {}'.format(redis_key))
+                raise WaterButlerRedisError(f'TTL {redis_key}')
             logger.debug('>>> RATE LIMITING >>> FAIL >>> key={} '
                          'counter={} url={}'.format(redis_key, counter, self.request.full_url()))
             data = {
@@ -58,7 +58,7 @@ class RateLimitingMixin:
             try:
                 self.redis_conn.expire(redis_key, self.WINDOW_SIZE)
             except RedisError:
-                raise WaterButlerRedisError('EXPIRE {} {}'.format(redis_key, self.WINDOW_SIZE))
+                raise WaterButlerRedisError(f'EXPIRE {redis_key} {self.WINDOW_SIZE}')
             logger.debug('>>> RATE LIMITING >>> NEW >>> key={} '
                          'counter={} url={}'.format(redis_key, counter, self.request.full_url()))
         else:
@@ -94,29 +94,29 @@ class RateLimitingMixin:
         # CASE 1: Requests with a bearer token (PAT or OAuth)
         if auth_hdrs and auth_hdrs.startswith('Bearer '):  # Bearer token
             bearer_token = auth_hdrs.split(' ')[1] if auth_hdrs.startswith('Bearer ') else None
-            logger.debug('>>> RATE LIMITING >>> AUTH:TOKEN >>> {}'.format(bearer_token))
-            return True, 'TOKEN__{}'.format(self._obfuscate_creds(bearer_token))
+            logger.debug(f'>>> RATE LIMITING >>> AUTH:TOKEN >>> {bearer_token}')
+            return True, f'TOKEN__{self._obfuscate_creds(bearer_token)}'
 
         # CASE 2: Requests with basic auth using username and password
         if auth_hdrs and auth_hdrs.startswith('Basic '):  # Basic auth
             basic_creds = auth_hdrs.split(' ')[1] if auth_hdrs.startswith('Basic ') else None
-            logger.debug('>>> RATE LIMITING >>> AUTH:BASIC >>> {}'.format(basic_creds))
-            return True, 'BASIC__{}'.format(self._obfuscate_creds(basic_creds))
+            logger.debug(f'>>> RATE LIMITING >>> AUTH:BASIC >>> {basic_creds}')
+            return True, f'BASIC__{self._obfuscate_creds(basic_creds)}'
 
         # CASE 3: Requests with OSF cookies
         # SECURITY WARNING: Must check cookie last since it can only be allowed when used alone!
         cookies = self.request.cookies or None
         if cookies and cookies.get('osf'):
             osf_cookie = cookies.get('osf').value
-            logger.debug('>>> RATE LIMITING >>> AUTH:COOKIE >>> {}'.format(osf_cookie))
-            return False, 'COOKIE_{}'.format(self._obfuscate_creds(osf_cookie))
+            logger.debug(f'>>> RATE LIMITING >>> AUTH:COOKIE >>> {osf_cookie}')
+            return False, f'COOKIE_{self._obfuscate_creds(osf_cookie)}'
 
         # TODO: Work with DevOps to make sure that the `remote_ip` is the real IP instead of our
         #       load balancers.  In addition, check relevatn HTTP headers as well.
         # CASE 4: Requests without any expected auth (case 1, 2 or 3 above).
         remote_ip = self.request.remote_ip or 'NOI.PNO.IPN.OIP'
-        logger.debug('>>> RATE LIMITING >>> AUTH:NONE >>> {}'.format(remote_ip))
-        return True, 'NOAUTH_{}'.format(self._obfuscate_creds(remote_ip))
+        logger.debug(f'>>> RATE LIMITING >>> AUTH:NONE >>> {remote_ip}')
+        return True, f'NOAUTH_{self._obfuscate_creds(remote_ip)}'
 
     @staticmethod
     def _obfuscate_creds(creds):

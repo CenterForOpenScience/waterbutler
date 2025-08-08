@@ -18,6 +18,17 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
         # all published versions, not just 'latest-published'.
         self.has_published_version = dataset_version == 'latest-published'
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['dataset_version'] = self.dataset_version
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(payload['dataset_version'])
+        return args
+
     @property
     def file_id(self):
         return str(self.raw['id'])
@@ -52,7 +63,7 @@ class DataverseFileMetadata(BaseDataverseMetadata, metadata.BaseFileMetadata):
 
     @property
     def etag(self):
-        return '{}::{}'.format(self.dataset_version, self.file_id)
+        return f'{self.dataset_version}::{self.file_id}'
 
     @property
     def extra(self):

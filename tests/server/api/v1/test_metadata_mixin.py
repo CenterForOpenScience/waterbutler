@@ -176,7 +176,7 @@ class TestMetadataMixin:
         safari shoving in new file extensions """
 
         handler = mock_handler(http_request)
-        handler.path = WaterButlerPath('/test_path.{}'.format(extension))
+        handler.path = WaterButlerPath(f'/test_path.{extension}')
         handler.provider.download = MockCoroutine(return_value=mock_stream)
 
         await handler.download_file()

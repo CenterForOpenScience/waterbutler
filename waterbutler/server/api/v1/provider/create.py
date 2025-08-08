@@ -16,7 +16,7 @@ class CreateMixin:
         self.kind = self.get_query_argument('kind', default='file')
 
         if self.kind not in ('file', 'folder'):
-            raise exceptions.InvalidParameters('Kind must be file, folder or unspecified (interpreted as file), not {}'.format(self.kind))
+            raise exceptions.InvalidParameters(f'Kind must be file, folder or unspecified (interpreted as file), not {self.kind}')
 
         length = self.request.headers.get('Content-Length')
 
@@ -108,7 +108,12 @@ class CreateMixin:
 
         self.metadata, created = await self.uploader
         self.writer.close()
+        # Docs: https://docs.python.org/3/library/asyncio-stream.html#asyncio.StreamWriter.wait_closed
+        await self.writer.wait_closed()
         self.wsock.close()
+        self.rsock.close()
+        self.rfd.close()
+        self.wfd.close()
         if created:
             self.set_status(201)
 

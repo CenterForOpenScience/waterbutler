@@ -397,7 +397,7 @@ class TestCRUD:
             ]
         )
         aiohttpretty.register_uri('PUT', url, status=200,
-                                  headers={'ETag': '"{}"'.format(content_md5)})
+                                  headers={'ETag': f'"{content_md5}"'})
         metadata, created = await connected_provider.upload(file_stream, path)
 
         assert created is True
@@ -422,7 +422,7 @@ class TestCRUD:
             ]
         )
         aiohttpretty.register_uri('PUT', url, status=200,
-                                  headers={'ETag': '"{}"'.format(content_md5)})
+                                  headers={'ETag': f'"{content_md5}"'})
         metadata, created = await connected_provider.upload(
             file_stream, path, check_created=False, fetch_metadata=False)
 
