@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "waterbutler"
-version = "25.0.0"  # TODO: get version from waterbutler/version.py
+version = "25.1.0"  # TODO: get version from waterbutler/version.py
 description = "WaterButler Storage Server"
 authors = ["Center for Open Science <contact@cos.io>"]
 readme = "README.md"
