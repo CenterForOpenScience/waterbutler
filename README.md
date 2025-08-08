@@ -38,7 +38,6 @@ After completing the installation of Python 3.13, you must create a virtual envi
 ```bash
 poetry env use python3.13
 poetry install
-poetry run invoke install
 ```
 
 The above code will get the virtualenv up and running for the first time.  After the initial setup, you can run waterbutler by running:
