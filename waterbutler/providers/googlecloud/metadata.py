@@ -1,7 +1,6 @@
 import os
 import re
 import abc
-import typing
 import logging
 
 from multidict import MultiDict, MultiDictProxy
@@ -135,25 +134,25 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
         return os.path.split(self.path)[1]
 
     @property
-    def content_type(self) -> typing.Union[str, None]:
+    def content_type(self) -> str | None:
         return self.raw.get('content_type', None)
 
     @property
-    def modified(self) -> typing.Union[str, None]:
+    def modified(self) -> str | None:
         return self.raw.get('last_modified', None)
 
     @property
-    def created_utc(self) -> typing.Union[str, None]:
+    def created_utc(self) -> str | None:
         # Google's Cloud Storage does not provide creation time through XML API.
         return None
 
     @property
-    def size(self) -> typing.Union[str, None]:  # type: ignore
+    def size(self) -> str | None:  # type: ignore
         size = self.raw.get('size', None)
         return int(size) if size else None  # type: ignore
 
     @property
-    def etag(self) -> typing.Union[str, None]:
+    def etag(self) -> str | None:
         return self.raw.get('etag', None)
 
     @property
@@ -162,7 +161,7 @@ class GoogleCloudFileMetadata(BaseGoogleCloudMetadata, metadata.BaseFileMetadata
 
     @classmethod
     def new_from_resp_headers(cls, obj_name: str,
-                              resp_headers: typing.Union[MultiDict, MultiDictProxy]):
+                              resp_headers: MultiDict | MultiDictProxy):
         """Construct an instance of :class:`.GoogleCloudFileMetadata` from the response headers
         returned.
 
@@ -201,7 +200,7 @@ class GoogleCloudFolderMetadata(BaseGoogleCloudMetadata, metadata.BaseFolderMeta
 
     @classmethod
     def new_from_resp_headers(cls, obj_name: str,
-                              resp_headers: typing.Union[MultiDict, MultiDictProxy]):
+                              resp_headers: MultiDict | MultiDictProxy):
         """Construct an instance of :class:`.GoogleCloudFolderMetadata` from the response headers
         returned.
 

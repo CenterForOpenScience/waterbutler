@@ -164,3 +164,4 @@ class MoveCopyMixin:
             self.set_status(int(HTTPStatus.OK))
 
         self.write({'data': metadata.json_api_serialized(self.dest_resource)})
+

@@ -10,6 +10,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from waterbutler.settings import config
 from waterbutler.version import __version__
 from waterbutler.tasks import settings as tasks_settings
+from waterbutler.tasks import serialization
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +23,10 @@ def register_signal():
     kwargs from logs so that keys aren't leaked to Sentry.
     """
     def process_failure_signal(sender, task_id, *args, **kwargs):
-        with sentry_sdk.configure_scope() as scope:
-            scope.set_tag('task_id', task_id)
-            scope.set_tag('task', sender)
-            sentry_sdk.capture_exception()
+        scope = sentry_sdk.get_current_scope()
+        scope.set_tag('task_id', task_id)
+        scope.set_tag('task', sender)
+        sentry_sdk.capture_exception()
 
     task_failure.connect(process_failure_signal, weak=False)
 

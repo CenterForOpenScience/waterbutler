@@ -5,7 +5,6 @@ import logging
 import tempfile
 from asyncio import sleep
 from http import HTTPStatus
-from typing import List, Tuple, Union
 
 import aiohttp
 
@@ -115,7 +114,7 @@ class BoxProvider(provider.BaseProvider):
 
         if response is None:
             if new_name is not None:
-                raise exceptions.MetadataError('Could not find {}'.format(path), code=404)
+                raise exceptions.MetadataError(f'Could not find {path}', code=404)
 
             return await self.revalidate_path(
                 WaterButlerPath('/', _ids=[self.folder]),
@@ -151,7 +150,7 @@ class BoxProvider(provider.BaseProvider):
         return ret
 
     async def revalidate_path(self, base: WaterButlerPath, path: str,
-                              folder: bool=None) -> WaterButlerPath:
+                              folder: bool = None) -> WaterButlerPath:
         # TODO Research the search api endpoint
         response = await self.make_request(
             'GET',
@@ -180,7 +179,7 @@ class BoxProvider(provider.BaseProvider):
 
         return base.child(name, _id=_id, folder=folder)
 
-    def can_duplicate_names(self)-> bool:
+    def can_duplicate_names(self) -> bool:
         return False
 
     def shares_storage_root(self, other: provider.BaseProvider) -> bool:
@@ -190,15 +189,15 @@ class BoxProvider(provider.BaseProvider):
         Add a comparison of credentials to avoid this."""
         return super().shares_storage_root(other) and self.credentials == other.credentials
 
-    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
+    def can_intra_move(self, other: provider.BaseProvider, path: WaterButlerPath = None) -> bool:
         return self == other
 
-    def can_intra_copy(self, other: provider.BaseProvider, path: WaterButlerPath=None) -> bool:
+    def can_intra_copy(self, other: provider.BaseProvider, path: WaterButlerPath = None) -> bool:
         return self == other
 
     async def intra_copy(self,  # type: ignore
                          dest_provider: provider.BaseProvider, src_path: WaterButlerPath,
-                         dest_path: WaterButlerPath) -> Tuple[BaseBoxMetadata, bool]:
+                         dest_path: WaterButlerPath) -> tuple[BaseBoxMetadata, bool]:
         if dest_path.identifier is not None:
             await dest_provider.delete(dest_path)
 
@@ -225,7 +224,7 @@ class BoxProvider(provider.BaseProvider):
 
     async def intra_move(self,  # type: ignore
                          dest_provider: provider.BaseProvider, src_path: WaterButlerPath,
-                         dest_path: WaterButlerPath) -> Tuple[BaseBoxMetadata, bool]:
+                         dest_path: WaterButlerPath) -> tuple[BaseBoxMetadata, bool]:
         if dest_path.identifier is not None and str(dest_path).lower() != str(src_path).lower():
             await dest_provider.delete(dest_path)
 
@@ -252,7 +251,7 @@ class BoxProvider(provider.BaseProvider):
     @property
     def default_headers(self) -> dict:
         return {
-            'Authorization': 'Bearer {}'.format(self.token),
+            'Authorization': f'Bearer {self.token}',
         }
 
     async def make_request(self, method: str, url: str, *args, **kwargs) -> aiohttp.ClientResponse:
@@ -261,16 +260,16 @@ class BoxProvider(provider.BaseProvider):
         return await super().make_request(method, url, *args, **kwargs)
 
     async def download(self,  # type: ignore
-                       path: WaterButlerPath, revision: str=None, range: Tuple[int, int]=None,
+                       path: WaterButlerPath, revision: str = None, range: tuple[int, int] = None,
                        **kwargs) -> streams.ResponseStreamReader:
         if path.identifier is None:
-            raise exceptions.DownloadError('"{}" not found'.format(str(path)), code=404)
+            raise exceptions.DownloadError(f'"{str(path)}" not found', code=404)
 
         query = {}
         if revision and revision != path.identifier:
             query['version'] = revision
 
-        logger.debug('request-range:: {}'.format(range))
+        logger.debug(f'request-range:: {range}')
         resp = await self.make_request(
             'GET',
             self.build_url('files', path.identifier, 'content', **query),
@@ -279,13 +278,13 @@ class BoxProvider(provider.BaseProvider):
             expects=(200, 206),
             throws=exceptions.DownloadError,
         )
-        logger.debug('download-headers:: {}'.format([(x, resp.headers[x]) for x in resp.headers]))
+        logger.debug(f'download-headers:: {[(x, resp.headers[x]) for x in resp.headers]}')
 
         return streams.ResponseStreamReader(resp)
 
     async def upload(self,  # type: ignore
-                     stream: streams.BaseStream, path: WaterButlerPath, conflict: str='replace',
-                     **kwargs) -> Tuple[BoxFileMetadata, bool]:
+                     stream: streams.BaseStream, path: WaterButlerPath, conflict: str = 'replace',
+                     **kwargs) -> tuple[BoxFileMetadata, bool]:
         """Upload a file to Box.  If the file is less than ``NONCHUNKED_UPLOAD_LIMIT``, upload in
         a single request.  Otherwise, use Box's chunked upload interface to send it across multiple
         requests.
@@ -306,7 +305,7 @@ class BoxProvider(provider.BaseProvider):
         return BoxFileMetadata(entry, path), created
 
     async def delete(self,  # type: ignore
-                     path: WaterButlerPath, confirm_delete: int=0, **kwargs) -> None:
+                     path: WaterButlerPath, confirm_delete: int = 0, **kwargs) -> None:
         """Delete file, folder, or provider root contents
 
         :param BoxPath path: BoxPath path object for folder
@@ -341,8 +340,8 @@ class BoxProvider(provider.BaseProvider):
         return  # Ensures the response is properly released
 
     async def metadata(self,  # type: ignore
-                       path: WaterButlerPath, raw: bool=False, folder=False, revision=None,
-                       **kwargs) -> Union[dict, BoxFileMetadata, List[BoxFolderMetadata]]:
+                       path: WaterButlerPath, raw: bool = False, folder=False, revision=None,
+                       **kwargs) -> dict | BoxFileMetadata | list[BoxFolderMetadata]:
         if path.identifier is None:
             raise exceptions.NotFoundError(str(path))
 
@@ -350,7 +349,7 @@ class BoxProvider(provider.BaseProvider):
             return await self._get_file_meta(path, revision=revision, raw=raw)
         return await self._get_folder_meta(path, raw=raw, folder=folder)
 
-    async def revisions(self, path: WaterButlerPath, **kwargs) -> List[BoxRevision]:
+    async def revisions(self, path: WaterButlerPath, **kwargs) -> list[BoxRevision]:
         # from https://developers.box.com/docs/#files-view-versions-of-a-file :
         # Alert: Versions are only tracked for Box users with premium accounts.
         # Few users will have a premium account, return only current if not
@@ -367,7 +366,7 @@ class BoxProvider(provider.BaseProvider):
 
         return [BoxRevision(each) for each in [curr] + revisions]
 
-    async def create_folder(self, path: WaterButlerPath, folder_precheck: bool=True,
+    async def create_folder(self, path: WaterButlerPath, folder_precheck: bool = True,
                             **kwargs) -> BoxFolderMetadata:
         WaterButlerPath.validate_folder(path)
 
@@ -393,8 +392,8 @@ class BoxProvider(provider.BaseProvider):
         path._parts[-1]._id = resp_json['id']
         return BoxFolderMetadata(resp_json, path)
 
-    async def _get_file_meta(self, path: WaterButlerPath, raw: bool=False,
-                             revision: str=None) -> Union[dict, BoxFileMetadata]:
+    async def _get_file_meta(self, path: WaterButlerPath, raw: bool = False,
+                             revision: str = None) -> dict | BoxFileMetadata:
         if revision:
             url = self.build_url('files', path.identifier, 'versions')
         else:
@@ -419,8 +418,8 @@ class BoxProvider(provider.BaseProvider):
 
         return data if raw else BoxFileMetadata(data, path)
 
-    async def _get_folder_meta(self, path: WaterButlerPath, raw: bool=False,
-                               folder: bool=False) -> Union[dict, List[BoxFolderMetadata]]:
+    async def _get_folder_meta(self, path: WaterButlerPath, raw: bool = False,
+                               folder: bool = False) -> dict | list[BoxFolderMetadata]:
         if folder:
             response = await self.make_request(
                 'GET',
@@ -462,15 +461,17 @@ class BoxProvider(provider.BaseProvider):
         self.metrics.add('metadata.folder.pages', page_total)
         return full_resp
 
-    def _serialize_item(self, item: dict,
-                        path: WaterButlerPath) -> Union[BoxFileMetadata, BoxFolderMetadata]:
+    @staticmethod
+    def _serialize_item(item: dict,
+                        path: WaterButlerPath) -> BoxFileMetadata | BoxFolderMetadata:
         if item['type'] == 'folder':
             serializer = BoxFolderMetadata  # type: ignore
         else:
             serializer = BoxFileMetadata  # type: ignore
         return serializer(item, path)
 
-    def _build_upload_url(self, *segments, **query):
+    @staticmethod
+    def _build_upload_url(*segments, **query):
         return provider.build_url(pd_settings.BASE_UPLOAD_URL, *segments, **query)
 
     async def _delete_folder_contents(self, path: WaterButlerPath, **kwargs) -> None:
@@ -483,7 +484,7 @@ class BoxProvider(provider.BaseProvider):
             box_path = await self.validate_path(child.path)
             await self.delete(box_path)
 
-    async def _intra_move_copy_metadata(self, path, data: dict) -> Tuple[BaseBoxMetadata, bool]:
+    async def _intra_move_copy_metadata(self, path, data: dict) -> tuple[BaseBoxMetadata, bool]:
         """Return appropriate metadata from intra_copy/intra_move actions. If `data` represents
         a folder, will fetch and include `data`'s children.
         """
@@ -547,13 +548,14 @@ class BoxProvider(provider.BaseProvider):
 
         # Step 2: Create an upload session with Box and recieve session id.
         session_data = await self._create_chunked_upload_session(path, stream)
-        logger.debug('chunked upload session data: {}'.format(json.dumps(session_data)))
+        logger.debug(f'chunked upload session data: {json.dumps(session_data)}')
 
         metadata = None
+        data_sha = ''
         try:
             # Step 3. Split the data into parts and upload them to box.
             parts_manifest = await self._upload_parts(stream, session_data)
-            logger.debug('chunked upload parts manifest: {}'.format(json.dumps(parts_manifest)))
+            logger.debug(f'chunked upload parts manifest: {json.dumps(parts_manifest)}')
             data_sha = base64.standard_b64encode(stream.writers['sha1'].digest).decode()
             # Step 4. Complete the session and return the uploaded file's metadata.
             retry = self.UPLOAD_COMMIT_RETRIES
@@ -567,7 +569,7 @@ class BoxProvider(provider.BaseProvider):
                     continue
         except Exception as err:
             msg = 'An unexpected error has occurred during the multi-part upload.'
-            logger.error('{} upload_id={} error={!r}'.format(msg, session_data, err))
+            logger.error(f'{msg} upload_id={session_data} error={err!r}')
             aborted = await self._abort_chunked_upload(session_data, data_sha)
             if not aborted:
                 msg += '  The abort action failed to clean up the temporary file parts generated ' \
@@ -649,7 +651,7 @@ class BoxProvider(provider.BaseProvider):
         """
 
         cutoff_stream = streams.CutoffStream(stream, cutoff=part_size)
-        part_hasher_name = 'part-{}-sha1'.format(part_id)
+        part_hasher_name = f'part-{part_id}-sha1'
         stream.add_writer(part_hasher_name, streams.HashStreamWriter(hashlib.sha1))
 
         f = tempfile.TemporaryFile()
@@ -664,7 +666,7 @@ class BoxProvider(provider.BaseProvider):
         stream.remove_writer(part_hasher_name)
 
         byte_range = self._build_range_header((start_offset, start_offset + part_size - 1))
-        content_range = str(byte_range).replace('=', ' ') + '/{}'.format(stream.size)
+        content_range = str(byte_range).replace('=', ' ') + f'/{stream.size}'
 
         response = await self.make_request(
             'PUT',
@@ -674,7 +676,7 @@ class BoxProvider(provider.BaseProvider):
                 'Content-Length': str(part_size),
                 'Content-Range': content_range,
                 'Content-Type:': 'application/octet-stream',
-                'Digest': 'sha={}'.format(part_sha_b64)
+                'Digest': f'sha={part_sha_b64}'
             },
             data=file_stream,
             expects=(201, 200),
@@ -698,7 +700,7 @@ class BoxProvider(provider.BaseProvider):
             data={'parts': parts_manifest},
             headers={
                 'Content-Type:': 'application/json',
-                'Digest': 'sha={}'.format(data_sha)
+                'Digest': f'sha={data_sha}'
             },
             expects=(201, 202),
             throws=exceptions.UploadError,
@@ -725,7 +727,7 @@ class BoxProvider(provider.BaseProvider):
             self._build_upload_url('files', 'upload_sessions', session_data['id']),
             headers={
                 'Content-Type:': 'application/json',
-                'Digest': 'sha={}'.format(data_sha)
+                'Digest': f'sha={data_sha}'
             },
         )
         await response.release()

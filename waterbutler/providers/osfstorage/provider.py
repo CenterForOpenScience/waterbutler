@@ -1,7 +1,6 @@
 import os
 import json
 import uuid
-import typing
 import asyncio
 import hashlib
 import logging
@@ -41,12 +40,15 @@ class OSFStorageProvider(provider.BaseProvider):
 
     NAME = 'osfstorage'
 
-    def __init__(self, auth, credentials, settings, **kwargs):
-        super().__init__(auth, credentials, settings, **kwargs)
-        self.nid = settings['nid']
-        self.root_id = settings['rootId']
-        self.BASE_URL = settings['baseUrl']
-        self.provider_name = settings['storage'].get('provider')
+    def __init__(self, auth, credentials, settings_data, **kwargs):
+        super().__init__(auth, credentials, settings_data, **kwargs)
+        self.nid = settings_data['nid']
+        self.root_id = settings_data['rootId']
+        self.BASE_URL = settings_data['baseUrl']
+        self.provider_name = settings_data['storage'].get('provider')
+
+        # self._inner_provider will be initialized later
+        self._inner_provider = None
 
     async def make_signed_request(self, method, url, data=None, params=None, ttl=100, **kwargs):
         url, data, params = self.build_signed_url(
@@ -126,13 +128,13 @@ class OSFStorageProvider(provider.BaseProvider):
         except StopIteration:
             return base.child(path, folder=folder)
 
-    def make_provider(self, settings):
+    def make_provider(self, settings_data):
         """Requests on different files may need to use different providers,
         instances, e.g. when different files lives in different containers
         within a provider. This helper creates a single-use provider instance
         that optionally overrides the settings.
 
-        :param dict settings: Overridden settings
+        :param dict settings_data: Overridden settings
         """
         if not getattr(self, '_inner_provider', None):
             self._inner_provider = utils.make_provider(
@@ -173,7 +175,8 @@ class OSFStorageProvider(provider.BaseProvider):
         overrides this method with its own ``.copy()`` implementation."""
         return await self._do_intra_move_or_copy('copy', dest_provider, src_path, dest_path)
 
-    def build_signed_url(self, method, url, data=None, params=None, ttl=100, **kwargs):
+    @staticmethod
+    def build_signed_url(method, url, data=None, params=None, ttl=100, **kwargs):
         signer = signing.Signer(settings.HMAC_SECRET, settings.HMAC_ALGORITHM)
         if method.upper() in QUERY_METHODS:
             signed = signing.sign_data(signer, params or {}, ttl=ttl)
@@ -220,14 +223,14 @@ class OSFStorageProvider(provider.BaseProvider):
         )
         data = await resp.json()
 
-        provider = self.make_provider(data['settings'])
+        provider_object = self.make_provider(data['settings'])
         name = data['data'].pop('name')
-        data['data']['path'] = await provider.validate_path('/' + data['data']['path'])
+        data['data']['path'] = await provider_object.validate_path('/' + data['data']['path'])
         download_kwargs = {}
         download_kwargs.update(kwargs)
         download_kwargs.update(data['data'])
         download_kwargs['display_name'] = kwargs.get('display_name') or name
-        return await provider.download(**download_kwargs)
+        return await provider_object.download(**download_kwargs)
 
     async def upload(self, stream, path, **kwargs):
         """Upload a new file to osfstorage
@@ -314,7 +317,7 @@ class OSFStorageProvider(provider.BaseProvider):
 
     async def metadata(self, path, **kwargs):
         if path.identifier is None:
-            raise exceptions.MetadataError('{} not found'.format(str(path)), code=404)
+            raise exceptions.MetadataError(f'{str(path)} not found', code=404)
 
         if not path.is_dir:
             return await self._item_metadata(path)
@@ -357,9 +360,9 @@ class OSFStorageProvider(provider.BaseProvider):
                    dest_provider: provider.BaseProvider,
                    src_path: WaterButlerPath,
                    dest_path: WaterButlerPath,
-                   rename: str=None,
-                   conflict: str='replace',
-                   handle_naming: bool=True) -> typing.Tuple[BaseMetadata, bool]:
+                   rename: str = None,
+                   conflict: str = 'replace',
+                   handle_naming: bool = True) -> tuple[BaseMetadata, bool]:
         """Override parent's move to support cross-region osfstorage moves while preserving guids
         and versions. Delegates to :meth:`.BaseProvider.move` when destination is not osfstorage.
         If both providers are in the same region (i.e. `.can_intra_move` is true), then calls that.
@@ -435,9 +438,9 @@ class OSFStorageProvider(provider.BaseProvider):
                    dest_provider: provider.BaseProvider,
                    src_path: WaterButlerPath,
                    dest_path: WaterButlerPath,
-                   rename: str=None,
-                   conflict: str='replace',
-                   handle_naming: bool=True) -> typing.Tuple[BaseMetadata, bool]:
+                   rename: str = None,
+                   conflict: str = 'replace',
+                   handle_naming: bool = True) -> tuple[BaseMetadata, bool]:
         """Override parent's copy to support cross-region osfstorage copies. Delegates to
         :meth:`.BaseProvider.copy` when destination is not osfstorage. If both providers are in the
         same region (i.e. `.can_intra_copy` is true), call `.intra_copy`. Otherwise, grab a
@@ -633,28 +636,28 @@ class OSFStorageProvider(provider.BaseProvider):
         """
 
         pending_name = str(uuid.uuid4())
-        provider = self.make_provider(self.settings)
-        remote_pending_path = await provider.validate_path('/' + pending_name)
-        logger.debug('upload: remote_pending_path::{}'.format(remote_pending_path))
+        storage_provider = self.make_provider(self.settings)
+        remote_pending_path = await storage_provider.validate_path('/' + pending_name)
+        logger.debug(f'upload: remote_pending_path::{remote_pending_path}')
 
         stream.add_writer('md5', streams.HashStreamWriter(hashlib.md5))
         stream.add_writer('sha1', streams.HashStreamWriter(hashlib.sha1))
         stream.add_writer('sha256', streams.HashStreamWriter(hashlib.sha256))
 
-        await provider.upload(stream, remote_pending_path, check_created=False,
-                              fetch_metadata=False, **kwargs)
+        await storage_provider.upload(stream, remote_pending_path, check_created=False,
+                                      fetch_metadata=False, **kwargs)
 
         complete_name = stream.writers['sha256'].hexdigest
-        remote_complete_path = await provider.validate_path('/' + complete_name)
+        remote_complete_path = await storage_provider.validate_path('/' + complete_name)
 
         try:
-            metadata = await provider.metadata(remote_complete_path)
+            metadata = await storage_provider.metadata(remote_complete_path)
         except exceptions.MetadataError as e:
             if e.code != 404:
                 raise
-            metadata, _ = await provider.move(provider, remote_pending_path, remote_complete_path)
+            metadata, _ = await storage_provider.move(storage_provider, remote_pending_path, remote_complete_path)
         else:
-            await provider.delete(remote_pending_path)
+            await storage_provider.delete(remote_pending_path)
 
         return metadata
 

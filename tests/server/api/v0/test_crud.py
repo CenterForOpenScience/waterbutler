@@ -1,7 +1,6 @@
 import pytest
 
 import json
-import asyncio
 
 from tornado import testing
 from tornado import httpclient
@@ -57,7 +56,7 @@ class TestCrudHandler(utils.HandlerTestCase):
         stream = streams.StringStream(data)
         stream.name = 'foo'
         stream.partial = True
-        stream.content_range = '0-{}/{}'.format(len(data) - 1, len(data))
+        stream.content_range = f'0-{len(data) - 1}/{len(data)}'
         stream.content_type = 'application/octet-stream'
 
         self.mock_provider.download = utils.MockCoroutine(return_value=stream)

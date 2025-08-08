@@ -4,10 +4,24 @@ from waterbutler.core import metadata
 class BaseOwnCloudMetadata(metadata.BaseMetadata):
 
     def __init__(self, href, folder, attributes=None):
-        super(BaseOwnCloudMetadata, self).__init__(None)
+        super().__init__(None)
         self.attributes = attributes or {}
         self._folder = folder
         self._href = href
+
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['attributes'] = self.attributes
+        payload['_folder'] = self._folder
+        payload['_href'] = self._href
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.pop(0)
+        args += [payload['_href'], payload['_folder'], payload['attributes']]
+        return args
 
     @property
     def provider(self):
@@ -63,10 +77,23 @@ class OwnCloudFileRevisionMetadata(metadata.BaseFileRevisionMetadata):
 
     def __init__(self, modified):
         self._modified = modified
+        super().__init__({'modified': modified})
+
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_modified'] = self._modified
+        return payload
 
     @classmethod
-    def from_metadata(cls, metadata):
-        return OwnCloudFileRevisionMetadata(modified=metadata.modified)
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.pop(0)
+        args.append(payload['_modified'])
+        return args
+
+    @classmethod
+    def from_metadata(cls, file_metadata_object):
+        return OwnCloudFileRevisionMetadata(modified=file_metadata_object.modified)
 
     @property
     def version_identifier(self):

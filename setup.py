@@ -1,13 +1,6 @@
 from setuptools import setup, find_packages
 
 
-def parse_requirements(requirements):
-    with open(requirements) as f:
-        return [l.strip('\n') for l in f if l.strip('\n') and not l.startswith('#')]
-
-
-requirements = parse_requirements('requirements.txt')
-
 # Taken from option 3 of https://packaging.python.org/guides/single-sourcing-package-version/
 version = {}
 with open('waterbutler/version.py') as fp:
@@ -16,7 +9,6 @@ with open('waterbutler/version.py') as fp:
 setup(
     name='waterbutler',
     version=version['__version__'],
-    namespace_packages=['waterbutler', 'waterbutler.auth', 'waterbutler.providers'],
     description='WaterButler Storage Server',
     author='Center for Open Science',
     author_email='contact@cos.io',
@@ -24,15 +16,14 @@ setup(
     packages=find_packages(exclude=("tests*", )),
     package_dir={'waterbutler': 'waterbutler'},
     include_package_data=True,
-    # install_requires=requirements,
     zip_safe=False,
+    license='Apache-2.0',
     classifiers=[
         'Natural Language :: English',
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.13',
         'Development Status :: 5 - Production/Stable',
-        'License :: OSI Approved :: Apache Software License',
     ],
     provides=[
         'waterbutler.auth',

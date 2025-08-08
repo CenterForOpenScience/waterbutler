@@ -20,7 +20,7 @@ class WaterButlerPathPart:
     DECODE = lambda x: x  # type: typing.Callable[[str], str]
     ENCODE = lambda x: x  # type: typing.Callable[[str], str]
 
-    def __init__(self, part: str, *, _id: str=None) -> None:
+    def __init__(self, part: str, *, _id: str = None) -> None:
         self._id = _id
         self._count = 0  # type: int
         self._orig_id = _id
@@ -34,8 +34,8 @@ class WaterButlerPathPart:
     @property
     def value(self) -> str:
         if self._count:
-            return'{} ({}){}'.format(self._name, self._count, self._ext)
-        return'{}{}'.format(self._name, self._ext)
+            return f'{self._name} ({self._count}){self._ext}'
+        return f'{self._name}{self._ext}'
 
     @property
     def raw(self) -> str:
@@ -63,7 +63,7 @@ class WaterButlerPathPart:
         return self.__class__(self.__class__.ENCODE(name), _id=self._id)  # type: ignore
 
     def __repr__(self):
-        return '{}({!r}, count={})'.format(self.__class__.__name__, self._orig_part, self._count)
+        return f'{self.__class__.__name__}({self._orig_part!r}, count={self._count})'
 
 
 class WaterButlerPath:
@@ -111,15 +111,15 @@ class WaterButlerPath:
         if not path:
             raise exceptions.InvalidPathError('Must specify path')
         if not path.startswith('/'):
-            raise exceptions.InvalidPathError('Invalid path \'{}\' specified'.format(path))
+            raise exceptions.InvalidPathError(f'Invalid path \'{path}\' specified')
         if '//' in path:
-            raise exceptions.InvalidPathError('Invalid path \'{}\' specified'.format(path))
+            raise exceptions.InvalidPathError(f'Invalid path \'{path}\' specified')
         # Do not allow path manipulation via shortcuts, e.g. '..'
         absolute_path = os.path.abspath(path)
         if not path == '/' and path.endswith('/'):
             absolute_path += '/'
         if not path == absolute_path:
-            raise exceptions.InvalidPathError('Invalid path \'{}\' specified'.format(absolute_path))
+            raise exceptions.InvalidPathError(f'Invalid path \'{absolute_path}\' specified')
 
     @classmethod
     def validate_folder(cls, path: 'WaterButlerPath') -> None:
@@ -132,7 +132,7 @@ class WaterButlerPath:
     @classmethod
     def from_parts(cls,
                    parts: typing.Iterable[WaterButlerPathPart],
-                   folder: bool=False,
+                   folder: bool = False,
                    **kwargs) -> 'WaterButlerPath':
         _ids, _parts = [], []
         for part in parts:
@@ -154,9 +154,9 @@ class WaterButlerPath:
 
     def __init__(self,
                  path: str,
-                 _ids: typing.Sequence=(),
-                 prepend: str=None,
-                 folder: bool=None, **kwargs) -> None:
+                 _ids: typing.Sequence = (),
+                 prepend: str = None,
+                 folder: bool = None, **kwargs) -> None:
         # TODO: Should probably be a static method
         self.__class__.generic_path_validation(path)  # type: ignore
 
@@ -279,7 +279,7 @@ class WaterButlerPath:
         """ Any extra provider-specific properties of the path. """
         return {}
 
-    def child(self, name: str, _id=None, folder: bool=False):
+    def child(self, name: str, _id=None, folder: bool = False):
         """ Create a child of the current WaterButlerPath, propagating prepend and id information to it.
 
         :param str name: the name of the child entity
@@ -306,4 +306,4 @@ class WaterButlerPath:
         return self.materialized_path
 
     def __repr__(self):
-        return '{}({!r}, prepend={!r})'.format(self.__class__.__name__, self._orig_path, self._prepend)
+        return f'{self.__class__.__name__}({self._orig_path!r}, prepend={self._prepend!r})'

@@ -234,39 +234,52 @@ class TestCreateFolder:
         })
         handler.provider.create_folder.assert_called_once_with(WaterButlerPath('/apath/'))
 
+def create_upload_handler(http_request, mock_file_metadata, created):
+    obj = mock_handler(http_request)
+    upload_mock = mock.AsyncMock(return_value=(mock_file_metadata, created))
+    obj.uploader = upload_mock()
+    obj.rsock = mock.Mock()
+    obj.rfd = mock.Mock()
+    obj.wfd = mock.Mock()
+    obj.writer.wait_closed = mock.AsyncMock()
+    return obj
+
+@pytest.fixture
+def created_upload_handler(http_request, mock_file_metadata):
+    return create_upload_handler(http_request, mock_file_metadata, True)
+
+
+@pytest.fixture
+def not_created_upload_handler(http_request, mock_file_metadata):
+    return create_upload_handler(http_request, mock_file_metadata, False)
+
 
 class TestUploadFile:
 
     @pytest.mark.asyncio
-    async def test_created(self, http_request, mock_file_metadata):
+    async def test_created(self, created_upload_handler, mock_file_metadata):
+        created_upload_handler.resource = '3rqws'
+        created_upload_handler.set_status = mock.Mock()
+        created_upload_handler.writer.wait_closed =  mock.AsyncMock()
 
-        handler = mock_handler(http_request)
-        handler.resource = '3rqws'
-        handler.uploader.set_result((mock_file_metadata, True))
-        handler.set_status = mock.Mock()
-
-        await handler.upload_file()
-
-        assert handler.wsock.close.called
-        assert handler.writer.close.called
-        handler.set_status.assert_called_once_with(201)
-        handler.write.assert_called_once_with({
+        await created_upload_handler.upload_file()
+        assert created_upload_handler.wsock.close.called
+        assert created_upload_handler.writer.close.called
+        created_upload_handler.set_status.assert_called_once_with(201)
+        created_upload_handler.write.assert_called_once_with({
             'data': mock_file_metadata.json_api_serialized('3rqws')
         })
 
     @pytest.mark.asyncio
-    async def test_not_created(self, http_request, mock_file_metadata):
+    async def test_not_created(self, not_created_upload_handler, mock_file_metadata):
+        not_created_upload_handler.resource = '3rqws'
+        not_created_upload_handler.set_status = mock.Mock()
 
-        handler = mock_handler(http_request)
-        handler.resource = '3rqws'
-        handler.uploader.set_result((mock_file_metadata, False))
-        handler.set_status = mock.Mock()
+        await not_created_upload_handler.upload_file()
 
-        await handler.upload_file()
-
-        assert handler.wsock.close.called
-        assert handler.writer.close.called
-        assert handler.set_status.called is False
-        handler.write.assert_called_once_with({
+        assert not_created_upload_handler.wsock.close.called
+        assert not_created_upload_handler.writer.close.called
+        assert not_created_upload_handler.set_status.called is False
+        not_created_upload_handler.write.assert_called_once_with({
             'data': mock_file_metadata.json_api_serialized('3rqws')
         })

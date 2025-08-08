@@ -147,7 +147,7 @@ class ZipLocalFile(MultiStream):
                 logger.info('   DONE!')
                 break
 
-        logger.debug('file is already compressed: {}'.format(already_zipped))
+        logger.debug(f'file is already compressed: {already_zipped}')
         # If the file is a `.zip`, set permission and turn off compression
         if already_zipped:
             self.zinfo.external_attr = 0o600 << 16      # -rw-------

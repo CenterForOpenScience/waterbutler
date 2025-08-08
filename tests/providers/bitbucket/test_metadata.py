@@ -18,7 +18,7 @@ class TestBitbucketMetadata:
 
         name = 'file0002.20bytes.txt'
         subdir = 'folder2-lvl1/folder1-lvl2/folder1-lvl3'
-        full_path = '/{}/{}'.format(subdir, name)
+        full_path = f'/{subdir}/{name}'
         # Note: When building Bitbucket Path, the length of ``_ids`` array must be equal to the
         #       number of path segments, including the root.
         path = BitbucketPath(full_path, _ids=[(COMMIT_SHA, BRANCH) for _ in full_path.split('/')])
@@ -38,7 +38,7 @@ class TestBitbucketMetadata:
         assert metadata.content_type is None
         assert metadata.size == 20
         assert metadata.size_as_int == 20
-        assert metadata.etag == '{}::{}'.format(full_path, COMMIT_SHA)
+        assert metadata.etag == f'{full_path}::{COMMIT_SHA}'
         assert metadata.provider == 'bitbucket'
         assert metadata.last_commit_sha == 'dd8c7b642e32'
         assert metadata.commit_sha == COMMIT_SHA
@@ -68,7 +68,7 @@ class TestBitbucketMetadata:
     def test_build_folder_metadata(self, folder_metadata, owner, repo):
         name = 'folder1-lvl3'
         subdir = 'folder2-lvl1/folder1-lvl2'
-        full_path = '/{}/{}'.format(subdir, name)
+        full_path = f'/{subdir}/{name}'
         path = BitbucketPath(full_path, _ids=[(None, BRANCH) for _ in full_path.split('/')])
 
         try:
@@ -78,7 +78,7 @@ class TestBitbucketMetadata:
             return
 
         assert metadata.name == name
-        assert metadata.path == '{}/'.format(full_path)
+        assert metadata.path == f'{full_path}/'
         assert metadata.kind == 'folder'
         assert metadata.children is None
         assert metadata.extra == {

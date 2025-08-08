@@ -12,7 +12,7 @@ class TestFileStreamReader:
 
     @pytest.mark.asyncio
     async def test_file_stream_reader(self):
-        with open(DUMMY_FILE, 'r') as fp:
+        with open(DUMMY_FILE) as fp:
             reader = streams.FileStreamReader(fp)
             assert reader.size == 27
 
@@ -34,7 +34,7 @@ class TestFileStreamReader:
 
     @pytest.mark.asyncio
     async def test_file_stream_reader_after_seek(self):
-        with open(DUMMY_FILE, 'r') as fp:
+        with open(DUMMY_FILE) as fp:
             fp.seek(3)
             reader = streams.FileStreamReader(fp)
             assert reader.size == 27  # still gives full size
@@ -52,7 +52,7 @@ class TestFileStreamReader:
 
     @pytest.mark.asyncio
     async def test_file_stream_reader_subset(self):
-        with open(DUMMY_FILE, 'r') as fp:
+        with open(DUMMY_FILE) as fp:
             reader = streams.FileStreamReader(fp)
 
             data = await reader.read(10)
@@ -88,7 +88,7 @@ class TestPartialFileStreamReader:
     ])
     async def test_partial_file_stream_reader(self, byte_range, size, is_partial, content_range,
                                               expected):
-        with open(DUMMY_FILE, 'r') as fp:
+        with open(DUMMY_FILE) as fp:
             reader = streams.PartialFileStreamReader(fp, byte_range)
             assert reader.size == size
             assert reader.total_size == 27
@@ -117,7 +117,7 @@ class TestPartialFileStreamReader:
                                                         content_range, expected):
         """Test that range is respected even when large size values are passed to ``.read()``."""
 
-        with open(DUMMY_FILE, 'r') as fp:
+        with open(DUMMY_FILE) as fp:
             reader = streams.PartialFileStreamReader(fp, byte_range)
             assert reader.size == size
             assert reader.total_size == 27

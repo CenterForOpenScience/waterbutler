@@ -107,7 +107,7 @@ class TestFigshareFileMetadata:
             },
             'links': {
                 'move': api_url,
-                'upload': '{}?kind=file'.format(api_url),
+                'upload': f'{api_url}?kind=file',
                 'delete': api_url,
                 'download': api_url,
             }
@@ -115,7 +115,7 @@ class TestFigshareFileMetadata:
 
         assert data._json_api_links('cn42d') == {
             'move': api_url,
-            'upload': '{}?kind=file'.format(api_url),
+            'upload': f'{api_url}?kind=file',
             'delete': api_url,
             'download': api_url,
         }
@@ -198,17 +198,17 @@ class TestFigshareFileMetadata:
             },
             'links': {
                 'move': api_url,
-                'upload': '{}?kind=file'.format(api_url),
+                'upload': f'{api_url}?kind=file',
                 'delete': api_url,
-                'new_folder': '{}?kind=folder'.format(api_url),
+                'new_folder': f'{api_url}?kind=folder',
             }
         }
 
         assert data._json_api_links('45hjnz') == {
             'move': api_url,
-            'upload': '{}?kind=file'.format(api_url),
+            'upload': f'{api_url}?kind=file',
             'delete': api_url,
-            'new_folder': '{}?kind=folder'.format(api_url),
+            'new_folder': f'{api_url}?kind=folder',
         }
 
     def test_public_folder_metadata(self, project_article_type_3_metadata):
@@ -219,7 +219,7 @@ class TestFigshareFileMetadata:
         assert data.extra.get('status') == 'public'
 
     def test_revision_metadata(self):
-        data = FigshareFileRevisionMetadata()
+        data = FigshareFileRevisionMetadata({})
 
         assert data.modified is None
         assert data.modified_utc is None

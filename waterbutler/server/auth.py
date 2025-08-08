@@ -19,7 +19,7 @@ class AuthHandler:
             credential = await extension.obj.fetch(request, bundle)
             if credential:
                 return credential
-        raise AuthHandler('no valid credential found')
+        raise Exception('no valid credential found')
 
     async def get(self, resource, provider, request, action=None, auth_type=AuthType.SOURCE,
                   path='', version=None):
@@ -29,4 +29,4 @@ class AuthHandler:
                                                  path=path, version=version)
             if credential:
                 return credential
-        raise AuthHandler('no valid credential found')
+        raise Exception('no valid credential found')

@@ -3,6 +3,7 @@ import socket
 import asyncio
 import logging
 from http import HTTPStatus
+import os
 
 import tornado.gen
 
@@ -43,7 +44,6 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     PATTERN = r'/resources/(?P<resource>(?:\w|\d)+)/providers/(?P<provider>(?:\w|\d)+)(?P<path>/.*/?)'
 
     async def prepare(self, *args, **kwargs):
-
         if ENABLE_RATE_LIMITING:
             logger.debug('>>> checking for rate-limiting')
             limit_hit, data = self.rate_limit()
@@ -65,16 +65,18 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         # Going with version as its the most correct term
         # TODO Change all references of revision to version @chrisseto
         # revisions will still be accepted until necessary changes are made to OSF
-        self.requested_version = (self.get_query_argument('version', default=None) or
-                                  self.get_query_argument('revision', default=None))
+        self.requested_version = (
+            self.get_query_argument('version', default=None) or
+            self.get_query_argument('revision', default=None)
+        )
 
         self.path = self.path_kwargs['path'] or '/'
         provider = self.path_kwargs['provider']
         self.resource = self.path_kwargs['resource']
 
-        with sentry_sdk.configure_scope() as scope:
-            scope.set_tag('resource.id', self.resource)
-            scope.set_tag('src_provider', self.path_kwargs['provider'])
+        scope = sentry_sdk.get_current_scope()
+        scope.set_tag('resource.id', self.resource)
+        scope.set_tag('src_provider', self.path_kwargs['provider'])
 
         # pre-validator methods perform validations that can be performed before ensuring that the
         # path given by the url is valid.  An example would be making sure that a particular query
@@ -114,7 +116,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         """
         if self.path.is_dir:  # Metadata on the folder itself TODO
             return self.set_status(int(HTTPStatus.NOT_IMPLEMENTED))
-        return (await self.header_file_metadata())
+        return await self.header_file_metadata()
 
     async def get(self, **_):
         """Download a file
@@ -122,17 +124,17 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         :raises: MustBeFileError if path is not a file
         """
         if self.path.is_dir:
-            return (await self.get_folder())
-        return (await self.get_file())
+            return await self.get_folder()
+        return await self.get_file()
 
     async def put(self, **_):
         """Defined in CreateMixin"""
         if self.target_path.is_file:
-            return (await self.upload_file())
-        return (await self.create_folder())
+            return await self.upload_file()
+        return await self.create_folder()
 
     async def post(self, **_):
-        return (await self.move_or_copy())
+        return await self.move_or_copy()
 
     async def delete(self, **_):
         self.confirm_delete = int(self.get_query_argument('confirm_delete', default=0))
@@ -143,8 +145,13 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         """Note: Only called during uploads."""
         self.bytes_uploaded += len(chunk)
         if self.stream:
-            self.writer.write(chunk)
-            await self.writer.drain()
+            try:
+                self.writer.write(chunk)
+                await self.writer.drain()
+            except Exception as e:
+                logger.error(f"Upload stream reset: possible early EOF or cancellation. {e}")
+                if self.uploader and not self.uploader.done():
+                    self.uploader.cancel()
         else:
             self.body += chunk
 
@@ -153,9 +160,23 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         Only called on PUT when path is to a file
         """
         self.rsock, self.wsock = socket.socketpair()
+        # Docs: https://docs.python.org/3/library/socket.html#socket.socket.setblocking
+        self.rsock.setblocking(False)
+        self.wsock.setblocking(False)
 
-        self.reader, _ = await asyncio.open_unix_connection(sock=self.rsock)
-        _, self.writer = await asyncio.open_unix_connection(sock=self.wsock)
+        # Docs: https://docs.python.org/3/library/os.html#os.fdopen
+        self.rfd = os.fdopen(self.rsock.detach(), 'rb', 0)
+        self.wfd = os.fdopen(self.wsock.detach(), 'wb', 0)
+
+        self.reader = asyncio.StreamReader()
+        reader_protocol = asyncio.StreamReaderProtocol(self.reader)
+        loop = asyncio.get_running_loop()
+        # Docs:  https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.connect_read_pipe
+        await loop.connect_read_pipe(lambda: reader_protocol, self.rfd)
+
+        # Docs:   https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.connect_write_pipe
+        writer_transport, _ = await loop.connect_write_pipe(asyncio.Protocol, self.wfd)
+        self.writer = asyncio.StreamWriter(writer_transport, reader_protocol, self.reader, loop)
 
         self.stream = RequestStreamReader(self.request, self.reader)
         self.uploader = asyncio.ensure_future(self.provider.upload(self.stream, self.target_path))

@@ -11,5 +11,5 @@ class JSONStream(MultiStream):
         for key, value in data.items():
             if not isinstance(value, asyncio.StreamReader):
                 value = StringStream(value)
-            streams.extend([StringStream('"{}":"'.format(key)), value, StringStream('",')])
+            streams.extend([StringStream(f'"{key}":"'), value, StringStream('",')])
         super().__init__(*(streams[:-1] + [StringStream('"}')]))

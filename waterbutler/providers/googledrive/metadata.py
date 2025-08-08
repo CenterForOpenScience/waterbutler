@@ -10,6 +10,17 @@ class BaseGoogleDriveMetadata(metadata.BaseMetadata):
         super().__init__(raw)
         self._path = path
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_path'] = self._path
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(payload['_path'])
+        return args
+
     @property
     def provider(self):
         return 'googledrive'

@@ -1,0 +1,146 @@
+[tool.poetry]
+name = "waterbutler"
+version = "25.0.0"  # TODO: get version from waterbutler/version.py
+description = "WaterButler Storage Server"
+authors = ["Center for Open Science <contact@cos.io>"]
+readme = "README.md"
+# requires-python = ">=3.13,<3.14"
+license = "Apache License 2.0"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+aiobotocore = "^2.22.0"
+aiocontextvars = "0.2.2"
+aiohttp = "3.10.5"
+boto3 = "^1.37.0"
+celery = "5.5.0"
+celery-amqp-backend = "^1.2.0"
+certifi = "2025.1.31"
+cryptography = "44.0.2"
+furl = "2.0.0"
+google-auth = "2.38.0"
+humanfriendly = "10.0"
+invoke = "2.2.0"
+multidict = ">=6.0.0"
+newrelic = "10.8.1"
+oauthlib = "3.2.2"
+pyjwe = "1.0.0"
+pyjwt = "2.10.1"
+python-dateutil = "2.9.0"
+pytz = "2025.1"
+sentry-sdk = "2.22.0"
+redis = "5.2.1"
+setuptools = "^80.1.0"
+stevedore = "5.4.1"
+tornado = "6.5.1"
+xmltodict = "0.14.2"
+yarl = "1.17.0"
+ruff = "^0.12.7"
+
+[tool.poetry.group.dev]
+# "dev" dependency group relevant only for local dev:
+optional = true
+[tool.poetry.group.dev.dependencies]
+colorlog = "6.9.0"
+coveralls = "3.3.1"
+flake8 = "7.1.2"
+ipdb = "0.13.13"
+ipython = "8.32.0"
+mypy = "1.15.0"
+mccabe = "0.7.0"
+pycodestyle = "2.12.1"
+pydevd = "3.3.0"
+pyflakes = "3.2.0"
+pytest = "8.3.5"
+pytest-asyncio = "0.26.0"
+pytest-cov = "4.1.0"
+black = "^25.1.0"
+isort = "^6.0.1"
+aiohttpretty = {git = "https://github.com/CenterForOpenScience/aiohttpretty.git", branch = "release/ahp-25.0.0"}
+pytest-celery = "^1.2.0"
+
+[tool.poetry.group.docs]
+# "docs" dependency group relevant only for building docs:
+optional = true
+[tool.poetry.group.docs.dependencies]
+sphinx = ">=8.2.3"
+sphinx-autobuild = ">=2024.10.3"
+sphinx-rtd-theme = ">=3.0.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.plugins."waterbutler.auth"]
+osf = "waterbutler.auth.osf:OsfAuthHandler"
+
+[tool.poetry.plugins."waterbutler.providers"]
+cloudfiles = "waterbutler.providers.cloudfiles:CloudFilesProvider"
+dropbox = "waterbutler.providers.dropbox:DropboxProvider"
+figshare = "waterbutler.providers.figshare:FigshareProvider"
+filesystem = "waterbutler.providers.filesystem:FileSystemProvider"
+github = "waterbutler.providers.github:GitHubProvider"
+gitlab = "waterbutler.providers.gitlab:GitLabProvider"
+bitbucket = "waterbutler.providers.bitbucket:BitbucketProvider"
+osfstorage = "waterbutler.providers.osfstorage:OSFStorageProvider"
+owncloud = "waterbutler.providers.owncloud:OwnCloudProvider"
+s3 = "waterbutler.providers.s3:S3Provider"
+dataverse = "waterbutler.providers.dataverse:DataverseProvider"
+box = "waterbutler.providers.box:BoxProvider"
+googledrive = "waterbutler.providers.googledrive:GoogleDriveProvider"
+onedrive = "waterbutler.providers.onedrive:OneDriveProvider"
+googlecloud = "waterbutler.providers.googlecloud:GoogleCloudProvider"
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "celery: marks tests needing celery mods",
+    "aiohttpretty: mark tests to activate aiohttpretty",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+include = '\.pyi?$'
+exclude = '''
+/(
+  \.venv
+ |\.eggs
+ |_build
+ |build
+ |dist
+ |waterbutler\.egg-info
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["waterbutler", "tests"]
+default_section = "THIRDPARTY"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+combine_as_imports = true
+skip = ["waterbutler.egg-info", ".venv"]
+
+[tool.ruff]
+line-length = 88
+extend-select = [
+  "E",
+  "F",
+  "C90",
+  "I",
+  "B",
+  "BLK",
+]
+extend-ignore = [
+  "E203",
+  "W503",
+]
+exclude = [
+  "waterbutler.egg-info",
+  ".venv",
+  "build",
+  "dist",
+]

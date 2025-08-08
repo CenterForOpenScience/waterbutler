@@ -9,6 +9,17 @@ class BaseFileSystemMetadata(metadata.BaseMetadata):
         super().__init__(raw)
         self._folder = folder
 
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_folder'] = self._folder
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(payload['_folder'])
+        return args
+
     @property
     def provider(self):
         return 'filesystem'

@@ -370,7 +370,7 @@ class TestMetadata:
         assert result[0].name == 'my folder'
         assert result[0].json_api_serialized('mst3k')['links'] == {
             'move': ('http://localhost:7777/v1/resources/mst3k/providers/gitlab'
-                     '/folder1/folder2/folder3/my%20folder/?commitSha=a1b2c3d4'),
+                     '/folder1/folder2/folder3/my%2520folder/?commitSha=a1b2c3d4'),
             'upload': None,
             'delete': None,
             'new_folder': None,

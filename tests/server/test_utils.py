@@ -1,9 +1,6 @@
-from unittest import mock
+from unittest import mock, TestCase
 
 import pytest
-from tornado import testing
-
-from tests.server.api.v1.utils import ServerTestCase
 
 from waterbutler.server.utils import CORsMixin, parse_request_range
 
@@ -16,7 +13,8 @@ class MockHandler(CORsMixin):
     def set_header(self, key, value):
         self.headers[key] = value
 
-class MockRequest(object):
+
+class MockRequest:
 
     def __init__(
             self,
@@ -30,13 +28,12 @@ class MockRequest(object):
 
 
 @mock.patch('waterbutler.server.settings.CORS_ALLOW_ORIGIN', '')
-class TestCORsMixin(ServerTestCase):
+class TestCORsMixin(TestCase):
 
     def setUp(self, *args, **kwargs):
-        super(TestCORsMixin, self).setUp(*args, **kwargs)
+        super().setUp(*args, **kwargs)
         self.handler = MockHandler()
 
-    @testing.gen_test
     def test_set_default_headers_options(self):
         origin = 'http://foo.com'
 
@@ -49,7 +46,6 @@ class TestCORsMixin(ServerTestCase):
         self.handler.set_default_headers()
         assert origin == self.handler.headers['Access-Control-Allow-Origin']
 
-    @testing.gen_test
     def test_set_default_headers_options_no_cookie_but_auth_header(self):
         origin = 'http://foo.com'
 
@@ -64,7 +60,6 @@ class TestCORsMixin(ServerTestCase):
         self.handler.set_default_headers()
         assert origin == self.handler.headers['Access-Control-Allow-Origin']
 
-    @testing.gen_test
     def test_set_default_headers_options_has_cookie_and_auth_header(self):
         origin = 'http://foo.com'
 
@@ -79,7 +74,6 @@ class TestCORsMixin(ServerTestCase):
         self.handler.set_default_headers()
         assert origin == self.handler.headers['Access-Control-Allow-Origin']
 
-    @testing.gen_test
     def test_set_default_headers_options_has_cookie_no_auth_header(self):
         origin = 'http://foo.com'
 
@@ -93,7 +87,6 @@ class TestCORsMixin(ServerTestCase):
         self.handler.set_default_headers()
         assert origin == self.handler.headers['Access-Control-Allow-Origin']
 
-    @testing.gen_test
     def test_set_default_headers_cross_origin_with_cookie(self):
         origin = 'http://foo.com'
 
@@ -108,7 +101,6 @@ class TestCORsMixin(ServerTestCase):
             self.handler.set_default_headers()
             assert origin not in self.handler.headers['Access-Control-Allow-Origin']
 
-    @testing.gen_test
     def test_set_default_headers_cross_origin_no_cookie_no_auth_header(self):
         origin = 'http://foo.com'
 
@@ -124,7 +116,6 @@ class TestCORsMixin(ServerTestCase):
             self.handler.set_default_headers()
             assert origin not in self.handler.headers['Access-Control-Allow-Origin']
 
-    @testing.gen_test
     def test_set_default_headers_cross_origin_has_cookie_and_auth_header(self):
         origin = 'http://foo.com'
 
@@ -140,7 +131,6 @@ class TestCORsMixin(ServerTestCase):
             self.handler.set_default_headers()
             assert origin not in self.handler.headers['Access-Control-Allow-Origin']
 
-    @testing.gen_test
     def test_set_default_headers_cross_origin_no_cookie_but_auth_header(self):
         origin = 'http://foo.com'
 
@@ -156,7 +146,6 @@ class TestCORsMixin(ServerTestCase):
             self.handler.set_default_headers()
             assert origin in self.handler.headers['Access-Control-Allow-Origin']
 
-    @testing.gen_test
     def test_no_origin_means_no_cors(self):
         for method in ('OPTIONS', 'HEAD' 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'):
             self.handler.request = MockRequest(

@@ -11,7 +11,7 @@ class ZipHandler(core.BaseProviderHandler):
     async def get(self):
         """Download as a Zip archive."""
 
-        zipfile_name = self.path.name or '{}-archive'.format(self.provider.NAME)
+        zipfile_name = self.path.name or f'{self.provider.NAME}-archive'
         self.set_header('Content-Type', 'application/zip')
         self.set_header(
             'Content-Disposition',
