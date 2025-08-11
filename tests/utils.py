@@ -199,11 +199,6 @@ class HandlerTestCase(testing.AsyncHTTPTestCase):
     def get_app(self):
         return make_app(debug=False)
 
-    # def get_new_ioloop(self):
-    #     loop = asyncio.new_event_loop()
-    #     asyncio.set_event_loop(loop)
-    #     return loop
-
 
 class MultiProviderHandlerTestCase(HandlerTestCase):
 

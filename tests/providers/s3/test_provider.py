@@ -9,10 +9,7 @@ import aiohttpretty
 from http import client
 from urllib import parse
 from unittest import mock
-
 import pytest
-# from boto.compat import BytesIO
-# from boto.utils import compute_md5
 
 from waterbutler.providers.s3 import S3Provider
 from waterbutler.core.path import WaterButlerPath
@@ -151,8 +148,6 @@ def list_upload_chunks_body(parts_metadata):
         </ListPartsResult>
     '''
 
-    # md5 = compute_md5(BytesIO(payload))
-    # md5 = compute_md5(payload)
     md5 = hashlib.md5(payload)
 
     headers = {
