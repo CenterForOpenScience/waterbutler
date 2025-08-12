@@ -130,7 +130,14 @@ class S3Provider(provider.BaseProvider):
             )
             return resp
 
-    # Todo:  the commented solution may be more stable than not commented
+    # NOTE: These commented-out blocks are left as a reference to an
+    # alternative implementation.
+    # The current active implementation was chosen to maintain unification
+    # with the generic `make_request` pattern used all over providers (see PR #463 for discussion).
+    # A trade-off is that the current approach requires using `unquote` on the path to handle xml properly,
+    # which this paginator-based solution might avoid, however maybe there is more explicit solution without `unquote`
+    # for 'make_requests' to keep it more explicit.
+    #
     # async def get_folder_metadata(self, path, params):
     #     try:
     #         contents, prefixes = [], []
