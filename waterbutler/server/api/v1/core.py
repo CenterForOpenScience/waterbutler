@@ -20,8 +20,8 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler):
     def as_entry(cls):
         return cls.PATTERN, cls
 
-    def write_error(self, status_code: int, **kwargs: Any):
-        etype, exc, _ = kwargs.get('exc_info')
+    def write_error(self, status_code, exc_info):
+        etype, exc, _ = exc_info
 
         finish_args = []
         scope = sentry_sdk.get_current_scope()
