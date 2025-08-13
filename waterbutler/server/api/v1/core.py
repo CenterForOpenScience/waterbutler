@@ -3,8 +3,6 @@ import logging
 import tornado.web
 import tornado.gen
 import tornado.iostream
-from typing_extensions import Any
-
 import sentry_sdk
 
 from waterbutler import tasks
