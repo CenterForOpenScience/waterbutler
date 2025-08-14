@@ -4,24 +4,23 @@ Getting Started
 Setting Up
 ----------
 
-Make sure that you are using >= python3.5 and install invoke for your current python3 version.
+Make sure that you are using >= python3.13 and install poetry to manage dependencies.
 
 .. code-block:: bash
 
-    pip install setuptools==37.0.0
-    pip install invoke==0.13.0
+    pip install poetry==2.1.2
 
 Install requirements
 
 .. code-block:: bash
 
-    invoke install
+    poetry install
 
 Or for some nicities (like tests)
 
 .. code-block:: bash
 
-    invoke install --develop
+    poetry install --with dev
 
 
 Start the server
@@ -34,7 +33,7 @@ Start the server
 
 .. code-block:: bash
 
-    invoke server
+    poetry run invoke server
 
 Start the celery worker
 
@@ -44,7 +43,7 @@ Start the celery worker
 
 .. code-block:: bash
 
-    invoke celery
+    poetry run invoke celery
 
 Contributing
 ------------
@@ -67,5 +66,6 @@ Make sure that you already have dev-requirements
 
 .. code-block:: bash
 
-    invoke test
+    poetry install --with dev
+    poetry run invoke test
 

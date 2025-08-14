@@ -853,7 +853,8 @@ class S3Provider(provider.BaseProvider):
         """Get past versions of the requested key
 
         :param str path: The path to a key
-        :rtype list:
+        :rtype: list
+
         Docs: https://boto3.amazonaws.com/v1/documentation/api/1.28.0/reference/services/s3/client/list_object_versions.html
         """
         await self._check_region()
