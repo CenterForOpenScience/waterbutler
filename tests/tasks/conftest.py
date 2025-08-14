@@ -14,25 +14,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# Task testing doesn't play nice with unittest-style tests, so fallback to regular pytest-style
-# setup/teardown.
-
-# def pytest_runtest_setup(item):
-#     print(f'@@@ pytest setup alpha')
-#     policy = asyncio.get_event_loop_policy()
-#     policy.get_event_loop().close()
-#     event_loop = policy.new_event_loop()
-#     policy.set_event_loop(event_loop)
-#     logger.error(f'@@@ pytest setup beta')
-
-
-# def pytest_runtest_teardown(item):
-#     logger.error(f'@@@ pytest teardown gamma')
-#     policy = asyncio.get_event_loop_policy()
-#     policy.get_event_loop().close()
-#     logger.error(f'@@@ pytest teardown delta')
-
-
 # Fixtures for task tests
 
 @pytest.fixture(autouse=True)

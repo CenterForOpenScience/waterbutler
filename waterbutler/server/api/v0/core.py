@@ -46,7 +46,6 @@ class BaseHandler(server_utils.CORsMixin, server_utils.UtilMixin, tornado.web.Re
     ACTION_MAP = {}  # type: dict
 
     def write_error(self, status_code, exc_info):
-        # TODO: maybe it is needed to change there too somehow
         sentry_sdk.capture_exception(exc_info)
         etype, exc, _ = exc_info
 

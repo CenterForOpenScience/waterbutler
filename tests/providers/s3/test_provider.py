@@ -9,10 +9,7 @@ import aiohttpretty
 from http import client
 from urllib import parse
 from unittest import mock
-
 import pytest
-# from boto.compat import BytesIO
-# from boto.utils import compute_md5
 
 from waterbutler.providers.s3 import S3Provider
 from waterbutler.core.path import WaterButlerPath
@@ -151,8 +148,6 @@ def list_upload_chunks_body(parts_metadata):
         </ListPartsResult>
     '''
 
-    # md5 = compute_md5(BytesIO(payload))
-    # md5 = compute_md5(payload)
     md5 = hashlib.md5(payload)
 
     headers = {
@@ -169,7 +164,10 @@ def build_folder_params(path):
 
 class TestRegionDetection:
 
-    @pytest.mark.skip('TODO fix broken s3 provider tests')
+    @pytest.mark.skip('S3 test suite tests are skipped because many of them are incompatible with the recent '
+                      'migration from the older `boto` library to `boto3`. The underlying mechanisms for request signing'
+                      'and client interaction have changed significantly, breaking the old test logic. The suite '
+                      'needs to be refactored to work properly with the current S3 providers implementation.')
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
     @pytest.mark.parametrize("region_name,expected_region", [
@@ -196,23 +194,6 @@ class TestRegionDetection:
         aiohttpretty.register_uri('GET', region_url, status=200, body=location_response(region_name))
         await provider._check_region()
         assert provider.region == expected_region
-        # provider = S3Provider(auth, credentials, settings)
-        # await provider._check_region()
-        # res = await provider._get_bucket_region()
-        # # region_url = provider.bucket.generate_url(
-        # #     100,
-        # #     'GET',
-        # #     query_parameters={'location': ''},
-        # # )
-        # region_url = 'https://s3.amazonaws.com/that-kerning?location=&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Dont%20dead%2F20250526%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250526T134653Z&X-Amz-Expires=100&X-Amz-SignedHeaders=host&X-Amz-Signature=80f8426c4fc6d0af68bd3e52a553c9e4d838144b9a70600aff507f70056696f1 '
-        # aiohttpretty.register_uri('GET',
-        #                           region_url,
-        #                           status=200,
-        #                           body=location_response(region_name))
-        #
-        # await provider._check_region()
-        # assert provider.connection.host == host
-
 
 class TestValidatePath:
 
