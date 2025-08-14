@@ -176,7 +176,8 @@ class TestCRUD:
         assert result.partial
         content = await result.response.read()
         assert content == b'sq'
-        assert aiohttpretty.has_call(method='GET', uri=url, headers={'Range': 'bytes=0-1'})
+        headers={'Range': 'bytes=0-1', 'Accept-Encoding': 'identity'}
+        assert aiohttpretty.has_call(method='GET', uri=url, headers=headers)
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
