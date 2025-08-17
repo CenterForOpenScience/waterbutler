@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.abspath(".."))
 master_doc = "index"
 
 project = "WaterButler"
-copyright = "2018, Center For Open Science"
+copyright = "2025, Center For Open Science"
 
 
 version = release = __version__
@@ -66,4 +66,3 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if not on_rtd:
     import sphinx_rtd_theme
     html_theme = 'sphinx_rtd_theme'
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
