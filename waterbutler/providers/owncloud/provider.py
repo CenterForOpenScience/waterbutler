@@ -147,9 +147,11 @@ class OwnCloudProvider(provider.BaseProvider):
             'got_accept_url': accept_url is False,
             'got_range': range is not None,
         })
+        # Accept-Encoding: identity header tells owncloud not to zip certain text formats
         download_resp = await self.make_request(
             'GET',
             self._webdav_url_ + path.full_path,
+            headers={'Accept-Encoding': 'identity'},
             range=range,
             expects=(200, 206,),
             throws=exceptions.DownloadError,
