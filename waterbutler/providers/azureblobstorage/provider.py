@@ -10,30 +10,39 @@ from waterbutler.core import streams
 from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
-from waterbutler.core.streams import StringStream, ByteStream
+from waterbutler.core.streams import StringStream
 
+from waterbutler.providers.azureblobstorage import settings
 from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFileMetadata
 from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFolderMetadata
 from waterbutler.providers.azureblobstorage.metadata import AzureBlobStorageFileMetadataHeaders
 
-MAX_UPLOAD_BLOCK_SIZE = 4 * 1024 * 1024  # 4MB
-MAX_UPLOAD_ONCE_SIZE = 64 * 1024 * 1024  # 64MB
-UPLOAD_PARALLEL_NUM = 2  # must be more than 1
-API_VERSION = '2025-07-05'
 
 logger = logging.getLogger(__name__)
 
 
 class AzureBlobStorageProvider(provider.BaseProvider):
-    """Provider for Azure Blob Storage cloud storage service using OAuth2 authentication."""
+    """Provider for Microsoft Azure Blob Storage cloud storage service.
+
+    API docs: https://docs.microsoft.com/en-us/rest/api/storageservices/blob-service-rest-api
+
+    Quirks:
+
+    * Empty directories are maintained using .osfkeep marker files, as Azure Blob Storage
+      does not natively support empty folders. These marker files are automatically created
+      when folders are created and filtered out during directory listings.
+    """
 
     NAME = 'azureblobstorage'
+    API_VERSION = '2025-07-05'
+    CHUNK_SIZE = settings.CHUNK_SIZE
+    CONTIGUOUS_UPLOAD_SIZE_LIMIT = settings.CONTIGUOUS_UPLOAD_SIZE_LIMIT
 
     def __init__(self, auth, credentials, settings, **kwargs):
         """
         :param dict auth: Not used
         :param dict credentials: Dict containing OAuth2 'token'
-        :param dict settings: Dict containing 'container', 'account_name', and optional 'prefix'
+        :param dict settings: Dict containing 'container', 'account_name', and optional 'base_folder'
         """
         super().__init__(auth, credentials, settings, **kwargs)
 
@@ -59,23 +68,22 @@ class AzureBlobStorageProvider(provider.BaseProvider):
 
     def build_url(self, *segments, **query):
         processed_segments = []
-        
+
         for segment in segments:
-            if isinstance(segment, str) and segment:
-                if '/' in segment and segment != '/':
+            if isinstance(segment, str) and segment and segment != '/':
+                if '/' in segment:
                     components = [comp for comp in segment.split('/') if comp]
                     processed_segments.extend(components)
                 else:
-                    if segment != '/':
-                        processed_segments.append(segment)
-        
+                    processed_segments.append(segment)
+
         return super().build_url(*processed_segments, **query)
 
     @property
     def default_headers(self):
         return {
             'Authorization': f'Bearer {self.auth_token}',
-            'x-ms-version': API_VERSION,
+            'x-ms-version': self.API_VERSION,
             'x-ms-client-request-id': str(uuid.uuid4()),
             'User-Agent': 'WaterButler-AzureBlobStorage/1.0',
             'x-ms-date': datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')
@@ -163,15 +171,15 @@ class AzureBlobStorageProvider(provider.BaseProvider):
             block_id_prefix = str(uuid.uuid4())
 
         # Use simple upload for small files, block upload for large files
-        if stream.size <= MAX_UPLOAD_ONCE_SIZE:
-            await self._upload_at_once(stream, path)
+        if stream.size <= self.CONTIGUOUS_UPLOAD_SIZE_LIMIT:
+            await self._contiguous_upload(stream, path)
         else:
-            await self._upload_blocks(stream, path, block_id_prefix)
+            await self._chunked_upload(stream, path, block_id_prefix)
 
         metadata = await self.metadata(path, **kwargs)
         return metadata, not exists
 
-    async def _upload_at_once(self, stream, path):
+    async def _contiguous_upload(self, stream, path):
         """Upload small file in one request."""
         clean_path = path.path[1:] if path.path.startswith('/') else path.path
         url = self.build_url(self.container, self._get_blob_path(clean_path))
@@ -187,27 +195,19 @@ class AzureBlobStorageProvider(provider.BaseProvider):
             expects=(201,), throws=exceptions.UploadError
         )
 
-    async def _upload_blocks(self, stream, path, block_id_prefix):
+    async def _chunked_upload(self, stream, path, block_id_prefix):
         """Upload large file using block upload."""
         block_id_list = []
-        lock = asyncio.Lock()
+        parts = [self.CHUNK_SIZE for i in range(0, stream.size // self.CHUNK_SIZE)]
+        if stream.size % self.CHUNK_SIZE:
+            parts.append(stream.size - (len(parts) * self.CHUNK_SIZE))
 
-        async def sub_upload():
-            while True:
-                async with lock:
-                    chunk = await stream.read(MAX_UPLOAD_BLOCK_SIZE)
-                    if not chunk:
-                        return
-
-                    sub_stream = ByteStream(chunk)
-                    block_id = self._format_block_id(block_id_prefix, len(block_id_list))
-                    block_id_list.append(block_id)
-
-                await self._put_block(sub_stream, path, block_id)
-
-        # Run parallel uploads
-        tasks = [sub_upload() for _ in range(UPLOAD_PARALLEL_NUM)]
-        await asyncio.gather(*tasks)
+        # Upload each block
+        for chunk_number, chunk_size in enumerate(parts):
+            cutoff_stream = streams.CutoffStream(stream, cutoff=chunk_size)
+            block_id = self._format_block_id(block_id_prefix, chunk_number)
+            block_id_list.append(block_id)
+            await self._put_block(cutoff_stream, path, block_id)
 
         # Commit block list
         await self._put_block_list(path, block_id_list)
