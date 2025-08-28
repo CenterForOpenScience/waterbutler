@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EnumerationResults ServiceEndpoint="https://teststorageaccount.blob.core.windows.net/" ContainerName="test-container">
+    <Prefix>test/</Prefix>
+    <Marker></Marker>
+    <MaxResults>5000</MaxResults>
+    <Delimiter>/</Delimiter>
+    <Blobs>
+        <Blob>
+            <Name>test/root-file.txt</Name>
+            <Properties>
+                <Last-Modified>Mon, 15 Jul 2025 10:00:00 GMT</Last-Modified>
+                <Etag>"0x8D1A2B3C4D5E703"</Etag>
+                <Content-Length>256</Content-Length>
+                <Content-Type>text/plain</Content-Type>
+                <Content-Encoding></Content-Encoding>
+                <Content-Language></Content-Language>
+                <Content-MD5></Content-MD5>
+                <Cache-Control></Cache-Control>
+                <BlobType>BlockBlob</BlobType>
+                <LeaseStatus>unlocked</LeaseStatus>
+                <LeaseState>available</LeaseState>
+            </Properties>
+        </Blob>
+        <BlobPrefix>
+            <Name>test/documents/</Name>
+        </BlobPrefix>
+        <BlobPrefix>
+            <Name>test/images/</Name>
+        </BlobPrefix>
+    </Blobs>
+    <NextMarker></NextMarker>
+</EnumerationResults>

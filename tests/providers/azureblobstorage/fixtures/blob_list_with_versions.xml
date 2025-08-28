@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EnumerationResults ServiceEndpoint="https://teststorageaccount.blob.core.windows.net/" ContainerName="test-container">
+    <Blobs>
+        <Blob>
+            <Name>test/report.pdf</Name>
+            <VersionId>2025-07-15T09:45:00.5555555Z</VersionId>
+            <IsCurrentVersion>true</IsCurrentVersion>
+            <Properties>
+                <Last-Modified>Mon, 15 Jul 2025 09:45:00 GMT</Last-Modified>
+                <Etag>"0x8D1A2B3C4D5E702"</Etag>
+                <Content-Length>524288</Content-Length>
+                <Content-Type>application/pdf</Content-Type>
+                <BlobType>BlockBlob</BlobType>
+                <AccessTier>Hot</AccessTier>
+            </Properties>
+        </Blob>
+        <Blob>
+            <Name>test/report.pdf</Name>
+            <VersionId>2025-07-15T08:30:00.4444444Z</VersionId>
+            <IsCurrentVersion>false</IsCurrentVersion>
+            <Properties>
+                <Last-Modified>Mon, 15 Jul 2025 08:30:00 GMT</Last-Modified>
+                <Etag>"0x8D1A2B3C4D5E701"</Etag>
+                <Content-Length>520192</Content-Length>
+                <Content-Type>application/pdf</Content-Type>
+                <BlobType>BlockBlob</BlobType>
+                <AccessTier>Hot</AccessTier>
+            </Properties>
+        </Blob>
+    </Blobs>
+</EnumerationResults>
