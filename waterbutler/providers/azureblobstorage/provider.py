@@ -64,7 +64,7 @@ class AzureBlobStorageProvider(provider.BaseProvider):
     def _get_blob_path(self, blob_name=None):
         if blob_name:
             return f"{self.base_folder}{blob_name}" if self.base_folder else blob_name
-        return self.base_folder or '/'
+        return self.base_folder
 
     def build_url(self, *segments, **query):
         processed_segments = []
