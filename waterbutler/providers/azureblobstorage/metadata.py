@@ -2,9 +2,6 @@ import os
 
 from waterbutler.core import utils
 from waterbutler.core import metadata
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 def strip_char(str, chars):
@@ -30,9 +27,20 @@ class AzureBlobStorageMetadata(metadata.BaseMetadata):
 
 class AzureBlobStorageFileMetadataHeaders(AzureBlobStorageMetadata, metadata.BaseFileMetadata):
 
-    def __init__(self, path, headers):
+    def __init__(self, headers, path):
         self._path = path
         super().__init__(dict(headers))
+
+    def _dehydrate(self):
+        payload = super()._dehydrate()
+        payload['_path'] = self._path
+        return payload
+
+    @classmethod
+    def _rehydrate(cls, payload):
+        args = super()._rehydrate(payload)
+        args.append(payload['_path'])
+        return args
 
     @property
     def path(self):

@@ -19,7 +19,7 @@ class TestAzureBlobFileMetadata:
         """Test creating file metadata from HTTP headers"""
         path = WaterButlerPath('/test-file.xlsx')
         
-        metadata = AzureBlobStorageFileMetadataHeaders(path.path, blob_properties_headers)
+        metadata = AzureBlobStorageFileMetadataHeaders(blob_properties_headers, path.path)
 
         assert metadata.name == 'test-file.xlsx'
         assert metadata.path == '/test-file.xlsx'
@@ -74,7 +74,7 @@ class TestAzureBlobFileMetadata:
         }
 
         path = WaterButlerPath('/minimal.txt')
-        metadata = AzureBlobStorageFileMetadataHeaders(path.path, headers)
+        metadata = AzureBlobStorageFileMetadataHeaders(headers, path.path)
 
         assert metadata.name == 'minimal.txt'
         assert metadata.size == 100
@@ -108,7 +108,7 @@ class TestAzureBlobFileMetadata:
         }
 
         path = WaterButlerPath('/report.pdf')
-        metadata = AzureBlobStorageFileMetadataHeaders(path.path, headers)
+        metadata = AzureBlobStorageFileMetadataHeaders(headers, path.path)
         
         assert metadata.name == 'report.pdf'
         assert metadata.size == 2048000
