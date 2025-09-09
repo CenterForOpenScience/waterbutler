@@ -327,7 +327,7 @@ class AzureBlobStorageProvider(provider.BaseProvider):
             expects=(200,), throws=exceptions.MetadataError
         )
 
-        return AzureBlobStorageFileMetadataHeaders(path.path, resp.headers)
+        return AzureBlobStorageFileMetadataHeaders(resp.headers, path.path)
 
     async def _metadata_folder(self, path):
         """Get metadata for a folder (list contents)."""
@@ -462,7 +462,6 @@ class AzureBlobStorageProvider(provider.BaseProvider):
                 name_elem = prefix.find('Name')
                 if name_elem is not None:
                     result['BlobPrefix'].append({'Name': name_elem.text})
-            logger.info(f'Parsed XML to blob list: {result}')
             return result
 
         except ET.ParseError as e:
