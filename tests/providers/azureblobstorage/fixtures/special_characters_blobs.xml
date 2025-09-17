@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EnumerationResults ServiceEndpoint="https://teststorageaccount.blob.core.windows.net/" ContainerName="test-container">
+    <Blobs>
+        <Blob>
+            <Name>test/file with spaces.txt</Name>
+            <Properties>
+                <Last-Modified>Mon, 15 Jul 2025 11:00:00 GMT</Last-Modified>
+                <Etag>"0x8D1A2B3C4D5E704"</Etag>
+                <Content-Length>512</Content-Length>
+                <Content-Type>text/plain</Content-Type>
+                <BlobType>BlockBlob</BlobType>
+            </Properties>
+        </Blob>
+        <Blob>
+            <Name>test/special@#$%file.txt</Name>
+            <Properties>
+                <Last-Modified>Mon, 15 Jul 2025 11:15:00 GMT</Last-Modified>
+                <Etag>"0x8D1A2B3C4D5E705"</Etag>
+                <Content-Length>128</Content-Length>
+                <Content-Type>text/plain</Content-Type>
+                <BlobType>BlockBlob</BlobType>
+            </Properties>
+        </Blob>
+        <Blob>
+            <Name>test/中文文件名.txt</Name>
+            <Properties>
+                <Last-Modified>Mon, 15 Jul 2025 11:30:00 GMT</Last-Modified>
+                <Etag>"0x8D1A2B3C4D5E706"</Etag>
+                <Content-Length>64</Content-Length>
+                <Content-Type>text/plain</Content-Type>
+                <BlobType>BlockBlob</BlobType>
+            </Properties>
+        </Blob>
+    </Blobs>
+</EnumerationResults>

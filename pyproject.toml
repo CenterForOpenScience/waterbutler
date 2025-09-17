@@ -90,6 +90,7 @@ box = "waterbutler.providers.box:BoxProvider"
 googledrive = "waterbutler.providers.googledrive:GoogleDriveProvider"
 onedrive = "waterbutler.providers.onedrive:OneDriveProvider"
 googlecloud = "waterbutler.providers.googlecloud:GoogleCloudProvider"
+azureblobstorage = "waterbutler.providers.azureblobstorage:AzureBlobStorageProvider"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"

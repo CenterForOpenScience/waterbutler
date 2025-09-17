@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Error>
+    <Code>InternalError</Code>
+    <Message>The server encountered an internal error. Please retry the request.</Message>
+</Error>

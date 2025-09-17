@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EnumerationResults ServiceEndpoint="https://teststorageaccount.blob.core.windows.net/" ContainerName="test-container">
+    <Prefix>test/nonexistent-folder/</Prefix>
+    <Marker></Marker>
+    <MaxResults>1</MaxResults>
+    <Delimiter>/</Delimiter>
+    <Blobs>
+    </Blobs>
+    <NextMarker></NextMarker>
+</EnumerationResults>
