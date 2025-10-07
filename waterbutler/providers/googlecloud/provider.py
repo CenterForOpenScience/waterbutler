@@ -10,7 +10,7 @@ from google.oauth2 import service_account
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
 from waterbutler.core.utils import make_disposition
-from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStreamReader
+from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStreamReader, StringStream
 from waterbutler.core.exceptions import (WaterButlerError, MetadataError, NotFoundError,
                                          CopyError, UploadError, DownloadError, DeleteError,
                                          UploadChecksumMismatchError, InvalidProviderConfigError, )
@@ -240,6 +240,13 @@ class GoogleCloudProvider(BaseProvider):
             expects=(HTTPStatus.OK, HTTPStatus.PARTIAL_CONTENT),
             throws=DownloadError
         )
+
+        resp_size = resp.headers.get('Content-Length', None)
+        if resp_size is not None and int(resp_size) < pd_settings.MAX_SLURP_SIZE:
+            stream = StringStream(await resp.read())
+            await resp.release()
+            return stream
+
         return ResponseStreamReader(resp)
 
     async def delete(self, path: WaterButlerPath, *args, **kwargs) -> None:  # type: ignore
