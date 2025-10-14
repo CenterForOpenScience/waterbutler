@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+25.2.0 (2025-10-14)
+===================
+
+- Add new provider to support connecting to Microsoft's Azure blob storage. (thanks, @anqiuy!)
+
 25.1.0 (2025-08-08)
 ===================
 

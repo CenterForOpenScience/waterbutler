@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EnumerationResults ServiceEndpoint="https://teststorageaccount.blob.core.windows.net/" ContainerName="test-container">
+    <Prefix>test/existingfolder/</Prefix>
+    <Delimiter>/</Delimiter>
+    <Blobs>
+        <Blob>
+            <Name>test/existingfolder/.osfkeep</Name>
+            <Properties>
+                <Content-Length>100</Content-Length>
+                <Content-Type>text/plain</Content-Type>
+                <Last-Modified>Mon, 15 Jul 2025 08:00:00 GMT</Last-Modified>
+                <Etag>"0x8D1A2B3C4D5E6F8"</Etag>
+                <BlobType>BlockBlob</BlobType>
+            </Properties>
+        </Blob>
+    </Blobs>
+    <NextMarker></NextMarker>
+</EnumerationResults>
