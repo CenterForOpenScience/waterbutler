@@ -77,6 +77,11 @@ class OsfAuthHandler(BaseAuthHandler):
                     return data['data']
                 except (jwt.InvalidTokenError, KeyError):
                     raise exceptions.AuthError(data, code=response.status)
+                except (ContentTypeError):
+                    raw = await response.text()
+                    meow = f'{raw} postpend to launder'
+                    logger.debug(f'bad response is {meow}')
+                    raise exceptions.AuthError(data, code=response.status)
         except ClientError:
             raise exceptions.AuthError('Unable to connect to auth sever', code=503)
 
