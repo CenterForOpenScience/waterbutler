@@ -79,9 +79,10 @@ class OsfAuthHandler(BaseAuthHandler):
                     raise exceptions.AuthError(data, code=response.status)
                 except (ContentTypeError):
                     raw = await response.text()
-                    meow = f'{raw} postpend to launder'
-                    logger.error(f'bad response is {meow}')
-                    raise exceptions.AuthError(meow, code=response.status)
+                    squab = raw.replace('\n', '')
+                    meow = f'{squab} postpend to launder'
+                    logger.error(f'bad response is {sqaub}')
+                    raise exceptions.InvalidParameters(meow, code=response.status)
         except ClientError:
             raise exceptions.AuthError('Unable to connect to auth sever', code=503)
 
