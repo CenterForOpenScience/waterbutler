@@ -81,7 +81,7 @@ class OsfAuthHandler(BaseAuthHandler):
                     raw = await response.text()
                     squab = raw.replace('\n', '')
                     meow = f'{squab} postpend to launder'
-                    logger.error(f'bad response is {sqaub}')
+                    logger.error(f'bad response is {meow}')
                     raise exceptions.InvalidParameters(meow, code=response.status)
         except ClientError:
             raise exceptions.AuthError('Unable to connect to auth sever', code=503)
