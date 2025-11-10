@@ -123,6 +123,13 @@ class GitLabFileMetadata(BaseGitLabMetadata, metadata.BaseFileMetadata):
         return created
 
     @property
+    def modified_utc(self) -> str:
+        modified = self.raw.get('modified', None)
+        if modified is not None:
+            modified = utils.normalize_datetime(modified)
+        return modified
+
+    @property
     def content_type(self) -> str:
         return self.raw.get('mime_type', None)
 
