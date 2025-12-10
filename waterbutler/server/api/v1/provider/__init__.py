@@ -15,6 +15,7 @@ from waterbutler.server.api.v1 import core
 from waterbutler.core import remote_logging
 from waterbutler.server.auth import AuthHandler
 from waterbutler.core.log_payload import LogPayload
+from waterbutler.core import exceptions
 from waterbutler.core.exceptions import TooManyRequests
 from waterbutler.core.streams import RequestStreamReader
 from waterbutler.server.settings import ENABLE_RATE_LIMITING
@@ -96,6 +97,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             self.path = await self.provider.validate_v1_path(self.path, **self.arguments)
 
         self.target_path = None
+        self._discard_body = False  # Flag to discard body data when handling errors
 
         # post-validator methods perform validations that expect that the path given in the url has
         # been verified for existence and type.
@@ -141,8 +143,38 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         await self.provider.delete(self.path, confirm_delete=self.confirm_delete)
         self.set_status(int(HTTPStatus.NO_CONTENT))
 
+    def write_error(self, status_code, exc_info):
+        """Override to handle 409 errors during streaming uploads.
+        Chrome waits for the entire request body to be sent before processing
+        error responses. When a 409 conflict occurs during a streaming PUT request,
+        we need to signal that we're done receiving so Chrome can process the response.
+        """
+        etype, *_ = exc_info
+
+        is_conflict = (
+            issubclass(etype, exceptions.NamingConflict) or
+            status_code == HTTPStatus.CONFLICT
+        )
+        if is_conflict and self.request.method.upper() == 'PUT':
+            self._discard_body = True
+
+            if hasattr(self, 'uploader') and self.uploader and not self.uploader.done():
+                self.uploader.cancel()
+
+            if hasattr(self, 'writer') and self.writer:
+                try:
+                    if not self.writer.is_closing():
+                        self.writer.write_eof()
+                        self.writer.close()
+                except Exception as e:
+                    logger.debug(f"Error closing writer in write_error: {e}")
+
+        super().write_error(status_code, exc_info)
+
     async def data_received(self, chunk):
         """Note: Only called during uploads."""
+        if getattr(self, '_discard_body', False):
+            return
         self.bytes_uploaded += len(chunk)
         if self.stream:
             try:
