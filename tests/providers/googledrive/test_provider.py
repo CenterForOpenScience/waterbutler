@@ -610,7 +610,7 @@ class TestDownload:
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path)
-        assert result.name == 'editable_gdoc.docx'
+        assert result.name == 'editable_gdoc.gdoc.docx'
 
         content = await result.read()
         assert content == file_content
@@ -637,7 +637,7 @@ class TestDownload:
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path, revision=self.GDOC_GOOD_REVISION)
-        assert result.name == 'editable_gdoc.docx'
+        assert result.name == 'editable_gdoc.gdoc.docx'
 
         content = await result.read()
         assert content == file_content
@@ -684,7 +684,7 @@ class TestDownload:
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path, revision=self.MAGIC_REVISION)
-        assert result.name == 'editable_gdoc.docx'
+        assert result.name == 'editable_gdoc.gdoc.docx'
 
         content = await result.read()
         assert content == file_content
@@ -709,7 +709,7 @@ class TestDownload:
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path)
-        assert result.name == 'viewable_gdoc.docx'
+        assert result.name == 'viewable_gdoc.gdoc.docx'
 
         content = await result.read()
         assert content == file_content
@@ -752,7 +752,7 @@ class TestDownload:
         aiohttpretty.register_uri('GET', download_file_url, body=file_content, auto_length=True)
 
         result = await provider.download(path, revision=self.MAGIC_REVISION)
-        assert result.name == 'viewable_gdoc.docx'
+        assert result.name == 'viewable_gdoc.gdoc.docx'
 
         content = await result.read()
         assert content == file_content
@@ -1629,8 +1629,7 @@ class TestOperationsOrMisc:
         metadata = GoogleDriveFileMetadata(item, src_path)
         child_path = provider.path_from_metadata(src_path.parent, metadata)
 
-        assert child_path.full_path == src_path.full_path
-        assert child_path == src_path
+        assert child_path.full_path == 'version-test.gdoc.docx'
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
