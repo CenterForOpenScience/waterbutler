@@ -534,6 +534,13 @@ class OneDriveProvider(provider.BaseProvider):
             ret = []
             if 'children' in data.keys():
                 for item in data['children']:
+                    if (
+                        item.get("createdBy", {}).get("user", {}).get("displayName") == "System Account" and
+                        "remoteItem" in item
+                    ):
+                        # Skip remote items created by System (e.g. Personal Vault)
+                        logger.info(f'Skipping OneDrive {item['name']} during metadata traversal')
+                        continue
                     is_folder = 'folder' in item.keys()
                     child_path = path.child(item['name'], _id=item['id'], folder=is_folder)
                     if is_folder:
