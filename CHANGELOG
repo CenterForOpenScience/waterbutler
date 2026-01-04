@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+26.0.0 (2026-01-04)
+===================
+
+- Don't try to download Personal Vault objects from OneDrive, they are a link to remote item.
+(thanks, @antkryt!)
+
 25.2.0 (2025-10-14)
 ===================
 
