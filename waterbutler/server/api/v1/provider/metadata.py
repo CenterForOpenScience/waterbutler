@@ -81,7 +81,7 @@ class MetadataMixin:
             self.set_status(206)
             self.set_header('Content-Range', stream.content_range)
 
-        if stream.content_type is not None:
+        if getattr(stream, 'content_type', None) is not None:
             self.set_header('Content-Type', stream.content_type)
 
         logger.debug(f'stream size is: {stream.size}')
