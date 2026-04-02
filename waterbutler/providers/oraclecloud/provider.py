@@ -18,7 +18,7 @@ from waterbutler.core.exceptions import (
 )
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
-from waterbutler.core.streams import BaseStream, HashStreamWriter, StringStream
+from waterbutler.core.streams import BaseStream, StringStream
 from waterbutler.providers.oraclecloud.metadata import (
     BaseOracleCloudMetadata,
     OracleCloudFileMetadata,
@@ -181,8 +181,6 @@ class OracleCloudProvider(BaseProvider):
         created = not await self.exists(path)
         obj_name = self._get_obj_name(path)
 
-        stream.add_writer("md5", HashStreamWriter(hashlib.md5))
-
         data = await stream.read()
         loop = asyncio.get_running_loop()
 
@@ -204,9 +202,7 @@ class OracleCloudProvider(BaseProvider):
         resp_md5 = resp.headers.get("opc-content-md5", None)
 
         if resp_md5:
-            expected_md5 = base64.b64encode(
-                bytes.fromhex(stream.writers["md5"].hexdigest)
-            ).decode()
+            expected_md5 = base64.b64encode(hashlib.md5(data).digest()).decode()
             if resp_md5 != expected_md5:
                 raise UploadChecksumMismatchError()
 
