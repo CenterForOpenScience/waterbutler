@@ -1,5 +1,3 @@
-from unittest import mock
-
 import pytest
 
 from waterbutler.providers.oraclecloud.metadata import (
@@ -12,7 +10,6 @@ from waterbutler.providers.oraclecloud.metadata import (
 class TestOracleCloudFileMetadata:
 
     def test_file_metadata_from_dict(self):
-
         raw = {
             "object_name": "path/to/file.txt",
             "content_type": "text/plain",
@@ -43,7 +40,6 @@ class TestOracleCloudFileMetadata:
         assert metadata.created_utc == "2025-03-01T19:00:00+00:00"
 
     def test_file_metadata_missing_optional_fields(self):
-
         raw = {
             "object_name": "simple.txt",
             "content_type": None,
@@ -63,9 +59,7 @@ class TestOracleCloudFileMetadata:
         assert metadata.created_utc is None
 
     def test_file_metadata_from_head_response(self):
-
-        head_resp = mock.Mock()
-        head_resp.headers = {
+        headers = {
             "content-type": "application/pdf",
             "content-length": "2048",
             "last-modified": "Fri, 14 Mar 2025 12:00:00 GMT",
@@ -75,7 +69,7 @@ class TestOracleCloudFileMetadata:
         }
 
         metadata = OracleCloudFileMetadata.new_from_head_response(
-            "folder/report.pdf", head_resp
+            "folder/report.pdf", headers
         )
 
         assert metadata.provider == "oraclecloud"
@@ -86,20 +80,19 @@ class TestOracleCloudFileMetadata:
         assert metadata.etag == "deadbeef"
         assert metadata.extra["md5"] == "rL0Y20zC+Fzt72VPzMSk2A=="
 
-    def test_file_metadata_from_object_summary(self):
+    def test_file_metadata_from_list_entry(self):
+        entry = {
+            "name": "data/results.csv",
+            "size": 4096,
+            "etag": "etag123",
+            "md5": "abc123",
+            "storageTier": "InfrequentAccess",
+            "archivalState": None,
+            "timeModified": "2025-03-10T08:00:00+00:00",
+            "timeCreated": None,
+        }
 
-        obj_summary = mock.Mock()
-        obj_summary.name = "data/results.csv"
-        obj_summary.size = 4096
-        obj_summary.etag = "etag123"
-        obj_summary.md5 = "abc123"
-        obj_summary.storage_tier = "InfrequentAccess"
-        obj_summary.archival_state = None
-        obj_summary.time_modified = mock.Mock()
-        obj_summary.time_modified.isoformat.return_value = "2025-03-10T08:00:00+00:00"
-        obj_summary.time_created = None
-
-        metadata = OracleCloudFileMetadata.new_from_oci_object_summary(obj_summary)
+        metadata = OracleCloudFileMetadata.new_from_list_entry(entry)
 
         assert metadata.name == "results.csv"
         assert metadata.path == "/data/results.csv"
@@ -113,7 +106,6 @@ class TestOracleCloudFileMetadata:
 class TestOracleCloudFolderMetadata:
 
     def test_folder_metadata(self):
-
         raw = {"object_name": "path/to/folder/"}
         metadata = OracleCloudFolderMetadata(raw)
 
@@ -124,7 +116,6 @@ class TestOracleCloudFolderMetadata:
         assert metadata.path == "/path/to/folder/"
 
     def test_folder_metadata_nested(self):
-
         raw = {"object_name": "a/b/c/"}
         metadata = OracleCloudFolderMetadata(raw)
 

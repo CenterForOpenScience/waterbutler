@@ -1,11 +1,8 @@
-import asyncio
 import base64
 import hashlib
 import logging
-from functools import partial
 from http import HTTPStatus
-
-import oci
+from urllib.parse import quote, urlencode
 
 from waterbutler.core.exceptions import (
     DeleteError,
@@ -18,26 +15,29 @@ from waterbutler.core.exceptions import (
 )
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
-from waterbutler.core.streams import BaseStream, StringStream
+from waterbutler.core.streams import BaseStream, ResponseStreamReader
 from waterbutler.providers.oraclecloud.metadata import (
     BaseOracleCloudMetadata,
     OracleCloudFileMetadata,
     OracleCloudFolderMetadata,
 )
+from waterbutler.providers.oraclecloud.signing import OCISigner
 
 logger = logging.getLogger(__name__)
+
+BASE_OBJ_STORAGE_URL = "https://objectstorage.{region}.oraclecloud.com"
+
+# Request all available metadata fields from ListObjects.
+LIST_FIELDS = "name,size,etag,md5,timeCreated,timeModified,storageTier,archivalState"
 
 
 class OracleCloudProvider(BaseProvider):
     """Provider for Oracle Cloud Infrastructure Object Storage.
 
-    ``OracleCloudProvider`` uses the OCI Python SDK (``ObjectStorageClient``) to interact with
-    OCI Object Storage.  The synchronous SDK calls are wrapped with ``run_in_executor`` for
-    async compatibility.
+    ``OracleCloudProvider`` uses the OCI native REST API with HTTP Signature authentication
+    (RFC draft-cavage-http-signatures, RSA-SHA256).
 
-    General API docs: https://docs.oracle.com/en-us/iaas/Content/Object/Concepts/objectstorageoverview.htm
-
-    SDK docs: https://docs.oracle.com/en-us/iaas/tools/python/latest/api/object_storage.html
+    API docs: https://docs.oracle.com/en-us/iaas/api/#/en/objectstorage/latest/
 
     Quirks:
 
@@ -49,12 +49,6 @@ class OracleCloudProvider(BaseProvider):
     NAME = "oraclecloud"
 
     def __init__(self, auth: dict, credentials: dict, settings: dict, **kwargs) -> None:
-        """Initialize a provider instance with the given parameters.
-
-        :param dict auth: the auth dictionary
-        :param dict credentials: the credentials dictionary
-        :param dict settings: the settings dictionary
-        """
 
         # Here is an example of the settings for the ``OSFStorageProvider`` in OSF.
         #
@@ -94,25 +88,20 @@ class OracleCloudProvider(BaseProvider):
                 message="Missing Object Storage namespace from OSF",
             )
 
-        oci_config = self._build_oci_config(credentials)
-        try:
-            oci.config.validate_config(oci_config)
-        except (oci.exceptions.InvalidConfig, ValueError) as exc:
-            raise InvalidProviderConfigError(
-                self.NAME,
-                message=f"Invalid OCI configuration: {exc}",
-            )
+        oci_creds = self._extract_oci_credentials(credentials)
+        self.region = oci_creds["region"]
+        self._base_url = BASE_OBJ_STORAGE_URL.format(region=self.region)
 
-        self._oci_config = oci_config
-        self._client = oci.object_storage.ObjectStorageClient(oci_config)
+        self._signer = OCISigner(
+            tenancy=oci_creds["tenancy"],
+            user=oci_creds["user"],
+            fingerprint=oci_creds["fingerprint"],
+            private_key_content=oci_creds["key_content"],
+        )
 
     @staticmethod
-    def _build_oci_config(credentials: dict) -> dict:
-        """Build an OCI SDK config dict from WaterButler credentials.
-
-        :param dict credentials: the credentials dict from OSF
-        :rtype: dict
-        """
+    def _extract_oci_credentials(credentials: dict) -> dict:
+        """Build a normalized OCI config dict from WaterButler credentials."""
         required_keys = {
             "oci_user": "user",
             "oci_fingerprint": "fingerprint",
@@ -120,7 +109,7 @@ class OracleCloudProvider(BaseProvider):
             "oci_region": "region",
             "oci_key_content": "key_content",
         }
-        oci_config = {}
+        oci_creds = {}
         for wb_key, oci_key in required_keys.items():
             value = credentials.get(wb_key)
             if not value:
@@ -128,9 +117,33 @@ class OracleCloudProvider(BaseProvider):
                     "oraclecloud",
                     message=f"Missing required OCI credential: {wb_key}",
                 )
-            oci_config[oci_key] = value
+            oci_creds[oci_key] = value
+        return oci_creds
 
-        return oci_config
+    def _build_object_url(self, obj_name: str) -> str:
+        """``/n/{namespace}/b/{bucket}/o/{objectName}``"""
+        return (
+            f"{self._base_url}/n/{quote(self.namespace, safe='')}"
+            f"/b/{quote(self.bucket, safe='')}"
+            f"/o/{quote(obj_name, safe='/')}"
+        )
+
+    def _build_list_url(self, prefix: str = "", delimiter: str = "/") -> str:
+        """``/n/{namespace}/b/{bucket}/o?prefix=...&delimiter=...&fields=...``"""
+        base = (
+            f"{self._base_url}/n/{quote(self.namespace, safe='')}"
+            f"/b/{quote(self.bucket, safe='')}/o"
+        )
+        params: dict[str, str] = {"fields": LIST_FIELDS}
+        if prefix:
+            params["prefix"] = prefix
+        if delimiter:
+            params["delimiter"] = delimiter
+        return f"{base}?{urlencode(params)}"
+
+    def _sign_headers(self, method, url, body=None, extra_headers=None):
+        headers = dict(extra_headers) if extra_headers else {}
+        return self._signer.sign_request(method, url, headers, body=body)
 
     async def validate_v1_path(self, path: str, **kwargs) -> WaterButlerPath:
         return await self.validate_path(path)
@@ -141,15 +154,6 @@ class OracleCloudProvider(BaseProvider):
     async def metadata(
         self, path: WaterButlerPath, **kwargs  # type: ignore
     ) -> OracleCloudFileMetadata | list[BaseOracleCloudMetadata]:
-        """Get the metadata about the object with the given WaterButlerPath.
-
-        :param path: the WaterButlerPath to the file or folder
-        :type path: :class:`.WaterButlerPath`
-        :param dict kwargs: additional kwargs are ignored
-        :rtype: :class:`.OracleCloudFileMetadata` (for file)
-        :rtype: List<:class:`.BaseOracleCloudMetadata`> (for folder)
-        """
-
         if path.is_folder:
             return await self._metadata_folder(path)
         return await self._metadata_file(path)
@@ -157,50 +161,34 @@ class OracleCloudProvider(BaseProvider):
     async def upload(
         self, stream: BaseStream, path: WaterButlerPath, *args, **kwargs
     ) -> tuple[OracleCloudFileMetadata, bool]:
-        """Upload a file stream to the given WaterButlerPath.
+        """Upload a file stream to OCI Object Storage via PutObject.
 
-        API docs:
+        API docs: https://docs.oracle.com/en-us/iaas/api/#/en/objectstorage/latest/Object/PutObject
 
-            PutObject: https://docs.oracle.com/en-us/iaas/api/#/en/objectstorage/latest/Object/PutObject
-
-        The OCI SDK ``put_object`` handles the upload.  After a successful upload, WB verifies
-        the MD5 checksum against the ``opc-content-md5`` header returned by OCI.  WB must make
-        an extra metadata request after a successful upload since ``put_object`` returns headers
-        only.
-
-        :param stream: the stream to post
-        :type stream: :class:`.streams.BaseStream`
-        :param path: the WaterButlerPath of the file to upload
-        :type path: :class:`.WaterButlerPath`
-        :param list args: additional args are ignored
-        :param dict kwargs: additional kwargs are ignored
-        :rtype: :class:`.OracleCloudFileMetadata`
-        :rtype: bool
+        The body must be signed (``x-content-sha256``), so the stream is read into memory before
+        the request.  After a successful upload, WB verifies the MD5 checksum returned in the
+        ``opc-content-md5`` header.  An extra HEAD is required to retrieve full metadata since
+        PutObject only returns headers.
         """
 
         created = not await self.exists(path)
         obj_name = self._get_obj_name(path)
+        url = self._build_object_url(obj_name)
 
         data = await stream.read()
-        loop = asyncio.get_running_loop()
+        headers = self._sign_headers("PUT", url, body=data)
 
-        try:
-            resp = await loop.run_in_executor(
-                None,
-                partial(
-                    self._client.put_object,
-                    self.namespace,
-                    self.bucket,
-                    obj_name,
-                    data,
-                    content_length=stream.size,
-                ),
-            )
-        except oci.exceptions.ServiceError as exc:
-            raise UploadError(str(exc))
+        resp = await self.make_request(
+            "PUT",
+            url,
+            data=data,
+            headers=headers,
+            expects=(HTTPStatus.OK,),
+            throws=UploadError,
+        )
+        await resp.release()
 
         resp_md5 = resp.headers.get("opc-content-md5", None)
-
         if resp_md5:
             expected_md5 = base64.b64encode(hashlib.md5(data).digest()).decode()
             if resp_md5 != expected_md5:
@@ -215,103 +203,56 @@ class OracleCloudProvider(BaseProvider):
         accept_url=False,
         range=None,  # type: ignore
         **kwargs,
-    ) -> StringStream:
-        """Download the object with the given path.
+    ) -> ResponseStreamReader:
+        """Download an object via GetObject, returning a streaming reader.
 
-        API docs:
+        API docs: https://docs.oracle.com/en-us/iaas/api/#/en/objectstorage/latest/Object/GetObject
 
-            GetObject: https://docs.oracle.com/en-us/iaas/api/#/en/objectstorage/latest/Object/GetObject
-
-        .. note::
-
-            ``accept_url`` is not supported in this version.  OCI pre-authenticated requests
-            (PARs) require a server-side API call, unlike GCS signed URLs which are generated
-            locally.  For now all downloads go through WB.
-
-        :param path: the WaterButlerPath for the object to download
-        :type path: :class:`.WaterButlerPath`
-        :param bool accept_url: ignored (not supported)
-        :param tuple range: the Range HTTP request header
-        :param dict kwargs: ``display_name`` is ignored in this version
-        :rtype: :class:`.streams.StringStream`
+        ``accept_url`` is not supported yet.  OCI pre-authenticated requests (PARs) require a
+        server-side API call, unlike GCS signed URLs.
         """
 
         if path.is_folder:
             raise DownloadError("Cannot download folders", code=HTTPStatus.BAD_REQUEST)
 
         obj_name = self._get_obj_name(path)
-        loop = asyncio.get_running_loop()
+        url = self._build_object_url(obj_name)
+        headers = self._sign_headers("GET", url)
 
-        kwargs_oci = {}
-        if range is not None:
-            start, end = range
-            range_header = f"bytes={start}-"
-            if end is not None:
-                range_header = f"bytes={start}-{end}"
-            kwargs_oci["range"] = range_header
+        resp = await self.make_request(
+            "GET",
+            url,
+            headers=headers,
+            range=range,
+            expects=(HTTPStatus.OK, HTTPStatus.PARTIAL_CONTENT),
+            throws=DownloadError,
+        )
 
-        try:
-            resp = await loop.run_in_executor(
-                None,
-                partial(
-                    self._client.get_object,
-                    self.namespace,
-                    self.bucket,
-                    obj_name,
-                    **kwargs_oci,
-                ),
-            )
-        except oci.exceptions.ServiceError as exc:
-            if exc.status == HTTPStatus.NOT_FOUND:
-                raise DownloadError(
-                    f"Object not found: {path}", code=HTTPStatus.NOT_FOUND
-                )
-            raise DownloadError(str(exc))
-
-        # The synchronous OCI SDK reads the full response body into memory.
-        return StringStream(resp.data.content)
+        return ResponseStreamReader(resp)
 
     async def delete(self, path: WaterButlerPath, *args, **kwargs) -> None:  # type: ignore
-        r"""Deletes the file object with the specified WaterButler path.
+        r"""Delete a file object via DeleteObject.
 
-        API docs:
+        API docs: https://docs.oracle.com/en-us/iaas/api/#/en/objectstorage/latest/Object/DeleteObject
 
-            DeleteObject: https://docs.oracle.com/en-us/iaas/api/#/en/objectstorage/latest/Object/DeleteObject
-
-        .. note::
-
-            This limited version only supports deletion for file objects.  The main reason is
-            that ``OSFStorageProvider`` does not need it.
-
-            *TODO [Phase 2]: If needed, iterate through all children and delete each of them.*
-
-        :param path: the WaterButlerPath of the object to delete
-        :type path: :class:`.WaterButlerPath`
-        :param list args: additional args are ignored
-        :param dict kwargs: additional kwargs are ignored
-        :rtype: None
+        Only supports file deletion.  ``OSFStorageProvider`` doesn't need folder delete.
         """
 
         if path.is_folder:
             raise DeleteError("This limited provider does not support folder deletion.")
 
         obj_name = self._get_obj_name(path)
-        loop = asyncio.get_running_loop()
+        url = self._build_object_url(obj_name)
+        headers = self._sign_headers("DELETE", url)
 
-        try:
-            await loop.run_in_executor(
-                None,
-                partial(
-                    self._client.delete_object,
-                    self.namespace,
-                    self.bucket,
-                    obj_name,
-                ),
-            )
-        except oci.exceptions.ServiceError as exc:
-            if exc.status == HTTPStatus.NOT_FOUND:
-                raise NotFoundError(str(path))
-            raise DeleteError(str(exc))
+        resp = await self.make_request(
+            "DELETE",
+            url,
+            headers=headers,
+            expects=(HTTPStatus.OK, HTTPStatus.NO_CONTENT),
+            throws=DeleteError,
+        )
+        await resp.release()
 
     def can_intra_copy(self, other: BaseProvider, path: WaterButlerPath = None) -> bool:
         return False
@@ -323,88 +264,56 @@ class OracleCloudProvider(BaseProvider):
         return True
 
     async def _metadata_file(self, path: WaterButlerPath) -> OracleCloudFileMetadata:
-        """Get the metadata about the file object with the given WaterButlerPath.  Uses
-        ``head_object`` to avoid egress charges.
-
-        :param path: the WaterButlerPath of the object
-        :type path: :class:`.WaterButlerPath`
-        :rtype: :class:`.OracleCloudFileMetadata`
-        """
+        """HeadObject to get file metadata without egress charges."""
 
         obj_name = self._get_obj_name(path)
-        loop = asyncio.get_running_loop()
+        url = self._build_object_url(obj_name)
+        headers = self._sign_headers("HEAD", url)
 
-        try:
-            resp = await loop.run_in_executor(
-                None,
-                partial(
-                    self._client.head_object,
-                    self.namespace,
-                    self.bucket,
-                    obj_name,
-                ),
-            )
-        except oci.exceptions.ServiceError as exc:
-            if exc.status == HTTPStatus.NOT_FOUND:
-                raise NotFoundError(str(path))
-            raise MetadataError(str(exc))
+        resp = await self.make_request(
+            "HEAD",
+            url,
+            headers=headers,
+            expects=(HTTPStatus.OK,),
+            throws=MetadataError,
+        )
 
-        return OracleCloudFileMetadata.new_from_head_response(obj_name, resp)
+        return OracleCloudFileMetadata.new_from_head_response(obj_name, resp.headers)
 
     async def _metadata_folder(
         self, path: WaterButlerPath
     ) -> list[BaseOracleCloudMetadata]:
-        """List the contents of the folder with the given WaterButlerPath using common-prefix
-        listing (``list_objects`` with ``delimiter='/'``).
-
-        :param path: the WaterButlerPath of the folder
-        :type path: :class:`.WaterButlerPath`
-        :rtype: list[:class:`.BaseOracleCloudMetadata`]
-        """
+        """ListObjects with ``delimiter='/'`` for common-prefix folder listing."""
 
         prefix = self._get_obj_name(path) if not path.is_root else ""
-        loop = asyncio.get_running_loop()
+        url = self._build_list_url(prefix=prefix)
+        headers = self._sign_headers("GET", url)
 
-        try:
-            resp = await loop.run_in_executor(
-                None,
-                partial(
-                    self._client.list_objects,
-                    self.namespace,
-                    self.bucket,
-                    prefix=prefix,
-                    delimiter="/",
-                ),
-            )
-        except oci.exceptions.ServiceError as exc:
-            raise MetadataError(str(exc))
+        resp = await self.make_request(
+            "GET",
+            url,
+            headers=headers,
+            expects=(HTTPStatus.OK,),
+            throws=MetadataError,
+        )
+
+        data = await resp.json()
 
         items: list[BaseOracleCloudMetadata] = []
 
-        for folder_prefix in resp.data.prefixes or []:
+        for folder_prefix in data.get("prefixes", []):
             items.append(
-                OracleCloudFolderMetadata(
-                    {
-                        "object_name": folder_prefix,
-                    }
-                )
+                OracleCloudFolderMetadata({"object_name": folder_prefix})
             )
 
-        for obj_summary in resp.data.objects or []:
+        for obj_entry in data.get("objects", []):
             items.append(
-                OracleCloudFileMetadata.new_from_oci_object_summary(obj_summary)
+                OracleCloudFileMetadata.new_from_list_entry(obj_entry)
             )
 
         return items
 
     @staticmethod
     def _get_obj_name(path: WaterButlerPath) -> str:
-        """Get the object name for the given WaterButlerPath.  Object names in OCI Object
-        Storage do not start with ``/``.
-
-        :param path: the WaterButlerPath of the object
-        :type path: :class:`.WaterButlerPath`
-        :rtype: str
-        """
-
+        """Object names in OCI don't start with ``/``."""
         return path.path.lstrip("/")
