@@ -120,11 +120,17 @@ class TestOperations:
     def test_can_duplicate_names(self, mock_provider):
         assert mock_provider.can_duplicate_names()
 
-    def test_can_intra_copy(self, mock_provider):
-        assert not mock_provider.can_intra_copy(mock_provider)
+    def test_can_intra_copy_file(self, mock_provider, file_wb_path):
+        assert mock_provider.can_intra_copy(mock_provider, file_wb_path)
 
-    def test_can_intra_move(self, mock_provider):
-        assert not mock_provider.can_intra_move(mock_provider)
+    def test_can_intra_copy_folder(self, mock_provider, folder_wb_path):
+        assert not mock_provider.can_intra_copy(mock_provider, folder_wb_path)
+
+    def test_can_intra_move_file(self, mock_provider, file_wb_path):
+        assert mock_provider.can_intra_move(mock_provider, file_wb_path)
+
+    def test_can_intra_move_folder(self, mock_provider, folder_wb_path):
+        assert not mock_provider.can_intra_move(mock_provider, folder_wb_path)
 
 
 class TestMetadata:
