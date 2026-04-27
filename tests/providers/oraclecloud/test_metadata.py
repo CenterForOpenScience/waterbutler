@@ -1,5 +1,3 @@
-from unittest import mock
-
 import pytest
 
 from waterbutler.providers.oraclecloud.metadata import (
@@ -20,9 +18,7 @@ class TestOracleCloudFileMetadata:
             "size": 1024,
             "etag": "abc123def456",
             "extra": {
-                "md5": "rL0Y20zC+Fzt72VPzMSk2A==",
-                "storage_tier": "Standard",
-                "archival_state": None,
+                "md5": "abc123def456",
             },
             "time_created": "2025-03-01T19:00:00+00:00",
         }
@@ -38,8 +34,7 @@ class TestOracleCloudFileMetadata:
         assert metadata.size == 1024
         assert metadata.size_as_int == 1024
         assert metadata.etag == "abc123def456"
-        assert metadata.extra["md5"] == "rL0Y20zC+Fzt72VPzMSk2A=="
-        assert metadata.extra["storage_tier"] == "Standard"
+        assert metadata.extra["md5"] == "abc123def456"
         assert metadata.created_utc == "2025-03-01T19:00:00+00:00"
 
     def test_file_metadata_missing_optional_fields(self):
@@ -64,18 +59,15 @@ class TestOracleCloudFileMetadata:
 
     def test_file_metadata_from_head_response(self):
 
-        head_resp = mock.Mock()
-        head_resp.headers = {
-            "content-type": "application/pdf",
-            "content-length": "2048",
-            "last-modified": "Fri, 14 Mar 2025 12:00:00 GMT",
-            "etag": '"deadbeef"',
-            "opc-content-md5": "rL0Y20zC+Fzt72VPzMSk2A==",
-            "storage-tier": "Standard",
+        headers = {
+            "Content-Type": "application/pdf",
+            "Content-Length": "2048",
+            "Last-Modified": "Fri, 14 Mar 2025 12:00:00 GMT",
+            "ETag": '"deadbeef"',
         }
 
         metadata = OracleCloudFileMetadata.new_from_head_response(
-            "folder/report.pdf", head_resp
+            "folder/report.pdf", headers
         )
 
         assert metadata.provider == "oraclecloud"
@@ -84,30 +76,42 @@ class TestOracleCloudFileMetadata:
         assert metadata.content_type == "application/pdf"
         assert metadata.size == 2048
         assert metadata.etag == "deadbeef"
-        assert metadata.extra["md5"] == "rL0Y20zC+Fzt72VPzMSk2A=="
+        assert metadata.extra["md5"] == "deadbeef"
 
-    def test_file_metadata_from_object_summary(self):
+    def test_file_metadata_from_s3_list_entry(self):
 
-        obj_summary = mock.Mock()
-        obj_summary.name = "data/results.csv"
-        obj_summary.size = 4096
-        obj_summary.etag = "etag123"
-        obj_summary.md5 = "abc123"
-        obj_summary.storage_tier = "InfrequentAccess"
-        obj_summary.archival_state = None
-        obj_summary.time_modified = mock.Mock()
-        obj_summary.time_modified.isoformat.return_value = "2025-03-10T08:00:00+00:00"
-        obj_summary.time_created = None
+        entry = {
+            "Key": "data/results.csv",
+            "LastModified": "2025-03-10T08:00:00.000Z",
+            "ETag": '"etag123"',
+            "Size": "4096",
+            "StorageClass": "STANDARD",
+        }
 
-        metadata = OracleCloudFileMetadata.new_from_oci_object_summary(obj_summary)
+        metadata = OracleCloudFileMetadata.new_from_s3_list_entry(entry)
 
         assert metadata.name == "results.csv"
         assert metadata.path == "/data/results.csv"
         assert metadata.size == 4096
         assert metadata.etag == "etag123"
-        assert metadata.extra["md5"] == "abc123"
-        assert metadata.modified == "2025-03-10T08:00:00+00:00"
+        assert metadata.extra["md5"] == "etag123"
+        assert metadata.modified == "2025-03-10T08:00:00.000Z"
         assert metadata.created_utc is None
+
+    def test_file_metadata_from_s3_list_entry_no_quotes(self):
+
+        entry = {
+            "Key": "file.bin",
+            "LastModified": "2025-01-01T00:00:00.000Z",
+            "ETag": "notag",
+            "Size": "0",
+        }
+
+        metadata = OracleCloudFileMetadata.new_from_s3_list_entry(entry)
+
+        assert metadata.name == "file.bin"
+        assert metadata.etag == "notag"
+        assert metadata.size == 0
 
 
 class TestOracleCloudFolderMetadata:
