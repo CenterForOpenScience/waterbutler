@@ -1,13 +1,17 @@
+import base64
 import hashlib
 import logging
 from http import HTTPStatus
 from urllib.parse import quote
+from xml.sax.saxutils import escape as xml_escape
 
 import xmltodict
 
 from waterbutler.core.exceptions import (
+    CopyError,
     DeleteError,
     DownloadError,
+    IntraCopyError,
     InvalidProviderConfigError,
     MetadataError,
     NotFoundError,
@@ -50,9 +54,12 @@ class OracleCloudProvider(BaseProvider):
     * **Upload** (PUT Object) -- full body upload with SHA-256 signed payload and
       ETag-based MD5 integrity verification.
     * **Download** (GET Object) -- streaming via ResponseStreamReader, range support.
-    * **Delete** (DELETE Object) -- single-object deletion.
+    * **Delete** -- single-object via ``DELETE Object``; folder via list + batch
+      ``POST ?delete`` (DeleteObjects, 1000 keys/batch, paginated).
     * **Metadata** (HEAD Object) -- zero-egress metadata retrieval.
     * **Folder listing** (ListObjectsV2) -- common-prefix based virtual folders.
+    * **Intra-copy** (ENG-10659) -- single-file ``PUT Object - Copy`` via the
+      ``x-amz-copy-source`` header for same-namespace, same-region copies.
     * **SigV4 signing** -- fully custom, no boto/botocore dependency.
 
     Not yet implemented but feasible via S3-compatible API:
@@ -61,10 +68,12 @@ class OracleCloudProvider(BaseProvider):
       Would be needed for files > ~5 GB.
     * **Presigned URLs** -- S3 query-string SigV4 (presigned URLs) works with OCI.
       Could replace the need for OCI Pre-Authenticated Requests (PARs).
-    * **Folder deletion** -- achievable via list + batch DELETE (same as S3 provider).
-    * **Intra-copy** -- S3 ``PUT Object - Copy`` is supported by OCI S3 compat for
-      same-region, same-namespace copies.
-    * **Pagination** -- ListObjectsV2 continuation tokens are supported.
+    * **Folder intra-copy** -- the current ``intra_copy`` implementation only
+      handles individual files; recursive folder copy would walk the prefix and
+      issue one ``PUT Object - Copy`` per key.
+    * **Metadata pagination** -- ``_metadata_folder`` reads only the first page
+      of ListObjectsV2 results; ``_list_keys_under_prefix`` (used by folder
+      delete) already paginates correctly and can serve as the template.
 
     Cannot be done via S3-compatible API (OCI-native only):
 
@@ -300,16 +309,15 @@ class OracleCloudProvider(BaseProvider):
         return ResponseStreamReader(resp)
 
     async def delete(self, path: WaterButlerPath, *args, **kwargs) -> None:  # type: ignore[override]
-        r"""Delete the file at the given path.
+        r"""Delete the object or folder at the given path.
 
-        S3 Compat API: ``DELETE /<bucket>/<key>``
-
-        .. note::
-
-            Folder deletion is not supported in this version.
+        Files use S3 Compat ``DELETE /<bucket>/<key>``.  Folders enumerate keys
+        under the prefix via ListObjectsV2 and remove them in batches via
+        ``POST /<bucket>?delete`` (S3 ``DeleteObjects``, max 1000 keys per call).
         """
         if path.is_folder:
-            raise DeleteError("This limited provider does not support folder deletion.")
+            await self._delete_folder(path)
+            return
 
         obj_name = self._get_obj_name(path)
         url = self._object_url(obj_name)
@@ -324,11 +332,64 @@ class OracleCloudProvider(BaseProvider):
         )
         await resp.release()
 
+    async def intra_copy(
+        self,
+        dest_provider: BaseProvider,
+        source_path: WaterButlerPath,
+        dest_path: WaterButlerPath,
+    ) -> tuple[OracleCloudFileMetadata, bool]:
+        """Server-side copy a single file via S3 ``PUT Object - Copy``.
+
+        Uses the ``x-amz-copy-source`` header.  Only same-namespace, same-region
+        copies between two ``OracleCloudProvider`` instances are supported -- see
+        :meth:`can_intra_copy`.  Folder copies fall back to the base
+        download/upload pipeline.
+        """
+        if source_path.is_folder or dest_path.is_folder:
+            raise IntraCopyError("Folder intra-copy is not supported", code=HTTPStatus.BAD_REQUEST)
+
+        exists = await dest_provider.exists(dest_path)
+
+        src_obj = self._get_obj_name(source_path)
+        dest_obj = dest_provider._get_obj_name(dest_path)
+        dest_url = dest_provider._object_url(dest_obj)
+
+        # `x-amz-copy-source` must be URL-encoded and prefixed with the source
+        # bucket; SigV4 covers it via the canonical-headers list.
+        copy_source = f"/{self.bucket}/{quote(src_obj, safe='/')}"
+
+        headers = dest_provider._signed_headers(
+            "PUT",
+            dest_url,
+            extra_headers={
+                "x-amz-copy-source": copy_source,
+                "Content-Length": "0",
+            },
+        )
+
+        resp = await dest_provider.make_request(
+            "PUT",
+            dest_url,
+            headers=headers,
+            expects=(200,),
+            throws=CopyError,
+        )
+        await resp.release()
+
+        return await dest_provider._metadata_file(dest_path), not exists
+
     def can_intra_copy(self, other: BaseProvider, path: WaterButlerPath = None) -> bool:
-        return False
+        """True for file-level copies between two OracleCloudProvider instances
+        sharing the same namespace and region (single SigV4 endpoint).
+        """
+        if path is not None and getattr(path, "is_folder", False):
+            return False
+        if not isinstance(other, OracleCloudProvider):
+            return False
+        return self.BASE_URL == other.BASE_URL
 
     def can_intra_move(self, other: BaseProvider, path: WaterButlerPath = None) -> bool:
-        return False
+        return self.can_intra_copy(other, path)
 
     def can_duplicate_names(self):
         return True
@@ -406,6 +467,111 @@ class OracleCloudProvider(BaseProvider):
             items.append(OracleCloudFileMetadata.new_from_s3_list_entry(entry))
 
         return items
+
+    async def _list_keys_under_prefix(self, prefix: str) -> list[str]:
+        """Return every object key under *prefix* (no delimiter, recursive).
+
+        Walks ListObjectsV2 with continuation tokens.  Used by folder delete.
+        """
+        keys: list[str] = []
+        continuation: str | None = None
+
+        while True:
+            query: dict[str, str] = {"list-type": "2"}
+            if prefix:
+                query["prefix"] = prefix
+            if continuation:
+                query["continuation-token"] = continuation
+
+            url = self._bucket_url(**query)
+            headers = self._signed_headers("GET", url)
+
+            resp = await self.make_request(
+                "GET",
+                url,
+                headers=headers,
+                expects=(200,),
+                throws=DeleteError,
+            )
+            xml_body = await resp.text()
+            doc = xmltodict.parse(xml_body)
+            result = doc.get("ListBucketResult", {})
+
+            contents = result.get("Contents") or []
+            if isinstance(contents, dict):
+                contents = [contents]
+            for entry in contents:
+                key = entry.get("Key")
+                if key:
+                    keys.append(key)
+
+            if result.get("IsTruncated") == "true":
+                continuation = result.get("NextContinuationToken")
+                if not continuation:
+                    break
+            else:
+                break
+
+        return keys
+
+    async def _delete_folder(self, path: WaterButlerPath) -> None:
+        """Recursively delete every key under *path*.
+
+        Uses S3 ``POST /<bucket>?delete`` (DeleteObjects) in batches of 1000.
+        The S3-compat endpoint expects an MD5 of the request body in
+        ``Content-MD5`` and a SHA-256 of the body in the SigV4 payload hash.
+        """
+        prefix = self._get_obj_name(path)
+        if not prefix.endswith("/"):
+            prefix = f"{prefix}/" if prefix else prefix
+
+        keys = await self._list_keys_under_prefix(prefix)
+        if not keys:
+            return
+
+        url = self._bucket_url(delete="")
+
+        for batch_start in range(0, len(keys), 1000):
+            batch = keys[batch_start:batch_start + 1000]
+            body = self._build_delete_xml(batch).encode("utf-8")
+            content_md5 = self._b64_md5(body)
+            payload_hash = hashlib.sha256(body).hexdigest()
+
+            headers = self._signed_headers(
+                "POST",
+                url,
+                extra_headers={
+                    "Content-Length": str(len(body)),
+                    "Content-Type": "application/xml",
+                    "Content-MD5": content_md5,
+                },
+                payload_hash=payload_hash,
+            )
+
+            resp = await self.make_request(
+                "POST",
+                url,
+                data=body,
+                headers=headers,
+                skip_auto_headers={"Content-Type"},
+                expects=(200,),
+                throws=DeleteError,
+            )
+            await resp.release()
+
+    @staticmethod
+    def _build_delete_xml(keys: list[str]) -> str:
+        """Build the S3 DeleteObjects request body for *keys* (Quiet mode)."""
+        objects = "".join(f"<Object><Key>{xml_escape(k)}</Key></Object>" for k in keys)
+        return (
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            f"<Delete>{objects}<Quiet>true</Quiet></Delete>"
+        )
+
+    @staticmethod
+    def _b64_md5(data: bytes) -> str:
+        """Return base64-encoded MD5, as required by S3 ``Content-MD5``."""
+        return base64.b64encode(hashlib.md5(data).digest()).decode("ascii")
 
     @staticmethod
     def _get_obj_name(path: WaterButlerPath) -> str:
