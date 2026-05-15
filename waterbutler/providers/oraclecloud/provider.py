@@ -44,6 +44,9 @@ class OracleCloudProvider(BaseProvider):
 
     * OCI's S3-compatible endpoint uses **path-style** addressing:
       ``https://<namespace>.compat.objectstorage.<region>.oraclecloud.com/<bucket>/<key>``
+    * ...and **vhost-style** addressing:
+      ``https://<bucket>.vhcompat.objectstorage.<region>.oci.customer-oci.com``
+        # )
     * Authentication requires an OCI *Customer Secret Key* (access key + secret key)
       which is separate from the native OCI API signing key.
 
@@ -146,9 +149,16 @@ class OracleCloudProvider(BaseProvider):
                 message="Missing required credential: secret_key",
             )
 
+        # path style base url
         self.BASE_URL = (
             f"https://{namespace}.compat.objectstorage.{region}.oraclecloud.com"
         )
+
+        # # vhost style base url
+        # self.BASE_URL = (
+        #     f"https://{self.bucket}.vhcompat.objectstorage.{region}.oci.customer-oci.com"
+        # )
+
         self._signer = SigV4Signer(access_key, secret_key, region)
 
     # ------------------------------------------------------------------
