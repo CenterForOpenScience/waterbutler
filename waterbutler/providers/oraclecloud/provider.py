@@ -421,12 +421,13 @@ class OracleCloudProvider(BaseProvider):
             "HEAD",
             url,
             headers=headers,
-            expects=(200, 404),
+            expects=(200, ),
             throws=MetadataError,
         )
 
-        if resp.status == HTTPStatus.NOT_FOUND:
-            raise NotFoundError(str(path))
+        # callers expect MetadataError
+        # if resp.status == HTTPStatus.NOT_FOUND:
+        #     raise NotFoundError(str(path))
 
         return OracleCloudFileMetadata.new_from_head_response(obj_name, resp.headers)
 
