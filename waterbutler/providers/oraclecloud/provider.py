@@ -128,21 +128,21 @@ class OracleCloudProvider(BaseProvider):
                 message="Missing Object Storage namespace from OSF",
             )
 
-        region = credentials.get("region")
+        region = credentials['json_creds'].get("region")
         if not region:
             raise InvalidProviderConfigError(
                 self.NAME,
                 message="Missing required credential: region",
             )
 
-        access_key = credentials.get("access_key")
+        access_key = credentials['json_creds'].get("access_key")
         if not access_key:
             raise InvalidProviderConfigError(
                 self.NAME,
                 message="Missing required credential: access_key",
             )
 
-        secret_key = credentials.get("secret_key")
+        secret_key = credentials['json_creds'].get("secret_key")
         if not secret_key:
             raise InvalidProviderConfigError(
                 self.NAME,
