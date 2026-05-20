@@ -9,9 +9,13 @@ def mock_auth():
 @pytest.fixture()
 def mock_creds():
     return {
-        "access_key": "fake-access-key-id",
-        "secret_key": "fake-secret-access-key",
-        "region": "us-ashburn-1",
+        "json_creds": {
+            "s3compat": {
+                "access_key": "fake-access-key-id",
+                "secret_key": "fake-secret-access-key",
+                "region": "us-ashburn-1",
+            },
+        }
     }
 
 

@@ -2,7 +2,7 @@ import base64
 import hashlib
 import logging
 from http import HTTPStatus
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from xml.sax.saxutils import escape as xml_escape
 
 import xmltodict
@@ -20,13 +20,13 @@ from waterbutler.core.exceptions import (
 )
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
-from waterbutler.core.streams import BaseStream, ResponseStreamReader
+from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStreamReader
 from waterbutler.providers.oraclecloud.metadata import (
     BaseOracleCloudMetadata,
     OracleCloudFileMetadata,
     OracleCloudFolderMetadata,
 )
-from waterbutler.providers.oraclecloud.signing import EMPTY_SHA256, SigV4Signer
+from waterbutler.providers.oraclecloud.signing import EMPTY_SHA256, UNSIGNED_PAYLOAD, SigV4Signer
 
 logger = logging.getLogger(__name__)
 
@@ -98,9 +98,13 @@ class OracleCloudProvider(BaseProvider):
 
             WATERBUTLER_CREDENTIALS = {
                 "storage": {
-                    "access_key": "<customer-secret-key-access-key>",
-                    "secret_key": "<customer-secret-key>",
-                    "region": "us-ashburn-1",
+                    "json_creds": {
+                        "s3compat": {
+                            "access_key": "<customer-secret-key-access-key>",
+                            "secret_key": "<customer-secret-key>",
+                            "region": "us-ashburn-1"
+                        }
+                    }
                 }
             }
 
@@ -128,22 +132,24 @@ class OracleCloudProvider(BaseProvider):
                 message="Missing Object Storage namespace from OSF",
             )
 
-        region = credentials['json_creds'].get("region")
-        if not region:
+        s3_creds = credentials['json_creds']['s3compat']
+
+        s3_region = s3_creds.get("region")
+        if not s3_region:
             raise InvalidProviderConfigError(
                 self.NAME,
                 message="Missing required credential: region",
             )
 
-        access_key = credentials['json_creds'].get("access_key")
-        if not access_key:
+        s3_access_key = s3_creds.get("access_key")
+        if not s3_access_key:
             raise InvalidProviderConfigError(
                 self.NAME,
                 message="Missing required credential: access_key",
             )
 
-        secret_key = credentials['json_creds'].get("secret_key")
-        if not secret_key:
+        s3_secret_key = s3_creds.get("secret_key")
+        if not s3_secret_key:
             raise InvalidProviderConfigError(
                 self.NAME,
                 message="Missing required credential: secret_key",
@@ -151,7 +157,7 @@ class OracleCloudProvider(BaseProvider):
 
         # path style base url
         self.BASE_URL = (
-            f"https://{namespace}.compat.objectstorage.{region}.oraclecloud.com"
+            f"https://{namespace}.compat.objectstorage.{s3_region}.oraclecloud.com"
         )
 
         # # vhost style base url
@@ -159,7 +165,7 @@ class OracleCloudProvider(BaseProvider):
         #     f"https://{self.bucket}.vhcompat.objectstorage.{region}.oci.customer-oci.com"
         # )
 
-        self._signer = SigV4Signer(access_key, secret_key, region)
+        self._s3_signer = SigV4Signer(s3_access_key, s3_secret_key, s3_region)
 
     # ------------------------------------------------------------------
     # URL helpers
@@ -184,7 +190,7 @@ class OracleCloudProvider(BaseProvider):
         return f"{base}?{'&'.join(parts)}"
 
     # ------------------------------------------------------------------
-    # Signing helper
+    # Signing helpers
     # ------------------------------------------------------------------
 
     def _signed_headers(
@@ -192,10 +198,10 @@ class OracleCloudProvider(BaseProvider):
         method: str,
         url: str,
         extra_headers: dict[str, str] | None = None,
-        payload_hash: str = EMPTY_SHA256,
+        payload_hash: str = UNSIGNED_PAYLOAD,
     ) -> dict[str, str]:
         """Return a signed-headers dict ready for ``make_request``."""
-        return self._signer.sign_request(
+        return self._s3_signer.sign_request(
             method, url, headers=extra_headers, payload_hash=payload_hash
         )
 
@@ -214,11 +220,17 @@ class OracleCloudProvider(BaseProvider):
     ) -> OracleCloudFileMetadata | list[BaseOracleCloudMetadata]:
         """Get metadata about the object or folder at *path*.
 
+        .. note::
+
+            This limited version only supports metadata for file objects.  There are no technical
+            blockers. The only reason is that OSFStorage never performs any action on folders for
+            this inner storage provider.  We prefer not to have dead or unreachable code.
+
         :param path: the WaterButlerPath to the file or folder
         :rtype: :class:`.OracleCloudFileMetadata` | list[:class:`.BaseOracleCloudMetadata`]
         """
         if path.is_folder:
-            return await self._metadata_folder(path)
+            raise MetadataError('This limited provider does not support folder metadata.')
         return await self._metadata_file(path)
 
     async def upload(
@@ -226,46 +238,10 @@ class OracleCloudProvider(BaseProvider):
     ) -> tuple[OracleCloudFileMetadata, bool]:
         """Upload a file stream to the given path.
 
-        S3 Compat API: ``PUT /<bucket>/<key>``
-
-        After a successful upload, the ETag (hex-encoded MD5 for non-multipart
-        uploads) is verified against a locally computed digest.  An extra HEAD
-        request is made to retrieve full metadata for the response.
         """
         created = not await self.exists(path)
-        obj_name = self._get_obj_name(path)
-        url = self._object_url(obj_name)
 
-        data = await stream.read()
-        payload_hash = hashlib.sha256(data).hexdigest()
-
-        headers = self._signed_headers(
-            "PUT",
-            url,
-            extra_headers={
-                "Content-Length": str(len(data)),
-                "Content-Type": "application/octet-stream",
-            },
-            payload_hash=payload_hash,
-        )
-
-        resp = await self.make_request(
-            "PUT",
-            url,
-            data=data,
-            headers=headers,
-            skip_auto_headers={"Content-Type"},
-            expects=(200,),
-            throws=UploadError,
-        )
-        await resp.release()
-
-        # Verify upload integrity via ETag (hex MD5 for non-multipart uploads)
-        resp_etag = resp.headers.get("ETag", "").strip('"')
-        if resp_etag:
-            expected_md5 = hashlib.md5(data).hexdigest()
-            if resp_etag != expected_md5:
-                raise UploadChecksumMismatchError()
+        await self._s3_upload(stream, path, *args, **kwargs)
 
         file_metadata = await self._metadata_file(path)
         return file_metadata, created
@@ -280,17 +256,24 @@ class OracleCloudProvider(BaseProvider):
         """Download the object at the given path.
 
         S3 Compat API: ``GET /<bucket>/<key>``
-
-        .. note::
-
-            ``accept_url`` is not supported.  OCI pre-authenticated requests (PARs)
-            require a server-side call.  All downloads stream through WB.
         """
         if path.is_folder:
             raise DownloadError("Cannot download folders", code=HTTPStatus.BAD_REQUEST)
 
         obj_name = self._get_obj_name(path)
         url = self._object_url(obj_name)
+
+        if accept_url:
+            # display_name = kwargs.get('display_name') or path.name
+            # query = {'response-content-disposition': make_disposition(display_name)}
+            # There is no need to delay URL building and signing
+            # signed_url = self._build_and_sign_url(req_method, url, **query)  # type: ignore
+            signed_url = self._s3_signer.sign_request_query(
+                'GET',
+                url,
+                {},
+            )
+            return signed_url
 
         extra: dict[str, str] = {}
         if range is not None:
@@ -319,15 +302,17 @@ class OracleCloudProvider(BaseProvider):
         return ResponseStreamReader(resp)
 
     async def delete(self, path: WaterButlerPath, *args, **kwargs) -> None:  # type: ignore[override]
-        r"""Delete the object or folder at the given path.
+        r"""Delete the file object at the given path.
 
-        Files use S3 Compat ``DELETE /<bucket>/<key>``.  Folders enumerate keys
-        under the prefix via ListObjectsV2 and remove them in batches via
-        ``POST /<bucket>?delete`` (S3 ``DeleteObjects``, max 1000 keys per call).
+        .. note::
+
+            This limited version only supports deletion for file objects because
+            ``OSFStorageProvider`` does not need it for folders.
+
+        Files use S3 Compat ``DELETE /<bucket>/<key>``.
         """
         if path.is_folder:
-            await self._delete_folder(path)
-            return
+            raise DeleteError('This limited provider does not support folder deletion.')
 
         obj_name = self._get_obj_name(path)
         url = self._object_url(obj_name)
@@ -350,13 +335,20 @@ class OracleCloudProvider(BaseProvider):
     ) -> tuple[OracleCloudFileMetadata, bool]:
         """Server-side copy a single file via S3 ``PUT Object - Copy``.
 
+        .. note::
+
+            This limited version only supports intra-copy for file objects, because
+            ``OSFStorageProvider`` does not need it.
+
         Uses the ``x-amz-copy-source`` header.  Only same-namespace, same-region
         copies between two ``OracleCloudProvider`` instances are supported -- see
-        :meth:`can_intra_copy`.  Folder copies fall back to the base
-        download/upload pipeline.
+        :meth:`can_intra_copy`.
         """
-        if source_path.is_folder or dest_path.is_folder:
-            raise IntraCopyError("Folder intra-copy is not supported", code=HTTPStatus.BAD_REQUEST)
+        if source_path.is_folder and dest_path.is_folder:
+            raise CopyError('This limited provider does not support folder intra-copy.')
+
+        if source_path.is_folder or dest_path.is_folder:  # actually an xor
+            raise CopyError('Cannot copy between a file and a folder')
 
         exists = await dest_provider.exists(dest_path)
 
@@ -384,6 +376,7 @@ class OracleCloudProvider(BaseProvider):
             expects=(200,),
             throws=CopyError,
         )
+        _ = await resp.text()  # awaiting the response waits for it to finish
         await resp.release()
 
         return await dest_provider._metadata_file(dest_path), not exists
@@ -425,166 +418,53 @@ class OracleCloudProvider(BaseProvider):
             throws=MetadataError,
         )
 
-        # callers expect MetadataError
-        # if resp.status == HTTPStatus.NOT_FOUND:
-        #     raise NotFoundError(str(path))
-
         return OracleCloudFileMetadata.new_from_head_response(obj_name, resp.headers)
-
-    async def _metadata_folder(
-        self, path: WaterButlerPath
-    ) -> list[BaseOracleCloudMetadata]:
-        """List folder contents via ``GET /<bucket>?list-type=2&prefix=...&delimiter=/``.
-
-        Uses S3-compatible ``ListObjectsV2``.  Does not paginate (single page).
-        """
-        prefix = self._get_obj_name(path) if not path.is_root else ""
-
-        query: dict[str, str] = {"list-type": "2", "delimiter": "/"}
-        if prefix:
-            query["prefix"] = prefix
-
-        url = self._bucket_url(**query)
-        headers = self._signed_headers("GET", url)
-
-        resp = await self.make_request(
-            "GET",
-            url,
-            headers=headers,
-            expects=(200,),
-            throws=MetadataError,
-        )
-
-        xml_body = await resp.text()
-        doc = xmltodict.parse(xml_body)
-        result = doc.get("ListBucketResult", {})
-
-        items: list[BaseOracleCloudMetadata] = []
-
-        # Folder entries (common prefixes)
-        prefixes = result.get("CommonPrefixes") or []
-        if isinstance(prefixes, dict):
-            prefixes = [prefixes]
-        for pfx in prefixes:
-            items.append(
-                OracleCloudFolderMetadata({"object_name": pfx["Prefix"]})
-            )
-
-        # File entries
-        contents = result.get("Contents") or []
-        if isinstance(contents, dict):
-            contents = [contents]
-        for entry in contents:
-            items.append(OracleCloudFileMetadata.new_from_s3_list_entry(entry))
-
-        return items
-
-    async def _list_keys_under_prefix(self, prefix: str) -> list[str]:
-        """Return every object key under *prefix* (no delimiter, recursive).
-
-        Walks ListObjectsV2 with continuation tokens.  Used by folder delete.
-        """
-        keys: list[str] = []
-        continuation: str | None = None
-
-        while True:
-            query: dict[str, str] = {"list-type": "2"}
-            if prefix:
-                query["prefix"] = prefix
-            if continuation:
-                query["continuation-token"] = continuation
-
-            url = self._bucket_url(**query)
-            headers = self._signed_headers("GET", url)
-
-            resp = await self.make_request(
-                "GET",
-                url,
-                headers=headers,
-                expects=(200,),
-                throws=DeleteError,
-            )
-            xml_body = await resp.text()
-            doc = xmltodict.parse(xml_body)
-            result = doc.get("ListBucketResult", {})
-
-            contents = result.get("Contents") or []
-            if isinstance(contents, dict):
-                contents = [contents]
-            for entry in contents:
-                key = entry.get("Key")
-                if key:
-                    keys.append(key)
-
-            if result.get("IsTruncated") == "true":
-                continuation = result.get("NextContinuationToken")
-                if not continuation:
-                    break
-            else:
-                break
-
-        return keys
-
-    async def _delete_folder(self, path: WaterButlerPath) -> None:
-        """Recursively delete every key under *path*.
-
-        Uses S3 ``POST /<bucket>?delete`` (DeleteObjects) in batches of 1000.
-        The S3-compat endpoint expects an MD5 of the request body in
-        ``Content-MD5`` and a SHA-256 of the body in the SigV4 payload hash.
-        """
-        prefix = self._get_obj_name(path)
-        if not prefix.endswith("/"):
-            prefix = f"{prefix}/" if prefix else prefix
-
-        keys = await self._list_keys_under_prefix(prefix)
-        if not keys:
-            return
-
-        url = self._bucket_url(delete="")
-
-        for batch_start in range(0, len(keys), 1000):
-            batch = keys[batch_start:batch_start + 1000]
-            body = self._build_delete_xml(batch).encode("utf-8")
-            content_md5 = self._b64_md5(body)
-            payload_hash = hashlib.sha256(body).hexdigest()
-
-            headers = self._signed_headers(
-                "POST",
-                url,
-                extra_headers={
-                    "Content-Length": str(len(body)),
-                    "Content-Type": "application/xml",
-                    "Content-MD5": content_md5,
-                },
-                payload_hash=payload_hash,
-            )
-
-            resp = await self.make_request(
-                "POST",
-                url,
-                data=body,
-                headers=headers,
-                skip_auto_headers={"Content-Type"},
-                expects=(200,),
-                throws=DeleteError,
-            )
-            await resp.release()
-
-    @staticmethod
-    def _build_delete_xml(keys: list[str]) -> str:
-        """Build the S3 DeleteObjects request body for *keys* (Quiet mode)."""
-        objects = "".join(f"<Object><Key>{xml_escape(k)}</Key></Object>" for k in keys)
-        return (
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-            f"<Delete>{objects}<Quiet>true</Quiet></Delete>"
-        )
-
-    @staticmethod
-    def _b64_md5(data: bytes) -> str:
-        """Return base64-encoded MD5, as required by S3 ``Content-MD5``."""
-        return base64.b64encode(hashlib.md5(data).digest()).decode("ascii")
 
     @staticmethod
     def _get_obj_name(path: WaterButlerPath) -> str:
         """Convert a WaterButlerPath to an S3-compatible object key (no leading ``/``)."""
         return path.path.lstrip("/")
+
+    async def _s3_upload(
+        self, stream: BaseStream, path: WaterButlerPath, *args, **kwargs
+    ):
+        """Upload a file stream to the given path.
+
+        S3 Compat API: ``PUT /<bucket>/<key>``
+
+        After a successful upload, the ETag (hex-encoded MD5 for non-multipart
+        uploads) is verified against a locally computed digest.  An extra HEAD
+        request is made to retrieve full metadata for the response.
+        """
+        obj_name = self._get_obj_name(path)
+        url = self._object_url(obj_name)
+
+        stream.add_writer('sha256', HashStreamWriter(hashlib.sha256))
+        stream.add_writer('md5', HashStreamWriter(hashlib.md5))
+
+        headers = self._signed_headers(
+            "PUT",
+            url,
+            extra_headers={
+                "Content-Length": str(stream.size),
+                "Content-Type": "application/octet-stream",
+            },
+        )
+
+        resp = await self.make_request(
+            "PUT",
+            url,
+            data=stream,
+            headers=headers,
+            skip_auto_headers={"Content-Type"},
+            expects=(200,),
+            throws=UploadError,
+        )
+        await resp.release()
+
+        # Verify upload integrity via ETag (hex MD5 for non-multipart uploads)
+        resp_etag = resp.headers.get("ETag", "").strip('"')
+        if resp_etag:
+            expected_md5 = stream.writers['md5'].hexdigest
+            if resp_etag != expected_md5:
+                raise UploadChecksumMismatchError()
