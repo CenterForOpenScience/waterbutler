@@ -70,24 +70,26 @@ class OracleCloudProvider(BaseProvider):
 
     * **Multipart uploads** -- S3 multipart upload API is supported by OCI S3 compat.
       Would be needed for files > ~5 GB.
-    * **Presigned URLs** -- S3 query-string SigV4 (presigned URLs) works with OCI.
-      Could replace the need for OCI Pre-Authenticated Requests (PARs).
     * **Folder intra-copy** -- the current ``intra_copy`` implementation only
       handles individual files; recursive folder copy would walk the prefix and
-      issue one ``PUT Object - Copy`` per key.
+      issue one ``PUT Object - Copy`` per key. NOT NEEDED FOR LIMITED PROVIDER
     * **Metadata pagination** -- ``_metadata_folder`` reads only the first page
       of ListObjectsV2 results; ``_list_keys_under_prefix`` (used by folder
-      delete) already paginates correctly and can serve as the template.
+      delete) already paginates correctly and can serve as the template. NOT
+      NEEDED FOR LIMITED PROVIDER
 
     Cannot be done via S3-compatible API (OCI-native only):
 
     * **Work Request polling** -- OCI-specific async operation tracking for long-running
       tasks. S3 compat does not expose this.  Multipart upload is the S3 equivalent
-      for large operations.
+      for large operations. NOT NEEDED FOR LIMITED PROVIDER
     * **Storage tier management** -- OCI storage tiers (Standard, InfrequentAccess,
-      Archive) and archival-state transitions require the native OCI API.
-    * **Object lifecycle policies** -- native OCI API only.
-    * **Namespace/compartment management** -- native OCI API only.
+      Archive) and archival-state transitions require the native OCI API. NOT NEEDED
+      FOR LIMITED PROVIDER
+    * **Object lifecycle policies** -- native OCI API only. NOT NEEDED FOR LIMITED
+      PROVIDER
+    * **Namespace/compartment management** -- native OCI API only.  NOT NEEDED FOR
+      LIMITED PROVIDER
     """
 
     NAME = "oraclecloud"
