@@ -2,7 +2,7 @@ import base64
 import hashlib
 import logging
 from http import HTTPStatus
-from urllib.parse import quote, urlencode
+from urllib.parse import parse_qsl, quote, urlencode, urlparse, urlunparse
 from xml.sax.saxutils import escape as xml_escape
 
 import xmltodict
@@ -21,6 +21,7 @@ from waterbutler.core.exceptions import (
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
 from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStreamReader
+from waterbutler.core.utils import make_disposition
 from waterbutler.providers.oraclecloud.metadata import (
     BaseOracleCloudMetadata,
     OracleCloudFileMetadata,
@@ -264,13 +265,18 @@ class OracleCloudProvider(BaseProvider):
         url = self._object_url(obj_name)
 
         if accept_url:
-            # display_name = kwargs.get('display_name') or path.name
-            # query = {'response-content-disposition': make_disposition(display_name)}
+            display_name = kwargs.get('display_name') or path.name
+            disp_query = {'response-content-disposition': make_disposition(display_name)}
+
+            url_parts = list(urlparse(url))
+            query = dict(parse_qsl(url_parts[4]))
+            query.update(disp_query)
+            url_parts[4] = urlencode(query)
+
             # There is no need to delay URL building and signing
-            # signed_url = self._build_and_sign_url(req_method, url, **query)  # type: ignore
             signed_url = self._s3_signer.sign_request_query(
                 'GET',
-                url,
+                urlunparse(url_parts),
                 {},
             )
             return signed_url

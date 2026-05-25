@@ -197,7 +197,8 @@ class SigV4Signer:
         date_stamp = now.strftime("%Y%m%d")
 
         magic_str = 'aws4_request'
-        url = url + '?X-Amz-Algorithm=AWS4-HMAC-SHA256'
+        # TODO: need smarter query assemblage here, currently assumes content-disposition is set
+        url = url + '&X-Amz-Algorithm=AWS4-HMAC-SHA256'
         url = url + f'&X-Amz-Credential={self.access_key}%2F{date_stamp}%2F{self.region}%2F{self.service}%2F{magic_str}'
         url = url + f'&X-Amz-Date={amz_date}'
         url = url + '&X-Amz-Expires=3600'
