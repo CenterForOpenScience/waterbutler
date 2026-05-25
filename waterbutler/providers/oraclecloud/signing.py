@@ -192,6 +192,17 @@ class SigV4Signer:
         if headers is None:
             headers = {}
 
+        now = datetime.datetime.now(datetime.timezone.utc)
+        amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+        date_stamp = now.strftime("%Y%m%d")
+
+        magic_str = 'aws4_request'
+        url = url + '?X-Amz-Algorithm=AWS4-HMAC-SHA256'
+        url = url + f'&X-Amz-Credential={self.access_key}%2F{date_stamp}%2F{self.region}%2F{self.service}%2F{magic_str}'
+        url = url + f'&X-Amz-Date={amz_date}'
+        url = url + '&X-Amz-Expires=3600'
+        url = url + '&X-Amz-SignedHeaders=host'
+
         parsed = urlparse(url)
         host = parsed.netloc
         canonical_uri = parsed.path or "/"
@@ -203,18 +214,11 @@ class SigV4Signer:
             f"{quote(k, safe='')}={quote(v, safe='')}" for k, v in qs_pairs
         )
 
-        now = datetime.datetime.now(datetime.timezone.utc)
-        amz_date = now.strftime("%Y%m%dT%H%M%SZ")
-        date_stamp = now.strftime("%Y%m%d")
-
         # Collect all headers for signing (lowercased keys, trimmed values).
         headers_for_signing: dict[str, str] = {
             k.lower(): v.strip() for k, v in headers.items()
         }
         headers_for_signing["host"] = host
-        headers_for_signing["x-amz-date"] = amz_date
-        headers_for_signing["x-amz-content-sha256"] = payload_hash
-
         signed_header_names = sorted(headers_for_signing)
         canonical_headers = "".join(
             f"{k}:{headers_for_signing[k]}\n" for k in signed_header_names
@@ -232,10 +236,11 @@ class SigV4Signer:
                 payload_hash,
             ]
         )
+        logger.debug(f'canonical_request:({canonical_request})')
 
         # Step 2 -- String to sign
         credential_scope = (
-            f"{date_stamp}/{self.region}/{self.service}/aws4_request"
+            f"{date_stamp}/{self.region}/{self.service}/{magic_str}"
         )
         string_to_sign = "\n".join(
             [
@@ -245,6 +250,7 @@ class SigV4Signer:
                 _sha256_hex(canonical_request.encode("utf-8")),
             ]
         )
+        logger.debug(f'string_to_sign:({string_to_sign})')
 
         # Step 3 -- Signature
         signing_key = _derive_signing_key(
@@ -254,22 +260,6 @@ class SigV4Signer:
             signing_key, string_to_sign.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
-        # Step 4 -- Assemble output headers (host excluded; aiohttp sets it)
-        # result = dict(headers)
-        # result["x-amz-date"] = amz_date
-        # result["x-amz-content-sha256"] = payload_hash
-        # result["Authorization"] = (
-        #     f"{ALGORITHM} "
-        #     f"Credential={self.access_key}/{credential_scope}, "
-        #     f"SignedHeaders={signed_headers_str}, "
-        #     f"Signature={signature}"
-        # )
-        # return result
-
-        spob = 'aws4_request'
-        signed_url = url + '?X-Amz-Algorithm=AWS4-HMAC-SHA256'
-        signed_url = signed_url + f'&X-Amz-Credential={self.access_key}%2F{date_stamp}%2F{self.region}%2F{self.service}%2F{spob}'
-        signed_url = signed_url + f'&X-Amz-Date={amz_date}'
-        signed_url = signed_url + '&X-Amz-Expires=3600'
-        signed_url = signed_url + '&X-Amz-SignedHeaders=host'
-        return signed_url + f'&X-Amz-Signature={signature}'
+        signed_url = url + f'&X-Amz-Signature={signature}'
+        logger.debug(f'signed_url:({signed_url})')
+        return signed_url
