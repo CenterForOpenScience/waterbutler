@@ -160,3 +160,33 @@ class TestSigV4Signer:
         h1 = frozen_signer.sign_request("PUT", url, payload_hash=EMPTY_SHA256)
         h2 = frozen_signer.sign_request("PUT", url, payload_hash="abc123")
         assert h1["Authorization"] != h2["Authorization"]
+
+
+class TestSignRequestQuery:
+
+    def test_returns_presigned_url(self, frozen_signer):
+        url = frozen_signer.sign_request_query(
+            "GET",
+            "https://host/bkt/key?response-content-disposition=attachment",
+        )
+        assert isinstance(url, str)
+        assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in url
+        assert "X-Amz-Credential=AKEXAMPLE" in url
+        assert "X-Amz-Date=20250301T120000Z" in url
+        assert "X-Amz-Expires=3600" in url
+        assert "X-Amz-SignedHeaders=host" in url
+        assert "X-Amz-Signature=" in url
+
+    def test_deterministic(self, frozen_signer):
+        url = "https://host/bkt/key?response-content-disposition=attachment"
+        assert (
+            frozen_signer.sign_request_query("GET", url)
+            == frozen_signer.sign_request_query("GET", url)
+        )
+
+    def test_preserves_existing_query(self, frozen_signer):
+        url = frozen_signer.sign_request_query(
+            "GET",
+            "https://host/bkt/key?response-content-disposition=attachment",
+        )
+        assert "response-content-disposition=attachment" in url
