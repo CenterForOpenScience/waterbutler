@@ -684,7 +684,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :param  path: ( :class:`.WaterButlerPath` ) The folder to compress
         """
 
-        meta_data = await self.metadata(path)  # type: ignore
+        meta_data = await self.metadata(path, **kwargs)  # type: ignore
         if path.is_file:
             meta_data = [meta_data]  # type: ignore
             path = path.parent
