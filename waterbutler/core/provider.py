@@ -689,7 +689,7 @@ class BaseProvider(metaclass=abc.ABCMeta):
             meta_data = [meta_data]  # type: ignore
             path = path.parent
 
-        return streams.ZipStreamReader(ZipStreamGenerator(self, path, *meta_data))  # type: ignore
+        return streams.ZipStreamReader(ZipStreamGenerator(self, path, *meta_data, **kwargs))  # type: ignore
 
     def shares_storage_root(self, other: 'BaseProvider') -> bool:
         """Returns True if ``self`` and ``other`` both point to the same storage root.  Used to
