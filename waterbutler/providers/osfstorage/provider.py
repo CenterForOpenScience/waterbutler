@@ -13,6 +13,7 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.metadata import BaseMetadata
+from waterbutler.core import path as wb_path
 
 from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.metadata import OsfStorageFileMetadata
@@ -315,13 +316,17 @@ class OSFStorageProvider(provider.BaseProvider):
             expects=(200, )
         )).release()
 
+    async def zip(self, path: wb_path.WaterButlerPath, **kwargs) -> asyncio.StreamReader:
+        # add query param 'minimal' to avoid unnecessary metadata in the response.
+        return await super().zip(path, **kwargs, minimal=True)
+
     async def metadata(self, path, **kwargs):
         if path.identifier is None:
             raise exceptions.MetadataError(f'{str(path)} not found', code=404)
 
         if not path.is_dir:
             return await self._item_metadata(path)
-        return await self._children_metadata(path)
+        return await self._children_metadata(path, **kwargs)
 
     async def revisions(self, path, view_only=None, **kwargs):
         if path.identifier is None:
@@ -524,10 +529,10 @@ class OSFStorageProvider(provider.BaseProvider):
         )
         return OsfStorageFileMetadata((await resp.json()), str(path))
 
-    async def _children_metadata(self, path):
+    async def _children_metadata(self, path, **kwargs):
         resp = await self.make_signed_request(
             'GET',
-            self.build_url(path.identifier, 'children', user_id=self.auth.get('id')),
+            self.build_url(path.identifier, 'children', user_id=self.auth.get('id'), minimal=kwargs.get('minimal')),
             expects=(200, )
         )
         resp_json = await resp.json()
