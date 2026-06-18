@@ -532,7 +532,7 @@ class OSFStorageProvider(provider.BaseProvider):
     async def _children_metadata(self, path, **kwargs):
         resp = await self.make_signed_request(
             'GET',
-            self.build_url(path.identifier, 'children', user_id=self.auth.get('id'), minimal=kwargs.get('minimal', False)),
+            self.build_url(path.identifier, 'children', user_id=self.auth.get('id'), minimal=kwargs.get('minimal')),
             expects=(200, )
         )
         resp_json = await resp.json()
