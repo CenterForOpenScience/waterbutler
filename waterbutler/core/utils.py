@@ -193,13 +193,14 @@ def make_disposition(filename):
 
 
 class ZipStreamGenerator:
-    def __init__(self, provider, parent_path, *metadata_objs):
+    def __init__(self, provider, parent_path, *metadata_objs, **kwargs):
         self.provider = provider
         self.parent_path = parent_path
         self.remaining = [
             (parent_path, metadata)
             for metadata in metadata_objs
         ]
+        self.kwargs = kwargs
 
     async def __aiter__(self):
         return self
@@ -210,7 +211,7 @@ class ZipStreamGenerator:
         current = self.remaining.pop(0)
         path = self.provider.path_from_metadata(*current)
         if path.is_dir:
-            items = await self.provider.metadata(path)
+            items = await self.provider.metadata(path, **self.kwargs)
             if items:
                 self.remaining.extend([
                     (path, item) for item in items
