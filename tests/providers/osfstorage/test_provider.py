@@ -24,7 +24,7 @@ from tests.providers.osfstorage.fixtures import (auth, credentials, settings,
                                                  file_lineage, file_metadata,
                                                  file_metadata_object, file_path,
                                                  folder_lineage, folder_metadata,
-                                                 folder_children_metadata, folder_path,
+                                                 folder_children_metadata, folder_children_metadata_minimal, folder_path,
                                                  revisions_metadata, revision_metadata_object,
                                                  download_response, download_path,
                                                  upload_response, upload_path, root_path,
@@ -210,7 +210,7 @@ class TestDelete:
 
         children_url, params = build_signed_url_without_auth(provider_one, 'GET',
                                                              folder_path.identifier, 'children',
-                                                             user_id=provider_one.auth['id'])
+                                                             user_id=provider_one.auth['id'], minimal=False)
         aiohttpretty.register_json_uri('GET', children_url, params=params, status=200,
                                        body=folder_children_metadata)
 
@@ -227,7 +227,7 @@ class TestMetadata:
     async def test_provider_metadata_empty(self, provider_one, folder_path, mock_time):
 
         url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
-                                                    'children', user_id=provider_one.auth['id'])
+                                                    'children', user_id=provider_one.auth['id'], minimal=False)
         aiohttpretty.register_json_uri('GET', url, params=params, status_code=200, body=[])
 
         res = await provider_one.metadata(folder_path)
@@ -241,7 +241,7 @@ class TestMetadata:
                                             folder_children_metadata, mock_time):
 
         url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
-                                                    'children', user_id=provider_one.auth['id'])
+                                                    'children', user_id=provider_one.auth['id'], minimal=False)
         aiohttpretty.register_json_uri('GET', url, params=params, status=200,
                                        body=folder_children_metadata)
 
@@ -276,7 +276,7 @@ class TestMetadata:
                                                 folder_children_metadata, mock_time):
 
         url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
-                                                    'children')
+                                                    'children', minimal=False)
         aiohttpretty.register_json_uri('GET', url, params=params, status=200,
                                        body=folder_children_metadata)
         folder_path._parts[-1]._id = None
@@ -732,7 +732,7 @@ class TestValidatePath:
     async def test_revalidate_path_new(self, provider_one, folder_path, folder_children_metadata,
                                        mock_time):
         url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
-                                                    'children', user_id=provider_one.auth['id'])
+                                                    'children', user_id=provider_one.auth['id'], minimal=False)
         aiohttpretty.register_json_uri('GET', url, params=params, status=200,
                                        body=folder_children_metadata)
 
@@ -745,7 +745,7 @@ class TestValidatePath:
     async def test_revalidate_path_existing(self, provider_one, folder_path,
                                             folder_children_metadata, mock_time):
         url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
-                                                    'children', user_id=provider_one.auth['id'])
+                                                    'children', user_id=provider_one.auth['id'], minimal=False)
         aiohttpretty.register_json_uri('GET', url, params=params, status=200,
                                        body=folder_children_metadata)
 
@@ -1253,3 +1253,21 @@ class TestCrossRegionCopy:
         src_provider.can_intra_copy.assert_called_once_with(dst_provider, src_path)
         src_provider.intra_copy.assert_not_called()
         src_provider.download.assert_not_called()
+
+class TestMinimalMetadataDAZ:
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_minimal_metadata(self, provider_one, folder_path, folder_children_metadata_minimal):
+
+        url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
+                                                    'children', user_id=provider_one.auth['id'], minimal=True)
+        aiohttpretty.register_json_uri('GET', url, params=params, status=200,
+                                       body=folder_children_metadata_minimal)
+
+        metadata = await provider_one.metadata(folder_path, minimal=True)
+
+        assert [type(metadata_item) for metadata_item in metadata] == [OsfStorageFolderMetadata, OsfStorageFileMetadata, OsfStorageFileMetadata, OsfStorageFileMetadata]
+        assert [metadata_item.name for metadata_item in metadata] == ['New Folder', 'one', 'doc.rst', 'video.mp4']
+        assert [metadata_item.path for metadata_item in metadata] == ['/59c0054cb7d1c90114c456af/', '/59a9b637b7d1c903ab5a8f58', '/59a9b628b7d1c903ab5a8f52', '/59a5adb9b7d1c901cd40f0e9']
+        assert [metadata_item.provider for metadata_item in metadata] == ['osfstorage', 'osfstorage', 'osfstorage', 'osfstorage']
