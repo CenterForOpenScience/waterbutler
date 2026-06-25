@@ -193,50 +193,23 @@ def make_disposition(filename):
 
 
 class ZipStreamGenerator:
-    # TODO: add docs
 
-    def __init__(self, provider, parent_path, **kwargs):
+    def __init__(self, provider, parent_path, *metadata_objs, **kwargs):
         self.provider = provider
         self.parent_path = parent_path
-        self.remaining = []
+        self.remaining = [
+            (parent_path, metadata)
+            for metadata in metadata_objs
+        ]
         self.kwargs = kwargs
-        self.__cache = dict[str, asyncio.Task]()
 
     @classmethod
     async def create(cls, provider, path, **kwargs):
-        path = path.parent if (path.is_file and path.parent is not None) else path
-        self = cls(
-            provider,
-            path,
-            **kwargs
-        )
-        self.remaining = await self.list_metadata(path, **kwargs)
-        
-        return self
-
-    def metadata_task(self, path, **kwargs):
-        key = path.identifier or str(path)
-        if key not in self.__cache:
-            self.__cache[key] = asyncio.create_task(
-                self.provider.metadata(path, **kwargs)
-            )
-        return self.__cache[key]
-
-    async def list_metadata(self, path, **kwargs):
+        meta_data = await provider.metadata(path, **kwargs)
         if path.is_file:
-            return [(path.parent, await self.provider.metadata(path, **kwargs))]
-
-        items = await self.metadata_task(path, **kwargs)
-
-        items = await self.metadata_task(path, **kwargs)
-        remaining = []
-        for item in items:
-            remaining.append((path, item))
-            if item.is_folder:
-                child = self.provider.path_from_metadata(path, item)
-                self.metadata_task(child, **kwargs)
-
-        return remaining
+            meta_data = [meta_data]
+            path = path.parent
+        return cls(provider, path, *meta_data, **kwargs)
 
     async def __aiter__(self):
         return self
@@ -247,11 +220,14 @@ class ZipStreamGenerator:
         current = self.remaining.pop(0)
         path = self.provider.path_from_metadata(*current)
         if path.is_dir:
-            entries = await self.list_metadata(path, **self.kwargs)
-            if entries:
-                self.remaining.extend(entries)
+            items = await self.provider.metadata(path, **self.kwargs)
+            if items:
+                self.remaining.extend([
+                    (path, item) for item in items
+                ])
                 return await self.__anext__()
-            return path.path.replace(self.parent_path.path, '', 1), EmptyStream()
+            else:
+                return path.path.replace(self.parent_path.path, '', 1), EmptyStream()
 
         return path.path.replace(self.parent_path.path, '', 1), await self.provider.download(path)
 

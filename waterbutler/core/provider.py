@@ -18,6 +18,7 @@ from waterbutler.core import path as wb_path
 from waterbutler import settings as wb_settings
 from waterbutler.core.metrics import MetricsRecord
 from waterbutler.core import metadata as wb_metadata
+from waterbutler.core.cache import CacheableMetadataProviderProxy
 from waterbutler.core.utils import ZipStreamGenerator
 from waterbutler.core.utils import RequestHandlerContext
 
@@ -678,13 +679,15 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         return base.child(path, folder=folder)
 
-    async def zip(self, path: wb_path.WaterButlerPath, **kwargs) -> asyncio.StreamReader:
+    async def zip(self, path: wb_path.WaterButlerPath, cache: bool = True, **kwargs) -> asyncio.StreamReader:
         """Streams a Zip archive of the given folder
 
         :param  path: ( :class:`.WaterButlerPath` ) The folder to compress
         """
+        provider = CacheableMetadataProviderProxy(self) if cache else self
+
         return streams.ZipStreamReader(
-            await ZipStreamGenerator.create(self, path, **kwargs)
+            await ZipStreamGenerator.create(provider, path, **kwargs)
         )  # type: ignore
 
     def shares_storage_root(self, other: 'BaseProvider') -> bool:
