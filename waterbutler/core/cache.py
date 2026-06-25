@@ -1,14 +1,12 @@
 import asyncio
 
-from waterbutler.core.provider import BaseProvider
-
 
 class CacheableMetadataProviderProxy:
     """Wraps a provider so that folder ``metadata`` requests are cached and the
     metadata of any child folders is prefetched concurrently.
 
     When a folder is listed, a metadata task is scheduled for each of its child
-    folders without awaiting them.  Those tasks run on the event loop while files
+    folders without awaiting them. Those tasks run on the event loop while files
     are being downloaded, so the generator can issue all of its metadata requests
     up front instead of fetching folder listings strictly one-at-a-time.
 
@@ -16,7 +14,7 @@ class CacheableMetadataProviderProxy:
     etc.) is delegated to the wrapped provider.
     """
 
-    def __init__(self, provider: BaseProvider):
+    def __init__(self, provider):
         self.provider = provider
         self.__cache = dict[str, asyncio.Task]()
 
