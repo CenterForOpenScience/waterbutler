@@ -317,8 +317,14 @@ class OSFStorageProvider(provider.BaseProvider):
         )).release()
 
     async def zip(self, path: wb_path.WaterButlerPath, **kwargs) -> asyncio.StreamReader:
-        # add query param 'minimal' to avoid unnecessary metadata in the response.
-        return await super().zip(path, **kwargs, minimal=True)
+        """Streams a Zip archive of the given folder
+
+        :param  path: ( :class:`.WaterButlerPath` ) The folder to compress
+        """
+        kwargs['minimal'] = True
+        kwargs['limit'] = None
+
+        return streams.ZipStreamReader(utils.ZipStreamGeneratorPaginated(self, path, **kwargs))  # type: ignore
 
     async def metadata(self, path, **kwargs):
         if path.identifier is None:
@@ -519,6 +525,23 @@ class OSFStorageProvider(provider.BaseProvider):
 
         return meta_data, created
 
+    async def iter_children_pages(self, path, **kwargs):
+        url = self.build_url(
+            path.identifier,
+            'children',
+            user_id=self.auth.get('id'),
+            minimal=kwargs.get('minimal'),
+            limit=kwargs.get('limit'),
+            orm=True
+        )
+
+        while True:
+            page, url = await self._fetch_metadata_page(url, path, **kwargs)
+            yield page
+
+            if not url:
+                break
+
     # ========== private ==========
 
     async def _item_metadata(self, path, revision=None):
@@ -544,6 +567,36 @@ class OSFStorageProvider(provider.BaseProvider):
             else:
                 ret.append(OsfStorageFileMetadata(item, str(path.child(item['name']))))
         return ret
+
+    async def _fetch_metadata_page(self, url, path, **kwargs):
+        resp = await self.make_signed_request(
+            'GET',
+            url,
+            expects=(200,),
+        )
+        resp_json = await resp.json()
+
+        if kwargs.get('limit') and len(resp_json) < kwargs.get('limit'):
+            next_url = None
+        elif not kwargs.get('limit'):
+            next_url = None
+        else:
+            next_url = self.build_url(
+                path.identifier,
+                'children',
+                user_id=self.auth.get('id'),
+                minimal=kwargs.get('minimal'),
+                limit=kwargs.get('limit'),
+                after=resp_json[-1]['id'] if resp_json else None,
+                orm=True
+            )
+        ret = []
+        for item in resp_json:
+            if item['kind'] == 'folder':
+                ret.append(OsfStorageFolderMetadata(item, str(path.child(item['name'], folder=True))))
+            else:
+                ret.append(OsfStorageFileMetadata(item, str(path.child(item['name']))))
+        return ret, next_url
 
     async def _delete_folder_contents(self, path, **kwargs):
         """Delete the contents of a folder. For use against provider root.
