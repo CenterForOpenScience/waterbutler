@@ -322,6 +322,7 @@ class OSFStorageProvider(provider.BaseProvider):
         :param  path: ( :class:`.WaterButlerPath` ) The folder to compress
         """
         kwargs['minimal'] = True
+        kwargs['limit'] = None
 
         return streams.ZipStreamReader(utils.ZipStreamGeneratorPaginated(self, path, **kwargs))  # type: ignore
 
@@ -530,25 +531,16 @@ class OSFStorageProvider(provider.BaseProvider):
             'children',
             user_id=self.auth.get('id'),
             minimal=kwargs.get('minimal'),
-            limit=kwargs.get('limit', 5),
+            limit=kwargs.get('limit'),
             orm=True
         )
 
-        page, next_url = await self._fetch_metadata_page(url, path, **kwargs)
         while True:
-            next_task = None
-
-            if next_url:
-                next_task = asyncio.create_task(
-                    self._fetch_metadata_page(next_url, path, **kwargs)
-                )
-
+            page, url = await self._fetch_metadata_page(url, path, **kwargs)
             yield page
 
-            if next_task is None:
+            if not url:
                 break
-
-            page, next_url = await next_task
 
     # ========== private ==========
 
@@ -584,18 +576,20 @@ class OSFStorageProvider(provider.BaseProvider):
         )
         resp_json = await resp.json()
 
-        if resp_json:
+        if kwargs.get('limit') and len(resp_json) < kwargs.get('limit'):
+            next_url = None
+        elif not kwargs.get('limit'):
+            next_url = None
+        else:
             next_url = self.build_url(
                 path.identifier,
                 'children',
                 user_id=self.auth.get('id'),
                 minimal=kwargs.get('minimal'),
-                limit=kwargs.get('limit', 5),
+                limit=kwargs.get('limit'),
                 after=resp_json[-1]['id'] if resp_json else None,
                 orm=True
             )
-        else:
-            return [], None
         ret = []
         for item in resp_json:
             if item['kind'] == 'folder':
