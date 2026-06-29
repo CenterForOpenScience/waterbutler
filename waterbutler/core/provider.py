@@ -679,12 +679,13 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         return base.child(path, folder=folder)
 
-    async def zip(self, path: wb_path.WaterButlerPath, cache: bool = True, **kwargs) -> asyncio.StreamReader:
+    async def zip(self, path: wb_path.WaterButlerPath, use_cache: bool = True, **kwargs) -> asyncio.StreamReader:
         """Streams a Zip archive of the given folder
 
         :param  path: ( :class:`.WaterButlerPath` ) The folder to compress
+        :param  use_cache: ( `bool` ) Whether to prefetch metadata requests for nested folders during zip
         """
-        provider = CacheableMetadataProviderProxy(self) if cache else self
+        provider = CacheableMetadataProviderProxy(self) if use_cache else self
 
         return streams.ZipStreamReader(
             await ZipStreamGenerator.create(provider, path, **kwargs)
