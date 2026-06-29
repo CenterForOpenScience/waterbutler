@@ -193,6 +193,7 @@ def make_disposition(filename):
 
 
 class ZipStreamGenerator:
+
     def __init__(self, provider, parent_path, *metadata_objs, **kwargs):
         self.provider = provider
         self.parent_path = parent_path
@@ -201,6 +202,14 @@ class ZipStreamGenerator:
             for metadata in metadata_objs
         ]
         self.kwargs = kwargs
+
+    @classmethod
+    async def create(cls, provider, path, **kwargs):
+        meta_data = await provider.metadata(path, **kwargs)
+        if path.is_file:
+            meta_data = [meta_data]
+            path = path.parent
+        return cls(provider, path, *meta_data, **kwargs)
 
     async def __aiter__(self):
         return self

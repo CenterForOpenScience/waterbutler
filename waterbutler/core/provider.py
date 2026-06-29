@@ -18,6 +18,7 @@ from waterbutler.core import path as wb_path
 from waterbutler import settings as wb_settings
 from waterbutler.core.metrics import MetricsRecord
 from waterbutler.core import metadata as wb_metadata
+from waterbutler.core.cache import CacheableMetadataProviderProxy
 from waterbutler.core.utils import ZipStreamGenerator
 from waterbutler.core.utils import RequestHandlerContext
 
@@ -678,18 +679,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         return base.child(path, folder=folder)
 
-    async def zip(self, path: wb_path.WaterButlerPath, **kwargs) -> asyncio.StreamReader:
+    async def zip(self, path: wb_path.WaterButlerPath, use_cache: bool = True, **kwargs) -> asyncio.StreamReader:
         """Streams a Zip archive of the given folder
 
         :param  path: ( :class:`.WaterButlerPath` ) The folder to compress
+        :param  use_cache: ( `bool` ) Whether to prefetch metadata requests for nested folders during zip
         """
+        provider = CacheableMetadataProviderProxy(self) if use_cache else self
 
-        meta_data = await self.metadata(path, **kwargs)  # type: ignore
-        if path.is_file:
-            meta_data = [meta_data]  # type: ignore
-            path = path.parent
-
-        return streams.ZipStreamReader(ZipStreamGenerator(self, path, *meta_data, **kwargs))  # type: ignore
+        return streams.ZipStreamReader(
+            await ZipStreamGenerator.create(provider, path, **kwargs)
+        )  # type: ignore
 
     def shares_storage_root(self, other: 'BaseProvider') -> bool:
         """Returns True if ``self`` and ``other`` both point to the same storage root.  Used to
