@@ -527,7 +527,7 @@ class OSFStorageProvider(provider.BaseProvider):
         after = None
 
         while True:
-            page = await self._children_metadata(path, limit=limit, after=after, **kwargs)
+            page = await self.metadata(path, limit=limit, after=after, **kwargs)
             yield page
 
             if not limit or len(page) < int(limit):
