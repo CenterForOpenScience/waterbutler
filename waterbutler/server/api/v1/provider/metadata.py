@@ -131,6 +131,6 @@ class MetadataMixin:
         self.set_header('Content-Type', 'application/zip')
         self.set_header('Content-Disposition', make_disposition(zipfile_name + '.zip'))
 
-        result = await self.provider.zip(self.path)
+        result = await self.provider.zip(self.path, **self.arguments)
 
         await self.write_stream(result)

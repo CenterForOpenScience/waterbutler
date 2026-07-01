@@ -19,7 +19,7 @@ from waterbutler import settings as wb_settings
 from waterbutler.core.metrics import MetricsRecord
 from waterbutler.core import metadata as wb_metadata
 from waterbutler.core.cache import CacheableMetadataProviderProxy
-from waterbutler.core.utils import ZipStreamGenerator
+from waterbutler.core.utils import ZipStreamGenerator, ZipStreamGeneratorPaginated
 from waterbutler.core.utils import RequestHandlerContext
 
 
@@ -679,17 +679,17 @@ class BaseProvider(metaclass=abc.ABCMeta):
         """
         return base.child(path, folder=folder)
 
-    async def zip(self, path: wb_path.WaterButlerPath, use_cache: bool = True, **kwargs) -> asyncio.StreamReader:
+    async def zip(self, path: wb_path.WaterButlerPath, use_cache: bool = True, paginated: bool = False, **kwargs) -> asyncio.StreamReader:
         """Streams a Zip archive of the given folder
 
         :param  path: ( :class:`.WaterButlerPath` ) The folder to compress
-        :param  use_cache: ( `bool` ) Whether to prefetch metadata requests for nested folders during zip
+        :param  use_cache: ( :class:`bool` ) Whether to prefetch metadata requests for nested folders during zip,
+            does not work for paginated metadata requests
+        :param  paginated: ( :class:`bool` ) Whether to use the paginated zip stream generator
         """
         provider = CacheableMetadataProviderProxy(self) if use_cache else self
-
-        return streams.ZipStreamReader(
-            await ZipStreamGenerator.create(provider, path, **kwargs)
-        )  # type: ignore
+        generator = ZipStreamGeneratorPaginated if paginated else ZipStreamGenerator
+        return streams.ZipStreamReader(generator(provider, path, **kwargs))  # type: ignore
 
     def shares_storage_root(self, other: 'BaseProvider') -> bool:
         """Returns True if ``self`` and ``other`` both point to the same storage root.  Used to
@@ -762,6 +762,20 @@ class BaseProvider(metaclass=abc.ABCMeta):
         :raises: :class:`.MetadataError`
         """
         raise NotImplementedError
+
+    async def iter_children_pages(self, path: wb_path.WaterButlerPath, **kwargs):
+        """Yield a folder's children metadata one page at a time.
+
+        The default implementation yields a single page containing the entire folder
+        listing, since most providers return all children in one request. Providers
+        with server-side pagination should override this to lazily yield successive
+        pages, so callers (e.g. the zip stream generators) don't hold an entire large
+        folder listing in memory at once.
+
+        :param path: ( :class:`.WaterButlerPath` ) The folder to list
+        :param kwargs: ( :class:`dict` ) Arguments to be parsed by child classes
+        """
+        yield await self.metadata(path, **kwargs)
 
     @abc.abstractmethod
     async def validate_v1_path(self, path: str, **kwargs) -> wb_path.WaterButlerPath:

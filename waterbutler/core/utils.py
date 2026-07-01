@@ -1,4 +1,5 @@
 import re
+import abc
 import json
 import pytz
 import asyncio
@@ -192,29 +193,49 @@ def make_disposition(filename):
                                                                          encoded_filename)
 
 
-class ZipStreamGenerator:
+class BaseZipStreamGenerator(abc.ABC):
 
-    def __init__(self, provider, parent_path, *metadata_objs, **kwargs):
+    def __init__(self, provider, root_path, **kwargs):
         self.provider = provider
-        self.parent_path = parent_path
-        self.remaining = [
-            (parent_path, metadata)
-            for metadata in metadata_objs
-        ]
+        self.root_path = root_path
+        self.parent_path = root_path.parent if root_path.is_file else root_path
         self.kwargs = kwargs
 
-    @classmethod
-    async def create(cls, provider, path, **kwargs):
-        meta_data = await provider.metadata(path, **kwargs)
-        if path.is_file:
-            meta_data = [meta_data]
-            path = path.parent
-        return cls(provider, path, *meta_data, **kwargs)
+        self.remaining = []
+        self.initialized = False
 
     async def __aiter__(self):
         return self
 
+    @abc.abstractmethod
+    async def _initialize(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
     async def __anext__(self):
+        raise NotImplementedError
+
+
+class ZipStreamGenerator(BaseZipStreamGenerator):
+
+    async def _initialize(self):
+        if self.initialized:
+            return
+
+        if self.root_path.is_file:
+            metadata = await self.provider.metadata(self.root_path, **self.kwargs)
+            self.remaining.append((self.root_path.parent, metadata))
+            return
+
+        items = await self.provider.metadata(self.root_path, **self.kwargs)
+        self.remaining.extend((self.root_path, item) for item in items)
+
+        self.initialized = True
+
+    async def __anext__(self):
+        if not self.initialized:
+            await self._initialize()
+
         if not self.remaining:
             raise StopAsyncIteration
         current = self.remaining.pop(0)
@@ -232,22 +253,11 @@ class ZipStreamGenerator:
         return path.path.replace(self.parent_path.path, '', 1), await self.provider.download(path)
 
 
-class ZipStreamGeneratorPaginated:
-
-    def __init__(self, provider, root_path, **kwargs):
-        self.provider = provider
-        self.parent_path = root_path.parent if root_path.is_file else root_path
-        self.root_path = root_path
-        self.kwargs = kwargs
-
-        self.remaining = []
-        self.initialized = False
+class ZipStreamGeneratorPaginated(BaseZipStreamGenerator):
 
     async def _initialize(self):
         if self.initialized:
             return
-
-        self.initialized = True
 
         if self.root_path.is_file:
             metadata = await self.provider.metadata(
@@ -261,14 +271,12 @@ class ZipStreamGeneratorPaginated:
             self.root_path,
             **self.kwargs,
         ):
-
             self.remaining.extend(
                 (self.root_path, item)
                 for item in page
             )
 
-    async def __aiter__(self):
-        return self
+        self.initialized = True
 
     async def __anext__(self):
         if not self.initialized:
