@@ -195,7 +195,7 @@ class OSFStorageProvider(provider.BaseProvider):
 
         return url, data, params
 
-    async def download(self, path, version=None, revision=None, mode=None, **kwargs):
+    async def download(self, path, version=None, revision=None, mode=None, metadata=None, **kwargs):
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
@@ -209,28 +209,37 @@ class OSFStorageProvider(provider.BaseProvider):
             # version could be 0 here
             version = revision
 
-        # Capture user_id for analytics if user is logged in
-        user_param = {}
-        if self.auth.get('id', None):
-            user_param = {'user': self.auth['id']}
+        storage = None
+        if metadata is not None:
+            storage = metadata.raw.get('storage', None)
 
-        # osf storage metadata will return a virtual path within the provider
-        resp = await self.make_signed_request(
-            'GET',
-            self.build_url(path.identifier, 'download', version=version, mode=mode),
-            expects=(200, ),
-            params=user_param,
-            throws=exceptions.DownloadError,
-        )
-        data = await resp.json()
+        if version is None and storage and storage.get('data', None):
+            data = storage
+        else:
+            # Capture user_id for analytics if user is logged in
+            user_param = {}
+            if self.auth.get('id', None):
+                user_param = {'user': self.auth['id']}
+
+            # osf storage metadata will return a virtual path within the provider
+            resp = await self.make_signed_request(
+                'GET',
+                self.build_url(path.identifier, 'download', version=version, mode=mode),
+                expects=(200, ),
+                params=user_param,
+                throws=exceptions.DownloadError,
+            )
+            data = await resp.json()
 
         provider_object = self.make_provider(data['settings'])
-        name = data['data'].pop('name')
-        data['data']['path'] = await provider_object.validate_path('/' + data['data']['path'])
+        file_data = dict(data['data'])
+        name = file_data.pop('name')
+        file_data['path'] = await provider_object.validate_path('/' + file_data['path'])
         download_kwargs = {}
         download_kwargs.update(kwargs)
-        download_kwargs.update(data['data'])
+        download_kwargs.update(file_data)
         download_kwargs['display_name'] = kwargs.get('display_name') or name
+
         return await provider_object.download(**download_kwargs)
 
     async def upload(self, stream, path, **kwargs):
@@ -549,6 +558,7 @@ class OSFStorageProvider(provider.BaseProvider):
         query = {
             'user_id': self.auth.get('id'),
             'minimal': kwargs.get('minimal', False),
+            'orm': kwargs.get('orm', False)
         }
         if limit is not None:
             query['orm'] = True

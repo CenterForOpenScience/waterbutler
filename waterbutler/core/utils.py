@@ -250,7 +250,10 @@ class ZipStreamGenerator(BaseZipStreamGenerator):
             else:
                 return path.path.replace(self.parent_path.path, '', 1), EmptyStream()
 
-        return path.path.replace(self.parent_path.path, '', 1), await self.provider.download(path)
+        return (
+            path.path.replace(self.parent_path.path, '', 1),
+            await self.provider.download(path, metadata=current[1])
+        )
 
 
 class ZipStreamGeneratorPaginated(BaseZipStreamGenerator):
@@ -308,7 +311,7 @@ class ZipStreamGeneratorPaginated(BaseZipStreamGenerator):
 
         return (
             path.path.replace(self.parent_path.path, '', 1),
-            await self.provider.download(path),
+            await self.provider.download(path, metadata=current[1]),
         )
 
 
