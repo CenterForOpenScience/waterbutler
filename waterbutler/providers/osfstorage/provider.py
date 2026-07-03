@@ -558,13 +558,14 @@ class OSFStorageProvider(provider.BaseProvider):
         query = {
             'user_id': self.auth.get('id'),
             'minimal': kwargs.get('minimal', False),
-            'orm': kwargs.get('orm', False)
         }
         if limit is not None:
             query['orm'] = True
             query['limit'] = limit
             if after is not None:
                 query['after'] = after
+        elif kwargs.get('orm') is not None:
+            query['orm'] = kwargs['orm']
 
         resp = await self.make_signed_request(
             'GET',
