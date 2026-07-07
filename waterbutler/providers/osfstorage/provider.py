@@ -6,6 +6,8 @@ import hashlib
 import logging
 from http import HTTPStatus
 
+import sentry_sdk
+
 from waterbutler.core import utils
 from waterbutler.core import signing
 from waterbutler.core import streams
@@ -213,9 +215,23 @@ class OSFStorageProvider(provider.BaseProvider):
         if metadata is not None:
             storage = metadata.raw.get('storage', None)
 
+        # DAZ passes minimal child metadata with an embedded ``storage`` block so we can
+        # call the inner storage provider directly. When that payload is usable we skip
+        # the per-file OSF ``/download`` hop; otherwise we fall back to fetching it.
         if version is None and storage and storage.get('data', None):
             data = storage
         else:
+            if metadata is not None:
+                with sentry_sdk.push_scope() as scope:
+                    scope.set_context('osfstorage_data', {
+                        'node': self.nid,
+                        'path': str(path),
+                    })
+                    sentry_sdk.capture_message(
+                        'osfstorage download fell back to OSF /download endpoint',
+                        level='info',
+                    )
+
             # Capture user_id for analytics if user is logged in
             user_param = {}
             if self.auth.get('id', None):
@@ -547,6 +563,12 @@ class OSFStorageProvider(provider.BaseProvider):
     # ========== private ==========
 
     async def _item_metadata(self, path, revision=None):
+        """Fetch metadata for a single file from the OSF.
+
+        :param path: file path whose ``identifier`` is the OSF file node id
+        :param revision: optional file version identifier passed to OSF as ``revision``
+        :return: :class:`OsfStorageFileMetadata` for the file
+        """
         resp = await self.make_signed_request(
             'GET',
             self.build_url(path.identifier, revision=revision),
@@ -555,10 +577,23 @@ class OSFStorageProvider(provider.BaseProvider):
         return OsfStorageFileMetadata((await resp.json()), str(path))
 
     async def _children_metadata(self, path, limit=None, after=None, **kwargs):
+        """Fetch folder children metadata from the OSF.
+
+        :param path: folder path whose ``identifier`` is the OSF folder node id
+        :param limit: page size; when set, enables ORM pagination on OSF
+        :param after: cursor (child node pk) for the next ORM page
+        :return: list of :class:`OsfStorageFolderMetadata` and
+            :class:`OsfStorageFileMetadata` instances
+        """
         query = {
             'user_id': self.auth.get('id'),
             'minimal': kwargs.get('minimal', False),
         }
+
+        # By default OSF serves minimal children via raw SQL on the backend. The Django
+        # ORM implementation is used only when ``orm`` is explicitly requested or when
+        # ``limit`` is set (pagination requires ORM). The raw SQL path may be removed in
+        # the future in favor of ORM-only responses.
         if limit is not None:
             query['orm'] = True
             query['limit'] = limit
