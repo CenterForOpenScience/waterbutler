@@ -212,17 +212,12 @@ class OSFStorageProvider(provider.BaseProvider):
             version = revision
 
         storage = None
+        use_embedded_storage = False
         if metadata is not None:
             storage = metadata.raw.get('storage', None)
-
-        # DAZ passes minimal child metadata with an embedded ``storage`` block so we can
-        # call the inner storage provider directly. When that payload is usable we skip
-        # the per-file OSF ``/download`` hop; otherwise we fall back to fetching it.
-        if version is None and storage and storage.get('data', None):
-            data = storage
-        else:
-            if metadata is not None:
-                with sentry_sdk.push_scope() as scope:
+            use_embedded_storage = version is None and bool(storage and storage.get('data', None))
+            if not use_embedded_storage:
+                with sentry_sdk.new_scope() as scope:
                     scope.set_context('osfstorage_data', {
                         'node': self.nid,
                         'path': str(path),
@@ -232,17 +227,17 @@ class OSFStorageProvider(provider.BaseProvider):
                         level='info',
                     )
 
-            # Capture user_id for analytics if user is logged in
-            user_param = {}
-            if self.auth.get('id', None):
-                user_param = {'user': self.auth['id']}
-
+        # DAZ passes minimal child metadata with an embedded ``storage`` block so we can
+        # call the inner storage provider directly. When that payload is usable we skip
+        # the per-file OSF ``/download`` hop; otherwise we fall back to fetching it.
+        if use_embedded_storage:
+            data = storage
+        else:
             # osf storage metadata will return a virtual path within the provider
             resp = await self.make_signed_request(
                 'GET',
                 self.build_url(path.identifier, 'download', version=version, mode=mode),
                 expects=(200, ),
-                params=user_param,
                 throws=exceptions.DownloadError,
             )
             data = await resp.json()

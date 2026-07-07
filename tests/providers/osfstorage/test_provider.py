@@ -70,13 +70,13 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_with_auth(self, provider_and_mock_one, download_response,
-                                      download_path, mock_time):
+    async def test_download(self, provider_and_mock_one, download_response,
+                            download_path, mock_time):
 
         provider, inner_provider = provider_and_mock_one
 
-        uri, params = build_signed_url_with_auth(provider, 'GET', download_path.identifier,
-                                                 'download', version=None, mode=None)
+        uri, params = build_signed_url_without_auth(provider, 'GET', download_path.identifier,
+                                                    'download', version=None, mode=None)
 
         aiohttpretty.register_json_uri('GET', uri,  body=download_response, params=params)
 
@@ -87,29 +87,6 @@ class TestDownload:
 
         assert aiohttpretty.has_call(method='GET', uri=uri, params=params)
         provider.make_provider.assert_called_once_with(download_response['settings'])
-        expected_path = WaterButlerPath('/' + download_response['data']['path'])
-        expected_display_name = download_response['data']['name']
-        inner_provider.download.assert_called_once_with(path=expected_path,
-                                                        display_name=expected_display_name)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_download_without_auth(self, provider_and_mock_one, download_response,
-                                         download_path, mock_time):
-        provider, inner_provider = provider_and_mock_one
-
-        provider.auth = {}
-        url, params = build_signed_url_without_auth(provider, 'GET', download_path.identifier,
-                                                    'download', version=None, mode=None)
-        aiohttpretty.register_json_uri('GET', url, params=params, body=download_response)
-
-        await provider.download(download_path)
-
-        assert provider.make_provider.called
-        assert inner_provider.download.called
-        assert aiohttpretty.has_call(method='GET', uri=url, params=params)
-        provider.make_provider.assert_called_once_with(download_response['settings'])
-
         expected_path = WaterButlerPath('/' + download_response['data']['path'])
         expected_display_name = download_response['data']['name']
         inner_provider.download.assert_called_once_with(path=expected_path,
@@ -141,7 +118,7 @@ class TestDownload:
 
         provider, inner_provider = provider_and_mock_one
 
-        uri, params = build_signed_url_with_auth(provider, 'GET', download_path.identifier,
+        uri, params = build_signed_url_without_auth(provider, 'GET', download_path.identifier,
                                                  'download', version=None, mode=None)
 
         aiohttpretty.register_json_uri('GET', uri,  body=download_response, params=params)
