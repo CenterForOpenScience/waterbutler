@@ -4,6 +4,10 @@ from unittest import mock
 import pytest
 
 from waterbutler.core import utils
+from waterbutler.core.path import WaterButlerPath
+from waterbutler.core.streams import EmptyStream
+
+from tests.utils import MockCoroutine, MockFileMetadata, MockProvider
 
 
 class TestAsyncRetry:
@@ -159,3 +163,43 @@ class TestContentDisposition:
     def test_disposition_encoding(self, filename, expected):
         encoded = utils.encode_for_disposition(filename)
         assert encoded == expected
+
+
+class TestZipStreamGenerator:
+
+    @pytest.mark.asyncio
+    async def test_passes_child_metadata_to_download(self):
+        provider = MockProvider()
+        root_path = WaterButlerPath('/folder/', folder=True)
+        file_meta = MockFileMetadata()
+        provider.metadata = MockCoroutine(return_value=[file_meta])
+        provider.download = MockCoroutine(return_value=EmptyStream())
+
+        generator = utils.ZipStreamGenerator(provider, root_path, minimal=True)
+        zip_name, _ = await generator.__anext__()
+
+        assert zip_name == 'Foo.name'
+        provider.download.assert_called_once()
+        assert provider.download.call_args.kwargs['metadata'] is file_meta
+
+
+class TestZipStreamGeneratorPaginated:
+
+    @pytest.mark.asyncio
+    async def test_passes_child_metadata_to_download(self):
+        provider = MockProvider()
+        root_path = WaterButlerPath('/folder/', folder=True)
+        file_meta = MockFileMetadata()
+        provider.download = MockCoroutine(return_value=EmptyStream())
+
+        async def iter_children_pages(path, **kwargs):
+            yield [file_meta]
+
+        provider.iter_children_pages = iter_children_pages
+
+        generator = utils.ZipStreamGeneratorPaginated(provider, root_path, minimal=True)
+        zip_name, _ = await generator.__anext__()
+
+        assert zip_name == 'Foo.name'
+        provider.download.assert_called_once()
+        assert provider.download.call_args.kwargs['metadata'] is file_meta
