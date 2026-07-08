@@ -134,6 +134,78 @@ class TestDownload:
         inner_provider.download.assert_called_once_with(path=expected_path,
                                                         display_name=expected_name)
 
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_with_embedded_storage_skips_osf(
+            self, provider_and_mock_one, download_response, download_path, mock_time):
+
+        provider, inner_provider = provider_and_mock_one
+        uri, params = build_signed_url_without_auth(
+            provider, 'GET', download_path.identifier, 'download', version=None, mode=None,
+        )
+
+        metadata = OsfStorageFileMetadata({
+            'kind': 'file',
+            'name': download_response['data']['name'],
+            'path': f'/{download_path.identifier}',
+            'storage': download_response,
+        }, str(download_path))
+
+        await provider.download(download_path, metadata=metadata)
+
+        assert not aiohttpretty.has_call(method='GET', uri=uri, params=params)
+        provider.make_provider.assert_called_once_with(download_response['settings'])
+        expected_path = WaterButlerPath('/' + download_response['data']['path'])
+        inner_provider.download.assert_called_once_with(
+            path=expected_path,
+            display_name=download_response['data']['name'],
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_without_storage_falls_back_to_osf(
+            self, provider_and_mock_one, download_response, download_path, mock_time):
+
+        provider, inner_provider = provider_and_mock_one
+        uri, params = build_signed_url_without_auth(
+            provider, 'GET', download_path.identifier, 'download', version=None, mode=None,
+        )
+        aiohttpretty.register_json_uri('GET', uri, body=download_response, params=params)
+
+        metadata = OsfStorageFileMetadata({
+            'kind': 'file',
+            'name': download_response['data']['name'],
+            'path': f'/{download_path.identifier}',
+        }, str(download_path))
+
+        await provider.download(download_path, metadata=metadata)
+
+        assert aiohttpretty.has_call(method='GET', uri=uri, params=params)
+        inner_provider.download.assert_called_once()
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_with_version_ignores_embedded_storage(
+            self, provider_and_mock_one, download_response, download_path, mock_time):
+
+        provider, inner_provider = provider_and_mock_one
+        uri, params = build_signed_url_without_auth(
+            provider, 'GET', download_path.identifier, 'download', version=1, mode=None,
+        )
+        aiohttpretty.register_json_uri('GET', uri, body=download_response, params=params)
+
+        metadata = OsfStorageFileMetadata({
+            'kind': 'file',
+            'name': download_response['data']['name'],
+            'path': f'/{download_path.identifier}',
+            'storage': download_response,
+        }, str(download_path))
+
+        await provider.download(download_path, metadata=metadata, version=1)
+
+        assert aiohttpretty.has_call(method='GET', uri=uri, params=params)
+        inner_provider.download.assert_called_once()
+
 
 class TestDelete:
 
@@ -1232,6 +1304,23 @@ class TestCrossRegionCopy:
         src_provider.download.assert_not_called()
 
 class TestMinimalMetadataDAZ:
+
+    @pytest.mark.asyncio
+    async def test_zip_requests_minimal_metadata(self, provider_one, folder_path, monkeypatch):
+        captured = {}
+
+        async def capture_zip(self, path, **kwargs):
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr(
+            'waterbutler.core.provider.BaseProvider.zip',
+            capture_zip,
+        )
+
+        await provider_one.zip(folder_path)
+
+        assert captured.get('minimal') is True
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
