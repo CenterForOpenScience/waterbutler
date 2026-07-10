@@ -50,6 +50,7 @@ setup(
             'onedrive = waterbutler.providers.onedrive:OneDriveProvider',
             'googlecloud = waterbutler.providers.googlecloud:GoogleCloudProvider',
             'azureblobstorage = waterbutler.providers.azureblobstorage:AzureBlobStorageProvider',
+            'oraclecloud = waterbutler.providers.oraclecloud:OracleCloudProvider',
         ],
     },
 )
