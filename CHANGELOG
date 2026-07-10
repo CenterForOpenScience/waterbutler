@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+26.1.0 (2026-07-09)
+===================
+
+- Add oraclecloud limited storage provider, suitable as storage backend for osfstorage.
+(thanks, @sh-andriy!)
+
 26.0.1 (2026-01-09)
 ===================
 
