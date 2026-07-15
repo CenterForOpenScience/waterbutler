@@ -575,8 +575,8 @@ class OSFStorageProvider(provider.BaseProvider):
         """Fetch folder children metadata from the OSF.
 
         :param path: folder path whose ``identifier`` is the OSF folder node id
-        :param limit: page size; when set, enables ORM pagination on OSF
-        :param after: cursor (child node pk) for the next ORM page
+        :param limit: page size for paginated children listing
+        :param after: cursor (child node pk) for the next page
         :return: list of :class:`OsfStorageFolderMetadata` and
             :class:`OsfStorageFileMetadata` instances
         """
@@ -585,17 +585,10 @@ class OSFStorageProvider(provider.BaseProvider):
             'minimal': kwargs.get('minimal', False),
         }
 
-        # By default OSF serves minimal children via raw SQL on the backend. The Django
-        # ORM implementation is used only when ``orm`` is explicitly requested or when
-        # ``limit`` is set (pagination requires ORM). The raw SQL path may be removed in
-        # the future in favor of ORM-only responses.
         if limit is not None:
-            query['orm'] = True
             query['limit'] = limit
             if after is not None:
                 query['after'] = after
-        elif kwargs.get('orm') is not None:
-            query['orm'] = kwargs['orm']
 
         resp = await self.make_signed_request(
             'GET',
