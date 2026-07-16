@@ -246,6 +246,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                                   'zip' not in self.request.query_arguments))):
             return
 
+        completed = False
         # Done here just because method is defined
         action = {
             'GET': lambda: 'download_file' if self.path.is_file else 'download_zip',
@@ -254,9 +255,12 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             'DELETE': lambda: 'delete'
         }[method]()
 
-        self._send_hook(action)
+        if action in {'download_file', 'download_zip'}:
+            completed = status in {200, 302}
 
-    def _send_hook(self, action):
+        self._send_hook(action, completed=completed)
+
+    def _send_hook(self, action, completed=False):
         source = None
         destination = None
 
@@ -281,4 +285,5 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         remote_logging.log_file_action(action, source=source, destination=destination, api_version='v1',
                                        request=remote_logging._serialize_request(self.request),
                                        bytes_downloaded=self.bytes_downloaded,
-                                       bytes_uploaded=self.bytes_uploaded,)
+                                       bytes_uploaded=self.bytes_uploaded,
+                                       completed=completed)

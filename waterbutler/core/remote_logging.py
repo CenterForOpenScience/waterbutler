@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 @utils.async_retry(retries=5, backoff=5)
 async def log_to_callback(action, source=None, destination=None, start_time=None, errors=None,
-                          request=None):
+                          request=None, bytes_downloaded=0, completed=False):
     """PUT a logging payload back to the callback given by the auth provider."""
     errors = errors or []
     request = request or {}
@@ -59,7 +59,10 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         is_mfr_render = (ref_url_domain == settings.MFR_DOMAIN or
                          settings.MFR_IDENTIFYING_HEADER in request["request"]["headers"])
         log_payload['action_meta']['is_mfr_render'] = is_mfr_render
+        log_payload['action_meta']['completed'] = completed
 
+    log_payload['action_meta']['bytes_downloaded'] = bytes_downloaded
+    log_payload['action_meta']['ip'] = request['tech']['ip']
     resp_status, resp_data = await utils.send_signed_request('PUT', auth['callback_url'], log_payload)
 
     if resp_status // 100 != 2:
@@ -217,12 +220,14 @@ async def _send_to_keen(payload, collection, project_id, write_key, action, doma
 
 
 def log_file_action(action, source, api_version, destination=None, request=None,
-                    start_time=None, errors=None, bytes_downloaded=None, bytes_uploaded=None):
+                    start_time=None, errors=None, bytes_downloaded=None, bytes_uploaded=None,
+                    completed=False):
     """Kick off logging actions in the background. Returns array of asyncio.Tasks."""
     request = request or {}
     return [
         log_to_callback(action, source=source, destination=destination,
-                        start_time=start_time, errors=errors, request=request,),
+                        start_time=start_time, errors=errors, request=request,
+                        bytes_downloaded=bytes_downloaded, completed=completed,),
         asyncio.ensure_future(
             log_to_keen(action, source=source, destination=destination,
                         errors=errors, request=request, api_version=api_version,
