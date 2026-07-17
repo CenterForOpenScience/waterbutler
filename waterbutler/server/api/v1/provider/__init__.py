@@ -256,9 +256,11 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         }[method]()
 
         if action in {'download_file', 'download_zip'}:
-            completed = status in {200, 302}
+            completed = getattr(self, '_download_completed', status in {200, 302})
+            self._send_hook(action, completed=completed)
+            return
 
-        self._send_hook(action, completed=completed)
+        self._send_hook(action)
 
     def _send_hook(self, action, completed=False):
         source = None

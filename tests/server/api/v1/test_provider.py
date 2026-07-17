@@ -165,15 +165,17 @@ class TestProviderHandler:
 class TestProviderHandlerFinish:
 
     @pytest.mark.asyncio
-    async def test_on_finish_download_file(self, http_request):
+    @pytest.mark.parametrize('download_completed, expected_completed', [(True, True), (False, False)])
+    async def test_on_finish_download_file(self, http_request, download_completed, expected_completed):
 
         handler = mock_handler(http_request)
         handler.request.method = 'GET'
         handler.path = WaterButlerPath('/file')
+        handler._download_completed = download_completed
         handler._send_hook = mock.Mock()
 
         assert handler.on_finish() is None
-        handler._send_hook.assert_called_once_with('download_file')
+        handler._send_hook.assert_called_once_with('download_file', completed=expected_completed)
 
     @pytest.mark.asyncio
     async def test_on_finish_download_zip(self, http_request):

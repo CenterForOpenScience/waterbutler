@@ -86,8 +86,8 @@ class CRUDHandler(core.BaseProviderHandler):
         if ext in mime_types:
             self.set_header('Content-Type', mime_types[ext])
 
-        await self.write_stream(result)
-        self._send_hook('download_file', path=self.path, completed=True)
+        completed = await self.write_stream(result)
+        self._send_hook('download_file', path=self.path, completed=completed)
 
     async def post(self):
         """Create a folder"""
