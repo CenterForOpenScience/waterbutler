@@ -233,7 +233,7 @@ class TestMetadataMixin:
         await handler.download_folder_as_zip()
 
         assert handler._headers['Content-Type'] == 'application/zip'
-        expected = 'attachment; filename="test_file.zip"; filename*=UTF-8\'\'test_file.zip'
+        expected = 'attachment; filename="guid1-test_file.zip"; filename*=UTF-8\'\'guid1-test_file.zip'
         assert handler._headers['Content-Disposition'] == expected
 
         handler.write_stream.assert_called_once_with(mock_stream)
@@ -249,7 +249,7 @@ class TestMetadataMixin:
         await handler.download_folder_as_zip()
 
         assert handler._headers['Content-Type'] == 'application/zip'
-        expected = 'attachment; filename="MockProvider-archive.zip"; filename*=UTF-8\'\'MockProvider-archive.zip'
+        expected = 'attachment; filename="guid1-MockProvider-archive.zip"; filename*=UTF-8\'\'guid1-MockProvider-archive.zip'
         assert handler._headers['Content-Disposition'] == expected
 
         handler.write_stream.assert_called_once_with(mock_stream)

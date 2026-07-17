@@ -66,6 +66,32 @@
       "latestVersionSeen": null
     }
   ],
+  "folder_children_metadata_minimal": [
+    {
+      "id": "59c0054cb7d1c90114c456af",
+      "kind": "folder",
+      "name": "New Folder",
+      "path": "/59c0054cb7d1c90114c456af/"
+    },
+    {
+      "id": "59a9b637b7d1c903ab5a8f58",
+      "kind": "file",
+      "name": "one",
+      "path": "/59a9b637b7d1c903ab5a8f58"
+    },
+    {
+      "id": "59a9b628b7d1c903ab5a8f52",
+      "kind": "file",
+      "name": "doc.rst",
+      "path": "/59a9b628b7d1c903ab5a8f52"
+    },
+    {
+      "id": "59a5adb9b7d1c901cd40f0e9",
+      "kind": "file",
+      "name": "video.mp4",
+      "path": "/59a5adb9b7d1c901cd40f0e9"
+    }
+  ],
   "file_metadata": {
     "checkout": null,
     "contentType": null,

@@ -6,6 +6,8 @@ import hashlib
 import logging
 from http import HTTPStatus
 
+import sentry_sdk
+
 from waterbutler.core import utils
 from waterbutler.core import signing
 from waterbutler.core import streams
@@ -13,6 +15,7 @@ from waterbutler.core import provider
 from waterbutler.core import exceptions
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.metadata import BaseMetadata
+from waterbutler.core import path as wb_path
 
 from waterbutler.providers.osfstorage import settings
 from waterbutler.providers.osfstorage.metadata import OsfStorageFileMetadata
@@ -194,7 +197,7 @@ class OSFStorageProvider(provider.BaseProvider):
 
         return url, data, params
 
-    async def download(self, path, version=None, revision=None, mode=None, **kwargs):
+    async def download(self, path, version=None, revision=None, mode=None, metadata=None, **kwargs):
         if not path.identifier:
             raise exceptions.NotFoundError(str(path))
 
@@ -208,28 +211,46 @@ class OSFStorageProvider(provider.BaseProvider):
             # version could be 0 here
             version = revision
 
-        # Capture user_id for analytics if user is logged in
-        user_param = {}
-        if self.auth.get('id', None):
-            user_param = {'user': self.auth['id']}
+        storage = None
+        use_embedded_storage = False
+        if metadata is not None:
+            storage = metadata.raw.get('storage', None)
+            use_embedded_storage = version is None and bool(storage and storage.get('data', None))
+            if not use_embedded_storage:
+                with sentry_sdk.new_scope() as scope:
+                    scope.set_context('osfstorage_data', {
+                        'node': self.nid,
+                        'path': str(path),
+                    })
+                    sentry_sdk.capture_message(
+                        'osfstorage download fell back to OSF /download endpoint',
+                        level='info',
+                    )
 
-        # osf storage metadata will return a virtual path within the provider
-        resp = await self.make_signed_request(
-            'GET',
-            self.build_url(path.identifier, 'download', version=version, mode=mode),
-            expects=(200, ),
-            params=user_param,
-            throws=exceptions.DownloadError,
-        )
-        data = await resp.json()
+        # DAZ passes minimal child metadata with an embedded ``storage`` block so we can
+        # call the inner storage provider directly. When that payload is usable we skip
+        # the per-file OSF ``/download`` hop; otherwise we fall back to fetching it.
+        if use_embedded_storage:
+            data = storage
+        else:
+            # osf storage metadata will return a virtual path within the provider
+            resp = await self.make_signed_request(
+                'GET',
+                self.build_url(path.identifier, 'download', version=version, mode=mode),
+                expects=(200, ),
+                throws=exceptions.DownloadError,
+            )
+            data = await resp.json()
 
         provider_object = self.make_provider(data['settings'])
-        name = data['data'].pop('name')
-        data['data']['path'] = await provider_object.validate_path('/' + data['data']['path'])
+        file_data = dict(data['data'])
+        name = file_data.pop('name')
+        file_data['path'] = await provider_object.validate_path('/' + file_data['path'])
         download_kwargs = {}
         download_kwargs.update(kwargs)
-        download_kwargs.update(data['data'])
+        download_kwargs.update(file_data)
         download_kwargs['display_name'] = kwargs.get('display_name') or name
+
         return await provider_object.download(**download_kwargs)
 
     async def upload(self, stream, path, **kwargs):
@@ -315,13 +336,20 @@ class OSFStorageProvider(provider.BaseProvider):
             expects=(200, )
         )).release()
 
+    async def zip(self, path: wb_path.WaterButlerPath, **kwargs) -> asyncio.StreamReader:
+        """Streams a Zip archive of the given folder
+
+        :param  path: ( :class:`.WaterButlerPath` ) The folder to compress
+        """
+        return await super().zip(path, **kwargs, minimal=True)
+
     async def metadata(self, path, **kwargs):
         if path.identifier is None:
             raise exceptions.MetadataError(f'{str(path)} not found', code=404)
 
         if not path.is_dir:
             return await self._item_metadata(path)
-        return await self._children_metadata(path)
+        return await self._children_metadata(path, **kwargs)
 
     async def revisions(self, path, view_only=None, **kwargs):
         if path.identifier is None:
@@ -514,9 +542,28 @@ class OSFStorageProvider(provider.BaseProvider):
 
         return meta_data, created
 
+    async def iter_children_pages(self, path, **kwargs):
+        limit = kwargs.pop('limit', None)
+        after = None
+
+        while True:
+            page = await self.metadata(path, limit=limit, after=after, **kwargs)
+            yield page
+
+            if not limit or len(page) < int(limit):
+                break
+
+            after = page[-1].raw['id']
+
     # ========== private ==========
 
     async def _item_metadata(self, path, revision=None):
+        """Fetch metadata for a single file from the OSF.
+
+        :param path: file path whose ``identifier`` is the OSF file node id
+        :param revision: optional file version identifier passed to OSF as ``revision``
+        :return: :class:`OsfStorageFileMetadata` for the file
+        """
         resp = await self.make_signed_request(
             'GET',
             self.build_url(path.identifier, revision=revision),
@@ -524,10 +571,28 @@ class OSFStorageProvider(provider.BaseProvider):
         )
         return OsfStorageFileMetadata((await resp.json()), str(path))
 
-    async def _children_metadata(self, path):
+    async def _children_metadata(self, path, limit=None, after=None, **kwargs):
+        """Fetch folder children metadata from the OSF.
+
+        :param path: folder path whose ``identifier`` is the OSF folder node id
+        :param limit: page size for paginated children listing
+        :param after: cursor (child node pk) for the next page
+        :return: list of :class:`OsfStorageFolderMetadata` and
+            :class:`OsfStorageFileMetadata` instances
+        """
+        query = {
+            'user_id': self.auth.get('id'),
+            'minimal': kwargs.get('minimal', False),
+        }
+
+        if limit is not None:
+            query['limit'] = limit
+            if after is not None:
+                query['after'] = after
+
         resp = await self.make_signed_request(
             'GET',
-            self.build_url(path.identifier, 'children', user_id=self.auth.get('id')),
+            self.build_url(path.identifier, 'children', **query),
             expects=(200, )
         )
         resp_json = await resp.json()
