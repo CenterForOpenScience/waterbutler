@@ -1,4 +1,5 @@
 import re
+import abc
 import json
 import pytz
 import asyncio
@@ -192,25 +193,55 @@ def make_disposition(filename):
                                                                          encoded_filename)
 
 
-class ZipStreamGenerator:
-    def __init__(self, provider, parent_path, *metadata_objs):
+class BaseZipStreamGenerator(abc.ABC):
+
+    def __init__(self, provider, root_path, **kwargs):
         self.provider = provider
-        self.parent_path = parent_path
-        self.remaining = [
-            (parent_path, metadata)
-            for metadata in metadata_objs
-        ]
+        self.root_path = root_path
+        self.parent_path = root_path.parent if root_path.is_file else root_path
+        self.kwargs = kwargs
+
+        self.remaining = []
+        self.initialized = False
 
     async def __aiter__(self):
         return self
 
+    @abc.abstractmethod
+    async def _initialize(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
     async def __anext__(self):
+        raise NotImplementedError
+
+
+class ZipStreamGenerator(BaseZipStreamGenerator):
+
+    async def _initialize(self):
+        if self.initialized:
+            return
+
+        if self.root_path.is_file:
+            metadata = await self.provider.metadata(self.root_path, **self.kwargs)
+            self.remaining.append((self.root_path.parent, metadata))
+            return
+
+        items = await self.provider.metadata(self.root_path, **self.kwargs)
+        self.remaining.extend((self.root_path, item) for item in items)
+
+        self.initialized = True
+
+    async def __anext__(self):
+        if not self.initialized:
+            await self._initialize()
+
         if not self.remaining:
             raise StopAsyncIteration
         current = self.remaining.pop(0)
         path = self.provider.path_from_metadata(*current)
         if path.is_dir:
-            items = await self.provider.metadata(path)
+            items = await self.provider.metadata(path, **self.kwargs)
             if items:
                 self.remaining.extend([
                     (path, item) for item in items
@@ -219,7 +250,69 @@ class ZipStreamGenerator:
             else:
                 return path.path.replace(self.parent_path.path, '', 1), EmptyStream()
 
-        return path.path.replace(self.parent_path.path, '', 1), await self.provider.download(path)
+        return (
+            path.path.replace(self.parent_path.path, '', 1),
+            await self.provider.download(path, metadata=current[1])
+        )
+
+
+class ZipStreamGeneratorPaginated(BaseZipStreamGenerator):
+
+    async def _initialize(self):
+        if self.initialized:
+            return
+
+        if self.root_path.is_file:
+            metadata = await self.provider.metadata(
+                self.root_path,
+                **self.kwargs,
+            )
+            self.remaining.append((self.root_path.parent, metadata))
+            return
+
+        async for page in self.provider.iter_children_pages(
+            self.root_path,
+            **self.kwargs,
+        ):
+            self.remaining.extend(
+                (self.root_path, item)
+                for item in page
+            )
+
+        self.initialized = True
+
+    async def __anext__(self):
+        if not self.initialized:
+            await self._initialize()
+
+        if not self.remaining:
+            raise StopAsyncIteration
+
+        current = self.remaining.pop(0)
+        path = self.provider.path_from_metadata(*current)
+
+        if path.is_dir:
+            async for page in self.provider.iter_children_pages(
+                path,
+                **self.kwargs,
+            ):
+                if not page:
+                    return (
+                        path.path.replace(self.parent_path.path, '', 1),
+                        EmptyStream(),
+                    )
+
+                self.remaining.extend(
+                    (path, item)
+                    for item in page
+                )
+
+            return await self.__anext__()
+
+        return (
+            path.path.replace(self.parent_path.path, '', 1),
+            await self.provider.download(path, metadata=current[1]),
+        )
 
 
 class RequestHandlerContext:

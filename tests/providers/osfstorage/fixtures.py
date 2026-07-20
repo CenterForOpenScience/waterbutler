@@ -95,6 +95,11 @@ def folder_children_metadata():
     with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
         return json.load(fp)['folder_children_metadata']
 
+@pytest.fixture
+def folder_children_metadata_minimal():
+    with open(os.path.join(os.path.dirname(__file__), 'fixtures/root_provider.json')) as fp:
+        return json.load(fp)['folder_children_metadata_minimal']
+
 
 @pytest.fixture
 def download_response():

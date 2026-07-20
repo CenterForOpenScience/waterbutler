@@ -127,10 +127,10 @@ class MetadataMixin:
         return self.write({'data': [r.json_api_serialized() for r in result]})
 
     async def download_folder_as_zip(self):
-        zipfile_name = self.path.name or f'{self.provider.NAME}-archive'
+        zipfile_name = f'{self.path_kwargs.get("resource")}-{self.path.name}' if self.path.name else f'{self.path_kwargs.get("resource")}-{self.provider.NAME}-archive'
         self.set_header('Content-Type', 'application/zip')
         self.set_header('Content-Disposition', make_disposition(zipfile_name + '.zip'))
 
-        result = await self.provider.zip(self.path)
+        result = await self.provider.zip(self.path, **self.arguments)
 
         await self.write_stream(result)
