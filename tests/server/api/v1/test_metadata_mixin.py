@@ -121,6 +121,20 @@ class TestMetadataMixin:
         handler.write_stream.assert_awaited_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize('write_stream_result, expected_completed', [(True, True), (False, False)])
+    async def test_download_file_records_stream_completion(self, http_request, mock_stream,
+                                                           write_stream_result, expected_completed):
+
+        handler = mock_handler(http_request)
+        handler.provider.download = MockCoroutine(return_value=mock_stream)
+        handler.path = WaterButlerPath('/test_file')
+        handler.write_stream = MockCoroutine(return_value=write_stream_result)
+
+        await handler.download_file()
+
+        assert handler._download_completed is expected_completed
+
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("given_arg,expected_name,filtered_name", [
         (['résumé.doc'], 'r%C3%A9sum%C3%A9.doc', 'resume.doc'),
         ([''],           'test_file',            'test_file'),

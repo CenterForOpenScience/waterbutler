@@ -94,12 +94,13 @@ class BaseProviderHandler(BaseHandler):
         self.path = await self.provider.validate_path(**self.arguments)
         self.arguments['path'] = self.path  # TODO Not this
 
-    def _send_hook(self, action, metadata=None, path=None):
+    def _send_hook(self, action, metadata=None, path=None, completed=False):
         source = LogPayload(self.arguments['nid'], self.provider, metadata=metadata, path=path)
         remote_logging.log_file_action(action, source=source, api_version='v0',
                                        request=remote_logging._serialize_request(self.request),
                                        bytes_downloaded=self.bytes_downloaded,
-                                       bytes_uploaded=self.bytes_uploaded)
+                                       bytes_uploaded=self.bytes_uploaded,
+                                       completed=completed)
 
 
 class BaseCrossProviderHandler(BaseHandler):
@@ -140,7 +141,7 @@ class BaseCrossProviderHandler(BaseHandler):
 
         return self._json
 
-    def _send_hook(self, action, metadata):
+    def _send_hook(self, action, metadata, completed=False):
         source = LogPayload(self.json['source']['nid'], self.source_provider,
                             path=self.json['source']['path'])
         destination = LogPayload(self.json['destination']['nid'], self.destination_provider,
@@ -148,4 +149,5 @@ class BaseCrossProviderHandler(BaseHandler):
         remote_logging.log_file_action(action, source=source, destination=destination, api_version='v0',
                                        request=remote_logging._serialize_request(self.request),
                                        bytes_downloaded=self.bytes_downloaded,
-                                       bytes_uploaded=self.bytes_uploaded)
+                                       bytes_uploaded=self.bytes_uploaded,
+                                       completed=completed)
