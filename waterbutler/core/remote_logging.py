@@ -62,7 +62,7 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         log_payload['action_meta']['completed'] = completed
 
     log_payload['action_meta']['bytes_downloaded'] = bytes_downloaded
-    log_payload['action_meta']['ip'] = request['tech']['ip']
+    log_payload['action_meta']['ip'] = request.get('tech', {}).get('ip')
     resp_status, resp_data = await utils.send_signed_request('PUT', auth['callback_url'], log_payload)
 
     if resp_status // 100 != 2:

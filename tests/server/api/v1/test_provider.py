@@ -187,7 +187,7 @@ class TestProviderHandlerFinish:
         handler._send_hook = mock.Mock()
 
         assert handler.on_finish() is None
-        handler._send_hook.assert_called_once_with('download_zip')
+        handler._send_hook.assert_called_once_with('download_zip', completed=True)
 
     @pytest.mark.asyncio
     async def test_dont_send_hook_on_file_metadata(self, http_request):
@@ -338,4 +338,4 @@ class TestProviderHandlerFinish:
         handler._send_hook = mock.Mock()
 
         assert handler.on_finish() is None
-        handler._send_hook.assert_called_once_with('download_file')
+        handler._send_hook.assert_called_once_with('download_file', completed=True)
