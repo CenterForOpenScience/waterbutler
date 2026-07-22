@@ -228,12 +228,12 @@ class TestMetadataMixin:
         handler = mock_handler(http_request)
 
         handler.provider.zip = MockCoroutine(return_value=mock_stream)
-        handler.path = WaterButlerPath('/test_file')
+        handler.path = WaterButlerPath('/test_folder')
 
         await handler.download_folder_as_zip()
 
         assert handler._headers['Content-Type'] == 'application/zip'
-        expected = 'attachment; filename="guid1-test_file.zip"; filename*=UTF-8\'\'guid1-test_file.zip'
+        expected = 'attachment; filename="guid1-MockProvider-test_folder.zip"; filename*=UTF-8\'\'guid1-MockProvider-test_folder.zip'
         assert handler._headers['Content-Disposition'] == expected
 
         handler.write_stream.assert_called_once_with(mock_stream)
