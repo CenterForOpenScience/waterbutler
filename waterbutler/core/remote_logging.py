@@ -15,6 +15,10 @@ from waterbutler.tasks import settings as task_settings
 
 logger = logging.getLogger(__name__)
 
+# Upper bound on the download link tags forwarded to the OSF.  They come off the query
+# string, so they're user-controllable; the OSF validates them against its own storage.
+MAX_DOWNLOAD_TAG_LENGTH = 256
+
 
 @utils.async_retry(retries=5, backoff=5)
 async def log_to_callback(action, source=None, destination=None, start_time=None, errors=None,
@@ -60,6 +64,7 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
                          settings.MFR_IDENTIFYING_HEADER in request["request"]["headers"])
         log_payload['action_meta']['is_mfr_render'] = is_mfr_render
         log_payload['action_meta']['completed'] = completed
+        log_payload['action_meta'].update(_download_link_tags(request))
 
     log_payload['action_meta']['bytes_downloaded'] = bytes_downloaded
     log_payload['action_meta']['ip'] = request.get('tech', {}).get('ip')
@@ -343,6 +348,27 @@ def _scrub_headers_for_keen(payload, MAX_ITERATIONS=10):
             scrubbed_payload[scrubbed_key] = payload[key]
 
     return scrubbed_payload
+
+
+def _download_link_tags(request):
+    """Pull the ``source`` and ``tz`` tags the frontend appends to download links.
+
+    Zips are requested straight from WB and never pass through the OSF, so the query string
+    is the only place the originating page and the user's timezone survive the round trip.
+    Both are absent for downloads that don't originate from the frontend.
+    """
+    url = request.get('request', {}).get('url')
+    if not url:
+        return {}
+
+    args = furl.furl(url).args
+    tags = {}
+    for tag in ('source', 'tz'):
+        value = args.get(tag)
+        if value:
+            tags[tag] = value[:MAX_DOWNLOAD_TAG_LENGTH]
+
+    return tags
 
 
 def _serialize_request(request):
