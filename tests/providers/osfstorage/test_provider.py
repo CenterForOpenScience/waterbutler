@@ -24,7 +24,7 @@ from tests.providers.osfstorage.fixtures import (auth, credentials, settings,
                                                  file_lineage, file_metadata,
                                                  file_metadata_object, file_path,
                                                  folder_lineage, folder_metadata,
-                                                 folder_children_metadata, folder_path,
+                                                 folder_children_metadata, folder_children_metadata_minimal, folder_path,
                                                  revisions_metadata, revision_metadata_object,
                                                  download_response, download_path,
                                                  upload_response, upload_path, root_path,
@@ -70,13 +70,13 @@ class TestDownload:
 
     @pytest.mark.asyncio
     @pytest.mark.aiohttpretty
-    async def test_download_with_auth(self, provider_and_mock_one, download_response,
-                                      download_path, mock_time):
+    async def test_download(self, provider_and_mock_one, download_response,
+                            download_path, mock_time):
 
         provider, inner_provider = provider_and_mock_one
 
-        uri, params = build_signed_url_with_auth(provider, 'GET', download_path.identifier,
-                                                 'download', version=None, mode=None)
+        uri, params = build_signed_url_without_auth(provider, 'GET', download_path.identifier,
+                                                    'download', version=None, mode=None)
 
         aiohttpretty.register_json_uri('GET', uri,  body=download_response, params=params)
 
@@ -87,29 +87,6 @@ class TestDownload:
 
         assert aiohttpretty.has_call(method='GET', uri=uri, params=params)
         provider.make_provider.assert_called_once_with(download_response['settings'])
-        expected_path = WaterButlerPath('/' + download_response['data']['path'])
-        expected_display_name = download_response['data']['name']
-        inner_provider.download.assert_called_once_with(path=expected_path,
-                                                        display_name=expected_display_name)
-
-    @pytest.mark.asyncio
-    @pytest.mark.aiohttpretty
-    async def test_download_without_auth(self, provider_and_mock_one, download_response,
-                                         download_path, mock_time):
-        provider, inner_provider = provider_and_mock_one
-
-        provider.auth = {}
-        url, params = build_signed_url_without_auth(provider, 'GET', download_path.identifier,
-                                                    'download', version=None, mode=None)
-        aiohttpretty.register_json_uri('GET', url, params=params, body=download_response)
-
-        await provider.download(download_path)
-
-        assert provider.make_provider.called
-        assert inner_provider.download.called
-        assert aiohttpretty.has_call(method='GET', uri=url, params=params)
-        provider.make_provider.assert_called_once_with(download_response['settings'])
-
         expected_path = WaterButlerPath('/' + download_response['data']['path'])
         expected_display_name = download_response['data']['name']
         inner_provider.download.assert_called_once_with(path=expected_path,
@@ -141,7 +118,7 @@ class TestDownload:
 
         provider, inner_provider = provider_and_mock_one
 
-        uri, params = build_signed_url_with_auth(provider, 'GET', download_path.identifier,
+        uri, params = build_signed_url_without_auth(provider, 'GET', download_path.identifier,
                                                  'download', version=None, mode=None)
 
         aiohttpretty.register_json_uri('GET', uri,  body=download_response, params=params)
@@ -156,6 +133,78 @@ class TestDownload:
         expected_path = WaterButlerPath('/' + download_response['data']['path'])
         inner_provider.download.assert_called_once_with(path=expected_path,
                                                         display_name=expected_name)
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_with_embedded_storage_skips_osf(
+            self, provider_and_mock_one, download_response, download_path, mock_time):
+
+        provider, inner_provider = provider_and_mock_one
+        uri, params = build_signed_url_without_auth(
+            provider, 'GET', download_path.identifier, 'download', version=None, mode=None,
+        )
+
+        metadata = OsfStorageFileMetadata({
+            'kind': 'file',
+            'name': download_response['data']['name'],
+            'path': f'/{download_path.identifier}',
+            'storage': download_response,
+        }, str(download_path))
+
+        await provider.download(download_path, metadata=metadata)
+
+        assert not aiohttpretty.has_call(method='GET', uri=uri, params=params)
+        provider.make_provider.assert_called_once_with(download_response['settings'])
+        expected_path = WaterButlerPath('/' + download_response['data']['path'])
+        inner_provider.download.assert_called_once_with(
+            path=expected_path,
+            display_name=download_response['data']['name'],
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_without_storage_falls_back_to_osf(
+            self, provider_and_mock_one, download_response, download_path, mock_time):
+
+        provider, inner_provider = provider_and_mock_one
+        uri, params = build_signed_url_without_auth(
+            provider, 'GET', download_path.identifier, 'download', version=None, mode=None,
+        )
+        aiohttpretty.register_json_uri('GET', uri, body=download_response, params=params)
+
+        metadata = OsfStorageFileMetadata({
+            'kind': 'file',
+            'name': download_response['data']['name'],
+            'path': f'/{download_path.identifier}',
+        }, str(download_path))
+
+        await provider.download(download_path, metadata=metadata)
+
+        assert aiohttpretty.has_call(method='GET', uri=uri, params=params)
+        inner_provider.download.assert_called_once()
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_download_with_version_ignores_embedded_storage(
+            self, provider_and_mock_one, download_response, download_path, mock_time):
+
+        provider, inner_provider = provider_and_mock_one
+        uri, params = build_signed_url_without_auth(
+            provider, 'GET', download_path.identifier, 'download', version=1, mode=None,
+        )
+        aiohttpretty.register_json_uri('GET', uri, body=download_response, params=params)
+
+        metadata = OsfStorageFileMetadata({
+            'kind': 'file',
+            'name': download_response['data']['name'],
+            'path': f'/{download_path.identifier}',
+            'storage': download_response,
+        }, str(download_path))
+
+        await provider.download(download_path, metadata=metadata, version=1)
+
+        assert aiohttpretty.has_call(method='GET', uri=uri, params=params)
+        inner_provider.download.assert_called_once()
 
 
 class TestDelete:
@@ -210,7 +259,7 @@ class TestDelete:
 
         children_url, params = build_signed_url_without_auth(provider_one, 'GET',
                                                              folder_path.identifier, 'children',
-                                                             user_id=provider_one.auth['id'])
+                                                             user_id=provider_one.auth['id'], minimal=False)
         aiohttpretty.register_json_uri('GET', children_url, params=params, status=200,
                                        body=folder_children_metadata)
 
@@ -227,7 +276,7 @@ class TestMetadata:
     async def test_provider_metadata_empty(self, provider_one, folder_path, mock_time):
 
         url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
-                                                    'children', user_id=provider_one.auth['id'])
+                                                    'children', user_id=provider_one.auth['id'], minimal=False)
         aiohttpretty.register_json_uri('GET', url, params=params, status_code=200, body=[])
 
         res = await provider_one.metadata(folder_path)
@@ -241,7 +290,7 @@ class TestMetadata:
                                             folder_children_metadata, mock_time):
 
         url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
-                                                    'children', user_id=provider_one.auth['id'])
+                                                    'children', user_id=provider_one.auth['id'], minimal=False)
         aiohttpretty.register_json_uri('GET', url, params=params, status=200,
                                        body=folder_children_metadata)
 
@@ -276,7 +325,7 @@ class TestMetadata:
                                                 folder_children_metadata, mock_time):
 
         url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
-                                                    'children')
+                                                    'children', minimal=False)
         aiohttpretty.register_json_uri('GET', url, params=params, status=200,
                                        body=folder_children_metadata)
         folder_path._parts[-1]._id = None
@@ -732,7 +781,7 @@ class TestValidatePath:
     async def test_revalidate_path_new(self, provider_one, folder_path, folder_children_metadata,
                                        mock_time):
         url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
-                                                    'children', user_id=provider_one.auth['id'])
+                                                    'children', user_id=provider_one.auth['id'], minimal=False)
         aiohttpretty.register_json_uri('GET', url, params=params, status=200,
                                        body=folder_children_metadata)
 
@@ -745,7 +794,7 @@ class TestValidatePath:
     async def test_revalidate_path_existing(self, provider_one, folder_path,
                                             folder_children_metadata, mock_time):
         url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
-                                                    'children', user_id=provider_one.auth['id'])
+                                                    'children', user_id=provider_one.auth['id'], minimal=False)
         aiohttpretty.register_json_uri('GET', url, params=params, status=200,
                                        body=folder_children_metadata)
 
@@ -1253,3 +1302,38 @@ class TestCrossRegionCopy:
         src_provider.can_intra_copy.assert_called_once_with(dst_provider, src_path)
         src_provider.intra_copy.assert_not_called()
         src_provider.download.assert_not_called()
+
+class TestMinimalMetadataDAZ:
+
+    @pytest.mark.asyncio
+    async def test_zip_requests_minimal_metadata(self, provider_one, folder_path, monkeypatch):
+        captured = {}
+
+        async def capture_zip(self, path, **kwargs):
+            captured.update(kwargs)
+            return object()
+
+        monkeypatch.setattr(
+            'waterbutler.core.provider.BaseProvider.zip',
+            capture_zip,
+        )
+
+        await provider_one.zip(folder_path)
+
+        assert captured.get('minimal') is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.aiohttpretty
+    async def test_minimal_metadata(self, provider_one, folder_path, folder_children_metadata_minimal):
+
+        url, params = build_signed_url_without_auth(provider_one, 'GET', folder_path.identifier,
+                                                    'children', user_id=provider_one.auth['id'], minimal=True)
+        aiohttpretty.register_json_uri('GET', url, params=params, status=200,
+                                       body=folder_children_metadata_minimal)
+
+        metadata = await provider_one.metadata(folder_path, minimal=True)
+
+        assert [type(metadata_item) for metadata_item in metadata] == [OsfStorageFolderMetadata, OsfStorageFileMetadata, OsfStorageFileMetadata, OsfStorageFileMetadata]
+        assert [metadata_item.name for metadata_item in metadata] == ['New Folder', 'one', 'doc.rst', 'video.mp4']
+        assert [metadata_item.path for metadata_item in metadata] == ['/59c0054cb7d1c90114c456af/', '/59a9b637b7d1c903ab5a8f58', '/59a9b628b7d1c903ab5a8f52', '/59a5adb9b7d1c901cd40f0e9']
+        assert [metadata_item.provider for metadata_item in metadata] == ['osfstorage', 'osfstorage', 'osfstorage', 'osfstorage']
