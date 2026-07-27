@@ -22,7 +22,7 @@ MAX_DOWNLOAD_TAG_LENGTH = 256
 
 @utils.async_retry(retries=5, backoff=5)
 async def log_to_callback(action, source=None, destination=None, start_time=None, errors=None,
-                          request=None, bytes_downloaded=0, completed=False):
+                          request=None, bytes_downloaded=0, completed=False, status_code=None):
     """PUT a logging payload back to the callback given by the auth provider."""
     errors = errors or []
     request = request or {}
@@ -64,6 +64,9 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
                          settings.MFR_IDENTIFYING_HEADER in request["request"]["headers"])
         log_payload['action_meta']['is_mfr_render'] = is_mfr_render
         log_payload['action_meta']['completed'] = completed
+        # The HTTP status lets the OSF tell a genuine failure (5xx) apart from a user
+        # cancelling mid-stream (200, headers already sent) -- both arrive as completed=False.
+        log_payload['action_meta']['status_code'] = status_code
         log_payload['action_meta'].update(_download_link_tags(request))
 
     log_payload['action_meta']['bytes_downloaded'] = bytes_downloaded
@@ -226,13 +229,14 @@ async def _send_to_keen(payload, collection, project_id, write_key, action, doma
 
 def log_file_action(action, source, api_version, destination=None, request=None,
                     start_time=None, errors=None, bytes_downloaded=None, bytes_uploaded=None,
-                    completed=False):
+                    completed=False, status_code=None):
     """Kick off logging actions in the background. Returns array of asyncio.Tasks."""
     request = request or {}
     return [
         log_to_callback(action, source=source, destination=destination,
                         start_time=start_time, errors=errors, request=request,
-                        bytes_downloaded=bytes_downloaded, completed=completed,),
+                        bytes_downloaded=bytes_downloaded, completed=completed,
+                        status_code=status_code,),
         asyncio.ensure_future(
             log_to_keen(action, source=source, destination=destination,
                         errors=errors, request=request, api_version=api_version,
