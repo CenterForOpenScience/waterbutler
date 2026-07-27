@@ -175,7 +175,8 @@ class TestProviderHandlerFinish:
         handler._send_hook = mock.Mock()
 
         assert handler.on_finish() is None
-        handler._send_hook.assert_called_once_with('download_file', completed=expected_completed)
+        handler._send_hook.assert_called_once_with(
+            'download_file', completed=expected_completed, status_code=200)
 
     @pytest.mark.asyncio
     async def test_on_finish_download_zip(self, http_request):
@@ -187,7 +188,87 @@ class TestProviderHandlerFinish:
         handler._send_hook = mock.Mock()
 
         assert handler.on_finish() is None
-        handler._send_hook.assert_called_once_with('download_zip', completed=True)
+        handler._send_hook.assert_called_once_with('download_zip', completed=True, status_code=200)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('status', [500, 502, 400, 404])
+    async def test_on_finish_failed_download_file(self, http_request, status):
+        """A file download that authorized and started but then errored is reported as
+        failed, so the OSF can count it -- the "attempted but failed" case."""
+        handler = mock_handler(http_request)
+        handler.request.method = 'GET'
+        handler.path = WaterButlerPath('/file')
+        handler._status_code = status
+        handler._send_hook = mock.Mock()
+
+        assert handler.on_finish() is None
+        handler._send_hook.assert_called_once_with(
+            'download_file', completed=False, status_code=status)
+
+    @pytest.mark.asyncio
+    async def test_on_finish_failed_download_zip(self, http_request):
+        handler = mock_handler(http_request)
+        handler.request.method = 'GET'
+        handler.request.query_arguments['zip'] = ''
+        handler.path = WaterButlerPath('/folder/')
+        handler._status_code = 500
+        handler._send_hook = mock.Mock()
+
+        assert handler.on_finish() is None
+        handler._send_hook.assert_called_once_with(
+            'download_zip', completed=False, status_code=500)
+
+    @pytest.mark.asyncio
+    async def test_failed_download_not_reported_without_a_provider(self, http_request):
+        """A request that failed during auth never got a provider, so there's no callback
+        url to report to -- it must stay silent, exactly as before."""
+        handler = mock_handler(http_request)
+        handler.request.method = 'GET'
+        handler.path = WaterButlerPath('/file')
+        handler.provider = None
+        handler._status_code = 500
+        handler._send_hook = mock.Mock()
+
+        assert handler.on_finish() is None
+        assert not handler._send_hook.called
+
+    @pytest.mark.asyncio
+    async def test_failed_download_not_reported_when_path_never_validated(self, http_request):
+        """self.path is still the raw string it starts as -- validation never finished, so
+        the download never really began."""
+        handler = mock_handler(http_request)
+        handler.request.method = 'GET'
+        handler.path = '/test_path'
+        handler._status_code = 500
+        handler._send_hook = mock.Mock()
+
+        assert handler.on_finish() is None
+        assert not handler._send_hook.called
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('method', ['PUT', 'POST', 'DELETE'])
+    async def test_failed_non_download_is_not_reported(self, http_request, method):
+        """Only downloads are recorded on failure; a failed upload/move/delete stays silent."""
+        handler = mock_handler(http_request)
+        handler.request.method = method
+        handler.path = WaterButlerPath('/file')
+        handler._status_code = 500
+        handler._send_hook = mock.Mock()
+
+        assert handler.on_finish() is None
+        assert not handler._send_hook.called
+
+    @pytest.mark.asyncio
+    async def test_failed_folder_listing_is_not_reported(self, http_request):
+        """A folder GET without ?zip is a metadata listing, not a download."""
+        handler = mock_handler(http_request)
+        handler.request.method = 'GET'
+        handler.path = WaterButlerPath('/folder/')
+        handler._status_code = 500
+        handler._send_hook = mock.Mock()
+
+        assert handler.on_finish() is None
+        assert not handler._send_hook.called
 
     @pytest.mark.asyncio
     async def test_dont_send_hook_on_file_metadata(self, http_request):
@@ -338,4 +419,4 @@ class TestProviderHandlerFinish:
         handler._send_hook = mock.Mock()
 
         assert handler.on_finish() is None
-        handler._send_hook.assert_called_once_with('download_file', completed=True)
+        handler._send_hook.assert_called_once_with('download_file', completed=True, status_code=302)
