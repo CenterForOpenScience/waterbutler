@@ -15,10 +15,14 @@ from waterbutler.tasks import settings as task_settings
 
 logger = logging.getLogger(__name__)
 
+# Upper bound on the download link tags forwarded to the OSF.  They come off the query
+# string, so they're user-controllable; the OSF validates them against its own storage.
+MAX_DOWNLOAD_TAG_LENGTH = 256
+
 
 @utils.async_retry(retries=5, backoff=5)
 async def log_to_callback(action, source=None, destination=None, start_time=None, errors=None,
-                          request=None):
+                          request=None, bytes_downloaded=0, completed=False, status_code=None):
     """PUT a logging payload back to the callback given by the auth provider."""
     errors = errors or []
     request = request or {}
@@ -59,7 +63,14 @@ async def log_to_callback(action, source=None, destination=None, start_time=None
         is_mfr_render = (ref_url_domain == settings.MFR_DOMAIN or
                          settings.MFR_IDENTIFYING_HEADER in request["request"]["headers"])
         log_payload['action_meta']['is_mfr_render'] = is_mfr_render
+        log_payload['action_meta']['completed'] = completed
+        # The HTTP status lets the OSF tell a genuine failure (5xx) apart from a user
+        # cancelling mid-stream (200, headers already sent) -- both arrive as completed=False.
+        log_payload['action_meta']['status_code'] = status_code
+        log_payload['action_meta'].update(_download_link_tags(request))
 
+    log_payload['action_meta']['bytes_downloaded'] = bytes_downloaded
+    log_payload['action_meta']['ip'] = request.get('tech', {}).get('ip')
     resp_status, resp_data = await utils.send_signed_request('PUT', auth['callback_url'], log_payload)
 
     if resp_status // 100 != 2:
@@ -217,12 +228,15 @@ async def _send_to_keen(payload, collection, project_id, write_key, action, doma
 
 
 def log_file_action(action, source, api_version, destination=None, request=None,
-                    start_time=None, errors=None, bytes_downloaded=None, bytes_uploaded=None):
+                    start_time=None, errors=None, bytes_downloaded=None, bytes_uploaded=None,
+                    completed=False, status_code=None):
     """Kick off logging actions in the background. Returns array of asyncio.Tasks."""
     request = request or {}
     return [
         log_to_callback(action, source=source, destination=destination,
-                        start_time=start_time, errors=errors, request=request,),
+                        start_time=start_time, errors=errors, request=request,
+                        bytes_downloaded=bytes_downloaded, completed=completed,
+                        status_code=status_code,),
         asyncio.ensure_future(
             log_to_keen(action, source=source, destination=destination,
                         errors=errors, request=request, api_version=api_version,
@@ -338,6 +352,27 @@ def _scrub_headers_for_keen(payload, MAX_ITERATIONS=10):
             scrubbed_payload[scrubbed_key] = payload[key]
 
     return scrubbed_payload
+
+
+def _download_link_tags(request):
+    """Pull the ``source`` and ``tz`` tags the frontend appends to download links.
+
+    Zips are requested straight from WB and never pass through the OSF, so the query string
+    is the only place the originating page and the user's timezone survive the round trip.
+    Both are absent for downloads that don't originate from the frontend.
+    """
+    url = request.get('request', {}).get('url')
+    if not url:
+        return {}
+
+    args = furl.furl(url).args
+    tags = {}
+    for tag in ('source', 'tz'):
+        value = args.get(tag)
+        if value:
+            tags[tag] = value[:MAX_DOWNLOAD_TAG_LENGTH]
+
+    return tags
 
 
 def _serialize_request(request):

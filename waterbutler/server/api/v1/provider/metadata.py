@@ -73,6 +73,7 @@ class MetadataMixin:
         )
 
         if isinstance(stream, str):
+            self._download_completed = True
             return self.redirect(stream)
 
         if getattr(stream, 'partial', None):
@@ -103,7 +104,7 @@ class MetadataMixin:
         if ext in mime_types:
             self.set_header('Content-Type', mime_types[ext])
 
-        await self.write_stream(stream)
+        self._download_completed = await self.write_stream(stream)
 
         if getattr(stream, 'partial', False) and isinstance(stream, ResponseStreamReader):
             await stream.response.release()
@@ -133,4 +134,4 @@ class MetadataMixin:
 
         result = await self.provider.zip(self.path, **self.arguments)
 
-        await self.write_stream(result)
+        self._download_completed = await self.write_stream(result)
