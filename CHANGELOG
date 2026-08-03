@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+26.3.0 (2026-08-03)
+===================
+
+- Report file download stats (individual and DAZ) back to OSF
+
 26.2.1 (2026-07-23)
 ===================
 

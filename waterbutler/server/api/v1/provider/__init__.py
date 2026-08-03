@@ -216,16 +216,20 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
     def on_finish(self):
         status, method = self.get_status(), self.request.method.upper()
 
-        # If the response code is not within the 200-302 range, the request was a HEAD or OPTIONS,
-        # the response code is 202, or the response was a 206 partial request, then no callbacks
-        # should be sent and no metrics collected.  For 202s, celery will send its own callback.
-        # Osfstorage and s3 can return 302s for file downloads, which should be tallied.
-        if any({
-            method in {'HEAD', 'OPTIONS'},
-            status in {202, 206},
-            status > 302,
-            status < 200
-        }):
+        # HEAD/OPTIONS carry no body, 202 means celery will send its own callback, and 206 is a
+        # partial range request -- none of these should produce a callback.
+        if method in {'HEAD', 'OPTIONS'} or status in {202, 206}:
+            return
+
+        # A download that got far enough to authorize and start but then errored is worth
+        # recording -- it's the "attempted but failed through no fault of the user" case the OSF
+        # wants counted.  Everything else that errors (a failed upload, move, delete, or a request
+        # rejected during auth/validation) is left alone, exactly as before.  See
+        # _is_reportable_download_failure for why the guard is what it is.
+        if status < 200 or status > 302:
+            if self._is_reportable_download_failure(method):
+                action = 'download_file' if self.path.is_file else 'download_zip'
+                self._send_hook(action, completed=False, status_code=status)
             return
 
         # WB doesn't send along Range headers when requesting signed urls, expecting the client
@@ -246,6 +250,7 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
                                   'zip' not in self.request.query_arguments))):
             return
 
+        completed = False
         # Done here just because method is defined
         action = {
             'GET': lambda: 'download_file' if self.path.is_file else 'download_zip',
@@ -254,9 +259,40 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
             'DELETE': lambda: 'delete'
         }[method]()
 
+        if action in {'download_file', 'download_zip'}:
+            completed = getattr(self, '_download_completed', status in {200, 302})
+            self._send_hook(action, completed=completed, status_code=status)
+            return
+
         self._send_hook(action)
 
-    def _send_hook(self, action):
+    def _is_reportable_download_failure(self, method):
+        """Whether a non-success response is a download we can and should report as failed.
+
+        We can only report a failure if auth got far enough to give us a provider -- and
+        therefore a callback url -- and the path validated into a real WaterButlerPath.  A
+        request that failed during auth or path validation never legitimately started and has
+        nowhere to report to, so it's left alone (same as before this change).  Uploads, moves
+        and deletes are out of scope; only GET downloads are recorded.
+        """
+        if method != 'GET':
+            return False
+        # provider is only set once auth has succeeded; without it there's no callback url.
+        if getattr(self, 'provider', None) is None:
+            return False
+        # self.path starts life as a raw string and only becomes a WaterButlerPath (with
+        # is_file/is_folder) once validate_v1_path completes.  A raw string means validation
+        # never finished, so the download was rejected before it began.
+        if not hasattr(self.path, 'is_file'):
+            return False
+        # metadata / revision listings and un-zipped folder listings aren't downloads.
+        if 'meta' in self.request.query_arguments or 'revisions' in self.request.query_arguments:
+            return False
+        if self.path.is_folder and 'zip' not in self.request.query_arguments:
+            return False
+        return True
+
+    def _send_hook(self, action, completed=False, status_code=None):
         source = None
         destination = None
 
@@ -281,4 +317,5 @@ class ProviderHandler(core.BaseHandler, CreateMixin, MetadataMixin, MoveCopyMixi
         remote_logging.log_file_action(action, source=source, destination=destination, api_version='v1',
                                        request=remote_logging._serialize_request(self.request),
                                        bytes_downloaded=self.bytes_downloaded,
-                                       bytes_uploaded=self.bytes_uploaded,)
+                                       bytes_uploaded=self.bytes_uploaded,
+                                       completed=completed, status_code=status_code)

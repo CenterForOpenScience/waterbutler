@@ -20,5 +20,5 @@ class ZipHandler(core.BaseProviderHandler):
 
         result = await self.provider.zip(**self.arguments)
 
-        await self.write_stream(result)
-        self._send_hook('download_zip', path=self.path)
+        completed = await self.write_stream(result)
+        self._send_hook('download_zip', path=self.path, completed=completed)
