@@ -20,8 +20,9 @@ from waterbutler.core.exceptions import (
 )
 from waterbutler.core.path import WaterButlerPath
 from waterbutler.core.provider import BaseProvider
-from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStreamReader
+from waterbutler.core.streams import BaseStream, HashStreamWriter, ResponseStreamReader, StringStream
 from waterbutler.core.utils import make_disposition
+from waterbutler.providers.googlecloud import settings as pd_settings
 from waterbutler.providers.oraclecloud.metadata import (
     BaseOracleCloudMetadata,
     OracleCloudFileMetadata,
@@ -306,6 +307,12 @@ class OracleCloudProvider(BaseProvider):
             raise DownloadError(
                 f"Object not found: {path}", code=HTTPStatus.NOT_FOUND
             )
+
+        resp_size = resp.headers.get('Content-Length', None)
+        if resp_size is not None and int(resp_size) < pd_settings.MAX_SLURP_SIZE:
+            stream = StringStream(await resp.read())
+            await resp.release()
+            return stream
 
         return ResponseStreamReader(resp)
 
