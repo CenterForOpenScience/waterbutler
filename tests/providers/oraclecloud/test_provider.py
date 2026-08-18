@@ -228,7 +228,9 @@ class TestCRUD:
         ):
             stream = await mock_provider.download(file_wb_path)
 
-        assert isinstance(stream, ResponseStreamReader)
+        # workaround: for small files, we slurp into memory and return a StringStream
+        # assert isinstance(stream, ResponseStreamReader)
+        assert isinstance(stream, StringStream)
 
     @pytest.mark.asyncio
     async def test_download_folder_raises(self, mock_provider, folder_wb_path):
@@ -268,7 +270,10 @@ class TestCRUD:
         ) as mocked:
             stream = await mock_provider.download(file_wb_path, range=(0, 6))
 
-        assert isinstance(stream, ResponseStreamReader)
+        # workaround: for small files, we slurp into memory and return a StringStream
+        # assert isinstance(stream, ResponseStreamReader)
+        assert isinstance(stream, StringStream)
+
         # Verify Range header was included in the signed headers
         call_kwargs = mocked.call_args
         assert call_kwargs.kwargs["headers"]["Range"] == "bytes=0-6"

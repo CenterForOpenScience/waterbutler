@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+26.4.0 (2026-08-18)
+===================
+
+- Fix small downloads hanging in oraclecloud by slurping them into memory.
+
 26.3.0 (2026-08-03)
 ===================
 
