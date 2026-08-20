@@ -134,17 +134,12 @@ class MoveCopyMixin:
             )
             self.dest_path = await self.dest_provider.validate_path(**self.json)
 
-        if not getattr(self.provider, 'can_intra_' + provider_action)(self.dest_provider, self.path):
-            # this weird signature syntax courtesy of py3.4 not liking trailing commas on kwargs
-            conflict = self.json.get('conflict', DEFAULT_CONFLICT)
-            result = await getattr(tasks, provider_action).adelay(
-                rename=self.json.get('rename'),
-                conflict=conflict,
-                request=remote_logging._serialize_request(self.request),
-                *self.build_args()
-            )
-            metadata, created = await tasks.wait_on_celery(result)
-        else:
+        if getattr(self.provider, 'can_intra_' + provider_action)(self.dest_provider, self.path):
+            # The operation can be done internally to the provider. This would
+            # be preferred for most operations because it reduces WaterButler's
+            # bandwith utilization and keeps resources free. Not all providers
+            # support this, hence the check (Implemented on a provider to
+            # provider basis).
             metadata, created = (
                 await tasks.backgrounded(
                     getattr(self.provider, provider_action),
@@ -155,6 +150,21 @@ class MoveCopyMixin:
                     conflict=self.json.get('conflict', DEFAULT_CONFLICT),
                 )
             )
+        else:
+            # This operation cannot be done inside of the service, using an
+            # `intra_move` or `intra_copy`. The operation should do the default
+            # routine of a download and an upload, potentially followed by a
+            # delete.
+            conflict = self.json.get('conflict', DEFAULT_CONFLICT)
+            src_arg, dest_arg = self.build_args()
+            result = await getattr(tasks, provider_action).adelay(
+                src_arg,
+                dest_arg,
+                rename=self.json.get('rename'),
+                conflict=conflict,
+                request=remote_logging._serialize_request(self.request)
+            )
+            metadata, created = await tasks.wait_on_celery(result)
 
         self.dest_meta = metadata
 
