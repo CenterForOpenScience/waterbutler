@@ -83,7 +83,7 @@ class TestMetadata:
             'webView': item['alternateLink'],
         }
         assert parsed.is_google_doc is True
-        assert parsed.export_name == item['title'] + '.docx'
+        assert parsed.export_name == item['title'] + '.gdoc.docx'
 
     def test_folder_metadata(self, root_provider_fixtures):
         item = root_provider_fixtures['folder_metadata']
@@ -117,3 +117,4 @@ class TestMetadata:
         assert parsed.version_identifier == 'revision'
         assert parsed.version == item['id']
         assert parsed.modified == item['modifiedDate']
+
