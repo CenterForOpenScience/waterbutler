@@ -43,3 +43,7 @@ RATE_LIMITING_FIXED_WINDOW_SIZE = int(config.get('RATE_LIMITING_FIXED_WINDOW_SIZ
 
 # number of reqests permitted while the redis key is active
 RATE_LIMITING_FIXED_WINDOW_LIMIT = int(config.get('RATE_LIMITING_FIXED_WINDOW_LIMIT', 3600))
+
+# test env envar mapping
+RATE_LIMITING_FIXED_WINDOW_SIZE = 360
+RATE_LIMITING_FIXED_WINDOW_LIMIT = 30
