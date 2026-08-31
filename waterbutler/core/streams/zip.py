@@ -188,13 +188,25 @@ class ZipLocalFile(MultiStream):
 
     @property
     def local_header(self):
-        """The file's header, for inclusion just before the content stream.  The `zip64` flag
-        ensures that the correct version from and version needed flags are set.  Some unzippers
-        will fail to extract zip64 if the minimum version flags aren't at least `45`.
+        """The file's header, for inclusion just before the content stream.
+
+        Zip64 must *not* be forced here. Streaming DAZ sets general-purpose bit 3 (data
+        descriptor) and writes sizes after the file data. APPNOTE 4.3.9.2 requires that when a
+        Zip64 extended information extra field is present on the local header, the data
+        descriptor uses 8-byte size fields. We only write 8-byte descriptors when a file's
+        sizes actually exceed :data:`ZIP64_LIMIT` (see :meth:`descriptor`). Forcing
+        ``zip64=True`` on every local header while still emitting 4-byte descriptors for normal
+        files produces archives that some extractors (notably when UTF-8 filenames also set bit
+        11) treat as structurally corrupt: they consume the next local header as descriptor
+        padding and silently drop the rest of the archive.
+
+        Large *archives* are still Zip64 via the Zip64 EOCD / locator written by
+        :class:`ZipArchiveCentralDirectory`. Large individual files still get Zip64 data
+        descriptors when their streamed sizes exceed the limit.
 
         See section 4.3.7 of the PKZIP APPNOTE.TXT
         """
-        return self.zinfo.FileHeader(zip64=True)
+        return self.zinfo.FileHeader(zip64=None)
 
     @property
     def directory_header(self):
@@ -261,7 +273,9 @@ class ZipLocalFile(MultiStream):
             self.zinfo.CRC,
             reported_compressed_size,
             reported_original_size,
-            len(self.zinfo.filename.encode('utf-8')),
+            # Use the already-encoded filename byte length (ASCII or UTF-8). Character length
+            # differs for non-ASCII names and would corrupt the central directory.
+            len(filename),
             len(extra_data),
             len(self.zinfo.comment),
             0,
