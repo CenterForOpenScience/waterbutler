@@ -2,6 +2,11 @@
 ChangeLog
 *********
 
+26.5.0 (2026-08-31)
+===================
+
+- Fix ZIP export corrupted for non-ASCII file names
+
 26.4.0 (2026-08-18)
 ===================
 
