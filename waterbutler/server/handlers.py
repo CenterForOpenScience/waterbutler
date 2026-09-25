@@ -10,5 +10,5 @@ class StatusHandler(tornado.web.RequestHandler):
         self.write({
             'status': 'up',
             'version': __version__,
-            'oh': 'hi',
+            'oh': 'hi o',
         })
