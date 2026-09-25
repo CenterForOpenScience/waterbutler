@@ -14,6 +14,7 @@ class TestStatusHandler(utils.HandlerTestCase):
         expected = {
             'status': 'up',
             'version': __version__,
+            'oh': 'hi',
         }
         resp = yield self.http_client.fetch(
             self.get_url('/status'),

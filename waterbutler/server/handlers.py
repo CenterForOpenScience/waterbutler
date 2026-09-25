@@ -9,5 +9,6 @@ class StatusHandler(tornado.web.RequestHandler):
         """List information about waterbutler status"""
         self.write({
             'status': 'up',
-            'version': __version__
+            'version': __version__,
+            'oh': 'hi',
         })
