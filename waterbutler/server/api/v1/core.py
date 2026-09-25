@@ -23,11 +23,14 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler):
         # TODO: maybe it is needed to change there too somehow
         etype, exc, _ = exc_info
 
+        send_to_sentry = True
+
         finish_args = []
         scope = sentry_sdk.get_current_scope()
         if issubclass(etype, exceptions.WaterButlerError):
             if exc.is_user_error:
                 scope.set_level('info')
+                send_to_sentry = False
 
             self.set_status(int(exc.code))
 
@@ -48,10 +51,12 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler):
         elif issubclass(etype, tasks.WaitTimeOutError):
             self.set_status(202)
             scope.set_level('info')
+            send_to_sentry = False
         else:
             finish_args = [{'code': status_code, 'message': self._reason}]
 
-        sentry_sdk.capture_exception(exc_info)
+        if send_to_sentry:
+            sentry_sdk.capture_exception(exc_info)
 
         self.finish(*finish_args)
 
