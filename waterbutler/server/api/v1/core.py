@@ -1,4 +1,5 @@
 import logging
+import random
 
 import tornado.web
 import tornado.gen
@@ -31,6 +32,13 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler):
             if exc.is_user_error:
                 scope.set_level('info')
                 send_to_sentry = False
+
+            # HACK: we log a lot of AuthErrors, which are real errors, but are not always useful
+            # compromise: only log 1% (configurable) of them
+            # TODO: actually make configurable
+            if issubclass(etype, exceptions.AuthError):
+                if random.randint(1, 100) != 1:
+                    send_to_sentry = False
 
             self.set_status(int(exc.code))
 
