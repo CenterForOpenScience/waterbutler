@@ -8,7 +8,7 @@ import tornado.iostream
 import sentry_sdk
 
 from waterbutler import tasks
-from waterbutler.server import utils
+from waterbutler.server import settings, utils
 from waterbutler.core import exceptions
 
 logger = logging.getLogger(__name__)
@@ -34,10 +34,9 @@ class BaseHandler(utils.CORsMixin, utils.UtilMixin, tornado.web.RequestHandler):
                 send_to_sentry = False
 
             # HACK: we log a lot of AuthErrors, which are real errors, but are not always useful
-            # compromise: only log 1% (configurable) of them
-            # TODO: actually make configurable
+            # compromise: only log 1 in 100 (configurable) of them
             if issubclass(etype, exceptions.AuthError):
-                if random.randint(1, 100) != 1:
+                if random.randint(1, settings.AUTH_ERROR_LOG_PERIOD) != 1:
                     send_to_sentry = False
 
             self.set_status(int(exc.code))
