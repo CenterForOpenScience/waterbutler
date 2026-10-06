@@ -43,3 +43,7 @@ RATE_LIMITING_FIXED_WINDOW_SIZE = int(config.get('RATE_LIMITING_FIXED_WINDOW_SIZ
 
 # number of reqests permitted while the redis key is active
 RATE_LIMITING_FIXED_WINDOW_LIMIT = int(config.get('RATE_LIMITING_FIXED_WINDOW_LIMIT', 3600))
+
+# HACK: we log a lot of AuthErrors, which are real errors, but are not always useful
+# compromise: only log 1 in every $foo AuthErrors
+AUTH_ERROR_LOG_PERIOD = int(config.get('AUTH_ERROR_LOG_PERIOD', 100))

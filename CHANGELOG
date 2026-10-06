@@ -2,6 +2,12 @@
 ChangeLog
 *********
 
+26.6.0 (2026-10-06)
+===================
+
+- Reduce sentry spam
+- Bump newrelic version to support MFR
+
 26.5.1 (2026-09-01)
 ===================
 
