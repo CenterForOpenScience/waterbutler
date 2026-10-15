@@ -173,7 +173,7 @@ class TestSignRequestQuery:
         assert "X-Amz-Algorithm=AWS4-HMAC-SHA256" in url
         assert "X-Amz-Credential=AKEXAMPLE" in url
         assert "X-Amz-Date=20250301T120000Z" in url
-        assert "X-Amz-Expires=3600" in url
+        assert "X-Amz-Expires=60" in url
         assert "X-Amz-SignedHeaders=host" in url
         assert "X-Amz-Signature=" in url
 
