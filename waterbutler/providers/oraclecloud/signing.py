@@ -13,6 +13,8 @@ import hmac
 import logging
 from urllib.parse import parse_qsl, quote, urlparse
 
+from waterbutler.providers.oraclecloud import settings as pd_settings
+
 logger = logging.getLogger(__name__)
 
 ALGORITHM = "AWS4-HMAC-SHA256"
@@ -201,7 +203,7 @@ class SigV4Signer:
         url = url + '&X-Amz-Algorithm=AWS4-HMAC-SHA256'
         url = url + f'&X-Amz-Credential={self.access_key}%2F{date_stamp}%2F{self.region}%2F{self.service}%2F{magic_str}'
         url = url + f'&X-Amz-Date={amz_date}'
-        url = url + '&X-Amz-Expires=3600'
+        url = url + f'&X-Amz-Expires={pd_settings.SIGNATURE_EXPIRATION}'
         url = url + '&X-Amz-SignedHeaders=host'
 
         parsed = urlparse(url)
