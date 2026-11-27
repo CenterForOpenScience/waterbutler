@@ -104,6 +104,7 @@ def async_retry(retries=5, backoff=1, exceptions_tuple=(Exception, )):
 
     return _async_retry
 
+
 # A dictionary of shared aiohttp.ClientSession objects, one per asyncio event loop.
 _shared_aiohttp_client_sessions: dict[asyncio.AbstractEventLoop, aiohttp.ClientSession] = {}
 
