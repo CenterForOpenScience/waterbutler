@@ -187,3 +187,6 @@ AIOHTTP_TIMEOUT = int(config.get('AIOHTTP_TIMEOUT', 3600))  # time in seconds
 
 # HTTP DNS cache TTL for shared aiohttp sessions to avoid excessive DNS lookups.
 SHARED_SESSION_DNS_CACHE_TTL = int(config.get('SHARED_SESSION_DNS_CACHE_TTL', 300))
+# Total and connection timeout for requests using shared session by calling `get_aiohttp_client_session()`,
+# currently only used by getting auth from OSF and logging callback to OSF.
+SHARED_SESSION_REQUEST_TIMEOUT = tuple(config.get_object('SHARED_SESSION_REQUEST_TIMEOUT', [300, 15]))

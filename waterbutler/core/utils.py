@@ -130,7 +130,12 @@ def get_aiohttp_client_session() -> aiohttp.ClientSession:
         use_dns_cache=True,
         ttl_dns_cache=wb_settings.SHARED_SESSION_DNS_CACHE_TTL,
     )
-    session = aiohttp.ClientSession(connector=connector, cookie_jar=aiohttp.DummyCookieJar())
+    total_timeout, connect_timeout = wb_settings.SHARED_SESSION_REQUEST_TIMEOUT
+    session = aiohttp.ClientSession(
+        connector=connector,
+        cookie_jar=aiohttp.DummyCookieJar(),
+        timeout=aiohttp.ClientTimeout(total=total_timeout, connect=connect_timeout),
+    )
     _shared_aiohttp_client_sessions[current_loop] = session
     return session
 
