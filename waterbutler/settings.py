@@ -185,8 +185,12 @@ WEBDAV_METHODS = {'PROPFIND', 'MKCOL', 'MOVE', 'COPY'}
 
 AIOHTTP_TIMEOUT = int(config.get('AIOHTTP_TIMEOUT', 3600))  # time in seconds
 
+# Whether the shared session closes each connection after its request (no keep-alive reuse).
+SHARED_SESSION_FORCE_CLOSE = config.get_bool('SHARED_SESSION_FORCE_CLOSE', True)
+# Max simultaneous connections per shared session (per WB worker); 0 means unlimited.
+SHARED_SESSION_CONNECTION_LIMIT = int(config.get('SHARED_SESSION_CONNECTION_LIMIT', 0))
 # HTTP DNS cache TTL for shared aiohttp sessions to avoid excessive DNS lookups.
 SHARED_SESSION_DNS_CACHE_TTL = int(config.get('SHARED_SESSION_DNS_CACHE_TTL', 300))
-# Total and connection timeout for requests using shared session by calling `get_aiohttp_client_session()`,
+# Total and connection timeout for requests using shared session with `get_aiohttp_client_session()`,
 # currently only used by getting auth from OSF and logging callback to OSF.
 SHARED_SESSION_REQUEST_TIMEOUT = tuple(config.get_object('SHARED_SESSION_REQUEST_TIMEOUT', [300, 15]))

@@ -110,10 +110,19 @@ _shared_aiohttp_client_sessions: dict[asyncio.AbstractEventLoop, aiohttp.ClientS
 
 
 def get_aiohttp_client_session() -> aiohttp.ClientSession:
-    """Return the shared aiphttp.Clientsession shared by the current asyncio event loop.
-    Make use of the SHARE_SESSION_DNS_CACHE_TTL setting to avoid excessive DNS lookups.
-    Use this function get a Clientsession for short-lived requests such as get_auth calls to osf.
+    """Return the aiohttp.ClientSession shared by the current asyncio event loop, creating it if
+    needed. Use it for short-lived requests to OSF, such as auth calls and logging callbacks. The
+    session is configured by these settings:
+
+      * SHARED_SESSION_DNS_CACHE_TTL: DNS cache TTL in seconds, to avoid excessive DNS lookups
+      * SHARED_SESSION_REQUEST_TIMEOUT: ``(total, connect)`` request timeouts in seconds
+      * SHARED_SESSION_FORCE_CLOSE: close each connection after its request (no keep-alive reuse)
+      * SHARED_SESSION_CONNECTION_LIMIT: max simultaneous connections; 0 means unlimited
+
+    The session uses a DummyCookieJar so no cookies are stored and shared across users' requests.
+    Cookies passed with each request are unaffected and still sent as usual.
     """
+
     current_loop = asyncio.get_running_loop()
     session = _shared_aiohttp_client_sessions.get(current_loop)
     if session is not None and not session.closed:
@@ -125,8 +134,8 @@ def get_aiohttp_client_session() -> aiohttp.ClientSession:
         _shared_aiohttp_client_sessions.pop(stale_loop).detach()
 
     connector = aiohttp.TCPConnector(
-        force_close=True,
-        limit=0,
+        force_close=wb_settings.SHARED_SESSION_FORCE_CLOSE,
+        limit=wb_settings.SHARED_SESSION_CONNECTION_LIMIT,
         use_dns_cache=True,
         ttl_dns_cache=wb_settings.SHARED_SESSION_DNS_CACHE_TTL,
     )
