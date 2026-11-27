@@ -14,6 +14,7 @@ import aiohttp
 import sentry_sdk
 from stevedore import driver
 
+from waterbutler import settings as wb_settings
 from waterbutler.core import exceptions
 from waterbutler.core.signing import Signer
 from waterbutler.core.streams import EmptyStream
@@ -103,6 +104,35 @@ def async_retry(retries=5, backoff=1, exceptions_tuple=(Exception, )):
 
     return _async_retry
 
+# A dictionary of shared aiohttp.ClientSession objects, one per asyncio event loop.
+_shared_aiohttp_client_sessions: dict[asyncio.AbstractEventLoop, aiohttp.ClientSession] = {}
+
+
+def get_aiohttp_client_session() -> aiohttp.ClientSession:
+    """Return the shared aiphttp.Clientsession shared by the current asyncio event loop.
+    Make use of the SHARE_SESSION_DNS_CACHE_TTL setting to avoid excessive DNS lookups.
+    Use this function get a Clientsession for short-lived requests such as get_auth calls to osf.
+    """
+    current_loop = asyncio.get_running_loop()
+    session = _shared_aiohttp_client_sessions.get(current_loop)
+    if session is not None and not session.closed:
+        return session
+
+    # Drop sessions without an active event loop.
+    stale_loops = [loop for loop in _shared_aiohttp_client_sessions.keys() if loop.is_closed()]
+    for stale_loop in stale_loops:
+        _shared_aiohttp_client_sessions.pop(stale_loop).detach()
+
+    connector = aiohttp.TCPConnector(
+        force_close=True,
+        limit=0,
+        use_dns_cache=True,
+        ttl_dns_cache=wb_settings.SHARED_SESSION_DNS_CACHE_TTL,
+    )
+    session = aiohttp.ClientSession(connector=connector, cookie_jar=aiohttp.DummyCookieJar())
+    _shared_aiohttp_client_sessions[current_loop] = session
+    return session
+
 
 async def send_signed_request(method, url, payload):
     """Calculates a signature for a payload, then sends a request to the given url with the payload
@@ -115,7 +145,7 @@ async def send_signed_request(method, url, payload):
 
     message, signature = signer.sign_payload(payload)
 
-    async with aiohttp.request(
+    async with get_aiohttp_client_session().request(
             method,
             url,
             data=json.dumps({

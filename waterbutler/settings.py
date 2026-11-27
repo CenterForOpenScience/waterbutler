@@ -184,3 +184,6 @@ KEEN_PUBLIC_LOG_ACTIONS = keen_public_config.get_bool('LOG_ACTIONS', True)
 WEBDAV_METHODS = {'PROPFIND', 'MKCOL', 'MOVE', 'COPY'}
 
 AIOHTTP_TIMEOUT = int(config.get('AIOHTTP_TIMEOUT', 3600))  # time in seconds
+
+# HTTP DNS cache TTL for shared aiohttp sessions to avoid excessive DNS lookups.
+SHARED_SESSION_DNS_CACHE_TTL = int(config.get('SHARED_SESSION_DNS_CACHE_TTL', 300))

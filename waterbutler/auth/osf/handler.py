@@ -3,10 +3,10 @@ import datetime
 
 import jwe
 import jwt
-import aiohttp
 from aiohttp.client_exceptions import ClientError, ContentTypeError
 
 from waterbutler.core import exceptions
+from waterbutler.core.utils import get_aiohttp_client_session
 from waterbutler.auth.osf import settings
 from waterbutler.core.auth import AuthType, BaseAuthHandler
 from waterbutler.settings import MFR_IDENTIFYING_HEADER
@@ -49,10 +49,7 @@ class OsfAuthHandler(BaseAuthHandler):
     @staticmethod
     async def make_request(params, headers, cookies):
         try:
-            # Note: with simple request whose response is handled right afterwards without "being passed
-            #       further along", use the context manager so WB doesn't need to handle the sessions.
-            async with aiohttp.request(
-                'get',
+            async with get_aiohttp_client_session().get(
                 settings.API_URL,
                 params=params,
                 headers=headers,
@@ -73,7 +70,6 @@ class OsfAuthHandler(BaseAuthHandler):
                     data = jwt.decode(
                         signed_jwt, settings.JWT_SECRET, algorithms=algorithms, options={'require_exp': True}
                     )
-
                     return data['data']
                 except (jwt.InvalidTokenError, KeyError):
                     raise exceptions.AuthError(data, code=response.status)
