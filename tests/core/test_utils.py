@@ -203,3 +203,31 @@ class TestZipStreamGeneratorPaginated:
         assert zip_name == 'Foo.name'
         provider.download.assert_called_once()
         assert provider.download.call_args.kwargs['metadata'] is file_meta
+
+
+class TestGetAiohttpClientSession:
+
+    @pytest.mark.asyncio
+    async def test_session_uses_configured_request_timeout(self, monkeypatch):
+        monkeypatch.setattr(utils.wb_settings, 'SHARED_SESSION_REQUEST_TIMEOUT', (3600, 60))
+        monkeypatch.setattr(utils, '_shared_aiohttp_client_sessions', {})
+        session = utils.get_aiohttp_client_session()
+        try:
+            assert session.timeout.total == 3600
+            assert session.timeout.connect == 60
+        finally:
+            await session.close()
+
+    @pytest.mark.asyncio
+    async def test_session_is_reused_within_a_loop(self, monkeypatch):
+        monkeypatch.setattr(utils, '_shared_aiohttp_client_sessions', {})
+        session = utils.get_aiohttp_client_session()
+        try:
+            assert utils.get_aiohttp_client_session() is session
+        finally:
+            await session.close()
+        new_session = utils.get_aiohttp_client_session()
+        try:
+            assert new_session is not session
+        finally:
+            await new_session.close()

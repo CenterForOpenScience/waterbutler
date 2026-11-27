@@ -14,6 +14,7 @@ import aiohttp
 import sentry_sdk
 from stevedore import driver
 
+from waterbutler import settings as wb_settings
 from waterbutler.core import exceptions
 from waterbutler.core.signing import Signer
 from waterbutler.core.streams import EmptyStream
@@ -104,6 +105,50 @@ def async_retry(retries=5, backoff=1, exceptions_tuple=(Exception, )):
     return _async_retry
 
 
+# A dictionary of shared aiohttp.ClientSession objects, one per asyncio event loop.
+_shared_aiohttp_client_sessions: dict[asyncio.AbstractEventLoop, aiohttp.ClientSession] = {}
+
+
+def get_aiohttp_client_session() -> aiohttp.ClientSession:
+    """Return the aiohttp.ClientSession shared by the current asyncio event loop, creating it if
+    needed. Use it for short-lived requests to OSF, such as auth calls and logging callbacks. The
+    session is configured by these settings:
+
+      * SHARED_SESSION_DNS_CACHE_TTL: DNS cache TTL in seconds, to avoid excessive DNS lookups
+      * SHARED_SESSION_REQUEST_TIMEOUT: ``(total, connect)`` request timeouts in seconds
+      * SHARED_SESSION_FORCE_CLOSE: close each connection after its request (no keep-alive reuse)
+      * SHARED_SESSION_CONNECTION_LIMIT: max simultaneous connections; 0 means unlimited
+
+    The session uses a DummyCookieJar so no cookies are stored and shared across users' requests.
+    Cookies passed with each request are unaffected and still sent as usual.
+    """
+
+    current_loop = asyncio.get_running_loop()
+    session = _shared_aiohttp_client_sessions.get(current_loop)
+    if session is not None and not session.closed:
+        return session
+
+    # Drop sessions without an active event loop.
+    stale_loops = [loop for loop in _shared_aiohttp_client_sessions.keys() if loop.is_closed()]
+    for stale_loop in stale_loops:
+        _shared_aiohttp_client_sessions.pop(stale_loop).detach()
+
+    connector = aiohttp.TCPConnector(
+        force_close=wb_settings.SHARED_SESSION_FORCE_CLOSE,
+        limit=wb_settings.SHARED_SESSION_CONNECTION_LIMIT,
+        use_dns_cache=True,
+        ttl_dns_cache=wb_settings.SHARED_SESSION_DNS_CACHE_TTL,
+    )
+    total_timeout, connect_timeout = wb_settings.SHARED_SESSION_REQUEST_TIMEOUT
+    session = aiohttp.ClientSession(
+        connector=connector,
+        cookie_jar=aiohttp.DummyCookieJar(),
+        timeout=aiohttp.ClientTimeout(total=total_timeout, connect=connect_timeout),
+    )
+    _shared_aiohttp_client_sessions[current_loop] = session
+    return session
+
+
 async def send_signed_request(method, url, payload):
     """Calculates a signature for a payload, then sends a request to the given url with the payload
     and signature.
@@ -115,7 +160,7 @@ async def send_signed_request(method, url, payload):
 
     message, signature = signer.sign_payload(payload)
 
-    async with aiohttp.request(
+    async with get_aiohttp_client_session().request(
             method,
             url,
             data=json.dumps({
