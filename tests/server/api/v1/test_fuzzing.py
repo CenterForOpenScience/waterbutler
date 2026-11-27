@@ -17,8 +17,8 @@ class TestServerFuzzing(ServerTestCase):
 
     @testing.gen_test
     def test_head_no_auth_server(self):
-        with mock.patch('waterbutler.auth.osf.handler.aiohttp.request') as mock_auth:
-            mock_auth.side_effect = ClientError
+        with mock.patch('waterbutler.auth.osf.handler.get_aiohttp_client_session') as mock_session:
+            mock_session.return_value.get.side_effect = ClientError
 
             with pytest.raises(httpclient.HTTPError) as exc:
                 yield self.http_client.fetch(
